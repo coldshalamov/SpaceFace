@@ -50,7 +50,7 @@ import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, reservedCargoQty, sellableCargoQty } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
@@ -1685,11 +1685,16 @@ export const economy = {
       entry = this.mintUnseededListing(stationId, def);
       if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
-    if (side === 'sell' && isUnsellableCargo(state, commodityId)) {
-      return {
-        ok: false, reason: 'mission_cargo_locked', unitAvg: entry.lastSell || 0, total: 0,
-        priceImpactPct: 0, stockAfter: entry.stock,
-      };
+    if (side === 'sell' && reservedCargoQty(state, commodityId) > 0) {
+      const sellable = sellableCargoQty(state, commodityId);
+      if (sellable <= 0) {
+        return {
+          ok: false, reason: 'mission_cargo_locked', unitAvg: entry.lastSell || 0, total: 0,
+          priceImpactPct: 0, stockAfter: entry.stock,
+        };
+      }
+      // NXB-025 — the sealed units stay locked; the price still answers for the free ones.
+      qty = Math.min(qty, sellable);
     }
     const info = stationInfo(state, stationId);
     // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
@@ -1803,11 +1808,16 @@ export const economy = {
     const eff = Number(effectiveEq(entry, state, stationId, commodityId));
     const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
     const stock = entry.stock;
-    if (isUnsellableCargo(state, commodityId)) {
+    const sellable = reservedCargoQty(state, commodityId) > 0
+      ? sellableCargoQty(state, commodityId)
+      : null;
+    if (sellable !== null && sellable <= 0) {
       return refuse('mission_cargo_locked', stock, intakeTarget);
     }
     const headroom = Math.max(0, Math.floor(intakeTarget - stock));
-    const fillable = Math.min(requested, headroom);
+    const fillable = sellable === null
+      ? Math.min(requested, headroom)
+      : Math.min(requested, headroom, sellable);
     if (fillable <= 0) {
       return refuse(headroom <= 0 ? 'demand_saturation' : 'qty', stock, intakeTarget);
     }
@@ -1869,9 +1879,14 @@ export const economy = {
     try {
     // Enforce sealed-freight authority at execution as well as quote. This is the final shared
     // boundary for every station UI (legacy and Orbital Command) and keeps a stale or custom quote
-    // adapter from turning mission cargo into credits.
-    if (side === 'sell' && isUnsellableCargo(state, commodityId)) {
-      return { ok: false, reason: 'mission_cargo_locked' };
+    // adapter from turning mission cargo into credits. NXB-025: the seal binds the reserved
+    // quantity — free units of the same commodity still sell.
+    if (side === 'sell') {
+      const sellable = sellableCargoQty(state, commodityId);
+      if (reservedCargoQty(state, commodityId) > 0 && sellable <= 0) {
+        return { ok: false, reason: 'mission_cargo_locked' };
+      }
+      if (qty > sellable) qty = sellable;
     }
     const q = this.quote(stationId, commodityId, side, qty);
     if (!q.ok) return { ok: false, reason: q.reason || 'invalid' };
