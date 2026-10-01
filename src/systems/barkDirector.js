@@ -29,7 +29,7 @@ import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.j
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
-import { entityIndexVersion, forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
@@ -313,6 +313,8 @@ export const barkDirector = {
     this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
     this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
     this._onCounterHintSpawn = (payload) => this._teachCounterHint(payload && payload.entity);
+    this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
+    this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:spawned', this._onEntitySpawnedBark);
       this.bus.on('entity:spawned', this._onCounterHintSpawn);
@@ -335,6 +337,8 @@ export const barkDirector = {
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('bounty:cooled', this._onBountyCooled);
       this.bus.on('law:custodyAcknowledged', this._onCustodyAcknowledged);
+      this.bus.on('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
+      this.bus.on('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -623,6 +627,48 @@ export const barkDirector = {
       id: `barkDirector:counterHint:${enemyId}`,
       text,
       ttl: 7,
+    });
+    return true;
+  },
+
+  // WORLD-28: Fulfillment presence events were emitted into silence — a route's escorts
+  // flipping hostile, and an administrative boarding completing its seizure, said nothing.
+  // Both speak in the route's own register now: the provocation through a tagged hull's
+  // warn line (attack register as backstop), the reroute through a demand-cargo line from a
+  // tagged hull or, when no Fulfillment hull is on the field, the route desk's comms note.
+  _speakFulfillmentProvoked(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    if (state.mode && state.mode !== 'flight') return false;
+    for (const entity of fulfillmentRouteHulls(state, payload.routeId)) {
+      if (this._speak(entity, 'warn', 'factionPresence:fulfillmentProvoked', payload)
+        || this._speak(entity, 'attack', 'factionPresence:fulfillmentProvoked', payload)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  _speakAdministrativeRouting(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    if (state.mode && state.mode !== 'flight') return false;
+    const own = ensureState(state);
+    const key = payload.boardingId != null
+      ? `adminRouting:${payload.boardingId}`
+      : `adminRouting:${payload.routeId}:${payload.t}`;
+    if (own.lastAdminRoutingKey === key) return false;
+    own.lastAdminRoutingKey = key;
+    for (const entity of fulfillmentRouteHulls(state, payload.routeId)) {
+      if (this._speak(entity, 'demand-cargo', 'factionPresence:administrativeRouting', payload)) {
+        return true;
+      }
+    }
+    this._emit('comms:popup', {
+      sender: 'FULFILLMENT ROUTE DESK',
+      text: `Manifest line reassigned under ${payload.routingCode || 'routing hold'} — proceed to the holding point.`,
+      category: 'law',
+      ttl: 6,
     });
     return true;
   },
@@ -1222,6 +1268,8 @@ export const barkDirector = {
       if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
       if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
       if (this._onCounterHintSpawn) this.bus.off('entity:spawned', this._onCounterHintSpawn);
+      if (this._onFulfillmentProvoked) this.bus.off('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
+      if (this._onAdministrativeRouting) this.bus.off('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -1245,6 +1293,8 @@ export const barkDirector = {
     this._onBountyCooled = null;
     this._onCustodyAcknowledged = null;
     this._onCounterHintSpawn = null;
+    this._onFulfillmentProvoked = null;
+    this._onAdministrativeRouting = null;
     this._onBodyReleased = null;
     this._onBodyShoved = null;
     this._onBodyImpact = null;
@@ -1597,6 +1647,20 @@ function stationNameFor(stationId) {
     if (station && station.name) return station.name;
   }
   return null;
+}
+
+// WORLD-28: Fulfillment register lines come from hulls still carrying the route tag. A
+// provoked route may hold several — iterate so the first hull with an unspent slot speaks.
+function fulfillmentRouteHulls(state, routeId) {
+  const out = [];
+  for (const entity of indexedShipLikeOrEntitiesScan(state)) {
+    if (!entity || entity.alive === false) continue;
+    const marker = entity.data && entity.data.factionPresence;
+    if (!marker || marker.factionId !== 'faction_fulfillment') continue;
+    if (routeId != null && marker.routeId !== routeId) continue;
+    out.push(entity);
+  }
+  return out;
 }
 
 function normalizeSituation(value) {
