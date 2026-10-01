@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "helios-candle-cache",
-      "date": "2026-09-25",
-      "wf": "WF-10",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A ropeable cache sits beside the Candle Fleet and spills iron",
-      "fingerprint": "verb=split-cache,subject=candle-fleet-pod,sector=sector_helios_prime,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "182476571",
-      "verification": "focused_green"
-    },
-    {
       "id": "pause-last-hit",
       "date": "2026-09-25",
       "wf": "WF-14",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "f317b5dc3",
+      "verification": "focused_green"
+    },
+    {
+      "id": "LAW-03",
+      "date": "2026-10-01",
+      "wf": "WF-08",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "patrolIntervened resolves the spawned patrol entity and speaks one pursuit-register bark via _speakEventLine; no fallback so a stale re-emit cannot double",
+      "fingerprint": "verb=bark,subject=patrol,domain=law,layer=voice",
+      "references": [],
+      "integration": "live",
+      "commit": "f51f05542",
       "verification": "focused_green"
     }
   ],
