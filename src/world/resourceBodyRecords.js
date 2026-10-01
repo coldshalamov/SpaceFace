@@ -198,6 +198,15 @@ export function normalizeResourceBodyRecord(raw, fallbackId) {
 }
 
 export function normalizeResourceBodyBag(input) {
+  const it = normalizeResourceBodyBagChunked(input);
+  let step = it.next();
+  while (!step.done) step = it.next();
+  return step.value;
+}
+
+/** Generator twin of the resource-body normalize: the async restore lane paints between
+ * batches while the sorted iteration and output stay identical. */
+export function* normalizeResourceBodyBagChunked(input) {
   const bag = createEmptyResourceBodyBag();
   if (!input || typeof input !== 'object' || Array.isArray(input)) return bag;
   if (Array.isArray(input.retirementReceipts)) {
@@ -220,11 +229,14 @@ export function normalizeResourceBodyBag(input) {
     ? input.byId
     : null;
   if (!src) return bag;
+  let normalized = 0;
   for (const id of Object.keys(src).sort()) {
     const rec = normalizeResourceBodyRecord(src[id], id);
     if (rec) bag.byId[rec.recordId] = rec;
+    if (++normalized % 32 === 0) yield 'world-resource-body';
   }
   enforceBound(bag, { source: 'normalize', authoritativeRetirement: true });
+  yield 'world-resource-body-bound';
   return bag;
 }
 

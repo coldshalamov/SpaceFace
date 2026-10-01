@@ -146,7 +146,7 @@ import {
   bindEntityToRecord,
   captureEntityRecord,
   createEmptyRecordsBag,
-  deserializeRecordsBag,
+  normalizeRecordsBagChunked,
   ensureWorldRecords,
   entityHasDurableMarkers,
   entityIsDurableCandidate,
@@ -208,7 +208,7 @@ import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
   createEmptyResourceBodyBag,
-  deserializeResourceBodyBag,
+  normalizeResourceBodyBagChunked,
   ensureResourceBodies,
   findResourceBodyForEntity,
   serializeResourceBodyBag,
@@ -6312,9 +6312,9 @@ export const world = {
     this._pallasDecisionSignature = null;
     this._pallasDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
-    state.world.records = deserializeRecordsBag(data.records);
+    state.world.records = yield* normalizeRecordsBagChunked(data.records);
     yield 'world-records';
-    state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies);
     yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.

@@ -190,6 +190,15 @@ function clonePlain(value) {
  * Strips runtime-only liveEntityId from records.
  */
 export function normalizeRecordsBag(input) {
+  const it = normalizeRecordsBagChunked(input);
+  let step = it.next();
+  while (!step.done) step = it.next();
+  return step.value;
+}
+
+/** Generator twin of the durable-records normalize: the async restore lane paints between
+ * batches while the sorted iteration, sector-bound order, and output stay identical. */
+export function* normalizeRecordsBagChunked(input) {
   const bag = createEmptyRecordsBag();
   if (!input || typeof input !== 'object' || Array.isArray(input)) return bag;
   // Retention overflow is runtime telemetry, not save authority. Preserve it across the
@@ -210,12 +219,14 @@ export function normalizeRecordsBag(input) {
     : (typeof input === 'object' && !Array.isArray(input) && !input.schemaId ? input : null);
   if (!src) return bag;
   const ids = Object.keys(src).sort();
+  let normalized = 0;
   for (const id of ids) {
     const raw = src[id];
     const rec = raw && raw[RECORD_NORMALIZED] === true && raw.recordId === id
       ? raw
       : normalizeRecord(raw, id);
     if (rec) bag.byId[rec.recordId] = rec;
+    if (++normalized % 32 === 0) yield 'world-record';
   }
   const sectors = new Set();
   for (const rec of Object.values(bag.byId)) {
@@ -224,6 +235,7 @@ export function normalizeRecordsBag(input) {
   }
   for (const sectorId of [...sectors].sort()) {
     enforceSectorBound(bag, sectorId, { source: 'normalize' });
+    yield 'world-records-bound';
   }
   return bag;
 }
