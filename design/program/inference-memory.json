@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "U5-io-merc-camp",
-      "date": "2026-09-26",
-      "wf": "WF-04",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The Quiet's Mercenary Outpost in Io Reach was a label: a nav buoy, an empty zone, no berth. Now a dockable writ house (bounty board, blackmarket, minRep -30 quiet door), a standing-gated contracted-lance picket off-berth, and Sallow the Contract Broker in the bar.",
-      "fingerprint": "verb=populate,subject=mercenary-outpost,sector=io-reach,domain=world",
-      "references": [],
-      "integration": "live",
-      "commit": "51135a97d",
-      "verification": "focused_green"
-    },
-    {
       "id": "U8-sker-tithe-runner",
       "date": "2026-09-26",
       "wf": "WF-01",
@@ -1638,6 +1625,19 @@
       "commit": "6f4dcc145",
       "verification": "route_accepted",
       "evidence": "test/econ-06-drone-sale-listener.test.mjs"
+    },
+    {
+      "id": "STORY-02",
+      "date": "2026-10-01",
+      "wf": "WF-02",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "research grants announce source on one-voice floor; mission emit carries source+granted, alerts names the grant, zero-delta silent",
+      "fingerprint": "verb=announce,subject=research-grant-source,sector=alerts,domain=story",
+      "references": [],
+      "integration": "live",
+      "commit": "f9e574cc1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
