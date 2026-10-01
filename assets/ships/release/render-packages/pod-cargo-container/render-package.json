@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6c7310d7c452b7ff0f44e9fcd815507172b066c861090be0fa2afa4f7b055395",
+  "contentHash": "ca8bca63e8b66d81b4fea33171e2e428572c60b01a1fd7a9bd5dc6d834d92f51",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -764,7 +764,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "240da3f9480c4745fed22b71b31bf6fa455fd194fc44ac9ec7901232b11dce4a",
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
@@ -971,9 +971,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 169812,
+      "bytes": 158923,
       "rigId": "survivor_pod",
-      "sha256": "7ae9d18470baf278bff86991dd96fb964634b56ba30e7f4e589a775307924b25",
+      "sha256": "be3f462267894a84f48971641294d93d999e4e734705fa3c3b409dbe73a04277",
       "uri": "assets/ships/motions/pod-cargo-container.motion.json"
     },
     "nodeCount": 10,
@@ -1123,7 +1123,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
-  "runtimeHash": "75447d44b45e348b071301a1421266fda181836426665c4d1c59cd89eea33e60",
+  "runtimeHash": "583e77ab9d143ed07de6b303d0b4c9853232ab98cdea1474156e22b2d886a59f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

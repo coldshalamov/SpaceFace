@@ -31,7 +31,7 @@ RIG_ID = 'inspection_cutter'
 
 ARM_EXT_Y = 0.9        # column stroke along its mount axis (+y blender = +y glTF)
 ARM_COLLAR_LAG = 0.12  # collar trails the column — telescoping read
-SWEEP_TURNS = 1.5
+SWEEP_TURNS = 2.0    # whole turns so the rest-ended sweep parks on identity
 IDLE_PERIOD = 11.0
 
 # clip.key loc is the absolute local translation: extend/sweep keys ride the

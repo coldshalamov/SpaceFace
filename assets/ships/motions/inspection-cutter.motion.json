@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "inspection_cutter",
  "sourceAssetId": "SF_WHOLESHIP_INSPECTION_CUTTER",
- "sourceGlbSha256": "ffe6b6e6343ce87ccc39ec07c69bbaa4ad0a55cfe827501e66381b44e950b241",
+ "sourceGlbSha256": "0aefd0cbb4948fa154cbe747955196b29d55451cc5cea5d03011af44687e13a7",
  "fps": 60,
  "bindings": [
   {

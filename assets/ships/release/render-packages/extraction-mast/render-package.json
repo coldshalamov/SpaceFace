@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "54ce70a1e45199ddadb680f5b64e24bb2ba018d052541a9aedd68fd96c5b3ca3",
+  "contentHash": "a194e68a64cb476468782a8a1f954bd94a60ead1d15681735a192ff2a0e94af8",
   "dynamicGroups": [
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -3006,7 +3006,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "d3aedff17d144a25526e0975f0abd8c91f3cb4b38df6c9c60e34248ad759a2ed",
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
@@ -3395,9 +3395,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 135088,
+      "bytes": 124948,
       "rigId": "extraction_mast",
-      "sha256": "510f5cc95e88bd0e75f41527fb7deb11712c34d9cfead49d625bd42f3e913706",
+      "sha256": "650dd60824dc6c383339f6c54eaaf32e04b093afd581242b1acdfd9816d31543",
       "uri": "assets/ships/motions/extraction-mast.motion.json"
     },
     "nodeCount": 39,
@@ -4310,7 +4310,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "ad468d77461ce884c095bc1f46353ba72d3d8d2f6a39768173f3df90632373be",
+  "runtimeHash": "5efb9e6090c2a43187249e1b30b32912a728aedc78e0aa5977fdb305891ea768",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

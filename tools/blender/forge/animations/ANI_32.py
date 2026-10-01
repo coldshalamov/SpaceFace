@@ -30,6 +30,7 @@ RIG_ID = 'survivor_pod'
 TUMBLE_PERIOD = 11.0
 PING_PERIOD = 2.6
 PING_TRAVEL = 5.3    # container nose (-0.4) to tail (4.9)
+PING_HOME_X = -0.4   # beacon seat on the shell mount (loc keys are absolute local)
 
 
 def register(ship, parts):
@@ -53,7 +54,8 @@ def author(bank):
     ping = bank.clip('beacon_pulse', PING_PERIOD, loop=True, end_mode='rest')
     for t, f in [(0.0, 0.0), (0.2, 0.10), (0.55, 0.5), (0.9, 0.9),
                  (1.1, 1.0), (1.5, 1.0), (2.0, 0.55), (2.3, 0.15), (2.6, 0.0)]:
-        ping.key('pod_ping', t, loc=(PING_TRAVEL * f, 0.0, 0.0))
+        # loc keys are absolute local: the beacon rides its shell-mount home.
+        ping.key('pod_ping', t, loc=(PING_HOME_X + PING_TRAVEL * f, 0.0, 1.05))
 
     steady = bank.clip('pod_steady', 1.6, loop=False, end_mode='rest')
     # Damp the roll to flat over ~1.5s with a final settle bump; the runtime

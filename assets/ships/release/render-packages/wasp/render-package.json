@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bef935202b4645a80244331e8da37e403f98a706be098bfcf9434bc7d593a8a8",
+  "contentHash": "4ba418b92e9a13fe76a38ae89810232ad73dfe892de0a148319d183d8e4b51e4",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp.node.lod0-hook-armor-flap-armor.dynamic",
@@ -948,7 +948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e4ea0b4b53c48545b5a8c8308e17f604411dc6485773f1e08f0c941f3909da8",
+      "geometryHash": "d491d33984f59ba86954f2491fecf28c423abd1f910b8a569c1e774ec51a0dc5",
       "id": "sf.render.wasp.node.lod0-mechanical.primitive.0",
       "indexCount": 12051,
       "indexed": true,
@@ -3285,19 +3285,19 @@
       "sha256": "4eb414342e9a4faaa181578758c15a18fb5fddc78f45dd8e906be0b4fc23ee09"
     },
     "sourceGlb": {
-      "bytes": 799748,
-      "sha256": "97a430c7825a0075682b2c939df6e4b0aa460257c2dc619674ada4c948477dd6",
+      "bytes": 799752,
+      "sha256": "71e5e0f2f2e9728f38802a253b12638c594b8be2322115b271eefca233ec62b1",
       "uri": "wasp_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "0c4787df2d1a10dbce36e9b7a82bf957cbae7d683fa4dfca07fed141d1e66f5c",
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1427876,
-    "sha256": "9e1edb1283f706f782ef74eb8654235c0772f67e3d343152b2cf5c50bbed3e4a",
+    "bytes": 1427884,
+    "sha256": "ae30feabdf4ec0c531228c02ed5514268005f649c5c4e1100f1f35678473fd77",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4273,9 +4273,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 114930,
+      "bytes": 104820,
       "rigId": "wasp",
-      "sha256": "5e50e2e986a3e3295c3d4a649b9fa164a2669ca91608c44e318ec0b27b75e046",
+      "sha256": "f49ecb009141c10ecd3747c9d91bdd63fc143588a3deddce6b1b9ddee9823f23",
       "uri": "assets/ships/motions/wasp.motion.json"
     },
     "nodeCount": 40,
@@ -4913,7 +4913,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1.glb"
   },
-  "runtimeHash": "72f324b1e30c56bc37b24b26b1889dbd6b167c5c28244749e4482a132186a503",
+  "runtimeHash": "844cafeac0e158f3ea4ffd1c2ef64d5f53e36cd7e507642ea2251b2af3bd80df",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "287aea2ea6b7b26d7e51680bdcb919bdf147f9160a9ccbc3845ce28740f4d9d6",
+  "contentHash": "62bdba58ae2de6bd635d4738b692df2d35dffdbcb8455991ea902fc2b38d2839",
   "dynamicGroups": [
     {
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.dynamic",
@@ -653,7 +653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "879270beb454a47de2aff217694225da498db3dc7478d59626731b85ceb399f0",
+      "geometryHash": "918bfd8858b7cc398bc25169a1efc558af349d3e98fd049ea27868ddced7395d",
       "id": "sf.render.inspection-cutter.node.lod0-armor.primitive.0",
       "indexCount": 26634,
       "indexed": true,
@@ -1128,7 +1128,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef4d31322d88fe81a851f8b42cc6d3af24268d8ddaf72f0156416af0536e8cab",
+      "geometryHash": "6fa4be036a2669f7d2ad09dd27b4cbf30c69886b198ccb975469b5ed67cf7bbf",
       "id": "sf.render.inspection-cutter.node.lod1-armor.primitive.0",
       "indexCount": 10077,
       "indexed": true,
@@ -5913,18 +5913,18 @@
     },
     "sourceGlb": {
       "bytes": 992708,
-      "sha256": "c3fc97253608289b959f6e1892bf6a2f4e2cf4e5c4479e7ff6fdc2f8a0842f54",
+      "sha256": "4f72978df79880360e038799c340997870bcc2194291ce227ad52bbce3a88413",
       "uri": "inspection_cutter.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "58f7e6ed5b232d7b3bb0871ff4708a8d8e1d870a162b099ba8898db3ca4bedf5",
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1806496,
-    "sha256": "9fea132b8f3ae7da9cd663405df132aab9d2ad80d6397ac51e5085ac6d565eaa",
+    "sha256": "0eadab002fd35273adc903da67dc274a1f37b1f2c8d82b2d1243eb3ff2093f10",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7011,9 +7011,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 151060,
+      "bytes": 142426,
       "rigId": "inspection_cutter",
-      "sha256": "4401e565133f330ca0de378db432ca4b0c442b680727d59239750c32209ae2f2",
+      "sha256": "7acba56c57257caf89d6f188d936aee099bc6ce10a7f2b0693a95ca3d9f36827",
       "uri": "assets/ships/motions/inspection-cutter.motion.json"
     },
     "nodeCount": 74,
@@ -8643,7 +8643,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "381ae23af75f79d188e2b3927ce08bbcc35a3ba28029977f03fbe52d6eed1080",
+  "runtimeHash": "895da1bca3aea0e30d4fbaec17ebd4fab7bf30240401ba53beb10ade8a24f5cf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

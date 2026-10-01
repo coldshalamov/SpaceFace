@@ -29,6 +29,7 @@ from mathutils import Euler  # noqa: E402
 RIG_ID = 'extraction_mast'
 ROCK_RAD = 0.14      # ~8deg walking-beam rock
 STROKE_M = 0.28      # plunger travel (beam nose travels ~0.3 at the rod eye)
+ROD_HOME = (1.2, 0.0, 5.4)   # plunger's pivot seat on the mast (loc keys absolute local)
 
 
 def register(ship, parts):
@@ -43,7 +44,8 @@ def author(bank):
     for i, f in enumerate((0.0, 0.5, 1.0, 1.0, 0.5, 0.0)):
         t = i * 0.48
         pump.key('mast_beam', t, rot=Euler((0.0, ROCK_RAD * (f - 0.5) * 2.0, 0.0)))
-        pump.key('mast_rod', t, loc=(0.0, 0.0, -STROKE_M * (1.0 - f)))
+        # loc keys are absolute local: the plunger strokes from its mast home.
+        pump.key('mast_rod', t, loc=(ROD_HOME[0], ROD_HOME[1], ROD_HOME[2] - STROKE_M * (1.0 - f)))
 
     idle = bank.clip('mast_idle', 9.0, loop=True, end_mode='rest')
     for i, f in enumerate((0.0, 0.4, 0.85, 1.0, 0.85, 0.4, 0.0)):

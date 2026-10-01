@@ -26,6 +26,7 @@ from mathutils import Euler  # noqa: E402
 RIG_ID = 'nav_buoy'
 SPIN_PERIOD = 14.0
 PULSE_TRAVEL = 8.6    # spire run: base ring to just under the lamp seat
+PULSE_HOME_Z = -2.8   # pulse ring's docked seat (loc keys are absolute local)
 
 
 def register(ship, parts):
@@ -43,7 +44,9 @@ def author(bank):
     pulse = bank.clip('ring_pulse', 1.5, loop=False, end_mode='rest')
     for t, f in [(0.0, 0.0), (0.14, 0.06), (0.45, 0.42), (0.8, 0.82),
                  (1.05, 0.98), (1.2, 1.0), (1.5, 1.0)]:
-        pulse.key('nav_buoy_pulse', t, loc=(0.0, 0.0, PULSE_TRAVEL * f))
+        # loc keys are absolute local: the pulse ring climbs the spire from its
+        # docked seat at z=-2.8, not from the buoy's origin.
+        pulse.key('nav_buoy_pulse', t, loc=(0.0, 0.0, PULSE_HOME_Z + PULSE_TRAVEL * f))
 
 
 EVENTS = {

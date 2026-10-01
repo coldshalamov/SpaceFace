@@ -47,11 +47,19 @@ def register(ship, parts):
     ship.motion_group('dock_umbilical', pivot=(10.0, 12.0, -3.0), objects=list(parts['boom']))
 
 
+# clip.key loc is the absolute local translation: clamp travel keys ride each
+# jaw's home offset (home + slide) so they grip outward from their berths
+# instead of snapping to bay center. The boom rides its mast-top mount.
+CLAMP_HOMES = {'l': (-4.4, -1.0, -3.2), 'r': (4.4, -1.0, -3.2)}
+BOOM_HOME = (10.0, 12.0, -3.0)
+
+
 def _clamp_keys(clip, keys):
     """keys: [(t, {group: (dx, dz)})] — group names 'l'/'r'."""
     for t, spec in keys:
         for side, (dx, dz) in spec.items():
-            clip.key(f'dock_clamp_{side}', t, loc=(dx, 0.0, dz))
+            hx, hy, hz = CLAMP_HOMES[side]
+            clip.key(f'dock_clamp_{side}', t, loc=(hx + dx, hy, hz + dz))
 
 
 def author(bank):
@@ -64,26 +72,28 @@ def author(bank):
         (1.0, {'l': (0.0, 0.0), 'r': (0.0, 0.0)}),
     ])
     for t, f in ((0.0, 0.0), (0.35, 1.0), (0.65, 0.9), (1.0, 0.0)):
-        c.key('dock_umbilical', t, loc=(0.0, BOOM_STIR_Y * f, 0.0),
+        c.key('dock_umbilical', t, loc=(BOOM_HOME[0], BOOM_HOME[1] + BOOM_STIR_Y * f, BOOM_HOME[2]),
               rot=Euler((0.0, 0.0, 0.0)))
 
     # --- engage: port jaw leads, starboard follows; boom telescopes with overshoot ----
     c = bank.clip('dock_engage', 1.8, loop=False, end_mode='hold')
     for t, f in ((0.0, 0.0), (0.35, 0.55), (0.7, 0.95), (0.9, 1.06), (1.15, 0.99),
                  (1.8, 1.0)):
-        c.key('dock_clamp_l', t, loc=(CLAMP_GRIP_X * f, 0.0, CLAMP_LIFT_Z * f))
+        hx, hy, hz = CLAMP_HOMES['l']
+        c.key('dock_clamp_l', t, loc=(hx + CLAMP_GRIP_X * f, hy, hz + CLAMP_LIFT_Z * f))
     for t, f in ((0.0, 0.0), (0.15, 0.0), (0.5, 0.5), (0.85, 0.92), (1.05, 1.05),
                  (1.3, 0.99), (1.8, 1.0)):
-        c.key('dock_clamp_r', t, loc=(-CLAMP_GRIP_X * f, 0.0, CLAMP_LIFT_Z * f))
+        hx, hy, hz = CLAMP_HOMES['r']
+        c.key('dock_clamp_r', t, loc=(hx - CLAMP_GRIP_X * f, hy, hz + CLAMP_LIFT_Z * f))
     for t, f, pitch in ((0.0, 0.0, 0.0), (0.5, 0.0, 0.0), (1.0, 0.6, 0.02),
                         (1.35, 1.05, 0.035), (1.6, 0.98, 0.03), (1.8, 1.0, 0.03)):
-        c.key('dock_umbilical', t, loc=(0.0, BOOM_EXT_Y * f, 0.0),
+        c.key('dock_umbilical', t, loc=(BOOM_HOME[0], BOOM_HOME[1] + BOOM_EXT_Y * f, BOOM_HOME[2]),
               rot=Euler((pitch, 0.0, 0.0)))
 
     # --- release: boom home first, jaws follow -----------------------------------------
     c = bank.clip('dock_release', 1.2, loop=False, end_mode='rest')
     for t, f in ((0.0, 1.0), (0.4, 0.35), (0.75, 0.05), (0.9, 0.0), (1.2, 0.0)):
-        c.key('dock_umbilical', t, loc=(0.0, BOOM_EXT_Y * f, 0.0))
+        c.key('dock_umbilical', t, loc=(BOOM_HOME[0], BOOM_HOME[1] + BOOM_EXT_Y * f, BOOM_HOME[2]))
     _clamp_keys(c, [
         (0.0, {'l': (CLAMP_GRIP_X, CLAMP_LIFT_Z), 'r': (-CLAMP_GRIP_X, CLAMP_LIFT_Z)}),
         (0.45, {'l': (CLAMP_GRIP_X * 0.9, CLAMP_LIFT_Z), 'r': (-CLAMP_GRIP_X * 0.9, CLAMP_LIFT_Z)}),
@@ -100,7 +110,7 @@ def author(bank):
         (0.8, {'l': (0.0, 0.0), 'r': (0.0, 0.0)}),
     ])
     for t, f in ((0.0, 0.0), (0.2, 1.0), (0.8, 0.0)):
-        c.key('dock_umbilical', t, loc=(0.0, BOOM_FLINCH_Y * f, 0.0))
+        c.key('dock_umbilical', t, loc=(BOOM_HOME[0], BOOM_HOME[1] + BOOM_FLINCH_Y * f, BOOM_HOME[2]))
 
 
 EVENTS = {

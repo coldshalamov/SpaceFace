@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "099a055556dc9333cc6bf24c65903295d103173aacf99fbfa8a3b2d7920b2c7e",
+  "contentHash": "5aec4e4672150c3ab2fc0e20e78c8775ba7692c2ac2119e325ed27e8d8514325",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-production-v1-lod1.node.lod0-hook-armor-flap-armor.dynamic",
@@ -712,18 +712,18 @@
     {
       "bounds": {
         "max": [
-          -7.367262838848503,
-          0.03798038253027057,
-          -1.5004750490188599
+          -7.367258044388179,
+          0.03797649652644422,
+          -1.5005784034729004
         ],
         "min": [
-          -9.092774869433967,
-          -0.13865699359613515,
+          -9.092980889175054,
+          -0.13865310759230878,
           -3.8494510650634766
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0281eaf192876dc42a32f0ec945d0d1bd8e75f00abf3696319ad7930827c2fa",
+      "geometryHash": "f2f7408a7214917a255263a7403efdcc5e4cc1840a787f3821e71da77c0f4829",
       "id": "sf.render.wasp-production-v1-lod1.node.lod0-hook-armor-flap-armor.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -948,7 +948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9019794086fe55dd9356f8c66444c966bd5251188d119d98556d56489e936464",
+      "geometryHash": "839c7a5b5cebed305e7ab674680ac37b3e0dd2e14ed770a466e51f8b1f72f9fa",
       "id": "sf.render.wasp-production-v1-lod1.node.lod0-mechanical.primitive.0",
       "indexCount": 10119,
       "indexed": true,
@@ -1063,17 +1063,17 @@
       "bounds": {
         "max": [
           -5.313105583190918,
-          0.07907259464263916,
-          -5.00089063931955
+          0.07907119393348694,
+          -5.000934369803872
         ],
         "min": [
-          -9.995963096618652,
-          -0.11986346542835236,
-          -7.899468898773193
+          -9.99589729309082,
+          -0.11986206471920013,
+          -7.899471998214722
         ]
       },
       "drawMode": 4,
-      "geometryHash": "94dff6478d1f18ba3641e7704b6ab7c3b2980a06216d94d4650aaf5ea416c665",
+      "geometryHash": "d9aa4f2db393b3e1b24283a52e05c444e49c7633b887f20f6906464c9add8ca2",
       "id": "sf.render.wasp-production-v1-lod1.node.lod0-motion-wasp-winglet-p-armor.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1138,17 +1138,17 @@
       "bounds": {
         "max": [
           -5.313167572021484,
-          1.7488221675157547,
-          7.899120807647705
+          1.7488413602113724,
+          7.899132966995239
         ],
         "min": [
-          -9.995492935180664,
-          -0.11984972655773163,
-          4.331396639347076
+          -9.995589256286621,
+          -0.1198689192533493,
+          4.331335365772247
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05d274a0effbe6c8edd39df1b9c5f3a9fec15ea03c7ad37a11b4f75bd2bc953b",
+      "geometryHash": "1fb61745ad81a9a2a74ce0756b3a5a7348e1137a81c15851665f66494fc5149f",
       "id": "sf.render.wasp-production-v1-lod1.node.lod0-motion-wasp-winglet-s-armor.primitive.0",
       "indexCount": 546,
       "indexed": true,
@@ -1560,21 +1560,21 @@
     {
       "id": "sf.render.wasp-production-v1-lod1.node.lod0-hook-armor-flap-armor",
       "localTransform": [
-        1.1744880080223083,
+        1.174436330795288,
         0,
         0,
         0,
         0,
-        1.1744880080223083,
+        1.174436330795288,
         0,
         0,
         0,
         0,
-        1.1744880080223083,
+        1.174436330795288,
         0,
-        -8.230018854141235,
+        -8.230119466781616,
         -0.05033830553293228,
-        -2.674963057041168,
+        -2.6750147342681885,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1588,21 +1588,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.wasp-production-v1-lod1.body",
       "worldTransform": [
-        1.1744880080223083,
+        1.174436330795288,
         0,
         0,
         0,
         0,
-        1.1744880080223083,
+        1.174436330795288,
         0,
         0,
         0,
         0,
-        1.1744880080223083,
+        1.174436330795288,
         0,
-        -8.230018854141235,
+        -8.230119466781616,
         -0.05033830553293228,
-        -2.674963057041168,
+        -2.6750147342681885,
         1
       ]
     },
@@ -3285,19 +3285,19 @@
       "sha256": "0a61c33148035ec4c691dc3b1b2ff7fd10d1dc5459fb621678c990878e30a7c5"
     },
     "sourceGlb": {
-      "bytes": 569648,
-      "sha256": "0cfd676a77b543dc3216df122734267028fa779396d7d2a27295e8eea2c93c38",
+      "bytes": 569688,
+      "sha256": "fabaac9d661f03b783ee87ca099a9702e704d57439f306e6c0109b68ef125bed",
       "uri": "wasp_production_v1_lod1.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "0c4787df2d1a10dbce36e9b7a82bf957cbae7d683fa4dfca07fed141d1e66f5c",
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 877948,
-    "sha256": "97f288cd660597c8b39a9c3dd7ffa157018c9ba1ad50b4e8a81af2ce87dc048b",
+    "bytes": 877916,
+    "sha256": "46b44428b7692c27dcace14d628beacaaddd6168635abb20b517ab36911bedc6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4273,9 +4273,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 114930,
+      "bytes": 108407,
       "rigId": "wasp",
-      "sha256": "5e50e2e986a3e3295c3d4a649b9fa164a2669ca91608c44e318ec0b27b75e046",
+      "sha256": "83733abc8d42105e7ebcb1c803792322f3e1543b0b4bd36ce82ad45c3dad38cb",
       "uri": "assets/ships/motions/wasp-production-v1.motion.json"
     },
     "nodeCount": 40,
@@ -4364,21 +4364,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.1744880080223083,
+          1.174436330795288,
           0,
           0,
           0,
           0,
-          1.1744880080223083,
+          1.174436330795288,
           0,
           0,
           0,
           0,
-          1.1744880080223083,
+          1.174436330795288,
           0,
-          -8.230018854141235,
+          -8.230119466781616,
           -0.05033830553293228,
-          -2.674963057041168,
+          -2.6750147342681885,
           1
         ],
         "name": "LOD0_HOOK_ARMOR_FLAP_Armor",
@@ -4913,7 +4913,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb"
   },
-  "runtimeHash": "2ed96fda377a332cfc44dcb27e39ee5ea73ee6f62bb1deb48ded384d12c13ea1",
+  "runtimeHash": "09e0d01587529e0228f5928fb0d11447c796c2e04af23c99f8e78423a2795730",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

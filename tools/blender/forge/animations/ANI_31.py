@@ -30,6 +30,10 @@ SLAM_RAD = -0.16   # predation: wings flatten hard
 TUCK_RAD = -0.30   # flee: tips fold low
 GUN_EXT_M = 0.5
 GUN_REC_M = -0.22
+# clip.key loc is the absolute local translation: gun travel rides the pod's
+# chin-mount home, not the hull origin.
+GUN_HOME = (3.2, 0.0, 0.55)
+gun_at = lambda dx: (GUN_HOME[0] + dx, GUN_HOME[1], GUN_HOME[2])
 
 
 def register(ship, parts):
@@ -53,8 +57,8 @@ def author(bank):
         (0.0, 0.0), (0.25, FLARE_RAD), (0.45, FLARE_RAD * 0.92),
         (0.8, FLARE_RAD * 0.88), (1.0, FLARE_RAD * 0.35), (1.4, 0.0)])
     c.key('wasp_guns', 0.0)
-    c.key('wasp_guns', 0.3, loc=(0.18, 0.0, 0.0))
-    c.key('wasp_guns', 0.8, loc=(0.18, 0.0, 0.0))
+    c.key('wasp_guns', 0.3, loc=gun_at(0.18))
+    c.key('wasp_guns', 0.8, loc=gun_at(0.18))
     c.key('wasp_guns', 1.4)
 
     # --- predation: wings slam flat while the guns punch out --------------------------
@@ -62,8 +66,8 @@ def author(bank):
     _wing_keys(c, [
         (0.0, 0.0), (0.18, SLAM_RAD), (0.5, SLAM_RAD * 0.8), (1.2, 0.0)])
     c.key('wasp_guns', 0.0)
-    c.key('wasp_guns', 0.15, loc=(GUN_EXT_M, 0.0, 0.0))
-    c.key('wasp_guns', 0.55, loc=(GUN_EXT_M * 0.85, 0.0, 0.0))
+    c.key('wasp_guns', 0.15, loc=gun_at(GUN_EXT_M))
+    c.key('wasp_guns', 0.55, loc=gun_at(GUN_EXT_M * 0.85))
     c.key('wasp_guns', 1.2)
 
     # --- flee: tuck low and recoil the stingers -----------------------------------------
@@ -71,7 +75,7 @@ def author(bank):
     _wing_keys(c, [
         (0.0, 0.0), (0.3, TUCK_RAD), (0.7, TUCK_RAD * 0.9), (1.2, 0.0)])
     c.key('wasp_guns', 0.0)
-    c.key('wasp_guns', 0.35, loc=(GUN_REC_M, 0.0, 0.0))
+    c.key('wasp_guns', 0.35, loc=gun_at(GUN_REC_M))
     c.key('wasp_guns', 1.2)
 
 

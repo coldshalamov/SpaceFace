@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1deeab2f2e6769c86f745865553f6c7b5a6645b6d9efd61491a5869c1e9e11b0",
+  "contentHash": "43fe4a0ac3896481545a8bb4de0411b322cd8a1a1e4606109402714bfcf43ab7",
   "dynamicGroups": [
     {
       "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
@@ -7827,8 +7827,8 @@
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
@@ -9166,9 +9166,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 423030,
+      "bytes": 402130,
       "rigId": "salvage_cutter_jaw",
-      "sha256": "82e6c2acc962be55885a5b7a0449daae0939dea37e710965419b2c72d9a76dd0",
+      "sha256": "59130ba1e6bb73def185eed11c2bfc99b305a2104b10068e74fca52db87fd588",
       "uri": "assets/ships/motions/salvage-cutter.motion.json"
     },
     "nodeCount": 99,
@@ -11433,7 +11433,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "1c91c264a97b444d2259c9c4af01e7bc7f36d19865178b2aafe6650b2b24fb72",
+  "runtimeHash": "79227a1b6950a52af9c452374d619893a15b93a46c313949df40adb685e8ca1e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

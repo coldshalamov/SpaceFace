@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b7b2e57722a4368bb804e88a136ce0e53ef803593dd1db63656b845c7609796e",
+  "contentHash": "62a25f6badcd6cbe5bb048d43ba78f5fb4cd9f0d144bdd677f06016fd2d9afc1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1064,8 +1064,8 @@
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
@@ -1504,7 +1504,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "56b93c004108db4fa593f8fe4baa4809c6adf07bd41f0f6e801591a1cc171fee",
+  "runtimeHash": "e7b0b1d03613b71da619499ce4453cd956f0016ba1e183256ffc233e18dfad43",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

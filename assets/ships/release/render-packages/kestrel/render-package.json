@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ef13df41a43faccd7ef9e4e38c5e22a6fad275a14eb9b64fa9f7c3df4d899e23",
+  "contentHash": "a28a3005bdb7298143a67d2f2fa5b7c0e20af618c5dfbc456829e90156371b77",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel.node.lod0-hook-drive-core.dynamic",
@@ -550,7 +550,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d64f1deb5b10bec09338af38a001fe0da50a85364eab32d8a61df475ea3b075f",
+      "geometryHash": "2a1cdc6cfda15e28c2ca3a6091ac42c9684a8d79fff7db00aeda6e115045a9da",
       "id": "sf.render.kestrel.node.lod0-armor.primitive.0",
       "indexCount": 30324,
       "indexed": true,
@@ -1075,7 +1075,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1598bc94c109fb5bc0e394a8cfbeae4730ef2be61a1b81d728d7228b41522d40",
+      "geometryHash": "b8c638edea0b6f9de7423af960c255623337211072ecf79dc562a803ba6d0dfb",
       "id": "sf.render.kestrel.node.lod0-motion-kestrel-iris-1-mechanicaldark.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -5125,19 +5125,19 @@
       "sha256": "53d0781791ad59456c28c2c767c9dfcaefb4d3db8ec089f02b365f24341ed979"
     },
     "sourceGlb": {
-      "bytes": 848180,
-      "sha256": "1bc107c8086b8fa0ccbfd8c3924a53c58f074f83f2cafd8eb8da0ae269fbffa8",
+      "bytes": 847140,
+      "sha256": "fa2000706a332b46b9636782a4a8d7a696f69c032aa50ada1995479409c21209",
       "uri": "kestrel.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "ae421356f8730fff54784aefb3066afb7fa1b5545afa6f833e5564ca15ed2b98",
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1446804,
-    "sha256": "7e74bb24cf7001818bc0de93aab4376ee234c5a9431b5798f6c5ab0bb3b2a339",
+    "bytes": 1446812,
+    "sha256": "588484f4da6862b0ecd6f16bea583fddfb6f376f9923ecd98d5d71540154ac78",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7015,9 +7015,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 715638,
+      "bytes": 666882,
       "rigId": "kestrel_dish",
-      "sha256": "1ac699d43bcbc2a965a593fb87aad53acf5bfdace73118d04020f644548ca0c7",
+      "sha256": "e87fddb45abd50cb55377dcb7f16a4b5750097bc5dbc8867bb01f0e5a361ba1c",
       "uri": "assets/ships/motions/kestrel.motion.json"
     },
     "nodeCount": 68,
@@ -8103,7 +8103,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
-  "runtimeHash": "0ad1eac8b65ee4e4f00b3d23d1ca35dbb38df1fc236d2c8e270c62afcd79510a",
+  "runtimeHash": "cfa7df0084a593ecdb620d3701de5b6f9a4d9b2d88a784e1668c9a03ebf1871d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

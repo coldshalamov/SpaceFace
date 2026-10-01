@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba32185508d2afb406b2c6cf326b4c2b37e5525b4448fa10edd096b595255106",
+  "contentHash": "5bd8a09280378a7cbb66e6f9e5bf2950ed6f270013a27d7ce266e76441ac6194",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -7029,8 +7029,8 @@
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
       "uri": "pilots.json"
     }
   },
@@ -8253,9 +8253,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 245686,
+      "bytes": 232658,
       "rigId": "yard_tug_winch",
-      "sha256": "1165fb67ce5a7e5767a14389cfd559b9d3a5ce3c57d16c115c97c6e9c4f52515",
+      "sha256": "99b7f1ef6047796384c4ff38742e7a88411ebf89fc699b3a85803688b05d1b57",
       "uri": "assets/ships/motions/yard-tug.motion.json"
     },
     "nodeCount": 88,
@@ -10261,7 +10261,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "d4c0fc59137edc0bc34fc0e4b5efa889dd7da2e832c99d4bd446af82680a42c7",
+  "runtimeHash": "2c1d06264f949da73b5d3eea29f20f36d64141d77eb765e9e7a0e80a677fb31a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

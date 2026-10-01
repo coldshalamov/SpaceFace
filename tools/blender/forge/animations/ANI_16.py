@@ -39,9 +39,19 @@ def register(ship, parts):
     ship.motion_group('kestrel_strut_f', pivot=(4.6, 0.0, -1.9), objects=[parts['skidF']])
 
 
+STRUT_HOMES = {
+    'kestrel_strut_p': (-4.0, 1.6, -2.15),
+    'kestrel_strut_s': (-4.0, -1.6, -2.15),
+    'kestrel_strut_f': (4.6, 0.0, -1.9),
+}
+
+
 def _strut_keys(clip, group, times, splay=0.0, splay_sign=1.0):
+    # clip.key loc is the absolute local translation: extension rides the strut's
+    # home offset so the ram extends from its mount instead of snapping to origin.
+    hx, hy, hz = STRUT_HOMES[group]
     for t, f in times:
-        kw = {'loc': (0.0, 0.0, -DROP_M * f)}
+        kw = {'loc': (hx, hy, hz - DROP_M * f)}
         if splay:
             kw['rot'] = Euler((splay * splay_sign * f, 0.0, 0.0))
         clip.key(group, t, **kw)

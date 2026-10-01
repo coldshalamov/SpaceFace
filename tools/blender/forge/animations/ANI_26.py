@@ -32,6 +32,9 @@ RIG_ID = 'drill_platform'
 SPIN_PERIOD = 1.4
 FEED_STEP = 0.3
 STALL_RAD = 0.18
+# clip.key loc is the absolute local translation: the collar strokes from its
+# mast-top home, so feed keys are home z minus the screw travel.
+COLLAR_HOME_Z = 4.4
 
 
 def register(ship, parts):
@@ -50,7 +53,7 @@ def author(bank):
     # Three ratchet steps down, spring return — a feed screw working the collar.
     for t, f in [(0.0, 0.0), (1.4, 0.0), (1.6, 1.0), (3.0, 1.0), (3.2, 2.0),
                  (4.6, 2.0), (4.8, 3.0), (5.6, 3.0), (6.0, 0.0)]:
-        feed.key('drill_collar', t, loc=(0.0, 0.0, -FEED_STEP * f))
+        feed.key('drill_collar', t, loc=(0.0, 0.0, COLLAR_HOME_Z - FEED_STEP * f))
 
     kick = bank.clip('drill_stall_kick', 0.5, loop=False, end_mode='rest')
     for t, f in [(0.0, 0.0), (0.08, 1.0), (0.18, -0.55), (0.3, 0.3),
@@ -59,7 +62,7 @@ def author(bank):
 
     park = bank.clip('drill_park', 1.4, loop=False, end_mode='rest')
     for t, f in [(0.0, 3.0), (0.4, 2.4), (0.8, 1.2), (1.1, 0.3), (1.4, 0.0)]:
-        park.key('drill_collar', t, loc=(0.0, 0.0, -FEED_STEP * f))
+        park.key('drill_collar', t, loc=(0.0, 0.0, COLLAR_HOME_Z - FEED_STEP * f))
 
 
 EVENTS = {
