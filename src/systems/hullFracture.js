@@ -197,7 +197,7 @@ function wreckPhysicsBody(mass, radius) {
   };
 }
 
-function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label, markerId, victimVisual }) {
+function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label, markerId, victimVisual, victimRadius, killedAt }) {
   return {
     type: 'wreck',
     pos: { x: note.pos.x + offset.x, z: note.pos.z + offset.z },
@@ -226,6 +226,13 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label,
       // ANI-08: the victim's visual identity lets the render pass draw the spawned pieces as
       // authored fragments of the hull that died rather than generic aftermath debris.
       fractureVisual: victimVisual && typeof victimVisual === 'object' ? { ...victimVisual } : null,
+      // The fragment GLBs are authored in intact-hull coordinates: the render pass fits each
+      // piece to victimRadius x the fragment's authored share of that hull, not the mass-derived
+      // collision radius (a 0.34-mass bow spans ~0.45 of hull length, not 0.70).
+      fractureVictimRadius: Number.isFinite(victimRadius) && victimRadius > 0 ? victimRadius : null,
+      // Kill-time stamp for the ember pass — without it the seam piece's torn edge stays cold
+      // while the remainder flashes hot off its marker's killedAt.
+      killedAt: Number.isFinite(killedAt) ? killedAt : 0,
       proportions: WRECK_COLLIDER_PROPORTIONS,
       loot: [],
       salvagePool: salvagePool || { cmdty_scrap_metal: 1 },
@@ -268,6 +275,8 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     label: seam.label || 'Hull Fragment',
     markerId,
     victimVisual: options.victimVisual,
+    victimRadius: options.victimRadius,
+    killedAt: Number(state.simTime) || 0,
   }));
   const remEntity = helpers.spawnEntity(pieceSpec({
     note,
@@ -280,6 +289,8 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     label: 'Salvage Wreck',
     markerId,
     victimVisual: options.victimVisual,
+    victimRadius: options.victimRadius,
+    killedAt: Number(state.simTime) || 0,
   }));
 
   const pieces = [seamEntity, remEntity].filter(Boolean);

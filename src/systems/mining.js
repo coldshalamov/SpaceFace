@@ -1455,6 +1455,7 @@ export const mining = {
         // offcut resolves its fragment GLB off this stamp; the remainder also receives
         // hulkVisual through bindImmediateWreck below.
         victimVisual: victimVisualFor(victim && victim.data),
+        victimRadius: victim && Number.isFinite(victim.radius) ? victim.radius : null,
         salvagePool,
         bindAftermath: aftermathPlan && aftermathOwner
           && typeof aftermathOwner.bindImmediateWreck === 'function'

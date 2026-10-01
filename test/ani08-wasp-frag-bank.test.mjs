@@ -72,19 +72,27 @@ for (const [key, spec] of Object.entries(BANKS)) {
 
 test('fracture pieces resolve authored fragment GLBs off the victim defId stamp', () => {
   const waspVisual = { defId: 'ship_wasp', silhouette: 'ship_wasp' };
-  const seam = { id: 'w1', data: { fracturePiece: 'seam', fractureVisual: waspVisual } };
-  const rem = { id: 'w2', data: { fracturePiece: 'remainder', fractureVisual: waspVisual } };
+  // The authored bow shell is a forward-canopy shear: only that seam resolves it.
+  const seam = { id: 'w1', data: { fracturePiece: 'seam', fractureSeamId: 'light_forward_canopy', fractureVisual: waspVisual } };
+  const rem = { id: 'w2', data: { fracturePiece: 'remainder', fractureSeamId: 'light_forward_canopy', fractureVisual: waspVisual } };
   assert.equal(fractureFragmentFileForEntity(seam), 'places/place_wasp_frag_bow.glb');
   assert.equal(fractureFragmentFileForEntity(rem), 'places/place_wasp_frag_aft.glb');
   assert.equal(wreckPackagedFile(seam), 'places/place_wasp_frag_bow.glb');
   assert.equal(wreckPackagedFile(rem), 'places/place_wasp_frag_aft.glb');
 
+  // Lateral spar breaks are not bow shells — the offcut falls back to generic resolution
+  // while the remainder still draws the authored aft mass under any seam.
+  const spar = { id: 'w3', data: { fracturePiece: 'seam', fractureSeamId: 'light_port_spar', fractureVisual: waspVisual } };
+  const sparRem = { id: 'w4', data: { fracturePiece: 'remainder', fractureSeamId: 'light_port_spar', fractureVisual: waspVisual } };
+  assert.equal(fractureFragmentFileForEntity(spar), null);
+  assert.equal(fractureFragmentFileForEntity(sparRem), 'places/place_wasp_frag_aft.glb');
+
   // The remainder also resolves off the hulkVisual the aftermath merge stamps.
-  const remHulk = { id: 'w3', data: { fracturePiece: 'remainder', hulkVisual: waspVisual } };
+  const remHulk = { id: 'w5', data: { fracturePiece: 'remainder', hulkVisual: waspVisual } };
   assert.equal(wreckPackagedFile(remHulk), 'places/place_wasp_frag_aft.glb');
 
   // Non-fragment wrecks and unsupported defs fall through to hulk/aftermath resolution.
-  const generic = { id: 'w4', data: { fracturePiece: 'seam', fractureVisual: { defId: 'ship_mule' } } };
+  const generic = { id: 'w6', data: { fracturePiece: 'seam', fractureSeamId: 'light_forward_canopy', fractureVisual: { defId: 'ship_mule' } } };
   assert.equal(fractureFragmentFileForEntity(generic), null);
 });
 
