@@ -23,7 +23,7 @@ import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidF
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
-import { isMassSeedTetherEligible } from './massSeed.js';
+import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
 
@@ -165,6 +165,7 @@ export const tetherGameplay = {
     this._lastCutDenial = null;
     this._bridleSetup = null;
     this._bridleActive = null;
+    this._bridleShareKey = null;
     this._npcBridleCutTicks = new Map();
     this._monofilamentCutIds = new Set();
     this._monofilamentKickIds = new Set();
@@ -908,6 +909,44 @@ export const tetherGameplay = {
     mirror.load = computeTetherLoad(phase, strain);
     mirror.automaticBreakAllowed = automaticMasslineBreakAllowed(def, source, target);
     mirror.lastEndReason = null;
+    if (source && target) {
+      const emit = this._bridleShareKey !== attachment.id;
+      if (emit) this._bridleShareKey = attachment.id;
+      this._publishBridleLoadShare(state, source, target, attachment.id, emit);
+    }
+  },
+
+  // VERB-20 — the bolas already splits the clothesline as m_partner / (m + m_p) on each end.
+  // Those two fractions sum to 1. This only publishes them; the tumble law above is unchanged.
+  _publishBridleLoadShare(state, source, target, attachmentId, emit = true) {
+    if (!state || !source || !target) return null;
+    const shares = bridleEndpointShares(
+      positive(source.physicsBody && source.physicsBody.mass, positive(source.mass, 1)),
+      positive(target.physicsBody && target.physicsBody.mass, positive(target.mass, 1)),
+    );
+    const mirror = ensureRemoteMasslineMirror(state);
+    mirror.sourceShare = shares.source;
+    mirror.targetShare = shares.target;
+    mirror.shareSourceId = source.id;
+    mirror.shareTargetId = target.id;
+    const payload = {
+      schemaVersion: 1,
+      kind: 'twin_bridle',
+      attachmentId: attachmentId == null ? null : attachmentId,
+      sourceId: source.id,
+      targetId: target.id,
+      fromId: source.id,
+      toId: target.id,
+      sourceShare: shares.source,
+      targetShare: shares.target,
+      shares: [shares.source, shares.target],
+      share: shares.source,
+      tick: state.tick | 0,
+    };
+    if (emit && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('chain:tetherShare', payload);
+    }
+    return payload;
   },
 
   // NPC counterplay stays on the AI's existing phase-change seam. The specialist plan owns the
@@ -954,7 +993,12 @@ export const tetherGameplay = {
     mirror.restLength = 0;
     mirror.strain = 0;
     mirror.load = 0;
+    mirror.sourceShare = null;
+    mirror.targetShare = null;
+    mirror.shareSourceId = null;
+    mirror.shareTargetId = null;
     mirror.lastEndReason = reason || null;
+    this._bridleShareKey = null;
   },
 
   _resetTwinBridleRuntime(state, reason = null, adoptionPending = false) {
@@ -2642,7 +2686,8 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
   const nextReady = snapshot.ranked.find((candidate) => candidate.id !== record.id && candidate.score > 0);
   const gap = record.score > 0 ? record.score - finite(nextReady && nextReady.score) : 0;
   const exact = snapshot.context.forceId != null && snapshot.context.forceId === record.id;
-  return {
+  const seedPreview = target && target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
+  const entry = {
     targetId: record.id,
     targetType: target && target.type || 'unknown',
     targetLabel: masslineTargetLabel(target),
@@ -2656,6 +2701,20 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
     reason: statusReason,
     reasons: record.reasons,
   };
+  // Eligible seeds already passed isAttachable. The flag is the same one the latch gate reads.
+  if (seedPreview) {
+    entry.isMassSeedTetherEligible = seedPreview.isMassSeedTetherEligible;
+    entry.seedStateWord = seedPreview.word;
+  }
+  return entry;
+}
+
+/** Each end of a bridle feels m_partner / (m + m_p). The two fractions sum to 1. */
+export function bridleEndpointShares(sourceMass, targetMass) {
+  const source = Math.max(0.1, finite(sourceMass, 1));
+  const target = Math.max(0.1, finite(targetMass, 1));
+  const sum = source + target;
+  return { source: target / sum, target: source / sum };
 }
 
 function reasonForScoringRecord(record) {
