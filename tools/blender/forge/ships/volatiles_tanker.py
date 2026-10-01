@@ -17,6 +17,7 @@ COLORS = {
     'paint2': '#26282c',   # graphite cab, frames and drive block
     'stripe': '#121316',   # hazard black
     'hazard': '#9a7418',
+    'glow_cyan.rust': '#ffd23a',   # work-fleet yellow lifted to light, on the graphite only
 }
 
 TANKS = (7.6, 2.6, -2.4, -7.4)   # tank centres (x)
@@ -101,6 +102,9 @@ def build():
     F.band(s, 'Cab', (15.6, 0, 1.2), (1, 0, 0), 1.3, 'glass', facing=(0.55, 0, 0.83), min_facing=0.55)
     F.windows(s, 'CabWin', 12.0, 14.4, 2.08, 0.9, 3, size=(0.5, 0.32), mirror=True)
     F.panel(s, 'Cab', (12.6, 0.0), (1.8, 2.4), 'paint2', inset=0.05, depth=0.05)
+    # Identity trim, lit: a thin yellow ring round the graphite cab just behind the blast shield (never on
+    # the yellow tanks: same colour vanishes) (LOOK.md: lamps are light).
+    F.band(s, 'Cab', (11.5, 0, 0.2), (1, 0, 0), 0.16, 'glow_cyan.rust', inset=0.01, depth=-0.02)
 
     # --- Drive block aft: heavy, yellow/black striped collar, twin drives, radiator comb on top.
     F.loft(s, 'DriveBlock', [
@@ -112,6 +116,8 @@ def build():
     for k, x in enumerate((-15.3, -14.55, -13.8)):
         F.band(s, 'DriveBlock', (x, 0, 0), (1, 0, 0), 0.38, 'paint')
     F.panel(s, 'DriveBlock', (-12.1, 0.0), (2.2, 3.2), 'dark', inset=0.05, depth=-0.08)
+    # ...and its twin round the graphite drive block's forward end
+    F.band(s, 'DriveBlock', (-10.6, 0, 0), (1, 0, 0), 0.16, 'glow_cyan.rust', inset=0.01, depth=-0.02)
     for y in (1.3, -1.3):
         F.nozzle(s, f'Nozzle{y}', (-17.5, y, 0.0), 1.0, 1.2, material='gunmetal', bell=1.15)
     s.hook('HOOK_DRIVE_CORE', (-17.4, 0.0, 0.0))
