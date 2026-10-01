@@ -1226,8 +1226,8 @@
       "slot": "place",
       "releaseAssetId": "place_interdiction_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_interdiction_buoy.glb",
-      "releaseSha256": "a4886435ec02fa54d075544277b4fe2571cfde612d2d3a9821aadc645c99eb0d",
-      "releaseBytes": 434876,
+      "releaseSha256": "08e3e65624e1e0a87c6c0e8436af74a84a3c9a52f13c2155a9d5fecbbeb8ea91",
+      "releaseBytes": 287548,
       "rootNode": "SF_PLACE_INTERDICTION_BUOY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -1352,8 +1352,8 @@
       "slot": "place",
       "releaseAssetId": "place_lane_pin",
       "sourceUrl": "assets/ships/release/parts/places/place_lane_pin.glb",
-      "releaseSha256": "5e17d3acb401643e7a2f4c82d21f167b5abb61a11360b25dce72529ffa0a72f8",
-      "releaseBytes": 499776,
+      "releaseSha256": "05730becb7d6399048d19bee1516fe62a9b7bca00f5db38eebec32162dcf313f",
+      "releaseBytes": 340492,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1394,8 +1394,8 @@
       "slot": "place",
       "releaseAssetId": "place_claim_mark",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_mark.glb",
-      "releaseSha256": "007b85445ffe6720f44d6e153feb20c2cf4d76870fc65addddda5f27b92989fd",
-      "releaseBytes": 401600,
+      "releaseSha256": "ab2db3f7e66536490d1875310ee2165d9f066f036db5d0068cce0fe534988682",
+      "releaseBytes": 239288,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

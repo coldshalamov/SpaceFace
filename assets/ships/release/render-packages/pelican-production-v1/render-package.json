@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "64bd95a1b1b6205491121342f30fd6f99d2bd17433e8bdf41c512a09df72bdd6",
+  "contentHash": "c4ed61a65cd456b18f7e1d047dc6779aa2a1a070c02ebf58f8e6ec73a7511973",
   "dynamicGroups": [
     {
       "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull.dynamic",
@@ -3103,7 +3103,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "fa137d52c8c37130744591511a09d606ba668dde0583aef13a41f75c9422135f",
+      "sha256": "edf790dc8dc34d51abfcde3d67988ed0c7dad7e8de0de104694773134a24af68",
       "uri": "pilots.json"
     }
   },
@@ -4455,7 +4455,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
   },
-  "runtimeHash": "494feecb3a1aafac7f88588029d796833c80088a64e4f80f060d8ad21a3338b8",
+  "runtimeHash": "7645cfc4553daad2c82b01033c1109bd08bfaa03910c103cafecf2df12eaaa59",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
