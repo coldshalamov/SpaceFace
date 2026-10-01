@@ -36,6 +36,10 @@ def build():
     # ivory instrument saddle down the spine, dark access plate aft
     F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 1.3, 'paint2', facing=(0, 0, 1), min_facing=0.55, inset=0.03, depth=0.03)
     F.band(s, 'Hull', (-7.9, 0, 0), (1, 0, 0), 0.45, 'paint2', inset=0.02, depth=0.02)
+    # Identity trim, lit: a thin cyan ring round the hull just aft of the canopy, and one ahead of the
+    # dome plinth, so the slim hull reads as lit bars from the chase tilt (LOOK.md: lamps are light).
+    for x in (0.8, -5.3):
+        F.band(s, 'Hull', (x, 0, 0), (1, 0, 0), 0.16, 'glow_cyan', inset=0.01, depth=-0.02)
     F.canopy(s, 'Canopy', x0=1.2, x1=3.7, w=0.72, h=0.5, z=0.92, peak=0.45, n=2.4)
     F.windows(s, 'HullWin', -1.6, 0.4, 1.66, 0.35, 3, size=(0.55, 0.3), mirror=True)
     # instrument bays: dark recessed strips along the shoulders ahead of the arrays
@@ -52,6 +56,8 @@ def build():
     for i, x in enumerate((5.6, 7.0, 8.4)):
         F.band(s, 'Boom', (x, 0, 0.2), (1, 0, 0), 0.7, 'paint', inset=0.01, depth=0.01)
     F.cylinder(s, 'BoomCollar', (3.9, 0, 0.2), (4.6, 0, 0.2), 0.6, 0.56, material='stripe', segments=28)
+    # Identity trim, lit: a thin cyan ring (the ship's own lens colour; yellow washed out on the orange) round the dark boom collar where the rod leaves the hull
+    F.band(s, 'BoomCollar', (4.25, 0, 0.2), (1, 0, 0), 0.16, 'glow_cyan', inset=0.01, depth=-0.02)
     # bracing struts from the hull shoulders to the boom
     F.cylinder(s, 'BoomStrut', (2.2, 1.2, 0.2), (6.3, 0.22, 0.2), 0.09, material='gunmetal', segments=12,
                mirror=True)
@@ -68,6 +74,8 @@ def build():
 
     # --- Big radome on the back -------------------------------------------------------------------
     F.cylinder(s, 'DomePlinth', (-3.4, 0, 0.9), (-3.4, 0, 1.55), 1.55, 1.45, material='gunmetal', segments=40)
+    # ...and a lit yellow ring round the gunmetal plinth under the radome, the ship's centre read
+    F.band(s, 'DomePlinth', (-3.4, 0, 1.2), (0, 0, 1), 0.16, 'glow_cyan', inset=0.01, depth=-0.02)
     F.sensor_dome(s, 'Dome', (-3.4, 0.0, 1.5), 1.9, material='paint2', lens=None)
     F.band(s, 'Dome', (-3.4, 0, 0), (1, 0, 0), 0.4, 'paint', inset=0.02, depth=0.02)
     F.light(s, 'DomeLens', (-2.2, 0.0, 2.55), 'glow_cyan', size=0.3)
@@ -78,6 +86,9 @@ def build():
     for i, (cx, cy) in enumerate(((-3.8, 2.35), (-2.6, 2.35), (-3.55, 3.4), (-2.55, 3.4))):
         F.panel(s, 'Array', (cx, cy), (0.95, 0.85), 'dark', inset=0.04, depth=-0.04, mirror=True)
     F.box(s, 'ArrayRoot', (-3.05, 1.55, 0.14), (3.2, 0.6, 0.42), material='gunmetal', bevel=0.03, mirror=True)
+    # ...and a lit line along each gunmetal array root, the plumb-bob's crossbar (LOOK.md: lamps are light)
+    F.band(s, 'ArrayRoot', (-3.05, 1.55, 0.14), (0, 1, 0), 0.1, 'glow_cyan', facing=(0, 0, 1), min_facing=0.5,
+           mirror=True, inset=0.004, depth=-0.01)
     F.box(s, 'ArrayTipRail', (-3.05, 4.0, 0.14), (2.6, 0.14, 0.3), material='paint', bevel=0.02, mirror=True)
 
     # --- Drive ---------------------------------------------------------------------------------------

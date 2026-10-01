@@ -41,6 +41,9 @@ def build():
     F.cylinder(s, 'DrumBelt', (0, 0, -0.5), (0, 0, 0.1), 3.24, material='gunmetal',
                segments=8, bevel=0.03)
     # dark deck plate on the drum top so the crown isn't standing on bare drum
+    # Identity trim, lit: one thin cyan ring round the belt, so the authority buoy reads as a lit
+    # octagon before its strobe (LOOK.md: lamps are light). No new material.
+    F.band(s, 'DrumBelt', (0, 0, -0.2), (0, 0, 1), 0.16, 'glow_cyan', inset=0.01, depth=-0.02)
     F.cylinder(s, 'DrumDeck', (0, 0, 1.0), (0, 0, 1.35), 2.6, material='dark', segments=8,
                bevel=0.04)
     # hazard cheek panels on two flats

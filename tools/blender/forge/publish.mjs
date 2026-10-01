@@ -42,6 +42,7 @@ const run = (cmd, args, opts = {}) => {
 const pilotsDoc = JSON.parse(readFileSync(join(ROOT, 'assets/ships/render-packages/pilots.json'), 'utf8'));
 const pilotKeys = new Set();
 const releaseIds = new Set();
+const placeIds = new Set();
 const manifestPath = join(ROOT, 'assets/ships/parts/parts_manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 let manifestTouched = false;
@@ -57,7 +58,7 @@ for (const shipId of shipIds) {
   const files = entry.layout === 'player'
     ? [entry.file, `${entry.file}_lod1`, `${entry.file}_lod2`]
     : [entry.file];
-  for (const f of files) releaseIds.add(place ? f : `wholeship_${f}`);
+  for (const f of files) (place ? placeIds : releaseIds).add(place ? f : `wholeship_${f}`);
   // Pilot keys are found by the release file they package (Wasp's LOD0 pilot is plain 'wasp').
   for (const f of files) {
     const hit = pilotsDoc.pilots.find((p) => p.sourceUrl === `assets/ships/release/parts/${dir}/${f}.glb`);
@@ -86,8 +87,13 @@ for (const shipId of shipIds) {
 if (manifestTouched) writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 run('node', ['scripts/check-parts-manifest.mjs', '--sync'], { quiet: true });
 
-// 3. release
-run('node', ['scripts/build-sg04-release-assets.mjs', '--no-clean', '--only', [...releaseIds].join(',')], { quiet: true });
+// 3. release (place assets are owned by the place release pipeline since D94)
+if (releaseIds.size) {
+  run('node', ['scripts/build-sg04-release-assets.mjs', '--no-clean', '--only', [...releaseIds].join(',')], { quiet: true });
+}
+if (placeIds.size) {
+  run('node', ['scripts/build-place-release-assets.mjs', '--ids', [...placeIds].join(',')], { quiet: true });
+}
 
 // 4. packages
 const pilotsPath = join(ROOT, 'assets/ships/render-packages/pilots.json');
