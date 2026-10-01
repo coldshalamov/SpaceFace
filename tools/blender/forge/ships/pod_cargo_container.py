@@ -14,6 +14,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_32  # noqa: E402
 
 SHIP_ID = 'pod_cargo_container'
 COLORS = {
@@ -63,10 +66,20 @@ def build():
                segments=12, bevel=0.01)
     F.cylinder(s, 'TowEye', (4.80, 0.0, 1.06), (4.90, 0.0, 1.06), 0.09, material='dark',
                segments=12, bevel=0.0)
+    # ANI-32: rescue ping ring riding the long axis; the rest of the shell tumbles as one.
+    ping = F.ring(s, 'PingRing', (-0.4, 0.0, 1.05), 1.62, 0.07, axis=(1, 0, 0),
+                  material='glow_cyan', segments=24, sides=6)
+    shell = [o for o in s.objects if o.name != 'PingRing']
+    s.ani32_bank = ANI_32.build(s, {'shell': shell, 'ping': ping},
+                                source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani32_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_32.motion_bank.MOTIONS_DIR,
+                                                   'pod-cargo-container.motion.json'))

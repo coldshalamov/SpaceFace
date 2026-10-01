@@ -312,12 +312,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.extraction-mast",
-    "expectedContentHash": "3303197952cb69edc85da73de48d6ff80ad6677dc9671832d0028a9eb07ae50e",
+    "expectedContentHash": "54ce70a1e45199ddadb680f5b64e24bb2ba018d052541a9aedd68fd96c5b3ca3",
     "key": "extraction-mast",
     "metadataUrl": "assets/ships/release/render-packages/extraction-mast/render-package.json",
     "runtimeAssetId": "place_extraction_mast",
     "slot": "place",
-    "sourceSha256": "907c1d8deb5719586601c29c2e0b9c59411873e74592073d54437ae70f2725cf",
+    "sourceSha256": "06ad8fff2f2c6a733eb72da00262d5ff60644d0d07a01df5186d6d9177120fce",
     "sourceUrl": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
   {
@@ -674,12 +674,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.interdiction-buoy",
-    "expectedContentHash": "beb0c2e3e881824bcffa48df70be679fbec0e552d8b3d7e193e4423c3288f647",
+    "expectedContentHash": "62e00cc6fe2e5d47e4e1c3fff0de44bd34f761c7266ad4205730a21ec3035500",
     "key": "interdiction-buoy",
     "metadataUrl": "assets/ships/release/render-packages/interdiction-buoy/render-package.json",
     "runtimeAssetId": "place_interdiction_buoy",
     "slot": "place",
-    "sourceSha256": "08e3e65624e1e0a87c6c0e8436af74a84a3c9a52f13c2155a9d5fecbbeb8ea91",
+    "sourceSha256": "172789cb06c015f3f7ee8538ebd120657f376501568ee2ea726d370bc1086bd1",
     "sourceUrl": "assets/ships/release/parts/places/place_interdiction_buoy.glb"
   },
   {
@@ -834,12 +834,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.nav-buoy",
-    "expectedContentHash": "1b27038b3d5f9c3b8e99641e3e62a3018d9bee0fb05a88e8e16aa24bf0921c47",
+    "expectedContentHash": "18fb541f939e586a4a36736b63c9546d931e1f86618cb72a66424e203000877e",
     "key": "nav-buoy",
     "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_NAV_SPIRE",
     "slot": "place",
-    "sourceSha256": "03c6266b74554f1afd139ae9c6cbe43bf0dba5756cfadec9d2f2a3e89a3a0af3",
+    "sourceSha256": "e74a59f113457203ba6b3b9bcc03e0af3148da8be1cc6e0ea0bf471446ef98dd",
     "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
   {
@@ -864,12 +864,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pod-cargo-container",
-    "expectedContentHash": "11c99aeb6ccf8fd30439510da3640942d8c48829fa1470527d84f9f4670010c6",
+    "expectedContentHash": "6c7310d7c452b7ff0f44e9fcd815507172b066c861090be0fa2afa4f7b055395",
     "key": "pod-cargo-container",
     "metadataUrl": "assets/ships/release/render-packages/pod-cargo-container/render-package.json",
     "runtimeAssetId": "SF_POD_CARGO_CONTAINER",
     "slot": "pod",
-    "sourceSha256": "30c07a771ab80c2e7c2f8f33ca7d619accc53b3d85048fb75473cbe3c0aebb2f",
+    "sourceSha256": "07de4fc313dff07e952bdd85c126d1df8eebd71f495519a68a03621c8836043e",
     "sourceUrl": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
   {

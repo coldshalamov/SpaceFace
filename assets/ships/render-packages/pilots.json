@@ -608,8 +608,8 @@
       "slot": "place",
       "releaseAssetId": "place_extraction_mast",
       "sourceUrl": "assets/ships/release/parts/places/place_extraction_mast.glb",
-      "releaseSha256": "907c1d8deb5719586601c29c2e0b9c59411873e74592073d54437ae70f2725cf",
-      "releaseBytes": 538544,
+      "releaseSha256": "06ad8fff2f2c6a733eb72da00262d5ff60644d0d07a01df5186d6d9177120fce",
+      "releaseBytes": 408816,
       "rootNode": "SF_PLACE_EXTRACTION_MAST_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -1226,8 +1226,8 @@
       "slot": "place",
       "releaseAssetId": "place_interdiction_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_interdiction_buoy.glb",
-      "releaseSha256": "08e3e65624e1e0a87c6c0e8436af74a84a3c9a52f13c2155a9d5fecbbeb8ea91",
-      "releaseBytes": 287548,
+      "releaseSha256": "172789cb06c015f3f7ee8538ebd120657f376501568ee2ea726d370bc1086bd1",
+      "releaseBytes": 364244,
       "rootNode": "SF_PLACE_INTERDICTION_BUOY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -1562,8 +1562,8 @@
       "slot": "place",
       "releaseAssetId": "place_nav_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb",
-      "releaseSha256": "03c6266b74554f1afd139ae9c6cbe43bf0dba5756cfadec9d2f2a3e89a3a0af3",
-      "releaseBytes": 726832,
+      "releaseSha256": "e74a59f113457203ba6b3b9bcc03e0af3148da8be1cc6e0ea0bf471446ef98dd",
+      "releaseBytes": 575744,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1625,8 +1625,8 @@
       "slot": "pod",
       "releaseAssetId": "pod_cargo_container",
       "sourceUrl": "assets/ships/release/parts/pods/pod_cargo_container.glb",
-      "releaseSha256": "30c07a771ab80c2e7c2f8f33ca7d619accc53b3d85048fb75473cbe3c0aebb2f",
-      "releaseBytes": 411692,
+      "releaseSha256": "07de4fc313dff07e952bdd85c126d1df8eebd71f495519a68a03621c8836043e",
+      "releaseBytes": 419972,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

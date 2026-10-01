@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Head",
       "nodePath": [
         0,
-        25
+        27
       ],
       "parentNodeId": "sf.render.extraction-mast.root",
       "worldTransform": [
@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3303197952cb69edc85da73de48d6ff80ad6677dc9671832d0028a9eb07ae50e",
+  "contentHash": "54ce70a1e45199ddadb680f5b64e24bb2ba018d052541a9aedd68fd96c5b3ca3",
   "dynamicGroups": [
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -92,7 +92,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d8d8239f22ad71063f66f2a70fa3e47518fafebf118ee622083f27f6e89d7bb",
+      "geometryHash": "f124b485c70d1aa1dc09fad860629d9ab31cc72eb229ed0d5479da199205fc47",
       "id": "sf.render.extraction-mast.mesh.collision-hull.primitive.0",
       "indexCount": 774,
       "indexed": true,
@@ -121,7 +121,7 @@
       "id": "sf.render.extraction-mast.mesh.lod0-armor.primitive.0",
       "indexCount": 6372,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-armor",
@@ -196,7 +196,7 @@
       "id": "sf.render.extraction-mast.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-hull-aged",
@@ -221,7 +221,7 @@
       "id": "sf.render.extraction-mast.mesh.lod0-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
+      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-livery",
@@ -242,16 +242,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02b699da00734df6d83d638b5cdc5d179fe9712a1eca6cf100936ce47eb90662",
+      "geometryHash": "995b716c066fc9ec423b64b482f184b1b7230d39821248588ac7a47b90dfda13",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanical.primitive.0",
-      "indexCount": 3984,
+      "indexCount": 4548,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1273
+      "vertexCount": 1465
     },
     {
       "bounds": {
@@ -271,12 +271,87 @@
       "id": "sf.render.extraction-mast.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
       "vertexCount": 280
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2499788105487823,
+          9.170000076293945,
+          0.2500288784503937
+        ],
+        "min": [
+          -1.9500212371349335,
+          8.270000457763672,
+          -0.2500288784503937
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b0ef0d21bca263baebd1db393abe58a05775604d02f706bfd829b0b56f563355",
+      "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MAST_BEAM_Armor",
+      "nodeId": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8000001013278961,
+          8.920055210590363,
+          0.16996368765830994
+        ],
+        "min": [
+          -1.5999999940395355,
+          8.519945330917835,
+          -0.16996368765830994
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4259f9752efbd8b8fbf29e71ea62a692066da741bf5326e208528861052268d",
+      "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MAST_BEAM_Warning",
+      "nodeId": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2857082933187485,
+          8.5,
+          0.08678853511810303
+        ],
+        "min": [
+          1.1142919212579727,
+          2.5999999046325684,
+          -0.08678853511810303
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d99d562d9d0a7f5aecbf822b425e2427b8a39b63776a176a97cb02d65467b357",
+      "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MAST_ROD_BrushedMetal",
+      "nodeId": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 412
     },
     {
       "bounds": {
@@ -296,7 +371,7 @@
       "id": "sf.render.extraction-mast.mesh.lod0-warning.primitive.0",
       "indexCount": 1836,
       "indexed": true,
-      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-warning",
@@ -317,16 +392,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d6b62522654af7220d77bea85715ef78902112bcef4ab31eecd546924fb5a78",
+      "geometryHash": "888b7a8efea3faf9a0d63836a6b8692b87c859bb6c6f2de2bccf716033f6cc67",
       "id": "sf.render.extraction-mast.mesh.lod1-armor.primitive.0",
-      "indexCount": 3846,
+      "indexCount": 3888,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2347
+      "vertexCount": 2355
     },
     {
       "bounds": {
@@ -342,66 +417,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62cc647e15d7cb74f3f72439fd8a243ebf581eebceb08cf3b87177de439769ba",
+      "geometryHash": "c7f2e78af0c75ead25ba865523e83c43a70d5e53732acf62660cfe334c7ef89d",
       "id": "sf.render.extraction-mast.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 1314,
+      "indexCount": 1356,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 538
+      "vertexCount": 552
     },
     {
       "bounds": {
         "max": [
-          0.2503223419189453,
-          13.357500198205425,
-          0.24812430036282793
+          0.24831470847129822,
+          13.35748782104227,
+          0.24812128788938229
         ],
         "min": [
-          -0.25032252073287964,
-          13.130928871313618,
-          -0.2483035762331511
+          -0.2502983808517456,
+          13.12982735687521,
+          -0.24830056375970547
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2cf724f22d6dd45818ff645a34c70fb6760df16f7e1ca3a5822c58324f5e9e06",
+      "geometryHash": "ca8468df91984d3ffa07610de9ea6f277211db6978dc22f2156d9c9deacae1b0",
       "id": "sf.render.extraction-mast.mesh.lod1-hook-nav-port.primitive.0",
-      "indexCount": 96,
+      "indexCount": 102,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_NAV_PORT",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 42
+      "vertexCount": 43
     },
     {
       "bounds": {
         "max": [
           4.391216278076172,
           1.5911593437194824,
-          2.3909213542938232
+          2.390944242477417
         ],
         "min": [
           1.2102426290512085,
           0.009069819003343582,
-          0.41032418608665466
+          0.4056874215602875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d01ef5df0faa53eb1d720a7fc4de95f1f1c1235731c118fffc8c94c31b83a183",
+      "geometryHash": "effa4fb4d1d6979cb362f099fc8b62e76d1b3781ce202cc153f09dacd299048a",
       "id": "sf.render.extraction-mast.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 132,
+      "indexCount": 138,
       "indexed": true,
-      "materialHash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 55
+      "vertexCount": 57
     },
     {
       "bounds": {
@@ -421,7 +496,7 @@
       "id": "sf.render.extraction-mast.mesh.lod1-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
+      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-livery",
@@ -442,16 +517,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49a5b0b35514306d11d6f3fc305a43272f6463c8eb5acae8d9d43609f01e7035",
+      "geometryHash": "9c96097dede02ce5bd2e01dfaa2e1c062384735f8f4704ec82f8c7f5dd7d2214",
       "id": "sf.render.extraction-mast.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 600,
+      "indexCount": 732,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 260
+      "vertexCount": 316
     },
     {
       "bounds": {
@@ -471,12 +546,87 @@
       "id": "sf.render.extraction-mast.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 216,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
       "vertexCount": 114
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2527631223201752,
+          9.167202949523926,
+          0.24714259803295135
+        ],
+        "min": [
+          -1.9469256103038788,
+          8.272797584533691,
+          -0.24718648195266724
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef83801d15153af2f81bf9e18007209220f1ba70125f694307f4cba6a746cefe",
+      "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MAST_BEAM_Armor",
+      "nodeId": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 105
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7959028780460358,
+          8.91598516702652,
+          0.16820159554481506
+        ],
+        "min": [
+          -1.5981353223323822,
+          8.521963059902191,
+          -0.167815163731575
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa630d91c9782c96b7c565ecca5be529947a560c0c085fae875bc4f93c3281b3",
+      "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MAST_BEAM_Warning",
+      "nodeId": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          1.285360686480999,
+          8.5,
+          0.08676150441169739
+        ],
+        "min": [
+          1.1146645620465279,
+          2.5999999046325684,
+          -0.08681557327508926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5097cc17fe97239e70467914a0de7195071fb62c18efa0ecac88ff1066ed602b",
+      "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal.primitive.0",
+      "indexCount": 570,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MAST_ROD_BrushedMetal",
+      "nodeId": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 170
     },
     {
       "bounds": {
@@ -496,7 +646,7 @@
       "id": "sf.render.extraction-mast.mesh.lod1-warning.primitive.0",
       "indexCount": 444,
       "indexed": true,
-      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-warning",
@@ -517,16 +667,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af644f09222597fdd967610b216d43920e314ec507ae0b1df40056c006604b15",
+      "geometryHash": "ef7a8e3f1383428fd450fb4f681e7ce86c3ee827c4a5ec04c6a90536fa9d8b33",
       "id": "sf.render.extraction-mast.mesh.lod2-armor.primitive.0",
-      "indexCount": 1794,
+      "indexCount": 1830,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1318
+      "vertexCount": 1346
     },
     {
       "bounds": {
@@ -542,41 +692,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d8bc55e80075f1eeaf5944a959b73be5bdcfe9def3444ab228770fb65ea154d",
+      "geometryHash": "52b80d19b7395b5aa1cf46e6b477f4a47665de17c04b29934fa2c558b18c49a7",
       "id": "sf.render.extraction-mast.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 417,
+      "indexCount": 429,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 283
+      "vertexCount": 289
     },
     {
       "bounds": {
         "max": [
-          0.24855011701583862,
-          13.368251822998676,
-          0.23285858463627282
+          0.24854014813899994,
+          13.36825971530227,
+          0.23286246220541526
         ],
         "min": [
-          -0.25235921144485474,
-          13.131593681762066,
-          -0.25135733317715114
+          -0.2502983808517456,
+          13.132762623564917,
+          -0.2513612107462936
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79a8bc7ad715906b5038871a1b2ad561f0794cb13ae4cf0cafd51cb413fa7469",
+      "geometryHash": "a6e5d10557f4259a2ddd27d0601413c83471c69d18342375a7f2aa3b3fb7ac6e",
       "id": "sf.render.extraction-mast.mesh.lod2-hook-nav-port.primitive.0",
-      "indexCount": 36,
+      "indexCount": 42,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_NAV_PORT",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 26
     },
     {
       "bounds": {
@@ -596,7 +746,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-hull-aged",
@@ -621,7 +771,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
+      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-livery",
@@ -642,41 +792,116 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e76e943598b63ecb96c549f97b19a1e0badae730dd545906378920a5b60dd75",
+      "geometryHash": "86c24619be450722399030c4bf7aa9d7323babc85866ed5906f2a674e510cdc3",
       "id": "sf.render.extraction-mast.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 273,
+      "indexCount": 318,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 151
+      "vertexCount": 178
     },
     {
       "bounds": {
         "max": [
-          1.9249495267868042,
+          1.9249409437179565,
           11.884071350097656,
           1.7838457822799683
         ],
         "min": [
-          -1.0787404775619507,
+          -1.0691674947738647,
           11.20422077178955,
           -1.7838457822799683
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40bcb06a0ee81e09f5c9650aae784234c393d2732c61ce3dd50ac1c609f11cf3",
+      "geometryHash": "861c57abdba1e764ce54411d975a65d084313a2253519fdd79ac6e1e9357bd2f",
       "id": "sf.render.extraction-mast.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 66,
+      "indexCount": 69,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 40
+      "vertexCount": 41
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2561119496822357,
+          9.164730072021484,
+          0.24386844038963318
+        ],
+        "min": [
+          -1.9446357190608978,
+          8.279122352600098,
+          -0.24386851489543915
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a79c2303faeaf4e57e30e7802b892175a98c1258f10bf796c6d6fa2c4deb7aa6",
+      "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MAST_BEAM_Armor",
+      "nodeId": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 53
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7892781794071198,
+          8.90980178117752,
+          0.16333016753196716
+        ],
+        "min": [
+          -1.5903782546520233,
+          8.524050407111645,
+          -0.1638365238904953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "47746b93f9084c44757b8a82b51c0a75738800dfce1d1dd0fd558c8b1a05936b",
+      "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MAST_BEAM_Warning",
+      "nodeId": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2852991670370102,
+          8.498818397521973,
+          0.08711528778076172
+        ],
+        "min": [
+          1.116108313202858,
+          2.6010773181915283,
+          -0.08711528778076172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cfe6e4707b7c90b9140a1eaf02d8633bb5d61485ac0371145a88b9e918d54bf",
+      "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MAST_ROD_BrushedMetal",
+      "nodeId": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 94
     },
     {
       "bounds": {
@@ -696,7 +921,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-warning.primitive.0",
       "indexCount": 348,
       "indexed": true,
-      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-warning",
@@ -709,41 +934,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
-      "id": "material:2d299a521e33418e4ea01778",
-      "name": "Material_Hull_aged",
+      "hash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "id": "material:18d0ea13c3be0a94dbbd42b5",
+      "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -780,8 +973,8 @@
       "textures": []
     },
     {
-      "hash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
-      "id": "material:3b5154ad7ec0ee2263502c49",
+      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -812,16 +1005,9 @@
       ]
     },
     {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
+      "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "id": "material:5ef013365e942f1ac873c307",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -851,8 +1037,15 @@
       ]
     },
     {
-      "hash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
-      "id": "material:b346ef27b8bd0571f026a51f",
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "id": "material:ab17b13dc8559ae23c6f811c",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -883,8 +1076,8 @@
       ]
     },
     {
-      "hash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
-      "id": "material:c04050ece7eed601368e1e3e",
+      "hash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
+      "id": "material:c12264d30e7b2c912f1bfbb9",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -909,6 +1102,70 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "id": "material:eb6bbae95702790bb530b9a9",
+      "name": "Material_Hull_aged",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1309,6 +1566,156 @@
       ]
     },
     {
+      "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MAST_BEAM_Armor",
+      "nodeName": "LOD0_MOTION_MAST_BEAM_Armor",
+      "nodePath": [
+        0,
+        25,
+        0
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MAST_BEAM_Warning",
+      "nodeName": "LOD0_MOTION_MAST_BEAM_Warning",
+      "nodePath": [
+        0,
+        25,
+        1
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MAST_ROD_BrushedMetal",
+      "nodeName": "LOD0_MOTION_MAST_ROD_BrushedMetal",
+      "nodePath": [
+        0,
+        26,
+        0
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        5.400000095367432,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.extraction-mast.mesh.lod0-warning",
       "localTransform": [
         1,
@@ -1458,20 +1865,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod1-hook-nav-port",
       "localTransform": [
-        0.2503224313259125,
+        0.2493065446615219,
         0,
         0,
         0,
         0,
-        0.2503224313259125,
+        0.2493065446615219,
         0,
         0,
         0,
         0,
-        0.2503224313259125,
+        0.2493065446615219,
         0,
-        -8.940696716308594e-8,
-        13.244214534759521,
+        -0.0009918361902236938,
+        13.24365758895874,
         -0.00008963793516159058,
         1
       ],
@@ -1486,20 +1893,20 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        0.2503224313259125,
+        0.2493065446615219,
         0,
         0,
         0,
         0,
-        0.2503224313259125,
+        0.2493065446615219,
         0,
         0,
         0,
         0,
-        0.2503224313259125,
+        0.2493065446615219,
         0,
-        -8.940696716308594e-8,
-        13.244214534759521,
+        -0.0009918361902236938,
+        13.24365758895874,
         -0.00008963793516159058,
         1
       ]
@@ -1701,6 +2108,156 @@
       ]
     },
     {
+      "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MAST_BEAM_Armor",
+      "nodeName": "LOD1_MOTION_MAST_BEAM_Armor",
+      "nodePath": [
+        0,
+        25,
+        2
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MAST_BEAM_Warning",
+      "nodeName": "LOD1_MOTION_MAST_BEAM_Warning",
+      "nodePath": [
+        0,
+        25,
+        3
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MAST_ROD_BrushedMetal",
+      "nodeName": "LOD1_MOTION_MAST_ROD_BrushedMetal",
+      "nodePath": [
+        0,
+        26,
+        1
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        5.400000095367432,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.extraction-mast.mesh.lod1-warning",
       "localTransform": [
         1,
@@ -1850,20 +2407,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-hook-nav-port",
       "localTransform": [
-        0.2504546642303467,
+        0.24941926449537277,
         0,
         0,
         0,
         0,
-        0.2504546642303467,
+        0.24941926449537277,
         0,
         0,
         0,
         0,
-        0.2504546642303467,
+        0.24941926449537277,
         0,
-        -0.0019045472145080566,
-        13.249922752380371,
+        -0.0008791163563728333,
+        13.250511169433594,
         -0.009249374270439148,
         1
       ],
@@ -1878,20 +2435,20 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        0.2504546642303467,
+        0.24941926449537277,
         0,
         0,
         0,
         0,
-        0.2504546642303467,
+        0.24941926449537277,
         0,
         0,
         0,
         0,
-        0.2504546642303467,
+        0.24941926449537277,
         0,
-        -0.0019045472145080566,
-        13.249922752380371,
+        -0.0008791163563728333,
+        13.250511169433594,
         -0.009249374270439148,
         1
       ]
@@ -2093,6 +2650,156 @@
       ]
     },
     {
+      "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MAST_BEAM_Armor",
+      "nodeName": "LOD2_MOTION_MAST_BEAM_Armor",
+      "nodePath": [
+        0,
+        25,
+        4
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MAST_BEAM_Warning",
+      "nodeName": "LOD2_MOTION_MAST_BEAM_Warning",
+      "nodePath": [
+        0,
+        25,
+        5
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MAST_ROD_BrushedMetal",
+      "nodeName": "LOD2_MOTION_MAST_ROD_BrushedMetal",
+      "nodePath": [
+        0,
+        26,
+        2
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        5.400000095367432,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.extraction-mast.mesh.lod2-warning",
       "localTransform": [
         1,
@@ -2137,6 +2844,104 @@
         0,
         0,
         0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.motion-mast-beam",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_MAST_BEAM",
+      "nodeName": "MOTION_MAST_BEAM",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3499999940395355,
+        8.600000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.extraction-mast.mesh.motion-mast-rod",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        5.400000095367432,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_MAST_ROD",
+      "nodeName": "MOTION_MAST_ROD",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.extraction-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.extraction-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        5.400000095367432,
         0,
         1
       ]
@@ -2192,34 +2997,34 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "d5507bda6722006420cad12b662ab0fd86f7c0fc61b7465bf64d9d7c9f6d8734"
+      "sha256": "20ac7bee8695fd39221ccda7fdc5792abbdd262adbb9f5220a53111cf129c024"
     },
     "sourceGlb": {
-      "bytes": 538544,
-      "sha256": "907c1d8deb5719586601c29c2e0b9c59411873e74592073d54437ae70f2725cf",
+      "bytes": 408816,
+      "sha256": "06ad8fff2f2c6a733eb72da00262d5ff60644d0d07a01df5186d6d9177120fce",
       "uri": "place_extraction_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "d3aedff17d144a25526e0975f0abd8c91f3cb4b38df6c9c60e34248ad759a2ed",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 747404,
-    "sha256": "ca2a74ede4c6bf5ed8b9c127d2f85fee0fa64182b5d7c4d8c454300c4e748e6d",
+    "bytes": 653676,
+    "sha256": "4ce2d8a5a484c9f9674f1bdf544db1afda639dab88cbeb107963e1cef6213b46",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        6.576577413882093,
+        6.576581360033891,
         0
       ],
       "max": [
         6.000394344329834,
-        13.368251822998676,
+        13.36825971530227,
         4.500360488891602
       ],
       "min": [
@@ -2229,7 +3034,7 @@
       ],
       "size": [
         12.000788688659668,
-        13.583348818233166,
+        13.58335671053676,
         9.000720977783203
       ]
     },
@@ -2252,13 +3057,143 @@
           0,
           1,
           0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "MOTION_MAST_BEAM",
+        "planIndex": 27,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "mast_beam",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -0.3499999940395355
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              8.600000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_MAST_BEAM",
+          "spaceface": {
+            "motionGroup": "mast_beam"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_MAST_BEAM",
+            "recordIds": [
+              "sf.render.extraction-mast.mesh.motion-mast-beam"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.2000000476837158,
+          5.400000095367432,
+          0,
+          1
+        ],
+        "name": "MOTION_MAST_ROD",
+        "planIndex": 34,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "mast_rod",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              1.2000000476837158
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              5.400000095367432
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_MAST_ROD",
+          "spaceface": {
+            "motionGroup": "mast_rod"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_MAST_ROD",
+            "recordIds": [
+              "sf.render.extraction-mast.mesh.motion-mast-rod"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           0,
           12.300000190734863,
           0,
           1
         ],
         "name": "SOCKET_Head",
-        "planIndex": 27,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2282,10 +3217,10 @@
     ],
     "materialProfileRoles": {
       "accent": 3,
-      "hull": 7,
-      "mechanical": 6,
+      "hull": 10,
+      "mechanical": 9,
       "signal": 6,
-      "warning": 3
+      "warning": 6
     },
     "materialProfiles": [
       {
@@ -2412,9 +3347,60 @@
         "allowTextures": true,
         "planIndex": 26,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 28,
+    "motionBank": {
+      "bytes": 135088,
+      "rigId": "extraction_mast",
+      "sha256": "510f5cc95e88bd0e75f41527fb7deb11712c34d9cfead49d625bd42f3e913706",
+      "uri": "assets/ships/motions/extraction-mast.motion.json"
+    },
+    "nodeCount": 39,
     "primitives": [
       {
         "canopy": false,
@@ -2690,20 +3676,20 @@
       {
         "canopy": false,
         "matrix": [
-          0.2503224313259125,
+          0.2493065446615219,
           0,
           0,
           0,
           0,
-          0.2503224313259125,
+          0.2493065446615219,
           0,
           0,
           0,
           0,
-          0.2503224313259125,
+          0.2493065446615219,
           0,
-          -8.940696716308594e-8,
-          13.244214534759521,
+          -0.0009918361902236938,
+          13.24365758895874,
           -0.00008963793516159058,
           1
         ],
@@ -2907,20 +3893,20 @@
       {
         "canopy": false,
         "matrix": [
-          0.2504546642303467,
+          0.24941926449537277,
           0,
           0,
           0,
           0,
-          0.2504546642303467,
+          0.24941926449537277,
           0,
           0,
           0,
           0,
-          0.2504546642303467,
+          0.24941926449537277,
           0,
-          -0.0019045472145080566,
-          13.249922752380371,
+          -0.0008791163563728333,
+          13.250511169433594,
           -0.009249374270439148,
           1
         ],
@@ -3066,20 +4052,272 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MAST_BEAM_Armor",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MAST_BEAM_Warning",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MAST_BEAM_Armor",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MAST_BEAM_Warning",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MAST_BEAM_Armor",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3499999940395355,
+          8.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MAST_BEAM_Warning",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.2000000476837158,
+          5.400000095367432,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MAST_ROD_BrushedMetal",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.2000000476837158,
+          5.400000095367432,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MAST_ROD_BrushedMetal",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.2000000476837158,
+          5.400000095367432,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MAST_ROD_BrushedMetal",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "7e874f44f64b40a3f3d4fbc7f55aa3cb0f493e81c8111e4be3861710eec10764",
+  "runtimeHash": "ad468d77461ce884c095bc1f46353ba72d3d8d2f6a39768173f3df90632373be",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           6.000394344329834,
-          13.368251822998676,
+          13.36825971530227,
           4.500360488891602
         ],
         "min": [
@@ -3098,6 +4336,9 @@
         "sf.render.extraction-mast.mesh.lod0-livery",
         "sf.render.extraction-mast.mesh.lod0-mechanical",
         "sf.render.extraction-mast.mesh.lod0-mechanicaldark",
+        "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor",
+        "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning",
+        "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal",
         "sf.render.extraction-mast.mesh.lod0-warning",
         "sf.render.extraction-mast.mesh.lod1-armor",
         "sf.render.extraction-mast.mesh.lod1-beacon-amber",
@@ -3106,6 +4347,9 @@
         "sf.render.extraction-mast.mesh.lod1-livery",
         "sf.render.extraction-mast.mesh.lod1-mechanical",
         "sf.render.extraction-mast.mesh.lod1-mechanicaldark",
+        "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor",
+        "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning",
+        "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal",
         "sf.render.extraction-mast.mesh.lod1-warning",
         "sf.render.extraction-mast.mesh.lod2-armor",
         "sf.render.extraction-mast.mesh.lod2-beacon-amber",
@@ -3114,7 +4358,12 @@
         "sf.render.extraction-mast.mesh.lod2-livery",
         "sf.render.extraction-mast.mesh.lod2-mechanical",
         "sf.render.extraction-mast.mesh.lod2-mechanicaldark",
+        "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor",
+        "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning",
+        "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal",
         "sf.render.extraction-mast.mesh.lod2-warning",
+        "sf.render.extraction-mast.mesh.motion-mast-beam",
+        "sf.render.extraction-mast.mesh.motion-mast-rod",
         "sf.render.extraction-mast.root"
       ]
     }

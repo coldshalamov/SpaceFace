@@ -45,6 +45,16 @@ export function authoredMotionRegistrySize() {
   return registry.size;
 }
 
+export function authoredMotionControllersForRig(rigId) {
+  const out = [];
+  for (const set of registry.values()) {
+    for (const controller of set) {
+      if (controller.rigId === rigId) out.push(controller);
+    }
+  }
+  return out;
+}
+
 /**
  * The authored-motion clock. It tracks sim time while the sim advances — clips paired with
  * sim quantities (payout, damage windows) stay locked to it — and falls back to wall-clock
@@ -348,6 +358,67 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   const strutsDown = new Set();
   const STRUT_GROUPS = ['kestrel_strut_p', 'kestrel_strut_s', 'kestrel_strut_f'];
   const strutsLive = (id) => strutsDown.has(id) || anyActiveClips(id, STRUT_GROUPS);
+  // ANI-27: lane furniture fans out — navigation events have no buoy entity of their own,
+  // so a waypoint set or a resolved bearing pings every live nav_buoy bank in the field.
+  const fanout = (type, payload) => {
+    const anchor = anchorS(payload);
+    for (const controller of authoredMotionControllersForRig('nav_buoy')) {
+      try {
+        controller.handleEvent?.(type, payload, anchor);
+      } catch (error) {
+        console.warn(`[authoredMotion] ${type} rejected by nav_buoy controller`, error);
+      }
+    }
+  };
+  const onNavWaypoint = (payload) => fanout('nav:waypoint', payload);
+  const onBearingResolved = (payload) => fanout('band:bearingResolved', payload);
+  // ANI-34: site machinery is keyed `site:<siteId>` — production starts the pumpjack cycle,
+  // a removed machine settles the groups so the bank drains back to its ambient idle.
+  const onSiteProducing = (payload) => {
+    if (!payload || payload.siteId == null) return;
+    dispatch('site:producing', `site:${payload.siteId}`, payload, () => true);
+  };
+  const onSiteMachineRemoved = (payload) => {
+    if (!payload || payload.siteId == null) return;
+    for (const controller of authoredMotionControllersFor(`site:${payload.siteId}`)) {
+      try {
+        controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
+      } catch (error) {
+        console.warn('[authoredMotion] site machine settle rejected', error);
+      }
+    }
+  };
+  // ANI-33: the trap payload carries the placed buoy entity ids — each placed iris blooms.
+  const onInterdictionTriggered = (payload) => {
+    const ids = payload && payload.entityIds;
+    if (!Array.isArray(ids)) return;
+    for (const id of ids) dispatch('interdiction:triggered', id, payload, () => true);
+  };
+  const onSnareRequest = (payload) => {
+    dispatch('cruise:snareRequest', payload && payload.sourceId, payload, () => true);
+  };
+  // cruise:dropped carries no buoy id — fold every armed iris (the close clip is gated on
+  // an open unfold, so parked buoys ignore it).
+  const onCruiseDropped = (payload) => {
+    if (!payload || !payload.snare) return;
+    const anchor = anchorS(payload);
+    for (const controller of authoredMotionControllersForRig('interdiction_buoy')) {
+      if (!controller.clipActive?.('petals_unfold')) continue;
+      try {
+        controller.handleEvent?.('cruise:dropped', payload, anchor);
+      } catch (error) {
+        console.warn('[authoredMotion] cruise:dropped rejected by interdiction_buoy', error);
+      }
+    }
+  };
+  // ANI-32: survivor-pod lifecycle is entity-addressed — the pod tumbles on eject and damps
+  // to a grapple attitude when a rescue is selected.
+  const onPodEjected = (payload) => {
+    dispatch('survivorPod:ejected', payload && payload.entityId, payload, () => true);
+  };
+  const onPodRescue = (payload) => {
+    dispatch('survivorPod:rescueSelected', payload && payload.entityId, payload, () => true);
+  };
   const onDockRange = (payload) => {
     const id = playerId();
     if (id == null) return;
@@ -537,6 +608,15 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('mining:start', onPodMiningStart),
     bus.on('mining:stop', onPodBeamStop),
     bus.on('craft:queueChanged', onCraftQueue),
+    bus.on('nav:waypoint', onNavWaypoint),
+    bus.on('band:bearingResolved', onBearingResolved),
+    bus.on('site:producing', onSiteProducing),
+    bus.on('site:machineRemoved', onSiteMachineRemoved),
+    bus.on('interdiction:triggered', onInterdictionTriggered),
+    bus.on('cruise:snareRequest', onSnareRequest),
+    bus.on('cruise:dropped', onCruiseDropped),
+    bus.on('survivorPod:ejected', onPodEjected),
+    bus.on('survivorPod:rescueSelected', onPodRescue),
     bus.on('dock:range', onDockRange),
     bus.on('dock:docked', onDocked),
     bus.on('dock:undocked', onUndocked),

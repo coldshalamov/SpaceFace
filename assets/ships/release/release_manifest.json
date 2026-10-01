@@ -2953,14 +2953,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_extraction_mast.glb",
       "release": "assets/ships/release/parts/places/place_extraction_mast.glb",
-      "sourceSha256": "d3f98a8a471785f48741d914c0dd76224f5fc5068babc2fe41aa2d46e17120e7",
-      "releaseSha256": "907c1d8deb5719586601c29c2e0b9c59411873e74592073d54437ae70f2725cf",
-      "sourceBytes": 902592,
-      "releaseBytes": 538544,
+      "sourceSha256": "5b89764c6480be8924ced4782182df928b7d56ab3d005e555f25c215032aaadc",
+      "releaseSha256": "06ad8fff2f2c6a733eb72da00262d5ff60644d0d07a01df5186d6d9177120fce",
+      "sourceBytes": 1001376,
+      "releaseBytes": 408816,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 93,
-      "contractNodeCount": 25
+      "meshoptBufferViews": 129,
+      "contractNodeCount": 34,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_freight_platform",
@@ -3019,14 +3024,14 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_interdiction_buoy.glb",
       "release": "assets/ships/release/parts/places/place_interdiction_buoy.glb",
-      "sourceSha256": "1735811d65c5c80c9ea9ef03adcd56d541649af1079fc2551b9606f354716236",
-      "releaseSha256": "08e3e65624e1e0a87c6c0e8436af74a84a3c9a52f13c2155a9d5fecbbeb8ea91",
-      "sourceBytes": 645368,
-      "releaseBytes": 287548,
+      "sourceSha256": "fccb007251b2cbc318059601b6088a2ae9badf41c7121f8a4290dfe074786caa",
+      "releaseSha256": "172789cb06c015f3f7ee8538ebd120657f376501568ee2ea726d370bc1086bd1",
+      "sourceBytes": 781492,
+      "releaseBytes": 364244,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 93,
-      "contractNodeCount": 25,
+      "meshoptBufferViews": 185,
+      "contractNodeCount": 51,
       "textureProfiles": {
         "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
@@ -3165,14 +3170,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_nav_buoy.glb",
       "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
-      "sourceSha256": "affb8936f46e91169bf6c29c523e08094492f20d7b9b22e8fb43c423aa55006f",
-      "releaseSha256": "03c6266b74554f1afd139ae9c6cbe43bf0dba5756cfadec9d2f2a3e89a3a0af3",
-      "sourceBytes": 1606864,
-      "releaseBytes": 726832,
+      "sourceSha256": "0bf75a061ff28affe78550d90ff825a94f29ee952349442f49f7920d8ee666b1",
+      "releaseSha256": "e74a59f113457203ba6b3b9bcc03e0af3148da8be1cc6e0ea0bf471446ef98dd",
+      "sourceBytes": 1639020,
+      "releaseBytes": 575744,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 117,
-      "contractNodeCount": 34
+      "meshoptBufferViews": 141,
+      "contractNodeCount": 40,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_radiator_bank",
@@ -3473,20 +3483,6 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 109,
       "contractNodeCount": 28
-    },
-    {
-      "id": "pod_cargo_container",
-      "kind": "part:pods",
-      "source": "assets/ships/parts/pods/pod_cargo_container.glb",
-      "release": "assets/ships/release/parts/pods/pod_cargo_container.glb",
-      "sourceSha256": "fce5ccb6ff07f316c74fa5f724c5f92b28324f7383d3c08fa1f6d94abe57bdd9",
-      "releaseSha256": "30c07a771ab80c2e7c2f8f33ca7d619accc53b3d85048fb75473cbe3c0aebb2f",
-      "sourceBytes": 627288,
-      "releaseBytes": 411692,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 19,
-      "contractNodeCount": 4
     },
     {
       "id": "pod_47a_evidence_spindle",
@@ -4575,6 +4571,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 126,
       "contractNodeCount": 42
+    },
+    {
+      "id": "pod_cargo_container",
+      "kind": "part:pods",
+      "source": "assets/ships/parts/pods/pod_cargo_container.glb",
+      "release": "assets/ships/release/parts/pods/pod_cargo_container.glb",
+      "sourceSha256": "deb2300abbcc69c66305a125de23e6bf6e29ca9e8e0717319a488311c80a69fb",
+      "releaseSha256": "07de4fc313dff07e952bdd85c126d1df8eebd71f495519a68a03621c8836043e",
+      "sourceBytes": 645676,
+      "releaseBytes": 419972,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 23,
+      "contractNodeCount": 5
     }
   ]
 }
