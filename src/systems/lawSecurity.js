@@ -231,6 +231,7 @@ export const lawSecurity = {
       this._resetInspectionTransient();
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
+      this._lastCustomsSubmitTick = -1;
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -252,6 +253,8 @@ export const lawSecurity = {
       this._syncWantedImpound(this.state);
     };
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
+    this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
+    this._lastCustomsSubmitTick = -1;
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
       this.bus.on('combat:fire', this._onFire);
@@ -276,6 +279,7 @@ export const lawSecurity = {
       this.bus.on('dock:docked', this._onDockedLawfulClearance);
       this.bus.on('heat:changed', this._onHeatChanged);
       this.bus.on('law:impoundPay', this._onImpoundPay);
+      this.bus.on('customs:submit', this._onCustomsSubmit);
     }
   },
 
@@ -285,6 +289,7 @@ export const lawSecurity = {
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
     this._resetInspectionTransient();
     this._resetWeirTransient();
+    this._lastCustomsSubmitTick = -1;
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
     publishSanctuaryQuiet(this.state, false);
@@ -2198,8 +2203,10 @@ export const lawSecurity = {
     // witness query. `witnessed` means a person on the list saw it. The ring and the victim's
     // network do not. evidenceClass is stamped once; a later relay must not upgrade it.
     const publishTruth = (outcome, reportId = null) => {
-      const evidenceClass = (outcome === 'charged' || outcome === 'lawful') && eyes
-        ? 'direct' : 'unwitnessed';
+      // The class answers "how is this act evidenced", not "did the file stick": a kill that
+      // eyes saw but could not be filed (no stable victim id) is still a DIRECT observation.
+      // Stamping it 'unwitnessed' would print a lie on the footprint.
+      const evidenceClass = eyes ? 'direct' : 'unwitnessed';
       const witnessed = evidenceClass === 'direct';
       this._emit('law:killedAdjudicated', {
         outcome,
@@ -2585,6 +2592,29 @@ export const lawSecurity = {
       cause: 'wanted_fine', outcome: 'fine_paid',
       attackerId: state.playerId, targetId: null, stationId,
       text: `FINE PAID ${fine} cr — warrant cleared at ${stationId}.`,
+    });
+  },
+
+  // LAW-01 — the submit verb's acknowledgment. `customs:submit` is emitted by the customs
+  // decision deck (ui/customsPrompt.js) and had no listener: the player clicked SUBMIT and the
+  // law said nothing. The scan itself still resolves through economy.runScan — this handler only
+  // answers and records; it never charges, re-scans, or moves standing.
+  _handleCustomsSubmit(payload) {
+    const state = this.state;
+    if (!state || state.playerId == null) return;
+    if (state.mode && state.mode !== 'flight') return;
+    if ((state.tick | 0) === this._lastCustomsSubmitTick) return; // one ack per tick
+    this._lastCustomsSubmitTick = state.tick | 0;
+    const factionId = (payload && payload.factionId) || 'faction_scn';
+    this._say('bark', 'PATROL: submission acknowledged — manifest read proceeds.',
+      `law:customsSubmit:${factionId}:${state.tick | 0}`, factionId);
+    // No incidentId: the direct-receipt lane paints this row on the law card for RECEIPT_TTL_S.
+    this._recordReceipt({
+      cause: 'customs_scan', outcome: 'customs_complied',
+      attackerId: null, targetId: state.playerId,
+      patrolId: (payload && payload.patrolId) || null,
+      stationId: (payload && payload.stationId) || null,
+      text: 'Compliance recorded — the scan proceeds on your submission.',
     });
   },
 
@@ -3940,6 +3970,7 @@ export const lawSecurity = {
       if (this._onDockedLawfulClearance) this.bus.off('dock:docked', this._onDockedLawfulClearance);
       if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
       if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
+      if (this._onCustomsSubmit) this.bus.off('customs:submit', this._onCustomsSubmit);
     }
     this._onDamage = null;
     this._onFire = null;
@@ -3961,6 +3992,7 @@ export const lawSecurity = {
     this._onDockedLawfulClearance = null;
     this._onHeatChanged = null;
     this._onImpoundPay = null;
+    this._onCustomsSubmit = null;
     if (this._podConeDwell) this._podConeDwell.clear();
   },
 };

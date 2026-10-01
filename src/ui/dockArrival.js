@@ -284,11 +284,17 @@ export function writeBerthArrival(targets, view, fallbackNews = '') {
   }
   const mechanic = paintBerthEventCard(host.mechanicEl, view && view.mechanic);
   bindBerthHull(host.mechanicEl, view && view.hull);
+  const route = paintLeftoverLine(host.routeEl, view && view.route);
+  const berthLine = view && view.berthLine;
+  if (berthLine) {
+    paintLeftoverLine(host.routeEl, [berthLine, route].filter(Boolean).join(' '));
+  }
   return {
     news,
     eventCard,
     patch: paintLeftoverLine(host.patchEl, view && view.patch),
-    route: paintLeftoverLine(host.routeEl, view && view.route),
+    route,
+    berthLine: berthLine || null,
     ledger: paintBerthEventCard(host.ledgerEl, view && view.ledger),
     mechanic,
   };
@@ -306,6 +312,25 @@ function paperworkFor(state) {
   if (isPlayerWanted(state)) return 'Wanted status flagged at this berth.';
   if (hasContraband(state)) return 'Restricted cargo may draw a customs scan.';
   return null;
+}
+
+/**
+ * The yard record `station:berthAssigned` / `station:holding` already write.
+ * An undecided pad (no index, no hold stamp) stays quiet.
+ */
+function yardBerthLine(state, stationId) {
+  if (!stationId) return null;
+  const services = state && state.stationServices;
+  const player = services && services.player;
+  if (!player || player.stationId !== stationId) return null;
+  const pad = Number(player.padIdx);
+  if (Number.isFinite(pad) && pad >= 0) return `Berth assigned to pad ${pad + 1}.`;
+  // The yard writes this stamp only when it emits station:holding. -Infinity means it has not.
+  if (!Number.isFinite(player._lastHoldingEmit)) return null;
+  const station = services.stations && services.stations[stationId];
+  const waiting = station && Number(station.waitingClients);
+  if (Number.isFinite(waiting) && waiting > 0) return `Holding for a pad. ${waiting} ahead.`;
+  return 'Holding for a pad.';
 }
 
 export function buildDockArrival(state = {}, station = {}) {
@@ -338,8 +363,9 @@ export function buildDockArrival(state = {}, station = {}) {
   const patchText = patch && patch.text ? patch.text : null;
   const ledgerLine = ledger && ledger.body ? ledger.body : null;
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
+  const berthLine = yardBerthLine(state, stationId);
   const hull = activeHullIdentity(state);
-  const lines = [action.label, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  const lines = [action.label, berthLine, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -353,6 +379,7 @@ export function buildDockArrival(state = {}, station = {}) {
     patch: patchText,
     patchReceiptId: patch && patch.receiptId ? patch.receiptId : null,
     route,
+    berthLine,
     ledger,
     ledgerLine,
     mechanic,

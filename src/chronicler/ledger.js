@@ -1,4 +1,4 @@
-import { refKey, increment, compareId, clone } from './schema.js';
+import { refKey, increment, compareId, clone, MAX_RETAINED_FACTS } from './schema.js';
 
 // An edge is documentary lineage, not an inference from distance, actor, commodity or time.
 const PARENT_STAGES = Object.freeze({
@@ -106,9 +106,12 @@ export function resolveLineage(memory) {
   function join(a, b) {
     a = root(a); b = root(b);
     if (a === b) return true;
-    if (sizes.get(a) + sizes.get(b) > memory.config.maxFactsPerStory) return false;
+    // One Map.get, not two: `join` runs once per resolved lineage edge per batch, so the redundant
+    // lookup is on the hot path of every ingest.
+    const total = sizes.get(a) + sizes.get(b);
+    if (total > memory.config.maxFactsPerStory) return false;
     if (byId.get(a).sequence > byId.get(b).sequence) [a, b] = [b, a];
-    roots.set(b, a); sizes.set(a, sizes.get(a) + sizes.get(b));
+    roots.set(b, a); sizes.set(a, total);
     return true;
   }
   for (const story of stories) {
@@ -213,6 +216,8 @@ function updateProfile(memory, f) {
   let profile = memory.profiles.find(p => p.actorKey === key);
   if (!profile) {
     if (memory.profiles.length >= memory.config.maxProfiles) {
+      // A full sort of at most maxProfiles (64 by default) entries: bounded and not worth a heap,
+      // and sorting the whole array keeps the choice deterministic under ties.
       const candidate = memory.profiles.filter(p => p.actorKey !== 'player')
         .sort((a, b) => a.lastAt - b.lastAt || compareId(a.actorKey, b.actorKey))[0];
       if (!candidate) return;
@@ -254,19 +259,52 @@ function updateProfile(memory, f) {
   increment(memory.metrics, 'legendsFormed');
 }
 
+/**
+ * Score bonus for a story the player has already been shown — announced on comms, published as
+ * news, or offered on band. Published evidence outranks unpublished evidence of equal standing.
+ * See `pruneMemory` for why this cannot starve a chain that is still developing.
+ */
+const CITED_BONUS = 100;
+
 /** Whole-story eviction preserves referential integrity: never leave half a causal proof. */
 export function pruneMemory(memory, views, now) {
-  if (memory.stories.length <= memory.config.maxStories) return;
+  // The bound is enforced on the fact count as well as the story count, because the fact ledger IS
+  // `stories[].nodes[]`: two individually-legal configs (many small stories, few large ones) can
+  // each sit under `maxStories` while together exceeding MAX_RETAINED_FACTS by a wide margin.
+  let facts = 0;
+  for (const story of memory.stories) facts += story.nodes.length;
+  const over = Math.max(memory.stories.length - memory.config.maxStories,
+    facts - MAX_RETAINED_FACTS, 0);
+  if (over <= 0) return;
   const scored = memory.stories.map(story => {
     const view = views.get(story.id);
     const agePenalty = Math.min(35, Math.max(0, now - story.updatedAt) / 600);
     const activeBonus = story.id === memory.activeWanted ? 100 : 0;
     // Without incubation, an archive full of old 100-point stories evicts a new kill before
     // its recovery/sale receipts can arrive. Protect development briefly, not indefinitely.
-    const incubationBonus = now - story.createdAt < memory.config.incubationSeconds ? 100 : 0;
-    return { story, score: (view?.score || 0) - agePenalty + activeBonus + incubationBonus };
-  }).sort((a, b) => a.score - b.score || a.story.updatedAt - b.story.updatedAt || a.story.sequence - b.story.sequence);
-  const remove = new Set(scored.slice(0, memory.stories.length - memory.config.maxStories).map(r => r.story.id));
+    //
+    // This is a SORT TIER, not a score term, and that is deliberate. As arithmetic it was fragile:
+    // a settled old story scores 100 with almost no age penalty while a brand-new kill scores 0, so
+    // the old code's protection was worth about 1.7 points — any change to the scoring above would
+    // silently starve the next causal chain. `hardening.test.mjs` pins exactly that starvation, so
+    // the protection is now structural: a chain inside its incubation window is evicted only after
+    // every chain outside one, regardless of how the scores fall. The window stays time-bounded,
+    // so this is protection, not immortality.
+    const incubating = now - story.createdAt < memory.config.incubationSeconds ? 1 : 0;
+    // A story the player has already been TOLD is not the same evidence as one nobody has seen, and
+    // must not be the first thing a flood of unremarkable kills evicts. Read from fields already on
+    // the story, so no schema change and no save migration. Flat rather than lexicographic on
+    // purpose: the archive is bounded and ties break on age, so a cited story still ages out.
+    const citedBonus = story.announcedRevision > 0 || story.newsRevision > 0 || story.radioRevision > 0
+      ? CITED_BONUS : 0;
+    return {
+      story,
+      score: (view?.score || 0) - agePenalty + activeBonus + citedBonus,
+      incubating,
+    };
+  }).sort((a, b) => a.incubating - b.incubating || a.score - b.score
+    || a.story.updatedAt - b.story.updatedAt || a.story.sequence - b.story.sequence);
+  const remove = new Set(scored.slice(0, over).map(r => r.story.id));
   memory.stories = memory.stories.filter(s => !remove.has(s.id));
   increment(memory.metrics, 'storiesEvicted', remove.size);
   if (remove.has(memory.activeWanted)) memory.activeWanted = null;

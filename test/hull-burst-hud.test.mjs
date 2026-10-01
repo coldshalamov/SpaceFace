@@ -1,7 +1,10 @@
-// Hull-burst overhaul, slice C: the burst's readout. It rides the bottom-centre field pill (one socket,
-// one voice; src/ui/fieldHud.js): LIVE while the wedge burns, a quiet RECHARGING countdown after, and a
-// short "ready + key" hint each time it comes back. It never outranks a fresh denial, and it is silent
-// for a hull with no burst module.
+// Hull-burst readout, re-voiced for the boost upgrade (owner principle, 2026-09-30). The pill rides
+// the bottom-centre field socket (one socket, one voice; src/ui/fieldHud.js): while the boost
+// gesture is paying, the wedge's name burns in the LIVE register; the moment the boost ends the
+// voice is gone. There is no RECHARGING countdown and no READY key hint any more — no window, no
+// recharge, no key — and the pill is silent for a hull with no burst module fitted. It never
+// outranks a fresh denial or a hazard's WARNING/SURGE, and its quiet never hides another field
+// tool's readiness.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -13,13 +16,13 @@ function hud() {
   return h;
 }
 
-function stateWith({ fitted = true, phase = 'ready', activeUntil = 0, readyAt = 0, bindings = {} } = {}) {
+function stateWith({ fitted = true, phase = 'ready', hits = 0, grip = null } = {}) {
   const player = { id: 1, data: { derived: fitted ? { hullBurstKind: 'gravity', hullBurstRank: 1 } : {} } };
   return {
     playerId: 1,
     entities: new Map([[1, player]]),
-    hullBurst: { phase, activeUntil, readyAt },
-    settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings } },
+    hullBurst: { phase, hits, grip },
+    settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {} } },
   };
 }
 
@@ -29,66 +32,42 @@ test('no burst module, no burst voice', () => {
   assert.deepEqual(h._resolve(null, 0, null, null), { text: '', cls: '' });
 });
 
-test('LIVE wins over a held cone, counts down in seconds, and is lit like the repulsor lamp', () => {
+test('while the boost pays, the wedge burns in the LIVE register', () => {
   const h = hud();
-  const burst = h._resolveBurst(stateWith({ phase: 'active', activeUntil: 6 }), 1.2);
+  const burst = h._resolveBurst(stateWith({ phase: 'active' }), 1.2);
   assert.equal(burst.live, true);
-  assert.match(burst.text, /GRAVITY BUMPER — LIVE 5s/);
+  assert.match(burst.text, /GRAVITY BUMPER — RIDES BOOST/);
   const cone = { active: [{ kind: 'cone', engaged: true }], cooldowns: {} };
   assert.equal(h._resolve(cone, 1.2, null, burst).cls, 'field-burst');
 });
 
-test('a fresh denial still outranks the burst', () => {
+test('a fresh denial still outranks the live burst', () => {
   const h = hud();
-  const burst = h._resolveBurst(stateWith({ phase: 'active', activeUntil: 6 }), 1);
+  const burst = h._resolveBurst(stateWith({ phase: 'active' }), 1);
   const denied = { active: [], cooldowns: {}, lastDenial: { at: 0.9, kind: 'well', reason: 'cooldown', readyAt: 4 } };
   assert.equal(h._resolve(denied, 1, null, burst).cls, 'field-denied');
 });
 
-test('after the window the burst shows a quiet recharge countdown, below any live field voice', () => {
+test('no cooldown tail: with the boost gone the voice is simply silent', () => {
   const h = hud();
-  const burst = h._resolveBurst(stateWith({ phase: 'cooling', activeUntil: 6, readyAt: 24 }), 10);
-  assert.equal(burst.live, false);
-  assert.match(burst.text, /RECHARGING 14s/);
-  assert.equal(burst.cls, 'field-burst-recharge');
-  const deployed = { active: [{ kind: 'well', expireAt: 20, engaged: true }], cooldowns: {} };
-  assert.match(h._resolve(deployed, 10, null, burst).text, /^WELL/, 'a deployed field is the louder voice');
-  assert.equal(h._resolve({ active: [], cooldowns: {} }, 10, null, burst).cls, 'field-burst-recharge');
-});
-
-test('ready shows the key for three seconds, then goes quiet, and again after each recharge', () => {
-  const h = hud();
-  const ready = stateWith({ phase: 'ready' });
-  const first = h._resolveBurst(ready, 100);
-  assert.equal(first.cls, 'field-burst-ready');
-  assert.match(first.text, /GRAVITY BUMPER — READY {2}\[\\]/, 'the live key is printed (Backslash by default)');
-  assert.ok(h._resolveBurst(ready, 102.5), 'still showing inside the 3 s');
-  assert.equal(h._resolveBurst(ready, 103.5), null, 'then silent: no permanent legend');
-  // a recharge cycle re-arms the hint
-  h._resolveBurst(stateWith({ phase: 'cooling', activeUntil: 6, readyAt: 200 }), 190);
-  const again = h._resolveBurst(ready, 200.1);
-  assert.equal(again && again.cls, 'field-burst-ready');
-});
-
-test('the ready hint follows a rebind', () => {
-  const h = hud();
-  const burst = h._resolveBurst(stateWith({ phase: 'ready', bindings: { hullBurst: ['KeyJ'] } }), 1);
-  assert.match(burst.text, /READY {2}\[J\]/);
+  assert.equal(h._resolveBurst(stateWith({ phase: 'ready' }), 10), null, 'ready (not boosting) is silent — no permanent legend');
+  const idle = { active: [], cooldowns: {} };
+  assert.equal(h._resolve(idle, 10, null, null).text, '', 'nothing lingers after the gesture');
 });
 
 test('a hazard WARNING or SURGE outranks the live burst; a calm hazard does not', () => {
   const h = hud();
-  const burst = h._resolveBurst(stateWith({ phase: 'active', activeUntil: 6 }), 1);
+  const burst = h._resolveBurst(stateWith({ phase: 'active' }), 1);
   const env = (phase) => ({ phase, remainingS: 4 });
   assert.match(h._resolve({ active: [], cooldowns: {} }, 1, env('warning'), burst).text, /WARNING/);
   assert.match(h._resolve({ active: [], cooldowns: {} }, 1, env('surge'), burst).text, /SURGE/);
   assert.equal(h._resolve({ active: [], cooldowns: {} }, 1, env('calm'), burst).cls, 'field-burst', 'a calm hazard yields to the live burst');
 });
 
-test('the burst recharge never hides an older field tool’s readiness', () => {
+test('with no live burst, an older field tool keeps its voice — nothing of the burst lingers', () => {
   const h = hud();
-  const burst = h._resolveBurst(stateWith({ phase: 'cooling', activeUntil: 6, readyAt: 24 }), 10);
+  const burst = h._resolveBurst(stateWith({ phase: 'ready' }), 10);
+  assert.equal(burst, null, 'not boosting: no burst voice at all');
   const withWellCooling = { active: [], cooldowns: { well: 14 } };
-  assert.match(h._resolve(withWellCooling, 10, null, burst).text, /^WELL READY/, 'the well keeps its voice');
-  assert.match(h._resolve({ active: [], cooldowns: {} }, 10, null, burst).text, /RECHARGING/, 'and the burst speaks when nothing else is waiting');
+  assert.match(h._resolve(withWellCooling, 10, null, null).text, /^WELL READY/, 'the well keeps its voice');
 });

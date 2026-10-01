@@ -75,6 +75,22 @@ export const RECIPES = [
     transientClick: { gain: 1.0 },
   },
   {
+    // Flak / point-defence turret (INST-33). A flak gun is not an autocannon that happens to be
+    // small: it is a rapid, light, high-cacked shell thrown at incoming missiles — 8 rps against
+    // the autocannon's 2.2, and 5 momentum a hit against 28. It must read as a fast mechanical
+    // buzz of dry mid-band cracks, not the autocannon's low sub-heavy thump; sharing that recipe
+    // made two very different mounts indistinguishable in the mix.
+    id: 'sfx_wpn_flak',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.032, sustain: 0.0, release: 0.09 },
+    filterType: 'bandpass', filterFreq: 2350, filterQ: 1.1,
+    distortionAmount: 0.35, distortionCurve: 'tanh',
+    transientClick: { gain: 0.9 },
+    pitchRange: [0.93, 1.09],
+  },
+  {
     id: 'sfx_wpn_beam_laser',
     category: 'weapon',
     type: 'continuous_oscillator',
@@ -82,6 +98,22 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.08, sustain: 1.0, release: 0.1 },
     filterType: 'bandpass', filterFreq: 880, filterQ: 2.0,
     distortionAmount: 0.4, distortionCurve: 'softclip',
+  },
+  // Heavy beam (INST-34) — the capital L-slot emitter must not be the M-slot beam laser's twin.
+  // The beam laser is a clean surgical cut at 440 Hz; the heavy beam is the same sustained-cut
+  // BEHAVIOR an octave-and-a-third down, with a sub-bass body under it so a 160-200 dps capital
+  // weapon lands with weight instead of sounding like a bigger budget for the same laser.
+  // Continuous by type so the sustained loop path in _onFire/_startBeam keeps owning the drone.
+  {
+    id: 'sfx_wpn_heavy_beam',
+    category: 'weapon',
+    type: 'continuous_oscillator',
+    baseFreq: 160, freqMod: 0.035,
+    gainEnvelope: { attack: 0.13, sustain: 1.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 1.5,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    subBass: { startFreq: 62, endFreq: 44, dur: 0.9, gain: 0.85 },
+    pitchRange: [0.97, 1.03],
   },
   {
     id: 'sfx_wpn_missile',
@@ -138,7 +170,9 @@ export const RECIPES = [
     freqMod: 0.12,
     gainEnvelope: { attack: 0.004, sustain: 0.04, release: 0.25 },
     filterType: 'bandpass', filterFreq: 600, filterQ: 1.8,
-    distortionAmount: 0.45, distortionCurve: 'softclip',
+    // Plasma cannon: a thick bubbling bolt. tanh (the QoL curve) — this is not one of the two
+    // recipes grandfathered onto the pre-QoL soft-clip, so it must name the curve it rides.
+    distortionAmount: 0.45, distortionCurve: 'tanh',
     subBass: { startFreq: 140, endFreq: 70, dur: 0.2, gain: 0.5 },
     pitchRange: [0.93, 1.07],
   },
@@ -1800,6 +1834,43 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.32 },
     filterType: 'highpass', filterFreq: 480,
   },
+  // The Eighth Bell (the_eighth_bell encounter): a cathedral bell, not a UI chime — a low
+  // struck fundamental with a long ring-out and a sub-bass swing, under the high hum
+  // partial that makes it read as bronze across a whole sector.
+  {
+    id: 'sfx_eighth_bell_strike',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 147,
+    freqSweep: [147, 139],
+    sweepTimeS: 1.8,
+    gainEnvelope: { attack: 0.004, sustain: 0.12, release: 2.6 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+    distortionAmount: 0.25, distortionCurve: 'tanh',
+    subBass: { startFreq: 74, endFreq: 49, dur: 1.6, gain: 0.9 },
+    transientClick: { gain: 0.7 },
+    reverbMix: 0.45, reverbDecay: 1.6,
+  },
+  {
+    id: 'sfx_eighth_bell_hum',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1175,
+    freqSweep: [1175, 1156],
+    sweepTimeS: 1.1,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 1.4 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 2.0,
+    reverbMix: 0.5, reverbDecay: 1.2,
+  },
+  {
+    id: 'sfx_eighth_bell_toll',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_eighth_bell_strike', 'sfx_eighth_bell_hum'],
+    gainMult: 1.1,
+  },
   {
     id: 'sfx_squelch_story',
     category: 'comms',
@@ -2114,7 +2185,10 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.04, sustain: 0.05, release: 0.5 },
     filterType: 'lowpass', filterFreq: 320, filterQ: 1.2,
     lfoRate: 7, lfoDepth: 0.12,
-    distortionAmount: 0.3,
+    // Header law: an authored distortionAmount names the curve it was authored against.
+    // This growl predates the tagging pass and was riding the implicit softclip default;
+    // tanh is the QoL curve every other current weapon/massline voice rides.
+    distortionAmount: 0.3, distortionCurve: 'tanh',
   },
   {
     id: 'sfx_massline_threat_rumble',
@@ -2794,8 +2868,14 @@ export const SAMPLE_BINDINGS = {
   // weapons
   sfx_wpn_pulse_laser: { id: 'wpn_pulse', share: 0.62 },
   sfx_wpn_autocannon: { id: 'wpn_cannon', share: 0.62 },
+  // Flak borrows the cannon RECORDING at a higher rate (the shell is light and fast, not heavy)
+  // and hands most of the peak back to the synth, so the voice is its own, not a pitched autocannon.
+  sfx_wpn_flak: { id: 'wpn_cannon', share: 0.4, rate: 1.38 },
   sfx_wpn_railgun: { id: 'wpn_rail', share: 0.65 },
   sfx_wpn_beam_laser: { id: 'wpn_beam_loop', share: 0.55 },
+  // The heavy beam is the same beam-loop RECORDING pitched down to the lower register the recipe
+  // authors — INST-34's "lower-register beam" is literal: same designed body, rate < 1.
+  sfx_wpn_heavy_beam: { id: 'wpn_beam_loop', share: 0.55, rate: 0.7 },
   sfx_wpn_missile: { id: 'wpn_missile_loop', share: 0.6 },
   sfx_combat_near_miss: { id: 'near_miss', share: 0.6 },
 

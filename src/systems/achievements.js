@@ -46,6 +46,16 @@ export const ACHIEVEMENT_NOTICE_TTL_S = 5;
 const COUNTER_SAVE_DEBOUNCE_MS = 4000;
 const PENDING_NOTICE_CAP = 16;
 const CRUCIBLE_BEST_KEY_CAP = 128;
+/**
+ * Longest record key the bag will accept. `recordKey()` in survivalRecords emits
+ * `pq146:{...}` + a JSON blob of the ghost-comparable launch fields, which is ~215-230 chars for a
+ * real challenge. The old 200 cap was written before those fields existed and silently DROPPED
+ * every key on load, so a returning player's Crucible personal bests were gone (the profile
+ * re-seeded them, but any ledger-only knowledge was not, and the pre-run comparison could not
+ * survive a reload). It is a defensive bound against a hostile bag, so it is set well above the
+ * real maximum rather than at it.
+ */
+const CRUCIBLE_BEST_KEY_MAX = 512;
 const SHARED_STORE_SYNC_FALLBACK_MS = 15000;
 const EPOCH_ISO = '1970-01-01T00:00:00.000Z';
 
@@ -104,7 +114,12 @@ function liveStorage() {
 /* the bag                                                                                         */
 /* ---------------------------------------------------------------------------------------------- */
 
-const KNOWN_BAG_KEYS = new Set(['schemaVersion', 'unlocked', 'counters', 'crucibleBestByKey', 'steam']);
+// crucibleBestByRunKey is the ledger's own PRE-run best per record key. It is not the player's
+// record (that is crucibleBestByKey) — it is what the ledger remembers so a run can be compared
+// against the record that existed before it settled. Both are max-merged, like counters.
+const KNOWN_BAG_KEYS = new Set([
+  'schemaVersion', 'unlocked', 'counters', 'crucibleBestByKey', 'crucibleBestByRunKey', 'steam',
+]);
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
@@ -129,6 +144,7 @@ export function emptyAchievementBag() {
     unlocked: {},
     counters: {},
     crucibleBestByKey: {},
+    crucibleBestByRunKey: {},
     steam: {},
   };
 }
@@ -163,8 +179,15 @@ function migrateBag(raw) {
   }
   const bests = asObject(src.crucibleBestByKey) || {};
   for (const key of Object.keys(bests)) {
-    if (typeof key !== 'string' || key.length > 200) continue;
+    if (typeof key !== 'string' || key.length > CRUCIBLE_BEST_KEY_MAX) continue;
     bag.crucibleBestByKey[key] = cleanCount(bests[key]);
+  }
+  // Same bounded read as crucibleBestByKey: this map is per record key and must not grow without
+  // bound from a corrupt or hostile bag.
+  const runBests = asObject(src.crucibleBestByRunKey) || {};
+  for (const key of Object.keys(runBests)) {
+    if (typeof key !== 'string' || key.length > CRUCIBLE_BEST_KEY_MAX) continue;
+    bag.crucibleBestByRunKey[key] = cleanCount(runBests[key]);
   }
   const steam = asObject(src.steam) || {};
   for (const id of Object.keys(steam)) {
@@ -227,6 +250,13 @@ export function mergeAchievementBags(primary, secondary) {
   for (const key of new Set([...Object.keys(a.crucibleBestByKey), ...Object.keys(b.crucibleBestByKey)])) {
     out.crucibleBestByKey[key] = Math.max(cleanCount(a.crucibleBestByKey[key]), cleanCount(b.crucibleBestByKey[key]));
   }
+  // A pre-run best of 0 is a real value, not an absence: it is the whole point of the key (it says
+  // "this key had no record before this run"). So the merge keeps any key EITHER side declares,
+  // rather than only non-zero ones.
+  for (const key of new Set([...Object.keys(a.crucibleBestByRunKey), ...Object.keys(b.crucibleBestByRunKey)])) {
+    out.crucibleBestByRunKey[key] = Math.max(
+      cleanCount(a.crucibleBestByRunKey[key]), cleanCount(b.crucibleBestByRunKey[key]));
+  }
   for (const id of new Set([...Object.keys(a.steam), ...Object.keys(b.steam)])) {
     if (a.steam[id] === true || b.steam[id] === true) out.steam[id] = true;
   }
@@ -262,6 +292,16 @@ export function loadAchievementBag(storage = liveStorage()) {
 
 function boundBests(bag) {
   const keys = Object.keys(bag.crucibleBestByKey);
+  // The pre-run map is bounded on the same terms and with the same rule: keep the highest values.
+  // It is a derived convenience, never a source of truth, so trimming it can only cost a
+  // beat-detection edge case, never an unlock.
+  const runKeys = Object.keys(bag.crucibleBestByRunKey || {});
+  if (runKeys.length > CRUCIBLE_BEST_KEY_CAP) {
+    runKeys.sort((x, y) => (bag.crucibleBestByRunKey[y] - bag.crucibleBestByRunKey[x]) || (x < y ? -1 : 1));
+    const nextRun = {};
+    for (const key of runKeys.slice(0, CRUCIBLE_BEST_KEY_CAP)) nextRun[key] = bag.crucibleBestByRunKey[key];
+    bag = { ...bag, crucibleBestByRunKey: nextRun };
+  }
   if (keys.length <= CRUCIBLE_BEST_KEY_CAP) return bag;
   // Keep the highest bests: they are the ones a later run is least likely to beat by accident.
   keys.sort((x, y) => (bag.crucibleBestByKey[y] - bag.crucibleBestByKey[x]) || (x < y ? -1 : 1));
@@ -431,24 +471,63 @@ export function seedBagFromTelemetryCareer(bag, career) {
   return bag;
 }
 
-/** Crucible run settled: personal best against the pre-run snapshot, extraction count. */
+/**
+ * Crucible run settled: personal best against the pre-run snapshot, extraction count.
+ *
+ * The "did this run beat my record" test has to compare against the best that existed BEFORE this
+ * run settled. Two facts make that non-obvious and were a live bug:
+ *   1. the FIRST run on a key has no prior at all, so `prior > 0` alone never credits it — a
+ *      player establishing a record earns nothing, which is the one moment that must always pay;
+ *   2. survivalRecords settles the run into the profile BEFORE it emits run:resultsReady, and
+ *      refreshCrucible() seeds bag.crucibleBestByKey from that profile. So by the time a later
+ *      run arrives, the bag already holds the best including THAT run. Comparing score > prior
+ *      against a profile-seeded value can therefore never fire, and crucibleBests stayed 0 forever
+ *      on the live path (the achievement was unreachable).
+ *
+ * So the ledger keeps its own pre-run value per key (`crucibleBestBeforeRun`), refreshed on every
+ * key transition, and the comparison is made against that. `applyCrucibleResult` therefore counts
+ * a beat whenever the score is strictly above the best this key held before this run settled.
+ */
 export function applyCrucibleResult(bag, result) {
   const moved = [];
   if (!bag || !asObject(result)) return moved;
   const key = recordKey(result);
   const score = cleanCount(result.score);
-  const prior = bag.crucibleBestByKey[key];
-  if (Number.isFinite(prior) && prior > 0 && score > prior) {
+  if (!asObject(bag.crucibleBestByRunKey)) bag.crucibleBestByRunKey = {};
+  const beforeByKey = bag.crucibleBestByRunKey;
+  // The pre-run best: the ledger's remembered value for this key, else whatever the bag recorded
+  // (which may be profile-seeded, and is the best we can honestly claim we knew before).
+  const prior = Number.isFinite(beforeByKey[key]) ? beforeByKey[key] : bag.crucibleBestByKey[key];
+  if (score > cleanCount(prior)) {
     bag.counters.crucibleBests = cleanCount(bag.counters.crucibleBests) + 1;
     moved.push('crucibleBests');
   }
-  if (score > cleanCount(prior)) bag.crucibleBestByKey[key] = score;
+  if (score > cleanCount(bag.crucibleBestByKey[key])) bag.crucibleBestByKey[key] = score;
   else if (!(key in bag.crucibleBestByKey)) bag.crucibleBestByKey[key] = score;
   if (result.outcome === 'extracted' || result.extracted === true) {
     bag.counters.crucibleExtractions = cleanCount(bag.counters.crucibleExtractions) + 1;
     moved.push('crucibleExtractions');
   }
   return moved;
+}
+
+/**
+ * Remember, per record key, the best that was known BEFORE the run now settling.
+ *
+ * Called with the result of a run that is ABOUT to be applied, and it deliberately OVERWRITES:
+ * each settled run is a new comparison, so the pre-run value must be re-read every time. Setting
+ * it only on first sight would pin the value from the very first run and let every later run
+ * compare against a stale record — which is how a WORSE run got counted as a beat.
+ *
+ * Idempotent within a single run only because applyCrucibleResult runs immediately after; the
+ * overwrite is what makes the NEXT run's comparison correct.
+ */
+export function rememberPreRunBest(bag, result) {
+  if (!bag || !asObject(result)) return bag;
+  const key = recordKey(result);
+  if (!asObject(bag.crucibleBestByRunKey)) bag.crucibleBestByRunKey = {};
+  bag.crucibleBestByRunKey[key] = cleanCount(bag.crucibleBestByKey[key]);
+  return bag;
 }
 
 export function achievementProgress(def, bag, crucible) {
@@ -738,9 +817,12 @@ export function installAchievements({
 
   function onRunResults(result) {
     if (disposed) return;
-    // survivalResults settles the run synchronously before it emits run:resultsReady, so the
-    // profile read here already contains this run; the personal-best snapshot is taken from the
-    // ledger's own pre-run copy first, then refreshed from the profile.
+    // survivalResults settles the run synchronously BEFORE it emits run:resultsReady, so the
+    // profile already contains this run. refreshCrucible() below seeds the bag's best from that
+    // profile — which is why the pre-run value has to be captured HERE, before the refresh, and
+    // why it is keyed separately (see applyCrucibleResult). Capturing after the refresh compared
+    // every run against a best that already included it, and crucibleBests never moved.
+    rememberPreRunBest(bag, result);
     applyCrucibleResult(bag, result);
     refreshCrucible();
     const fresh = evaluate('run:resultsReady');

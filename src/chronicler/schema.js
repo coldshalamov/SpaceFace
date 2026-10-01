@@ -20,6 +20,27 @@ export const DEFAULT_CONFIG = Object.freeze({
   offerRadio: true,
 });
 
+/**
+ * The whole-archive fact ceiling, named.
+ *
+ * There is no `memory.facts` array: the fact ledger IS `memory.stories[].nodes[]`, so the archive's
+ * fact count is `maxStories * maxFactsPerStory` — an IMPLICIT product of two knobs `configFor`
+ * raises independently. At the defaults that is 96 * 32 = 3072, but the per-key ceilings admit
+ * 256 * 96 = 24576 facts, eight times the retention with no single number naming it. `pruneMemory`
+ * now enforces this bound, so a raised config can no longer retain more than it, whatever the
+ * product asks for.
+ *
+ * `configFor` deliberately does NOT clamp the product to this number. `restoreMemory` requires a
+ * load to be byte-canonical — `persistence.js` asserts `JSON.stringify(m.config)` equals
+ * `configFor(m.config)` — so a clamp there would reject every save written under a raised config
+ * as "config is not canonical". Enforcing at prune time bounds the archive without ever making a
+ * previously valid save unloadable.
+ *
+ * The default product (3072) is deliberately left unchanged so every existing save stays
+ * byte-identical; this is a ceiling, not a retune.
+ */
+export const MAX_RETAINED_FACTS = 4096;
+
 export const FACT_EVENTS = Object.freeze([
   'entity:killed',
   'aftermathWreck:recorded', 'aftermathWreck:spawned',

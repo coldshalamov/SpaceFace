@@ -35,6 +35,21 @@ const T = EMERGENT_TUNING;
 
 const DT_MIN = 1 / 240;
 
+// Weapons fires this frame before tickEmergent runs, so the muzzle cue cannot
+// wait for that tick to learn the bus. A null bus dropped the event entirely.
+let boundBus = null;
+
+function adoptBus(bus) {
+  boundBus = bus && typeof bus.emit === 'function' ? bus : null;
+  return boundBus;
+}
+
+function stampBus(world) {
+  if (!world || (world.bus && typeof world.bus.emit === 'function')) return world ? world.bus : null;
+  if (boundBus) world.bus = boundBus;
+  return world.bus || null;
+}
+
 /** Reused by every hot spatial probe so armed frames allocate no query arrays. */
 const _nearbyScratch = [];
 const _nearbyPos = { x: 0, z: 0 };
@@ -64,7 +79,10 @@ function blankProjectile() {
 }
 
 export function ensureEmergent(state) {
-  if (state.emergent && state.emergent.projectiles) return state.emergent;
+  if (state.emergent && state.emergent.projectiles) {
+    stampBus(state.emergent);
+    return state.emergent;
+  }
   const projectiles = new Array(EMERGENT_POOL.projectiles);
   for (let i = 0; i < projectiles.length; i++) projectiles[i] = blankProjectile();
   const presentation = new Array(EMERGENT_POOL.presentation);
@@ -95,6 +113,7 @@ export function ensureEmergent(state) {
     arcLock: false,
     bus: null,
   };
+  stampBus(state.emergent);
   return state.emergent;
 }
 
@@ -157,14 +176,15 @@ function cue(state, id, x, z, impulse = 0, contact = null) {
   const player = ent(state, state.playerId);
   let pan = 0;
   if (player && player.pos) pan = Math.max(-1, Math.min(1, ((x || 0) - player.pos.x) / 400));
-  if (world.bus && typeof world.bus.emit === 'function') {
-    world.bus.emit('emergent:audio', { id, x, z, pan, gain: 0.8, impulse });
+  const bus = stampBus(world);
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('emergent:audio', { id, x, z, pan, gain: 0.8, impulse });
     const knocked = contact && contact.b;
     const other = contact && contact.a;
     if (impulse > 40 && knocked && other) {
       const mass = contact.mass > 0 ? contact.mass : physicalProfile(knocked).mass;
       const playerId = state.playerId;
-      world.bus.emit('emergent:contact', {
+      bus.emit('emergent:contact', {
         impulse,
         deltaV: impulse / Math.max(1, mass),
         mass,
@@ -1107,10 +1127,13 @@ export const emergentPrimitives = {
   init(ctx) {
     this.destroy();
     this.bus = ctx && ctx.bus;
+    adoptBus(this.bus);
     this.helpers = (ctx && ctx.helpers) || {};
     this.registry = ctx && ctx.registry;
     this.state = ctx && ctx.state;
     this.voice = createEmergentVoice();
+    this.voice.attach(this.bus, () => this.registry);
+    if (this.state && this.state.emergent) this.state.emergent.bus = boundBus;
     this._onDamage = (payload) => {
       if (!payload || !this.state || (this.state.emergent && this.state.emergent.arcLock)) return;
       const channels = payload.channels || {};
@@ -1120,9 +1143,6 @@ export const emergentPrimitives = {
       const target = ent(this.state, payload.targetId);
       noteEmergentEnergyHit(this.state, target, payload.amount || thermal || 1, payload.attackerId, this);
     };
-    this._onAudio = (cuePayload) => {
-      if (this.voice) this.voice.play(cuePayload, this.registry);
-    };
     const unsubs = [];
     const listen = (event, fn) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
@@ -1130,7 +1150,6 @@ export const emergentPrimitives = {
       unsubs.push(typeof off === 'function' ? off : () => this.bus.off && this.bus.off(event, fn));
     };
     listen('combat:damage', this._onDamage);
-    listen('emergent:audio', this._onAudio);
     this._unbind = () => {
       while (unsubs.length) unsubs.pop()();
     };
@@ -1146,5 +1165,6 @@ export const emergentPrimitives = {
     this._unbind = null;
     if (this.voice) this.voice.dispose();
     this.voice = null;
+    adoptBus(null);
   },
 };

@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.steamAchievements.v1",
   "source": "src/data/achievements.js",
-  "count": 16,
+  "count": 22,
   "achievements": [
     {
       "order": 1,
@@ -321,6 +321,126 @@
       "iconFiles": {
         "achieved": "build/store/steam/achievements/SF_SIX_FIGURES_achieved.jpg",
         "unachieved": "build/store/steam/achievements/SF_SIX_FIGURES_unachieved.jpg"
+      }
+    },
+    {
+      "order": 17,
+      "id": "returning_caller",
+      "apiName": "SF_RETURNING_CALLER",
+      "name": "Returning Caller",
+      "description": "Dock at ten stations.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "docks",
+        "target": 10
+      },
+      "ruleText": "docks >= 10 (dock:docked: the player confirms a dock at a station)",
+      "icon": "icon-station",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_RETURNING_CALLER_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_RETURNING_CALLER_unachieved.jpg"
+      }
+    },
+    {
+      "order": 18,
+      "id": "ten_permits",
+      "apiName": "SF_TEN_PERMITS",
+      "name": "Ten Permits",
+      "description": "Complete ten contracts.",
+      "hidden": false,
+      "category": "career",
+      "rule": {
+        "source": "counter",
+        "key": "contracts",
+        "target": 10
+      },
+      "ruleText": "contracts >= 10 (mission:completed: a contract settles as completed)",
+      "icon": "icon-missions",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_TEN_PERMITS_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_TEN_PERMITS_unachieved.jpg"
+      }
+    },
+    {
+      "order": 19,
+      "id": "the_hundred_thousand",
+      "apiName": "SF_THE_HUNDRED_THOUSAND",
+      "name": "The Hundred Thousand",
+      "description": "Earn a million credits over your career.",
+      "hidden": false,
+      "category": "career",
+      "rule": {
+        "source": "counter",
+        "key": "creditsEarned",
+        "target": 1000000
+      },
+      "ruleText": "creditsEarned >= 1000000 (credits:changed: credits granted to the player (sum of positive deltas))",
+      "icon": "icon-credits",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_THE_HUNDRED_THOUSAND_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_THE_HUNDRED_THOUSAND_unachieved.jpg"
+      }
+    },
+    {
+      "order": 20,
+      "id": "quarry",
+      "apiName": "SF_QUARRY",
+      "name": "Quarry",
+      "description": "Bring aboard a thousand units of ore and salvage.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "oreUnits",
+        "target": 1000
+      },
+      "ruleText": "oreUnits >= 1000 (mining:yield: ore or salvage released to the player (other miners excluded))",
+      "icon": "icon-miner",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_QUARRY_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_QUARRY_unachieved.jpg"
+      }
+    },
+    {
+      "order": 21,
+      "id": "long_haul",
+      "apiName": "SF_LONG_HAUL",
+      "name": "Long Haul",
+      "description": "Complete twenty-five jumps.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "jumps",
+        "target": 25
+      },
+      "ruleText": "jumps >= 25 (jump:arrive: the player arrives in another system)",
+      "icon": "icon-route",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_LONG_HAUL_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_LONG_HAUL_unachieved.jpg"
+      }
+    },
+    {
+      "order": 22,
+      "id": "salvage_crew",
+      "apiName": "SF_SALVAGE_CREW",
+      "name": "Salvage Crew",
+      "description": "Throw fifty bodies with the Massline.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "counter",
+        "key": "throws",
+        "target": 50
+      },
+      "ruleText": "throws >= 50 (massline:throw: an armed Massline throw releases its payload)",
+      "icon": "icon-tow",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_SALVAGE_CREW_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_SALVAGE_CREW_unachieved.jpg"
       }
     }
   ]

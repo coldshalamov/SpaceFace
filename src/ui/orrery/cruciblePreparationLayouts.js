@@ -28,14 +28,14 @@ ${D} .k-row > .k-row__name { display:block !important; font:600 12px var(--dp-fa
 ${D} .sf-crd-modes, ${D} .sf-crd-stakes, ${D} .sf-crd-arenas { display:grid !important; gap:8px !important; padding:0 !important; margin:0 !important; width:100% !important; }
 ${D} .sf-crd-modes { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
 ${D} .sf-crd-stakes { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
-${D} .sf-crd-arenas { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+${D} .sf-crd-arenas { grid-template-columns:repeat(5,minmax(0,1fr)) !important; }
 ${D} .sf-crd-modes > li, ${D} .sf-crd-stakes > li, ${D} .sf-crd-arenas > li, ${D} .sf-crd-hulls > li { margin:0 !important; width:auto !important; min-width:0 !important; list-style:none !important; }
 ${D} .orr-tile { max-width:none !important; width:100% !important; min-width:0 !important; min-height:76px !important; padding:9px 8px !important; display:flex !important; flex-direction:column !important; justify-content:center !important; align-items:center !important; gap:6px !important; border-bottom:1px solid var(--dp-line-faint) !important; border-radius:0 !important; opacity:1 !important; }
-${D} .orr-tile[aria-pressed=true] { background:linear-gradient(0deg, rgb(242 185 80 / .10), transparent 75%) !important; border-bottom-color:var(--dp-hand) !important; }
+${D} .orr-tile[aria-pressed=true] { background:linear-gradient(0deg, rgb(242 185 80 / .10), transparent 75%) !important; }
 ${D} .orr-tile .fh-tile-legend { font:600 12px/1.35 var(--dp-face-label) !important; letter-spacing:.01em !important; white-space:normal !important; color:var(--dp-ink) !important; max-width:100% !important; }
 ${D} .orr-tile .fh-tile-art { display:flex !important; align-items:center !important; justify-content:center !important; min-height:0 !important; width:100% !important; height:42px !important; }
 ${D} .orr-tile .fh-tile-art svg { width:44px !important; height:44px !important; opacity:.95 !important; color:var(--dp-ink) !important; }
-${D} .sf-crd-stake .fh-tile-art { display:none !important; }
+${D} .sf-crd-stake .fh-tile-art { height:30px !important; }
 ${D} .sf-crd-stake-nums { display:none !important; }
 ${D} .orr-prep-stake-number { display:block; color:var(--dp-ink); font:300 25px/1.1 var(--dp-face-numeral); font-variant-numeric:tabular-nums; }
 ${D} .orr-prep-stake-pressure { display:block; margin-top:5px; font:400 12px/1.25 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
@@ -69,7 +69,8 @@ ${D} .orr-prep-shiphead { position:relative; z-index:1; }
 ${D} .orr-prep-hullname { font:800 44px/1.05 var(--dp-face-display,'Archivo'); letter-spacing:-.02em; margin:10px 0 6px; }
 ${D} .orr-prep-hullline, ${D} .orr-prep-fitnote { font-size:13px; line-height:1.45; color:var(--dp-ink-dim); margin:6px 0; }
 ${D} .orr-prep-shipvisual { position:relative; min-height:180px; height:clamp(180px,23vh,250px); flex:none; }
-${D} .orr-prep-shipart { width:100%; height:100%; object-fit:contain; }
+/* the render is a bounded stage, not a strip: the stat ring reads round the ship, not the column */
+${D} .orr-prep-shipart { width:auto !important; max-width:min(100%, 520px) !important; height:100% !important; margin:0 auto; display:block; object-fit:contain; }
 ${D} .orr-prep-fallback { width:200px; height:200px; margin:auto; }
 ${D} .orr-prep-shipjig { position:absolute; inset:0 8px 24px; }
 ${D} .orr-prep-views { position:absolute; left:0; right:0; bottom:0; display:flex; gap:18px; justify-content:center; }
@@ -155,9 +156,10 @@ ${A} .sf-cru-card .sf-cru-price::before { content:none !important; }
 ${A} .orr-armory-reading__buy { display:block !important; text-transform:none !important; letter-spacing:0 !important; }
 ${A} .orr-armory-purchase, ${A} .orr-armory-refusal { text-transform:none !important; letter-spacing:0 !important; }
 ${A} .orr-armory-item::before { width:210px; height:210px; inset:auto; }
-${D} .sf-crd-hull .fh-tile-art { grid-column:1; grid-row:1 / 3; }
+${D} .sf-crd-hull .fh-tile-art { grid-column:1; grid-row:1 / 4; }
 ${D} .sf-crd-hull .fh-tile-legend { grid-column:2; grid-row:1; align-self:center; }
-${D} .orr-prep-locknote { grid-column:2; grid-row:2; font:400 12px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); text-transform:none; letter-spacing:0; }
+${D} .orr-prep-hullsub { grid-column:2; grid-row:2; }
+${D} .orr-prep-locknote { grid-column:2; grid-row:3; font:400 12px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); text-transform:none; letter-spacing:0; }
 ${D} .sf-crd-hull[data-locked='1'] .fh-tile-art { opacity:.5 !important; }
 ${D} .sf-crd-hull[data-locked='1'] .fh-tile-legend { opacity:.7 !important; }
 ${D} .orr-prep-fitting .orr-equipment-glyph { width:38px; height:38px; }
@@ -175,6 +177,93 @@ ${D} .orr-prep-panel:not([hidden]), ${D} .orr-prep-ship:not([hidden]) { animatio
 ${A} .orr-armory-item > svg { animation:orr-prep-arrive 200ms var(--dp-ease-out) both; }
 @keyframes orr-prep-arrive { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 html.sf-reduce-motion .orr-preparation *, html.sf-reduce-motion .orr-visual-armory * { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+/* — the character-select pass —
+   Mode is the first decision and takes the biggest face; stakes carry their service marks over
+   thin numerals; the arena collapses to one calm strip of five stops (the hero carries the art).
+   Every tile answers the cursor: an underline that draws from its left end, a two-pixel lift.
+   The roster is the character select: authored sigils, the amber Hand on its rail, the stat ring
+   round the render, and a weigh-in when the build changes. */
+${D} .sf-crd-row--hull > div { position:relative; padding-left:26px; }
+${D} .orr-prep-hand { position:absolute; left:0; top:0; width:18px; height:22px; color:var(--dp-hand); pointer-events:none;
+  filter:drop-shadow(0 0 6px rgb(242 185 80 / .45)); will-change:transform; }
+${D} .orr-prep-hand svg { display:block; width:18px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+/* mode leads */
+${D} .sf-crd-modes { gap:10px !important; }
+${D} .sf-crd-modes .orr-tile { min-height:124px !important; padding:16px 8px 12px !important; }
+${D} .sf-crd-modes .fh-tile-art { height:60px !important; }
+${D} .sf-crd-modes .fh-tile-art svg { width:60px !important; height:60px !important; transition:transform .26s var(--dp-ease-out) !important; }
+${D} .sf-crd-modes .orr-tile:not([aria-pressed=true]) { opacity:.6 !important; }
+${D} .sf-crd-modes .orr-tile:is(:hover,:focus-visible) { opacity:1 !important; }
+${D} .sf-crd-modes .orr-tile[aria-pressed=true] .fh-tile-art svg { transform:scale(1.08); }
+${D} .sf-crd-modes .fh-tile-legend { font-size:13px !important; letter-spacing:.14em !important; }
+/* stakes: mark, purse, pressure — a service ladder */
+${D} .sf-crd-stakes .orr-tile { min-height:102px !important; }
+${D} .sf-crd-stakes { gap:10px !important; }
+${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:28px !important; height:28px !important; opacity:.8; color:var(--dp-ink-dim) !important;
+  transition:color .18s linear, opacity .18s linear; }
+${D} .orr-tile[aria-pressed=true] .orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
+${D} .orr-prep-stake-number { font-size:29px !important; font-weight:250 !important; letter-spacing:-.01em; }
+${D} .orr-prep-stake-pressure { margin-top:3px; font:400 12px/1.3 var(--dp-face-label); letter-spacing:.1em; text-transform:uppercase; }
+/* arena: one strip of five; the words carry the choice, the hero carries the rooms */
+${D} .sf-crd-arenas .orr-tile { min-height:66px !important; padding:6px 4px 8px !important; }
+${D} .sf-crd-arenas .fh-tile-art { height:34px !important; }
+${D} .sf-crd-arenas .fh-tile-art img { width:88% !important; height:40px !important; object-fit:cover !important; }
+${D} .sf-crd-arenas .fh-tile-legend { font-size:12px !important; letter-spacing:.08em !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+/* the answer to the cursor: an underline drawn from the left, a two-pixel lift */
+${D} .orr-tile { position:relative; transition:transform .22s var(--dp-ease-out), opacity .18s linear !important; }
+${D} .orr-tile::after { content:''; position:absolute; left:8%; right:8%; bottom:-1px; height:2px; background:var(--dp-hand);
+  transform:scaleX(0); transform-origin:left center; transition:transform .26s var(--dp-ease-out), box-shadow .26s linear; }
+${D} .orr-tile[aria-pressed=true]::after { transform:scaleX(1); box-shadow:0 0 10px rgb(242 185 80 / .35); }
+${D} .orr-tile:is(:hover,:focus-visible):not([aria-pressed=true])::after { transform:scaleX(.32); }
+${D} .orr-tile:is(:hover,:focus-visible) { transform:translateY(-2px) !important; }
+${D} .orr-tile:active { transform:translateY(0) !important; transition-duration:.08s !important; }
+/* a locked build refuses: one horizontal shake, never red */
+${D} .orr-tile.is-denied { animation:orr-deny .32s linear; }
+@keyframes orr-deny { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-5px); } 40% { transform:translateX(4px); }
+  60% { transform:translateX(-3px); } 80% { transform:translateX(2px); } }
+/* roster faces: the sigil is the face, the hull line is the ride */
+${D} .sf-crd-hull .fh-tile-art svg.orr-sigil { width:62px !important; height:62px !important; opacity:.8; color:var(--dp-ink);
+  transition:opacity .18s linear, transform .26s var(--dp-ease-out), color .18s linear, filter .26s linear !important; }
+${D} .sf-crd-hull[aria-pressed=true] .fh-tile-art svg.orr-sigil { opacity:1; transform:scale(1.07); color:var(--dp-hand);
+  filter:drop-shadow(0 0 8px rgb(242 185 80 / .3)); }
+${D} .orr-prep-hullsub { font:400 12px/1.3 var(--dp-face-label); letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink-dim); align-self:start; }
+/* the weigh-in: the render rises and settles, the name snaps to rest, the manifest staggers */
+${D} .orr-prep-ship.is-arriving .orr-prep-shipart { animation:orr-weighin .5s var(--dp-ease-out) both; }
+@keyframes orr-weighin { from { opacity:0; transform:translateY(16px) scale(.97); } to { opacity:1; transform:none; } }
+${D} .orr-prep-ship.is-arriving .orr-prep-hullname { animation:orr-slam .34s var(--dp-ease-out) both; transform-origin:left bottom; }
+@keyframes orr-slam { from { transform:scale(1.035); } to { transform:scale(1); } }
+${D} .orr-prep-ship.is-arriving .orr-prep-fitting { animation:orr-prep-arrive 300ms var(--dp-ease-out) both;
+  animation-delay:calc(140ms + var(--i, 0) * 26ms); }
+/* the purse is a counter; its unit rides beside it */
+${D} .orr-prep-purse-unit { font:500 13px/1 var(--dp-face-label); letter-spacing:.12em; text-transform:uppercase; color:var(--dp-ink-dim); margin-left:6px; }
+/* arrival: the panel's rows land in sequence */
+${D} .orr-prep-panel:not([hidden]) .orr-prep-settings > .k-row { animation:orr-prep-arrive 320ms var(--dp-ease-out) both; }
+${D} .orr-prep-panel:not([hidden]) .orr-prep-settings > .k-row:nth-child(2) { animation-delay:70ms; }
+${D} .orr-prep-panel:not([hidden]) .orr-prep-settings > .k-row:nth-child(3) { animation-delay:140ms; }
+${D} .orr-prep-panel:not([hidden]) .orr-prep-settings > .k-row:nth-child(n+4) { animation-delay:210ms; }
+/* the arena hero settles into its new room instead of only cross-fading */
+${D} .orr-door-hero__art { transform:scale(1.045); transition:opacity .35s linear, transform .7s var(--dp-ease-out) !important; }
+${D} .orr-door-hero__art.is-on { transform:scale(1); }
+/* the Lamp Key's slow sheen; the key dips under the press */
+${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { position:relative; overflow:hidden; transition:transform .12s var(--dp-ease-out); }
+${D} .k-foot .orr-prep-continue::after { content:''; position:absolute; top:-4px; bottom:-4px; left:0; width:34%; pointer-events:none;
+  background:linear-gradient(100deg, transparent, rgb(255 244 214 / .55), transparent);
+  transform:translateX(-180%) skewX(-18deg); animation:orr-key-sheen 6s ease-in-out 2.4s infinite; }
+@keyframes orr-key-sheen { 0% { transform:translateX(-180%) skewX(-18deg); } 22%, 100% { transform:translateX(440%) skewX(-18deg); } }
+${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { transform:translateY(1px); }
+/* a short plate trims the lead tiles, never the hierarchy: mode stays the biggest face */
+@media (max-height:820px) {
+ ${D} .orr-prep-settings { gap:14px !important; }
+ ${D} .sf-crd-modes .orr-tile { min-height:92px !important; padding:10px 8px 8px !important; }
+ ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:44px !important; }
+ ${D} .sf-crd-modes .fh-tile-art svg { width:44px !important; }
+ ${D} .sf-crd-stakes .orr-tile { min-height:80px !important; }
+ ${D} .orr-prep-stake-number { font-size:24px !important; }
+ ${D} .sf-crd-arenas .orr-tile { min-height:56px !important; padding:4px 4px 6px !important; }
+ ${D} .sf-crd-arenas .fh-tile-art img { height:32px !important; }
+ ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:6px !important; }
+ ${D} .orr-prep-disclosure { padding:8px 0; }
+}
 @media (max-width:1150px) {
  ${D}, ${A} { padding:24px !important; column-gap:24px !important; }
  ${D} .sf-crd-hull { grid-template-columns:62px minmax(0,1fr) !important; }

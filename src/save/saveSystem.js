@@ -33,6 +33,7 @@ import {
 } from '../core/newGamePlus.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
+import { ORBIT_ASSIST_STRENGTH } from '../core/flight/orbitAssist.js';
 import {
   SAVE_JOURNAL_EVENT,
   acknowledgeSaveSnapshotBoundary,
@@ -111,9 +112,23 @@ const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const DEFAULT_FLIGHT_BACKEND = 'v3';
 const DEFAULT_CONTROL_SCHEME = 'pilot';
 const DEFAULT_MASSLINE_RELEASE_ASSIST = 'snap';
+const DEFAULT_ORBIT_ASSIST_STRENGTH = 'standard';
+const DEFAULT_TARGET_ASSIST_STRENGTH = 'full';
+const DEFAULT_AUTOSAVE_INTERVAL_S = 120;
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
 const VALID_MASSLINE_RELEASE_ASSISTS = new Set(['arm', 'snap', 'off']);
+// The auto-target assist's domain lives in combat/autoTargetMode.js (TARGET_ASSIST_SCALES).
+// Deliberately hand-written rather than imported: that module pulls in flightV3, and the save
+// layer must not gain a flight import edge to read a four-value list. `test/verb-17-target-
+// assist-strength.test.mjs` asserts the two agree, so drift reds a test instead of silently
+// clamping a legal value. The fallback matches targetAssistScale's own fail-open to full, which
+// is the safe direction: an unknown strength keeps the assist on rather than turning it off.
+const VALID_TARGET_ASSIST_STRENGTHS = new Set(['full', 'standard', 'light', 'off']);
+// DERIVED, not hand-written like the three above: this is a flight-kernel domain, and a
+// hand-written copy silently clamps a legal value the day ORBIT_ASSIST_STRENGTH grows one.
+// orbitAssist.js has no imports of its own, so reading its frozen table here costs nothing.
+const VALID_ORBIT_ASSIST_STRENGTHS = new Set(Object.keys(ORBIT_ASSIST_STRENGTH));
 const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
 // 'activity' stays on the skip list for the GENERIC entity cloner: it is non-enumerable anyway,
 // and plainEntity persists it through the explicit residency-stamp mirror below.
@@ -290,6 +305,21 @@ export const save = {
       this.requestAutosave('hud_layout');
     });
     bus.on('player:respawn', () => this.requestAutosave('respawn', { force: true }));
+    // PRO-06: leaving to the main menu is the one route that used to save NOTHING. Every other
+    // progression milestone autosaves, so a player who undocked, flew a minute, and quit lost
+    // that minute — and the pause menu's own 'back to main menu' button is the most natural way
+    // to stop playing. This listener runs BEFORE main.js flips state.mode to 'menu' (systems
+    // register during init, main's handler is installed after), and it writes synchronously
+    // through save(), so the bytes are durable before the screen changes.
+    bus.on('game:exitToMenu', () => this.requestExitAutosave());
+    // PRO-06, second route: closing the tab or quitting the window is the same data loss by a
+    // different door. main.js's beforeunload tears the runtime down and writes nothing, so a player
+    // who alt-tabs out and closes the window loses the session exactly as quitting to the menu
+    // used to. Same gates, same synchronous verified write — and the save is idempotent, so a
+    // player who quit to the menu and THEN closed the tab does not pay for two.
+    // Installed through a typeof guard: init() is also driven against partial host objects in
+    // focused tests, and a convenience listener must never be what stops a save system booting.
+    if (typeof this._installUnloadExitSave === 'function') this._installUnloadExitSave();
     // Warm the save worker once at init: Continue and autosave each pay a Blob-URL spawn +
     // worker boot on the load path when a cold worker is created per request. One idle worker
     // kept hot removes the spawn from every later request; run-epoch sweeps retire it and the
@@ -1504,6 +1534,76 @@ export const save = {
 
   _campaignAutosaveSuppressed() {
     return this._campaignSaveSuppressed();
+  },
+
+  /**
+   * PRO-06 — cover the other way a session ends: the tab is closed or the window quit.
+   *
+   * There is no session-end gameplay event (EVENT_TAXONOMY records that gap), so this leans on the
+   * browser lifecycle, the same way telemetry's privacy-safe flush already does. `pagehide` is the
+   * reliable one (it fires on bfcache navigation and tab close); `beforeunload` is kept as the
+   * desktop/Electron path. `visibilitychange` is deliberately NOT used: a backgrounded tab is not a
+   * finished session, and the interval autosave already owns that cadence.
+   *
+   * requestExitAutosave() is idempotent — a player who already quit to the menu is at mode 'menu'
+   * and is refused — so a player who does both pays for one write, not two.
+   */
+  _installUnloadExitSave() {
+    const hasWindow = typeof window !== 'undefined';
+    if (!hasWindow || typeof window.addEventListener !== 'function') return false;
+    const flush = () => {
+      try { this.requestExitAutosave(); } catch (err) {
+        // An unload handler that throws can cancel the unload or surface as an unhandled error in
+        // the console the player will never read. A failed final save must not block the exit.
+        console.error('[save] unload exit save failed', err);
+      }
+    };
+    try {
+      window.addEventListener('pagehide', flush);
+      window.addEventListener('beforeunload', flush);
+    } catch (err) {
+      console.error('[save] could not install unload exit save', err);
+      return false;
+    }
+    this._unloadExitFlush = flush;
+    return true;
+  },
+
+  /**
+   * PRO-06 — the last save before the game stops being the thing on screen.
+   *
+   * Deliberately NOT requestAutosave(). That path is debounced, defers on the combat calm window,
+   * and — decisively — bails when `state.mode !== 'flight'`, which is exactly the state the player
+   * is in when they pick "back to main menu" from the pause screen (mode 'paused'). Routing the
+   * exit through it would have reproduced the bug it is meant to fix.
+   *
+   * So this writes synchronously via save(), which is the same verified write the manual-save
+   * button uses: serialize → stringify → write → read-back verify, with the previous generation
+   * kept as the recovery copy. The player's last minute is durable before the menu paints.
+   *
+   * Gates, each of which is a real state this can be called from:
+   *  - an arena run is ephemeral by contract (PQ-133 ruling 2) and must never reach a campaign slot;
+   *  - a destructive restore in flight owns the route and is writing its own state;
+   *  - dead or mid-jump the live world is not a truthful snapshot of a moment worth keeping —
+   *    requestAutosave already refuses both, and this must not be the loophole that doesn't.
+   */
+  requestExitAutosave() {
+    if (this._campaignSaveSuppressed()) return false;
+    if (this._restoring) return false;
+    const state = this.state;
+    if (!state) return false;
+    if (this._playerDead) return false;
+    const jump = state.jump;
+    if (jump && (jump.state === 'CHARGING' || jump.state === 'JUMPING')) return false;
+    // Already at the menu with nothing to write (a second exit request in the same click).
+    if (state.mode === 'menu') return false;
+
+    // A queued autosave is strictly older than the state we are about to write, so drop it
+    // instead of paying for a second full write a few frames later. Its already-scheduled
+    // callback carries the stale token and becomes a no-op, same as the manual-save supersede.
+    if (this._autosavePending) this._autosavePending = null;
+
+    return this.save(AUTOSAVE_SLOT, { reason: 'exit_to_menu' });
   },
 
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */
@@ -5288,6 +5388,27 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_MASSLINE_RELEASE_ASSISTS.has(s.gameplay.masslineReleaseAssist)) {
     s.gameplay.masslineReleaseAssist = DEFAULT_MASSLINE_RELEASE_ASSIST;
   }
+  // Without this rule every out-of-domain value reaches the flight kernel untouched. The kernel
+  // normalizes, so nothing crashes — but its lowercasing means a case variant like 'OFF' from a
+  // hand-edited profile resolves to a legal 'off' and silently disables the assist the player
+  // never turned off, while the accessibility checklist reads the same value as an enabled
+  // assist. Sanitizing is the single gate that keeps those two readers agreeing.
+  if (!VALID_ORBIT_ASSIST_STRENGTHS.has(s.gameplay.orbitAssistStrength)) {
+    s.gameplay.orbitAssistStrength = DEFAULT_ORBIT_ASSIST_STRENGTH;
+  }
+  if (!VALID_TARGET_ASSIST_STRENGTHS.has(s.gameplay.targetAssistStrength)) {
+    s.gameplay.targetAssistStrength = DEFAULT_TARGET_ASSIST_STRENGTH;
+  }
+  // Absent from the shipped defaults, so absent means "on" — floatingText suppresses damage
+  // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
+  // old save pin Off forever.
+  if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
+  // false, so interval autosave stops firing for the rest of the session with no error at all,
+  // and the Settings row renders it as '[object Object]'.
+  if (typeof s.gameplay.autosaveIntervalS !== 'number' || !(s.gameplay.autosaveIntervalS >= 0)) {
+    s.gameplay.autosaveIntervalS = DEFAULT_AUTOSAVE_INTERVAL_S;
+  }
 
   if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};
   if (!VALID_FLIGHT_MODES.has(s.controls.flightMode)) {
@@ -5332,6 +5453,11 @@ function profileSettingsSnapshot(settings) {
       controlScheme: s.gameplay && s.gameplay.controlScheme,
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
       masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
+      // Already in-domain: this function sanitizes at its first line, so a second normalization
+      // here would only duplicate the rule and risk disagreeing with it.
+      orbitAssistStrength: s.gameplay && s.gameplay.orbitAssistStrength,
+      targetAssistStrength: s.gameplay && s.gameplay.targetAssistStrength,
+      damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
     },

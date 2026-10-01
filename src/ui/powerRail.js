@@ -44,6 +44,7 @@
 import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { fhGlyph } from './views/fhGlyphs.js';
 import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
+import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const BAND_ORDNANCE = 'ORDNANCE';
@@ -280,7 +281,17 @@ export function readRailModel(state, nowS) {
     && e.data?.ownerId === s.playerId && e.data?.armed);
 
   const bay = readBombBayModel(s, now);
+  // VERB-16: the 3 s cruise spool is a verb-shelf meter. The rail owns no cruise clock — it
+  // reads the cruise system's writer (state.player.cruise) through its query helpers, so the
+  // shelf shows the spool rising 0→1 while charging and the engaged state after. ORRERY owns
+  // how this paints; this model only makes the numbers reachable on the default route.
+  const cruiseProgress = cruiseChargeProgress(s);
+  const cruiseState = isCruising(s) ? 'cruising' : (isCharging(s) ? 'charging' : 'off');
   return {
+    cruiseChargeProgress: cruiseProgress,
+    cruiseEngaged: cruiseState === 'cruising',
+    cruiseCharging: cruiseState === 'charging',
+    cruiseState,
     // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
     // empty state ("CHARGE 0" read as a broken label, not as "none left").
     1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,

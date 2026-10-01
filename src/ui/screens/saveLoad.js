@@ -356,7 +356,15 @@ export function slotConfirmSummary(meta) {
     .join(' - ') || 'Saved game';
 }
 
-function loadConfirmBody(id, meta) {
+/**
+ * The trusted-slot confirmation sentence for a load.
+ *
+ * Exported because the death screen's "Load latest" (PRO-14) must go through the SAME confirmation
+ * the save browser uses: a one-click load of the newest slot is the most dangerous load in the game
+ * (it silently discards whatever the player has since the last write), so it gets the same named
+ * slot, the same summary, and the same warning. Never let a second caller write its own wording.
+ */
+export function loadConfirmBody(id, meta) {
   return 'Loading will replace your current game with ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. Unsaved progress is lost.';
 }
 

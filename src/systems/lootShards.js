@@ -544,10 +544,15 @@ export const lootShards = {
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
       this._unsubs.push(this.bus.on('massline:throw', (p) => this._onThrownPayload(p || {})));
       this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
-      this._unsubs.push(this.bus.on('game:started', () => {
+      // Transient bookkeeping rides every session/sector boundary: entity ids recycle through
+      // the LIFO free-list, so a pod captured last sector would swallow a recycled id's emit.
+      const resetTransient = () => {
         if (this._magnetTracked) this._magnetTracked.clear();
         this._catchNetsQuiet = null;
-      }));
+      };
+      for (const evt of ['game:started', 'game:new', 'game:newGame', 'save:loaded', 'sector:enter']) {
+        this._unsubs.push(this.bus.on(evt, resetTransient));
+      }
     }
   },
 
@@ -605,8 +610,9 @@ export const lootShards = {
     }
   },
 
-  // One readable event per pod per ring-entry (not per tick): presentation and the archetype
-  // harness count captures, not pull volume. The tracker is bounded and self-pruning.
+  // One readable event per pod id per sector window (not per tick, not per ring-entry):
+  // presentation and the archetype harness count captures, not pull volume. The tracker is
+  // bounded, self-pruning, and cleared on session/sector boundaries because ids recycle.
   _noteMagnetCapture(pod, state) {
     if (!this._magnetTracked) this._magnetTracked = new Set();
     if (this._magnetTracked.has(pod.id)) return;

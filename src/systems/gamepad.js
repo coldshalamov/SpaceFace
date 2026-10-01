@@ -9,18 +9,20 @@
 //   0  A / Cross      -> accept / Massline thumb action in flight
 //   1  B / Circle      -> cancel / back; dock when the station prompt is up in flight
 //   2  X / Square      -> cycle target
-//   3  Y / Triangle    -> codex / journal
-//   4  LB / L1         -> brake / reverse thrust
-//   5  RB / R1         -> boost
+//   3  Y / Triangle    -> shove / repulsor
+//   4  LB / L1         -> brake / reverse thrust; station tab previous
+//   5  RB / R1         -> boost; station tab next
 //   6  LT / L2         -> mine beam (analog)
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
+//  10  L3              -> travel burn
 //  11  R3              -> countermeasure
 //  12  D-pad up        -> UI nav up; auto-target / draw-to-fly toggle in flight
-//  13  D-pad down      -> UI nav down
-//  14  D-pad left      -> UI nav left
-//  15  D-pad right     -> UI nav right
+//  13  D-pad down      -> UI nav down; detonate armed bombs and charges
+//  14  D-pad left      -> UI nav left; cycle bomb-bay payload
+//  15  D-pad right     -> UI nav right; drop bomb
+//  16  Home / Guide    -> codex / journal (moved off Y; see GAMEPAD_DEFAULT_BINDINGS)
 
 const STD = {
   accept: 0,
@@ -77,10 +79,9 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   dropBomb: Object.freeze(['dRight']),
   cycleBomb: Object.freeze(['dLeft']),
   chargeDetonate: Object.freeze(['dDown']), // flight only; UI navigation remains modal-owned
-  // Hull burst (Gravity Bumper / Fire Lance / Grip Bumper). Every standard button is already claimed by a
-  // flight verb, so the burst has no default pad button; it is rebindable (Settings > Controller) and the
-  // edge is read in input.js like every other pad verb.
-  hullBurst: Object.freeze([]),
+  // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
+  // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
+  // system polling the player's boost flag. There is nothing to bind.
 });
 const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
 
@@ -94,7 +95,6 @@ export function setGamepadIdleCleanSkipForBench(enabled) {
 export function getGamepadIdleCleanSkipForBench() {
   return GAMEPAD_IDLE_CLEAN_SKIP !== false;
 }
-
 
 // Player-facing glyph per standard-layout button (PQ-164.01). Short primary names — the
 // Settings layout note and Help carry the dual Xbox/PlayStation naming.
@@ -118,6 +118,58 @@ export const GAMEPAD_BUTTON_LABELS = Object.freeze({
   home: 'Home',
 });
 
+/**
+ * The dual Xbox/PlayStation spelling of each standard button — what the Help sheet has always
+ * taught, and the only register a brand-new player can act on. It lives beside
+ * GAMEPAD_BUTTON_LABELS rather than in the UI tree so the button vocabulary has exactly one owner:
+ * a second map under src/ui is how the four competing token roots started.
+ *
+ * `home` is deliberately 'Guide' here and 'Home' in GAMEPAD_BUTTON_LABELS. Both are correct in
+ * their own lane: 'Home' is the W3C Standard Gamepad button name, 'Guide' is what the button is
+ * called on the pad people actually own. Do not "reconcile" them.
+ *
+ * Keys that need no disambiguation (L3, R3, the D-pad) are absent and fall back to the short label.
+ */
+export const GAMEPAD_DUAL_LABELS = Object.freeze({
+  accept: 'A / Cross',
+  cancel: 'B / ○',
+  action: 'X / □',
+  alt: 'Y / △',
+  l1: 'LB / L1',
+  r1: 'RB / R1',
+  l2: 'LT / L2',
+  r2: 'RT / R2',
+  view: 'View / Select',
+  menu: 'Start / Options',
+  home: 'Guide',
+});
+
+/**
+ * Every standard button name bound to `action`, in binding order, with unknown names dropped.
+ *
+ * A binding is an ARRAY because one action may answer to more than one physical button; callers
+ * that read `[0]` silently truncate a chord. `gamepadGlyphForAction` (src/ui/bindings.js) keeps
+ * first-button-only on purpose — it feeds prompt-deck chips, where a chord cannot fit — so chord
+ * readers must ask for the whole list instead.
+ *
+ * UI-ONLY. These allocate and so may not be called from the per-tick path: `resolveGamepadBindings`
+ * carries the no-allocation contract.
+ */
+export function gamepadButtonNames(action, map) {
+  const list = map && map[action];
+  return Array.isArray(list) ? list.filter(name => GAMEPAD_BUTTON_LABELS[name]) : [];
+}
+
+/**
+ * `gamepadButtonNames` mapped to player text. `dual` selects the Xbox/PlayStation register used by
+ * the stock Help sheet; a remapped map prints the short glyph, which is the same register the
+ * Settings remap row shows, so the two screens agree after a rebind.
+ */
+export function gamepadButtonLabels(action, map, { dual = false } = {}) {
+  return gamepadButtonNames(action, map)
+    .map(name => (dual ? GAMEPAD_DUAL_LABELS[name] || GAMEPAD_BUTTON_LABELS[name] : GAMEPAD_BUTTON_LABELS[name]));
+}
+
 // --- Remapping (PQ-164.01) -------------------------------------------------------------------
 // A button may serve two actions only when their contexts are disjoint — a modal-only verb
 // (cancel, station tab cycling) is inert in flight, and flight verbs are neutralized while a
@@ -140,7 +192,6 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   dropBomb: 'flight',
   cycleBomb: 'flight',
   chargeDetonate: 'flight',
-  hullBurst: 'flight',
   massline: 'flight',
   deployRepulsor: 'flight',
   dock: 'flight',

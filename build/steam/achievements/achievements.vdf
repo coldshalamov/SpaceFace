@@ -308,5 +308,119 @@
 				"icon_gray"		"SF_SIX_FIGURES_unachieved.jpg"
 			}
 		}
+		"17"
+		{
+			"api_name"		"SF_RETURNING_CALLER"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Returning Caller"
+				}
+				"desc"
+				{
+					"english"		"Dock at ten stations."
+				}
+				"icon"		"SF_RETURNING_CALLER_achieved.jpg"
+				"icon_gray"		"SF_RETURNING_CALLER_unachieved.jpg"
+			}
+		}
+		"18"
+		{
+			"api_name"		"SF_TEN_PERMITS"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Ten Permits"
+				}
+				"desc"
+				{
+					"english"		"Complete ten contracts."
+				}
+				"icon"		"SF_TEN_PERMITS_achieved.jpg"
+				"icon_gray"		"SF_TEN_PERMITS_unachieved.jpg"
+			}
+		}
+		"19"
+		{
+			"api_name"		"SF_THE_HUNDRED_THOUSAND"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"The Hundred Thousand"
+				}
+				"desc"
+				{
+					"english"		"Earn a million credits over your career."
+				}
+				"icon"		"SF_THE_HUNDRED_THOUSAND_achieved.jpg"
+				"icon_gray"		"SF_THE_HUNDRED_THOUSAND_unachieved.jpg"
+			}
+		}
+		"20"
+		{
+			"api_name"		"SF_QUARRY"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Quarry"
+				}
+				"desc"
+				{
+					"english"		"Bring aboard a thousand units of ore and salvage."
+				}
+				"icon"		"SF_QUARRY_achieved.jpg"
+				"icon_gray"		"SF_QUARRY_unachieved.jpg"
+			}
+		}
+		"21"
+		{
+			"api_name"		"SF_LONG_HAUL"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Long Haul"
+				}
+				"desc"
+				{
+					"english"		"Complete twenty-five jumps."
+				}
+				"icon"		"SF_LONG_HAUL_achieved.jpg"
+				"icon_gray"		"SF_LONG_HAUL_unachieved.jpg"
+			}
+		}
+		"22"
+		{
+			"api_name"		"SF_SALVAGE_CREW"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Salvage Crew"
+				}
+				"desc"
+				{
+					"english"		"Throw fifty bodies with the Massline."
+				}
+				"icon"		"SF_SALVAGE_CREW_achieved.jpg"
+				"icon_gray"		"SF_SALVAGE_CREW_unachieved.jpg"
+			}
+		}
 	}
 }

@@ -1,8 +1,10 @@
 // Hull-burst overhaul, slice C: the wedge is SEEN (design doc section 4; the review's "the wedge is invisible").
 //
-// While a burst is live the player carries a wedge, and what is drawn is what hits: the field presentation draws
-// it with the Clearing Cone's designed recipe (source-to-tip banks, a working membrane, a truth boundary at the
-// strike edge) in a per-type tint. This tests the record that feeds it and the presentation that draws it, headless.
+// While the boost upgrade's burst is live the player carries a wedge, and what is drawn is what hits: the field
+// presentation draws it with the Clearing Cone's designed recipe (source-to-tip banks, a working membrane, a
+// truth boundary at the strike edge) in a per-type tint. The wedge is live exactly while the boost gesture pays
+// (phase 'active'), and retires the moment it ends. This tests the record that feeds the presentation and the
+// presentation that draws it, headless.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
@@ -31,7 +33,6 @@ function stateWith({ kind = 'gravity', rank = 1, phase = 'active', rot = 0, hits
 
 test('no wedge unless a burst is live and fitted', () => {
   assert.equal(hullBurstFieldRecord(stateWith({ phase: 'ready' })), null);
-  assert.equal(hullBurstFieldRecord(stateWith({ phase: 'cooling' })), null);
   assert.equal(hullBurstFieldRecord(stateWith({ kind: null })), null);
   assert.equal(hullBurstFieldRecord({}), null);
   const dead = stateWith();
@@ -82,7 +83,7 @@ test('the presentation draws a live wedge, retires it when the burst ends, and k
     assert.equal(o.stats.active, 1, `${kind}: one live wedge`);
     assert.ok(o.batch.count > 0 && o.mesh.visible, `${kind}: actual surfaces are submitted`);
     assert.equal(o._quietEmpty, false, `${kind}: the quiet latch does not swallow a live burst`);
-    s.hullBurst.phase = 'cooling';
+    s.hullBurst.phase = 'ready'; // the boost ended
     s.simTime = 0.6;
     o.update(0.016, s);
     assert.equal(o.stats.releasing, 1, `${kind}: it releases, it does not pop`);

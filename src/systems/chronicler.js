@@ -91,6 +91,10 @@ export function createChronicler(options = {}) {
       this._memory = memory;
       this._state.chronicler = memory;
       this._seen = new Set(memory.seen);
+      // `memory.seen` is a FIFO-capped ring (maxSeen), so it can forget a dedupe key for a fact the
+      // archive still retains. `_retainedKeys` is the second membership set that closes that hole —
+      // it is rebuilt wholesale from pending + every retained node whenever the archive changes, so
+      // a re-observed fact is still a duplicate after its ring entry ages out.
       this._retainedKeys = new Set([...memory.pending, ...memory.stories.flatMap(s => s.nodes)].map(f => f.dedupe));
       this._nextWake = 0;
       this._views = views;

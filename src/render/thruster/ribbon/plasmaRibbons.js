@@ -138,6 +138,22 @@ const RIBBON_VERT = /* glsl */`
   uniform float uBoost;
   uniform float uDash;
 
+  // Lagged centerline (exhaustLag.js). When uUseLag is 0 the jet is the straight nozzle-local
+  // extrusion it always was; the plasma stream binds the world-space spine it integrates from the
+  // bell's heading history, so a turn bends the jet instead of swinging it like a bolted tail.
+  uniform sampler2D uCenterTex;
+  uniform float uUseLag;
+  uniform float uCenterCount;
+
+  // Standing shock-cell train, in world units (pitch, decay reach) with a boost gain. Zero
+  // amplitude disables it entirely.
+  uniform float uShockAmp;
+  uniform float uShockFreq;      // rad per world unit aft
+  uniform float uShockDecay;     // 1/decay reach, per world unit
+  uniform float uShockBoostGain;
+  // Petal clumping: pull the sheet fan toward a few coarse lobes. 0 restores the even fan.
+  uniform float uClump;
+
   varying float vAxial;         // 0 at the lip, 1 at the designed tip — absolute, for temperature
   varying float vLife;          // 0 at the lip, 1 at THIS sheet's own end — for its run-out
   varying float vRadiusRatio;   // local column radius / throat radius; >= 1
@@ -147,6 +163,12 @@ const RIBBON_VERT = /* glsl */`
   varying vec3  vNormal;
 
   ${NOISE_GLSL}
+
+  // One texel of the lagged spine. LinearFilter interpolates between stations for free.
+  vec3 lagCenter(float station) {
+    float u = (clamp(station, 0.0, uCenterCount - 1.0) + 0.5) / uCenterCount;
+    return texture2D(uCenterTex, vec2(u, 0.5)).xyz;
+  }
 
   /**
    * How far down the jet one sheet gets before it is gone, as a fraction of the jet length.
@@ -197,13 +219,28 @@ const RIBBON_VERT = /* glsl */`
     float compression = 0.72 + 0.28 * cos(s * 24.0 - 0.45);
     float radius = coreR * compression + uSpread * pow(s, 0.7) * fan * 1.3;
 
+    // STANDING SHOCK-CELL TRAIN (recipe jet.shock). Over-expanded nozzles pinch into a short run
+    // of diamonds hard by the lip and the train decays before the shear layer takes over — a
+    // machined, engine-specific signature the generic compression term cannot give. Zero
+    // amplitude leaves the column exactly as shipped.
+    float sAbs = uJetLength * s;
+    float shock = uShockAmp * (1.0 + uBoost * uShockBoostGain)
+      * exp(-sAbs * uShockDecay) * cos(sAbs * uShockFreq - 0.45);
+    radius *= 1.0 + shock;
+
     // Kelvin-Helmholtz roll-up: the shear layer curls into rings that grow as they convect. Amplitude
     // grows downstream, and because it rides the flow term the curls visibly travel.
     float roll = fbm2(vec2(flow, evo)) - 0.5;
     radius *= 1.0 + roll * uRollAmp * breakup;
 
     // Azimuth: a standing per-sheet swirl plus a travelling meander, so strands hook and fold.
-    float theta = (ribbon / max(uRibbonCount, 1.0)) * 6.2831853
+    // PETAL CLUMPING (uClump): a real plume's shear layer breaks into a few coarse lobes, not an
+    // even 12-way fan. Sheets keep their seeds but are pulled toward cluster centres, so the bright
+    // folds bunch into petals with dark interior between the lobes instead of a uniform pinwheel.
+    float even = (ribbon / max(uRibbonCount, 1.0)) * 6.2831853;
+    float clumps = 3.0;
+    float cluster = (floor(ribbon * clumps / max(uRibbonCount, 1.0)) + 0.5) / clumps * 6.2831853;
+    float theta = mix(even, cluster, uClump)
       + seedB * 6.2831853
       + uSwirl * s * breakup * (seedA > 0.5 ? 1.0 : -1.0)
       + (fbm2(vec2(flow * 0.6, evo * 0.8)) - 0.5) * uWobble * breakup;
@@ -219,11 +256,34 @@ const RIBBON_VERT = /* glsl */`
 
     radiusRatio = radius / max(uThroatRadius * 0.62, 1e-3);
 
-    vec3 up = cross(uSideRef, uAft);
-    return uNozzlePos
-      + uAft * (uJetLength * s - uEmbed)
-      + uSideRef * (cos(theta) * radius)
-      + up * (sin(theta) * radius);
+    // WHERE THE SPINE LIVES. Analytic (default): straight off the current bell axis — the shock
+    // structure of a real nozzle stands still relative to the bell. Lagged (uUseLag): the spine is
+    // the world-space centerline the stream integrated from the bell's heading history, so the far
+    // jet still points where the gas in it was actually emitted, and the jet flows back onto the
+    // bell through a turn instead of swinging rigidly with the hull.
+    vec3 base;
+    vec3 sideAxis;
+    vec3 upAxis;
+    if (uUseLag > 0.5) {
+      float stationF = s * (uCenterCount - 1.0);
+      vec3 spine = lagCenter(stationF);
+      vec3 spinePrev = lagCenter(max(stationF - 1.0, 0.0));
+      vec3 spineNext = lagCenter(min(stationF + 1.0, uCenterCount - 1.0));
+      vec3 tanLag = normalize(spineNext - spinePrev + vec3(1e-5, 1e-5, 1e-5));
+      // The radial fan stands perpendicular to the LOCAL flow, so a bent jet's cross-sections
+      // stay round instead of shearing against the chord.
+      sideAxis = normalize(cross(tanLag, vec3(0.0, 1.0, 0.0)) + vec3(1e-5, 0.0, 0.0));
+      upAxis = cross(sideAxis, tanLag);
+      // Exhaust is born inside the throat: the root sits uEmbed back up the local flow.
+      base = spine - tanLag * uEmbed;
+    } else {
+      base = uNozzlePos + uAft * (uJetLength * s - uEmbed);
+      sideAxis = uSideRef;
+      upAxis = cross(uSideRef, uAft);
+    }
+    return base
+      + sideAxis * (cos(theta) * radius)
+      + upAxis * (sin(theta) * radius);
   }
 
   void main() {
@@ -486,6 +546,18 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       uGrazeGain: { value: 5.0 },
       uGrazeFloor: { value: 0.22 },
       uCamPos: { value: new T.Vector3() },
+      // Lagged centerline. Default OFF: every consumer that does not bind a spine (retro jets,
+      // lab pages, unit tests) renders the straight analytic jet.
+      uCenterTex: { value: null },
+      uUseLag: { value: 0 },
+      uCenterCount: { value: 2 },
+      // Shock-cell train and petal clumping. Zero by default: the player stream opts in from its
+      // recipe, nothing else changes look.
+      uShockAmp: { value: 0 },
+      uShockFreq: { value: 4.2 },
+      uShockDecay: { value: 0.2 },
+      uShockBoostGain: { value: 0 },
+      uClump: { value: 0 },
     },
     vertexShader: RIBBON_VERT,
     fragmentShader: RIBBON_FRAG,
@@ -564,6 +636,23 @@ export class PlasmaRibbonPlume {
     u.uBoost.value = env.boost || 0;
     u.uDash.value = env.dash || 0;
 
+    // Optional lagged spine + authored shock/clump structure. Absent env fields leave the
+    // shipped analytic straight jet untouched.
+    if (env.centerTex && env.centerCount >= 2) {
+      u.uCenterTex.value = env.centerTex;
+      u.uCenterCount.value = env.centerCount;
+      u.uUseLag.value = 1;
+    } else {
+      u.uUseLag.value = 0;
+    }
+    if (env.shock) {
+      u.uShockAmp.value = env.shock.amplitude || 0;
+      u.uShockFreq.value = env.shock.freqPerWU || u.uShockFreq.value;
+      u.uShockDecay.value = env.shock.decayPerWU || u.uShockDecay.value;
+      u.uShockBoostGain.value = env.shock.boostGain || 0;
+    }
+    if (env.clump != null) u.uClump.value = env.clump;
+
     // Length is the throttle's primary consequence: this is the jet growing out of the bell.
     u.uJetLength.value = env.jetLength != null ? env.jetLength : this.jetLength * drive;
 
@@ -598,6 +687,7 @@ export class PlasmaRibbonPlume {
       nozzleY: nozzle.y,
       nozzleZ: nozzle.z,
       animated: 'travelling-wave',
+      lagged: this.material.uniforms.uUseLag.value > 0.5,
       grazing: true,
       visible: !!this.mesh.visible,
     };

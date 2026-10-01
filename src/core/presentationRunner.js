@@ -183,6 +183,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     || (() => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now()));
+  const onSimulationFailure = typeof deps.onSimulationFailure === 'function'
+    ? deps.onSimulationFailure
+    : null;
   const measureNow = deps.perfNow || perfNow;
   const presentationJournal = deps.presentationJournal
     || registry?.ctx?.presentationJournal
@@ -327,6 +330,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     lastTeardownErrorMessage: null,
     lastFrameError: null,
     frameErrorCount: 0,
+    simulationFailureNotified: false,
+    simulationFailure: null,
     // frameErrorCount is cumulative history: it answers "did this session ever throw".
     // consecutiveFrameErrors is state: it answers "is the canvas dead right now". Those are
     // different questions and one counter cannot carry both, which is why a renderer that threw
@@ -591,6 +596,39 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     synchronizeLifecycle(typeof command.reason === 'string' && command.reason
       ? command.reason
       : 'shell');
+  }
+
+  function notifySimulationFailure() {
+    if (diagnostics.simulationFailureNotified) return;
+    const simDiagnostics = simulationRunner.getDiagnostics?.() || null;
+    if (!simDiagnostics || simDiagnostics.closed !== true) return;
+    const message = typeof simDiagnostics.closeCauseMessage === 'string'
+      && simDiagnostics.closeCauseMessage.length > 0
+      ? simDiagnostics.closeCauseMessage
+      : null;
+    if (!message) return;
+    diagnostics.simulationFailureNotified = true;
+    const failure = Object.freeze({
+      message,
+      site: typeof simDiagnostics.closeCauseSite === 'string' && simDiagnostics.closeCauseSite
+        ? simDiagnostics.closeCauseSite
+        : null,
+      tick: state.tick,
+      simTime: state.simTime,
+    });
+    diagnostics.simulationFailure = failure;
+    try {
+      stop();
+    } catch (error) {
+      console.error('[loop] presentation stop after simulation failure:', error);
+    }
+    if (onSimulationFailure) {
+      try {
+        onSimulationFailure(failure);
+      } catch (error) {
+        console.error('[loop] onSimulationFailure callback failed:', error);
+      }
+    }
   }
 
   function requestJournalRebuild(reason) {
@@ -964,6 +1002,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           + 'frozen while the loop and HUD keep running. Last error: '
           + `${diagnostics.lastFrameError}`);
       }
+      notifySimulationFailure();
     } finally {
       if (perf && typeof perf.recordFrameCallback === 'function') {
         perf.recordFrameCallback(measureNow() - callbackStart);

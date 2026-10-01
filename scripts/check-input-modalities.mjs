@@ -46,6 +46,10 @@ class El {
     this.parentNode = null;
     this.attrs = Object.create(null);
     this.style = {};
+    // gameLocalization.js writes document.documentElement.dataset.locale at import; without a
+    // dataset the whole check dies before its first assertion (found while revalidating an
+    // input.js edit — this stub gap had already silenced the check).
+    this.dataset = Object.create(null);
     this.listeners = new Map();
     this.disabled = false;
     this._text = '';

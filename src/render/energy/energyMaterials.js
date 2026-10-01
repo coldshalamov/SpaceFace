@@ -173,7 +173,7 @@ const RIBBON_FRAGMENT = /* glsl */`
   uniform float uOverload;
   uniform float uReel;
   uniform float uSheath;   // 0 = white-hot filament draw, 1 = wide saturated halo draw
-  // NOT the physical strain ratio. src/render/vfx.js:3344 feeds this the PAST-CAPTURE WORKING READ,
+  // NOT the physical strain ratio. src/render/vfx.js _updateTetherCable feeds this the PAST-CAPTURE WORKING READ,
   // clamp((load - 0.35) / (1 - 0.35), 0, 1) — how far the line is working beyond the capture floor.
   // It used to be fed tether.strain (lastTension / breakTension), which is ~1e-4 in ordinary play
   // against a 10,500,000 breakTension, so uStrain*uStrain below was always 0 and this chatter never
@@ -184,6 +184,11 @@ const RIBBON_FRAGMENT = /* glsl */`
   // 0→1 progress of the latch kinetic wave: one bright band rushing the chord from the anchor
   // (vAlong 1) back to the ship (vAlong 0) in the first beat after the hitch bites. 1 = spent.
   uniform float uLatchWave;
+  // PIC-13: stored swing energy, 0..1. The sim publishes tether.strainGlow (the whipStrainGlow
+  // law in tetherGameplay.js) and vfx.js transports it; nothing downstream re-derives it from
+  // stretch, load or tension. A steady brightness channel — radiance and the filament's white
+  // drift below — never alpha and never a motion term.
+  uniform float uGlow;
 
   float ribbonProfileIntegral(float side, float exponent) {
     float x = clamp(abs(side), 0.0, 1.0);
@@ -251,7 +256,7 @@ const RIBBON_FRAGMENT = /* glsl */`
     sheathColor = mix(sheathColor, vec3(0.74, 0.95, 1.0), uReel * 0.26);
     float whiteMix = (1.0 - uSheath) * clamp(
       coreHeat * (0.55 + 0.45 * t) + pulse * 0.30 + winch * uReel * 0.45 + uWhip * 0.6
-        + waveBand * 1.2,
+        + waveBand * 1.2 + uGlow * 0.30,
       0.0, 1.0);
     vec3 col = mix(sheathColor, vec3(1.0), whiteMix);
 
@@ -265,6 +270,9 @@ const RIBBON_FRAGMENT = /* glsl */`
       + winch * uReel * 1.6
       + shiver * 1.7
       + uWhip * (2.2 + 3.0 * (1.0 - uSheath))
+      // PIC-13: a working wind-up lifts the rope toward the white-hot snap read, but the ceiling
+      // stays under the uWhip transient — a loaded whip reads before it snaps, never as one.
+      + uGlow * (1.3 + 1.0 * (1.0 - uSheath))
       + waveBand * (2.4 + 3.2 * (1.0 - uSheath))
     );
 
@@ -596,6 +604,7 @@ export function createMasslineRibbonMaterial(options = {}) {
       uSheath: { value: finite(options.sheath, 0) },
       uStrain: { value: 0 },
       uWhip: { value: 0 },
+      uGlow: { value: 0 },
       uLatchWave: { value: 1 },
     },
     vertexShader: RIBBON_VERTEX,
@@ -640,6 +649,8 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (u.uReel && Number.isFinite(frame.reel)) u.uReel.value = THREE.MathUtils.clamp(frame.reel, 0, 1);
   if (u.uStrain && Number.isFinite(frame.strain)) u.uStrain.value = THREE.MathUtils.clamp(frame.strain, 0, 1);
   if (u.uWhip && Number.isFinite(frame.whip)) u.uWhip.value = THREE.MathUtils.clamp(frame.whip, 0, 1);
+  // frame.glow is the sim-published tether.strainGlow (PIC-13) — a transport, never a re-derivation.
+  if (u.uGlow && Number.isFinite(frame.glow)) u.uGlow.value = THREE.MathUtils.clamp(frame.glow, 0, 1);
   if (u.uLatchWave && Number.isFinite(frame.latchWave)) u.uLatchWave.value = THREE.MathUtils.clamp(frame.latchWave, 0, 1);
   if (u.uSheath && Number.isFinite(frame.sheath)) u.uSheath.value = THREE.MathUtils.clamp(frame.sheath, 0, 1);
   if (u.uPulseSpeed && Number.isFinite(frame.pulseSpeed)) u.uPulseSpeed.value = frame.pulseSpeed;

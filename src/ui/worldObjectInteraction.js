@@ -7,7 +7,7 @@ import { interactionDisplayName, interactionProfileForEntity, presentationStatus
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
-import { createHoverTag, placeHoverTag } from './orrery/hoverTag.js';
+import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
 
 function hasOwn(o, k) {
   return !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -210,10 +210,20 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     return hoverEntity.mesh || null;
   }
 
+  function hoverTint() {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!hoverEntity || !player) return 'neutral';
+    if (isHostileToPlayer(hoverEntity, player.team, state)) return 'hostile';
+    if ((player.team !== 0 && hoverEntity.team === player.team) || (hoverEntity.data && hoverEntity.data.ownerId === player.id)) return 'friendly';
+    return 'neutral';
+  }
+
   function publishHover() {
     const root = (acceptingInput() && hoverEntity) ? hoverRoot() : null;
     if (root === hoverRootPublished) return;
     hoverRootPublished = root;
+    try { hoverPresentation.setTint(hoverTint()); } catch (_) {}
     try { hoverPresentation.setSubject(root); } catch (_) {}
   }
 
@@ -398,7 +408,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       tag.el.dataset.beam = hint.beam ? '1' : '0';
       tag.el.dataset.sling = hint.sling ? '1' : '0';
       tag.el.dataset.selected = selected ? '1' : '0';
+      tag.el.dataset.relation = relation.toLowerCase();
     }
+    tag.el.dataset.bars = paintHoverTagVitals(tag, entity) ? '1' : '0';
     const pt = lastPoint || pointerPoint(null);
     if (pt) {
       placeHoverTag(tag.el, pt.x, pt.y,

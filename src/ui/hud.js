@@ -24,6 +24,7 @@ import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
+import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { catalogHullFacts } from '../systems/ships.js';
@@ -34,7 +35,7 @@ import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution, evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
-import { resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
+import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
@@ -258,12 +259,15 @@ function respawnStationName(id) {
 export function respawnToastText(payload = {}) {
   const parts = ['Recovered at ' + respawnStationName(payload.stationId)];
   const cost = Math.max(0, Math.round(Number(payload.costCr) || 0));
-  if (cost > 0) parts.push('recovery ' + cost.toLocaleString('en-US') + ' cr');
+  // PRO-03: locale-aware, not a pinned 'en-US'. The payload may carry the state so a settings
+  // choice is honoured before the runtime locale has been applied.
+  const locale = payload && payload.locale;
+  if (cost > 0) parts.push('recovery ' + formatCount(cost, payload, { locale }) + ' cr');
   if (typeof payload.insuranceStatus === 'string' && payload.insuranceStatus) {
     parts.push(payload.insuranceStatus.toLowerCase());
   }
   const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
-  if (refund > 0) parts.push('insurance +' + refund.toLocaleString('en-US') + ' cr');
+  if (refund > 0) parts.push('insurance +' + formatCount(refund, payload, { locale }) + ' cr');
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
   if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
   else if (payload.cargoLost) parts.push('cargo lost');
@@ -746,6 +750,17 @@ export function travelTapeNavigationState(nav = {}) {
     }
     : null;
   return { manual: !autopilotActive && !executorEngaged, arrival };
+}
+
+/** The stop vector a held pilot brake is buying right now — the kernel's own brake law carried
+ * to rest (propulsionKernel.previewBrakeStop), never a second braking model. Null whenever the
+ * brake is not held, so "the model carries it while braking and nothing otherwise" is structural. */
+export function resolveBrakeStopPreview(player, profile, input) {
+  if (!player || !input) return null;
+  const braking = !!((input.actions && input.actions.brake) || input.brake);
+  if (!braking) return null;
+  const mode = (player._flightFrame && player._flightFrame.assistMode) || input.assistMode || 'assisted';
+  return previewBrakeStop(player, profile, mode);
 }
 
 /** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
@@ -1236,6 +1251,8 @@ function injectTravelTapeStyle() {
     flex-wrap:wrap; font-family:var(--k-text); font-size:var(--k-fs-data); }
   .sf-vtape__state { color:var(--vt-brass); flex:0 0 auto; }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape[data-state="braking"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape--stopping .sf-vtape__arclabel { color:var(--vt-amber); }
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
   /* The spool note stays inside the instrument's own box: a long break reason wraps to a second
      line rather than running over the neighbouring cluster readouts. */
@@ -1875,7 +1892,8 @@ export function createHud(ctx, alerts) {
     const player = state.player || {};
     const cr = Math.round(player.credits || 0);
     const st = player.stats || {};
-    return `Credits: ${cr.toLocaleString('en-US')} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString('en-US')}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString('en-US')}`;
+    // PRO-03: every figure in this tooltip reads in the player's own locale.
+    return `Credits: ${formatCount(cr, state)} CR\nLifetime profit: ${formatCount(st.lifetimeProfit, state)}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${formatCount(st.biggestSingleProfit, state)}`;
   }
   function buildWeaponsTip(p) {
     if (!p || !p.data || !p.data.weapons || !p.data.weapons.length) return 'No weapons fitted';
@@ -3414,7 +3432,7 @@ export function createHud(ctx, alerts) {
 
     const basisText = contentEl.querySelector('.sf-ins-basis');
     const basis = getAverageBasis(state, commodityId);
-    basisText.textContent = basis != null ? `${basis.toLocaleString('en-US')} CR` : 'N/A';
+    basisText.textContent = basis != null ? `${formatCount(basis, state)} CR` : 'N/A';
 
     const buyerText = contentEl.querySelector('.sf-ins-buyer');
     const routeBtn = contentEl.querySelector('.sf-btn-route');
@@ -3424,7 +3442,7 @@ export function createHud(ctx, alerts) {
       const age = cargoMemoryAgeLabel(state, best.seenAt);
       const jumps = best.jumps == null ? '?' : best.jumps;
       const jumpText = jumps === 1 ? '1 jump' : `${jumps} jumps`;
-      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString('en-US')} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
+      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${formatCount(best.sell, state)} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
       routeBtn.disabled = false;
       routeBtn.onclick = () => {
         applyTradeNavigation(ctx, best.stationId, commodityId);
@@ -3580,7 +3598,7 @@ export function createHud(ctx, alerts) {
           const qty = Math.max(0, Math.floor(Number(entry.qty) || 0));
           const total = Math.max(0, Math.round(Number(entry.total) || 0));
           const profit = Math.round(Number(entry.profit) || 0);
-          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString('en-US')} CR</span>` : '';
+          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${formatCount(profit, state)} CR</span>` : '';
           rowsHtml += `
             <div class="sf-ledger-row">
               <div class="sf-ledger-left">
@@ -3588,7 +3606,7 @@ export function createHud(ctx, alerts) {
                 <span class="sf-ledger-station">${stn} (${age})</span>
               </div>
               <div class="sf-ledger-right">
-                <span class="sf-ledger-val">${total.toLocaleString('en-US')} CR</span>
+                <span class="sf-ledger-val">${formatCount(total, state)} CR</span>
                 ${profitHtml}
               </div>
             </div>
@@ -3934,7 +3952,7 @@ export function createHud(ctx, alerts) {
     _credTo = target;
     _credT = 0;
     creditsDirty = false;
-    setText(elCredits, Math.round(_credFrom).toLocaleString('en-US'));
+    setText(elCredits, formatCount(_credFrom, state));
     // The stake sits beside the run wallet whenever the wallet speaks (swarm only — it is the
     // run's difficulty contract, constant for the run's life).
     if (elStake) {
@@ -3960,7 +3978,7 @@ export function createHud(ctx, alerts) {
   function tickCreditsTween(dt) {
     if (_credT >= 1) return;
     _credT = Math.min(1, _credT + (dt || 0.016) / CRED_TWEEN);
-    setText(elCredits, Math.round(_credCurrent()).toLocaleString('en-US'));
+    setText(elCredits, formatCount(_credCurrent(), state));
   }
   function refreshCargo() {
     cargoDirty = false;
@@ -4851,7 +4869,10 @@ export function createHud(ctx, alerts) {
     const speed = Math.hypot(p.vel.x, p.vel.z);
     const active = driveState !== 'off';
     const nearCeiling = ceiling > 0 && speed >= ceiling * 0.8;
-    const want = active || nearCeiling;
+    // A held pilot brake is a third reveal condition: the tape carries the stop vector the brake
+    // is buying even with the drive off — ordinary flight braking is exactly when it matters.
+    const brakeStop = resolveBrakeStopPreview(p, profile, state.input);
+    const want = active || nearCeiling || !!brakeStop;
 
     // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
     // prefers-reduced-motion); this tracked value only decides when the element is fully retired
@@ -4863,11 +4884,13 @@ export function createHud(ctx, alerts) {
     if (!want && _vtapeAlpha <= 0.001) {
       setClass(vt.root, 'sf-vtape--brake', false);
       setClass(vt.root, 'sf-vtape--approach', false);
+      setClass(vt.root, 'sf-vtape--stopping', false);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
       _vtapeBrakeOn = false;
       return;
     }
 
-    setAttr(vt.root, 'data-state', driveState);
+    setAttr(vt.root, 'data-state', driveState === 'off' && brakeStop ? 'braking' : driveState);
 
     // --- tape: current speed against the per-family ceiling ---
     const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
@@ -4885,7 +4908,9 @@ export function createHud(ctx, alerts) {
     if (slow) {
       setText(vt.vmaxText, 'V-MAX ' + Math.round(ceiling));
       // Every state prints its NAME — hue is never the only carrier (WCAG 1.4.1).
-      setText(vt.state, driveState === 'off' ? 'DRIVE OFF' : 'DRIVE ' + driveState.toUpperCase());
+      setText(vt.state, driveState === 'off'
+        ? (brakeStop ? 'BRAKING' : 'DRIVE OFF')
+        : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
       if (driveState === 'spooling') note = 'SPOOLING…';
       else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
@@ -4896,14 +4921,19 @@ export function createHud(ctx, alerts) {
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
     }
 
-    // --- approach row: the stopping arc, manual burns only ---
+    // --- approach row: the stopping arc, manual burns and the held brake ---
     const nav = state.nav || {};
     const { manual, arrival } = travelTapeNavigationState(nav);
 
     // The follower auto-brakes, so its arc would be noise. Only a hand-flown approach gets this.
     const cue = (manual && arrival) ? evaluateArrivalCue(p, profile, arrival) : null;
     const showArc = !!(cue && cue.active && Number.isFinite(cue.distance));
-    setClass(vt.root, 'sf-vtape--approach', showArc);
+    // With no destination on the row, the held brake's own stop vector takes it: the span is the
+    // distance to rest and the ring marks the rest point — same visual language as the arrival arc.
+    const showBrakeStop = !showArc
+      && !!(brakeStop && Number.isFinite(brakeStop.stopDistance) && brakeStop.stopDistance > 0);
+    setClass(vt.root, 'sf-vtape--approach', showArc || showBrakeStop);
+    setClass(vt.root, 'sf-vtape--stopping', showBrakeStop);
 
     if (showArc) {
       // The arc reads as a span: how far the ship WILL travel before rest, against where the
@@ -4918,6 +4948,13 @@ export function createHud(ctx, alerts) {
           : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
             + ' WU · ' + String(cue.bestMode).replace('-', ' ').toUpperCase());
       }
+    } else if (showBrakeStop) {
+      const span = Math.max(brakeStop.stopDistance, 1) * 1.1;
+      const endPct = (clamp01(brakeStop.stopDistance / span) * 100).toFixed(1) + '%';
+      setStyle(vt.arcStop, 'width', endPct);
+      setStyle(vt.arcRing, 'left', endPct);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
+      if (slow) setText(vt.arcLabel, 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' WU');
     }
 
     // --- BRAKE NOW ---

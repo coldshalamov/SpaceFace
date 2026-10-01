@@ -55,19 +55,56 @@ export function emergentRecipe(id) {
   return RECIPES[id] || null;
 }
 
+// Node labs have no AudioContext. Keep a short record of accepted cues (the live
+// voice cap is 24) so a long fight cannot grow this log without bound.
+const PLAYED_CAP = 32;
+
 export function createEmergentVoice() {
   const live = [];
   const caches = {};
-  return {
+  const played = [];
+  let unsub = null;
+  let registryGet = () => null;
+  const voice = {
+    played,
+    // Subscribe here. The weapon-fire voice must not carry these cues.
+    attach(bus, registrySource) {
+      if (unsub) {
+        unsub();
+        unsub = null;
+      }
+      registryGet = typeof registrySource === 'function'
+        ? registrySource
+        : () => registrySource || null;
+      if (!bus || typeof bus.on !== 'function') return false;
+      const handler = (payload) => {
+        voice.play(payload, registryGet());
+      };
+      const off = bus.on('emergent:audio', handler);
+      unsub = typeof off === 'function'
+        ? off
+        : () => { if (bus.off) bus.off('emergent:audio', handler); };
+      return true;
+    },
     play(cue, registry) {
       if (!cue || !cue.id) return false;
       const recipe = RECIPES[cue.id];
       if (!recipe) return false;
+      played.push({
+        id: cue.id,
+        x: cue.x,
+        z: cue.z,
+        pan: cue.pan,
+        gain: cue.gain,
+        impulse: cue.impulse,
+      });
+      if (played.length > PLAYED_CAP) played.shift();
       const audio = registry && registry.get && registry.get('audio');
       const rt = audio && audio.rt;
       const ctx = rt && rt.ctx;
       const dest = rt && (rt.sfxBus || rt.masterGain || ctx.destination);
-      if (!ctx || !dest || ctx.state === 'closed') return false;
+      // No graph: the record above is the play. Do not pretend a weapon recipe ran.
+      if (!ctx || !dest || ctx.state === 'closed') return true;
       const now = ctx.currentTime;
       for (let i = live.length - 1; i >= 0; i--) {
         const row = live[i];
@@ -99,6 +136,10 @@ export function createEmergentVoice() {
       return true;
     },
     dispose() {
+      if (unsub) {
+        unsub();
+        unsub = null;
+      }
       while (live.length) {
         const row = live.pop();
         disposeVoice(row.voice);
@@ -106,4 +147,5 @@ export function createEmergentVoice() {
       }
     },
   };
+  return voice;
 }

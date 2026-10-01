@@ -10,7 +10,8 @@
 // not drop the dash mechanic, HUD boost bar, VFX/audio, or save parity. NPCs use only the boolean
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
-import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import { composePlayerDriveAuthority } from '../core/flight/driveAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
   cryoLockStickLive,
@@ -249,6 +250,12 @@ export const flightV3 = {
     // scaling, and so the dash impulse is queued through physics authority this tick.
     // While the flight computer owns the boost key (autopilot cruise),
     // tap-dash detection is suppressed: a machine "tapping" Shift must never fire a dash.
+    measureThrusterAuthority(entity);
+    const driveAuthority = composePlayerDriveAuthority(
+      entity.physicsBody && entity.physicsBody.thrusters,
+      state.combat && state.combat.entities ? state.combat.entities[String(entity.id)] : null,
+    );
+    this._driveAuthority = driveAuthority;
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
@@ -334,6 +341,9 @@ export const flightV3 = {
     _stepArgs.profile = profile;
     _stepArgs.runtime = runtime;
     _stepArgs.environment = resolveFlightEnvironmentInto(entity, state, _stepEnv);
+    // Composed once above, including for the dash. Applied once in the kernel.
+    // Recorded on the command so physics does not scale the force again.
+    _stepArgs.authority = driveAuthority;
     const result = stepPropulsion(_stepArgs);
     const cryoScale = helmControlScaleFromCombat(state, entity.id);
     const helmCommand = cryoScale < 1
@@ -348,6 +358,7 @@ export const flightV3 = {
     _stepCtl.force = helmCommand.force;
     _stepCtl.torque = helmCommand.torque;
     _stepCtl.maxSpeed = result.maxSpeed;
+    _stepCtl.authority = driveAuthority;
     writePhysicsControl(entity, _stepCtl);
     if (helmCommand.impulse) queuePhysicsImpulse(entity, helmCommand.impulse);
     entity.data = entity.data || {};
@@ -451,8 +462,13 @@ export const flightV3 = {
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
     // matching src/systems/flight.js:176-179. The physics owner applies it next solve.
+    // A hurt drive scales the shove. Cryo lock scales it again. Neither rewrites velocity.
     const cryoScale = helmControlScaleFromCombat(state, e.id);
-    queuePhysicsImpulse(e, { x: dirX * imp * mass * cryoScale, y: 0, z: dirZ * imp * mass * cryoScale });
+    const driveScale = this._driveAuthority && Number.isFinite(this._driveAuthority.forward)
+      ? this._driveAuthority.forward
+      : 1;
+    const scaled = imp * driveScale * cryoScale;
+    queuePhysicsImpulse(e, { x: dirX * scaled * mass, y: 0, z: dirZ * scaled * mass });
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
     // The dash impulse is queued through physics authority above, so by the time the pure kernel

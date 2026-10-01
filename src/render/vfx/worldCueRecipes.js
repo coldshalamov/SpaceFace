@@ -37,6 +37,9 @@ const variants=Object.freeze({
   'mining.drill.gas_hazard':{...recipe('prime','capture',0xe49a66,.75),surfaceWork:true,surfaceCapture:true},
   // The closed receiver is a capacity warning, never a successful pickup/yield.
   'mining.cargo.full':recipe('prime','capture',0xd9a970,.68),
+  // PIC-28: a hot dock leaves pods on the apron. Amber deposition at the berth so the
+  // spill is seen where it happened, not only counted in the hold and the toast.
+  'cargo.spill.berth':recipe('harvest','deposition',0xe0a45c,.9),
   'mining.heat.overheated':recipe('prime','capture',0xf09259,.64),
   // Ready means cooled and available; it does not claim that the pilot vented.
   'mining.vent.ready':recipe('cool','deposition',0x86bbc3,.62),

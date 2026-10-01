@@ -62,13 +62,16 @@ const FORGE_FRAG = /* glsl */`
     float graze = clamp(1.0 - facing, 0.0, 1.0);
     float shell = 0.18 + pow(graze, 2.4) * 1.35;
 
+    // The lip is the bell's hottest visible ring — gas shear at the exit plane. Kept strong: the
+    // forge is the "thruster base" the owner read as cheap, and a lip that carries real HDR is
+    // most of what separates a lit mouth from a dim collar.
     float lip = exp(-vTube * vTube * 58.0);
     float body = exp(-vTube * 3.4) * (0.40 + 0.60 * pow(abs(cos(vTube * 9.424778)), 4.0));
 
-    float energy = (lip * 1.15 + body * 0.5) * (0.30 + uDrive * 0.95 + uBoost * 0.55);
+    float energy = (lip * 1.55 + body * 0.55) * (0.30 + uDrive * 0.95 + uBoost * 0.55);
     energy *= shell;
 
-    vec3 col = mix(uEdgeColor, uCoreColor, clamp(lip * 1.25 + uBoost * 0.3, 0.0, 1.0));
+    vec3 col = mix(uEdgeColor, uCoreColor, clamp(lip * 1.35 + uBoost * 0.3, 0.0, 1.0));
     float alpha = clamp(energy * uOpacity, 0.0, 1.0);
     if (alpha < 0.004) discard;
     gl_FragColor = vec4(col * uRadiance * (0.6 + energy * 1.1), alpha);

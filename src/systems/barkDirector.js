@@ -14,7 +14,7 @@ import {
   witnessCrimeBarkFor,
 } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
-import { trophyFromFittings } from '../data/sectors.js';
+import { SECTORS, trophyFromFittings } from '../data/sectors.js';
 import { aceById, factionHistoryFromMemory } from '../data/namedAces.js';
 import {
   CARGO_OWNER_REACTIONS,
@@ -29,10 +29,11 @@ import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.j
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
-import { entityIndexVersion, forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
+import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
@@ -309,8 +310,14 @@ export const barkDirector = {
     this._onLawCheckpointPosted = (payload) => this._speakLawSurrender(payload || {});
     this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
+    this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
+    this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
+    this._onCounterHintSpawn = (payload) => this._teachCounterHint(payload && payload.entity);
+    this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
+    this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:spawned', this._onEntitySpawnedBark);
+      this.bus.on('entity:spawned', this._onCounterHintSpawn);
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('save:loaded', this._onStuntLoad);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
@@ -328,6 +335,10 @@ export const barkDirector = {
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
+      this.bus.on('bounty:cooled', this._onBountyCooled);
+      this.bus.on('law:custodyAcknowledged', this._onCustodyAcknowledged);
+      this.bus.on('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
+      this.bus.on('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -541,6 +552,125 @@ export const barkDirector = {
       (entity) => isLawfulVoice(entity));
     if (!voice) return false;
     return this._speak(voice, 'warn', 'heat:changed', payload);
+  },
+
+  // LAW-07: the bounty desk answers a payoff with one comms line naming the heat it actually
+  // bought off — the measured delta from heat.js, never the theoretical credit. Same-tick
+  // repeats of the same receipt collapse to a single line.
+  _speakBountyCooled(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    const cooled = Number(payload.cooled) || 0;
+    if (!(cooled > 0)) return false;
+    const own = ensureState(state);
+    const tick = state.tick | 0;
+    if (own.lastBountyCooledTick === tick) return false;
+    own.lastBountyCooledTick = tick;
+    const pct = Math.round(cooled * 100);
+    this._emit('comms:popup', {
+      sender: 'BOUNTY DESK',
+      text: `Payment posted — the hunt cools ${pct}%.`,
+      category: 'law',
+      ttl: 6,
+    });
+    return true;
+  },
+
+  // LAW-05: the berth answers a custody transfer in the law register — the station's own line,
+  // distinct from the CONTROL ledger voice custodyConsequences already speaks. The dedupe key
+  // mirrors the upstream settlement key so a replayed or double-fired ack cannot bark twice
+  // for one transfer.
+  _speakCustodyAcknowledged(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.entityId == null) return false;
+    const own = ensureState(state);
+    const key = `${payload.stationId || 'station'}:${payload.entityId}:${Number(payload.t) || 0}`;
+    if (own.lastCustodyAckKey === key) return false;
+    own.lastCustodyAckKey = key;
+    const repeat = Number(payload.repeatIndex) > 1;
+    const name = stationNameFor(payload.stationId);
+    this._emit('comms:popup', {
+      sender: 'BERTH CONTROL',
+      text: repeat
+        ? `Custody acknowledged${name ? ` at ${name}` : ''} — repeat profile on the pad; this crew is on file.`
+        : `Custody acknowledged${name ? ` at ${name}` : ''} — transfer logged; yard crews take the hull from here.`,
+      category: 'law',
+      ttl: 6,
+    });
+    return true;
+  },
+
+  // FIGHT-06: every hostile archetype carries an authored counterHint on its spawn data, but the
+  // only speaker was the Crucible announcer — the open world never taught it. First sighting of
+  // each type in adventure speaks one tutorial line, remembered on player.hints so it persists
+  // across saves and never repeats. A second spawn of the same type says nothing.
+  _teachCounterHint(entity) {
+    const state = this.state;
+    if (!state || !entity || entity.alive === false) return false;
+    if (state.mode && state.mode !== 'flight') return false;
+    if (!adventureStunts(state)) return false;
+    if (entity.team !== 1) return false;
+    const enemyId = entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
+    if (typeof enemyId !== 'string' || !enemyId) return false;
+    const text = hintTextFor(enemyId);
+    if (!text) return false;
+    const player = state.player;
+    if (!player) return false;
+    if (state.settings && state.settings.gameplay
+      && state.settings.gameplay.tutorialHints === false) return false;
+    if (!player.hints) player.hints = {};
+    const key = `counterHint_${enemyId}`;
+    if (player.hints[key]) return false;
+    player.hints[key] = true;
+    this._emit('voice:say', {
+      channel: 'tutorial',
+      id: `barkDirector:counterHint:${enemyId}`,
+      text,
+      ttl: 7,
+    });
+    return true;
+  },
+
+  // WORLD-28: Fulfillment presence events were emitted into silence — a route's escorts
+  // flipping hostile, and an administrative boarding completing its seizure, said nothing.
+  // Both speak in the route's own register now: the provocation through a tagged hull's
+  // warn line (attack register as backstop), the reroute through a demand-cargo line from a
+  // tagged hull or, when no Fulfillment hull is on the field, the route desk's comms note.
+  _speakFulfillmentProvoked(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    if (state.mode && state.mode !== 'flight') return false;
+    for (const entity of fulfillmentRouteHulls(state, payload.routeId)) {
+      if (this._speak(entity, 'warn', 'factionPresence:fulfillmentProvoked', payload)
+        || this._speak(entity, 'attack', 'factionPresence:fulfillmentProvoked', payload)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  _speakAdministrativeRouting(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    if (state.mode && state.mode !== 'flight') return false;
+    const own = ensureState(state);
+    const key = payload.boardingId != null
+      ? `adminRouting:${payload.boardingId}`
+      : `adminRouting:${payload.routeId}:${payload.t}`;
+    if (own.lastAdminRoutingKey === key) return false;
+    own.lastAdminRoutingKey = key;
+    for (const entity of fulfillmentRouteHulls(state, payload.routeId)) {
+      if (this._speak(entity, 'demand-cargo', 'factionPresence:administrativeRouting', payload)) {
+        return true;
+      }
+    }
+    this._emit('comms:popup', {
+      sender: 'FULFILLMENT ROUTE DESK',
+      text: `Manifest line reassigned under ${payload.routingCode || 'routing hold'} — proceed to the holding point.`,
+      category: 'law',
+      ttl: 6,
+    });
+    return true;
   },
 
   // The receipt names witnesses by STABLE id; `entity:N` rows resolve directly, and authored
@@ -1135,6 +1265,11 @@ export const barkDirector = {
       if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
+      if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
+      if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
+      if (this._onCounterHintSpawn) this.bus.off('entity:spawned', this._onCounterHintSpawn);
+      if (this._onFulfillmentProvoked) this.bus.off('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
+      if (this._onAdministrativeRouting) this.bus.off('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
@@ -1155,6 +1290,11 @@ export const barkDirector = {
     this._onLawCheckpointPosted = null;
     this._onLawReportReceipt = null;
     this._onHeatWantedCrossed = null;
+    this._onBountyCooled = null;
+    this._onCustodyAcknowledged = null;
+    this._onCounterHintSpawn = null;
+    this._onFulfillmentProvoked = null;
+    this._onAdministrativeRouting = null;
     this._onBodyReleased = null;
     this._onBodyShoved = null;
     this._onBodyImpact = null;
@@ -1496,6 +1636,31 @@ function eligibleShip(entity, state) {
 function humanizeId(value, fallback = 'Stunt') {
   const s = String(value || fallback).replace(/^(?:trick_|title_)/, '').replace(/_/g, ' ').trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : fallback;
+}
+
+// Custody acks name their berth when the authored geography knows the station id; unlisted or
+// dynamic stations fall back to the bare BERTH CONTROL sender.
+function stationNameFor(stationId) {
+  if (!stationId) return null;
+  for (const sector of SECTORS) {
+    const station = (sector.stations || []).find((row) => row.id === stationId);
+    if (station && station.name) return station.name;
+  }
+  return null;
+}
+
+// WORLD-28: Fulfillment register lines come from hulls still carrying the route tag. A
+// provoked route may hold several — iterate so the first hull with an unspent slot speaks.
+function fulfillmentRouteHulls(state, routeId) {
+  const out = [];
+  for (const entity of indexedShipLikeOrEntitiesScan(state)) {
+    if (!entity || entity.alive === false) continue;
+    const marker = entity.data && entity.data.factionPresence;
+    if (!marker || marker.factionId !== 'faction_fulfillment') continue;
+    if (routeId != null && marker.routeId !== routeId) continue;
+    out.push(entity);
+  }
+  return out;
 }
 
 function normalizeSituation(value) {

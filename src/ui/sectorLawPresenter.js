@@ -256,10 +256,12 @@ export function createSectorLawPresenter(ctx) {
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
     root.className = receipt.outcome === 'retaliation_authorized' ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
     text(els.flag, 'AUTHORITY RECEIPT');
-    text(els.status, receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE' : 'STAND DOWN');
+    text(els.status, receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
+      : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN');
     text(els.headline, receiptText);
     text(els.meta, receipt.stationId ? stationName(state, receipt.stationId).toUpperCase() : 'OUTSIDE PROTECTED JURISDICTION');
-    text(els.detail, receipt.cause === 'player_attack' ? 'Cause: player fired first.' : 'Incident closed.');
+    text(els.detail, receipt.cause === 'player_attack' ? 'Cause: player fired first.'
+      : receipt.cause === 'customs_scan' ? 'Manifest read acknowledged.' : 'Incident closed.');
     root.setAttribute('aria-label', `${receiptText}. ${els.detail.textContent}`);
     root.hidden = false;
     return true;

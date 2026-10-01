@@ -49,7 +49,8 @@ test('recognized families still resolve to their authored voices', () => {
   assert.equal(recipeFor('wpn_missile_rack_m'), 'sfx_wpn_missile');
   assert.equal(recipeFor('wpn_torpedo_l'), 'sfx_wpn_missile');
   assert.equal(recipeFor('wpn_autocannon_m'), 'sfx_wpn_autocannon');
-  assert.equal(recipeFor('wpn_flak_turret_s'), 'sfx_wpn_autocannon');
+  // INST-33: the flak/PD turret owns its muzzle voice and no longer resolves to the autocannon.
+  assert.equal(recipeFor('wpn_flak_turret_s'), 'sfx_wpn_flak');
   // Named families that used to fall through to the starter pulse now classify honestly.
   assert.equal(recipeFor('wpn_bank_stream_m'), 'sfx_wpn_autocannon');
   assert.equal(recipeFor('wpn_siege_lance_l'), 'sfx_wpn_railgun');

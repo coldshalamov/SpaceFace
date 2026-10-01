@@ -167,6 +167,10 @@ export const cruise = {
     for (let i = log.length - 1; i >= 0; i--) {
       if (log[i].t < cutoff || log[i].t > now) log.splice(i, 1);
     }
+    // Bounded: the window above already caps live entries (~75 at 60 Hz beam ticks), but a
+    // regressed clock or burst of synthetic ticks must never grow the saved player.cruise blob.
+    // 256 keeps every in-window packet with wide margin; anything older is outside the window.
+    if (log.length > 256) log.splice(0, log.length - 256);
     let sum = 0;
     for (let j = 0; j < log.length; j++) sum += log[j].amt;
     return sum;

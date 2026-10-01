@@ -357,6 +357,11 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 svg.ml2-ring { position:absolute; left:0; top:0; overflow:visible; }
 #sf-ml2 .ml2-ring circle { fill:rgba(242,185,80,0.05); stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
   stroke-dasharray:10 7; opacity:0.55; }
+/* VERB-29: the orbit-assist ring centers on the tether anchor — cool informational blue, finely
+   dashed, so it never reads as the amber cloak ring or a second rope. */
+#sf-ml2 svg.ml2-orbit-ring { position:absolute; left:0; top:0; overflow:visible; }
+#sf-ml2 .ml2-orbit-ring circle { fill:none; stroke:rgba(140,190,235,0.45); stroke-width:1.2;
+  stroke-dasharray:6 10; }
 #sf-ml2 .ml2-meters { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
   display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center;
   gap:6px 10px; align-items:center; max-width:min(560px, 60vw); }
@@ -397,6 +402,7 @@ export const MASSLINE_HUD_CSS = `
   #sf-ml2 .ml2-preview { color:CanvasText; background:Canvas; border-color:CanvasText; forced-color-adjust:auto; }
   #sf-ml2 .ml2-preview-line { stroke:CanvasText; }
   #sf-ml2 .ml2-ghost-path { stroke:CanvasText; }
+  #sf-ml2 .ml2-ring circle, #sf-ml2 .ml2-orbit-ring circle { stroke:CanvasText; fill:none; }
   #sf-ml2 .ml2-preview-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
   #sf-ml2 .ml2-preview-mark i { border-color:CanvasText; box-shadow:none; }
   #sf-ml2 .ml2-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
@@ -736,6 +742,12 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = selected.targetType;
   fields[index++] = receipt.id;
   fields[index++] = !!(playerState.tether && playerState.tether.active);
+  // VERB-29: the orbit ring repaints when the assist engages or the held radius shifts; the
+  // anchor's drift is covered by appendEntityFields on the tether target below. The quiescent
+  // gate already disqualifies every non-tethered frame, so this stays off the idle path.
+  const orbitRing = resolveOrbitAssistRing(state, player);
+  fields[index++] = !!orbitRing;
+  fields[index++] = orbitRing ? Math.round(orbitRing.radius) : 0;
   // INF-013: effective masses + interpretation key — the caption repaints after cargo/fitting
   // changes because the signature rolls with them.
   fields[index++] = Math.round(finite(player && player.physicsBody && player.physicsBody.mass)
@@ -774,6 +786,9 @@ function writeMasslineHudFields(fields, state, player) {
   index = appendEntityFields(fields, index, state, selfSolution.targetId);
   index = appendEntityFields(fields, index, state, selected.targetId);
   index = appendEntityFields(fields, index, state, bridle.sourceId);
+  // VERB-29: a drifting anchor must re-center the orbit ring even when nothing else changed.
+  index = appendEntityFields(fields, index, state,
+    playerState.tether && playerState.tether.targetId);
   // PB-MASS-A: the cutter-commit and snag marks repaint off the threats mirror and the tether
   // mirror — both exist only beside a live tether, so the quiescent gate already covers them.
   const sweepCommit = playerState.masslineThreats && playerState.masslineThreats.sweepCommit;
@@ -787,6 +802,28 @@ function writeMasslineHudFields(fields, state, player) {
   index = appendEntityFields(fields, index, state, sweepCommit && sweepCommit.cutterId);
   index = appendEntityFields(fields, index, state, snag && snag.obstacleId);
   return index;
+}
+
+// VERB-29: the orbit assist publishes a live ship→anchor radius on every player flight frame
+// (flightV3.js _flightFrame.orbitAssist) but nothing presented it. The ring the assist is holding
+// the pilot to is centered on the tether anchor — the same lookup flightV3 makes — at the live
+// radius the yaw-rate feed-forward is computed against. Idle/engaged resolves off `active`.
+export function resolveOrbitAssistRing(state, player) {
+  const oa = player && player._flightFrame && player._flightFrame.orbitAssist;
+  if (!oa || oa.active !== true || !(Number(oa.radius) > 0)) return null;
+  const tether = state && state.player && state.player.tether;
+  const anchor = tether && tether.targetId != null && state.entities
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(tether.targetId) : null;
+  if (!anchor || anchor.alive === false || !anchor.pos
+    || !Number.isFinite(anchor.pos.x) || !Number.isFinite(anchor.pos.z)) return null;
+  return {
+    radius: Number(oa.radius),
+    x: anchor.pos.x,
+    z: anchor.pos.z,
+    direction: oa.direction,
+    reason: oa.reason,
+  };
 }
 
 export function masslineHudInputsUnchanged(state, player) {
@@ -890,6 +927,7 @@ export const masslineHud = {
     this._updateThreatMark(dom, state, w2s);
     this._updateSnagMark(dom, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
+    this._updateOrbitRing(dom, player, state, w2s);
     this._updateMeters(dom, ml2, state);
     this._updateCadenceReadout(state);
   },
@@ -1491,6 +1529,25 @@ export const masslineHud = {
     setAttr(dom.ringCircle, 'r', String(r));
   },
 
+  // VERB-29: the ring the orbit assist is holding the pilot to, centered on the tether anchor.
+  _updateOrbitRing(dom, player, state, w2s) {
+    const ring = resolveOrbitAssistRing(state, player);
+    if (!ring) {
+      setStyle(dom.orbitSvg, 'display', 'none');
+      return;
+    }
+    const center = projectWorld(w2s, ring.x, ring.z);
+    const edge = projectWorld(w2s, ring.x + ring.radius, ring.z);
+    if (!center || !Number.isFinite(center.x) || !edge || !Number.isFinite(edge.x)) {
+      setStyle(dom.orbitSvg, 'display', 'none');
+      return;
+    }
+    const r = Math.max(6, Math.abs(edge.x - center.x));
+    setStyle(dom.orbitSvg, 'display', 'block');
+    setStyle(dom.orbitSvg, 'transform', `translate3d(${center.x}px, ${center.y}px, 0)`);
+    setAttr(dom.orbitCircle, 'r', String(r));
+  },
+
   _updateMeters(dom, ml2, state) {
     const bt = ml2.bulletTime;
     const showBt = massline2Flag('bulletTime') && bt && (bt.active || bt.energy < 0.999);
@@ -1555,6 +1612,7 @@ export const masslineHud = {
     setStyle(dom.threatMark, 'display', 'none');
     setStyle(dom.snagMark, 'display', 'none');
     setStyle(dom.ringSvg, 'display', 'none');
+    if (dom.orbitSvg) setStyle(dom.orbitSvg, 'display', 'none');
     this._hideAcquisitionPreview(dom);
     setStyle(dom.btPill, 'display', 'none');
     setStyle(dom.ckPill, 'display', 'none');
@@ -1703,6 +1761,19 @@ export const masslineHud = {
     ringSvg.appendChild(ringCircle);
     root.appendChild(ringSvg);
 
+    const orbitSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    orbitSvg.setAttribute('class', 'ml2-orbit-ring');
+    orbitSvg.setAttribute('width', '0');
+    orbitSvg.setAttribute('height', '0');
+    orbitSvg.setAttribute('aria-hidden', 'true');
+    orbitSvg.style.display = 'none';
+    const orbitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    orbitCircle.setAttribute('cx', '0');
+    orbitCircle.setAttribute('cy', '0');
+    orbitCircle.setAttribute('r', '60');
+    orbitSvg.appendChild(orbitCircle);
+    root.appendChild(orbitSvg);
+
     const meters = document.createElement('div');
     meters.className = 'ml2-meters';
     const makePill = (label, extraClass) => {
@@ -1751,6 +1822,7 @@ export const masslineHud = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
       ghostSvg, ghostPath, ghostD: null,
       throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
+      orbitSvg, orbitCircle,
       threatMark, threatMarkLabel, snagMark, snagMarkLabel,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
       strainPill: strain.pill, strainFill: strain.bar,
@@ -1801,6 +1873,7 @@ function worldEntityLabel(entity) {
   const data = entity && entity.data;
   const label = data && (data.displayName || data.name || data.label);
   if (typeof label === 'string' && label.trim()) return label.trim();
+  if (data && (data.massSeed === true || data.kind === 'mass_seed')) return 'Mass Seed';
   const type = entity && entity.type || 'endpoint';
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }

@@ -899,20 +899,34 @@ export const survivorPod = {
     rec.resolved = true;
     rec.phase = outcome;
     rec.resolvedAt = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const entityId = entity && entity.id != null ? entity.id : rec.entityId;
+    const posSrc = entity && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)
+      ? entity.pos
+      : rec.pos;
     const receipt = {
-      id: rec.memoryId || `survivor:${entity && entity.id}`,
+      id: rec.memoryId || `survivor:${entityId}`,
       outcome,
-      entityId: entity && entity.id,
+      entityId,
       victimId: rec.victimId,
       sectorId: rec.sectorId,
       t: rec.resolvedAt,
       ...detail,
     };
+    if (receipt.pos == null && posSrc && Number.isFinite(posSrc.x) && Number.isFinite(posSrc.z)) {
+      receipt.pos = {
+        x: posSrc.x,
+        y: Number.isFinite(posSrc.y) ? posSrc.y : 0,
+        z: posSrc.z,
+      };
+    }
     own.causal.receipts.push(receipt);
     if (own.causal.receipts.length > CAUSAL_RECEIPT_CAP) {
       own.causal.receipts.splice(0, own.causal.receipts.length - CAUSAL_RECEIPT_CAP);
     }
-    delete own.causal.byEntityId[entity.id];
+    if (own.causal.byEntityId && entityId != null) {
+      delete own.causal.byEntityId[entityId];
+      delete own.causal.byEntityId[String(entityId)];
+    }
 
     // moralMemory is the durable world memory; credits stay with economy (never written here).
     const cause = outcome === 'rescued'
@@ -921,7 +935,7 @@ export const survivorPod = {
         ? 'ransomed_survivors'
         : 'abandoned_survivors';
     rememberMoralDebt(state, {
-      id: rec.memoryId || `survivor:${entity.id}`,
+      id: rec.memoryId || `survivor:${entityId}`,
       name: 'Survivor Pod',
       cause,
       factionId: rec.factionId || CONCORD_FACTION_ID,
@@ -930,13 +944,13 @@ export const survivorPod = {
       source: `survivorPod:${outcome}`,
     });
 
-    if (outcome === 'rescued' && this._bus && typeof this._bus.emit === 'function') {
+    if (outcome === 'rescued' && entityId != null && this._bus && typeof this._bus.emit === 'function') {
       const factionId = detail.authorityFactionId || CONCORD_FACTION_ID;
       this._bus.emit('faction:repDelta', {
         factionId,
         delta: CAUSAL_RESCUE_REP_DELTA,
         reason: 'survivorPod:rescued',
-        entityId: entity.id,
+        entityId,
         victimId: rec.victimId,
       });
     }

@@ -165,7 +165,10 @@ test('achievements unlock in one session through the real mission and Crucible s
     let results = bus.emitted.filter((e) => e.event === 'run:resultsReady');
     assert.equal(results.length, 1);
     assert.equal(results[0].payload.outcome, 'defeat');
-    assert.deepEqual(unlocks.slice(3), ['into_the_crucible']);
+    // Run 1 establishes the record for this challenge, so it earns the personal-best achievement
+    // immediately — there is nothing earlier to beat, and that first run is the moment that must
+    // pay. (It used not to: the comparison was against a profile that already included this run.)
+    assert.deepEqual(unlocks.slice(3), ['into_the_crucible', 'better_than_last_time']);
 
     // Crucible run 2: "run again" goes through New Game, which resets the run and forgets the last
     // result; then today's daily reaches the wave-10 bench, beats the score, and extracts.
@@ -182,7 +185,7 @@ test('achievements unlock in one session through the real mission and Crucible s
     results = bus.emitted.filter((e) => e.event === 'run:resultsReady');
     assert.equal(results.length, 2);
     assert.equal(results[1].payload.outcome, 'extracted');
-    assert.deepEqual(unlocks.slice(4).sort(), ['better_than_last_time', 'same_seed_same_day', 'tenth_wave', 'walked_out']);
+    assert.deepEqual(unlocks.slice(5).sort(), ['same_seed_same_day', 'tenth_wave', 'walked_out']);
 
     const profile = loadCrucibleMeta();
     assert.equal(profile.records.lifetime.runs, 2, 'both runs settled into survivalRecords');

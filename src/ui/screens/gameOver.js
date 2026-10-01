@@ -31,6 +31,9 @@ import { hullPosterUrl } from '../hullPosters.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { confirm } from '../confirm.js';
+import { loadConfirmBody } from './saveLoad.js';
 
 /** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
  *  at the hub; the lost hull's life sits by the red arc it names (top left). */
@@ -221,6 +224,48 @@ export function currentDefeat(ctx = {}) {
   return state.combat && state.combat.lastPlayerDefeat || null;
 }
 
+/**
+ * Ironman is permadeath (src/systems/combat.js): death ends the run and the save is final. Offering
+ * "Load latest" on an Ironman death would hand the player a way to undo the one promise that
+ * difficulty makes, so the verb is withdrawn rather than disabled-and-grayed.
+ */
+export function isIronmanDeath(ctx = {}) {
+  const state = ctx.state || {};
+  const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+  return difficulty === 'ironman';
+}
+
+/**
+ * PRO-14 — the after-action model, and the "Load latest" verb the death screen was missing.
+ *
+ * The death screen offered exactly one save route: "Load save", which pushes the whole save browser.
+ * So a player who died and wanted to go back to their last autosave had to open a modal, read a
+ * slot list, and pick — on the one screen where the cheapest action is the one they almost always
+ * want. The verb belongs beside the recovery key.
+ *
+ * `slots` is the live slot index (state.save.slots). It resolves the newest OCCUPIED slot through
+ * the save system's own selectLatestOccupiedSlot, so this screen can never disagree with the save
+ * browser about which save is newest, and it never invents a second "latest" rule.
+ *
+ * The verb is `loadLatestSlot`, never a raw id: the click handler resolves it again through the
+ * trusted-slot confirmation, so the model exposes an intent and the save system still owns the load.
+ */
+export function afterActionModel(ctx = {}) {
+  const state = ctx.state || {};
+  const slots = (state.save && state.save.slots) || {};
+  const ironman = isIronmanDeath(ctx);
+  const slot = ironman ? null : selectLatestOccupiedSlot(slots);
+  return {
+    ironman,
+    // The newest occupied slot id, or null when there is nothing to go back to.
+    latestSlot: slot,
+    // Whether the verb is offered at all. Null means "nothing to load", which is not the same as
+    // ironman — the copy must not claim Ironman where the real reason is an empty drawer.
+    canLoadLatest: !ironman && !!slot,
+    loadLatestSlot: !ironman && slot ? slot : null,
+  };
+}
+
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -391,6 +436,38 @@ export const gameOverScreen = {
     });
     this._loadButton = bLoad;
 
+    // PRO-14: "Load latest" beside the recovery key. "Load save" above still opens the full browser
+    // for picking a specific slot; this is the one-tap route back to the newest autosave, which is
+    // what a player who just died almost always wants.
+    const bLatest = wordItem(list, 'Load latest');
+    bLatest.classList.add('sf-go-loadlatest');
+    this._latestButton = bLatest;
+    bLatest.addEventListener('click', async () => {
+      cue('confirm');
+      // Resolve the slot AGAIN at click time: the slot index may have changed since the screen was
+      // built (an autosave can land while the player reads the after-action sheet).
+      const model = afterActionModel(ctx);
+      if (!model.canLoadLatest) {
+        // Re-checked rather than trusted from build time, so the button can never fire a load of a
+        // slot that no longer exists — or any load at all in Ironman.
+        this._syncLoadLatest(ctx);
+        return;
+      }
+      const id = model.loadLatestSlot;
+      const meta = (ctx.state.save && ctx.state.save.slots && ctx.state.save.slots[id]) || null;
+      // The SAME trusted-slot confirmation the save browser uses, with the SAME sentence. Never
+      // bypass it: this load silently discards everything since the last write.
+      const ok = await confirm({
+        title: 'Load this save?',
+        body: loadConfirmBody(id, meta),
+        confirmLabel: 'Load',
+        danger: true,
+      });
+      if (!ok) return;
+      ctx.bus.emit('game:over:dismissed', {});
+      ctx.bus.emit('game:load', { slot: id });
+    });
+
     const bNew = wordItem(list, 'New Game');
     bNew.title = 'Start a fresh run';
     bNew.setAttribute('aria-label', 'Start a fresh run');
@@ -435,9 +512,15 @@ export const gameOverScreen = {
     // was cleared, and keep the primary button available when combat re-armed from the receipt.
     ctx.bus.on('player:recoveryFailed', () => {
       this._refreshSummary(ctx);
+      // PRO-14: an autosave can land while the sheet is open, so the verb is re-settled with the
+      // receipt rather than left describing a drawer that has since gained a save.
+      this._syncLoadLatest(ctx);
     });
 
     rootEl.appendChild(foot);
+    // PRO-14: settle the verb once at build time so it is never offered in Ironman or with an
+    // empty save drawer.
+    this._syncLoadLatest(ctx);
     // The black box of the last sortie, along the foot: the screen's instrument to play.
     const tapeHost = el('section', 'sf-go-tape');
     tapeHost.setAttribute('aria-label', 'Last sortie');
@@ -670,8 +753,43 @@ export const gameOverScreen = {
 
   /** Restore is the one Lamp Key: the recovery berth when there is one, else the route the screen
    *  focuses (Load save, or New Game in Ironman). The other words are small verbs with a notch. */
+  /**
+   * Show, hide, or explain the "Load latest" verb.
+   *
+   * The two reasons it is unavailable are DIFFERENT and must not share copy: an Ironman death is a
+   * rule ("this difficulty does not offer it"), an empty save drawer is a fact ("there is nothing
+   * to go back to"). Saying "Ironman" to a player with no saves would be a lie about why.
+   */
+  _syncLoadLatest(ctx) {
+    const button = this._latestButton;
+    if (!button || !button.classList) return null;
+    const model = afterActionModel(ctx);
+    if (model.canLoadLatest) {
+      button.hidden = false;
+      button.removeAttribute('aria-disabled');
+      button.classList.remove('sf-word--unavailable');
+      button.title = 'Return to ' + model.loadLatestSlot + ', your most recent save';
+      button.setAttribute('aria-label', 'Load your most recent save, ' + model.loadLatestSlot);
+      return model;
+    }
+    // Ironman is a deliberate withdrawal, not a missing feature: the verb leaves the row entirely
+    // rather than sitting there greyed with an excuse.
+    if (model.ironman) {
+      button.hidden = true;
+      button.removeAttribute('title');
+      button.removeAttribute('aria-label');
+      return model;
+    }
+    button.hidden = false;
+    button.classList.add('sf-word--unavailable');
+    button.setAttribute('aria-disabled', 'true');
+    button.title = 'No save to load yet';
+    button.setAttribute('aria-label', 'Load latest save: no save to load yet');
+    return model;
+  },
+
   _dressRestore(primary) {
-    for (const button of [this._retryButton, this._loadButton, this._newButton, this._menuButton]) {
+    for (const button of [this._retryButton, this._latestButton, this._loadButton, this._newButton, this._menuButton]) {
       if (!button || !button.classList) continue;
       if (button === primary) {
         if (!button._orrDressed && button.childNodes) { dressLampKey(button); button._orrDressed = true; }
@@ -715,7 +833,8 @@ export const gameOverScreen = {
       vitals.shield, vitals.armor, vitals.hull,
       recovery.stationName, recovery.stationId, recovery.costCr, recovery.quotedCostCr,
       recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
-      recovery.insuranceStatus,
+      recovery.insuranceStatus, recovery.coverageNote,
+      recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
     ].join('|');
     if (sig === this._summarySig) return;
     this._summarySig = sig;
@@ -747,7 +866,7 @@ export const gameOverScreen = {
       dock: recovery.stationName || 'No recovery route',
       cost: recovery.costCr != null ? costText : '-',
       cargo: cargoText,
-      insurance: recovery.insuranceStatus || 'No recovery coverage',
+      insurance: recovery.coverageNote || recovery.insuranceStatus || 'No recovery coverage',
     };
     for (const key in values) {
       if (key === 'cause') continue; // the title carries the cause (below)

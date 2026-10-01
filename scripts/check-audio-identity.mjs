@@ -376,6 +376,18 @@ const EMITTED_CUES = {
   // a direct recipe id, the foghorn maps through AUDIO_CUE_TO_RECIPE.
   sfx_salvage_plate: { distinct: true },
   'world.foghorn': { distinct: true },
+  // Direct-play recipe ids emitted as literal audio:cue payloads — each IS its own authored
+  // recipe (cargo scoop, hull-burst grapple/yeet verbs, scrape, and the Eighth Bell toll),
+  // so they resolve through AUDIO_RECIPE_BY_ID and only need the coverage row.
+  sfx_loot_collect: { distinct: true },
+  sfx_wpn_gravitic: { distinct: true },
+  sfx_wpn_capacitor_ready: { distinct: true },
+  sfx_bomb_thermite_ignite: { distinct: true },
+  sfx_bomb_concussion_shove: { distinct: true },
+  sfx_tether_latch_lock: { distinct: true },
+  sfx_massline_release: { distinct: true },
+  sfx_hull_scrape: { distinct: true },
+  sfx_eighth_bell_toll: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {
@@ -589,7 +601,7 @@ assert.match(
 );
 assert.match(
   audioSrc,
-  /_startLoopVoice[\s\S]{0,2000}combatBus/,
+  /_startLoopVoice[\s\S]{0,3000}rt\.combatBus/,
   'loop voices must be able to target combatBus',
 );
 

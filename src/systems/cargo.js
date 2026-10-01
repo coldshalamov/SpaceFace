@@ -638,6 +638,19 @@ export const cargo = {
     };
     this._pendingSpillAnnounce = receipt;
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('cargo:hotDockSpill', receipt);
+    // PIC-28: the spill is seen at the berth, not only counted. One presentation cue anchored
+    // to the dock position carries the lot count; the world-cue whitelist resolves it into the
+    // berth-apron mark. Odds, pods and physics above are untouched; no pickups are spawned here.
+    if (this.bus && typeof this.bus.emit === 'function' && player.pos) {
+      this.bus.emit('presentation:cue', {
+        id: 'cargo.spill.berth',
+        sourceEvent: 'cargo:hotDockSpill',
+        sourceId: state.playerId,
+        position: { x: Number(player.pos.x) || 0, z: Number(player.pos.z) || 0 },
+        spilled,
+        count: pods,
+      });
+    }
     return receipt;
   },
 

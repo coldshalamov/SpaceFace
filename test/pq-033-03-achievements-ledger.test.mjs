@@ -253,14 +253,18 @@ test('Crucible achievements come from the settled survivalRecords profile', () =
   };
 
   settle(resultFor({ outcome: 'defeat', wave: 4, deepestWave: 4, score: 900 }));
-  assert.deepEqual(h.unlocks.map((u) => u.id), ['into_the_crucible']);
+  // Establishing a record on a key counts: there is no prior to beat, and the first run of a
+  // challenge is the moment "Better Than Last Time" has to pay. (It used not to — see
+  // applyCrucibleResult: the pre-run comparison was made against a profile that already included
+  // this very run, so crucibleBests never moved and the achievement was unreachable.)
+  assert.deepEqual(h.unlocks.map((u) => u.id), ['into_the_crucible', 'better_than_last_time']);
 
   settle(resultFor({ outcome: 'defeat', wave: 6, deepestWave: 6, score: 700 }));
-  assert.equal(h.unlocks.length, 1, 'a worse run beats nothing');
+  assert.equal(h.unlocks.length, 2, 'a worse run beats nothing — no new unlock');
 
   settle(resultFor({ outcome: 'extracted', extracted: true, wave: 10, deepestWave: 10, score: 1400, dailyDateKey: '2026-09-14' }));
   assert.deepEqual(h.unlocks.map((u) => u.id), [
-    'into_the_crucible', 'tenth_wave', 'better_than_last_time', 'same_seed_same_day', 'walked_out',
+    'into_the_crucible', 'better_than_last_time', 'tenth_wave', 'same_seed_same_day', 'walked_out',
   ]);
   const snap = h.ledger.snapshot();
   assert.deepEqual(snap.crucible, { runs: 3, deepestWave: 10, dailyDays: 1 });

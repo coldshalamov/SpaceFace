@@ -1,18 +1,25 @@
 // Bumper scene — the yardstick for the hull-burst overhaul, slice C (the Gravity Bumper;
-// docs/plans/2026-09-29-hull-burst-physics-overhaul-design.md sections 4, 5 and 10).
+// docs/plans/2026-09-29-hull-burst-physics-overhaul-design.md sections 4, 5 and 10; owner principle
+// 2026-09-30: the burst IS the boost).
 //
 // THE REAL-PATH LAW (same as feel.fling_scene): every number comes out of runtime.step() on
 // bootRealPath — the live rapier-dynamic authority, the live tumble writer, the live
 // collision-consequence and combat kernels, the live tactical AI, the live loot systems. The burst
-// is lit through the input edge (state.input.actions.hullBurst); the throw is whatever the production impulse route
-// does with it. Nothing here writes a velocity.
+// is lit by HOLDING BOOST (state.input.boost + a topped-up meter): the runtime's own flightV3 turns
+// that into the resource-gated boost flag, and its own hullBurst system lights the wedge on the
+// rising edge — the same route a player's Shift takes. Nothing here writes a velocity.
 //
-// What it must show: THE MASSLINE MATTERS. A crawling touch is a nudge, a full-speed arrival (a
-// Massline swing is the fastest way to arrive aimed) is the full effect, and a heavy hull shrugs.
+// What it must show: ARRIVAL SPEED MATTERS. A low-closing boost pass is a nudge, a full-speed boost
+// arrival (dash plus boost, a Massline swing the fastest way to arrive aimed) is the full effect,
+// and a heavy hull shrugs.
 //
 //   crawl / swing   the same light hostile, the same wedge, the player closing at ~15 vs ~300 WU/s:
-//                   how far the hull travels in the 3 s after the hit.
+//                   how far the hull travels in the 3 s after the hit. The crawl arm holds a LOW
+//                   tank (between the >1 boost gate and the 28 dash cost): the boost runs — so the
+//                   wedge is live — but the press carries no dash, keeping the closing slow.
 //   medium / heavy  the same swing against a Drifter-class and a Bastion-class hull.
+//   control         the same approach, boost held, NO burst module fitted: whatever this hull does
+//                   is the player's own ram; the burst has to beat it, not be it.
 //   field3          three Wasps in front of a rock wall, one full-speed pass, loot systems live:
 //                   kills caused by the wedge and its flung hulls (not guns), credited to the
 //                   player, and the loot that lands with no pilot input.
@@ -53,14 +60,21 @@ export const BUMPER_TARGETS = Object.freeze({
 });
 
 /**
- * Light the wedge the way the keyboard does: the input system's edge on state.input.actions.hullBurst,
- * which the runtime's own copy of the hullBurst system consumes on its next update (the runtime
- * instantiates its own copy of each system, so calling the imported module's activate() would light a
- * different object). `lit` is then read off the system's own `hullBurst:activated` event.
+ * Keep the boost gesture paying for as long as an arm needs it: hold the input flag and top the
+ * meter back up each tick. This authors the PILOT (a thumb holding Shift and a tank that happens to
+ * be full), never the physics — the same class of initial condition as the arms' authored start
+ * velocities. `tank: 'low'` parks the meter between the boost gate (energy > 1) and the dash cost
+ * (28): the boost runs and the wedge is live, but the press carries no dash impulse — the only
+ * honest way to measure a low-closing pass in a world where the wedge rides the boost.
  */
-function light(host) {
-  if (!host.state.input.actions) host.state.input.actions = {};
-  host.state.input.actions.hullBurst = true;
+function holdBoost(state, { tank = 'full' } = {}) {
+  if (state.input) state.input.boost = true;
+  const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const boost = player && player.boost;
+  if (boost && boost.max > 0) {
+    boost.energy = tank === 'low' ? Math.min(Math.max(1.5, 20), boost.max) : boost.max;
+    boost._boostArmed = true;
+  }
   return true;
 }
 
@@ -116,7 +130,7 @@ function spawnHostileHull(host, hullId, pos) {
 }
 
 async function bootBumper(seed, { systems = BUMPER_SYSTEMS, playerPos = { x: 0, z: 0 }, moduleId = 'mod_gravity_bumper_s', kind = 'gravity' } = {}) {
-  const fittings = fittingsFromDefaultModules(PLAYER_HULL, [moduleId]);
+  const fittings = fittingsFromDefaultModules(PLAYER_HULL, moduleId ? [moduleId] : []);
   const host = await bootRealPath({
     seed,
     systems: [...systems],
@@ -134,16 +148,18 @@ async function bootBumper(seed, { systems = BUMPER_SYSTEMS, playerPos = { x: 0, 
   const tumbleOn = !!(features && features.massline2 && features.massline2.enabled && features.massline2.tumble);
   const fitted = host.player && host.player.data && host.player.data.derived && host.player.data.derived.hullBurstKind;
   if (!impulseOn || !tumbleOn) return { host, reason: 'production feel flags off' };
-  if (fitted !== kind) return { host, reason: `the ${moduleId} burst is not in the derived stats (${fitted})` };
+  if (fitted !== kind) return { host, reason: `the ${moduleId || 'bare'} burst is not in the derived stats (${fitted})` };
   return { host };
 }
 
 /**
- * One throw. The player closes on a parked hostile at `playerSpeed`, the burst is lit on tick 1, and
- * the hostile is traced until FLIGHT_S after the hit lands.
+ * One throw. The player closes on a parked hostile at `playerSpeed` while holding boost (the wedge
+ * lights itself on the rising boost edge), and the hostile is traced until FLIGHT_S after the hit
+ * lands. `tank` selects the meter the pilot carries: 'full' (dash + boost, the fast arrival) or
+ * 'low' (boost without a dash, the slow arrival).
  */
-async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0, boost = false, burst = true }) {
-  const boot = await bootBumper(seed);
+async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0, boost = false, burst = true, tank = 'full', moduleId, kind }) {
+  const boot = await bootBumper(seed, moduleId === null ? { moduleId: null, kind: null } : {});
   if (boot.reason) return { measured: false, tag, reason: boot.reason };
   const { host } = boot;
   const player = host.player;
@@ -169,7 +185,6 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
 
   const startTick = host.state.tick | 0;
   const trace = [];
-  let lit = false;
   let hitPos = null;
   let endTick = null;
   let readTick = null;
@@ -177,10 +192,16 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
   let playerSpeedBeforeHit = 0;
   host.step(60 * 12, {
     before: ({ state }) => {
-      if (burst && !lit) { lit = light(host); }
       // Hands off unless the arm says otherwise: the flight assist settles a hull to rest, so an
-      // arm that needs an ARRIVAL SPEED keeps its throttle open until the wedge has hit.
-      writeRealPathInput(state, (hits.length || rams.length) ? {} : { moveZ: throttle, boost });
+      // arm that needs an ARRIVAL SPEED keeps its throttle open until the wedge has hit. While the
+      // arm holds boost, the meter is topped so the gesture — and with it the wedge — never cuts
+      // out mid-approach on meter economics the arm is not measuring.
+      if (burst && boost && !(hits.length || rams.length)) {
+        writeRealPathInput(state, { moveZ: throttle, boost: true });
+        holdBoost(state, { tank });
+      } else {
+        writeRealPathInput(state, (hits.length || rams.length) ? {} : { moveZ: throttle, boost });
+      }
     },
     after: ({ state }) => {
       const tick = state.tick | 0;
@@ -192,7 +213,7 @@ async function runThrow(seed, { hullId, playerSpeed, targetX, tag, throttle = 0,
         tumbling: readTumbleStatus(state, target) !== null, recovering: isRecovering(state, target),
         alive: target.alive !== false,
       });
-      // The reference is the burst's hit; with no burst lit (the control arm) it is the first contact.
+      // The reference is the burst's hit; with no burst fitted (the control arm) it is the first contact.
       if ((hits.length || (!burst && rams.length)) && !hitPos) {
         hitPos = { x: finite(target.pos.x), z: finite(target.pos.z) };
         readTick = tick + Math.round(FLIGHT_S / DT);
@@ -280,16 +301,15 @@ async function runField(seed) {
   host.bus.on('loot:overflowConverted', (p) => { if (p) overflow.push({ tick: host.state.tick | 0, credits: finite(p.credits) }); });
 
   const startTick = host.state.tick | 0;
-  let lit = false;
   let braked = false;
   const pickupLives = new Map();
   let pickupsSeen = 0;
   host.step(60 * 25, {
     before: ({ state }) => {
-      if (!lit) lit = light(host);
       // Brake once the hulls are past the player, so the pass ends before the wall.
       if (!braked && hits.length >= wasps.length) braked = true;
-      writeRealPathInput(state, braked ? { brake: true } : { moveZ: 1, boost: true });
+      if (braked) writeRealPathInput(state, { brake: true });
+      else { writeRealPathInput(state, { moveZ: 1, boost: true }); holdBoost(state); }
     },
     after: ({ state }) => {
       const list = state.entityList || [];
@@ -371,13 +391,12 @@ async function runLance(seed) {
   const pool = (e) => finite(e.hull) + finite(e.shield) + finite(e.armorHp);
   const wardenPool0 = pool(warden);
   let wardenBurnSeen = false;
-  let lit = false;
   const pickupLives = new Map();
   let pickupsSeen = 0;
   host.step(60 * 20, {
     before: ({ state }) => {
-      if (!lit) lit = light(host);
-      writeRealPathInput(state, lit && hits.length >= 4 ? { brake: true } : { moveZ: 1, boost: true });
+      if (hits.length >= 4) writeRealPathInput(state, { brake: true });
+      else { writeRealPathInput(state, { moveZ: 1, boost: true }); holdBoost(state); }
     },
     after: ({ state }) => {
       const list = state.entityList || [];
@@ -424,7 +443,7 @@ async function runLance(seed) {
 /**
  * GRIP BUMPER. The player closes on a parked light hostile, the wedge catches it, and it rides the nose.
  *   ram    the pilot holds course into a rock: the carried hull is the battering ram. The kill is the player's.
- *   cut    the pilot presses the key again after a beat: the hostage is released faster than the player flies.
+ *   cut    the pilot releases the boost after a beat: the hostage is released faster than the player flies.
  * Reports how tightly the hostage rides the nose socket, and whatever the hostage did to the world.
  */
 async function runGrip(seed, { cutAfterS = null, tag }) {
@@ -459,18 +478,17 @@ async function runGrip(seed, { cutAfterS = null, tag }) {
   let sumSeparation = 0;
   let carrySamples = 0;
   let outboundAfterRelease = null;
-  let lit = false;
   let cutSent = false;
   host.step(60 * 14, {
     before: ({ state }) => {
-      if (!lit) lit = light(host);
-      // A press of the key AFTER the catch, cutAfterS later, lets the hostage go.
-      if (cutAfterS != null && !cutSent && caughtTick != null && ((state.tick | 0) - caughtTick) >= cutAfterS * 60) {
-        state.input.actions.hullBurst = true;
-        cutSent = true;
-      }
+      // Releasing the boost AFTER the catch, cutAfterS later, lets the hostage go (the cut is a
+      // boost release now — there is no second key).
+      const wantCut = cutAfterS != null && !cutSent && caughtTick != null && ((state.tick | 0) - caughtTick) >= cutAfterS * 60;
+      if (wantCut) cutSent = true;
       const stop = killed.length > 0 || released != null;
-      writeRealPathInput(state, stop ? { brake: true } : { moveZ: 1, boost: true });
+      if (stop) writeRealPathInput(state, { brake: true });
+      else if (wantCut) writeRealPathInput(state, { moveZ: 1 });
+      else { writeRealPathInput(state, { moveZ: 1, boost: true }); holdBoost(state); }
     },
     after: ({ state }) => {
       // How tightly the hostage rides the nose socket once it is caught and pulled in (after 1 s).
@@ -528,17 +546,19 @@ async function runGrip(seed, { cutAfterS = null, tag }) {
 
 export const scenario = {
   id: 'feel.bumper_scene',
-  label: 'BUMPER Gravity Bumper yardstick: crawl vs swing fling distance, heavy shrug, three Wasps into a rock wall',
+  label: 'BUMPER boost-burst yardstick: low-closing vs full-speed boost pass fling distance, heavy shrug, three Wasps into a rock wall',
   async run(seed) {
     // A real crawl: the target starts OUTSIDE the wedge's reach and the player closes on it slowly, so the hit
-    // lands at a small but real closing speed (not a stationary player, which is a different case).
-    const crawl = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 20, targetX: 150, tag: 'crawl', throttle: 0.1 });
+    // lands at a small but real closing speed (not a stationary player, which is a different case). The LOW
+    // tank keeps the dash out of the press (energy under the 28 dash cost, over the >1 boost gate), so the
+    // boost runs — the wedge is live — while the closing stays the approach's own speed.
+    const crawl = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 20, targetX: 150, tag: 'crawl', throttle: 0.1, boost: true, tank: 'low' });
     const swing = await runThrow(seed, { hullId: 'ship_wasp', playerSpeed: 200, targetX: 260, tag: 'swing', throttle: 1, boost: true });
     const medium = await runThrow(seed, { hullId: 'ship_drifter', playerSpeed: 200, targetX: 260, tag: 'swing_medium', throttle: 1, boost: true });
     const heavy = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'swing_heavy', throttle: 1, boost: true });
-    // The control: the same approach at the same Warden with the burst NEVER lit. Whatever this hull does is the
+    // The control: the same approach, boost held, with NO burst module fitted. Whatever this hull does is the
     // player's own ram; the burst has to beat it, not be it.
-    const control = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'control_heavy', throttle: 1, boost: true, burst: false });
+    const control = await runThrow(seed, { hullId: 'ship_warden', playerSpeed: 200, targetX: 260, tag: 'control_heavy', throttle: 1, boost: true, burst: false, moduleId: null });
     const field = await runField(seed);
     const lance = await runLance(seed);
     const gripRam = await runGrip(seed, { tag: 'grip_ram' });
@@ -630,8 +650,8 @@ export const scenario = {
         `killed ${gripRam.killed}, credited ${gripRam.killedCreditedToPlayer}; loot ${gripRam.pickupsSeen} pickups, ${gripRam.pickupsStranded} floating, wallet +${gripRam.walletDelta}`);
     }
     if (gripCut.measured) {
-      push('grip.cut', 'Grip Bumper: pressing the key again releases the hostage ahead of the player (its speed relative to the player, WU/s)',
-        gripCut.outboundAfterReleaseWuS, 'WU/s', gripCut.released && gripCut.released.reason === 'cut' && gripCut.outboundAfterReleaseWuS != null && gripCut.outboundAfterReleaseWuS > 0,
+      push('grip.cut', 'Grip Bumper: releasing the boost releases the hostage ahead of the player (its speed relative to the player, WU/s)',
+        gripCut.outboundAfterReleaseWuS, 'WU/s', gripCut.released && gripCut.released.reason === 'boostEnded' && gripCut.outboundAfterReleaseWuS != null && gripCut.outboundAfterReleaseWuS > 0,
         `released ${JSON.stringify(gripCut.released)}; hostage alive ${gripCut.hostageAlive}`);
     }
 

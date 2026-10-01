@@ -228,6 +228,7 @@ import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import {
   resolveForceNeonScale,
   resolveMasslineCableProfile,
+  resolveMasslineWhipGlow,
   resolveTumbleContinuousVfxPlan,
 } from './masslinePresentation.js';
 import {
@@ -317,6 +318,18 @@ export const EVENT_LIGHT_POOL_SIZE = 6;
 export { WEAPON_LIGHT_POOL_SIZE };
 const PLAYER_PLUME_EVENT_LIGHT_KEY = 'player-plume';
 const PLAYER_PLUME_EVENT_LIGHT_PRIORITY = 0.72;
+
+// Engine plumeCore ('#36c8ff'-style) as raw 0..1 RGB, matching the family eventLight recipe
+// convention (parsed hex, no color-management round trip). Scratch-filled, never allocated.
+function enginePlumeCoreRgbInto(engine, out) {
+  const hex = engine && typeof engine.plumeCore === 'string'
+    && /^#[0-9a-fA-F]{6}$/.test(engine.plumeCore)
+    ? engine.plumeCore : '#36c8ff';
+  out.r = parseInt(hex.slice(1, 3), 16) / 255;
+  out.g = parseInt(hex.slice(3, 5), 16) / 255;
+  out.b = parseInt(hex.slice(5, 7), 16) / 255;
+  return out;
+}
 export function eventLightPoolSizeFor(_video) {
   return EVENT_LIGHT_POOL_SIZE;
 }
@@ -9346,15 +9359,20 @@ export const vfx = {
     // UVP force-neon: taut / loaded lines push energy above hull-neutral; slack stays quieter.
     const neon = resolveForceNeonScale('taut', this._forceNeonMetrics({ load: l }));
     const neonMul = taut ? neon.energy : (1 + (neon.energy - 1) * 0.35);
+    // PIC-13: the stored-swing-energy glow. The sim publishes tether.strainGlow per tick (0 when
+    // the line is inactive); this is a straight transport into the ribbon frame, not a re-derivation.
+    const whipGlow = resolveMasslineWhipGlow(tether);
     const ribbonFrame = {
       time: pulseTime,
       color: this._ctmp,
       tension: l,
       // uStrain in the ribbon shader. Fed the past-capture working read, not tether.strain: the
       // physical ratio is ~1e-4 against a 10.5M breakTension, so uStrain*uStrain was always 0 and
-      // the shader's brightness chatter never ran. (energyMaterials.js still documents this uniform
-      // as "physical strain" — that comment needs the same correction; it is not this file.)
+      // the shader's brightness chatter never ran. (energyMaterials.js's uStrain declaration
+      // carries the same correction.)
       strain: s * masslineA11y.pulseScale,
+      // PIC-13: stored swing energy lights the rope, so a loaded whip reads before it snaps.
+      glow: whipGlow,
       whip: visualWhip,
       // uLatchWave: the one-shot bright band running anchor→ship on latch. The shader keys the
       // band position off this value (0 = at the hitch, 1 = spent); with reduced motion/flash the
@@ -13296,8 +13314,61 @@ export const vfx = {
     this._updateProductionRcs(player, dt, a11y);
   },
 
+  /**
+   * Sustained hull light for the unified plasma stream. The family path below reads the fleet
+   * record's driveState, which never leaves zero while the plasma stream draws the player's
+   * exhaust (its fleet sockets are deliberately emptied so the two systems cannot double-draw).
+   * Left as-is, the bell owed a hull light that could never exist — the owner's "thruster base
+   * would be brighter" — so this derives everything from the stream's own live envelope and
+   * exact nozzle instead: brighter with the smoothed drive, hotter on boost, engine-plume colour.
+   */
+  _syncPlayerPlasmaStreamLight(player) {
+    const energy = this._energy;
+    const stream = energy && energy.plasmaStream;
+    if (!stream || typeof stream.eventLightSource !== 'function') return false;
+    const release = () => this._releasePlayerPlumeEventLight();
+    if (!player || !player.alive || player.type !== 'ship'
+      || (player.flags && player.flags.docked)) {
+      return release();
+    }
+    // Same authored-boundary gate as the family path: no published hull, no engine to glow —
+    // without this an invisible ship parks a live point light on whatever it is docked at.
+    const viewRoot = player.view && player.view.root;
+    const visualRoot = viewRoot && viewRoot.userData && viewRoot.userData.authoredVisualRoot;
+    if (typeof visualRoot === 'string' && visualRoot.startsWith('none-')) return release();
+    const src = stream.eventLightSource();
+    if (!src) return release();
+    const a11y = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const peakScale = a11y && Number.isFinite(a11y.eventLightPeakScale)
+      ? a11y.eventLightPeakScale : 1;
+    if (!(peakScale > 0)) return release();
+    const drive = Math.max(0, Math.min(1.4, src.drive || 0));
+    const norm = Math.max(0, Math.min(1, (drive - 0.06) / 0.94));
+    const boost = Math.max(0, Math.min(1, src.boost || 0));
+    // Reduced-flash convention shared with the family presentation path (eventLightScale 0.25).
+    const flashGate = (this._productionThrusterA11y && this._productionThrusterA11y.reducedFlash)
+      ? 0.25 : 1;
+    const intensity = Math.min(2.6,
+      2.6 * (0.24 + 0.76 * norm) * (1 + boost * 0.28) * flashGate * peakScale);
+    if (intensity <= 0.02) return release();
+    const rgb = this._plumeCoreRgbScratch
+      || (this._plumeCoreRgbScratch = { r: 0.38, g: 0.78, b: 1 });
+    enginePlumeCoreRgbInto(getEngineProfileBase(this._engineProfileIdFor(player)), rgb);
+    return this._upsertPlayerPlumeEventLight({
+      x: src.x,
+      y: src.y + 1.0,
+      z: src.z,
+      r: rgb.r,
+      g: rgb.g,
+      b: rgb.b,
+      intensity,
+      range: 10.5 * (0.5 + 0.5 * norm),
+    });
+  },
+
   _syncPlayerPlumeEventLight(player) {
     const energy = this._energy;
+    if (energy && energy.plasmaStream) return this._syncPlayerPlasmaStreamLight(player);
     const fleet = energy && energy.fleet;
     if (!fleet || !player || !player.alive || player.type !== 'ship'
       || (player.flags && player.flags.docked)) {

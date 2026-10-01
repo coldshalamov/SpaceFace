@@ -59,6 +59,15 @@ export const CLIP_RETAIN_BYTES = 64 * 1024 * 1024;
 export const CLIP_PLAYBACK = Object.freeze({ slowScale: 0.35, slowSourceSeconds: 0.70 });
 const RARITY_WEIGHT = Object.freeze({ common: 1, uncommon: 1.4, rare: 1.8, legendary: 2.2 });
 
+/** Display grade for a rated weight. Cut points are RARITY_WEIGHT. */
+function gradeFromRarityWeight(weight) {
+  if (weight >= RARITY_WEIGHT.legendary) return 'legendary';
+  if (weight >= RARITY_WEIGHT.rare) return 'rare';
+  if (weight >= RARITY_WEIGHT.uncommon) return 'uncommon';
+  if (weight >= RARITY_WEIGHT.common) return 'common';
+  return '';
+}
+
 function finiteNum(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -234,7 +243,14 @@ export const bulletTime = {
     if (Object.hasOwn(moment.seenEpisodes,trick.rootId)) {
       const i=moment.recentMoments.findIndex(m=>m.rootId===trick.rootId);
       if(i>=0&&rating.score>moment.recentMoments[i].peakScore){
-        moment.recentMoments[i]={...moment.recentMoments[i],peakScore:rating.score,name:trick.name,latestTick:tick};
+        const grade=gradeFromRarityWeight(rating.rarityWeight);
+        moment.recentMoments[i]={
+          ...moment.recentMoments[i],
+          peakScore:rating.score,score:rating.score,
+          rarityWeight:rating.rarityWeight,momentumFactor:rating.momentumFactor,collateralFactor:rating.collateralFactor,
+          name:trick.name,latestTick:tick,
+          ...(grade?{rarity:grade}:{}),
+        };
         const clip=moment.clips.find(c=>c.rootIds.includes(trick.rootId));
         if(clip){clip.peakScore=Math.max(clip.peakScore,rating.score);clip.collateralCount=Math.max(clip.collateralCount,finiteNum(trick.modifiers?.collateralCount,1));clip.latestTick=tick;}
         this.bus?.emit('moment:amended',moment.recentMoments[i]);

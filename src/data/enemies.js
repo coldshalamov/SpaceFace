@@ -93,6 +93,7 @@ export const ENEMY_TYPES = [
     maxSpeed: 112, accel: 91, turnRate: 1.65, collisionRadius: 20, mass: 70,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2400 },
+    counterHint: 'It commits to each pass whole — slip the run and take the flank while it hauls around.',
     behavior: 'close to <250wu, circle-strafe, relentless pursue',
     bountyCr: 520, shipClass: 'gunship',
     loot: {

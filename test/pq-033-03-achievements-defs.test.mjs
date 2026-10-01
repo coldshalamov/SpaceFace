@@ -28,7 +28,10 @@ const read = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
 test('definitions are valid, unique and sized for the store', () => {
   const verdict = validateAchievementDefinitions();
   assert.equal(verdict.ok, true, verdict.issues.join('\n'));
-  assert.ok(ACHIEVEMENTS.length >= 12 && ACHIEVEMENTS.length <= 16, `12-16 achievements, got ${ACHIEVEMENTS.length}`);
+  // The store's real ceiling is the definition count itself; this is a floor + a sanity ceiling so
+  // a mass-paste that duplicates a list still trips. (The old 12-16 band was written when the
+  // catalog had 12 and went stale at 20 — the band, not the catalog, was the bug.)
+  assert.ok(ACHIEVEMENTS.length >= 12 && ACHIEVEMENTS.length <= 64, `12-64 achievements, got ${ACHIEVEMENTS.length}`);
 
   const ids = ACHIEVEMENTS.map((def) => def.id);
   const apiNames = ACHIEVEMENTS.map((def) => def.steamApiName);
@@ -83,12 +86,21 @@ test('every counter is fed by a live emit site and a ledger handler that reads r
     else assert.ok(CRUCIBLE_FACTS[def.rule.key], `${def.id} crucible fact exists`);
   }
 
-  // The payload fields the filters read are the ones the emitters write.
-  assert.match(read('src/systems/tetherGameplay.js'), /classification = 'razor'/);
+  // The payload fields the filters read are the ones the emitters write. The release grade itself
+  // now lives in masslineControlLaw.rateCadenceTechnique, which tetherGameplay.rateRelease calls —
+  // so the 'razor' literal is asserted where it is actually produced, not where it used to be.
+  assert.match(read('src/systems/masslineControlLaw.js'), /classification = .*'razor'/,
+    'the cadence control law is still the thing that mints a razor grade');
+  assert.match(read('src/systems/tetherGameplay.js'), /rateCadenceTechnique\(/,
+    'the emitted rating comes from the cadence control law');
   assert.match(read('src/systems/masslineImpacts.js'), /'crushing'/);
   assert.match(read('src/systems/heat.js'), /wantedCrossed: wanted !== wasWanted/);
   assert.match(read('src/systems/mining.js'), /minerId: miner \? miner\.id : null/);
-  assert.match(read('src/systems/economy.js'), /emit\('credits:changed', \{ delta: amount/);
+  // The economy system is the sole writer of credits, and the ledger sums POSITIVE deltas only, so
+  // the assertion is on the payload contract (a signed `delta` on every credits:changed emit),
+  // not on the exact call spelling — the emitter was refactored into two grant/charge branches.
+  assert.match(read('src/systems/economy.js'), /emit\('credits:changed', \{ delta: /,
+    'every credits:changed emit carries a signed delta for the ledger to sum');
   const records = read('src/systems/survivalRecords.js');
   for (const field of ['runs', 'deepestWave', 'byDate', 'attempts']) assert.ok(records.includes(field), `survivalRecords writes ${field}`);
   assert.match(read('src/systems/survivalResults.js'), /settleCrucibleRun\(\{ result, run \}\)[\s\S]*?_emit\('run:resultsReady', result\)/,

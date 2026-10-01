@@ -101,6 +101,8 @@ export function customsDecision(state, scanPayload, economySys) {
   return {
     factionId,
     factionShort: factionShort(factionId),
+    patrolId: scanPayload.patrolId ?? null,
+    stationId: scanPayload.stationId ?? null,
     hasContraband: risk.hasContraband || engineFlagged,
     risk,
     // The bribe cost label: the projected estimate (matches what economy.payBribe will charge).
@@ -206,8 +208,9 @@ export const customsPrompt = {
     if (!bus || !bus.emit || !ui) { this._dismiss(); return; }
     if (actionId === 'submit') {
       // Let the shipped patrolScan encounter / patrol:proximity resolve. economy.runScan owns the
-      // confiscation + rep + heat. Emit nothing new — the encounter's own deadline will submit.
-      bus.emit('customs:submit', { factionId: ui.factionId });
+      // confiscation + rep + heat. The submit intent carries the scanner's identity so the law's
+      // acknowledgment (lawSecurity) can name the unit that took the submission.
+      bus.emit('customs:submit', { factionId: ui.factionId, patrolId: ui.patrolId ?? null, stationId: ui.stationId ?? null });
     } else if (actionId === 'bribe') {
       // Route through economy.payBribe (listens at economy.js:293). The fine we pass is the
       // engine's own estimate shape; economy charges round(fine*BRIBE_FRAC). We never write credits.
@@ -226,9 +229,10 @@ export const customsPrompt = {
       }
       bus.emit('contraband:bribe', { fine: ui.risk.estFine });
     } else if (actionId === 'run') {
-      // Run only avoids the SCAN — not an already-resolved bust. The additive seam lets a future
-      // input-side flight cue break range; the patrolScan encounter also detects range-break itself.
-      bus.emit('customs:breakScan', { factionId: ui.factionId });
+      // Run only avoids the SCAN — not an already-resolved bust. The seam answers on the hull:
+      // actionEventRecipes resolves the record onto the player's own drive flare (LAW-02);
+      // the patrolScan encounter also detects range-break itself.
+      bus.emit('customs:breakScan', { factionId: ui.factionId, patrolId: ui.patrolId ?? null, stationId: ui.stationId ?? null });
     }
     this._dismiss();
   },
@@ -300,7 +304,7 @@ export const customsPrompt = {
       statusFlag: 'CUSTOMS SCAN',
       headline: flagged ? 'HOLD FLAGGED' : 'HOLD READS CLEAN',
       detail: flagged
-        ? `Projected fine ≈ ${decision.estFine || decision.risk.estFine} cr · bribe ≈ ${decision.bribeCost} cr. Flagged: ${decision.risk.stacks.slice(0, 3).map((s) => `${s.name} ×${s.qty}`).join(', ')}.`
+        ? `Projected fine ≈ ${decision.risk.estFine} cr · bribe ≈ ${decision.bribeCost} cr. Flagged: ${decision.risk.stacks.slice(0, 3).map((s) => `${s.name} ×${s.qty}`).join(', ')}.`
         : 'Stand by for clearance — or break range to skip the scan.',
       deadlineAt: Number(now || (this._state && this._state.simTime) || 0) + (PANEL_TTL_MS / 1000),
       choices: [

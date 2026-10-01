@@ -185,9 +185,16 @@ test('Massline HUD compares a reusable scalar block and notices movement', () =>
   const player = { pos: { x: 0, z: 0 } };
   assert.equal(masslineHudInputsUnchanged(state, player), false);
   assert.equal(masslineHudInputsUnchanged(state, player), true);
+  // Quiescent frames deliberately exclude player pos — with nothing world-anchored visible it
+  // cannot move a pixel, so idle movement does not roll the signature.
   player.pos.x = 1;
+  assert.equal(masslineHudInputsUnchanged(state, player), true);
+  // Once a world-anchored element is live (a tether), the same movement repaints.
+  state.player.tether = { active: true, targetId: 7 };
   assert.equal(masslineHudInputsUnchanged(state, player), false);
   assert.equal(masslineHudInputsUnchanged(state, player), true);
+  player.pos.x = 2;
+  assert.equal(masslineHudInputsUnchanged(state, player), false);
   let value = 1;
   assert.equal(hudFieldsUnchanged(state, 'scalar-test', (fields) => { fields[0] = value; return 1; }), false);
   assert.equal(hudFieldsUnchanged(state, 'scalar-test', (fields) => { fields[0] = value; return 1; }), true);

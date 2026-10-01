@@ -762,6 +762,8 @@ export const uniqueWrecks = {
     return resolution;
   },
 
+  // Seeded timers only arm on bearing_recorded today — a timer authored with any other trigger
+  // is inert until a call site passes that trigger through here.
   _scheduleSeededTimers(def, trigger) {
     const own = this._ensureState();
     const now = Math.max(0, finite(this.state.simTime, 0));
@@ -788,6 +790,8 @@ export const uniqueWrecks = {
       own.complications[key] = record;
       this.bus.emit('uniqueWreck:complicationScheduled', {
         wreckId: def.id,
+        wreckName: def.name,
+        sectorId: record.sectorId,
         timerId: record.timerId,
         kind: record.kind,
         dueAt: record.dueAt,
@@ -803,9 +807,12 @@ export const uniqueWrecks = {
       if (!record || record.status !== 'scheduled' || record.dueAt == null || record.dueAt > now) continue;
       record.status = 'triggered';
       record.triggeredAt = now;
+      const def = uniqueWreckById(record.wreckId);
       this._receipt('complication', record.wreckId);
       this.bus.emit('uniqueWreck:complicationTriggered', {
         wreckId: record.wreckId,
+        wreckName: def && def.name,
+        sectorId: record.sectorId,
         timerId: record.timerId,
         kind: record.kind,
         dueAt: record.dueAt,
@@ -813,7 +820,6 @@ export const uniqueWrecks = {
         encounterId: record.encounterId,
       });
       if (record.encounterId) {
-        const def = uniqueWreckById(record.wreckId);
         const bearing = def && own.bearings[def.id];
         if (def && bearing) this._requestEncounter(def, record.encounterId, bearing, record.kind, {
           emitComplicationTriggered: false,
@@ -945,6 +951,7 @@ export const uniqueWrecks = {
     this._receipt('encounter_requested', def.id);
     const payload = {
       wreckId: def.id,
+      wreckName: def.name,
       sectorId,
       encounterId: record.encounterId,
       kind: record.kind,
@@ -1158,6 +1165,7 @@ export const uniqueWrecks = {
           this._receipt('claim_complication', def.id);
           this.bus.emit('uniqueWreck:complicationTriggered', {
             wreckId: def.id,
+            wreckName: def.name,
             sectorId: def.sectorId,
             kind: complication.kind,
             trigger: 'unique_drop_claimed',

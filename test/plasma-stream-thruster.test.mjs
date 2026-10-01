@@ -509,3 +509,61 @@ test('dash is a one-shot supernova with a long cooling tail', () => {
   for (let i = 0; i < 200; i++) integrateDriveEnvelope(env, input, 1 / 60);
   assert.equal(env.dash, 0);
 });
+
+test('the live jet flows back through a turn and re-straightens onto the bell', () => {
+  const scene = new THREE.Scene();
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(scene);
+  const sock = { x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 };
+  const owner = { id: 'lag-integration' };
+  const rate = 2.0;
+  // Turn for a second while firing: the spine must bend (memory of the old heading).
+  for (let i = 0; i < 60; i++) {
+    const rot = i * (rate / 60);
+    sock.ax = -Math.cos(rot); // ax is opposite exhaust
+    sock.az = -Math.sin(rot);
+    stream.update(1 / 60, [sock], THRUST, { reducedMotion: false }, owner);
+  }
+  let info = stream.inspect();
+  assert.equal(info.ribbon.lagged, true, 'the plasma stream binds its lag spine');
+  assert.ok(info.lag.history.samples > 30, 'heading history is being recorded');
+  assert.ok(info.lag.tipBendRad > 0.25,
+    `a 2 rad/s sustained turn must bend the jet, got ${info.lag.tipBendRad}`);
+
+  // Hold the new heading: memory ages out and the jet re-straightens onto the bell.
+  for (let i = 0; i < 120; i++) {
+    stream.update(1 / 60, [sock], THRUST, { reducedMotion: false }, owner);
+  }
+  info = stream.inspect();
+  assert.ok(info.lag.tipBendRad < 0.05,
+    `aged-out memory must re-straighten the jet, got ${info.lag.tipBendRad}`);
+  stream.dispose();
+});
+
+test('the lag spine is opt-in: a plume without a bound spine renders the analytic straight jet', () => {
+  const scene = new THREE.Scene();
+  const plume = new PlasmaRibbonPlume(THREE, {});
+  plume.attach(scene);
+  plume.update(1 / 60, { x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 }, {
+    drive: 1, spool: 1, jetLength: 17, throatRadius: 1.32,
+  });
+  assert.equal(plume.material.uniforms.uUseLag.value, 0, 'no centerTex, no lag');
+  assert.equal(plume.inspect().lagged, false);
+  plume.dispose();
+});
+
+test('the lit bell owes its hull light to the plasma stream, not to a dead fleet record', () => {
+  const scene = new THREE.Scene();
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(scene);
+  assert.equal(stream.eventLightSource(), null, 'cold drive, no light source');
+  const sock = { x: 3, y: 0, z: -2, ax: 1, ay: 0, az: 0 };
+  runFrames(stream, [sock], THRUST, 30, { id: 'player' });
+  const src = stream.eventLightSource();
+  assert.ok(src, 'a firing drive publishes its light source');
+  assert.ok(close(src.x, sock.x) && close(src.z, sock.z), 'light rides the live nozzle');
+  assert.ok(src.drive > 0.5, 'light carries the smoothed envelope, not raw input');
+  stream.reset();
+  assert.equal(stream.eventLightSource(), null, 'reset kills the light');
+  stream.dispose();
+});

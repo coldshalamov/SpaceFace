@@ -70,6 +70,8 @@ const SCREENS = Object.freeze({
   starmap: () => import('../src/ui/screens/starmap.js').then((m) => m.starmapScreen),
   // ORRERY (design/frontend/ORRERY.md): the Phase 0a direction proof, the flight HUD composed from the library.
   orreryFlight: () => import('../src/ui/orrery/flightPreview.js').then((m) => m.orreryFlightScreen),
+  // The loading shot's screen name; dispatch special-cases it (mountLoadingShot) and never calls this loader.
+  bootOverlay: () => Promise.resolve(null),
 });
 
 /** The flight HUD is not a .mount() screen; it is the always-mounted overlay createHud() builds

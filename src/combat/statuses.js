@@ -7,8 +7,10 @@ export function createStatusService(context) {
   function schedule(targetEntity, runtime, application, source = {}) {
     const def = catalog.statuses.get(application && application.id);
     if (!def) return { ok: false, reason: 'unknown_status' };
-    const immunity = new Set(runtime.immunityTags || []);
-    if ((def.immunityTags || []).some((tag) => immunity.has(tag))) {
+    // A corpse or an immune hull must not queue a later cue. The damage owner still
+    // decides accepted packets; this refusal publishes nothing.
+    if (isDestroyedBody(targetEntity)) return { ok: false, reason: 'destroyed' };
+    if (isStatusImmune(def, runtime)) {
       appendCombatTrace(state.combat, state.tick, 'status.immune', {
         actorId: source.attackerId == null ? null : source.attackerId,
         targetId: targetEntity.id,
@@ -55,6 +57,15 @@ export function createStatusService(context) {
 
   function advance(targetEntity, runtime, routeDamage) {
     const tick = state.tick >>> 0;
+    if (isDestroyedBody(targetEntity)) {
+      // Drop queued applications and park periodic clocks. Time spent destroyed must not
+      // catch up as a burst of hits if the body is alive again later.
+      if (runtime && Array.isArray(runtime.pendingStatuses) && runtime.pendingStatuses.length) {
+        runtime.pendingStatuses.length = 0;
+      }
+      parkPeriodicClocks(runtime, tick);
+      return false;
+    }
     const statuses = runtime.statuses || (runtime.statuses = {});
     const pending = Array.isArray(runtime.pendingStatuses)
       ? runtime.pendingStatuses
@@ -89,28 +100,37 @@ export function createStatusService(context) {
 
     if (hasActiveStatusKeys(statuses)) {
       for (const statusId of Object.keys(statuses).sort()) {
+        if (isDestroyedBody(targetEntity)) break;
         const active = statuses[statusId];
         const def = catalog.statuses.get(statusId);
         if (!active || !def || !def.periodic || !(def.periodic.everyTicks > 0)) continue;
         while (active.nextPeriodicTick != null && active.nextPeriodicTick <= tick && active.expiresTick > active.nextPeriodicTick) {
+          if (isDestroyedBody(targetEntity)) break;
+          const dueTick = active.nextPeriodicTick;
+          let accepted = typeof routeDamage !== 'function';
           if (typeof routeDamage === 'function') {
             const packet = scalePacket(def.periodic.packet, Math.max(1, active.stacks || 1));
             packet.flags = { ...(packet.flags || {}), ignoreFriendlyFire: true, statusPeriodic: true };
             packet.source = { statusId, attackerId: active.attackerId };
-            routeDamage({
+            const routed = routeDamage({
               attackerId: active.attackerId,
               targetId: targetEntity.id,
               packet,
               origin: { kind: 'status', id: statusId },
             });
+            accepted = !routed || routed.ok !== false;
           }
-          appendCombatTrace(state.combat, active.nextPeriodicTick, 'status.periodic', {
-            actorId: active.attackerId,
-            targetId: targetEntity.id,
-            statusId,
-            stacks: active.stacks,
-          });
+          // A rejected packet is not a hit. The clock still moves so this tick cannot spin.
+          if (accepted) {
+            appendCombatTrace(state.combat, dueTick, 'status.periodic', {
+              actorId: active.attackerId,
+              targetId: targetEntity.id,
+              statusId,
+              stacks: active.stacks,
+            });
+          }
           active.nextPeriodicTick += def.periodic.everyTicks;
+          if (isDestroyedBody(targetEntity)) break;
         }
       }
     }
@@ -135,6 +155,17 @@ export function createStatusService(context) {
   function applyActive(targetEntity, runtime, pending) {
     const def = catalog.statuses.get(pending.id);
     if (!def) return false;
+    // Immunity can arrive between schedule and apply. Interactions call applyActive
+    // directly, so the cue gate has to live here — not only on schedule.
+    if (isDestroyedBody(targetEntity)) return false;
+    if (isStatusImmune(def, runtime)) {
+      appendCombatTrace(state.combat, state.tick, 'status.immune', {
+        actorId: pending.attackerId == null ? null : pending.attackerId,
+        targetId: targetEntity.id,
+        statusId: def.id,
+      });
+      return false;
+    }
     const existing = runtime.statuses[def.id];
     const maxStacks = Math.max(1, Math.floor(def.stacking && def.stacking.maxStacks || 1));
     const duration = Math.max(1, Math.floor(pending.durationTicks || def.durationTicks || 1));
@@ -207,6 +238,30 @@ export function createStatusService(context) {
   }
 
   return Object.freeze({ schedule, advance, clear });
+}
+
+function isDestroyedBody(targetEntity) {
+  return !targetEntity || targetEntity.alive === false || targetEntity.destroyed === true;
+}
+
+function parkPeriodicClocks(runtime, tick) {
+  const statuses = runtime && runtime.statuses;
+  if (!statuses) return;
+  for (const statusId in statuses) {
+    const active = statuses[statusId];
+    if (!active || active.nextPeriodicTick == null) continue;
+    if (active.nextPeriodicTick < tick) active.nextPeriodicTick = tick;
+  }
+}
+
+function isStatusImmune(def, runtime) {
+  const tags = def && def.immunityTags;
+  const have = runtime && runtime.immunityTags;
+  if (!tags || tags.length === 0 || !have || have.length === 0) return false;
+  for (let i = 0; i < tags.length; i++) {
+    if (have.indexOf(tags[i]) !== -1) return true;
+  }
+  return false;
 }
 
 function replaceStatusData(active, pending) {

@@ -71,7 +71,7 @@ const VERB_MOD_KEYS = Object.freeze({
   swingDrive: ['pendulum dash through a taut line', 'systems/flightV3.js + ships.js fold (landed)', { file: 'src/systems/flightV3.js', symbol: 'swingDrive' }],
   lootMagnetRange: ['pull loot shards into magnet range', 'systems/lootShards.js + ships.js fold (landed)', { file: 'src/systems/lootShards.js', symbol: 'lootMagnetRange' }],
   towFlail: ['towed mass becomes flail damage', 'systems/collisionConsequences.js + ships.js fold (landed)', { file: 'src/systems/collisionConsequences.js', symbol: 'towFlail' }],
-  hullBurst: ['timed front-wedge hurl on a key (Gravity Bumper)', 'systems/hullBurst.js + ships.js fold (landed)', { file: 'src/systems/hullBurst.js', symbol: 'hullBurstKind' }],
+  hullBurst: ['front-wedge hurl riding every boost (Gravity Bumper)', 'systems/hullBurst.js + ships.js fold (landed)', { file: 'src/systems/hullBurst.js', symbol: 'hullBurstKind' }],
   pointDefense: ['auto-intercept projectiles (object value)', 'systems/countermeasures.js (landed)', { file: 'src/systems/countermeasures.js', symbol: 'pointDefense' }],
   // Alien Ecology unlock economy (AE-121..129): behavior-opening fit gear.
   heatLure: ['throw a burn-flag lure (charge throw reads hotter than the plume)', 'systems/impulseCharges.js + systems/alienEcology.js lure intake', { file: 'src/systems/impulseCharges.js', symbol: 'heatLure' }],

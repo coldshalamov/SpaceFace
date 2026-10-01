@@ -168,7 +168,8 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
   host._m0 = true;
   host._m1 = true;
   host._m2 = true;
-  host._prevM1 = true;
+  // (_prevM1 is gone with the hull burst's middle-click trigger: the upgrade rides the boost now,
+  // so the middle button keeps no previous-frame flag.)
   host._kbmActivityPending = true;
   host._travelEdge = true;
   host._cmHeld = true;
@@ -201,7 +202,6 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
   assert.equal(host._m0, false);
   assert.equal(host._m1, false);
   assert.equal(host._m2, false);
-  assert.equal(host._prevM1, false);
   assert.equal(host._kbmActivityPending, false);
   assert.equal(host._travelEdge, false);
   assert.equal(host._cmHeld, false);

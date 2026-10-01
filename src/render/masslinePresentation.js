@@ -434,6 +434,19 @@ function clamp01(x) {
   return x;
 }
 
+/**
+ * PIC-13 — the stored-swing-energy glow, as one scalar the rope material reads every frame.
+ *
+ * The sim already computes it: src/systems/tetherGameplay.js publishes `tether.strainGlow`
+ * (whipGlowFromStoredEnergy / whipStrainGlow) each tick and writes 0 whenever the line is not
+ * active. This is a transport, never a second law — no re-derivation from stretch or energy, no
+ * smoothing, no accessibility gate (it is steady-state legibility, same class as the load colour).
+ * Fails closed to 0 for absent, non-finite or legacy mirrors.
+ */
+export function resolveMasslineWhipGlow(tether = null) {
+  return clamp01(finite(tether && tether.strainGlow, 0));
+}
+
 // ---------------------------------------------------------------------------
 // Cable surface profile (VFX_TECHNIQUE_STANDARD §3 "Loaded Massline").
 //

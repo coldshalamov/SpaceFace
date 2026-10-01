@@ -30,7 +30,6 @@ import {
   releaseBottomLaneClaim,
 } from './hudLayout.js';
 import { resolveHullBurst } from '../data/hullBurst.js';
-import { resolveActionLabel } from '../systems/input.js';
 
 export const FIELD_HUD_CSS = `
 .sf-field-pill {
@@ -89,8 +88,6 @@ export const fieldHud = {
     this._visible = false;
     this._laneSeat = '';
     this._cinderPhaseOut = {};
-    this._burstReadyUntil = 0;
-    this._burstWasReady = false;
   },
 
   destroy() {
@@ -192,9 +189,9 @@ export const fieldHud = {
     return { text: '', cls: '' };
   },
 
-  // Hull-burst voice (slice C): null when no burst module is fitted. Live while the wedge burns; a
-  // quiet recharge countdown after; and a 3 s "ready + key" hint each time it comes back (and once at
-  // the start of a flight), which is how the player learns the key without a permanent legend.
+  // Hull-burst voice (owner principle 2026-09-30): null when no burst module is fitted. The upgrade
+  // rides the boost, so the pill speaks only while the boost gesture is actually paying for the
+  // wedge — no window countdown, no recharge, no key to teach (Settings > Gameplay turns it off).
   _resolveBurst(state, now) {
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId) : null;
@@ -208,21 +205,10 @@ export const fieldHud = {
       }
       def = this._burstDef.def;
     }
-    if (!def) { this._burstReadyUntil = 0; this._burstWasReady = false; return null; }
+    if (!def) return null;
     const rt = state.hullBurst || null;
-    const name = def.name.toUpperCase();
     if (rt && rt.phase === 'active') {
-      this._burstWasReady = false;
-      return { live: true, text: `${name} — LIVE ${Math.max(0, Math.ceil(rt.activeUntil - now))}s`, cls: 'field-burst' };
-    }
-    if (rt && rt.phase === 'cooling' && rt.readyAt - now > 0.05) {
-      this._burstWasReady = false;
-      return { live: false, text: `${name} — RECHARGING ${Math.ceil(rt.readyAt - now)}s`, cls: 'field-burst-recharge' };
-    }
-    if (!this._burstWasReady) { this._burstWasReady = true; this._burstReadyUntil = now + 3; }
-    if (now < (this._burstReadyUntil || 0)) {
-      const key = resolveActionLabel(state, 'hullBurst', { empty: '' });
-      return { live: false, text: key ? `${name} — READY  [${key}]` : `${name} — READY`, cls: 'field-burst-ready' };
+      return { live: true, text: `${def.name.toUpperCase()} — RIDES BOOST`, cls: 'field-burst' };
     }
     return null;
   },

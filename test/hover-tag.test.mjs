@@ -50,3 +50,12 @@ test('measured size is cached until text or viewport changes', () => {
   placeHoverTag(el, 510, 300, 1000, 800);
   assert.equal(el.__woiSize.w, 400, 'new text re-measures');
 });
+
+import { hoverTagVitals } from '../src/ui/orrery/hoverTag.js';
+
+test('vitals report only the layers a body actually has, clamped to 0..1', () => {
+  assert.equal(hoverTagVitals(null), null);
+  assert.equal(hoverTagVitals({ type: 'asteroid' }), null, 'a rock carries no hull stat');
+  const v = hoverTagVitals({ hull: 30, hullMax: 60, shield: 90, shieldMax: 60, armorHp: 0, armorMax: 0 });
+  assert.deepEqual(v, { shield: 1, armor: null, hull: 0.5 });
+});

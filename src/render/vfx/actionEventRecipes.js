@@ -1,5 +1,13 @@
 import { successfulPickupAmount } from '../../core/pickupAcceptance.js';
 import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from './worldCueRecipes.js';
+
+// Rescue is green, ransom amber, loss red. Lost is the sim outcome "abandoned".
+const SURVIVOR_POD_RETIRE = Object.freeze({
+  rescued: { verb: 'cool', primitive: 'deposition', color: 0x7dcea0, life: 0.72, continuous: false },
+  ransomed: { verb: 'command', primitive: 'induction', color: 0xe2b15a, life: 0.72, continuous: false },
+  abandoned: { verb: 'disrupt', primitive: 'induction', color: 0xc45b4a, life: 0.72, continuous: false },
+});
+export { SURVIVOR_POD_RETIRE };
 // Extra responses consume confirmed simulation receipts. Resolving a receipt here is
 // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
 export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
@@ -15,7 +23,16 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'ai:flee': {verb:'vent',primitive:'compression',color:0xdcb99d,life:.85,continuous:false},
   'ai:formationBroken': {verb:'disrupt',primitive:'induction',color:0xe2a983,life:.8,surfaceWork:true,continuous:false},
   'player:scannedByPatrol': {verb:'command',primitive:'induction',color:0x85d0da,life:1,surfaceWork:true,continuous:false},
+  // BREAK RANGE answers on the running hull: a drive flare at the exhaust, not the scan's
+  // induction paint it interrupts.
+  'customs:breakScan': {verb:'ignition',primitive:'compression',color:0xffc08a,life:.9,surfaceWork:true,continuous:false},
   'heat:changed': {verb:'catch',primitive:'capture',color:0xf1ac76,life:1,surfaceWork:true,surfaceCapture:true,continuous:false},
+  // Route handoff: the travel drive yields to the local autopilot — a counter-thrust vent for a
+  // direct brake, a re-lit mains burn when the solution calls for the flip. bestMode selects.
+  'nav:routeBrake': {verb:'vent',primitive:'compression',color:0x9fc8ee,life:.8,surfaceWork:true,continuous:false,
+    variants:{
+      flipBurn:{verb:'ignition',primitive:'compression',color:0xffc08a,life:.9,surfaceWork:true},
+    }},
   'salvage:cutComplete': {verb:'grind',primitive:'deposition',color:0xf3c286,life:.85,surfaceWork:true,continuous:false},
   'salvage:completed': {verb:'harvest',primitive:'deposition',color:0xc9ba98,life:1.2,continuous:false},
   'pickup:collected': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.58,continuous:false},
@@ -43,6 +60,13 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'beacon:deployed': {verb:'command',primitive:'induction',color:0x80ead8,life:1.1},
   // A warded shot's sheet lies on the aimed hull, along the hit that was absorbed.
   'combat:warded': {verb:'cool',primitive:'deposition',color:0x8fe1fa,life:.5,continuous:false},
+  // The pod body is disposed in the same turn, so the mark is the receipt point, not the mesh.
+  'survivorPod:resolved': {verb:'disrupt',primitive:'induction',color:SURVIVOR_POD_RETIRE.abandoned.color,life:.72,continuous:false,
+    variants:{
+      rescued:SURVIVOR_POD_RETIRE.rescued,
+      ransomed:SURVIVOR_POD_RETIRE.ransomed,
+      abandoned:SURVIVOR_POD_RETIRE.abandoned,
+    }},
 });
 
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -70,10 +94,14 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     if(!point(member?.pos))return null;
     return {...p,targetId:member.id,sourceId:member.id,bodySurface:true,attachToTarget:true};
   }
-  if(name==='player:scannedByPatrol'||name==='heat:changed'){
+  if(name==='player:scannedByPatrol'||name==='heat:changed'||name==='customs:breakScan'){
     if(name==='heat:changed'&&!p.wantedCrossed)return null;
     const ship=body(state,state.playerId);if(!point(ship?.pos)||ship.alive===false)return null;
     return {...p,targetId:ship.id,sourceId:ship.id,bodySurface:true,attachToTarget:true};
+  }
+  if(name==='nav:routeBrake'){
+    const ship=body(state,state.playerId);if(!point(ship?.pos)||ship.alive===false)return null;
+    return {...p,kind:p.bestMode,targetId:ship.id,sourceId:ship.id,bodySurface:true,attachToTarget:true};
   }
   if(name==='salvage:cutComplete'){
     const plate=body(state,p.payloadId),target=body(state,p.targetId);
@@ -130,6 +158,12 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     const record=Array.isArray(records)?records.find(b=>b.id===p.id):records?.get?.(p.id);
     const target=body(state,record?.entityId);
     return {...p,targetId:target?.id,pos:point(p.pos)?copyPoint(p.pos):target?.pos};
+  }
+  if (name === 'survivorPod:resolved') {
+    // Lost is the sim outcome "abandoned". A missing point must not flash at the origin.
+    const variant = SURVIVOR_POD_RETIRE[p && p.outcome];
+    if (!variant || !point(p.pos)) return null;
+    return {...p, kind: p.outcome, pos: copyPoint(p.pos), targetId: null, sourceId: p.entityId, attachToTarget: false};
   }
   if (name === 'combat:warded') {
     const aimed = body(state, p && p.targetId);

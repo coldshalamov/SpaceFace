@@ -149,6 +149,14 @@ const STEM_WEIGHTS = {
 };
 
 export const MAX_AUDIO_VOICES = 12;
+// Sustained-beam voices (INST-34). _onFire routes these to a per-owner loop drone instead of a
+// one-shot per fire tick, and _startBeam/_frame resume honour the owner's own voice.
+const DEFAULT_BEAM_RECIPE_ID = 'sfx_wpn_beam_laser';
+export const SUSTAINED_BEAM_RECIPE_IDS = Object.freeze(new Set([
+  'sfx_wpn_beam_laser',
+  'sfx_wpn_heavy_beam',
+]));
+
 const SILENT_LISTENER_POS = Object.freeze({ x: 0, z: 0 });
 
 // Propulsion is a gameplay contract, but its *voice* is presentation-only. Each family keeps the
@@ -494,8 +502,11 @@ export function resolveAudioThreatContext(state, player, rt) {
   return { threat, nearbyHostiles, shieldPct, calmZone, engaged, committedHostiles };
 }
 
-// Build a fast id->recipe lookup over the data array.
-const recipeById = {};
+// Build a fast id->recipe lookup over the data array. Prototype-less on purpose: `{}` inherits
+// Object.prototype, so a cue id of "toString" or "constructor" resolved to a FUNCTION through
+// AUDIO_RECIPE_BY_ID and the audit gates (`assert(AUDIO_RECIPE_BY_ID[rid])`) passed on it — a
+// missing recipe read as a present one.
+const recipeById = Object.create(null);
 for (const r of RECIPES) recipeById[r.id] = r;
 export const AUDIO_RECIPE_BY_ID = Object.freeze(recipeById);
 
@@ -996,14 +1007,24 @@ const GRAVITIC_STATUS_IDS = new Set(['status_gravity_marked', 'status_momentum_s
 // Kinetic projectile guns at or above this impulse read as shove weapons (concussion family),
 // not bullet streams — the concussion cannons (520/920) and the seismic gong (220).
 const CONCUSSION_IMPULSE_MIN = 200;
+// INST-34: a sustained hitscan beam whose per-hit momentum reaches this reads as a CAPITAL beam:
+// the heavy beam (30) and the lighthouse heavy beam (38) sit above it; the M beam laser (10), the
+// veil cutter (12) and the thermal cooker (8) sit below. Threshold, not a name match, so a future
+// L-slot emitter classifies by what it does to a hull rather than by what it is called.
+const HEAVY_BEAM_IMPULSE_MIN = 24;
 
 export function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
   const def = WEAPON_DEF_BY_ID.get(weaponId);
   if (def) {
     // Sustained hitscan emitters sound like beams whatever their damageType reads (beam lasers,
-    // and the thermal cooker — a cooking beam, not a placed charge).
-    if (def.continuous && def.tracking === 'hitscan') return 'sfx_wpn_beam_laser';
+    // and the thermal cooker — a cooking beam, not a placed charge). The capital L-slot beams
+    // get the lower-register heavy voice (INST-34) instead of borrowing the beam laser's.
+    if (def.continuous && def.tracking === 'hitscan') {
+      return (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN
+        ? 'sfx_wpn_heavy_beam'
+        : 'sfx_wpn_beam_laser';
+    }
     // Spinal barrels and named slug drivers are the rail family.
     if (def.mount === 'spinal' || /(rail|lance|driver)/.test(id)) return 'sfx_wpn_railgun';
     // Gravitic: gravity/inertia/field tools — deployed wellheads, mark/sink statuses, and the
@@ -1036,6 +1057,10 @@ export function recipeForWeapon(weaponId) {
     }
     // Plasma: thermal bolt throwers.
     if (def.damageType === 'thermal') return 'sfx_wpn_plasma';
+    // Flak / point defence (INST-33): a kinetic gun whose rounds INTERCEPT incoming fire is a
+    // flak turret, not a kinetic cannon — the flak/PD turret is the catalog's only interceptor.
+    // Checked above the generic kinetic branch so it does not borrow the autocannon's voice.
+    if (def.intercepts === true || /(flak|point.?defen[cs]e|\bpd_)/.test(id)) return 'sfx_wpn_flak';
     // Autocannon: kinetic projectile guns.
     if (def.damageType === 'kinetic') return 'sfx_wpn_autocannon';
     // Pulse: energy projectile guns — the starter voice belongs to this family only.
@@ -1043,7 +1068,10 @@ export function recipeForWeapon(weaponId) {
     return 'sfx_wpn_unclassified';
   }
   // Unknown id — substring families, then the authored generic combat discharge.
-  if (id.includes('beam')) return 'sfx_wpn_beam_laser';
+  // INST-33/34: flak and the capital heavy beam keep their own substrings, so an uncatalogued
+  // mount named for what it is still lands on its family voice instead of a near neighbour.
+  if (id.includes('flak') || id.includes('pointdefen') || id.includes('point_defen')) return 'sfx_wpn_flak';
+  if (id.includes('beam')) return id.includes('heavy') ? 'sfx_wpn_heavy_beam' : 'sfx_wpn_beam_laser';
   if (id.includes('rail') || id.includes('lance') || id.includes('driver')) return 'sfx_wpn_railgun';
   if (id.includes('concussion') || id.includes('seismic')) return 'sfx_wpn_concussion';
   if (id.includes('plasma')) return 'sfx_wpn_plasma';
@@ -1055,7 +1083,7 @@ export function recipeForWeapon(weaponId) {
   if (id.includes('mine') || id.includes('detonator') || id.includes('sticky')
     || id.includes('charge')) return 'sfx_wpn_charge';
   if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
-  if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
+  if (id.includes('cannon') || id.includes('gatling') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
   if (id.includes('pulse') || id.includes('laser') || id.includes('blaster')) return 'sfx_wpn_pulse_laser';
   // No recognized family — a named generic combat voice, never the starter pulse.
   return 'sfx_wpn_unclassified';
@@ -1231,8 +1259,11 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
 });
 
 export function resolveAudioCueRecipeId(cueId) {
-  if (AUDIO_CUE_TO_RECIPE[cueId]) return AUDIO_CUE_TO_RECIPE[cueId];
-  if (AUDIO_RECIPE_BY_ID[cueId]) return cueId;
+  // Own-property lookups only (see AUDIO_RECIPE_BY_ID): a plain `AUDIO_CUE_TO_RECIPE[cueId]` read
+  // answered "toString"/"constructor"/"valueOf" with an inherited function, which then flowed into
+  // this.play() as a recipe id and satisfied `AUDIO_RECIPE_BY_ID[rid]` truthiness gates.
+  if (Object.hasOwn(AUDIO_CUE_TO_RECIPE, cueId)) return AUDIO_CUE_TO_RECIPE[cueId];
+  if (Object.hasOwn(AUDIO_RECIPE_BY_ID, cueId)) return cueId;
   return null;
 }
 
@@ -1919,6 +1950,7 @@ export const audio = {
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('loot:overflowConverted', (p) => this._onOverflowConverted(p));
+    bus.on('loot:magnetCaptured', (p) => this._onMagnetCaptured(p));
     // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
     // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
     bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
@@ -1948,6 +1980,7 @@ export const audio = {
     bus.on('mission:failed', () => this._onCue('deny'));
     bus.on('mission:expired', () => this._onCue('deny'));
     bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
+    bus.on('poi:discovered', (p) => this._onPoiDiscovered(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('combat:shove', (p) => {
       const id = combatVerbRecipe('shove');
@@ -2005,6 +2038,8 @@ export const audio = {
       if (p && p.shipId === this.state.playerId) this.play('sfx_boost_whoosh', { gain: 0.35 });
     });
     bus.on('ship:boostStop', (p) => {});
+    // Route handoff commits the autopilot brake once per leg approach (routeFollower).
+    bus.on('nav:routeBrake', (p) => this._onRouteBrake(p));
     bus.on('ship:dash', (p) => {
       // Dash: layered whoosh+thump (juice recipe), player-only.
       if (p && p.shipId === this.state.playerId) this.play('sfx.shipDash', { gain: 0.7 });
@@ -2056,7 +2091,8 @@ export const audio = {
       this._onMasslineInstrument('strain', p);
     });
     bus.on('tether:nearBreak', (p) => this._onMasslineInstrument('strain', p));
-    // Player-facing rope and mining hits that had no listener use the closest existing recipe.
+    // Rope one-shots with no instrument owner use the verb table.
+    // Yield and seam reward stay off this route: presentation already plays them.
     bus.on('tether:latched', (p) => {
       const id = combatVerbRecipe('tether:latched');
       if (id) this.play(id, { gain: 0.65 });
@@ -2069,13 +2105,18 @@ export const audio = {
       const id = combatVerbRecipe('tether:cut');
       if (id) this.play(id, { gain: 0.55 });
     });
-    bus.on('mining:yield', (p) => {
-      const id = combatVerbRecipe('mining:yield');
-      if (id) this.play(id, { position: p && p.pos, gain: 0.45 });
+    bus.on('tether:snagged', (p) => {
+      const id = combatVerbRecipe('tether:snagged');
+      if (!id) return;
+      const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+      this.play(id, { position, gain: 0.7 });
     });
-    bus.on('mining:seamHit', (p) => {
-      const id = combatVerbRecipe('mining:seamHit');
-      if (id) this.play(id, { position: p && p.pos, gain: 0.55 });
+    // One twang per tether:rebound. Strain (nearBreak / loaded phase) stays on the instrument.
+    bus.on('tether:rebound', (p) => {
+      const id = combatVerbRecipe('tether:rebound');
+      if (!id) return;
+      const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+      this.play(id, { position, gain: 0.7 });
     });
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     // The first-hour instructor speaks every tutorial line through the same radio treatment the
@@ -3151,9 +3192,12 @@ export const audio = {
     const owner = p.ownerId != null && this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(p.ownerId)
       : null;
-    if (signature.recipeId === 'sfx_wpn_beam_laser') {
-      // sustained beam: start a loop keyed by owner; stopped on combat:beamStop
-      this._startBeam(p.ownerId, p.origin, owner);
+    // Sustained hitscan emitters drone as a loop keyed by owner (stopped on combat:beamStop)
+    // instead of re-striking a one-shot every fire tick. INST-34 added the heavy-beam voice, so
+    // this gates on the RECIPE being a sustained beam rather than on one hardcoded id — a
+    // capital beam that fell through here would machine-gun its drone at the weapon's rof.
+    if (SUSTAINED_BEAM_RECIPE_IDS.has(signature.recipeId)) {
+      this._startBeam(p.ownerId, p.origin, owner, signature.recipeId);
       return;
     }
     this.play(signature.recipeId, {
@@ -3167,10 +3211,14 @@ export const audio = {
     this._maybeChargeWhine(p, owner);
   },
 
-  _startBeam(ownerId, pos, owner = null) {
+  // `recipeId` is the owner's own sustained-beam voice (INST-34 added a second one). It is stored
+  // on the want-flag so the _frame resume path re-arms the SAME voice after a context unlock or a
+  // menu veil — resuming a capital beam into the M beam laser's drone was a wrong-voice restart.
+  _startBeam(ownerId, pos, owner = null, recipeId = DEFAULT_BEAM_RECIPE_ID) {
     const rt = this.rt;
     if (ownerId == null) return;
-    rt._wantBeam[ownerId] = true;
+    const beamRecipe = SUSTAINED_BEAM_RECIPE_IDS.has(recipeId) ? recipeId : DEFAULT_BEAM_RECIPE_ID;
+    rt._wantBeam[ownerId] = beamRecipe;
     const ctx = rt.ctx;
     // Never start the drone under a pause/menu veil — the want flag survives and _frame
     // resurrects it on resume if the beam is genuinely still firing.
@@ -3186,7 +3234,7 @@ export const audio = {
       return;
     }
     const position = pos || (entity && entity.pos) || null;
-    const v = this._startLoopVoice('sfx_wpn_beam_laser', position, 0.85, { entity });
+    const v = this._startLoopVoice(beamRecipe, position, 0.85, { entity });
     if (v) {
       v.trackId = ownerId;
       v.role = 'weaponLoop';
@@ -3314,6 +3362,30 @@ export const audio = {
       this.play('sfx_discovery_plate_note', { gain: 0.62, rate: 1.26, critical: true });
       this.play('sfx_discovery_plate_note', { gain: 0.55, rate: 1.5, critical: true });
     }
+  },
+
+  // INST-18: a point of interest resolving on the scope is the authored wonder beat — the
+  // fifth-sweep recipe was bound and never once played. Emitters already gate once-per-POI on
+  // the persisted discovery record; this Set is the listener's own never-repeat so a re-emitted
+  // row cannot re-ring. One reveal per tick coalesces a survey sweep into a single find. A POI
+  // whose record already shows an identification or investigation belongs to the bigger plate
+  // motif (world.js sets those flags before it emits), so the reveal yields rather than stacks.
+  _onPoiDiscovered(p) {
+    const rt = this.rt;
+    if (!rt || !p || p.poiId == null) return;
+    const heard = rt._poiRevealHeard || (rt._poiRevealHeard = new Set());
+    const key = `${p.sectorId || ''}:${p.poiId}`;
+    if (heard.has(key)) return;
+    heard.add(key);
+    const state = this.state;
+    const sectorId = p.sectorId || (state && state.world && state.world.currentSectorId);
+    const disc = sectorId && state.world && state.world.discovery && state.world.discovery[sectorId];
+    const rec = disc && disc.pois && disc.pois[p.poiId];
+    if (rec && (rec.identified || rec.investigated)) return;
+    const tick = (state && state.tick) | 0;
+    if (rt._wonderTick === tick) return;
+    rt._wonderTick = tick;
+    this.play('sfx_discovery_reveal', { gain: 0.7 });
   },
 
   // One voice per contact. The live rapier-dynamic backend emits `physics:impact` only; the
@@ -3774,6 +3846,20 @@ export const audio = {
         rate: SCOOP_CHIME_RATES[step],
       });
     }
+  },
+
+  // Loot magnet (mod_loot_magnet_s): a pod drifting into the ring gets one soft catch ping —
+  // deliberately OFF the scoop ladder; pickup:collected still owns the seat sound when the pod
+  // is actually claimed. Emitted once per pod id per sector window, so this can never ladder.
+  _onMagnetCaptured(p) {
+    if (!p || p.podId == null) return;
+    if (p.playerId != null && this.state && p.playerId !== this.state.playerId) return;
+    const pod = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.podId) : null;
+    const pos = pod && pod.pos;
+    const position = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      ? { x: pos.x, z: pos.z } : null;
+    this.play('sfx_vent_chime', { position, gain: 0.35, rate: 0.9 });
   },
 
   // Stunt chain (CV-EAR slice 3): each player trick in the live combo plucks one step up the
@@ -5014,7 +5100,7 @@ export const audio = {
     if (!id) return;
     // Juice emits presentation:vfxCue then audio:cue with the same id. Unmapped juice ids used
     // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
-    if (resolveVisualEventCue(id) && !AUDIO_CUE_TO_RECIPE[id] && !AUDIO_RECIPE_BY_ID[id]) return;
+    if (resolveVisualEventCue(id) && !Object.hasOwn(AUDIO_CUE_TO_RECIPE, id) && !Object.hasOwn(AUDIO_RECIPE_BY_ID, id)) return;
     const rid = resolveAudioCueRecipeId(id);
     if (!rid) return;
     const opts = (cue && typeof cue === 'object') ? cue : {};
@@ -5722,7 +5808,7 @@ export const audio = {
     // paused: _onPause ended them deliberately and a resurrected loop would drone over the menu.
     if (!rt._paused) {
       for (const ownerId in rt._wantBeam) {
-        if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId));
+        if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId), null, null, rt._wantBeam[ownerId]);
       }
       if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
     }
@@ -6602,6 +6688,18 @@ export const audio = {
     if (voice.gain && voice.gain.gain) {
       this._setParam(voice.gain.gain, targetGain, ctx.currentTime, 0.06);
     }
+  },
+
+  // nav:routeBrake marks the handoff commit — the same authored onset the input edge plays.
+  // Pre-setting _brakeWasHeld keeps _updateBrakeHiss from stacking a second identical bite a
+  // tick later when syncAutopilotInput raises actions.brake in the same window; the flag
+  // rewrites to the live input every frame, so a follow-on onset still bites if the autopilot
+  // waits. An already-held brake already sounded — nothing to add.
+  _onRouteBrake(p) {
+    const rt = this.rt;
+    if (!p || !rt || rt._brakeWasHeld) return;
+    rt._brakeWasHeld = true;
+    this.play('sfx_brake_bite', { gain: 0.7 });
   },
 
   _updateBrakeHiss(dt) {

@@ -5,6 +5,9 @@ export const PROVENANCE_VERSION = 1;
 export const PROVENANCE_CHAIN_CAP = 48;
 export const PROVENANCE_NODE_CAP = 12;
 export const PROVENANCE_OPEN_INCIDENT_CAP = 16;
+// Bounded per-tick adjudication receipts (victimId -> law truth), mirroring LAW_TRUTH_CAP in
+// factions.js — the cache is consumed same-tick and never crosses a save.
+const KILL_TRUTH_CAP = 32;
 
 const ROOT_KINDS = new Set(['act', 'incident', 'orphan', 'merged']);
 const NODE_KINDS = new Set(['act', 'incident', 'standing', 'spillover', 'consequence']);
@@ -139,6 +142,15 @@ function incidentOutcome(outcome) {
   return 'witnessed_only';
 }
 
+// LAW-08: the act node's evidence class is the law's own verdict vocabulary — anything else
+// is dropped rather than stored, so a foreign or corrupt field can never paint a fake witness
+// state onto the footprint.
+const EVIDENCE_CLASSES = new Set(['direct', 'unwitnessed', 'discovered']);
+function sanitizeEvidenceClass(value) {
+  const raw = asString(value);
+  return EVIDENCE_CLASSES.has(raw) ? raw : null;
+}
+
 function serializeNode(node) {
   return {
     k: node.k,
@@ -161,6 +173,7 @@ function serializeNode(node) {
     sectorId: asString(node.sectorId),
     incidentId: asString(node.incidentId),
     cause: asString(node.cause),
+    evidenceClass: sanitizeEvidenceClass(node.evidenceClass),
   };
 }
 
@@ -595,6 +608,16 @@ function findIncidentByVictim(own, victimId) {
   return null;
 }
 
+// Mirror of lawSecurity's victimStableIdOf — kept local so the ledger resolves the same door
+// even when the kill's truth receipt never arrives (an unwitnessed kill signs nothing).
+function killVictimStableId(state, payload) {
+  const entity = payload && payload.id != null && state && state.entities
+    && typeof state.entities.get === 'function' ? state.entities.get(payload.id) : null;
+  const data = entity && entity.data || {};
+  return asString(data.worldRecordId) || asString(data.stationId)
+    || (payload && payload.id != null ? `entity:${payload.id}` : null);
+}
+
 function findActByVictim(own, victimId, factionId = null) {
   for (const chain of own.chains) {
     const actIndex = newestNodeIndex(chain, (node) => (
@@ -737,6 +760,11 @@ export const provenanceLedger = {
     this._listen('namedAce:defeated', (payload) => this._onAceEvent(payload || {}, 'defeated'));
     this._listen('encounter:namedCaptainDefeated', (payload) => this._onAceEvent(payload || {}, 'captain_defeated'));
     this._listen('massline:tumbled', (payload) => this._onMassline(payload || {}));
+    this._lawKillTruth = new Map();
+    // LAW-08: factions already cache this verdict for rep math; the ledger needs the same truth
+    // so a kill nobody saw reads unwitnessed on the footprint instead of looking identical to a
+    // witnessed one.
+    this._listen('law:killedAdjudicated', (payload) => this._onKillTruth(payload || {}));
     this._listen('entity:killed', (payload) => this._onEntityKilled(payload || {}));
     this._listen('bounty:cleared', (payload) => this._onBountyCleared(payload || {}));
     this._listen('game:new', () => this.newGame());
@@ -759,6 +787,7 @@ export const provenanceLedger = {
   newGame() {
     if (!this.state) return;
     this.state.provenance = freshState();
+    if (this._lawKillTruth) this._lawKillTruth.clear();
   },
 
   serialize() {
@@ -789,22 +818,67 @@ export const provenanceLedger = {
       try { off(); } catch (_) { /* listener teardown must not throw */ }
     }
     this._subs = [];
+    if (this._lawKillTruth) this._lawKillTruth.clear();
+  },
+
+  // Cache the law's adjudicated kill truth by victim entity id, then stamp the matching act
+  // row — covering both orders: truth that lands before the kill row is consumed by
+  // _onEntityKilled, and truth that lands after (replay, re-emit, boot order) retro-stamps
+  // the stored node. A wreck-testimony republish upgrades 'unwitnessed' to 'discovered' by
+  // the same path.
+  _onKillTruth(payload) {
+    if (!payload || payload.victimEntityId == null) return;
+    if (!this._lawKillTruth) this._lawKillTruth = new Map();
+    const map = this._lawKillTruth;
+    map.set(payload.victimEntityId, payload);
+    while (map.size > KILL_TRUTH_CAP) map.delete(map.keys().next().value);
+    const own = ensureState(this.state);
+    const factionId = asString(payload.factionId);
+    const keys = [
+      asString(payload.victimStableId),
+      payload.victimEntityId != null ? `entity:${payload.victimEntityId}` : null,
+    ].filter(Boolean);
+    let found = null;
+    for (const key of keys) {
+      found = findActByVictim(own, key, factionId) || findActByVictim(own, key);
+      if (found) break;
+    }
+    const cls = sanitizeEvidenceClass(payload.evidenceClass);
+    if (found && cls) found.chain.nodes[found.actIndex].evidenceClass = cls;
+  },
+
+  // Consume-once like factions._takeLawKillTruth: entity ids recycle, and a verdict is only
+  // valid for the kill event of its own tick.
+  _takeLawKillTruth(victimEntityId) {
+    const map = this._lawKillTruth;
+    if (!map || victimEntityId == null) return null;
+    const truth = map.get(victimEntityId) || null;
+    map.delete(victimEntityId);
+    if (!truth) return null;
+    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : null;
+    if (tick != null && Number.isInteger(truth.tick) && truth.tick !== tick) return null;
+    return truth;
   },
 
   _onEntityKilled(payload) {
     if (!payload || payload.killerId !== this.state.playerId) return;
-    const victimId = asString(payload.id);
-    if (!victimId) return;
     const own = ensureState(this.state);
     const tick = nowTick(this.state);
     const time = nowTime(this.state);
     const factionId = asString(payload.factionId);
     const sectorId = asString(payload.sectorId) || currentSectorId(this.state);
+    // LAW-08: entity:killed carries the numeric entity id, which asString() drops to null —
+    // every player kill silently skipped this row. Key the act by the law's stable victim id
+    // (worldRecordId / stationId / 'entity:N') so the incident receipt that follows a charged
+    // kill lands on the same chain, then consume the law's verdict for the evidence class.
+    const truth = this._takeLawKillTruth(payload.id);
+    const victimKey = asString(truth && truth.victimStableId) || killVictimStableId(this.state, payload);
+    if (!victimKey) return;
     const actNode = {
       k: 'act',
       t: time,
       tick,
-      targetId: victimId,
+      targetId: victimKey,
       factionId,
       outcome: 'destroyed',
       reason: null,
@@ -821,24 +895,28 @@ export const provenanceLedger = {
       incidentId: null,
       cause: null,
       text: null,
+      evidenceClass: truth ? sanitizeEvidenceClass(truth.evidenceClass) : null,
     };
 
-    const incidentMatch = findIncidentByVictim(own, victimId);
+    const incidentMatch = findIncidentByVictim(own, victimKey);
     let chain = incidentMatch && incidentMatch.chain;
     if (!chain) {
-      const existing = findActByVictim(own, victimId, factionId);
+      const existing = findActByVictim(own, victimKey, factionId);
       chain = existing && existing.chain;
     }
     if (!chain) chain = createChain(this.state, own, 'act', actNode);
     const exists = newestNodeIndex(chain, (node) => (
       node.k === 'act'
-      && asString(node.targetId) === victimId
+      && asString(node.targetId) === victimKey
       && asInteger(node.tick, -1) === tick
       && sanitizeOutcome(node.outcome) === 'destroyed'
     ));
     if (exists < 0) {
       const actIndex = addNode(chain, actNode);
       if (incidentMatch && incidentMatch.chain === chain) addEdge(chain, actIndex, incidentMatch.incidentIndex, 'caused');
+    } else if (actNode.evidenceClass) {
+      // Duplicate same-tick kill event: the stored row still takes the law's stamp.
+      chain.nodes[exists].evidenceClass = actNode.evidenceClass;
     }
     chain.sectorId = chain.sectorId || sectorId;
     chain.outcome = 'destroyed';
