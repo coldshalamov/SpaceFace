@@ -128,7 +128,7 @@ function invalid(issues) {
   return { ok: false, error: WAVE_PLAN_ERROR, issues };
 }
 
-function isCombatLabSeed(value) {
+export function isCombatLabSeed(value) {
   return Number.isInteger(value) && value >= SEED_MIN && value <= SEED_MAX;
 }
 
@@ -777,7 +777,10 @@ function planWaveInner(input) {
   }
 
   const issues = [];
-  const seed = input.seed;
+  let seed = input.seed;
+  if (typeof seed === 'string' && /^-?\d+$/.test(seed.trim())) {
+    seed = Number(seed.trim());
+  }
   const arenaId = input.arenaId;
   const wave = input.wave;
 
