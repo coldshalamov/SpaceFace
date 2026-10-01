@@ -236,7 +236,18 @@ export function createAssetResidencyRegistry(options = {}) {
     const entry = assets.get(String(key || ''));
     if (!entry || entry.state !== 'resident' || owner == null) return false;
     const state = ownerState(owner);
-    if (!state || state.released || entry.owners.has(owner)) return false;
+    if (!state || state.released) return false;
+    const existingMetadata = entry.owners.get(owner);
+    if (existingMetadata) {
+      // A warm-decode lease upgraded by a later boundary-scoped serve: observed demand outranks
+      // untouched speculation in the soft-eviction sort, and merging in place keeps the shared
+      // decode/package-cache lease honest without a release/re-retain bounce between sweeps.
+      if (existingMetadata.decodeWarm === true && metadata.decodeServed === true) {
+        existingMetadata.decodeWarm = false;
+        existingMetadata.decodeServed = true;
+      }
+      return false;
+    }
     const ownerMetadata = { ...metadata };
     if (ownerMetadata.presentationTier) {
       ownerMetadata.presentationTier = String(ownerMetadata.presentationTier);

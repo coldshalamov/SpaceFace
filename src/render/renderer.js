@@ -165,7 +165,7 @@ import {
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import { NEMESIS_KITS } from '../data/nemesisRival.js';
-import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID } from '../data/heistFacilities.js';
+import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
@@ -2722,11 +2722,25 @@ function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admiss
   const resolved = resolvedOverride || packagedDecodeFileForEntity(entity);
   if (!resolved || !resolved.file) return Promise.resolve();
   const key = `${resolved.slot}::${resolved.file}`;
-  if (files.has(key)) return Promise.resolve();
-  files.add(key);
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
   const sectorId = (state.world && state.world.currentSectorId) || null;
+  if (files.has(key)) {
+    // The in-flight decode was posted at this lane's class; a glass-visible re-request joins it
+    // so loadAuthoredPart's deadlineJoin re-grades the shared task's remaining tail visible.
+    if (admissionVisible === true) {
+      Promise.resolve(loadAuthoredPart(`${releaseRoot}${resolved.file}`, {
+        renderer,
+        slot: resolved.slot,
+        optional: true,
+        residencyRole: 'packaged-decode-runway',
+        sectorId,
+        admissionVisible: true,
+      })).catch(() => {});
+    }
+    return Promise.resolve();
+  }
+  files.add(key);
   // The key only dedupes the in-flight window — it is deleted on settle so a transient
   // failure or a later eviction never poisons re-warm for the rest of the session
   // (loadAuthoredPart's own cache/residency dedupe still suppresses concurrent duplicates).
@@ -2852,6 +2866,7 @@ function warmNemesisSquadDecode(owner, payload) {
  */
 function warmEncounterPendingDecode(owner) {
   const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
   const pending = state && state.encounterDirector && state.encounterDirector.pending;
   if (!Array.isArray(pending) || !pending.length) return;
   const now = state.simTime || 0;
@@ -2859,16 +2874,42 @@ function warmEncounterPendingDecode(owner) {
     || (owner._encounterPendingWarmDueAt = new WeakMap());
   for (const item of pending) {
     if (!item || !Number.isFinite(item.dueAt) || item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (!Array.isArray(item.ships) || !item.ships.length) continue;
+    if ((!Array.isArray(item.ships) || !item.ships.length)
+      && (!Array.isArray(item.warmAssets) || !item.warmAssets.length)) continue;
     if (warmedAt.get(item) === item.dueAt) continue;
     const archetypes = [];
-    for (const ship of item.ships) {
+    for (const ship of item.ships || []) {
       const archetype = ship && ship.archetype;
       if (typeof archetype === 'string' && archetype) archetypes.push(archetype);
     }
-    if (!archetypes.length) continue;
+    // warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills,
+    // authored props) that no hull archetype covers — a session that missed the opening
+    // crucible cohort would otherwise decode them at the glass on the entity:spawned kick.
+    const files = [];
+    for (const file of item.warmAssets || []) {
+      if (typeof file === 'string' && file) files.push(file);
+    }
+    if (!archetypes.length && !files.length) continue;
     warmedAt.set(item, item.dueAt);
-    warmEnemyRosterDecode(owner, archetypes, 'encounter-pending-decode-runway', item.sectorId);
+    if (archetypes.length) {
+      warmEnemyRosterDecode(owner, archetypes, 'encounter-pending-decode-runway', item.sectorId);
+    }
+    if (files.length && renderer && renderer.domElement) {
+      const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+        || 'assets/ships/release/parts/';
+      const sectorId = item.sectorId
+        || (state.world && state.world.currentSectorId) || null;
+      for (const file of files) {
+        const relativeFile = file.replace(/^[\\/]+/, '');
+        Promise.resolve(loadAuthoredPart(`${releaseRoot}${relativeFile}`, {
+          renderer,
+          slot: String(relativeFile).startsWith('pods/') ? 'pod' : 'place',
+          optional: true,
+          residencyRole: 'encounter-pending-decode-runway',
+          sectorId,
+        })).catch(() => {});
+      }
+    }
   }
 }
 
@@ -11158,6 +11199,7 @@ export const render = {
               // A body that already owns a live root still competes for the same serial lane, so
               // it grades on the live range to the player exactly like a hidden prepared one.
               sectorArrivalBody: true,
+              admissionVisible: entityIsOnReadableGlass(entity, state),
               isResidencyOwnerActive: () => record.active === true
                 && state.entities.get(liveEntry.id) === liveEntry.entity
                 && this._meshes.get(liveEntry.id) === liveEntry.boundary
@@ -11477,6 +11519,34 @@ export const render = {
       warmEnemyRosterDecode(this,
         [BREAKAWAY_PRESSURE.specialistTypeId, ...BREAKAWAY_PRESSURE.lightPool],
         'heist-pressure-decode-runway');
+    });
+    onBus('heist:launchScheduleReceipt', (receipt) => {
+      // The payload the armed schedule will throw is the countdown's watched set-piece — the
+      // pressure roster warms at missionCue, but the capsule/spindle body itself only ever
+      // warmed menu-side on the opening cohort, so a session that arrives at Tethys later
+      // (or restores into it) decodes it at the glass. The receipt carries the variant; the
+      // armed schedule record is the fallback for legacy receipts without one.
+      if (!receipt || receipt.accepted !== true) return;
+      const variantId = receipt.variantId
+        || (this.state && this.state.heistFacilities && this.state.heistFacilities.schedule
+          && this.state.heistFacilities.schedule.variantId)
+        || null;
+      const payload = heistLaunchVariant(variantId).payload;
+      const assetId = payload && payload.authoredPayloadAssetId;
+      if (!assetId) return;
+      const resolved = {
+        file: authoredPayloadFileForEntity({ type: 'payload', data: { authoredPayloadAssetId: assetId } }),
+        slot: authoredPayloadSlotForEntity({ type: 'payload', data: { authoredPayloadAssetId: assetId } }),
+      };
+      const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+        || 'assets/ships/release/parts/';
+      Promise.resolve(loadAuthoredPart(`${releaseRoot}${resolved.file}`, {
+        renderer: this.renderer,
+        slot: resolved.slot,
+        optional: true,
+        residencyRole: 'heist-payload-decode-runway',
+        sectorId: (this.state && this.state.world && this.state.world.currentSectorId) || null,
+      })).catch(() => {});
     });
     onBus('mission:targetsProjected', ({ archetypes, destSectorId } = {}) => {
       // The mission system publishes its fixed hull pool at accept and on jump intent —

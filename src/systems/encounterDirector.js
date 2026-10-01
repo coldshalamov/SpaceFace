@@ -3292,6 +3292,10 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     levelBand,
     delay: 0,
     ships,
+    // Packaged bodies the fire path will spawn that share no hull archetype — scripted
+    // cargo-pod spills, authored props. Declared on the encounter body, carried on the
+    // pending item so the decode runway warms them before telegraph resolves.
+    warmAssets: Array.isArray(enc.warmAssets) && enc.warmAssets.length ? enc.warmAssets.slice() : null,
     // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
     // rock near their anchor (applied at spawnShips time, once per encounter).
     terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
