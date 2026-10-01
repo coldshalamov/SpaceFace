@@ -309,6 +309,7 @@ export const barkDirector = {
     this._onLawWarrantPosted = (payload) => this._speakLawPursuit(payload || {});
     this._onLawCheckpointPosted = (payload) => this._speakLawSurrender(payload || {});
     this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
+    this._onPatrolIntervened = (payload) => this._speakLawIntervention(payload || {});
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
     this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
@@ -335,6 +336,7 @@ export const barkDirector = {
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
+      this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
       this.bus.on('bounty:cooled', this._onBountyCooled);
       this.bus.on('law:custodyAcknowledged', this._onCustodyAcknowledged);
       this.bus.on('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
@@ -541,6 +543,18 @@ export const barkDirector = {
     const witness = this._resolveReceiptWitness(payload);
     if (!witness) return false;
     return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', witnessCrimeBarkFor, payload);
+  },
+
+  // LAW-03 — a patrol that spawns to take the player's fight announces itself in the law's
+  // register: the arriving hull speaks its pursuit line at the attacker it was dispatched on.
+  _speakLawIntervention(payload) {
+    const state = this.state;
+    const patrol = payload && payload.patrolId != null
+      && state && state.entities && state.entities.get && state.entities.get(payload.patrolId);
+    if (!patrol || patrol.alive === false) return false;
+    // No _speak fallback: the corpus always resolves, and a re-emitted event must not spend
+    // the hull's 'warn' situation on a moment it already announced.
+    return this._speakEventLine(patrol, 'law-intervention', 'encounter:patrolIntervened', pursuitBarkFor, payload);
   },
 
   _speakWantedCrossing(payload) {
@@ -1265,6 +1279,7 @@ export const barkDirector = {
       if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
+      if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
       if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
       if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
       if (this._onCounterHintSpawn) this.bus.off('entity:spawned', this._onCounterHintSpawn);
@@ -1289,6 +1304,7 @@ export const barkDirector = {
     this._onLawWarrantPosted = null;
     this._onLawCheckpointPosted = null;
     this._onLawReportReceipt = null;
+    this._onPatrolIntervened = null;
     this._onHeatWantedCrossed = null;
     this._onBountyCooled = null;
     this._onCustodyAcknowledged = null;
