@@ -6317,9 +6317,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 548837,
+      "bytes": 516472,
       "rigId": "kestrel_dish",
-      "sha256": "aadf117d957f39160261703f2f73e1a11f72c0603f8bb23636972329ff79be1d",
+      "sha256": "d5f8ac5cc816e39d9a69a5dcbdceab614f29cb8d9efd1cfdb48bb81b4cd6418a",
       "uri": "assets/ships/motions/kestrel.motion.json"
     },
     "nodeCount": 61,
@@ -7320,7 +7320,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
-  "runtimeHash": "e73942a24e8c8396a44740eb46da166e1af5e5b2acd9bd661b9fab8e19dba83d",
+  "runtimeHash": "e0ffe4d3a796c030058b4ab3e1425b8682571bf413eef8c7767a003b3d6b8522",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
