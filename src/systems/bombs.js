@@ -14,7 +14,7 @@ import { Masks } from '../core/entity.js';
 import { FIELD_COUPLING } from '../data/fields.js';
 import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
-  bombFieldEnvelope, fillBombViscosityImpulse,
+  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse,
 } from '../combat/bombDynamics.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
@@ -1028,17 +1028,20 @@ export const bombs = {
     const hits = [], shoves = [], attackerMass = massOf(state.entities.get(ownerId));
     for (const ent of this._targets) {
       if (!ent.alive || ent.id === originId) continue;
-      const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z, dist = Math.hypot(dx, dz);
+      const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
+      const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
+      const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
       if (!(falloff > 0)) continue;
-      let dirX = dist > 1e-8 ? dx / dist : 0, dirZ = dist > 1e-8 ? dz / dist : 1;
+      let dirX = radial.x, dirZ = radial.z;
       // Havoc is a cross-current, not a recoloured radial concussion. Preserve total impulse.
-      if (def.tangentRatio) {
+      // A zero radial (centers coincide) stays zero — there is no seeded axis to bend.
+      if (def.tangentRatio && (dirX !== 0 || dirZ !== 0)) {
         const q = def.tangentRatio, norm = Math.hypot(1, q), x = dirX;
         dirX = (dirX - dirZ * q) / norm; dirZ = (dirZ + x * q) / norm;
       }
       const magnitude = impulse * falloff;
-      if (magnitude > 0 && movable(ent) && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast')) {
+      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && movable(ent) && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast')) {
         considerShove(shoves, ent.id, dirX, dirZ, magnitude);
         this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger });
       }
@@ -1126,13 +1129,15 @@ export const bombs = {
     for (let targetIndex = 0; targetIndex < this._targets.length; targetIndex++) {
       const ent = this._targets[targetIndex];
       if (!ent.alive || ent.id === bomb.id) continue;
-      const dx = bomb.pos.x - ent.pos.x, dz = bomb.pos.z - ent.pos.z, dist = Math.hypot(dx, dz);
+      const dx = bomb.pos.x - ent.pos.x, dz = bomb.pos.z - ent.pos.z;
+      const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
+      const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
       if (!(falloff > 0)) continue;
-      if (f.kind === 'singularity' && movable(ent) && dist > 1e-8) {
+      if (f.kind === 'singularity' && movable(ent) && radial.dist > 0) {
         const mass = massOf(ent), couple = Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
         const j = f.strength * envelope * falloff * couple * mass * dt;
-        queuePhysicsImpulse(ent, { x: dx / dist * j, z: dz / dist * j });
+        queuePhysicsImpulse(ent, { x: radial.x * j, z: radial.z * j });
       } else if (f.kind === 'goo' && movable(ent)) {
         const coverage = this._gooCoverage[targetIndex] || 1;
         if (fillBombViscosityImpulse(this._viscosity, ent.vel, bomb.vel, effectiveMass(state, ent), dt, f.dragPerS * falloff, 1 / Math.max(1, coverage))) {

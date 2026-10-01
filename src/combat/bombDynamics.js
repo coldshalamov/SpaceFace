@@ -48,6 +48,27 @@ export function bombSurfaceFalloff(distance, bodyRadius, blastRadius) {
   return blastRadius > 0 ? Math.max(0, 1 - Math.max(0, distance - Math.max(0, bodyRadius || 0)) / blastRadius) : 0;
 }
 
+// Coincident field and body centers have no seeded axis. The zero vector is the
+// deterministic convention (same as a field well inside its epsilon): finite, and
+// not a stand-in +Z. Callers must not move the body to avoid the division.
+const BOMB_RADIAL_EPSILON = 1e-8;
+export function bombRadialDirection(dx, dz, out) {
+  const o = out || { x: 0, z: 0, dist: 0 };
+  const x = Number(dx);
+  const z = Number(dz);
+  const dist = Math.hypot(x, z);
+  if (!(dist > BOMB_RADIAL_EPSILON)) {
+    o.x = 0;
+    o.z = 0;
+    o.dist = 0;
+    return o;
+  }
+  o.x = x / dist;
+  o.z = z / dist;
+  o.dist = dist;
+  return o;
+}
+
 // The slug weakens continuously, but still has teeth before its terminal collapse.
 export function bombFieldEnvelope(now, startedAt, durationS, endStrength = 1) {
   const age = Math.max(0, now - startedAt);
