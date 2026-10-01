@@ -144,6 +144,26 @@ export function handleSaveWorkerRequest(message) {
     }
     return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
   }
+  if (request.type === 'restore_prepare_meta') {
+    const started = workerNow();
+    let result;
+    try {
+      result = restorePrepareSaveJson(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      );
+    } catch (error) {
+      result = { ok: false, reason: 'load_failed' };
+    }
+    // Meta lane: the caller only wants the verdict — the multi-MB envelope clone must not
+    // cross postMessage for a slot nobody will load.
+    if (result && typeof result === 'object' && 'env' in result) {
+      const { env: _env, ...meta } = result;
+      void _env;
+      result = meta;
+    }
+    return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
+  }
   if (request.type === 'validate_begin') {
     validationSessions.set(request.id, {
       currentVersion: request.payload && request.payload.currentVersion,
@@ -389,7 +409,7 @@ self.addEventListener('message', function (event) {
       }));
       return;
     }
-    if (request.type === 'restore_prepare') {
+    if (request.type === 'restore_prepare' || request.type === 'restore_prepare_meta') {
       var startedPrepare = now();
       var prepared;
       try {
@@ -399,6 +419,16 @@ self.addEventListener('message', function (event) {
         );
       } catch (error) {
         prepared = { ok: false, reason: 'load_failed' };
+      }
+      // Meta lane: verdict only — the multi-MB envelope clone must not cross postMessage for a
+      // slot nobody will load.
+      if (request.type === 'restore_prepare_meta'
+          && prepared && typeof prepared === 'object' && prepared.env !== undefined) {
+        var meta = {};
+        for (var mk in prepared) {
+          if (mk !== 'env') meta[mk] = prepared[mk];
+        }
+        prepared = meta;
       }
       self.postMessage({
         id: request.id,

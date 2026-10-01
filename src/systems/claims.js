@@ -2547,6 +2547,12 @@ export const claims = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each body's normalize (spec/infrastructure/depot graph walks) is record-
+  // atomic, so yields sit only at body and section boundaries — order and RNG stay identical.
+  *deserializeChunked(data) {
     if (!data || typeof data !== 'object') {
       this.state.claims = { bodies: [], specVersion: 1 };
       _nextClaimId = 1;
@@ -2567,6 +2573,7 @@ export const claims = {
       if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
         this._resumeDefenseIds.add(b.spec.defense.id);
       }
+      yield 'claims-body';
     }
     this.state.claims = { bodies, specVersion: 1 };
     if (data.meta && typeof data.meta === 'object') {
@@ -2609,9 +2616,12 @@ export const claims = {
       const m = /^claim_(\d+)$/.exec(b && b.id || '');
       if (m) _nextClaimId = Math.max(_nextClaimId, (parseInt(m[1], 10) || 0) + 1);
     }
+    yield 'claims-id-rescan';
     // Saves older than specVersion 1 may still carry abstract automation outposts — the F6 path.
     if (data.specVersion == null) this._migrateLegacyOutposts();
+    yield 'claims-migrated';
     this._applyAllPoiLabels();
+    yield 'claims-poi-labels';
     this._stampAllStationGrowth();
   },
 

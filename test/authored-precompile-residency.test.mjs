@@ -153,7 +153,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   });
 
   assert.equal(result.skipped, false);
-  assert.equal(result.retainedCanopyVariants, 4);
+  assert.equal(result.retainedCanopyVariants, 14);
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
   assert.ok(retainedVfxMaterialCount > 4, 'fixture must cover the retained VFX material family');
@@ -229,6 +229,69 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     // fires on it exactly as on the runtime variants, so flags read post-policy.
     {
       id: 'canon_canon', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    // Single-axis signature probes: the canopy conversion path leaves these program-key axes
+    // variable post-canon (authored doubleSided, MASK alpha, vertex colors, object-space
+    // normals, tangent-less geometry, and the KHR extension slots canon never fills).
+    {
+      id: 'axis_frontside', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_tangentless', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: false,
+    },
+    {
+      id: 'axis_vertexcolors', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_mask', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_iridescence', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_sheen', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_anisotropy', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_transmission-map', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_clearcoat-map', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
+    },
+    {
+      id: 'axis_objectspace-normal', map: true, normalMap: true, aoMap: true,
       roughnessMap: true, metalnessMap: true,
       transmission: 0, transparent: true, depthWrite: false,
       forceSinglePass: true, dithering: true, tangents: true,

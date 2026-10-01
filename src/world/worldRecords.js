@@ -527,9 +527,11 @@ export function serializeRecordsBag(bag) {
   const byId = {};
   for (const id of Object.keys(normalized.byId).sort()) {
     const rec = normalized.byId[id];
-    // Drop runtime-only fields if present.
+    // Drop runtime-only fields if present. `durable` still shallow-aliases the live record's
+    // nested fields (pos/vel/itinerary/cargoManifest/ai/...) — clone so the saveSnapshotOwned
+    // contract holds: the serializer must own every byte it emits.
     const { liveEntityId: _live, rematerializedTick: _rt, ...durable } = rec;
-    byId[id] = durable;
+    byId[id] = clonePlain(durable) || durable;
   }
   const serialized = {
     schemaId: WORLD_RECORDS_SCHEMA_ID,

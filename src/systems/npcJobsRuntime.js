@@ -5087,6 +5087,12 @@ export const npcJobsRuntime = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: the actor walk and each job record restore are atomic, so yields sit only
+  // between those record boundaries — order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     // World re-entry happens before this restore step. An outgoing virtual job can therefore
     // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
     // below is authoritative; clear every live marker owned by this runtime before replacing it,
@@ -5111,6 +5117,7 @@ export const npcJobsRuntime = {
         delete entity.data.npcTowedByJobId;
       }
     });
+    yield 'npcjobs-actor-sweep';
     const byId = {};
     const src = data && data.byId && typeof data.byId === 'object' ? data.byId : {};
     for (const jobId of Object.keys(src)) {
@@ -5133,6 +5140,7 @@ export const npcJobsRuntime = {
         towTargetRef: null,
         towNextScanSimT: 0,
       };
+      yield 'npcjobs-job';
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
     this._invalidateJobIds();

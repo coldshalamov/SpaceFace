@@ -937,18 +937,90 @@ function addAuthoredCanopyPipelineWarmup(staging) {
         return material;
       },
     },
+    // Signature axes the canopy conversion path (GLTF physical clone → realtime-canopy policy →
+    // canon slot fill) leaves variable post-canonicalization: authored doubleSided, alphaMode
+    // MASK, vertex colors, object-space normals, and the KHR extension slots canon never fills.
+    // The first canopy carrying any one of them would otherwise link a cold program at draw.
+    // Probes enumerate the single-axis classes; each still rides the canon slot set + policy.
+    {
+      suffix: '_Axis',
+      layouts: [
+        'frontside', 'tangentless', 'vertexcolors', 'mask',
+        'iridescence', 'sheen', 'anisotropy', 'transmission-map',
+        'clearcoat-map', 'objectspace-normal',
+      ],
+      make: (maps, axisId) => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xd7edff,
+          metalness: 0,
+          roughness: 0.12,
+          clearcoat: 1,
+          transmission: 0.65,
+          side: axisId === 'frontside' ? THREE.FrontSide : THREE.DoubleSide,
+          forceSinglePass: true,
+          dithering: true,
+          map: baseColor,
+          normalMap: normal,
+          roughnessMap: surface,
+          metalnessMap: surface,
+          aoMap: surface,
+          emissiveMap: baseColor,
+        });
+        material.defines = { STANDARD: '', PHYSICAL: '' };
+        switch (axisId) {
+          case 'vertexcolors':
+            material.vertexColors = true;
+            break;
+          case 'mask':
+            material.alphaTest = 0.5;
+            break;
+          case 'iridescence':
+            material.iridescence = 1;
+            material.iridescenceIOR = 1.3;
+            break;
+          case 'sheen':
+            material.sheen = 1;
+            material.sheenColor = new THREE.Color(0xffffff);
+            break;
+          case 'anisotropy':
+            material.anisotropy = 1;
+            break;
+          case 'transmission-map':
+            material.transmissionMap = surface;
+            break;
+          case 'clearcoat-map':
+            material.clearcoatMap = surface;
+            break;
+          case 'objectspace-normal':
+            material.normalMapType = THREE.ObjectSpaceNormalMap;
+            break;
+          default:
+            break;
+        }
+        return material;
+      },
+      prepareGeometry: (geometry, axisId) => {
+        if (axisId !== 'tangentless') geometry.computeTangents();
+        if (axisId === 'vertexcolors') {
+          const count = geometry.attributes.position.count;
+          const colors = new Float32Array(count * 3).fill(1);
+          geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        }
+      },
+    },
   ];
-  for (const { suffix, layouts, make } of classes) {
+  for (const { suffix, layouts, make, prepareGeometry } of classes) {
     const classLayouts = Array.isArray(layouts) ? layouts : variants.map((variant) => variant.id);
     for (let i = 0; i < classLayouts.length; i++) {
       const id = classLayouts[i];
       const variant = variants.find((entry) => entry.id === id);
       const { id: _variantId, ...maps } = variant || { id };
-      const material = make(maps);
+      const material = make(maps, id);
       material.name = `SF_Precompile_Canopy${suffix}_${id}`;
       applyRealtimeCanopyPolicy(material);
       const geometry = new THREE.PlaneGeometry(8, 5);
-      geometry.computeTangents();
+      if (typeof prepareGeometry === 'function') prepareGeometry(geometry, id);
+      else geometry.computeTangents();
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = `SF_Precompile_Canopy${suffix}_${id}`;
       mesh.userData.precompileCanopyVariant = suffix ? `${suffix.replace(/^_/, '').toLowerCase()}_${id}` : id;

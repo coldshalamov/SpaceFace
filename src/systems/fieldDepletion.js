@@ -808,11 +808,17 @@ export const fieldDepletion = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each record normalize is atomic — yields sit only at record/section boundaries.
+  *deserializeChunked(data) {
     const own = ensureFieldDepletionState(this.state);
     own.fields = {};
     const fields = data && data.fields && typeof data.fields === 'object' ? data.fields : {};
     for (const fieldId of Object.keys(fields)) {
       own.fields[fieldId] = normalizeFieldRecord(fields[fieldId], fieldId);
+      yield 'fields-record';
     }
     own.opportunities = {};
     const opportunities = data && data.opportunities && typeof data.opportunities === 'object'
@@ -821,6 +827,7 @@ export const fieldDepletion = {
     for (const key of Object.keys(opportunities)) {
       const rec = normalizeRichSeamOpportunity(opportunities[key], key);
       if (rec) own.opportunities[key] = rec;
+      yield 'fields-opportunity';
     }
     own.receipts = Array.isArray(data && data.receipts)
       ? clonePlain(data.receipts).slice(-FIELD_DEPLETION_MAX_RECEIPTS)
@@ -841,6 +848,7 @@ export const fieldDepletion = {
         rockSpots: normalizeRockSpots(rec.rockSpots),
         placedAtT: round6(rec.placedAtT),
       };
+      yield 'fields-next';
     }
     own.schemaVersion = STATE_VERSION;
     this._recoveryAccum = 0;

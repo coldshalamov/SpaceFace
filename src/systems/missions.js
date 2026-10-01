@@ -8683,6 +8683,11 @@ export const missions = {
   },
 
   spawnTargetsForSector(sectorId) {
+    for (const _ of this.spawnTargetsForSectorChunked(sectorId)) { /* sync lane: inline */ }
+  },
+
+  // Generator twin: each mission's adopt/spawn is atomic, so yields sit only between missions.
+  *spawnTargetsForSectorChunked(sectorId) {
     if (!sectorId) return;
     // Continue runs this pass twice — restore step 13 and the save:loaded navigation refresh —
     // each O(missions × living-actors) via _adoptLiveMissionTargets. When the mission fields the
@@ -8725,6 +8730,7 @@ export const missions = {
       if (m.objectiveProgress < m.objectiveTarget) {
         this._spawnTargetsFor(m);
       }
+      yield 'mission-targets';
     }
     if (passKey) passKey.version = entityIndexVersion(this.state);
   },
