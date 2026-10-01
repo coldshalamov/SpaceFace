@@ -235,7 +235,7 @@ export const ENEMY_TYPES = [
     id: 'mine_layer_jackal', name: 'Mine-Layer Jackal', shipId: 'ship_drifter',
     silhouette: 'pirate_swoop', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [3, 8],
-    combatDoctrineId: 'ranged_disengager',
+    combatDoctrineId: 'mine_layer_wake',
     hull: 110, armor: 28, armorFlat: 1, shield: 45, shieldRegen: 8, cap: 150, capRegen: 20,
     maxSpeed: 105, accel: 72, turnRate: 1.45, collisionRadius: 18, mass: 58,
     weapons: [
