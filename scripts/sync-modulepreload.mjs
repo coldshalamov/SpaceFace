@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Keeps index.html's <link rel="modulepreload"> waves in sync with the static-import surface
-// of src/main.js and src/core/registry.js.
+// Keeps index.html's <link rel="modulepreload"> waves in sync with the transitive static-import
+// closure of src/main.js and src/core/registry.js.
 //
 // Why: on the unbundled path the transitive src graph is otherwise discovered fetch-by-fetch
 // during the post-media eval cascade. modulepreload is fetch-only (no eval, no execution), so
-// preloading the registry wave overlaps its discovery with the media wait without changing
-// the artwork-first evaluation contract.
+// preloading the whole closure moves every discovery fetch up to document parse and leaves
+// the cascade fetch-free — without changing the artwork-first evaluation contract.
 //
 // Usage:
 //   node scripts/sync-modulepreload.mjs          — rewrite the generated registry-wave block
@@ -59,19 +59,40 @@ const existing = preloadedHrefs(htmlSansBlock);
 const mainImports = staticImports(MAIN);
 const registryImports = staticImports(REGISTRY);
 
-// Main wave drift: every static import of main.js should appear as a modulepreload somewhere
-// in the document (hand-maintained list — this check only reports, never rewrites it).
-const mainMissing = [...new Set(mainImports)].filter((href) => !existing.has(href));
-
-// Registry wave: registry.js's static imports in source order, minus anything already
-// preloaded by the main wave (eval cascade reaches them through either hop identically).
+// Registry wave: the transitive static-import closure of main.js + registry.js, minus
+// anything already preloaded by the hand-maintained waves. The eval cascade would fetch
+// exactly this set — one hop was never enough (depth-1 is ~17% of the closure).
+// Walk through already-preloaded files too: the cascade fetches their unseen imports just
+// as lazily, so `visited` (the walk guard) must not collapse into `seen` (the wanted guard).
 const seen = new Set(existing);
+const visited = new Set();
 const wanted = [];
-for (const href of registryImports) {
-  if (seen.has(href)) continue;
-  seen.add(href);
-  wanted.push(href);
+// DFS in source order: the queue holds `staticImports` results verbatim, so sibling order
+// matches each importer's own order.
+const queue = [...mainImports, ...registryImports];
+while (queue.length) {
+  const href = queue.shift();
+  if (visited.has(href)) continue;
+  visited.add(href);
+  const abs = join(root, href.slice(1));
+  let next;
+  try {
+    next = staticImports(abs);
+  } catch {
+    continue; // an href that does not resolve on disk cannot be preloaded — leave it out.
+  }
+  if (!seen.has(href)) {
+    seen.add(href);
+    wanted.push(href);
+  }
+  queue.push(...next);
 }
+
+// Main wave drift: every static import of main.js should appear as a modulepreload somewhere
+// in the document (hand-maintained list — this check only reports, never rewrites it). With
+// the closure now generated, "missing" means uncovered by either wave — i.e. unreadable.
+const wantedSetForMain = new Set(wanted);
+const mainMissing = [...new Set(mainImports)].filter((href) => !existing.has(href) && !wantedSetForMain.has(href));
 const block = [
   `  ${BEGIN}`,
   ...wanted.map((href) => `  <link rel="modulepreload" href="${href}" />`),

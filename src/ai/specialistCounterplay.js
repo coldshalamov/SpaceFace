@@ -396,7 +396,14 @@ export function applySpecialistCounterplay({
       ? state.entities.get(state.playerId)
       : null;
     if (!player) return null;
-    for (const ent of shipsOf(state)) {
+    // Screen targets resolve to hulls — the roster lanes (ships/drones/stations) when the
+    // index is ready, the full pool when it is not.
+    const index = state && state.entityIndex;
+    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && Array.isArray(index.shipLike) && Array.isArray(index.stations)
+      ? index.shipLike.concat(index.stations)
+      : shipsOf(state);
+    for (const ent of pool) {
       if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
       if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
       const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });

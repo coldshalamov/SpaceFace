@@ -2722,7 +2722,7 @@ function packagedDecodeFileForEntity(entity) {
   }
 }
 
-function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admissionVisible = false) {
+function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admissionVisible = false, sectorIdOverride) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (!state || !renderer || !entity) return Promise.resolve();
@@ -2745,7 +2745,9 @@ function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admiss
       files.add(overlayKey);
       const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
         || 'assets/ships/release/parts/';
-      const overlaySectorId = (state.world && state.world.currentSectorId) || null;
+      const overlaySectorId = sectorIdOverride !== undefined
+        ? sectorIdOverride
+        : (state.world && state.world.currentSectorId) || null;
       Promise.resolve(loadAuthoredPart(`${releaseRoot}${overlayResolved.file}`, {
         renderer,
         slot: overlayResolved.slot,
@@ -2761,7 +2763,9 @@ function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admiss
   const key = `${resolved.slot}::${resolved.file}`;
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
-  const sectorId = (state.world && state.world.currentSectorId) || null;
+  const sectorId = sectorIdOverride !== undefined
+    ? sectorIdOverride
+    : (state.world && state.world.currentSectorId) || null;
   if (files.has(key)) {
     // The in-flight decode was posted at this lane's class; a glass-visible re-request joins it
     // so loadAuthoredPart's deadlineJoin re-grades the shared task's remaining tail visible.
@@ -3077,7 +3081,7 @@ function warmClaimDefenseDecode(owner) {
  * decode per unique hull family per sector. Survival rosters already cover their own hulks via
  * hulkExemplarSpecsForShips — this is the open-world/ambient coverage.
  */
-function warmKillHulkDecode(owner, entity) {
+function warmKillHulkDecode(owner, entity, sectorIdOverride) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (!state || !renderer || !entity || entity.type !== 'ship') return;
@@ -3095,7 +3099,9 @@ function warmKillHulkDecode(owner, entity) {
       slot: 'place',
       optional: true,
       residencyRole: 'kill-hulk-decode-runway',
-      sectorId: (state.world && state.world.currentSectorId) || null,
+      sectorId: sectorIdOverride !== undefined
+        ? sectorIdOverride
+        : (state.world && state.world.currentSectorId) || null,
     }).catch(() => {}).finally(() => {
       files.delete(warmFilePath);
     });
@@ -3118,7 +3124,7 @@ function warmKillHulkDecode(owner, entity) {
  * specs (id space differs from live ids, so the entity-id dedupe does not apply); the
  * loader's url::slot dedupe keeps repeated records to one decode per file.
  */
-function warmSaveEnvelopeEntityDecode(owner, entity) {
+function warmSaveEnvelopeEntityDecode(owner, entity, sectorIdOverride) {
   const renderer = owner && owner.renderer;
   if (!renderer || !entity || entity.alive === false || entity.isPlayer === true) return;
   // Stations ride the packaged lane: authoredPreloadPlanForEntity only plans ships, so the
@@ -3127,13 +3133,13 @@ function warmSaveEnvelopeEntityDecode(owner, entity) {
   if (entity.type === 'ship') {
     Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {
       residencyRole: 'save-envelope-decode-runway',
-      sectorId: null,
+      sectorId: sectorIdOverride !== undefined ? sectorIdOverride : null,
     })).catch(() => {});
-    warmKillHulkDecode(owner, entity);
+    warmKillHulkDecode(owner, entity, sectorIdOverride);
     return;
   }
   if (packagedDecodeFileForEntity(entity)) {
-    Promise.resolve(warmPackagedEntityDecode(owner, entity)).catch(() => {});
+    Promise.resolve(warmPackagedEntityDecode(owner, entity, null, false, sectorIdOverride)).catch(() => {});
   }
 }
 
@@ -12265,24 +12271,27 @@ export const render = {
     const entities = data.entities;
     if (!entities || typeof entities !== 'object') return;
     const persistent = Array.isArray(entities.persistent) ? entities.persistent : [];
-    for (const record of persistent) warmSaveEnvelopeEntityDecode(this, record);
+    // Sector recipe pass is resolved up front so every warm lane stamps the SAVED sector on
+    // its residency metadata — the outgoing/current sector id would mislabel the retention
+    // and let byte pressure evict the file the incoming sector is about to draw.
+    const sectorStubs = saveEnvelopeSectorStubs(data);
+    for (const record of persistent) warmSaveEnvelopeEntityDecode(this, record, sectorStubs.sectorId);
     // The saved player's hull is the one body the first frame must show — on a non-Kestrel
     // save its decode used to start at _spawnPlayer mid-restore instead of overlapping the
     // whole restore like every persistent actor's. Serialized records carry the live
     // `isPlayer` flag the warm skips, so strip it for the file-level decode (the spawned
     // entity still takes the authored-hero path, just onto a warm cache).
     if (entities.player && typeof entities.player === 'object') {
-      warmSaveEnvelopeEntityDecode(this, Object.assign({}, entities.player, { isPlayer: false }));
+      warmSaveEnvelopeEntityDecode(this, Object.assign({}, entities.player, { isPlayer: false }), sectorStubs.sectorId);
     }
     // Sector recipe pass: the envelope names the saved sector, whose catalog cast (stations,
     // gates, POI landmarks, field geology heads, dressing rows, durable records, owed mission
     // rosters) rematerializes behind the authored-visuals gate — none of it is an envelope
     // entity, so without this pass their decodes start cold at enterSector.
-    const sectorStubs = saveEnvelopeSectorStubs(data);
     for (const stub of sectorStubs.placeStubs) {
-      Promise.resolve(warmPackagedEntityDecode(this, stub)).catch(() => {});
+      Promise.resolve(warmPackagedEntityDecode(this, stub, null, false, sectorStubs.sectorId)).catch(() => {});
     }
-    for (const stub of sectorStubs.shipStubs) warmSaveEnvelopeEntityDecode(this, stub);
+    for (const stub of sectorStubs.shipStubs) warmSaveEnvelopeEntityDecode(this, stub, sectorStubs.sectorId);
     // Roster entries decode through the same authored preload the spawn kick uses. The
     // menu-dwell caller is mode-free, so warmEnemyRosterDecode's flight/loading gate is
     // reproduced inline rather than invoked.
@@ -12297,7 +12306,7 @@ export const render = {
         residencyRole: 'save-envelope-decode-runway',
         sectorId: sectorStubs.sectorId,
       })).catch(() => {});
-      warmKillHulkDecode(this, stub);
+      warmKillHulkDecode(this, stub, sectorStubs.sectorId);
     }
   },
 

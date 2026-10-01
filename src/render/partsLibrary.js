@@ -9,7 +9,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
-import { modelTruthMountFractions, modelTruthPlaceDrawScale, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
+import { modelTruthMountFractions, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
+import { placeDrawScaleFromRow } from '../data/modelTruthMounts.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -1813,14 +1814,57 @@ function tradeHubOverlayCensusRowForEntity(entity) {
   return modelTruthRow(stem);
 }
 
-// Component-wise union over the base record size and (when present) the deterministic
-// overlay's census row — both draw at the same scale.
-function placeVisualSizeWithOverlay(entity, size) {
+function placeFileStem(url) {
+  const name = typeof url === 'string' && url ? url.slice(url.lastIndexOf('/') + 1) : null;
+  return name ? name.replace(/\.[^.]+$/, '') : null;
+}
+
+// Offset-aware union over the base row's extent and (when present) the deterministic
+// overlay's census row — both draw at the same scale, and a garnish mounted off the hub
+// axis contributes its own center±half extent rather than just its size. The stamp
+// volume is anchored at the boundary origin, so the honest extent is 2·max(|min|,|max|).
+function placeVisualSizeWithOverlay(entity, size, center) {
   if (!Array.isArray(size)) return size;
   const overlayRow = tradeHubOverlayCensusRowForEntity(entity);
   const overlaySize = overlayRow && overlayRow.bounds && overlayRow.bounds.size;
   if (!Array.isArray(overlaySize)) return size;
-  return size.map((value, i) => Math.max(Number(value) || 0, Number(overlaySize[i]) || 0));
+  const overlayCenter = overlayRow.bounds && overlayRow.bounds.center;
+  const out = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    const baseHalf = (Number(size[i]) || 0) / 2;
+    const baseC = Array.isArray(center) ? Number(center[i]) || 0 : 0;
+    const overHalf = (Number(overlaySize[i]) || 0) / 2;
+    const overC = Array.isArray(overlayCenter) ? Number(overlayCenter[i]) || 0 : 0;
+    const lo = Math.min(baseC - baseHalf, overC - overHalf);
+    const hi = Math.max(baseC + baseHalf, overC + overHalf);
+    out[i] = Math.max(Math.abs(lo), Math.abs(hi)) * 2;
+  }
+  return out;
+}
+
+// AUTHORED_APPROACH_CHANNEL_DEG families yaw their composed root by (corridor−channel)
+// at install; the stamp claims the rotated extent statically — same resolvers, no decode.
+// A trade hub yawed ~55° draws a rotated silhouette, not the record's axis envelope.
+function placeStampEnvelopeSize(entity, size, boundary) {
+  if (!Array.isArray(size) || !entity || entity.type !== 'station') return size;
+  const data = entity.data || {};
+  const placeId = (boundary && boundary.userData && boundary.userData.placeId)
+    || data.placeId
+    || null;
+  const channelDeg = AUTHORED_APPROACH_CHANNEL_DEG[placeId];
+  if (!Number.isFinite(channelDeg)) return size;
+  const manifest = resolveCollisionProxyManifest(entity);
+  if (!manifest || !manifest.docking) return size;
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  if (!Number.isFinite(corridorDeg)) return size;
+  const yawDeg = ((corridorDeg - channelDeg + 540) % 360) - 180;
+  if (!yawDeg) return size;
+  const rad = yawDeg * Math.PI / 180;
+  const c = Math.abs(Math.cos(rad));
+  const s = Math.abs(Math.sin(rad));
+  const x = Number(size[0]) || 0;
+  const z = Number(size[2]) || 0;
+  return [c * x + s * z, size[1], s * x + c * z];
 }
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
@@ -3232,7 +3276,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     assetBoundary: 'GLTFKit v1 — authored station archetype',
     gracefulFallback: false,
   };
-  stampPendingPlaceVisualBounds(boundary, entity);
+  stampPendingPlaceVisualBounds(boundary, entity, placeFile);
   // Authored-or-nothing stations must never show the procedural body, but an invisible seat
   // pops in at commit whenever admission outlasts the runway — the same abstract marker
   // contract pending ships get (no substitute identity; the per-frame sync drives it off
@@ -3365,7 +3409,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.placeTargetRadius = geologySkin ? entity.radius
     : (Number.isFinite(poiTargetRadius) && poiTargetRadius > 0 ? poiTargetRadius : null);
   boundary.userData.authoredGeologySkin = geologySkin;
-  stampPendingPlaceVisualBounds(boundary, entity);
+  stampPendingPlaceVisualBounds(boundary, entity, placeFile);
   // An empty substrate is no stand-in: while the authored body queues/decodes/compiles the
   // boundary would draw nothing and pop in at commit. Arm the same resolving marker pending
   // ships, stations, and capsules carry — it unions into the pending stamp and detaches at
@@ -3518,9 +3562,9 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       const pendingScale = resolvePlaceDrawScale(data, {
         targetRadius: Number(data.placeTargetRadius),
         authoredEnvelope,
-        censusScale: modelTruthPlaceDrawScale(entity),
+        censusScale: placeDrawScaleFromRow(modelTruthRow(placeFileStem(record.url)) || modelTruthRowForEntity(entity), entity),
       });
-      const stampedSize = placeVisualSizeWithOverlay(entity, size);
+      const stampedSize = placeStampEnvelopeSize(entity, placeVisualSizeWithOverlay(entity, size, center), boundary);
       boundary.userData.visualBounds = {
         center: center.map((value) => (Number(value) || 0) * pendingScale),
         size: stampedSize.map((value) => (Number(value) || 0) * pendingScale),
@@ -3806,8 +3850,13 @@ function commitAuthoredPlaceBoundary(
  * of authored units, so that envelope is stamped here; the exact record bounds overwrite the
  * estimate in upgradePlaceBoundary.
  */
-function stampPendingPlaceVisualBounds(boundary, entity) {
+function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
   if (!boundary || !boundary.userData || boundary.userData.visualBounds) return;
+  // The compose resolves the same file — claimSpecId/claimOwned outrank the entity id chain
+  // in placeFileForEntity, so key the stamp off the resolved stem, not the entity. A claim
+  // site's landmark rock row would otherwise classify the committed outpost ~5-12x under.
+  const resolvedStem = placeFileStem(placeFile);
+  const stampRow = (resolvedStem ? modelTruthRow(resolvedStem) : null) || modelTruthRowForEntity(entity);
   const targetRadius = Number(boundary.userData.placeTargetRadius);
   if (Number.isFinite(targetRadius) && targetRadius > 0) {
     const diameter = targetRadius * 2;
@@ -3818,22 +3867,27 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
     // The commit resolves targetScale = diameter/envelope on the record's longest axis —
     // the fit basis, not the X stamp, is the honest stand-in claim: X-slim records
     // (Z-dominant places like the Resonant Cathedral) would otherwise draw a marker
-    // diameter wide for a body committing at diameter·x0/max.
-    boundary.userData.boundaryResolvingStandInFit = diameter;
-    // The marker's drawn X is the committed extent: census bounds stand in for the
-    // undecoded record (the exact bounds overwrite the estimate at commit).
-    const row = modelTruthRowForEntity(entity);
+    // diameter wide for a body committing at diameter·x0/max. When the unioned committed
+    // extent outgrows the radius (rotated/offset garnish), arm the fit at that extent —
+    // a resident stand-in must not under-draw the marker it replaces.
+    const row = stampRow;
     const size = row && row.bounds && row.bounds.size;
     if (Array.isArray(size)) {
       const committedScale = resolvePlaceDrawScale(entity && entity.data || {}, {
         targetRadius,
         authoredEnvelope: Math.max(1e-6, ...size.map((value) => Number(value) || 0)),
-        censusScale: modelTruthPlaceDrawScale(entity),
+        censusScale: placeDrawScaleFromRow(row, entity),
       });
-      const committedX = Number(placeVisualSizeWithOverlay(entity, size)[0]) * committedScale;
+      const stampedSize = placeStampEnvelopeSize(entity, placeVisualSizeWithOverlay(entity, size, row.bounds && row.bounds.center), boundary);
+      const committedX = Number(stampedSize[0]) * committedScale;
       if (Number.isFinite(committedX) && committedX > 0) {
         boundary.userData.boundaryResolvingCommittedX = committedX;
+        boundary.userData.boundaryResolvingStandInFit = Math.max(diameter, committedX);
+      } else {
+        boundary.userData.boundaryResolvingStandInFit = diameter;
       }
+    } else {
+      boundary.userData.boundaryResolvingStandInFit = diameter;
     }
     return;
   }
@@ -3841,7 +3895,7 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
   // place) would classify at presence radius for the whole queue wait — drawn envelopes run
   // ~2-8x presence per the model-truth census, so the same measured bounds x draw-scale pair
   // buildPlacePropRoot resolves is stamped here instead. Static data: no decode needed.
-  const row = modelTruthRowForEntity(entity);
+  const row = stampRow;
   const size = row && row.bounds && row.bounds.size;
   const data = entity && entity.data || {};
   // Same resolver the commit stamp uses: for a world-site root the authored placeScale wins over
@@ -3853,10 +3907,10 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
     authoredEnvelope: Array.isArray(size)
       ? Math.max(1e-6, ...size.map((value) => Number(value) || 0))
       : 1e-6,
-    censusScale: modelTruthPlaceDrawScale(entity),
+    censusScale: placeDrawScaleFromRow(row, entity),
   });
   if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
-    const stampedSize = placeVisualSizeWithOverlay(entity, size);
+    const stampedSize = placeStampEnvelopeSize(entity, placeVisualSizeWithOverlay(entity, size, row.bounds && row.bounds.center), boundary);
     boundary.userData.visualBounds = {
       center: [0, 0, 0],
       size: stampedSize.map((value) => Math.max(0, (Number(value) || 0) * scale)),
@@ -3919,7 +3973,11 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       || placeId === CLAIM_RELAY_PLACE_ID,
   });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
-  const censusScale = modelTruthPlaceDrawScale(entity);
+  // Key the census scale off the resolved record's file stem — claimSpecId/claimOwned picks
+  // a different file than the entity id chain predicts, and the claim row's own radius
+  // reference is the honest scale basis (a claim landmark rock over-scales ~20%).
+  const censusRow = modelTruthRow(placeFileStem(record && record.url)) || modelTruthRowForEntity(entity);
+  const censusScale = placeDrawScaleFromRow(censusRow, entity);
   const targetRadius = Number(data.placeTargetRadius);
   const authoredEnvelope = Math.max(
     1e-6,
@@ -5875,20 +5933,20 @@ function startAuthoredJobAssetPrefetch(job) {
   if (!requests.length) return null;
   const options = job.options || {};
   const loadPart = typeof options.loadAuthoredPart === 'function' ? options.loadAuthoredPart : loadAuthoredPart;
-  let chain = Promise.resolve();
-  for (const request of requests) {
-    chain = chain.then(() => loadPart(request.url, {
-      renderer: job.renderer,
-      slot: request.slot,
-      optional: true,
-      residencyOwner: options.residencyOwner,
-      residencyRole: options.residencyRole,
-      sectorId: options.sectorId,
-      isResidencyOwnerActive: options.isResidencyOwnerActive,
-      admissionVisible: options.admissionVisible,
-    }));
-  }
-  return chain;
+  // Fan the requests out: a place+overlay job otherwise pays the full fetch→decode tail
+  // nose-to-tail where the shared task-cache dedupe and worker decode budget already bound
+  // concurrency. The prefetch's job is to make the files resident before admission — the
+  // slowest request, not their sum, is the honest wait.
+  return Promise.all(requests.map((request) => loadPart(request.url, {
+    renderer: job.renderer,
+    slot: request.slot,
+    optional: true,
+    residencyOwner: options.residencyOwner,
+    residencyRole: options.residencyRole,
+    sectorId: options.sectorId,
+    isResidencyOwnerActive: options.isResidencyOwnerActive,
+    admissionVisible: options.admissionVisible,
+  })));
 }
 
 function authoredUpgradeEstimatedBytes(job) {

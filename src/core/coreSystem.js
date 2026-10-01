@@ -531,6 +531,9 @@ function ensureEntityIndex(state) {
     radarAsteroids: [],
     byStationId: new Map(),
     byWorldRecordId: new Map(),
+    // Parallel carrier count for byWorldRecordId: O(1) "exactly one carrier" answers — any
+    // ambiguity (0, ≥2, or a missing count) keeps the entityList walk callers already run.
+    byWorldRecordIdCount: new Map(),
     _indexedIds: new Set(),
     _sourceList: null,
     _sourceLength: -1,
@@ -597,6 +600,10 @@ function repairEntityIndex(index) {
     index.byWorldRecordId = new Map();
     index.ready = false;
   }
+  if (!(index.byWorldRecordIdCount instanceof Map)) {
+    index.byWorldRecordIdCount = new Map();
+    index.ready = false;
+  }
   if (!(index._indexedIds instanceof Set)) {
     index._indexedIds = new Set();
     index.ready = false;
@@ -646,6 +653,7 @@ function clearEntityIndex(index) {
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
   index.byWorldRecordId.clear();
+  index.byWorldRecordIdCount.clear();
   index._indexedIds.clear();
   index.laneEpoch = (Number.isFinite(index.laneEpoch) ? index.laneEpoch : 0) + 1;
   index.laneVersions = Object.create(null);
@@ -695,10 +703,18 @@ function appendEntityIndex(index, e) {
   if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
     bumpLaneVersion(index, 'flavorCarriers');
   }
+  // world_site_root entities carry their role in the spawn literal — append-time decidable,
+  // so the markerless-POI carrier lookup latches this lane instead of the whole version.
+  if (e.data && e.data.role === 'world_site_root') bumpLaneVersion(index, 'worldSiteRoots');
   // First holder wins, matching the entities-map walk every worldRecordId lookup used to run.
   const worldRecordId = e.data && e.data.worldRecordId;
-  if (worldRecordId != null && !index.byWorldRecordId.has(worldRecordId)) {
-    index.byWorldRecordId.set(worldRecordId, e);
+  if (worldRecordId != null) {
+    if (!index.byWorldRecordId.has(worldRecordId)) {
+      index.byWorldRecordId.set(worldRecordId, e);
+    }
+    if (index.byWorldRecordIdCount instanceof Map) {
+      index.byWorldRecordIdCount.set(worldRecordId, (index.byWorldRecordIdCount.get(worldRecordId) || 0) + 1);
+    }
   }
 
   switch (e.type) {
@@ -823,6 +839,7 @@ function removeEntityIndex(index, e) {
   if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
     bumpLaneVersion(index, 'flavorCarriers');
   }
+  if (e.data && e.data.role === 'world_site_root') bumpLaneVersion(index, 'worldSiteRoots');
   removeFromIndexArray(index.mineables, e);
   if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
   removeFromIndexArray(index.fx, e);
@@ -850,6 +867,11 @@ function removeEntityIndex(index, e) {
   // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
   // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
   const worldRecordId = e.data && e.data.worldRecordId;
+  if (worldRecordId != null && index.byWorldRecordIdCount instanceof Map) {
+    const n = (index.byWorldRecordIdCount.get(worldRecordId) || 0) - 1;
+    if (n > 0) index.byWorldRecordIdCount.set(worldRecordId, n);
+    else index.byWorldRecordIdCount.delete(worldRecordId);
+  }
   if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
     index.byWorldRecordId.delete(worldRecordId);
     const source = index._sourceList;
@@ -940,6 +962,9 @@ function removeEntitiesFromIndex(index, corpses) {
     if (e && e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
       index.laneVersions.flavorCarriers = (index.laneVersions.flavorCarriers || 0) + 1;
     }
+    if (e && e.data && e.data.role === 'world_site_root') {
+      index.laneVersions.worldSiteRoots = (index.laneVersions.worldSiteRoots || 0) + 1;
+    }
   }
   removeCorpsesFromIndexArray(index.mineables, removed);
   index.laneVersions.wrecks = (index.laneVersions.wrecks || 0)
@@ -978,6 +1003,11 @@ function removeEntitiesFromIndex(index, corpses) {
     const e = corpses[i];
     if (!e || !removed.has(e)) continue;
     const worldRecordId = e.data && e.data.worldRecordId;
+    if (worldRecordId != null && index.byWorldRecordIdCount instanceof Map) {
+      const n = (index.byWorldRecordIdCount.get(worldRecordId) || 0) - 1;
+      if (n > 0) index.byWorldRecordIdCount.set(worldRecordId, n);
+      else index.byWorldRecordIdCount.delete(worldRecordId);
+    }
     if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
       index.byWorldRecordId.delete(worldRecordId);
       (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(worldRecordId);

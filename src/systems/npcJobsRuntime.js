@@ -198,6 +198,20 @@ function forEachCeresRealTargetBody(state, fn) {
 /** Same-record uniqueness includes malformed fx/asteroid duplicates. Not a 60 Hz owner loop. */
 function forEachWorldRecordContender(state, worldRecordId, fn) {
   if (typeof fn !== 'function' || !worldRecordId) return;
+  const index = state && state.entityIndex;
+  // The index counts live worldRecordId carriers: a proven single contender resolves O(1);
+  // any ambiguity — a miss, a stale holder, or a second carrier — keeps the entityList walk
+  // so malformed duplicates still enumerate in order.
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) {
+      fn(holder);
+      return;
+    }
+  }
   const list = (state && state.entityList) || [];
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
@@ -4496,7 +4510,11 @@ export const npcJobsRuntime = {
    *  query uses (eligibleActiveHostile) decides what counts as danger. */
   _hotAt(pos) {
     if (!pos) return false;
-    const list = this.state.entityList || [];
+    const index = this.state && this.state.entityIndex;
+    const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && Array.isArray(index.ships)
+      ? index.ships
+      : this.state.entityList || [];
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'ship' || e.team !== 1) continue;
       if (!eligibleActiveHostile(e)) continue;

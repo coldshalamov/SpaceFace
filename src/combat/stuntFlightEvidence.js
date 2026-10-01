@@ -1,7 +1,7 @@
 // Observes completed evasions from fixed-tick body trajectories. Never writes physics or input.
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { bodyLife, journalFor, observeAppliedImpulse, angleBetween } from './stuntEvidence.js';
-import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+import { collidesFlipEpoch, entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 const pt=p=>({x:p.x,z:p.z});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -52,13 +52,18 @@ function threatCandidatesFor(state) {
   return cache.list;
 }
 // Near-body history candidates have the same shape: pos/vel/collides-stable subset latched
-// on the index version; the cheap volatile checks (pos/vel alive/deleted) stay per tick.
-const _nearBodyCandidates = { version: null, source: null, list: [] };
+// on the index version plus the collides-flip epoch — post-spawn `collides` writes bump no
+// lane, so without it a flipped body keeps its stale membership until the next spawn sweep.
+// The cheap volatile checks (pos/vel alive/deleted) stay per tick.
+const _nearBodyCandidates = { version: null, epoch: -1, source: null, list: [] };
 function nearBodyCandidatesFor(state) {
   const version = entityIndexVersion(state);
+  const epoch = collidesFlipEpoch();
   const cache = _nearBodyCandidates;
-  if (version == null || cache.version !== version || cache.source !== state.entities) {
+  if (version == null || cache.version !== version || cache.epoch !== epoch
+    || cache.source !== state.entities) {
     cache.version = version;
+    cache.epoch = epoch;
     cache.source = state.entities;
     cache.list.length = 0;
     for (const e of state.entities.values()) {

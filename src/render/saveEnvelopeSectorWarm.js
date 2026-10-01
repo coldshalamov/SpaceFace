@@ -251,6 +251,25 @@ export function saveEnvelopeSectorStubs(data) {
     });
   }
 
+  // Band-landmark fleets (world.js ~2776): each member mounts one of three authored freighter
+  // files — neither a landmarkGlb POI nor a palette/record lane covers them, so a restore into
+  // a band-fleet sector would decode the hulls inside the first flight window otherwise.
+  for (const poi of sector.pois || []) {
+    if (!poi || poi.runtimeOwner) continue;
+    const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
+    if (fleetCount <= 0 || !poi.flavorTargetRef) continue;
+    for (const variant of 'abc') {
+      out.placeStubs.push({
+        type: 'fx',
+        data: {
+          poi: true,
+          placeId: `place_quiessence_freighter_${variant}`,
+          placeTargetRadius: 21,
+        },
+      });
+    }
+  }
+
   // Each field's head rock is the authored geology variant when the type declares one.
   for (const fdef of sector.fields || []) {
     const authoredPlaceId = fdef && AST_BY_ID.get(fdef.type) && AST_BY_ID.get(fdef.type).authoredPlaceId;

@@ -162,7 +162,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
@@ -2965,6 +2965,7 @@ export const world = {
     if (!ent) return ent;
     const mass = oneOff.physicalBody.mass;
     ent.type = 'wreck';
+    if (ent.collides !== true) bumpCollidesFlipEpoch();
     ent.collides = true;
     ent.radius = oneOff.radius;
     ent.mass = mass;
@@ -5310,10 +5311,11 @@ export const world = {
     if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
     const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
     if (cached && cached.alive !== false) return cached;
-    // A miss latches on the entity-index version: while the set is unchanged the walk cannot
-    // find anything new, so a site whose root never materializes doesn't re-scan every tick.
-    const indexVersion = entityIndexVersion(this.state);
-    if (indexVersion != null && p._wsCarrierMissVersion === indexVersion) return null;
+    // A miss latches on the world_site_root lane: while root membership is unchanged the walk
+    // cannot find anything new, so a site whose root never materializes doesn't re-scan — and
+    // projectile/pickup churn no longer wakes it like the global entity version did.
+    const laneVersion = entityIndexLaneVersion(this.state, ['worldSiteRoots']);
+    if (laneVersion !== -1 && p._wsCarrierMissVersion === laneVersion) return null;
     let found = null;
     for (const e of entities.values()) {
       const d = e && e.data;
@@ -5323,7 +5325,7 @@ export const world = {
       }
     }
     p._wsCarrierId = found ? found.id : null;
-    p._wsCarrierMissVersion = found || indexVersion == null ? null : indexVersion;
+    p._wsCarrierMissVersion = found || laneVersion === -1 ? null : laneVersion;
     return found;
   },
 

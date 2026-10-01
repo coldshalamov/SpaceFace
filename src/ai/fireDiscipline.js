@@ -284,8 +284,9 @@ export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities,
   // The shot prisms `firstOptic`. Map every lane-solid body into the flat {x,z,radius} shape the
   // optic tracer consumes, then walk the cascade exactly like the family book: each diamond
   // fires once, splinters under OPTIC_MAX_GENERATION re-prism the next diamond they meet.
-  const bodies = opticLaneBodiesFlat(entities);
-  const originIndex = bodies.findIndex((body) => body.entity === firstOptic);
+  const corpus = opticLaneCorpus(entities);
+  const bodies = corpus.bodies;
+  const originIndex = corpus.indexOf.get(firstOptic) ?? -1;
   const hits = opticCascadeHits(bodies, originIndex);
   for (const hit of hits) {
     if (cascadeThreatensOwnSide(bodies[hit].entity, shooter)) {
@@ -300,15 +301,18 @@ export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities,
 }
 
 /**
- * Per-lane flat-corpus scratch: the splinter scan replays over the same body set every
- * shooter decision tick, so the row array and the indexOf Map are pooled per iterable
- * rather than grown fresh per call. Every row is re-stamped from the live entity on each
- * rebuild — poses stay current, and the splinterBody re-test keeps membership identical to
- * a fresh walk (collides/alive flips need no version bump). The WeakMap key is the iterable
- * itself: index buckets and aiFireIntent's pooled shelved wrapper are stable objects across
- * ticks; a transient iterable just builds its own throwaway scratch like before.
+ * Per-lane flat-corpus scratch, plus a per-tick memo: the splinter scan replays over the same
+ * body set once per armed shooter per tick, so the row array and the indexOf Map are pooled
+ * per iterable and the whole corpus is stamped once per tick instead of twice per shooter.
+ * The memo key is the iterable's `sig()` — aiFireIntent's pooled shelved wrapper carries one
+ * that reads the live `state.tick`, `entityIndex.version`, and `asteroidField.version`, so a
+ * mid-pass spawn (which bumps the version) invalidates exactly when membership does. Iterables
+ * without a sig (plain arrays in headless calls/tests) rebuild every call like before. Every
+ * row is still re-stamped from the live entity on each rebuild — poses stay current and the
+ * splinterBody re-test keeps membership identical to a fresh walk.
  */
 const OPTIC_LANE_SCRATCH = new WeakMap();
+const OPTIC_CORPUS_MEMO = new WeakMap();
 
 function opticLaneScratch(entities) {
   const keyable = entities && (typeof entities === 'object' || typeof entities === 'function');
@@ -320,9 +324,13 @@ function opticLaneScratch(entities) {
   return scratch;
 }
 
-/** Flat {x,z,radius,entity} rows — the shape `traceOpticRay` consumes. */
-function opticLaneBodiesFlat(entities) {
+/** Flat {x,z,radius,entity} rows + the entity→row Map — the shapes the optic tracers consume. */
+function opticLaneCorpus(entities) {
   const scratch = opticLaneScratch(entities);
+  const keyable = entities && (typeof entities === 'object' || typeof entities === 'function');
+  const sig = entities && typeof entities.sig === 'function' ? entities.sig() : null;
+  const memo = keyable && sig ? OPTIC_CORPUS_MEMO.get(entities) : null;
+  if (memo && memo.sig === sig) return memo;
   const bodies = scratch.rows;
   const spare = scratch.spare;
   let n = 0;
@@ -341,7 +349,12 @@ function opticLaneBodiesFlat(entities) {
   }
   for (let i = n; i < bodies.length; i++) spare.push(bodies[i]);
   bodies.length = n;
-  return bodies;
+  const indexOf = scratch.indexOf;
+  indexOf.clear();
+  for (let i = 0; i < n; i++) indexOf.set(bodies[i].entity, i);
+  const corpus = { sig, bodies, indexOf };
+  if (keyable && sig) OPTIC_CORPUS_MEMO.set(entities, corpus);
+  return corpus;
 }
 
 /**
@@ -397,10 +410,9 @@ export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons
   const boltReach = maxBoltRange > 0 ? Math.min(maxBoltRange, OPTIC_RAY_RANGE) : OPTIC_RAY_RANGE;
 
   // Direct fire is a wasted bolt. The replay needs the flat body set — build it only now.
-  const bodies = opticLaneBodiesFlat(entities);
-  const indexOf = opticLaneScratch(entities).indexOf;
-  indexOf.clear();
-  for (let i = 0; i < bodies.length; i++) indexOf.set(bodies[i].entity, i);
+  const corpus = opticLaneCorpus(entities);
+  const bodies = corpus.bodies;
+  const indexOf = corpus.indexOf;
   const targetIndex = indexOf.get(target);
   if (targetIndex == null) return null; // a bank can only bank onto a body the sim can see
 

@@ -47,7 +47,7 @@ import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -1595,6 +1595,7 @@ export const encounterDirector = {
     if (!pod || typeof pod !== 'object') return false;
     pod.status = reason || 'retired';
     data.despawnAt = this.now();
+    if (entity.collides !== false) bumpCollidesFlipEpoch();
     entity.collides = false;
     if (entity.flags) delete entity.flags.persistent;
     return true;

@@ -12923,11 +12923,20 @@ export const vfx = {
     }
     if (!this._ribbonTrails) this._initRibbonTrails();
     let ribbons = 0;
-    if (this._ribbonTrails && this.state.entities && typeof this.state.entities.values === 'function') {
+    // Ribbon owners are exactly ships+drones — the index's shipLike bucket when it is ready,
+    // the full entity walk when it is not (same member set either way, just cheaper input).
+    const index = this.state && this.state.entityIndex;
+    const ribbonCandidates = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.shipLike)
+      ? index.shipLike
+      : (this.state.entities && typeof this.state.entities.values === 'function'
+        ? this.state.entities.values()
+        : []);
+    if (this._ribbonTrails) {
       const nearby = [];
       const originX = player && player.pos ? player.pos.x : 0;
       const originZ = player && player.pos ? player.pos.z : 0;
-      for (const entity of this.state.entities.values()) {
+      for (const entity of ribbonCandidates) {
         if (!entity || !entity.alive) continue;
         if (entity.type !== 'ship' && entity.type !== 'drone') continue;
         if (player && entity.id === player.id) continue;

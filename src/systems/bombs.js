@@ -16,7 +16,7 @@ import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
   bombFieldEnvelope, fillBombViscosityImpulse,
 } from '../combat/bombDynamics.js';
-import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 export const BOMB_TYPE = 'bomb';
 export const BOMB_SHOVE_CAP = 8;
@@ -426,6 +426,7 @@ export function adaptBombProjectileProxy(bomb) {
   const d = bomb.data;
   const live = bomb.alive !== false && d && d.phase !== 'spent';
   bomb.physicsBody = false;
+  if (bomb.collides !== live) bumpCollidesFlipEpoch();
   bomb.collides = live;
   bomb.collisionMask = Masks.PROJECTILE;
   bomb.radius = BOMB_PROXY_RADIUS;

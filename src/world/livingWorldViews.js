@@ -98,6 +98,16 @@ export function indexedTypeScan(state, bucket) {
   return (state && state.entityList) || EMPTY_TYPE_SCAN;
 }
 
+/**
+ * Post-spawn `collides` flips never touch the index — they happen on already-live entities, so
+ * no lane or version bump fires. Caches whose membership predicate includes `collides` need
+ * this epoch folded into their key; every flip site bumps it. In-memory only: it invalidates
+ * caches, it never feeds sim output, so determinism is untouched.
+ */
+let _collidesFlipEpoch = 0;
+export function bumpCollidesFlipEpoch() { _collidesFlipEpoch++; }
+export function collidesFlipEpoch() { return _collidesFlipEpoch; }
+
 /** Incremented on every indexed spawn/remove; a cheap "membership changed" watch for caches. */
 export function entityIndexVersion(state) {
   const index = state && state.entityIndex;

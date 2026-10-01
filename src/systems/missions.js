@@ -177,7 +177,7 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
@@ -7401,6 +7401,7 @@ export const missions = {
     ent.team = 2;
     ent.factionId = null;
     ent.type = follow.targetType;
+    if (ent.collides !== false) bumpCollidesFlipEpoch();
     ent.collides = false;
     ent.data = ent.data || {};
     ent.data.poiType = follow.targetType;
@@ -9800,7 +9801,11 @@ function capitalBossPlacementClear(state, pos, radius) {
     const pad = radius + (player.radius || 10) + 150;
     if (distSq(pos, player.pos) < pad * pad) return false;
   }
-  const list = state.entityList;
+  const index = state.entityIndex;
+  const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables)
+    ? index.collidables
+    : state.entityList;
   if (Array.isArray(list)) {
     for (const other of list) {
       if (!other || other.alive === false || !other.pos || other.collides === false) continue;

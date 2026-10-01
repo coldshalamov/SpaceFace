@@ -542,7 +542,15 @@ const _autopilotObstacleOut = [];
 function autopilotObstacles(state, player, target) {
   const out = _autopilotObstacleOut;
   out.length = 0;
-  const version = entityIndexVersion(state);
+  // The candidate set excludes projectiles/pickups (fx too, but they carry no counter lane) —
+  // so the cache key is `version - projectile - pickup` bumps: a volley or a cargo drop can no
+  // longer rebuild the whole candidate list mid-flight. The remainder can only under-shoot a
+  // real change on a lane-less type, which still bumps it — never a false match.
+  let version = entityIndexVersion(state);
+  if (version != null) {
+    const laneVersions = state.entityIndex && state.entityIndex.laneVersions;
+    if (laneVersions) version -= (laneVersions.projectiles || 0) + (laneVersions.pickups || 0);
+  }
   const list = state && state.entityList ? state.entityList : [];
   const cache = _autopilotObstacleCandidates;
   if (version == null || cache.version !== version || cache.source !== list) {

@@ -320,13 +320,22 @@ const OPTIC_SHELVED_WRAPPER = new WeakMap();
 export function opticLaneBodiesWithShelved(state) {
   const live = opticLaneBodies(state);
   const shelved = shelvedOpticLaneRecords(state);
-  if (!shelved.length) return live;
   const keyable = state && typeof state === 'object';
+  if (!shelved.length && !keyable) return live;
   let cached = keyable ? OPTIC_SHELVED_WRAPPER.get(state) : null;
   if (!cached || cached.live !== live || cached.shelved !== shelved) {
     cached = {
       live,
       shelved,
+      // Corpus-validity signature consumed by fireDiscipline's per-tick flat-corpus memo:
+      // identical while the tick and both membership versions hold — i.e., across the whole
+      // tactical pass. Reads the live handles rather than captured ones so a swapped index
+      // object still reports its own version.
+      sig: () => {
+        const index = state && state.entityIndex;
+        const field = state && state.world && state.world.asteroidField;
+        return `${(state && state.tick) | 0}:${(index && Number(index.version)) || 0}:${(field && Number(field.version)) || 0}`;
+      },
       values() {
         return (function* () {
           if (Array.isArray(live)) yield* live;

@@ -770,6 +770,12 @@ export const gameOverScreen = {
       button.classList.remove('sf-word--unavailable');
       button.title = 'Return to ' + model.loadLatestSlot + ', your most recent save';
       button.setAttribute('aria-label', 'Load your most recent save, ' + model.loadLatestSlot);
+      // Death→Load-latest is the highest-frequency reload: arm the envelope speculation lane
+      // while the player reads the sheet (and re-arm on refresh — an autosave landing while
+      // it is open bumps the store generation, which re-resolves the prepare internally).
+      if (ctx && ctx.bus && model.loadLatestSlot) {
+        ctx.bus.emit('save:loadSpeculationTarget', { slot: model.loadLatestSlot });
+      }
       return model;
     }
     // Ironman is a deliberate withdrawal, not a missing feature: the verb leaves the row entirely

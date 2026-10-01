@@ -38,6 +38,7 @@ import { mines as minesSystem, MINE_TELEGRAPH_CUE, mineCorridorLayout } from './
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
+import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -1587,6 +1588,7 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
   else record.lostQty += pod.qty;
   const annotation = entity.data.freightCustodyPod;
   annotation.status = status;
+  if (entity.collides !== false) bumpCollidesFlipEpoch();
   entity.collides = false;
   if (entity.flags) delete entity.flags.persistent;
   if (status !== 'player_collected') d.retireFreightPickup(entity, status);

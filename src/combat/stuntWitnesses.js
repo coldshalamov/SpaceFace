@@ -363,7 +363,10 @@ export function sendWitnessReports(state,incident,bus) {
     const coverageKey=JSON.stringify([witness.identity,witness.sourceTicks,witness.transferCoverage,witness.payoffTicks,witness.terminalLives]);
     if(incident.reportSources?.includes(coverageKey))continue;
     let receiver=null,range=Infinity;
-    for(const entity of state.entities.values()) {
+    const _swIndex=state.entityIndex;
+    const _swReceivers=_swIndex&&_swIndex.__spacefaceEntityIndexV1===true&&_swIndex.ready===true
+      &&Array.isArray(_swIndex.stations)?_swIndex.stations:state.entities.values();
+    for(const entity of _swReceivers) {
       if(entity.id===sender.id||entity.type!=='station')continue;
       const target=observerProfile(state,entity);
       if(!target?.comms||target.factionId!==profile.factionId)continue;

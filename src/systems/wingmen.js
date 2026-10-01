@@ -569,7 +569,11 @@ function guardAssetFor(state, fs, selfId) {
 // Nearest hostile closing on the guarded asset: team-1 hulls, or any hull actively
 // targeting it. Deterministic (distance, then id) like the mining prospect ring.
 function guardThreatFor(state, asset, selfId) {
-  const list = state && state.entityList;
+  const index = state && state.entityIndex;
+  const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.shipLike)
+    ? index.shipLike
+    : state && state.entityList;
   if (!Array.isArray(list) || !asset || !asset.pos) return null;
   let best = null;
   let bestD2 = Infinity;
