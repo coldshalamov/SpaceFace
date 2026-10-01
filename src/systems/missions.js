@@ -4484,6 +4484,7 @@ export const missions = {
     this.bus.emit('research:pointsChanged', {
       researchPoints: state.player.researchPoints,
       source: `first:${eventName}`,
+      scope: spec.scope,
       granted: rp,
     });
     return rp;
@@ -6733,7 +6734,11 @@ export const missions = {
       const rp = m.type === 'recon_scan' ? (4 + (m.riskTier || 0) * 2) : (2 + (m.riskTier || 0));
       researchPoints = rp;
       state.player.researchPoints = (state.player.researchPoints || 0) + rp;
-      this.bus.emit('research:pointsChanged', { researchPoints: state.player.researchPoints });
+      this.bus.emit('research:pointsChanged', {
+        researchPoints: state.player.researchPoints,
+        source: `mission:${m.type}`,
+        granted: rp,
+      });
     }
     // Honored contract terms pay fieldwork RP — a settlement-time grant, not a researchFirsts
     // entry, because a mission's clauses can honor exactly once when it completes.

@@ -38,6 +38,30 @@ export const VOICE_OWNED_ALERT_TEXTS = Object.freeze([
 
 const BLOCKED_OUTPUT_STATES = new Set(['starved', 'no-power', 'backlogged']);
 
+// STORY-02 — short grant names for `research:pointsChanged`. The writer carries `scope`
+// (first-grant kind) or a `source` slug; an unknown slug still reads as fieldwork.
+function researchGrantKey(p) {
+  if (typeof p.scope === 'string' && p.scope) return `first-${p.scope}`;
+  const s = typeof p.source === 'string' && p.source ? p.source : 'unknown';
+  return s.replace(/[^a-z0-9_-]/gi, '_');
+}
+
+function researchGrantLabel(p) {
+  if (typeof p.scope === 'string' && p.scope) return `first ${p.scope}`;
+  const s = typeof p.source === 'string' ? p.source : '';
+  if (s === 'scan_rp_bonus') return 'scan bonus';
+  if (s === 'clause_honor') return 'honored clause';
+  if (s.startsWith('mission:')) {
+    const t = s.slice(8);
+    if (t === 'recon_scan') return 'recon contract';
+    if (t === 'salvage_retrieval') return 'salvage contract';
+    return 'contract';
+  }
+  if (s.startsWith('story:')) return 'story fieldwork';
+  if (s.startsWith('first:')) return 'first fieldwork';
+  return 'fieldwork';
+}
+
 /** Flight-HUD status line for a mill that cannot produce. Not a one-voice bark: it stays up
  *  while the machine is blocked so reduce-motion still has a word when shake/zoom are off. */
 export function blockedOutputAlertText(payload) {
@@ -350,6 +374,15 @@ export function createAlerts(ctx) {
   });
   bus.on('game:started', () => refreshBlockedMillsFromSites());
   bus.on('save:loaded', () => refreshBlockedMillsFromSites());
+
+  // STORY-02 — a research grant names itself: missions is the sole RP writer and every emit
+  // carries source+granted; one alert line per grant, keyed by source so same-event grants
+  // (mission pay + honored clause) each get their line while a repeated source coalesces.
+  bus.on('research:pointsChanged', (p) => {
+    const granted = Number(p && p.granted);
+    if (!(granted > 0)) return;
+    announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} RP — ${researchGrantLabel(p)}`, ttl: 4 });
+  });
 
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
   // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.
