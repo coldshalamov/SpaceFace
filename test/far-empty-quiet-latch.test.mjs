@@ -77,11 +77,16 @@ test('membership bump wakes empty quiet latch', () => {
   step(state, helpers, bus);
   assert.equal(state.world.farActorsRuntime.quietLatched, true);
   const armed = tickFarActors._quiet.armedTick;
-  state.entityIndex.version++;
+  const armedMembership = tickFarActors._quiet.membership;
+  // The latch keys on the shipLike+wrecks lane sum (far candidates are ship|drone|wreck
+  // only) — mirror appendEntityIndex by bumping a member lane, not the whole version.
+  const laneVersions = state.entityIndex.laneVersions
+    || (state.entityIndex.laneVersions = Object.create(null));
+  laneVersions.shipLike = (laneVersions.shipLike || 0) + 1;
   step(state, helpers, bus);
   assert.equal(state.world.farActorsRuntime.quietLatched, true);
   assert.notEqual(tickFarActors._quiet.armedTick, armed);
-  assert.equal(tickFarActors._quiet.membership, state.entityIndex.version);
+  assert.notEqual(tickFarActors._quiet.membership, armedMembership);
 });
 
 test('bench toggle off refuses latch', () => {

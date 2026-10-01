@@ -6,6 +6,7 @@ import { clearEntityRuntime } from '../core/entity.js';
 import { authoredPrefetchRadius, farLedgerScanRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
+import { entityIndexLaneVersion } from './livingWorldViews.js';
 import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
@@ -33,6 +34,15 @@ function entityIndexVersion(state) {
   return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/** Membership lanes for the empty-quiet latch — far-row candidates virtualize from
+ * ships and wrecks only, so projectile/pickup/asteroid churn can't wake it. */
+const FAR_EMPTY_QUIET_LANES = ['shipLike', 'wrecks'];
+
+function farQuietMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, FAR_EMPTY_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
 }
 
 function farRowCount(state) {
@@ -701,7 +711,7 @@ export function tickFarActors(state, helpers, bus) {
     tickFarActors._quiet = null;
     publishFarQuiet(state, false);
   } else if (FAR_EMPTY_QUIET_LATCH !== false) {
-    const membership = entityIndexVersion(state);
+    const membership = farQuietMembershipVersion(state);
     if (membership != null) {
       const tick = state.tick | 0;
       const quiet = tickFarActors._quiet;
@@ -811,7 +821,7 @@ export function tickFarActors(state, helpers, bus) {
   // Arm empty+no-virt latch only when far stayed empty and probe saw no virt candidates.
   const farAfter = farRowCount(state);
   if (FAR_EMPTY_QUIET_LATCH !== false && farAfter === 0 && virtSeen === 0) {
-    const membership = entityIndexVersion(state);
+    const membership = farQuietMembershipVersion(state);
     if (membership != null) {
       tickFarActors._quiet = { membership, armedTick: state.tick | 0 };
       publishFarQuiet(state, true);

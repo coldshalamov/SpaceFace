@@ -18,7 +18,7 @@ import {
 } from '../data/hunterTricks.js';
 import { mineLayerWakePoint } from '../ai/mineLayerVerb.js';
 import { chaffDecoyPoint } from './countermeasures.js';
-import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 /** Bench A/B: production default ON. Quiet latch skips bountyHunt shipLike census
  * when no live bounty hunters remain. Soft-GPU fps not claimed. Fresh law/wanted-
@@ -33,6 +33,9 @@ export function getBountyHuntEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const BOUNTY_HUNT_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the hunter census reads shipLike only. */
+const BOUNTY_QUIET_LANES = ['shipLike'];
 
 function publishBountyHuntQuiet(state, latched) {
   if (!state) return;
@@ -138,7 +141,8 @@ export const bountyHunt = {
     // census stays empty; wake on membership, hunter spawn/tag, or 0.5 s rescan.
     // Soft-GPU fps not claimed. Fresh bounty residual after #148 salvage.
     if (BOUNTY_HUNT_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, BOUNTY_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._hunterWakeSeq | 0;
       const quiet = this._huntersQuiet;
@@ -175,7 +179,8 @@ export const bountyHunt = {
     }
     if (BOUNTY_HUNT_EMPTY_QUIET_LATCH !== false) {
       if (!anyHunter && !anyQuarryActive) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, BOUNTY_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         if (membership != null) {
           this._huntersQuiet = {
             membership,

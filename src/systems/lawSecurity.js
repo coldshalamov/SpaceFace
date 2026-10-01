@@ -70,6 +70,7 @@ import {
   indexedShipLikeScan,
   indexedTypeScan,
   entityIndexVersion,
+  entityIndexLaneVersion,
 } from '../world/livingWorldViews.js';
 
 export const LAW_SECURITY_VERSION = 2;
@@ -87,6 +88,9 @@ export function getSanctuaryEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const SANCTUARY_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the armed-NPC census reads aiShips (⊆ shipLike). */
+const SANCTUARY_QUIET_LANES = ['shipLike'];
 
 function publishSanctuaryQuiet(state, latched) {
   if (!state) return;
@@ -663,7 +667,8 @@ export const lawSecurity = {
     // AI wake, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh law residual after #145
     // cones / #146 catch-nets.
     if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, SANCTUARY_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._sanctuaryWakeSeq | 0;
       const quiet = this._sanctuaryQuiet;
@@ -710,7 +715,8 @@ export const lawSecurity = {
     }
 
     if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, SANCTUARY_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tacticalQuietArm = !state.tacticalAiRuntime
         || state.tacticalAiRuntime.quietLatched !== false;
       if (membership != null && aggressive === 0 && tacticalQuietArm) {

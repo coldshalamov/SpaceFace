@@ -62,6 +62,12 @@
   <link rel="modulepreload" href="./vendor/addons/loaders/GLTFLoader.js" />
   <link rel="modulepreload" href="./vendor/addons/loaders/KTX2Loader.js" />
   <link rel="modulepreload" href="./vendor/addons/libs/meshopt_decoder.module.js" />
+  <!-- The decoder attach helpers sit one layer deeper inside attachRuntimeDecoders —
+       serialized dynamic imports inside the first-decode await chain. Same fetch-only
+       warmup; draco is dead weight for shipped GLBs but the decoder contract keeps it
+       for future/user files, so it preloads too. -->
+  <link rel="modulepreload" href="./vendor/addons/loaders/DRACOLoader.js" />
+  <link rel="modulepreload" href="./src/render/embeddedKtx2Textures.js" />
   <!-- The KTX2 transcoder trio is discovered one layer deeper still — the worker script, its
        importScripts target, and the .wasm it fetches are a serialized 3-fetch chain inside
        the first texture decode. Fetch-only hints keep them off the decode critical path. -->

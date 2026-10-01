@@ -635,64 +635,142 @@ export const save = {
 
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
   serializeData() {
+    const it = this._serializeDataSteps();
+    let r;
+    while (!(r = it.next()).done) { /* section boundaries are synchronous in this lane */ }
+    return r.value;
+  },
+
+  *_serializeDataSteps() {
     const state = this.state;
     const data = {};
     data.meta = this._serializeMeta();
+    yield 'serialize:meta';
     data.player = this._serializePlayer();
+    yield 'serialize:player';
     data.cargo = this._serializeCargo();
+    yield 'serialize:cargo';
     data.salvage = this._callSerialize('salvage') || {};
+    yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
+    yield 'serialize:survivorPod';
     data.economy = this._callSerialize('economy') || {};
+    yield 'serialize:economy';
     data.economyContracts = this._callSerialize('economyContracts') || {};
+    yield 'serialize:economyContracts';
     data.factions = this._callSerialize('factions') || {};
+    yield 'serialize:factions';
     data.world = this._callSerialize('world') || {};
+    yield 'serialize:world';
     data.entities = this._serializeEntities();
+    yield 'serialize:entities';
     data.combat = serializeCombatState(state);
+    yield 'serialize:combat';
     data.bombs = this._callSerialize('bombs') || {};
+    yield 'serialize:bombs';
     data.stunts = this._callSerialize('stuntGrammar');
+    yield 'serialize:stunts';
     data.fields = this._callSerialize('fields');
+    yield 'serialize:fields';
     data.missions = this._callSerialize('missions') || this._serializeMissions();
+    yield 'serialize:missions';
     data.capitalBoss = this._callSerialize('capitalBossEncounters');
+    yield 'serialize:capitalBoss';
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
+    yield 'serialize:careerOrigins';
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
+    yield 'serialize:careerLadders';
     data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
+    yield 'serialize:scenario';
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
+    yield 'serialize:automation';
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
+    yield 'serialize:crafting';
     data.sectorSim = this._callSerialize('sectorSim') || {};
+    yield 'serialize:sectorSim';
     data.npcJobs = this._callSerialize('npcJobsRuntime') || {}; // PQ-014 live NPC job bag (v12)
+    yield 'serialize:npcJobs';
     data.traffic = this._callSerialize('traffic') || {};
+    yield 'serialize:traffic';
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
+    yield 'serialize:claims';
     data.sites = this._callSerialize('asteroidSites') || clonePlain(state.sites || {});
+    yield 'serialize:sites';
     data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
+    yield 'serialize:formations';
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
+    yield 'serialize:aceMemory';
     data.nemesis = this._callSerialize('nemesis') || clonePlain(state.nemesis || null);
+    yield 'serialize:nemesis';
     data.nemesisDeployment = this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null);
+    yield 'serialize:nemesisDeployment';
     data.enemyMind = clonePlain(state.enemyMind || null);
+    yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
+    yield 'serialize:lossLedger';
     data.provenance = this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {});
+    yield 'serialize:provenance';
     data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
+    yield 'serialize:factionPresence';
     data.bandRadio = this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {});
+    yield 'serialize:bandRadio';
     data.v2Flavor = this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {});
+    yield 'serialize:v2Flavor';
     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
+    yield 'serialize:aftermathWrecks';
     data.lawSecurity = this._callSerialize('lawSecurity') || {};
+    yield 'serialize:lawSecurity';
     data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
+    yield 'serialize:fieldDepletion';
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
+    yield 'serialize:livingPoiBehaviors';
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
+    yield 'serialize:signalInvestigation';
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
+    yield 'serialize:recoveryEncounters';
     data.chronicler = this._callSerialize('chronicler') || clonePlain(state.chronicler || {});
+    yield 'serialize:chronicler';
     data.tensionDirector = clonePlain(state.tensionDirector || null);
+    yield 'serialize:tensionDirector';
     data.regionalEcology = this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {});
+    yield 'serialize:regionalEcology';
     data.stationServices = this._callSerialize('stationServices') || {};
+    yield 'serialize:stationServices';
     data.encounterDirector = this._serializeEncounterDirector();
+    yield 'serialize:encounterDirector';
     data.flight = this._serializeFlight();
+    yield 'serialize:flight';
     data.nav = this._serializeNav();
+    yield 'serialize:nav';
     data.settings = this._serializeSettings();
+    yield 'serialize:settings';
     data.uiScreenMemory = this._serializeScreenMemory();
+    yield 'serialize:uiScreenMemory';
     // PQ-183.01 watch list: UI-owned pinned refs; outside the simSnapshot allow-list.
     data.uiWatchlist = this._serializeWatchlist();
+    yield 'serialize:uiWatchlist';
     // H9: authoritative RNG continuation (seed + draw position). Restore must not reseed to zero.
     data.entropy = this._serializeEntropy();
+    yield 'serialize:entropy';
     return data;
+  },
+
+  // The pause-menu Load capture runs while the sim is frozen: the same section generator
+  // driven on the restore lane’s deadline gate splits the multi-MB serialize into
+  // paint-seamed chunks without changing a single byte of the snapshot.
+  async _serializeDataPausedAsync() {
+    const it = this._serializeDataSteps();
+    let lastYieldAt = nowMs();
+    let r;
+    for (;;) {
+      r = it.next();
+      if (r.done) break;
+      if (nowMs() - lastYieldAt >= RESTORE_YIELD_SLICE_MS) {
+        await this._restoreFrameYield();
+        lastYieldAt = nowMs();
+      }
+    }
+    return r.value;
   },
 
   /**
@@ -3954,9 +4032,11 @@ export const save = {
     return { data: prepared.data, slot };
   },
 
-  // Async twin for the worker-backed load lane: serializeData stays one coherent task — live-state
-  // readers cannot split across future ticks and remain an authoritative snapshot — but every pass
-  // after it walks the detached copy, so clone → migrate → normalize yield a frame between them
+  // Async twin for the worker-backed load lane: serializeData stays one coherent task on a ticking
+  // run — live-state readers cannot split across future ticks and remain an authoritative snapshot.
+  // On a paused run the state is frozen, so the shared section generator drives with frame yields
+  // between sections instead — same bytes, spread across frames. Every pass after the capture walks
+  // the detached copy, so clone → migrate → normalize yield a frame between them
   // (same pacing _prepareEnvelopeStringAsync uses) instead of extending the capture brick.
   async _captureRollbackSnapshotAsync() {
     const state = this.state;
@@ -3967,7 +4047,11 @@ export const save = {
     this._rollbackCaptureActive = true;
     let data;
     try {
-      data = this.serializeData();
+      if (this.state && this.state.mode === 'paused') {
+        data = await this._serializeDataPausedAsync();
+      } else {
+        data = this.serializeData();
+      }
     } finally {
       this._rollbackCaptureActive = previousStrict;
     }
@@ -4792,24 +4876,42 @@ export const save = {
   _reconcileReinforcementLatches(entityIdRemap) {
     const state = this.state;
     if (!state || !state.entities || typeof state.entities.values !== 'function') return;
-    const fielded = [];
-    for (const e of state.entities.values()) {
-      if (e && e.data && e.data.ai && e.data.ai.spawnContext === 'sg06_reinforcement') {
-        fielded.push(e);
-      }
-    }
+    // One pass collects callers and fielded members; the caller→members index turns the
+    // per-caller `fielded.some` scan into O(1) lookups (was 2 walks + callers×fielded).
+    const callers = [];
+    const fieldedByCaller = new Map();
+    const unownedFielded = [];
     for (const e of state.entities.values()) {
       const ai = e && e.data && e.data.ai;
-      if (!ai || ai._calledReinforcements !== true || ai._reinforcementsDelivered === true) continue;
-      const arrived = fielded.some((s) => {
-        const enc = s.data && s.data.encounter;
+      if (!ai) continue;
+      if (ai.spawnContext === 'sg06_reinforcement') {
+        const enc = e.data && e.data.encounter;
         if (enc && enc.callerId != null) {
           const mapped = entityIdRemap && entityIdRemap.get(String(enc.callerId));
-          return (mapped == null ? enc.callerId : mapped) === e.id;
+          const key = mapped == null ? enc.callerId : mapped;
+          let bucket = fieldedByCaller.get(key);
+          if (!bucket) fieldedByCaller.set(key, (bucket = []));
+          bucket.push(e);
+        } else {
+          unownedFielded.push(e);
         }
-        return e.pos && s.pos
-          && Math.hypot(s.pos.x - e.pos.x, s.pos.z - e.pos.z) <= 2600;
-      });
+      }
+      if (ai._calledReinforcements === true && ai._reinforcementsDelivered !== true) {
+        callers.push(e);
+      }
+    }
+    for (const e of callers) {
+      const ai = e.data.ai;
+      let arrived = (fieldedByCaller.get(e.id) || []).length > 0;
+      if (!arrived) {
+        for (const s of unownedFielded) {
+          if (e.pos && s.pos
+            && Math.hypot(s.pos.x - e.pos.x, s.pos.z - e.pos.z) <= 2600) {
+            arrived = true;
+            break;
+          }
+        }
+      }
       if (!arrived) ai._calledReinforcements = false;
     }
   },

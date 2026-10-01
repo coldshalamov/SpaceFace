@@ -24,6 +24,10 @@ import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
+
+/** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
+ * per run (ship|drone|freighter members). */
+const REMOTE_CANDIDATE_LANES = ['shipLike', 'freighters'];
 import {
   buildElementaryVoiceGraph,
   legacyContinuousGain,
@@ -5977,7 +5981,7 @@ export const audio = {
       // 'freighters' lane tracks the radarContacts-only type, so churn on the rest of
       // radarContacts (stations/asteroids) can't rebuild the candidate list. -1 (index
       // unready) plays the old null role: no latch.
-      const laneVersion = entityIndexLaneVersion(this.state, ['shipLike', 'freighters']);
+      const laneVersion = entityIndexLaneVersion(this.state, REMOTE_CANDIDATE_LANES);
       const indexVersion = laneVersion === -1 ? null : laneVersion;
       const buckets = (index && index.shipLike && index.radarContacts) ? index : null;
       if (indexVersion == null || rt._remoteCandVersion !== indexVersion || !buckets) {

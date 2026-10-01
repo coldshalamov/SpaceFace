@@ -686,6 +686,10 @@ function appendEntityIndex(index, e) {
   // Freighters carry no dedicated bucket (radarContacts only) — a counter-only lane lets
   // remote-engine-type readers latch shipLike+freighters instead of the whole version.
   if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
+  // Same counter-only shape for the ecology/machine censuses — fauna and machines have no
+  // index bucket, but their member sets are type/data predicates readers latch on.
+  if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
+  if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
   // First holder wins, matching the entities-map walk every worldRecordId lookup used to run.
   const worldRecordId = e.data && e.data.worldRecordId;
   if (worldRecordId != null && !index.byWorldRecordId.has(worldRecordId)) {
@@ -809,6 +813,8 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.gates, e);
   if (removeFromIndexArray(index.asteroids, e)) bumpLaneVersion(index, 'asteroids');
   if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
+  if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
+  if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
   removeFromIndexArray(index.mineables, e);
   if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
   removeFromIndexArray(index.fx, e);
@@ -916,6 +922,12 @@ function removeEntitiesFromIndex(index, corpses) {
   for (const e of removed) {
     if (e && e.type === 'freighter') {
       index.laneVersions.freighters = (index.laneVersions.freighters || 0) + 1;
+    }
+    if (e && e.type === 'fauna') {
+      index.laneVersions.fauna = (index.laneVersions.fauna || 0) + 1;
+    }
+    if (e && e.data && e.data.machine) {
+      index.laneVersions.machines = (index.laneVersions.machines || 0) + 1;
     }
   }
   removeCorpsesFromIndexArray(index.mineables, removed);

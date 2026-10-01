@@ -6,7 +6,7 @@
 
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
-import { entityIndexVersion, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan } from '../world/livingWorldViews.js';
 import { hash32 } from '../core/rng.js';
 
 const TETHER_AWAY_DISTANCE = 260;
@@ -53,6 +53,10 @@ export function getSalvageUnstableQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const SALVAGE_UNSTABLE_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the census discovers wrecks (unstable reactors)
+ * and pickups (hot cores); ship/asteroid/projectile churn can't change the result. */
+const SALVAGE_UNSTABLE_QUIET_LANES = ['wrecks', 'pickups'];
 
 function publishSalvageUnstableQuiet(state, latched) {
   if (!state) return;
@@ -276,7 +280,8 @@ export const salvageActions = {
     // empty; wake on membership, reactor arm/annotate, or 0.5 s rescan. Soft-GPU fps
     // not claimed. Fresh salvage residual after #146 catch-nets / #147 sanctuary.
     if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, SALVAGE_UNSTABLE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._unstableWakeSeq | 0;
       const quiet = this._unstableQuiet;
@@ -345,7 +350,8 @@ export const salvageActions = {
     else this._releaseCookerFlight(state);
 
     if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, SALVAGE_UNSTABLE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       if (membership != null && liveUnstable === 0 && hotCores === 0) {
         this._unstableQuiet = {
           membership,

@@ -7,7 +7,7 @@ import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
-import { indexedTypeScan } from './livingWorldViews.js';
+import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
@@ -385,6 +385,15 @@ function entityIndexVersion(state) {
     : null;
 }
 
+/** Membership lanes for the optic-quiet latch — the interest census reads asteroids
+ * only, so projectile/pickup/ship churn can't wake it. */
+const OPTIC_FAR_QUIET_LANES = ['asteroids'];
+
+function opticMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, OPTIC_FAR_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
+}
+
 function publishOpticQuiet(state, latched) {
   const world = state && state.world;
   if (!world) return;
@@ -411,7 +420,7 @@ export function tickOpticFieldRocks(state, helpers) {
   // move beyond a fraction of enter, or a 0.5 s rescan.
   const field = state.world && state.world.asteroidField;
   const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
-  const membership = entityIndexVersion(state);
+  const membership = opticMembershipVersion(state);
   const px = finite(player.pos.x);
   const pz = finite(player.pos.z);
   if (OPTIC_FAR_QUIET_LATCH !== false) {

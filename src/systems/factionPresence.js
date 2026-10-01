@@ -4,7 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -42,6 +42,9 @@ export function getFactionPresenceQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the route/pitborn census reads shipLike only. */
+const PRESENCE_QUIET_LANES = ['shipLike'];
 
 // Entity ids sort numerically when both sides carry one (spawn counters reach two digits);
 // string compare alone would order '10' before '9' and bind first-fire targets to the wrong hull.
@@ -465,7 +468,8 @@ export const factionPresence = {
     const state = this.state;
     const own = ensureOwnState(state);
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._presenceWakeSeq | 0;
       const quiet = this._presenceQuiet;
@@ -492,7 +496,8 @@ export const factionPresence = {
     this._updateBoarding();
 
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const census = this._censusPresenceWork();
       if (membership != null && !own.boarding && !census.busy) {
         this._presenceQuiet = {

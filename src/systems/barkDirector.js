@@ -29,7 +29,7 @@ import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.j
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
-import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
@@ -64,6 +64,10 @@ export function getBarkDirectorQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const BARK_DIRECTOR_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the census walks living actors (shipLike,
+ * stations, wrecks); projectile/pickup/asteroid churn no longer wakes it. */
+const BARK_QUIET_LANES = ['shipLike', 'stations', 'wrecks'];
 
 function publishBarkDirectorQuiet(state, latched) {
   if (!state) return;
@@ -370,7 +374,8 @@ export const barkDirector = {
     // body-near-miss cues, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh
     // radio residual after #152 flybyFocus.
     if (BARK_DIRECTOR_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, BARK_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._barkWakeSeq | 0;
       const quiet = this._barkQuiet;
@@ -419,7 +424,8 @@ export const barkDirector = {
       const nearMissBusy = !!(this._bodyNearMisses && this._bodyNearMisses.size);
       const stuntBusy = barkPendingStuntBusy(state);
       if (!spoke && !nearMissBusy && !stuntBusy) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, BARK_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         if (membership != null) {
           this._barkQuiet = {
             membership,

@@ -16,7 +16,7 @@ import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
   bombFieldEnvelope, fillBombViscosityImpulse,
 } from '../combat/bombDynamics.js';
-import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 export const BOMB_TYPE = 'bomb';
 export const BOMB_SHOVE_CAP = 8;
@@ -71,6 +71,15 @@ function entityIndexVersion(state) {
   return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/** Membership lanes for the empty-quiet latch — the bomb census reads the typed
+ * 'bombs' bucket only, so ship/pickup/asteroid churn can't wake it. */
+const BOMBS_QUIET_LANES = ['bombs'];
+
+function bombsMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, BOMBS_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
 }
 
 /** True when a ready typed bombs bucket exists (latch refuses entityList fallback). */
@@ -509,7 +518,7 @@ export const bombs = {
     // Without a versioned bombs bucket the latch refuses so the entityList fallback stays live.
     // ensureRuntime (rack normalize) stays AFTER the latch so quiet ticks skip it too.
     if (BOMBS_EMPTY_QUIET_LATCH !== false && !dropEdge && !detonateEdge && !cycleEdge) {
-      const membership = entityIndexVersion(state);
+      const membership = bombsMembershipVersion(state);
       if (membership != null && readyBombsBucket(state)) {
         const tick = state.tick | 0;
         const quiet = this._bombsQuiet;

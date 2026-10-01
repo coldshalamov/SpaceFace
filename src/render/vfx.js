@@ -290,6 +290,15 @@ const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const VFX_TRAIL_LANES = ['shipLike'];
 const WRECK_WISPS_LANES = ['wrecks'];
 const LOOT_MAGNET_LANES = ['pickups', 'payloads'];
+/** Membership lanes for the seam-marker / projectile-trail quiet latches — seam reads
+ * asteroids, projectile trails read projectiles; other churn can't wake them. */
+const VFX_SEAM_LANES = ['asteroids'];
+const VFX_PROJECTILE_LANES = ['projectiles'];
+
+function vfxMembershipVersion(state, lanes) {
+  const laneVersion = entityIndexLaneVersion(state, lanes);
+  return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+}
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
 // Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
@@ -12364,7 +12373,7 @@ export const vfx = {
     const pz = player && player.pos ? (player.pos.z || 0) : 0;
     this._seamMarkersQuietPlayerQX = Math.round(px / cell);
     this._seamMarkersQuietPlayerQZ = Math.round(pz / cell);
-    this._seamMarkersQuietIndexVersion = entityIndexVersion(state);
+    this._seamMarkersQuietIndexVersion = vfxMembershipVersion(state, VFX_SEAM_LANES);
     this._seamMarkersQuietDrawWu = drawWu;
     const pulseId = this._miningSeamPulseId;
     const pulseUntil = this._miningSeamPulseUntil || 0;
@@ -12380,7 +12389,7 @@ export const vfx = {
     const state = this.state;
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     if (drawWu !== this._seamMarkersQuietDrawWu) return true;
-    if (entityIndexVersion(state) !== this._seamMarkersQuietIndexVersion) return true;
+    if (vfxMembershipVersion(state, VFX_SEAM_LANES) !== this._seamMarkersQuietIndexVersion) return true;
     const pulseId = this._miningSeamPulseId;
     const pulseUntil = this._miningSeamPulseUntil || 0;
     const pulseKey = pulseId != null ? `${pulseId}|${pulseUntil}` : '';
@@ -12415,7 +12424,7 @@ export const vfx = {
     // closed by either side's motion. A full scan records that distance plus the movers' speeds;
     // the latch also expires on a sim-time bound so a rock bumped onto a closing drift can't
     // hold a stale "false" while the player sits parked.
-    const v = entityIndexVersion(state);
+    const v = vfxMembershipVersion(state, VFX_SEAM_LANES);
     const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
     const last = this._seamRelCache;
     if (last && last.v === v && last.drawWu === drawWu && last.versionMode === (v !== null)) {
@@ -14568,7 +14577,7 @@ export const vfx = {
 
   _refreshProjectileCandidates() {
     const list = indexedTypeScan(this.state, 'projectiles');
-    const version = entityIndexVersion(this.state);
+    const version = vfxMembershipVersion(this.state, VFX_PROJECTILE_LANES);
     if (!this._projectileCacheDirty && this._projectileListRef === list
       && this._projectileListLength === list.length
       && this._projectileListVersion === version) return;
@@ -14590,7 +14599,7 @@ export const vfx = {
   // Soft-GPU fps not claimed.
   _projectileTrailsQuietMaybeAwake() {
     if (this._projectileCacheDirty) return true;
-    const version = entityIndexVersion(this.state);
+    const version = vfxMembershipVersion(this.state, VFX_PROJECTILE_LANES);
     if (version == null) return true;
     return version !== this._projectileTrailsQuietIndexVersion;
   },
@@ -14611,7 +14620,7 @@ export const vfx = {
     }
     // First empty observe — zero diag once, then latch.
     resetProjectileTrailDiag(this._projectileTrailDiag);
-    const version = entityIndexVersion(this.state);
+    const version = vfxMembershipVersion(this.state, VFX_PROJECTILE_LANES);
     if (version != null) {
       this._projectileTrailsQuietEmpty = true;
       this._projectileTrailsQuietIndexVersion = version;
@@ -14788,7 +14797,7 @@ export const vfx = {
     const state = this.state;
     if (!state) return true;
     if (state.mode && state.mode !== 'flight') return true;
-    const version = entityIndexVersion(state);
+    const version = vfxMembershipVersion(state, VFX_TRAIL_LANES);
     if (version !== this._trailEmitQuietIndexVersion) return true;
     const player = state.entities && state.entities.get(state.playerId);
     if (player && player.alive && (player.type === 'ship' || player.type === 'drone')) {
@@ -14941,7 +14950,7 @@ export const vfx = {
     this._publishTrailBudgetDiag();
     if (!anyBusy) {
       this._trailEmitQuietIdle = true;
-      this._trailEmitQuietIndexVersion = entityIndexVersion(this.state);
+      this._trailEmitQuietIndexVersion = vfxMembershipVersion(this.state, VFX_TRAIL_LANES);
     } else {
       this._trailEmitQuietIdle = false;
     }

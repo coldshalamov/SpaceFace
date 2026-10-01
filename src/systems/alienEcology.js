@@ -40,13 +40,16 @@ import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 
 const TWO_PI = Math.PI * 2;
+
+/** Membership lanes for the sector fauna cast — members are type 'fauna' only. */
+const FAUNA_SCAN_LANES = ['fauna'];
 
 function dist2(ax, az, bx, bz) {
   const dx = ax - bx;
@@ -727,10 +730,13 @@ export function tickAlienEcology(world, dt) {
   // The walk's gate is site presence, not membership — site-bearing sectors paid an
   // O(entities) walk per tick forever. The entity index bumps on every indexed
   // spawn/remove, so the sector cast is stable until the index version or sector moves.
+  // The 'fauna' lane narrows it further: members are e.type==='fauna' only (shepherds
+  // are relay-species fauna), so ship/pickup/asteroid churn can't invalidate the cast.
   const faunaCache = ae._faunaScanCache || (ae._faunaScanCache = {
     version: -1, sectorId: null, fauna: [], shepherds: [],
   });
-  const faunaVersion = entityIndexVersion(state);
+  const faunaLaneVersion = entityIndexLaneVersion(state, FAUNA_SCAN_LANES);
+  const faunaVersion = faunaLaneVersion === -1 ? entityIndexVersion(state) : faunaLaneVersion;
   // A null version means the index is not ready — walk every tick rather than cache-stale.
   if (faunaVersion == null
       || faunaCache.version !== faunaVersion

@@ -73,7 +73,7 @@ import {
   berthServiceTier,
 } from '../data/heistFacilities.js';
 import { berthWorkerRecordId } from './heistFacilities.js';
-import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor, indexedWorldRecordEntity, isLivingWorldActor } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
 import {
@@ -5030,7 +5030,15 @@ export const npcJobsRuntime = {
       }
       return match;
     }
-    return findLivingWorldActor(this.state, (e) => !!(e.data && e.data.worldRecordId === worldRecordId));
+    const hit = indexedWorldRecordEntity(this.state, worldRecordId);
+    if (isLivingWorldActor(hit)) return hit;
+    if (hit) {
+      // The record-id map resolved to a non-actor carrier; a living actor could still
+      // carry the same record id past it (the old first-match scan would have found
+      // it) — keep the actor-only scan for exactly that duplicate case.
+      return findLivingWorldActor(this.state, (e) => !!(e.data && e.data.worldRecordId === worldRecordId));
+    }
+    return null;
   },
 
   _onEntityGone(p) {

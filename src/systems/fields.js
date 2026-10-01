@@ -28,7 +28,7 @@ import {
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
-import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { journalFor } from '../combat/stuntEvidence.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
@@ -94,6 +94,15 @@ function entityIndexVersion(state) {
   return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/** Membership lanes for the idle quiet latch — the NPC-field-role census reads
+ * index.aiShips (⊆ shipLike) only, so asteroid/pickup churn no longer wakes it. */
+const FIELDS_IDLE_QUIET_LANES = ['shipLike'];
+
+function fieldsMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, FIELDS_IDLE_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
 }
 
 function fieldsIdleSnapshot(rt, kernel) {
@@ -835,7 +844,7 @@ export const fields = {
     let idle = fieldsIdleSnapshot(rt, this._kernel);
     if (idle) {
       if (FIELDS_IDLE_QUIET_LATCH !== false) {
-        const membership = entityIndexVersion(state);
+        const membership = fieldsMembershipVersion(state);
         const tick = state.tick | 0;
         const quiet = this._fieldsIdleQuiet;
         if (quiet

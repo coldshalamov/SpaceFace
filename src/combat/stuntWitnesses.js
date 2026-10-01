@@ -3,7 +3,7 @@ import { journalFor, bodyLife } from './stuntEvidence.js';
 import { witnessLineOfSight } from './lineOfSight.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 export { witnessLineOfSight } from './lineOfSight.js';
 const LIMITS = { episodes: 32, witnesses: 8, terminals: 8, reportQueue: 8 };
 const finite = n => Number.isFinite(n) ? n : 0;
@@ -23,8 +23,12 @@ export function observerIdentity(entity) {
 // version instead of paying observerProfile over every entity every tick while stunt
 // roots are open. Volatile gates (alive/sensors/owner/hostility) still run per call.
 const _witnessCandidates = { version: null, source: null, list: [] };
+// Members are ship|station|sensor|camera — sensor/camera never spawn as entity types,
+// so shipLike+stations lanes cover the real subset and projectile churn can't wake it.
+const WITNESS_CANDIDATE_LANES = ['shipLike', 'stations'];
 function witnessCandidatesFor(state) {
-  const version = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, WITNESS_CANDIDATE_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   const cache = _witnessCandidates;
   if (version == null || cache.version !== version || cache.source !== state.entities) {
     cache.version = version;

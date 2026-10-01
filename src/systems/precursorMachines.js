@@ -22,7 +22,7 @@ import {
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { grantAlienUnique } from '../data/alienEcology.js';
 import { insertDressingRow } from '../world/dressingTable.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
@@ -54,6 +54,13 @@ function grantProtocolSatisfiedUnique(world) {
 }
 
 const TWO_PI = Math.PI * 2;
+
+/** Membership lanes for the sector machine cast — members are e.data.machine only. */
+const MACHINE_SCAN_LANES = ['machines'];
+
+/** Membership lanes for the sorter-target cast — members are wreck|pickup only
+ * ('debris' in the filter is a data-type no live entity spawns with). */
+const SORTER_TARGET_LANES = ['wrecks', 'pickups'];
 
 function dist2(ax, az, bx, bz) {
   const dx = ax - bx;
@@ -679,7 +686,8 @@ function machineScanForSector(state, sectorId) {
   const machinesCache = ae._machineScanCache || (ae._machineScanCache = {
     version: -1, sectorId: null, machines: [],
   });
-  const machinesVersion = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, MACHINE_SCAN_LANES);
+  const machinesVersion = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   // A null version means the index is not ready — walk every call rather than cache-stale.
   if (machinesVersion == null
       || machinesCache.version !== machinesVersion
@@ -720,7 +728,8 @@ function sorterTargetsForSector(state, sectorId) {
   const cache = ae._sorterTargetCache || (ae._sorterTargetCache = {
     version: -1, sectorId: null, targets: [],
   });
-  const version = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, SORTER_TARGET_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   if (version == null || cache.version !== version || cache.sectorId !== sectorId) {
     cache.version = version == null ? -1 : version;
     cache.sectorId = sectorId;

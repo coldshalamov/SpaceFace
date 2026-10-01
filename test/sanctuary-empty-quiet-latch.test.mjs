@@ -114,7 +114,11 @@ test('sanctuary empty quiet latch wakes on chase into jurisdiction', () => {
   pirate.pos.z = 10;
   pirate.data.ai.forcePlayerTarget = true;
   pirate.data.combat.targetId = player.id;
-  state.entityIndex.version = (state.entityIndex.version | 0) + 1;
+  // The latch keys on the shipLike lane (aiShips ⊆ shipLike) — mirror appendEntityIndex
+  // by bumping that lane where the whole-version bump stood in for a membership change.
+  const laneVersions = state.entityIndex.laneVersions
+    || (state.entityIndex.laneVersions = Object.create(null));
+  laneVersions.shipLike = (laneVersions.shipLike || 0) + 1;
 
   state.tick++;
   lawSecurity._enforceSanctuaryWithdrawals(state);

@@ -1424,6 +1424,9 @@ export const traffic = {
         this._ceresDisabledHaulerRestorePending = false;
       }
     });
+    // Adjacent listeners, economy-slice style: registration order preserves the original
+    // sequence exactly, but the emit-slice drain can cut between units at the deadline —
+    // the two O(hooks × freighters) sort passes stop riding one atomic brick.
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
       // form an authoritative boundary, so fail closed once without double-invalidating a real load.
@@ -1449,6 +1452,8 @@ export const traffic = {
       this._clearCivilianViolenceMemory();
       this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
+    });
+    this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
       // Persistent general cutters materialize after world.enterSector, so the sector-enter
       // adoption pass cannot see them. Re-adopt here before the next traffic tick can refresh a
@@ -1457,7 +1462,12 @@ export const traffic = {
       // lawSecurity is session-only. A saved predeparture delay cannot remain asserted after its
       // raw incident map has gone away, while a saved physical diversion remains intact.
       this._clearStalePassengerLinerDelays();
-      this._applyWorldSiteTrafficHooks(sectorId);
+    });
+    this.bus.on('save:loaded', () => {
+      this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+    });
+    this.bus.on('save:loaded', () => {
+      const sectorId = this.state.world && this.state.world.currentSectorId;
       this._applyClaimTravelHooks(sectorId);
       if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
     });

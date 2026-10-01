@@ -1066,13 +1066,30 @@ export const economy = {
     // Registry listener order places economy before sectorSim. If offline catch-up crosses a
     // blockade/surplus threshold, this receipt arrives after the field mutation and reconciles the
     // same derived quotes and omitted chart caches immediately.
-    bus.on('sectorsim:offlineSummary', () => this.refreshAllPersistentDemand({ reseedSynthetic: true }));
+    // The refresh can't ride an emit-sliced event here: a nested sliced emit inside the
+    // save:loaded drain would atomic-drain the predecessor tail, and a frame-paced tail
+    // would land sim mutations on nondeterministic boundaries. Instead the receipt queues
+    // the same sliced refresh and economy.update drains one slice per tick — deterministic
+    // boundaries, ~30ms spread over 8 ticks instead of one brick inside the restore drain.
+    bus.on('sectorsim:offlineSummary', () => {
+      this._offlineSummaryRefresh = { sliceIndex: 0 };
+    });
   },
 
   // -------------------------------------------------------------------------------------------
   // ECONOMY TICK (5s) — drift, age events, propagate, recompute cached prices, emit economy:tick.
   // -------------------------------------------------------------------------------------------
   update(dt, state) {
+    const pendingRefresh = this._offlineSummaryRefresh;
+    if (pendingRefresh) {
+      this.refreshAllPersistentDemand({
+        reseedSynthetic: true,
+        sliceIndex: pendingRefresh.sliceIndex,
+        sliceCount: ECONOMY_SAVE_LOADED_SLICES,
+      });
+      pendingRefresh.sliceIndex += 1;
+      if (pendingRefresh.sliceIndex >= ECONOMY_SAVE_LOADED_SLICES) this._offlineSummaryRefresh = null;
+    }
     const clock = state.economy.econClock;
     clock.accumulator += dt;
     // spontaneous event scheduler (game-wide Poisson-ish: ~1 per EVENT_INTERVAL_S)
@@ -3305,6 +3322,7 @@ export const economy = {
     this._nextEventId = 1;
     this._eventAccumulator = 0;
     this._syntheticHistoryKeys = new Set();
+    this._offlineSummaryRefresh = null;
     // warm the home sector's markets so prices exist before first dock
     const home = (state.world && state.world.currentSectorId) || 'sector_helios_prime';
     const sec = SECTORS.find((s) => s.id === home);

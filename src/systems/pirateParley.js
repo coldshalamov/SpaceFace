@@ -11,7 +11,7 @@ import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { effectiveLawSecurity } from './lawSecurity.js';
-import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 
 /** Bench A/B: production default ON. Quiet latch skips pirateParley shipLike
@@ -29,6 +29,9 @@ export function getPirateParleyEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const PIRATE_PARLEY_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the parley census reads shipLike only. */
+const PIRATE_PARLEY_QUIET_LANES = ['shipLike'];
 
 function publishPirateParleyQuiet(state, latched) {
   if (!state) return;
@@ -139,7 +142,8 @@ export const pirateParley = {
     // tick. Latch when both stay empty; wake on membership, toll spawn/tag, or
     // 0.5 s rescan. Soft-GPU fps not claimed. Fresh combat residual after #150.
     if (PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PIRATE_PARLEY_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._parleyWakeSeq | 0;
       const quiet = this._parleyQuiet;
@@ -225,7 +229,8 @@ export const pirateParley = {
       const emptyGroups = !groups || groups.size === 0;
       const unresolved = hasUnresolvedParleySquads(own);
       if (emptyGroups && !unresolved) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, PIRATE_PARLEY_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         if (membership != null) {
           this._parleyQuiet = {
             membership,
