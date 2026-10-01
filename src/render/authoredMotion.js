@@ -129,7 +129,7 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
  * in the same units while the sim advances but diverge whenever the dock freeze pins simTime.
  * Returns an unbind function.
  */
-export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId } = {}) {
+export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId, entityForStationId } = {}) {
   if (!bus || typeof bus.on !== 'function') return null;
   const playerId = () => (typeof playerEntityId === 'function' ? playerEntityId() : null);
   const simNow = () => (typeof clock === 'function' ? Number(clock()) || 0 : 0);
@@ -390,6 +390,30 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
       }
     }
   };
+  // ANI-13/14: fab-yard work loops ride the craft queue — active jobs run the welder arms
+  // and the crane cycle; a queue that empties settles the rig home from its live pose so a
+  // mid-phase completion never teleports the yard to a park clip's first key.
+  const onCraftQueue = (payload) => {
+    if (!payload || typeof payload.stationId !== 'string' || payload.stationId === '__any__') return;
+    const entityId = typeof entityForStationId === 'function'
+      ? entityForStationId(payload.stationId)
+      : null;
+    if (entityId == null) return;
+    const now = payload.simTime ?? simNow();
+    for (const controller of authoredMotionControllersFor(entityId)) {
+      try {
+        if (payload.active === false) {
+          controller.settle?.(1.2, now);
+        } else if (payload.active && !controller.clipActive?.('workLoop')) {
+          // handleEvent restarts the loop at t=0 — a repeated active receipt while the
+          // loop is already running would teleport every pivot to the first key.
+          controller.handleEvent?.('fab:workStart', payload, now);
+        }
+      } catch (error) {
+        console.warn('[authoredMotion] fab queue receipt rejected by controller', error);
+      }
+    }
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
@@ -418,6 +442,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     bus.on('drone:grindStop', onGrindStop),
     bus.on('mining:start', onPodMiningStart),
     bus.on('mining:stop', onPodBeamStop),
+    bus.on('craft:queueChanged', onCraftQueue),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

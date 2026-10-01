@@ -2887,7 +2887,7 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   canonicalizeMaplessHullMaterials(root, palette);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
-  // ANI-11: payload bodies that carry a sealed motion bank (e.g. the rigged cargo pod) get the
+  // Payload bodies that carry a sealed motion bank (e.g. the rigged cargo pod) get the
   // same per-frame/per-event driver as ships, so mining events reach their bound pivots.
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 

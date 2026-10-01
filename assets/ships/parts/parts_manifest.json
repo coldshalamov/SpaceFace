@@ -4072,8 +4072,8 @@
    "category": "places",
    "priority": "P1",
    "file": "places/place_station_fab.glb",
-   "tris": 51624,
-   "bytes": 5804968,
+   "tris": 51764,
+   "bytes": 5836940,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",

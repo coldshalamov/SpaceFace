@@ -623,7 +623,8 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       // A started clip permanently supersedes older clips on every group it channels.
       // Latest-started-wins must outlive the younger clip's own rest-park — otherwise a held
       // earlier clip (endMode 'hold', never evicted) re-applies its delta the frame the newer
-      // clip deletes, snapping the rig back to the superseded pose (breach↔seal, index↔reset).
+      // clip deletes, snapping the rig back to the superseded pose (breach↔seal, index↔reset,
+      // deploy↔stow).
       const claimed = new Set(clip.channels.map((channel) => channel.group));
       for (const [otherName, otherRun] of [...state.clips]) {
         if (otherName === clipName) continue;
