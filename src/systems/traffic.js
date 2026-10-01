@@ -1323,6 +1323,9 @@ function normalizeDepotServices(rows) {
 
 export const traffic = {
   name: 'traffic',
+  // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
+  // not defensively clone the (large) traffic payload a second time during autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -5134,7 +5137,7 @@ export const traffic = {
     }
 
     if (this.state && this.state.entities && typeof this.state.entities.forEach === 'function') {
-      this.state.entities.forEach((ent) => {
+      forEachLivingWorldActor(this.state, (ent) => {
         if (!ent || ent.id === caller.id || ent.alive === false || ent.type !== 'ship') return;
         if (ent.id === (this.state && this.state.playerId)) return;
         if (!ent.pos) return;
@@ -5870,7 +5873,7 @@ export const traffic = {
       }
     };
     if (state.entities && typeof state.entities.forEach === 'function') {
-      state.entities.forEach(checkPod);
+      forEachJobInteractable(state, checkPod);
     }
     if (bestPod) {
       return { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } };

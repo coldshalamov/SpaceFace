@@ -883,6 +883,9 @@ function trimAndSort(markers) {
 
 export const aftermathWrecks = {
   name: 'aftermathWrecks',
+  // trimAndSort/trimCauses/serializeEcology rebuild every marker, cause and field fresh — the
+  // returned snapshot owns all of its branches.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx && ctx.state;

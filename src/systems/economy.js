@@ -3349,6 +3349,14 @@ export const economy = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between station sections — the markets
+  // loop is the biggest single deserialize brick on a mature save (~30ms). Yields sit only at
+  // section boundaries; RNG-consuming calls (cycle restore, price-history seed) keep the exact
+  // same order as the sync lane, so the run stays bit-identical.
+  *deserializeChunked(data) {
     if (!data) return;
     const econ = this.state.economy;
     econ.resourceWork = restoreResourceWork(data.resourceWork, SECTORS.map((s) => s.id));
@@ -3395,6 +3403,7 @@ export const economy = {
         out[cid] = entry;
       }
       econ.markets[sid] = out;
+      yield 'economy-market-section';
     }
     econ.econEvents = Array.isArray(data.econEvents)
       ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean)

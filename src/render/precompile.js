@@ -921,6 +921,7 @@ function addAuthoredCanopyPipelineWarmup(staging) {
           color: 0xd7edff,
           metalness: 0,
           roughness: 0.12,
+          clearcoat: 1,
           transmission: 0.65,
           side: THREE.DoubleSide,
           forceSinglePass: true,

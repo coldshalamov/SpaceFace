@@ -824,7 +824,11 @@ export const mainMenuScreen = {
       const frame = info && info.render && info.render.frame;
       return Number.isFinite(frame) ? frame : null;
     };
-    const frameAtClick = frameCount();
+    // Sample the counter when `live` first reads true, not at click: menu frames keep presenting
+    // through the whole load, so a click-time baseline is already stale when mode flips — the
+    // veil would lift on the same commit as the flag, before any flight frame exists. Post-flip
+    // increments can only be flight frames (the menu stops drawing at the mode change).
+    let frameAtLive = null;
     const start = Date.now();
     // rAF-chain the readiness check: the presented-frame counter only advances at paint, so a
     // timer poll can lag readiness by up to its period (~120ms of veil latency after the frame
@@ -865,7 +869,17 @@ export const mainMenuScreen = {
     const check = () => {
       if (loop.stale) return;
       const live = ctx && ctx.state && ctx.state.mode === 'flight';
-      const presented = frameAtClick == null || (frameCount() != null && frameCount() > frameAtClick);
+      let presented = false;
+      if (live) {
+        if (frameAtLive == null) {
+          frameAtLive = frameCount();
+          // Counter unavailable: the flag alone is the best signal left — lift on live.
+          presented = frameAtLive == null;
+        } else {
+          const now = frameCount();
+          presented = now != null && now > frameAtLive;
+        }
+      }
       if ((live && presented) || Date.now() - start > 4000) {
         lift();
         return;

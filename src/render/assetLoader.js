@@ -91,6 +91,10 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 
 const warned = new Set();
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
+// Warm-purpose decode roles (sector prewarm, decode runway, roster warm, predicts): decodes
+// that speculate on a spawn that has not arrived yet. Shared by the decode-cache retain below
+// and the ownerless-request soft-lease classification.
+const WARM_PURPOSE_RESIDENCY_ROLE = /warm|runway|prewarm|armory|predicted/i;
 const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
 const GLB_CHUNK_JSON = 0x4e4f534a;
@@ -573,10 +577,16 @@ export async function loadAuthoredPart(url, options = {}) {
   const cacheKey = `${url}::${slot || '*'}`;
   const residency = getAssetResidency(renderer);
   const residencyOwner = options.residencyOwner || runtime.defaultResidencyOwner;
+  // An ownerless warm decode has no boundary lifecycle to release its pin — a non-soft role on
+  // the session fallback owner would pin it forever. softLease keeps it in the soft tier and
+  // decodeWarm makes it lose byte-pressure eviction last (mirrors the decode-cache retain below).
+  const ownerlessWarm = !options.residencyOwner
+    && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
   const request = residency && residencyOwner
     ? residency.beginRequest(cacheKey, residencyOwner, {
       role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       sectorId: options.sectorId || null,
+      ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
     })
     : null;
   if (request && !request.shouldDecode()) {
@@ -641,7 +651,7 @@ export async function loadAuthoredPart(url, options = {}) {
       // Warm-purpose decodes (sector prewarm, decode runway, roster warm) speculate on future
       // use — a never-touched prewarm otherwise reads as the oldest idle entry and is the first
       // casualty of byte pressure, so the spawn it covered still pops cold.
-      decodeWarm: /warm|runway|prewarm|armory|predicted/i.test(String(options.residencyRole || '')),
+      decodeWarm: WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
     });
   }
   return blueprint;

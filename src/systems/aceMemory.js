@@ -83,6 +83,8 @@ const CULTURE_INTRO_ROUTE_BY_SECTOR = new Map(
 
 export const aceMemory = {
   name: 'aceMemory',
+  // serialize() returns clonePlain(memory) — already fully owned.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;

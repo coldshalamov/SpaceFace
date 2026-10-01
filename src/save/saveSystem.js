@@ -402,12 +402,24 @@ export const save = {
       // must not run inside init()'s synchronous tail — on a mature profile it stringifies
       // every save+recovery blob — so it yields one frame first, then collects while the
       // remote fetch is still in flight.
+      installSaveStoreWriteTracking();
       const remotePromise = fetchSharedPlayerStore();
       await this._restoreFrameYield();
       const local = collectLocalSharedStoreKeys();
+      const genAtCollect = _saveStoreGeneration;
       const remote = await remotePromise;
-      const merged = mergeSharedStoreKeys(local, remote || {});
+      // A local write landing inside the fetch await is invisible to `local` — re-collect or the
+      // apply clobbers it and the delta push ships the stale value.
+      const localNow = genAtCollect === _saveStoreGeneration ? local : collectLocalSharedStoreKeys();
+      const merged = mergeSharedStoreKeys(localNow, remote || {});
       applySharedStoreKeys(merged);
+      // Post-apply storage == merged for every shared key (skipped writes were identical by
+      // construction) — hand the materialized map to the slot signature so the first menu scan
+      // doesn't getItem the same megabytes a second time.
+      this._sharedStoreCollectCache = {
+        gen: _saveStoreGeneration,
+        raws: new Map(Object.entries(merged)),
+      };
       if (remote != null || Object.keys(local).length > 0) {
         // Only ship what the merge actually changed — an already-mirrored store keeps the
         // ~220 KB envelope PUT off the boot path entirely.
@@ -1346,6 +1358,13 @@ export const save = {
     const sig = 'gen:' + _saveStoreGeneration;
     const cache = this._slotIndexCache;
     if (cache && cache.sig === sig) return { sig, raws: null };
+    // The boot shared-store sync already walked every save+recovery blob under this generation —
+    // reuse that materialization instead of getItem-ing the same envelopes a second time.
+    const collected = this._sharedStoreCollectCache;
+    if (collected && collected.gen === _saveStoreGeneration) {
+      this._sharedStoreCollectCache = null;
+      return { sig, raws: collected.raws };
+    }
     const raws = new Map();
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -1396,7 +1415,29 @@ export const save = {
       }
     }
     this._slotIndexCache = { sig, merged };
+    this._maybeSpeculateContinuePrepare(sig, merged, raws);
     return { ...merged };
+  },
+
+  // The newest occupied slot is almost certainly what Continue resolves on the next click —
+  // start its worker prepare during the menu beat so the click doesn't pay the parse+checksum
+  // roundtrip cold. Once per index signature; loadAsync consumes only a slot+bytes match.
+  _maybeSpeculateContinuePrepare(sig, merged, raws) {
+    try {
+      if (!raws || typeof Worker !== 'function') return;
+      const slot = selectLatestOccupiedSlot(merged);
+      if (!slot) return;
+      const raw = raws.get(LS_PREFIX + slot);
+      if (typeof raw !== 'string' || !raw) return;
+      const prior = this._speculativeContinuePrepare;
+      if (prior && prior.sig === sig) return;
+      this._speculativeContinuePrepare = {
+        sig,
+        slot,
+        blobHash: fnv1a(raw),
+        promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
+      };
+    } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
   },
 
   // Metadata-read path for index scans: the full _prepareEnvelope validation chain (parse →
@@ -2582,7 +2623,8 @@ export const save = {
       }
       callback(value);
     };
-    const timeout = setTimeout(() => finish(onFailure, new Error('save_worker_timeout')), SAVE_WORKER_TIMEOUT_MS);
+    const timeout = setTimeout(() => finish(onFailure, new Error('save_worker_timeout')),
+      Number.isFinite(options.timeoutMs) && options.timeoutMs > 0 ? options.timeoutMs : SAVE_WORKER_TIMEOUT_MS);
     worker.__spacefaceSaveSupersede = () => finish(onFailure, new Error('superseded'));
     worker.onmessage = (event) => {
       const message = event && event.data;
@@ -3140,7 +3182,14 @@ export const save = {
     let raw = null;
     try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
     catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
-    const primaryPromise = this._prepareEnvelopeStringAsync(raw);
+    // Consume the menu-time speculative prepare only when it targeted this exact slot AND the
+    // bytes it read are still on disk — a stale speculation prepares fresh like a miss.
+    const spec = this._speculativeContinuePrepare;
+    this._speculativeContinuePrepare = null;
+    const specHit = spec && spec.slot === slot
+      && typeof raw === 'string' && spec.blobHash === fnv1a(raw);
+    const primaryPromise = (specHit ? spec.promise : Promise.resolve(null))
+      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
     // is main-thread serialize work that used to serialize after the roundtrip. A failed
     // primary falls through to the same snapshot: nothing destructive ran in between.
@@ -3231,7 +3280,10 @@ export const save = {
       const accepted = this._requestSaveWorker('restore_prepare',
         { raw, currentVersion: CURRENT_VERSION },
         (message) => settle(message && message.result ? message.result : null),
-        () => settle(null));
+        () => settle(null),
+        // A wedged worker otherwise costs the full 4s encode-sized deadline before the sync
+        // fallback even starts — a healthy parse+checksum roundtrip needs well under 2s.
+        { timeoutMs: 2500 });
       if (!accepted) settle(null);
     }).then(async (prepared) => {
       if (!prepared) return this._prepareEnvelopeString(raw);
@@ -3796,11 +3848,11 @@ export const save = {
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps
       // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
       this._callDeserialize('survivorPod', data.survivorPod);
-      this._callDeserialize('economy', data.economy);
+      yield* this._callDeserializeChunked('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
       yield 'deserialized-factions';
-      this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
+      yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
@@ -4394,6 +4446,17 @@ export const save = {
     if (sys && typeof sys.deserialize === 'function') {
       sys.deserialize(data);
     }
+  },
+
+  // Async-lane twin: a system exposing deserializeChunked gets sliced at its own section
+  // boundaries; everyone else runs the same synchronous deserialize the sync lane uses.
+  *_callDeserializeChunked(name, data) {
+    const sys = this.registry && this.registry.get && this.registry.get(name);
+    if (sys && typeof sys.deserializeChunked === 'function') {
+      yield* sys.deserializeChunked.call(sys, data);
+      return;
+    }
+    this._callDeserialize(name, data);
   },
 
   // Despawn every live entity, disposing meshes (synchronous, outside the sim sweep), and reset the

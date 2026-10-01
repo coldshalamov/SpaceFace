@@ -6277,6 +6277,12 @@ export const world = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: yields only at section boundaries (between the durable bag restores), never
+  // inside a section — the async lane paints between them while every call keeps sync order.
+  *deserializeChunked(data) {
     if (!data) return;
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
@@ -6306,12 +6312,15 @@ export const world = {
     this._pallasDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
+    yield 'world-records';
     state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
+    yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
     state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     deserializeAlienEcologyState(state, data.alienEcology);
+    yield 'world-alien-ecology';
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
     // than trusting a stale rendering frame that may have been smuggled into a payload.
