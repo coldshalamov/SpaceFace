@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a357baca4c9bcf66494b2c29db6e4403f565b5e732aaeffe39329f85eca2e821",
+  "contentHash": "2f9a7afe83062a0e8a94b268690aec4fc3c9c98ca420c0d15fd810fdbbd08320",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,7 +344,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "1e28c3c27d39e7e933c3fa5c20560388624b6e960949952d502d58e1908bd0ed",
+      "sha256": "db6e53e6c0233030808cb3ad99b0b3264ce1b410320cdb3ece2c0cf2e0349559",
       "uri": "pilots.json"
     }
   },
@@ -486,7 +486,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_pipes.glb"
   },
-  "runtimeHash": "bff931578577b5585b412dfa86b8b30c0194f1fd19570ba322fe578afd62df03",
+  "runtimeHash": "2b132cc2c48afa250a937878494c39a0e593b0693d78c6734affab1e50fe257e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
