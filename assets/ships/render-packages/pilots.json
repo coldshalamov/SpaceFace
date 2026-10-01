@@ -1499,8 +1499,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_military",
       "sourceUrl": "assets/ships/release/parts/places/place_station_military.glb",
-      "releaseSha256": "9d5abf5b3a3df0eab4d709dfc929ef73f8a5d28273c129ae484f80014608c783",
-      "releaseBytes": 1766712,
+      "releaseSha256": "558c181bc03e3348b43c7810324e71dfae43363d0a9693c42caa1e2ef2f5074c",
+      "releaseBytes": 1616236,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

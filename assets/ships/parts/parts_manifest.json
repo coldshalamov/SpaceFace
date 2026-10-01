@@ -4134,8 +4134,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 80545,
-      "bytes": 5617508,
+      "tris": 81485,
+      "bytes": 5684044,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

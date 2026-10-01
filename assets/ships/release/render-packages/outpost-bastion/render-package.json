@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bcea3e6aec102030dae659159441e46b1252bc529d2927a2bd04e81de458821f",
+  "contentHash": "f1443ddf97577d1443ddab5355a459bef5b548c1427dbf8cc840aecc7cf7af68",
   "dynamicGroups": [
     {
       "id": "sf.render.outpost-bastion.mesh.lod0-hook-nav-port.dynamic",
@@ -3458,7 +3458,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
+      "sha256": "98868a744bd2ba7099b1d0c1be0291cd9cfda144304eb3f14a610c5c7a46fe0c",
       "uri": "pilots.json"
     }
   },
@@ -4934,7 +4934,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb"
   },
-  "runtimeHash": "21c3dfcee03f16f66544815ae5a7cea15b12702b16c049e2da0cc8654714abc9",
+  "runtimeHash": "b2e2c8709a2bb8678ae9eb914999ed197871ee492d28df9ce4e9037a7d7c1422",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
