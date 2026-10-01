@@ -67,9 +67,10 @@ def author(bank):
         f = math.sin(math.pi * t / 2.2)
         drift.key('crane0_trolley', t,
                   loc=(trolley.x, trolley.y + DRIFT_M * f, trolley.z))
+        # one full sway period over the stroke so the rest-ended finish lands at identity
         drift.key('crane0_hoist', t,
                   loc=(hoist.x, hoist.y, hoist.z),
-                  rot=_deg(DRIFT_SWAY_DEG * math.sin(2.5 * math.pi * t / 2.2), 0.0))
+                  rot=_deg(DRIFT_SWAY_DEG * math.sin(2.0 * math.pi * t / 2.2), 0.0))
 
 
 EVENTS = {

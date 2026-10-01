@@ -98,6 +98,8 @@ EVENTS = {
     'authoredMotion:attach': 'wasp_idle_drift',
     'ai:telegraph': 'wasp_bristle',
     'encounter:telegraph': 'wasp_bristle',
+    'encounter:predationTelegraph': 'wasp_bristle',
+    'ai:stateChange': 'wasp_bristle',
     'encounter:predationEngaged': 'wasp_predate',
     'ai:flee': 'wasp_flee',
 }

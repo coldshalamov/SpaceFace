@@ -14713,6 +14713,7 @@
   "drill:feed": "drill_feed",
   "drill:break": "drill_stall_kick",
   "drill:end": "drill_park",
-  "asteroid:destroyed": "drill_stall_kick"
+  "asteroid:destroyed": "drill_stall_kick",
+  "asteroid:chunked": "drill_stall_kick"
  }
 }

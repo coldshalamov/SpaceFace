@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "kestrel_dish",
  "sourceAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
- "sourceGlbSha256": "b9c266ba8b3c1bbe3978d50dfe7e15699dbe8edec6c3a45d9f28551d2ded712e",
+ "sourceGlbSha256": "ce8e3a4168439738036d189f29153915dbdafafbb0a19f73ecb0726895593985",
  "fps": 60,
  "bindings": [
   {
@@ -52397,6 +52397,8 @@
   "ship:boostPreKick": "irisPrime",
   "ship:boostStart": "irisIgnite",
   "ship:boostStop": "irisStow",
+  "cloak:engaged": "irisStow",
+  "cloak:dropped": "irisPrime",
   "kestrel:serviceArm": "serviceArm",
   "kestrel:serviceDone": "serviceStow",
   "kestrel:armorPeel": "armorPeel",

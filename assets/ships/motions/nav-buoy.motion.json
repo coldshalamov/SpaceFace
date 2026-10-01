@@ -8503,6 +8503,7 @@
  "events": {
   "authoredMotion:attach": "beacon_spin",
   "nav:waypoint": "ring_pulse",
-  "band:bearingResolved": "ring_pulse"
+  "band:bearingResolved": "ring_pulse",
+  "capitalBoss:telegraph": "ring_pulse"
  }
 }

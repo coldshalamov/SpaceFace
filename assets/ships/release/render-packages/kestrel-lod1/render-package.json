@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b5faaad81c3cf6a09914dd8664db882c82d261467d5fa65772a384223d2a4f41",
+  "contentHash": "58cb82feb201ef61517060379b3b7a97282722a494956007eee0190041e467b4",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-drive-core.dynamic",
@@ -550,7 +550,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4a93315a095adbcf4691b66eaf2d26d467df378d86619c9bba5125d364326f4b",
+      "geometryHash": "4b439d8ec379988b1a1d41eaf1fa210c5722131bf504a117cae172d3347126ea",
       "id": "sf.render.kestrel-lod1.mesh.lod1-armor.primitive.0",
       "indexCount": 11676,
       "indexed": true,
@@ -559,7 +559,7 @@
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3357
+      "vertexCount": 3356
     },
     {
       "bounds": {
@@ -789,18 +789,18 @@
     {
       "bounds": {
         "max": [
-          4.799478530883789,
-          2.310056686401367,
-          0.32203593850135803
+          4.799488067626953,
+          2.309948682785034,
+          0.2617003619670868
         ],
         "min": [
-          -10.19947624206543,
-          2.1672399044036865,
-          -0.2620476186275482
+          -10.199498176574707,
+          2.1671319007873535,
+          -0.32238441705703735
         ]
       },
       "drawMode": 4,
-      "geometryHash": "194a3bd680eb403edfbc728be69bc15072e5fcc53b57ca7a3efce3fc991bcbbb",
+      "geometryHash": "39db929e725bde458dd341974e363b8ff22941d236b52765930da684d8e11f8b",
       "id": "sf.render.kestrel-lod1.mesh.lod1-lights-cyan.primitive.0",
       "indexCount": 24,
       "indexed": true,
@@ -1039,18 +1039,18 @@
     {
       "bounds": {
         "max": [
-          -13.550974845536985,
-          1.3831815719604492,
-          -1.1432735919952393
+          -13.55097840318922,
+          1.383213222026825,
+          -1.143296480178833
         ],
         "min": [
-          -13.639991760253906,
-          0.5556567907333374,
-          -1.981439471244812
+          -13.639988206326962,
+          0.5556522607803345,
+          -1.9813953638076782
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9459a746bd751e1e2b8df75e08c159b63c3ef6c248face5814fb77469edc5a8",
+      "geometryHash": "cf7ae0d99e89512d70a027ad909454deaf4db364a8dd57cd50ba30219a6fe337",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-0-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1064,18 +1064,18 @@
     {
       "bounds": {
         "max": [
-          -13.538984760642052,
-          2.0494286119937897,
-          0.41705521941185
+          -13.537992594763637,
+          2.049435943365097,
+          0.4170866310596466
         ],
         "min": [
-          -13.627981677651405,
-          1.4203660190105438,
-          -0.41708722710609436
+          -13.628007769584656,
+          1.4203734695911407,
+          -0.4170556962490082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65d2b6655dd51f91dc559a23d47fff81da1da8672f58d6df96d000220df8df74",
+      "geometryHash": "d3cb5b68bb3b75ddcbd4dfd163f8e31e18652129a0a33a3d33afa3e0c257ec58",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-1-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1089,18 +1089,18 @@
     {
       "bounds": {
         "max": [
-          -13.525988573208451,
-          1.3832119703292847,
-          1.9813649654388428
+          -13.525984646752477,
+          1.383173406124115,
+          1.9814070463180542
         ],
         "min": [
-          -13.616011627018452,
-          0.555639237165451,
-          1.143357753753662
+          -13.616015553474426,
+          0.5556308031082153,
+          1.143326759338379
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d1ea187b37a1e4528d913fd15860a6d5371b148b6696a9cade700f1a94c26f4",
+      "geometryHash": "5863f0a5e601d92c36ce821dc13986f3425965b36c67350b24785fd89993f515",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-2-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1109,23 +1109,23 @@
       "meshName": "LOD1_MOTION_KESTREL_IRIS_2_MechanicalDark",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 86
+      "vertexCount": 87
     },
     {
       "bounds": {
         "max": [
-          -13.550974845536985,
-          -0.5556567907333374,
-          1.981439471244812
+          -13.55097840318922,
+          -0.5556522607803345,
+          1.9813953638076782
         ],
         "min": [
-          -13.639991760253906,
-          -1.3831815719604492,
-          1.1432735919952393
+          -13.639988206326962,
+          -1.383213222026825,
+          1.143296480178833
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d887bc8cb2427761cac70414a529cb8ef8aaf06a1fe5ce5d70f367917d13f506",
+      "geometryHash": "598eafe8fc9d6cd0f6ed0248cc3d353f91d9eb212a11dbe5a1f90a6e93dc74a9",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-3-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1139,18 +1139,18 @@
     {
       "bounds": {
         "max": [
-          -13.538984760642052,
-          -1.4203660190105438,
-          0.41708722710609436
+          -13.537992594763637,
+          -1.4203734695911407,
+          0.4170556962490082
         ],
         "min": [
-          -13.627981677651405,
-          -2.0494286119937897,
-          -0.41705521941185
+          -13.628007769584656,
+          -2.049435943365097,
+          -0.4170866310596466
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22b4af67d51f7742ca9118ab6c137370bf7bad7a2617acb0b76a9a7ef3c70ec6",
+      "geometryHash": "4aa0ac1cbb20859a117a47f358b8dcb34218a855546742adbc7d228bb0e5d294",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-4-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1164,18 +1164,18 @@
     {
       "bounds": {
         "max": [
-          -13.525988573208451,
-          -0.555639237165451,
-          -1.143357753753662
+          -13.525984646752477,
+          -0.5556308031082153,
+          -1.143326759338379
         ],
         "min": [
-          -13.616011627018452,
-          -1.3832119703292847,
-          -1.9813649654388428
+          -13.616015553474426,
+          -1.383173406124115,
+          -1.9814070463180542
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33b6a2269e66fd2fe330ae0883a138419bf94a77e8ce7c6a201fe9e53262b18a",
+      "geometryHash": "8df02a980ad4d089ca7270831e1871395da0adea725644d35d1752c5e96dad8d",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-5-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1184,7 +1184,7 @@
       "meshName": "LOD1_MOTION_KESTREL_IRIS_5_MechanicalDark",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-5-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 86
+      "vertexCount": 87
     },
     {
       "bounds": {
@@ -4684,19 +4684,19 @@
       "sha256": "dc27bb88e7effcc0761aad8eda9c5d100824a97c81eb47b991b7786c40409420"
     },
     "sourceGlb": {
-      "bytes": 600292,
-      "sha256": "923c27db7ed7bcc2d4a42132727e43a86cbd5141321b57d2bf41b56b41310470",
+      "bytes": 600332,
+      "sha256": "28b770287b9dd5e50992671154c2a247431f0566113c578a125588684e8d2b3d",
       "uri": "kestrel_lod1.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "863194803e074f57ef54a3152877e7b7fcdcb2a90f3dd1a3230aead87cc3b494",
+      "sha256": "af1f67f8ab3ef83f7dc2358789a128304c126fc5595f9a0481bd10ae45bff07e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 881172,
-    "sha256": "f41c541ff95f986c28c360e142fabffc71812ec7aafb0d5721a43ffd83a4e12c",
+    "bytes": 881248,
+    "sha256": "fe99e2df49dad1b7cea67b2c25e85b24652bab303d471a52054389356e008d20",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6565,9 +6565,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 858162,
+      "bytes": 858225,
       "rigId": "kestrel_dish",
-      "sha256": "6f707e1a60e9b6dbfa3506fc97febc72d83c0bfe506056e50a3a8aa674ef3fe7",
+      "sha256": "4c92dedd8f8b2b9f52bec89e49586a4bc20eaf2eb5f36c5d5903f68fe11eabc7",
       "uri": "assets/ships/motions/kestrel.motion.json"
     },
     "nodeCount": 68,
@@ -7653,7 +7653,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
-  "runtimeHash": "d9128a16b334437960acc619abd030f76f36e9d90f24c6595652ee2ecd3f866c",
+  "runtimeHash": "fce65b857230a6eaf7834548d17c4e4d04fbdf66db24796ea5d3c6cda389c78b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

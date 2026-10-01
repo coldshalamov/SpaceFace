@@ -242,7 +242,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drill-platform",
-    "expectedContentHash": "885759e0294761e627f31a57b004150289c38a3c75699c9758f6230fe6825dc8",
+    "expectedContentHash": "6d4a6f7eb2aa689f8bafad00a95c1e74e987642d11b9e9c83bd9b2068b2bfef5",
     "key": "drill-platform",
     "metadataUrl": "assets/ships/release/render-packages/drill-platform/render-package.json",
     "runtimeAssetId": "place_drill_platform",
@@ -322,12 +322,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fab",
-    "expectedContentHash": "b7e4e4338a2ef0ac93a30f6efe722301e92c5da481ac4998911d1001b21a65bc",
+    "expectedContentHash": "1a2b641dd17f3e7a2a0369ee86d883b5f7ea97a64a2e4ceb2bd7cd346b6cfaf2",
     "key": "fab",
     "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_FAB",
     "slot": "place",
-    "sourceSha256": "e4e05d443f5f8fcf958610f6c4bb0b19cba3a85fb01fac025496a5d6549e4bcf",
+    "sourceSha256": "b89ac42d484ab3d1c0efc165c512e54032e840ca619cb69d754ea64fc71fce85",
     "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb"
   },
   {
@@ -694,42 +694,42 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "623056839327922857d2c3633c0e6ceabe67ded0ead3c4d4462a052c95aee713",
+    "expectedContentHash": "8fdc96f0c64dc452c8283fa8d6843be92f1ddcc4cd5bec7d1d3c78fe8788f1c0",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "532a20a3153df7c312d264ca67e2ab96fb7dd9359bb67ef118585432f291dc41",
+    "sourceSha256": "449eb1771f80c75a67039b7a4689b90d85335d3f01109d9572dfa1ec83d43a7b",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
   {
     "assetId": "sf.render.kestrel-lod1",
-    "expectedContentHash": "b5faaad81c3cf6a09914dd8664db882c82d261467d5fa65772a384223d2a4f41",
+    "expectedContentHash": "58cb82feb201ef61517060379b3b7a97282722a494956007eee0190041e467b4",
     "key": "kestrel-lod1",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "923c27db7ed7bcc2d4a42132727e43a86cbd5141321b57d2bf41b56b41310470",
+    "sourceSha256": "28b770287b9dd5e50992671154c2a247431f0566113c578a125588684e8d2b3d",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
   {
     "assetId": "sf.render.kestrel-lod2",
-    "expectedContentHash": "27866a360b3f2f6aefc4836ac87d8f1ad33a0cc54dbe2fd2f8f95b56aac8c06b",
+    "expectedContentHash": "1866a93be672af762dd64790a6fbc608ffcc081bc7f3f81fcdedf889c3b53c03",
     "key": "kestrel-lod2",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "cdb8cee7edb4a422148befdadaca1555020312f4b46b4994019d25ef8df26a18",
+    "sourceSha256": "da562a8c69cab5fab1f7369073ce2e6897664fab52e8ac2e5600c22e1f5a2a6c",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
   },
   {
     "assetId": "sf.render.lane-beacon",
-    "expectedContentHash": "fa6b755d7ab843e702b0c43010a228fbb529052c366e89c550327fc7bc67e83d",
+    "expectedContentHash": "c57cffdae5b927d43950deba147ca30dc455a2c0d3e543400764de3f8130efd3",
     "key": "lane-beacon",
     "metadataUrl": "assets/ships/release/render-packages/lane-beacon/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
     "slot": "place",
-    "sourceSha256": "c2bb2eb4f0839e6c77377bd1cd389cae95be407e2ec66ea4107c67569490c95b",
+    "sourceSha256": "c5e076d5e7ae910feecc19b873f62cfce2a5024bc7cefb4de02e5809c3cfdd00",
     "sourceUrl": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
   {
@@ -834,7 +834,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.nav-buoy",
-    "expectedContentHash": "20fb551dce8a89b880bc2364155c2059ec87cf35cea0ea6a562b30645ef9c524",
+    "expectedContentHash": "c01b6511e1b7ac96ff7019afdf4ba0940f21222c85b186c68b15f350605ceea6",
     "key": "nav-buoy",
     "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_NAV_SPIRE",
@@ -864,7 +864,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pod-cargo-container",
-    "expectedContentHash": "a55ff4c72e629e4689b27f6df54d003f04f1a1583d42e5a5508d895b4abbe58d",
+    "expectedContentHash": "2ac7c0d211cbc7f514bcbce83daa835d793ff20e98eb9993506f9178f8a6b4ed",
     "key": "pod-cargo-container",
     "metadataUrl": "assets/ships/release/render-packages/pod-cargo-container/render-package.json",
     "runtimeAssetId": "SF_POD_CARGO_CONTAINER",
@@ -1074,12 +1074,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp",
-    "expectedContentHash": "1ec053216301dbc843f6d95f0d6a3b72e4ee1edcf20537c6a73baa6b06ba1f0e",
+    "expectedContentHash": "b799a2616513f6dcb0215fec0a5b2a9a52bbd3f61845aee321f346269e277586",
     "key": "wasp",
     "metadataUrl": "assets/ships/release/render-packages/wasp/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "71e5e0f2f2e9728f38802a253b12638c594b8be2322115b271eefca233ec62b1",
+    "sourceSha256": "97a430c7825a0075682b2c939df6e4b0aa460257c2dc619674ada4c948477dd6",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1.glb"
   },
   {
@@ -2384,7 +2384,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-free-militia",
-    "expectedContentHash": "dba14d2f37282ede0902124ce10c4bc86597cbbdd6a189b3b02aa16e9ae7ea17",
+    "expectedContentHash": "36ec2e0abcf66df45177335ce3b85372272fcf71346955ecab13deac3632a587",
     "key": "wasp-free-militia",
     "metadataUrl": "assets/ships/release/render-packages/wasp-free-militia/render-package.json",
     "runtimeAssetId": "SF_WASP_FREE_MILITIA",
@@ -2394,7 +2394,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-mts-escort",
-    "expectedContentHash": "db800bd60998537afec5ad7c31fd08b8f06f3f69414177a6d31f27781558963c",
+    "expectedContentHash": "173d7a5d80a6f59fc60e307589833cb532b20421ee99b1aa5c2f68d4592a0fc6",
     "key": "wasp-mts-escort",
     "metadataUrl": "assets/ships/release/render-packages/wasp-mts-escort/render-package.json",
     "runtimeAssetId": "SF_WASP_MTS_ESCORT",
@@ -2404,7 +2404,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-scn-patrol",
-    "expectedContentHash": "21e0b883a492f1c6968f53eecea145e0f28fd5b1cbeae42939ac85fef82e3fa8",
+    "expectedContentHash": "af219839caca0135b0b4bbbe6583bebf67802c9a66607b0291610f6c943aa162",
     "key": "wasp-scn-patrol",
     "metadataUrl": "assets/ships/release/render-packages/wasp-scn-patrol/render-package.json",
     "runtimeAssetId": "SF_WASP_SCN_PATROL",
@@ -2434,22 +2434,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-production-v1-lod1",
-    "expectedContentHash": "786076670923e4393977b607df457ff30d501c0c23c678c841fc0a8ef8c6de8a",
+    "expectedContentHash": "dfbba253b494532832a41f5e0821a4acef98edbe3fa36d8eba871a08bdf34560",
     "key": "wasp-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "0cfd676a77b543dc3216df122734267028fa779396d7d2a27295e8eea2c93c38",
+    "sourceSha256": "33cb4b6c7c371ad9ed6c56976d47779ac150ff7655016834195aee5f6bf64304",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.wasp-production-v1-lod2",
-    "expectedContentHash": "89bb0c2a22c8b7c08d08d4be35697ec68ed69f40c54fe426fac2886f86842488",
+    "expectedContentHash": "b24aefbc277fd6dfff6213c732ca9f1ec60d3bdab22405c17e9139781039adbc",
     "key": "wasp-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "0fd96f92a1b7a29194c838a5a4ab2079cba6bdc3aaa1087d9f4e45e95ceda6ce",
+    "sourceSha256": "c4fd60b72420aa4020e5d6f74d6550cf5973b130bdd9bb4dd18a2e3132db4168",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
   {

@@ -66,16 +66,22 @@ def author(bank):
 
     settle = bank.clip('pod_settle', 1.2, loop=False, end_mode='rest')
     # Delivered: one last contact jolt and the beacon folds back to its seat —
-    # the pod is cargo now, not a rescue target.
+    # the pod is cargo now, not a rescue target. The ping starts at rest and
+    # darts out once before gliding home: the sweeping beacon could be at any
+    # phase, so a max-extension first key would read as a 5m teleport.
     for t, f in [(0.0, 0.0), (0.15, 1.0), (0.4, 0.4), (0.7, 0.12), (1.2, 0.0)]:
         settle.key('pod_shell', t, rot=Euler((0.09 * f, 0.05 * f, 0.0)))
-    for t, f in [(0.0, 1.0), (0.5, 0.5), (0.9, 0.1), (1.2, 0.0)]:
+    for t, f in [(0.0, 0.0), (0.25, 1.0), (0.6, 0.55), (0.9, 0.18), (1.2, 0.0)]:
         settle.key('pod_ping', t, loc=(PING_HOME_X + PING_TRAVEL * f, 0.0, 1.05))
 
 
 EVENTS = {
-    'authoredMotion:attach': 'beacon_pulse',
-    'survivorPod:ejected': 'pod_eject_tumble',
+    # A pod body in space always tumbles gently — attach starts the tumble, the
+    # eject moment is what activates the rescue ping. Jettisoned cargo pods
+    # re-affirm the same tumble through their own event.
+    'authoredMotion:attach': 'pod_eject_tumble',
+    'cargo:jettisoned': 'pod_eject_tumble',
+    'survivorPod:ejected': 'beacon_pulse',
     'survivorPod:rescueSelected': 'pod_steady',
     'survivorPod:delivered': 'pod_settle',
 }

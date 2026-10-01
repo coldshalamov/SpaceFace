@@ -401,6 +401,23 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       }
     }
   };
+  // The planet collector is the same extraction rig — on spins the pump up through the
+  // site's own event, off settles the beam/rod home.
+  const onPlanetCollector = (payload) => {
+    if (!payload || payload.siteId == null) return;
+    if (payload.on) {
+      dispatch('site:producing', `site:${payload.siteId}`, payload,
+        (c) => !c.clipActive?.('mast_pump_cycle'));
+      return;
+    }
+    for (const controller of authoredMotionControllersFor(`site:${payload.siteId}`)) {
+      try {
+        controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
+      } catch (error) {
+        console.warn('[authoredMotion] planet collector settle rejected', error);
+      }
+    }
+  };
   // ANI-33: the trap payload carries the placed buoy entity ids — each placed iris blooms.
   const onInterdictionTriggered = (payload) => {
     const ids = payload && payload.entityIds;
@@ -457,12 +474,40 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   const onEncounterTelegraph = (payload) => fanoutRig('wasp', 'encounter:telegraph', payload);
   // A rock breaking kicks the drill head; asteroid payloads carry no platform id.
   const onAsteroidDestroyed = (payload) => fanoutRig('drill_platform', 'asteroid:destroyed', payload);
+  // Chunk splits fire per break — the kick cadence is bounded by the clip itself.
+  const onAsteroidChunked = (payload) => fanoutRig('drill_platform', 'asteroid:chunked', payload,
+    (c) => !c.clipActive?.('drill_stall_kick'));
+  // A capital telegraph rings the nav net — one pulse per cast, not per beaconed tick.
+  const onCapitalTelegraph = (payload) => fanoutRig('nav_buoy', 'capitalBoss:telegraph', payload,
+    (c) => !c.clipActive?.('ring_pulse'));
+  // Hostile FSM transitions bristle the wasp rig on that exact hull; flee/engage keep their
+  // dedicated events, so only the approach states read through here.
+  const HOSTILE_STATES = new Set(['pursue', 'attack', 'strafe']);
+  const onAiStateChange = (payload) => {
+    if (!payload || !HOSTILE_STATES.has(payload.to)) return;
+    dispatch('ai:stateChange', payload.npcId, payload, (c) => !c.clipActive?.('wasp_bristle'));
+  };
+  const onPredationTelegraph = (payload) => {
+    dispatch('encounter:predationTelegraph', payload && payload.raiderId, payload, () => true);
+  };
+  // The drive iris is the hull's power signature: cloak folds it, decloak primes it.
+  const onCloakEngaged = () => dispatch('cloak:engaged', playerId(), null, () => true);
+  const onCloakDropped = () => dispatch('cloak:dropped', playerId(), null, () => true);
+  // Jettisoned pods always arrive tumbling — fanout is safe because only pods lacking the
+  // tumble re-enter it; a pod mid-steady/settle keeps its authored pose.
+  const onCargoJettisoned = (payload) => fanoutRig('survivor_pod', 'cargo:jettisoned', payload,
+    (c) => !c.clipActive?.('pod_eject_tumble') && !c.clipActive?.('pod_steady')
+      && !c.clipActive?.('pod_settle'));
   // The massline is the seed-tether hardware: deployment pays the winch out, a
   // lock snaps the catch, a cut or collapse releases it. Seed payloads never
   // name a tug, so the lifecycle fans out to the live winch rigs.
   const onMassSeedDeployed = (payload) => fanoutRig('yard_tug_winch', 'massSeed:deployed', payload);
-  const onMassSeedLocked = (payload) => fanoutRig('yard_tug_winch', 'massSeed:locked', payload);
-  const onMassSeedEnded = (type) => (payload) => fanoutRig('yard_tug_winch', type, payload);
+  // The winch holds its deployed pose under payout's 'hold' end, so a live payout run is
+  // the deploy state — catch/release never fire on hardware that was never deployed.
+  const onMassSeedLocked = (payload) => fanoutRig('yard_tug_winch', 'massSeed:locked', payload,
+    (c) => c.clipActive?.('payout') || c.clipActive?.('catch'));
+  const onMassSeedEnded = (type) => (payload) => fanoutRig('yard_tug_winch', type, payload,
+    (c) => c.clipActive?.('payout') || c.clipActive?.('catch'));
   // Charge ticks stream every frame while charging — the gate surge re-arms only
   // when the previous one drains, so the ring pulses at the clip's cadence.
   const onChargeTick = (payload) => {
@@ -674,10 +719,17 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         if (payload.active === false) {
           controller.settle?.(1.2, now);
-        } else if (payload.active && !controller.clipActive?.('workLoop')) {
-          // handleEvent restarts the loop at t=0 — a repeated active receipt while the
-          // loop is already running would teleport every pivot to the first key.
-          controller.handleEvent?.('fab:workStart', payload, now);
+        } else if (payload.active) {
+          // trolley_drift rides the bank's own event map: the reposition stroke answers
+          // every queue change, including mid-work churn where workLoop stays running.
+          if (!controller.clipActive?.('trolley_drift')) {
+            controller.handleEvent?.('craft:queueChanged', payload, now);
+          }
+          if (!controller.clipActive?.('workLoop')) {
+            // handleEvent restarts the loop at t=0 — a repeated active receipt while the
+            // loop is already running would teleport every pivot to the first key.
+            controller.handleEvent?.('fab:workStart', payload, now);
+          }
         }
       } catch (error) {
         console.warn('[authoredMotion] fab queue receipt rejected by controller', error);
@@ -772,6 +824,14 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('salvage:coreEjected', onCoreEjected),
     bus.on('encounter:telegraph', onEncounterTelegraph),
     bus.on('asteroid:destroyed', onAsteroidDestroyed),
+    bus.on('asteroid:chunked', onAsteroidChunked),
+    bus.on('capitalBoss:telegraph', onCapitalTelegraph),
+    bus.on('ai:stateChange', onAiStateChange),
+    bus.on('encounter:predationTelegraph', onPredationTelegraph),
+    bus.on('cloak:engaged', onCloakEngaged),
+    bus.on('cloak:dropped', onCloakDropped),
+    bus.on('cargo:jettisoned', onCargoJettisoned),
+    bus.on('planet:collector', onPlanetCollector),
     bus.on('massSeed:deployed', onMassSeedDeployed),
     bus.on('massSeed:locked', onMassSeedLocked),
     bus.on('massSeed:tetherCut', onMassSeedEnded('massSeed:tetherCut')),

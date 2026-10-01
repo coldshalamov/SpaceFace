@@ -55,6 +55,8 @@ EVENTS = {
     'authoredMotion:attach': 'beacon_spin',
     'nav:waypoint': 'ring_pulse',
     'band:bearingResolved': 'ring_pulse',
+    # A capital mass on scope reads as a nav-net warning ping.
+    'capitalBoss:telegraph': 'ring_pulse',
 }
 
 

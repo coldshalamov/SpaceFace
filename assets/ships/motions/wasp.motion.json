@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "wasp",
  "sourceAssetId": "SF_WASP_PRODUCTION_V1",
- "sourceGlbSha256": "712c74c1df6891a56a80174f7ed8ca293228456e28a39fb12ed6c87de9a4dae7",
+ "sourceGlbSha256": "13314dbe7c040215ad23fddacf91b120bd8e32a9b70ecfb21dc34e24e6868c77",
  "fps": 60,
  "bindings": [
   {
@@ -16328,6 +16328,8 @@
   "authoredMotion:attach": "wasp_idle_drift",
   "ai:telegraph": "wasp_bristle",
   "encounter:telegraph": "wasp_bristle",
+  "encounter:predationTelegraph": "wasp_bristle",
+  "ai:stateChange": "wasp_bristle",
   "encounter:predationEngaged": "wasp_predate",
   "ai:flee": "wasp_flee"
  }

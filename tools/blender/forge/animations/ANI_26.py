@@ -88,6 +88,7 @@ EVENTS = {
     'drill:end': 'drill_park',
     # Rock breaking is its own kick — the head bucks as the asteroid gives.
     'asteroid:destroyed': 'drill_stall_kick',
+    'asteroid:chunked': 'drill_stall_kick',
 }
 
 
