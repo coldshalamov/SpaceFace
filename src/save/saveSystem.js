@@ -1477,9 +1477,17 @@ export const save = {
     (async () => {
       try {
         if (typeof localStorage === 'undefined') return;
+        // The materialize+hash walk below must not run on the frame that invoked
+        // listSlotsIndexCards — a mature store is a multi-MB brick inside the title
+        // paint. Yield first; on a generation match the shared-store collect's raws
+        // already hold the same bytes.
+        await this._restoreFrameYield();
         const indexed = normalizeSlotIndex(this._readIndex());
         const verdicts = {};
         const primaryRaws = new Map();
+        const collected = this._sharedStoreCollectCache;
+        const collectedRaws = collected && collected.gen === _saveStoreGeneration
+          ? collected.raws : null;
         const jobs = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
@@ -1488,18 +1496,22 @@ export const save = {
           if (!isRecovery && !key.startsWith(LS_PREFIX)) continue;
           const slot = key.slice((isRecovery ? RECOVERY_PREFIX : LS_PREFIX).length);
           if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
-          const raw = localStorage.getItem(key);
+          const raw = (collectedRaws && collectedRaws.has(key))
+            ? collectedRaws.get(key)
+            : localStorage.getItem(key);
           if (typeof raw !== 'string' || !raw) continue;
           const card = indexed[slot];
           const kind = isRecovery ? 'recovery' : 'primary';
           const trustHash = isRecovery
             ? (card && card._recoveryBlobHash)
             : (card && card._blobHash);
+          // Retain every primary blob keyed by storage key — the speculation lane below
+          // resolves through LS_PREFIX+slot and needs trusted and untrusted alike.
+          if (!isRecovery) primaryRaws.set(key, raw);
           if (typeof trustHash === 'string' && fnv1a(raw) === trustHash) {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: true });
             continue;
           }
-          if (!isRecovery) primaryRaws.set(slot, raw);
           jobs.push(Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((v) => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: !!(v && v.ok) });
           }).catch(() => {
@@ -1525,7 +1537,7 @@ export const save = {
           } else if (v.primary) {
             // Verified blob with no index card (foreign write): the meta verdict already
             // proved it restorable, so this re-parse only rebuilds the display card.
-            const env = this._prepareEnvelopeMeta(primaryRaws.get(slot));
+            const env = this._prepareEnvelopeMeta(primaryRaws.get(LS_PREFIX + slot));
             const meta = env && slotCardFromEnvelopeData(slot, env, null);
             if (meta) merged[slot] = meta;
           } else if (v.primary === false) {
@@ -1543,7 +1555,7 @@ export const save = {
         const cache = this._slotIndexCache;
         if (cache && cache.sig === sig && cache.authoritative) return;
         this._slotIndexCache = { sig, merged, authoritative: false };
-        this._maybeSpeculateContinuePrepare(sig, merged, null);
+        this._maybeSpeculateContinuePrepare(sig, merged, primaryRaws);
         if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:slotsValidated', {});
       } catch (err) { /* validation is best-effort */ }
     })();
@@ -3991,22 +4003,30 @@ export const save = {
 
       // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
+      yield 'player-restored';
       this._restoreCargo(data.cargo);
+      yield 'cargo-restored';
       this._callDeserialize('salvage', data.salvage);
+      yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps
       // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
       this._callDeserialize('survivorPod', data.survivorPod);
+      yield 'survivor-pods-restored';
       yield* this._callDeserializeChunked('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
+      yield 'economy-contracts-restored';
       this._callDeserialize('factions', data.factions);
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
+      yield 'deserialized-regional-ecology';
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
+      yield 'deserialized-living-poi';
       this._callDeserialize('scanner', data.signalInvestigation);
+      yield 'deserialized-scanner';
       this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
@@ -4017,8 +4037,11 @@ export const save = {
       // K1 presence is semantic run state. Restore it after the current player has a fresh id but
       // before world re-entry emits sector:enter and rematerializes route/presence actors.
       this._callDeserialize('factionPresence', data.factionPresence);
+      yield 'deserialized-faction-presence';
       this._callDeserialize('bandRadio', data.bandRadio);
+      yield 'deserialized-band-radio';
       this._callDeserialize('v2Flavor', data.v2Flavor);
+      yield 'deserialized-v2-flavor';
 
       // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
       const shipsSys = this.registry.get('ships');
@@ -4116,8 +4139,10 @@ export const save = {
       yield 'combat-restored';
 
       // 13. restore missions/automation/settings.
-      this._restoreMissions(data.missions);
+      yield* this._restoreMissionsChunked(data.missions);
+      yield 'missions-scalars-restored';
       this._callDeserialize('careerOrigins', data.careerOrigins);
+      yield 'career-origins-restored';
       this._callDeserialize('careerLadders', data.careerLadders);
       this._restoreScenario(data.scenario);
       yield 'missions-restored';
@@ -4129,12 +4154,14 @@ export const save = {
       }
       yield 'mission-targets-spawned';
       this._restoreAutomation(data.automation);
+      yield 'automation-restored';
       this._restoreCrafting(data.crafting);
       this._reportRestoreProgress(0.215, 'Restoring automation');
-      yield 'automation-restored';
+      yield 'crafting-restored';
       // Offscreen sim state restores last (after world/factions/economy) so its drift overlay can
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
-      this._callDeserialize('sectorSim', data.sectorSim);
+      yield* this._callDeserializeChunked('sectorSim', data.sectorSim);
+      yield 'sector-sim-restored';
       // PQ-014 live NPC jobs. All hulls were cleared above, so every restored job comes back VIRTUAL
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
@@ -4151,12 +4178,14 @@ export const save = {
       this._reportRestoreProgress(0.22, 'Restoring world memory');
       yield 'deserialized-tail';
       this._callDeserialize('aceMemory', data.aceMemory);
+      yield 'ace-memory-restored';
       yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
       yield* this._callDeserializeChunked('provenanceLedger', data.provenance);
       yield* this._callDeserializeChunked('aftermathWrecks', data.aftermathWrecks);
       // Pending kill cases + priced incidents must land before any post-load wreck resolution;
       // absent key (pre-docket saves) clears both ledgers — an honest empty case file.
-      this._callDeserialize('lawSecurity', data.lawSecurity);
+      yield* this._callDeserializeChunked('lawSecurity', data.lawSecurity);
+      yield 'law-security-restored';
       yield* this._callDeserializeChunked('fieldDepletion', data.fieldDepletion);
       // Interleave frame releases between independent deserializes: each group above owns a
       // disjoint ledger, so a yield here can't reorder anything the sim observes — it only keeps
@@ -4164,11 +4193,13 @@ export const save = {
       yield 'deserialized-ledgers';
       // Genie 01: world memory. deserialize() validates a detached candidate and re-derives its
       // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).
-      this._callDeserialize('chronicler', data.chronicler);
+      yield* this._callDeserializeChunked('chronicler', data.chronicler);
+      yield 'chronicler-restored';
       // Station-yard service jobs (repair/refuel booked before the save). Restores the parked
       // player block only — NPC client traffic is re-derived from the seeded schedule, and the
       // job stays parked until the player re-docks at that yard (ui.docked clears on load).
       this._callDeserialize('stationServices', data.stationServices);
+      yield 'station-services-restored';
       // Campaign-director durable state. Staged here so the director's save:loaded handler can
       // durable-merge it (named captains persist; transients rebuild). Absent in old saves → null
       // → the director starts fresh (migration-safe absence handling).
@@ -4187,6 +4218,7 @@ export const save = {
       this._reportRestoreProgress(0.23, 'Restoring the campaign directors');
       yield 'deserialized-campaign';
       this._callDeserialize('nemesis', data.nemesis);
+      yield 'nemesis-restored';
       this._callDeserialize('nemesisEncounter', data.nemesisDeployment);
       yield 'deserialized-nemesis';
       // Enemy Mind cognition namespace (version 1). Absent in older saves → cleared, so cognition
@@ -4223,10 +4255,13 @@ export const save = {
       this._reportRestoreProgress(0.235, 'Restoring flight deck state');
       yield 'deserialized-flight';
       this._restoreFlight(data.flight);
+      yield 'flight-restored';
       this._restoreNav(data.nav);
+      yield 'nav-restored';
       this._restoreSettings(data.settings);
       this._restoreScreenMemory(data.uiScreenMemory);
       this._restoreWatchlist(data.uiWatchlist);
+      yield 'settings-restored';
       this._reconcileFlightReadyAfterLoad();
       yield 'deserialized-flight-inputs';
 
@@ -4234,7 +4269,15 @@ export const save = {
       // simTime/tick were restored before spawn so sector rebuild sees the saved clock.
       this._restoreEntropy(data.entropy);
       yield 'entropy-restored';
-      this.registry?.get?.('fields')?.deserialize?.(data.fields,entityIdRemap);
+      {
+        const fieldsSys = this.registry?.get?.('fields');
+        if (fieldsSys && typeof fieldsSys.deserializeChunked === 'function') {
+          yield* fieldsSys.deserializeChunked(data.fields, entityIdRemap);
+        } else {
+          fieldsSys?.deserialize?.(data.fields, entityIdRemap);
+        }
+      }
+      yield 'fields-restored';
       const stuntOwner = this.registry?.get?.('stuntGrammar');
       stuntOwner?.deserialize?.(data.stunts, entityIdRemap);
 
@@ -4439,6 +4482,19 @@ export const save = {
       this.state.missions.config = payload.config || null;
     }
     if (payload.story) this.state.story = payload.story;
+  },
+
+  // Async-lane twin: drives the system's chunked deserialize when present so boards/active
+  // sections can paint between generator boundaries; falls back to the sync path unchanged.
+  *_restoreMissionsChunked(d) {
+    if (!d) return;
+    const payload = normalizeMissionSavePayload(d);
+    const sys = this.registry && this.registry.get && this.registry.get('missions');
+    if (sys && typeof sys.deserializeChunked === 'function') {
+      yield* sys.deserializeChunked(payload);
+      return;
+    }
+    this._restoreMissions(d);
   },
 
   _restoreScenario(d) {

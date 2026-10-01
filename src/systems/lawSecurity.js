@@ -326,6 +326,14 @@ export const lawSecurity = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+    return ensureState(this.state);
+  },
+
+  // Generator twin so the async restore lane can paint between ledger normalizes — the
+  // kill/incident ledgers are the heavy stretch here on a mature save. Yields sit only
+  // between the ledgers; adoption order is the sync lane's, so the run stays bit-identical.
+  *deserializeChunked(data) {
     const own = ensureState(this.state);
     // Session-scoped weir latches never survive a load — the record/dwell rows
     // reference live entity positions and visit state, not durable truth.
@@ -334,12 +342,12 @@ export const lawSecurity = {
     if (this._podConeDwell) this._podConeDwell.clear();
     const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
     own.unreportedKills = normalizeUnreportedKillLedger(src.unreportedKills);
+    yield 'law-unreported-kills';
     if (src.reportedIncidents != null) {
       own.reportedIncidents = normalizeReportedIncidentLedger(src.reportedIncidents);
     } else if (own.reportedIncidents != null) {
       delete own.reportedIncidents; // a different slot's priced ledger must not bleed into this load
     }
-    return own;
   },
 
   update(_dt, state) {

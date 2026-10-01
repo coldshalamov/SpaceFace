@@ -1600,7 +1600,10 @@ test('a different-boundary keyed join never moves the queued job admissionEpoch'
     options: { admissionEpoch: 2 },
     run: async () => 'never-run',
   });
-  assert.equal(joinerCompletion, queuedCompletion, 'same-key request joins the queued job');
+  // A different-boundary join is gated on the leader's settle and then re-enqueues as its own
+  // job — the returned completion is the joiner's own, not the leader's promise.
+  assert.notEqual(joinerCompletion, queuedCompletion,
+    'same-key different-boundary request defers to the leader, then re-enqueues');
   assert.equal(queuedJob.options.admissionEpoch, 7,
     'a different-boundary join must not stamp its epoch onto the queued job');
 
@@ -1608,6 +1611,9 @@ test('a different-boundary keyed join never moves the queued job admissionEpoch'
   await laneCompletion;
   const receipt = await queuedCompletion;
   assert.equal(receipt.result, 'queued-result');
+  const joinerReceipt = await joinerCompletion;
+  assert.equal(joinerReceipt.result, 'never-run',
+    'the joiner then runs its own upgrade — its boundary gets its own committer');
   scene.remove(laneBoundary, queuedBoundary, joinerBoundary);
 });
 
