@@ -1153,7 +1153,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.tether.release': 'sfx_massline_release',
   'presentation.tether.bridle': 'sfx_massline_bridle_chord',
   'presentation.travel.cruise_charge': 'sfx.cruiseCharging',
-  'presentation.travel.lane_lock': 'sfx_travel_lane_lock',
+  'presentation.travel.lane_lock': 'sfx_travel_motif',
   'presentation.travel.cancel': 'sfx_travel_cancel',
   'presentation.travel.fail': 'sfx_travel_fail',
   'presentation.travel.gate_approach': 'sfx_travel_gate_approach',

@@ -139,7 +139,7 @@ test('seed 4242 one cruise engage is the lane-lock voice, and the boost row is s
 
     h.bus.emit('cruise:engaged', { playerId: h.state.playerId });
     h.bus.flush();
-    assert.equal(count(h.plays, 'sfx_travel_lane_lock'), 1);
+    assert.equal(count(h.plays, 'sfx_travel_motif'), 1);
     assert.equal(count(h.plays, 'sfx_engine_boost'), 0);
     assert.equal(h.plays.length, 1);
 
@@ -147,7 +147,7 @@ test('seed 4242 one cruise engage is the lane-lock voice, and the boost row is s
     h.plays.length = 0;
     h.bus.emit('cruise:engaged', { playerId: h.state.playerId });
     h.bus.flush();
-    assert.equal(count(h.plays, 'sfx_travel_lane_lock'), 1);
+    assert.equal(count(h.plays, 'sfx_travel_motif'), 1);
     assert.equal(h.plays.length, 1);
   } finally {
     h.ear.destroy();
