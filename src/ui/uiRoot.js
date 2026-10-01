@@ -989,6 +989,11 @@ export const ui = {
           mountCinematic();
         });
         bootOverlayWatcher.observe(bootOverlay, { attributes: true });
+        // Attributes alone miss the overlay being removed outright — watch its parent's
+        // childList too so a removed (not hidden) loader can't strand the splash flag.
+        if (bootOverlay.parentNode) {
+          bootOverlayWatcher.observe(bootOverlay.parentNode, { childList: true });
+        }
       }
     } else {
       // If already seen this session, ensure we land on the menu
