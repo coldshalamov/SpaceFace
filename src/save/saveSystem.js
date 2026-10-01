@@ -110,10 +110,18 @@ const DEFAULT_FLIGHT_BACKEND = 'v3';
 const DEFAULT_CONTROL_SCHEME = 'pilot';
 const DEFAULT_MASSLINE_RELEASE_ASSIST = 'snap';
 const DEFAULT_ORBIT_ASSIST_STRENGTH = 'standard';
+const DEFAULT_TARGET_ASSIST_STRENGTH = 'full';
 const DEFAULT_AUTOSAVE_INTERVAL_S = 120;
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
 const VALID_MASSLINE_RELEASE_ASSISTS = new Set(['arm', 'snap', 'off']);
+// The auto-target assist's domain lives in combat/autoTargetMode.js (TARGET_ASSIST_SCALES).
+// Deliberately hand-written rather than imported: that module pulls in flightV3, and the save
+// layer must not gain a flight import edge to read a four-value list. `test/verb-17-target-
+// assist-strength.test.mjs` asserts the two agree, so drift reds a test instead of silently
+// clamping a legal value. The fallback matches targetAssistScale's own fail-open to full, which
+// is the safe direction: an unknown strength keeps the assist on rather than turning it off.
+const VALID_TARGET_ASSIST_STRENGTHS = new Set(['full', 'standard', 'light', 'off']);
 // DERIVED, not hand-written like the three above: this is a flight-kernel domain, and a
 // hand-written copy silently clamps a legal value the day ORBIT_ASSIST_STRENGTH grows one.
 // orbitAssist.js has no imports of its own, so reading its frozen table here costs nothing.
@@ -4845,6 +4853,9 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_ORBIT_ASSIST_STRENGTHS.has(s.gameplay.orbitAssistStrength)) {
     s.gameplay.orbitAssistStrength = DEFAULT_ORBIT_ASSIST_STRENGTH;
   }
+  if (!VALID_TARGET_ASSIST_STRENGTHS.has(s.gameplay.targetAssistStrength)) {
+    s.gameplay.targetAssistStrength = DEFAULT_TARGET_ASSIST_STRENGTH;
+  }
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
@@ -4898,6 +4909,7 @@ function profileSettingsSnapshot(settings) {
       // Already in-domain: this function sanitizes at its first line, so a second normalization
       // here would only duplicate the rule and risk disagreeing with it.
       orbitAssistStrength: s.gameplay && s.gameplay.orbitAssistStrength,
+      targetAssistStrength: s.gameplay && s.gameplay.targetAssistStrength,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
     },

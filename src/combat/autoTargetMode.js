@@ -31,7 +31,7 @@ const AUTO_TARGET_HEADING_SOFT_ANGLE = 0.42;
 // Gameplay row beside the orbit assist). Full is today's authored correction — the default,
 // so nothing already flying changes. Off yields zero aim correction; light/standard track
 // the same solution lazily by converging a fraction of the remaining error per tick.
-const TARGET_ASSIST_SCALES = Object.freeze({ full: 1, standard: 0.75, light: 0.4, off: 0 });
+export const TARGET_ASSIST_SCALES = Object.freeze({ full: 1, standard: 0.75, light: 0.4, off: 0 });
 
 /** 0..1 fraction of the aim correction applied this tick. Unknown values fail to full. */
 export function targetAssistScale(state) {
