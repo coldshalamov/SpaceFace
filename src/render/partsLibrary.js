@@ -5975,6 +5975,30 @@ function finishUpgradeDiagnostic(state, job, diagnostic) {
   publishUpgradeDiagnostics(state, job.renderer);
 }
 
+export function cancelAuthoredUpgradeQueue(scene, reason = 'scene-retired') {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return false;
+  state.retired = true;
+  upgradeQueuesByScene.delete(scene);
+  invalidateScheduledUpgradeFrame(state);
+  if (state.heldShipWakeTimer != null) {
+    clearTimeout(state.heldShipWakeTimer);
+    state.heldShipWakeTimer = null;
+  }
+  if (state.stalledHogWakeTimer != null) {
+    clearTimeout(state.stalledHogWakeTimer);
+    state.stalledHogWakeTimer = null;
+  }
+  for (const job of [...state.jobs]) {
+    const index = state.jobs.indexOf(job);
+    if (index >= 0) state.jobs.splice(index, 1);
+    cancelQueuedJob(state, job);
+  }
+  state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
+  publishUpgradeDiagnostics(state);
+  return true;
+}
+
 function recordUpgradeCancellation(state, job) {
   if (!state || !state.diagnostics || !job || job.diagnosticCancellationRecorded) return;
   job.diagnosticCancellationRecorded = true;
