@@ -3784,8 +3784,11 @@ function attachPackagedBody(root, relativeFile, entity) {
       fitPackagedGroup(packaged, entity && entity.radius);
       freezeStaticChildMatrices(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
+      // Mint once: residencyOptionsForBoundary bumps the boundary epoch on every call, so an
+      // error-path re-mint could classify a concurrent in-flight commit as stale.
+      const mintedAdmissionOptions = admissionOptions();
       try {
-        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed');
         // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
@@ -3793,7 +3796,7 @@ function attachPackagedBody(root, relativeFile, entity) {
         const causes = error && Array.isArray(error.errors) && error.errors.length
           ? error.errors
           : [error];
-        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+        const ownerInactive = admissionOwnerInactive(mintedAdmissionOptions, liveEntity, error)
           || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
         if (ownerInactive) {
           if (root.parent) {
