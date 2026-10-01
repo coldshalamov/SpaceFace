@@ -2008,6 +2008,8 @@ export const audio = {
       if (p && p.shipId === this.state.playerId) this.play('sfx_boost_whoosh', { gain: 0.35 });
     });
     bus.on('ship:boostStop', (p) => {});
+    // Route handoff commits the autopilot brake once per leg approach (routeFollower).
+    bus.on('nav:routeBrake', (p) => this._onRouteBrake(p));
     bus.on('ship:dash', (p) => {
       // Dash: layered whoosh+thump (juice recipe), player-only.
       if (p && p.shipId === this.state.playerId) this.play('sfx.shipDash', { gain: 0.7 });
@@ -6584,6 +6586,18 @@ export const audio = {
     if (voice.gain && voice.gain.gain) {
       this._setParam(voice.gain.gain, targetGain, ctx.currentTime, 0.06);
     }
+  },
+
+  // nav:routeBrake marks the handoff commit — the same authored onset the input edge plays.
+  // Pre-setting _brakeWasHeld keeps _updateBrakeHiss from stacking a second identical bite a
+  // tick later when syncAutopilotInput raises actions.brake in the same window; the flag
+  // rewrites to the live input every frame, so a follow-on onset still bites if the autopilot
+  // waits. An already-held brake already sounded — nothing to add.
+  _onRouteBrake(p) {
+    const rt = this.rt;
+    if (!p || !rt || rt._brakeWasHeld) return;
+    rt._brakeWasHeld = true;
+    this.play('sfx_brake_bite', { gain: 0.7 });
   },
 
   _updateBrakeHiss(dt) {

@@ -43,7 +43,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `nemesisEncounter` | `systems/nemesisEncounter.js` | 9 | 0 | 0 | — |
 | `capitalBossEncounters` | `systems/capitalBossEncounters.js` | 149 | 2 | 0 | `capitalBoss:telegraphEnd`×2 |
 | `ai` | `systems/tacticalAI.js` (+ legacy) | 1266 | 2 | 0 | `ai:telegraph`×1, `ai:doctrinePhase`×1 |
-| `barkDirector` | `systems/barkDirector.js` | 1685 | 1 | 24 | `audio:cue`×1 |
+| `barkDirector` | `systems/barkDirector.js` | 1687 | 1 | 24 | `audio:cue`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 844 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
 | `beacons` | `systems/beacons.js` | 216 | 5 | 2 | `audio:cue`×3, `economy:chargeCredits`×1, `beacon:deployed`×1 |
@@ -102,7 +102,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `regionalEcology` | `systems/regionalEcology.js` | 454 | 0 | 0 | — |
 | `tensionDirector` | `systems/tensionDirector.js` | 278 | 0 | 0 | — |
 | `encounterDirector` | `systems/encounterDirector.js` | 4549 | 27 | 32 | `encounter:resolved`×2, `economy:applyTradePressure`×2, `encounter:stale`×1 |
-| `routeFollower` | `systems/routeFollower.js` | 940 | 1 | 9 | `nav:engageRoute`×1 |
+| `routeFollower` | `systems/routeFollower.js` | 941 | 1 | 9 | `nav:engageRoute`×1 |
 | `livingPoiBehaviors` | `systems/livingPoiBehaviors.js` | 843 | 0 | 0 | — |
 | `pirateRumor` | `systems/pirateRumor.js` | 674 | 0 | 0 | — |
 | `ambushSignatures` | `systems/ambushSignatures.js` | 236 | 0 | 0 | — |
@@ -148,7 +148,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `noFireAdvisory` | `data/stationBubbles.js` | 250 | 0 | 1 | — |
 | `moralTrapSystem` | *(not found)* | — | — | — | — |
 | `voiceArbiter` | `ui/voiceArbiter.js` | 452 | 4 | 2 | `voice:clear`×2, `voice:surface`×2 |
-| `save` | `save/saveSystem.js` | 4943 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
+| `save` | `save/saveSystem.js` | 4954 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
 
 ## Render-phase order (every animation frame)
 

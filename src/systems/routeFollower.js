@@ -185,6 +185,7 @@ function makeExecutor(legs, destinationSectorId) {
     interruptReason: null,
     brakeMode: null,
     handoffWU: null,
+    handoffRequestedLegIndex: null,
   };
 }
 

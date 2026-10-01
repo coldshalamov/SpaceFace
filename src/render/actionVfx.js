@@ -57,8 +57,9 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   // player:respawn is a UI-layer beat (respawn chime + spawn placement), not a surface receipt.
   // mining:ventReady is visual-only: the vent-ready lamp rides presentation.mining.vent_ready
   // (worldCueRecipes 'mining.vent.ready', cool deposition); no actionVfx row is authored.
-  // brake has no bus event at all: the brake bite is a direct audio one-shot in
-  // audioSystem._updateBrakeHiss plus the existing thrust/RCS motion read. No row here either.
+  // The pilot's own brake still has no bus event: its bite is a direct audio one-shot in
+  // audioSystem._updateBrakeHiss plus the existing thrust/RCS motion read. The ROUTE follower's
+  // brake does publish — nav:routeBrake lives in actionEventRecipes, not here.
   'weapons:mineArmed':recipe('arm',0x80d4ff,.75),
   'weapons:mineDetonated':recipe('shove',0xa1dcff,.6),
   ...additional,

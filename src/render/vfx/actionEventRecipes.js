@@ -27,6 +27,12 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   // induction paint it interrupts.
   'customs:breakScan': {verb:'ignition',primitive:'compression',color:0xffc08a,life:.9,surfaceWork:true,continuous:false},
   'heat:changed': {verb:'catch',primitive:'capture',color:0xf1ac76,life:1,surfaceWork:true,surfaceCapture:true,continuous:false},
+  // Route handoff: the travel drive yields to the local autopilot — a counter-thrust vent for a
+  // direct brake, a re-lit mains burn when the solution calls for the flip. bestMode selects.
+  'nav:routeBrake': {verb:'vent',primitive:'compression',color:0x9fc8ee,life:.8,surfaceWork:true,continuous:false,
+    variants:{
+      flipBurn:{verb:'ignition',primitive:'compression',color:0xffc08a,life:.9,surfaceWork:true},
+    }},
   'salvage:cutComplete': {verb:'grind',primitive:'deposition',color:0xf3c286,life:.85,surfaceWork:true,continuous:false},
   'salvage:completed': {verb:'harvest',primitive:'deposition',color:0xc9ba98,life:1.2,continuous:false},
   'pickup:collected': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.58,continuous:false},
@@ -92,6 +98,10 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     if(name==='heat:changed'&&!p.wantedCrossed)return null;
     const ship=body(state,state.playerId);if(!point(ship?.pos)||ship.alive===false)return null;
     return {...p,targetId:ship.id,sourceId:ship.id,bodySurface:true,attachToTarget:true};
+  }
+  if(name==='nav:routeBrake'){
+    const ship=body(state,state.playerId);if(!point(ship?.pos)||ship.alive===false)return null;
+    return {...p,kind:p.bestMode,targetId:ship.id,sourceId:ship.id,bodySurface:true,attachToTarget:true};
   }
   if(name==='salvage:cutComplete'){
     const plate=body(state,p.payloadId),target=body(state,p.targetId);
