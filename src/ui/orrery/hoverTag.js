@@ -16,6 +16,9 @@ const CSS = `
 .sf-woi[data-beam="1"] .sf-woi__hint{color:var(--dp-phos, #dfeeff)}
 .sf-woi[data-sling="1"] .sf-woi__hint{color:var(--dp-hand, #f2b950)}
 .sf-woi[data-selected="1"] .sf-woi__meta{color:var(--dp-hand, #f2b950)}
+.sf-woi[data-relation="hostile"] .sf-woi__name{color:#ff8a90}
+.sf-woi[data-relation="hostile"] .sf-woi__meta{color:#ffb0b4}
+.sf-woi[data-relation="ally"] .sf-woi__name,.sf-woi[data-relation="friendly"] .sf-woi__name{color:#a8e6ff}
 .sf-woi__bars{width:132px;margin:6px auto 0;display:grid;gap:2px}
 .sf-woi__bars[hidden]{display:none}
 .sf-woi__bar{height:4px;background:rgb(3 4 7 / .72);box-shadow:0 0 0 1px rgb(255 255 255 / .16);overflow:hidden}
@@ -23,7 +26,7 @@ const CSS = `
 .sf-woi__bar--shield>i{background:#62d2ff}
 .sf-woi__bar--armor>i{background:#ffc24d}
 .sf-woi__bar--hull>i{background:#ff5a5c}
-.sf-woi[data-relation="friendly"] .sf-woi__bar--hull>i{background:#7dffb0}
+.sf-woi[data-relation="ally"] .sf-woi__bar--hull>i,.sf-woi[data-relation="friendly"] .sf-woi__bar--hull>i{background:#7dffb0}
 `;
 
 export function createHoverTag(doc = globalThis.document) {
