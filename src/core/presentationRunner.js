@@ -975,10 +975,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
       const sliceBus = registry?.ctx?.bus;
       if (sliceBus && typeof sliceBus.drainEmitSlice === 'function') {
-        sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+        // The compile drain already spent from the same window — re-measure so the slice
+        // budget is the honest remainder, floored so a burst frame still makes progress.
+        const sliceMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
+        sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET, Math.min(4, Math.max(0.5, sliceMs)));
       }
       if (sliceBus && typeof sliceBus.drainPresentationTail === 'function') {
-        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(remainMs, 4));
+        // Fresh measure again (the emit slice spent too): remainMs=0 must not hand the tail
+        // an unbounded window — a scaled backlog would drain unbounded inside the frame that
+        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener.
+        const tailMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
+        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(0.5, tailMs)));
       }
       _stepCapArgs.frameDt = 0;
       _stepCapArgs.fixedDt = LOOP_FIXED_DT;

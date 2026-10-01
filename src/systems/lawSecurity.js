@@ -2781,12 +2781,15 @@ export const lawSecurity = {
     // Same payload-bucket proof as the cone census: no payloads → the walk sees no pods, `seen`
     // stays empty, and the prune below would drop every dwell row anyway.
     const index = state && state.entityIndex;
-    if (index && index.__spacefaceEntityIndexV1 && index.ready === true
-      && Array.isArray(index.payloads) && index.payloads.length === 0) {
+    const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads);
+    if (indexed && index.payloads.length === 0) {
       dwell.clear();
       return;
     }
-    const list = state.entityList || [];
+    // Pods are only ever payload-type rows — the ready index's payloads bucket carries them
+    // in spawn order (same order entityList walks), so the seen/dedupe ordering is identical.
+    const list = indexed ? index.payloads : (state.entityList || []);
     const seen = new Set();
     for (let i = 0; i < list.length; i++) {
       const pod = list[i];

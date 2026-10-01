@@ -332,8 +332,8 @@ export const barkDirector = {
       this.bus.on('story:stuntIncidentRecorded', this._onStuntTrick);
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
-      this.bus.on('entity:killed', this._onCargoKilled);
-      this.bus.on('entity:killed', this._onVictimKilled);
+      this.bus.on('entity:killed', this._onCargoKilled, { presentation: true });
+      this.bus.on('entity:killed', this._onVictimKilled, { presentation: true });
       this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
