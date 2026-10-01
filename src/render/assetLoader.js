@@ -650,8 +650,11 @@ export async function loadAuthoredPart(url, options = {}) {
       sectorId: options.sectorId || null,
       // Warm-purpose decodes (sector prewarm, decode runway, roster warm) speculate on future
       // use — a never-touched prewarm otherwise reads as the oldest idle entry and is the first
-      // casualty of byte pressure, so the spawn it covered still pops cold.
+      // casualty of byte pressure, so the spawn it covered still pops cold. Non-warm boundary
+      // retains are served bodies: they earn the same sweep immunity and lose the byte-pressure
+      // sort last — observed demand outranks speculated demand on return visits.
       decodeWarm: WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
+      decodeServed: !WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
     });
   }
   return blueprint;

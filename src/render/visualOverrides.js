@@ -286,6 +286,80 @@ function resolvingMarkerFor(entity) {
 }
 
 /**
+ * Marker for authored-only boundaries whose procedural body must never reach the glass while
+ * admission is pending (PQ-193.12): stations and exact-identity payloads. The abstract
+ * octahedron publishes no substitute identity — the same marker ships draw under
+ * requiredWholeShip — so an admission that outlasts the runway (stall-abort readmission,
+ * transient retry backoff, pick-cap queuing) keeps a resolving affordance on the glass instead
+ * of an invisible seat that pops in at commit. syncResolvingMarker drives visibility off
+ * authoredAssetState each frame; commit/terminal paths need no bookkeeping here.
+ */
+export function installBoundaryResolvingMarker(boundary, entity) {
+  const data = boundary && boundary.userData;
+  if (!data || data.resolvingMarker || data.wantsBoundaryResolvingMarker === true) return null;
+  // Arms only: the marker mesh materializes on the first evaluated pending frame inside
+  // syncResolvingMarker, so the wrap-time child list stays exactly the hidden substrate.
+  data.wantsBoundaryResolvingMarker = true;
+  data.boundaryResolvingMarkerEntity = entity || null;
+  // Cover the marker's drawn extent for glass/cull classification: union it into an existing
+  // stamp (the place envelope covers most stations) or seed one for un-stamped boundaries —
+  // a payload capsule otherwise culls at collider presence while drawing a ~1.9x wider marker.
+  const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
+  const half = [r * 1.7, r * 0.3, r * 0.85];
+  const existing = data.visualBounds;
+  if (existing && Array.isArray(existing.size)) {
+    const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
+    const nextCenter = [0, 0, 0];
+    const nextSize = [0, 0, 0];
+    for (let i = 0; i < 3; i++) {
+      const lo = Math.min((Number(center[i]) || 0) - (Number(existing.size[i]) || 0) / 2, -half[i]);
+      const hi = Math.max((Number(center[i]) || 0) + (Number(existing.size[i]) || 0) / 2, half[i]);
+      nextCenter[i] = (lo + hi) / 2;
+      nextSize[i] = hi - lo;
+    }
+    data.visualBounds = { center: nextCenter, size: nextSize };
+  } else {
+    data.visualBounds = { center: [0, 0, 0], size: [half[0] * 2, half[1] * 2, half[2] * 2] };
+  }
+  return data.wantsBoundaryResolvingMarker === true ? data : null;
+}
+
+/**
+ * Materializes the armed boundary marker as a real child — called from syncResolvingMarker the
+ * first frame the boundary evaluates while pending, which is also the earliest frame it can
+ * draw. Starts hidden; the same sync pass flips it visible for the pending window.
+ */
+export function materializeBoundaryResolvingMarker(boundary) {
+  const data = boundary && boundary.userData;
+  if (!data || data.resolvingMarker || data.wantsBoundaryResolvingMarker !== true) return null;
+  const marker = resolvingMarkerFor(data.boundaryResolvingMarkerEntity);
+  marker.visible = false;
+  boundary.add(marker);
+  data.resolvingMarker = marker;
+  data.authoredResolvingMarker = true;
+  delete data.wantsBoundaryResolvingMarker;
+  delete data.boundaryResolvingMarkerEntity;
+  return marker;
+}
+
+/**
+ * Commit-time teardown for a boundary-seat resolving marker: the authored root is the seat's
+ * only drawable afterwards, so the boundary's child list must end as exactly its committed
+ * content. Terminal paths leave the marker attached and let syncResolvingMarker drive it.
+ */
+export function detachBoundaryResolvingMarker(boundary) {
+  const data = boundary && boundary.userData;
+  if (!data) return false;
+  delete data.wantsBoundaryResolvingMarker;
+  delete data.boundaryResolvingMarkerEntity;
+  const marker = data.resolvingMarker;
+  if (!marker) return false;
+  if (marker.parent) marker.parent.remove(marker);
+  delete data.resolvingMarker;
+  return true;
+}
+
+/**
  * Late-library retry for a substrate that fell back because no record was resident at build time.
  * Called from the renderer's per-frame marker sync while the boundary stays pending; resolves the
  * resident record again, swaps the octahedron for the ship's own stand-in, and drops the fallback
