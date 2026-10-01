@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e64d3e21b2deb6a31500ddd656aa60154489f0c125b43dace8a78812d5bd0366",
+  "contentHash": "5ef627bc45d242b625d489497d527e87a02a1143a591a4ee4cdddace5238cc7e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1490,7 +1490,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "db64ade69193850ea81592feffd3a12fb78c0c52df07fc0607a63a4cf4f6f124",
+      "sha256": "9d17234c129453beb358f94effc6274d354406b85e31c3bdc9679bf523107ce2",
       "uri": "pilots.json"
     }
   },
@@ -1947,7 +1947,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_gatling.glb"
   },
-  "runtimeHash": "2cacf349d546907fe7ddc484a86a8c83718d0df1e4950d38b5184dff8801c5b5",
+  "runtimeHash": "4ec59adac9bd496464dc6267fd6004012033b3130960ad3ddb74eff2e23fcaef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1ac8c49cfab51db716f1a9ca9280aec17c4b11dc5149cfec88fb0a6d1e7fbcc2",
+  "contentHash": "fa15644a3a8ae2d649bb30807a42fc5585b1d03ffe2d5bac78a6bb94a3df6881",
   "dynamicGroups": [
     {
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-hook-drive-core.dynamic",
@@ -3387,7 +3387,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "db64ade69193850ea81592feffd3a12fb78c0c52df07fc0607a63a4cf4f6f124",
+      "sha256": "9d17234c129453beb358f94effc6274d354406b85e31c3bdc9679bf523107ce2",
       "uri": "pilots.json"
     }
   },
@@ -4831,7 +4831,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb"
   },
-  "runtimeHash": "698bd9b3eaf25d367db49339a395d71543bd510bd852630c59b50b62f5e59aec",
+  "runtimeHash": "2a14fbec5ec85bd24305dd4f1f6c462c6978ceef1d02b7fba718bf3cb0b577af",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

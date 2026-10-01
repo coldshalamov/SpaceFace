@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "80f27bfbd0b869521d44bb802f2b89007a4fe64c4194224ca4a66cb709bd0ee3",
+  "contentHash": "5759a6ae5d66e3a47c8cf5e28e089cfa5d2faa484aee59dd80942710877eb679",
   "dynamicGroups": [
     {
       "id": "sf.render.prospector-skiff.node.lod0-hook-drive-core.dynamic",
@@ -4904,7 +4904,7 @@
     },
     "sourceManifest": {
       "bytes": 197727,
-      "sha256": "db64ade69193850ea81592feffd3a12fb78c0c52df07fc0607a63a4cf4f6f124",
+      "sha256": "9d17234c129453beb358f94effc6274d354406b85e31c3bdc9679bf523107ce2",
       "uri": "pilots.json"
     }
   },
@@ -7060,7 +7060,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
-  "runtimeHash": "fc96444b9c9d19585226f5099705bd433884a00a782ec04cad165b5d8f757a73",
+  "runtimeHash": "042fb0a160716e96ac743b9e8c031a4b2b69e1c2f4458c4b49a48c3b718b6800",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
