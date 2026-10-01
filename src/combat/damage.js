@@ -192,6 +192,10 @@ export function createDamageRouter(context, statusService, options = {}) {
     const impulseResult = applyImpulse(target, attacker, packet, input, origin);
     syncCombatantBounds(target, runtime);
     const after = snapshotVitals(target, runtime);
+    // One scratch record per hit — the bus hands this object to every listener synchronously
+    // and the only deferred consumer (presentationOrchestrator._emitCue) snapshots top-level
+    // fields on entry. Nested fields stay fresh-per-emit or externally owned (channels, before,
+    // after, pos/approach/normal, origin), so no one sees a rewritten sub-object.
     const totalApplied = shieldDamage + armorDamage + subsystemDamage + hullDamage;
     const result = {
       ok: true,
@@ -290,39 +294,39 @@ export function createDamageRouter(context, statusService, options = {}) {
       }
       const empHit = isEmpDamagePacket(packet, origin);
       const weaponId = origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null;
-      bus.emit('combat:damage', {
-        targetId: target.id,
-        attackerId: result.attackerId,
-        amount: rawTotal,
-        rawTotal,
-        applied: totalApplied,
-        type: dominantChannel(packet.channels, model.channelOrder),
-        damageType: empHit ? 'emp' : null,
-        emp: empHit,
-        channels: { ...packet.channels },
-        shieldDamage,
-        armorDamage,
-        hullDamage,
-        subsystemDamage,
-        before,
-        after,
-        shieldHit: shieldDamage > 0,
-        armorHit: armorDamage > 0,
-        hullHit: hullDamage > 0,
-        dominantLayer: result.dominantLayer,
-        brokeShield: shieldBroke,
-        shieldAbsorbed: shieldDamage > 0,
-        isPlayer: target.id === state.playerId,
-        pos: packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z },
-        approach: packet.hit && packet.hit.approach || null,
-        normal: packet.hit && packet.hit.normal || null,
-        factionId: target.factionId || null,
-        factionLawful,
-        targetHostileToPlayer,
-        subsystemId,
-        origin,
-        weaponId,
-      });
+      const dp = _damageEmitPayload;
+      dp.targetId = target.id;
+      dp.attackerId = result.attackerId;
+      dp.amount = rawTotal;
+      dp.rawTotal = rawTotal;
+      dp.applied = totalApplied;
+      dp.type = dominantChannel(packet.channels, model.channelOrder);
+      dp.damageType = empHit ? 'emp' : null;
+      dp.emp = empHit;
+      dp.channels = { ...packet.channels };
+      dp.shieldDamage = shieldDamage;
+      dp.armorDamage = armorDamage;
+      dp.hullDamage = hullDamage;
+      dp.subsystemDamage = subsystemDamage;
+      dp.before = before;
+      dp.after = after;
+      dp.shieldHit = shieldDamage > 0;
+      dp.armorHit = armorDamage > 0;
+      dp.hullHit = hullDamage > 0;
+      dp.dominantLayer = result.dominantLayer;
+      dp.brokeShield = shieldBroke;
+      dp.shieldAbsorbed = shieldDamage > 0;
+      dp.isPlayer = target.id === state.playerId;
+      dp.pos = packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z };
+      dp.approach = packet.hit && packet.hit.approach || null;
+      dp.normal = packet.hit && packet.hit.normal || null;
+      dp.factionId = target.factionId || null;
+      dp.factionLawful = factionLawful;
+      dp.targetHostileToPlayer = targetHostileToPlayer;
+      dp.subsystemId = subsystemId;
+      dp.origin = origin;
+      dp.weaponId = weaponId;
+      bus.emit('combat:damage', dp);
       if (empHit) {
         bus.emit('combat:emp', {
           targetId: target.id,
@@ -499,6 +503,22 @@ export function createDamageRouter(context, statusService, options = {}) {
 // ordinary ships and directionless damage (DoTs, fields) route exactly as before. Pure: no writes,
 // no RNG, no wall clock — the same hit geometry always yields the same factor.
 const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
+
+// Per-hit 'combat:damage' record — refilled every accepted packet. Listeners consume it
+// synchronously within the emit; the deferred presentation lane snapshots top-level fields at
+// _emitCue entry. Every field must be rewritten on each use or removed; nested sub-objects
+// (channels, before, after, pos, approach, normal, origin) are never pooled.
+const _damageEmitPayload = {
+  targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
+  damageType: null, emp: false, channels: null,
+  shieldDamage: 0, armorDamage: 0, hullDamage: 0, subsystemDamage: 0,
+  before: null, after: null,
+  shieldHit: false, armorHit: false, hullHit: false, dominantLayer: null,
+  brokeShield: false, shieldAbsorbed: false, isPlayer: false,
+  pos: null, approach: null, normal: null,
+  factionId: null, factionLawful: false, targetHostileToPlayer: false,
+  subsystemId: null, origin: null, weaponId: null,
+};
 
 function resolveDirectionalArmor(target, attacker, packet) {
   const config = target && target.data && target.data.directionalArmor;

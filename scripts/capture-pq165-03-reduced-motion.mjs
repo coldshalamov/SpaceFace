@@ -196,7 +196,7 @@ function installCaptureHelpers() {
           pos: { x: pos.x - 40, z: pos.z },
           after: { shield: 40, shieldMax: 55, armor: 20, armorMax: 30, hull: 110, hullMax: 140 },
         });
-        bus.emit('collision', {
+        bus.emit('physics:impact', {
           aId: state.playerId,
           bId: 'rock-1',
           pos: { x: pos.x - 40, z: pos.z },

@@ -1045,14 +1045,7 @@ export const physics = {
     pushApart(a, b, dist, dx, dz, material.push);
     const impulseMag = impulse(a, b, nx, nz, material);
     _contactPosScratch.x = a.pos.x; _contactPosScratch.z = a.pos.z;
-    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
-    bus.emit('collision', {
-      aId: a.id,
-      bId: b.id,
-      impulse: Math.max(0.1, impulseMag * material.impactScale * 0.01),
-      dp: impactDp,
-      pos: { x: a.pos.x, z: a.pos.z },
-    });
+    emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
   },
 
   updateDockRange(state) {

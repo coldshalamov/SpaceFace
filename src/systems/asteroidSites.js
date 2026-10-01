@@ -56,6 +56,7 @@ import {
   normalizeSurveyRecord,
 } from './siteSurvey.js';
 import { getDressingRow, insertDressingRow } from '../world/dressingTable.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
@@ -529,6 +530,33 @@ export const asteroidSites = {
     const payloadDef = manifest.payloads.find((payload) => payload.id === operation.payloadId);
     const receiverDef = manifest.receivers.find((receiver) => receiver.id === operation.receiverId);
     if (!payloadDef || !receiverDef) return null;
+    // Called every beam tick — two worldRecordId lookups, not an O(entities) walk. When the
+    // byWorldRecordId index holds both holders, re-verify the site stamps on the hits and
+    // accept the indexed entity; transient duplicate holders (respawn repair windows) resolve
+    // to the index's holder, per the helper's documented contract. An unready index or a
+    // verification miss falls through to the old walk, which keeps the uniqueness guard.
+    const receiverWorldRecordId = `${manifest.worldObjectId}/component/${receiverDef.componentId}`;
+    const index = this.state.entityIndex;
+    const byWorldRecord = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    let payloadEntity = null;
+    let receiverEntity = null;
+    if (byWorldRecord) {
+      const payloadHit = indexedWorldRecordEntity(this.state, payloadDef.worldObjectId);
+      const receiverHit = indexedWorldRecordEntity(this.state, receiverWorldRecordId);
+      if (payloadHit && payloadHit.data && payloadHit.data.worldSiteId === manifest.id
+        && payloadHit.data.worldSitePayloadId === payloadDef.id) payloadEntity = payloadHit;
+      if (receiverHit && receiverHit.data && receiverHit.data.worldSiteId === manifest.id
+        && receiverHit.data.worldSiteComponentId === receiverDef.componentId) receiverEntity = receiverHit;
+      if (!payloadEntity || !receiverEntity) return null;
+      return {
+        payloadId: payloadDef.id,
+        payloadWorldObjectId: payloadDef.worldObjectId,
+        receiverId: receiverDef.id,
+        payloadPos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
+        receiverPos: { x: receiverEntity.pos.x, z: receiverEntity.pos.z },
+      };
+    }
     const payloadEntities = [];
     const receiverEntities = [];
     for (const entity of this.state.entities.values()) {
@@ -536,11 +564,11 @@ export const asteroidSites = {
       if (entity.data.worldRecordId === payloadDef.worldObjectId
         && entity.data.worldSitePayloadId === payloadDef.id) payloadEntities.push(entity);
       if (entity.data.worldSiteComponentId === receiverDef.componentId
-        && entity.data.worldRecordId === `${manifest.worldObjectId}/component/${receiverDef.componentId}`) receiverEntities.push(entity);
+        && entity.data.worldRecordId === receiverWorldRecordId) receiverEntities.push(entity);
     }
     if (payloadEntities.length !== 1 || receiverEntities.length !== 1) return null;
-    const payloadEntity = payloadEntities[0];
-    const receiverEntity = receiverEntities[0];
+    payloadEntity = payloadEntities[0];
+    receiverEntity = receiverEntities[0];
     return {
       payloadId: payloadDef.id,
       payloadWorldObjectId: payloadDef.worldObjectId,

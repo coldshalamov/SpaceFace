@@ -628,7 +628,7 @@ export function resolveCollisionCue(input) {
   const dp = Number.isFinite(src.dp) ? src.dp : Number.isFinite(src.impulse) ? src.impulse : 0;
   // Force axis for the pitch bend. Pre-solve closing speed is the receipt's true "how hard" —
   // dp is capped by the per-tick solver clamp, so a 150 WU/s ram can otherwise read as a 40 WU/s
-  // nudge. Receipts without a speed field (the legacy 'collision' event) fall back to the dp
+  // nudge. Receipts without a speed field fall back to the dp
   // tier axis. sqrt shaping matches the feel ramp so a scrape is a tick and a slam is a beat.
   const forceU = Number.isFinite(src.closingSpeed) && src.closingSpeed > 0
     ? Math.sqrt(clamp(
@@ -1903,11 +1903,10 @@ export const audio = {
       this.play('sfx_cm_chaff', { position: { x: pos.x, z: pos.z }, gain: 0.45 });
     });
     bus.on('combat:damage', (p) => this._onDamage(p));
-    // Contact sound rides whichever receipt the physics authority publishes: the live
-    // rapier-dynamic backend emits only `physics:impact`, while the custom path emits
-    // `physics:impact` AND legacy `collision` for the same contact in the same tick.
-    // `_admitCollisionCue`'s pair+tick window collapses that double-emit into one voice.
-    bus.on('collision', (p) => this._onCollision(p));
+    // Contact sound rides the physics authority's receipt: `physics:impact` is the single
+    // emit per contact on every backend (the legacy `collision` twin was retired — its
+    // fields were a strict subset of the pooled payload's, and the pair+tick dedupe window
+    // already collapsed the double-emit into one voice).
     bus.on('physics:impact', (p) => this._onCollision(p));
     // Optic lattice contacts: weapons settles bolt-vs-prism and publishes the response here.
     // Each response kind owns one cue, and a ring can light a whole lattice neighborhood in a
@@ -3406,11 +3405,10 @@ export const audio = {
     this.play('sfx_discovery_reveal', { gain: 0.7 });
   },
 
-  // One voice per contact. The live rapier-dynamic backend emits `physics:impact` only; the
-  // custom path emits `physics:impact` and legacy `collision` for the same pair in the same
-  // tick — the pair+tick window collapses that double-emit. A sustained grind re-arms only
-  // after the cooldown, unless the new contact is meaningfully harder (the same escalation
-  // law the feel hit-stop uses).
+  // One voice per contact.
+  // The pair+tick window collapses a sustained grind's repeat receipts: the same pair can
+  // re-contact every tick while pinned, and re-arms only after the cooldown, unless the new
+  // contact is meaningfully harder (the same escalation law the feel hit-stop uses).
   _admitCollisionCue(p) {
     if (!this._collisionCueContacts) this._collisionCueContacts = new Map();
     const tick = Number.isFinite(p && p.tick)
