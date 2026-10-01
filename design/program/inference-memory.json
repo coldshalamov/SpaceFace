@@ -74,45 +74,6 @@
   ],
   "units": [
     {
-      "id": "INFERENCE-23",
-      "date": "2026-09-26",
-      "wf": "WF-02",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "enemies.js authored occasional/defensiveOnly mount flags that resolveEnemyWeapon stripped, making every special secondary an always-on primary. The flags now survive spawn resolution and gate in the live fire service: reaver/jackal missiles arrive as a seeded lock-to-launch spike inside a deterministic sim-time window (lock warnings re-arm per window), EMP/plasma burst in windows, and cornered flak answers only inside its own close envelope. AI intent unchanged.",
-      "fingerprint": "verb=dodge,subject=occasional-volley,sector=any,layer=enemy-fire,tempo=spike,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "bb243366f",
-      "verification": "focused_green"
-    },
-    {
-      "id": "INFERENCE-24",
-      "date": "2026-09-26",
-      "wf": "WF-13",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "barks.js authored a complete distress situation for all 13 registers (52 dying-transmission lines) but BARK_SITUATIONS never listed it and no death path existed — every NPC hull exploded in radio silence. entity:killed now routes through _speakVictimDistress: the victim keys open once with its register last line, gated to kills the player caused, player-hostile victims, or deaths inside the table authority radius so far-side attrition stays silent. BARK_EVENT_SITUATIONS keeps the generated-WAV index contract frozen; barkVoice normalization accepts the event set so a mayday is not laundered into a scan receipt.",
-      "fingerprint": "verb=hear,subject=distress-bark,sector=any,layer=radio,tempo=combat-tail,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "8de1b6963",
-      "verification": "focused_green"
-    },
-    {
-      "id": "wf06-honest-market-events",
-      "date": "2026-09-27",
-      "wf": "WF-06",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Spontaneous market events now name a good the station actually trades — shortages and blockades hit its real inputs, surpluses its real outputs — and blockades cluster on faction war fronts while quiet high-security core berths stop crying piracy.",
-      "fingerprint": "verb=trade,subject=market-events,sector=helios-prime,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "3c477fca1",
-      "verification": "focused_green"
-    },
-    {
       "id": "moral-trap-midrun-reveal",
       "date": "2026-09-27",
       "wf": "WF-08",
@@ -1647,6 +1608,45 @@
       "commit": "0d7b86a39",
       "verification": "route_accepted",
       "evidence": "test/pq-210-01-stunt-evidence-cadence.test.mjs"
+    },
+    {
+      "id": "NXI-046",
+      "date": "2026-10-01",
+      "wf": "WF-03",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "no_lock is now a distinct refusal for reactive countermeasures; decoy buoy stays proactive",
+      "fingerprint": "verb=refuse,subject=countermeasure,domain=combat,layer=systems",
+      "references": [],
+      "integration": "live",
+      "commit": "fc36b6fb9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "NXI-047",
+      "date": "2026-10-01",
+      "wf": "WF-03",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "deploy clears only the defeated lineage; other attackers keep lock progress",
+      "fingerprint": "verb=break,subject=lock-lineage,domain=combat,layer=systems",
+      "references": [],
+      "integration": "live",
+      "commit": "fc36b6fb9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "NXI-048",
+      "date": "2026-10-01",
+      "wf": "WF-03",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "occupant generation rides locks and missiles; recycled ids restart/divert",
+      "fingerprint": "verb=pin,subject=target-generation,domain=combat,layer=weapons",
+      "references": [],
+      "integration": "live",
+      "commit": "fc36b6fb9",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
