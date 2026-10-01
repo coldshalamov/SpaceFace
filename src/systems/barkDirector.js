@@ -42,6 +42,28 @@ const PLAYER_TEAM = 0;
 export const POST_COMBAT_SILENCE_S = 8.0;
 export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
+
+/** One line in the contestant's register. Null when the event is not a contest. */
+export function npcCounterplayBark(payload) {
+  if (!payload || payload.actorId == null) return null;
+  const role = payload.role === 'ace' ? 'ace' : 'specialist';
+  const text = role === 'ace'
+    ? 'Ace on your line. Cutting it.'
+    : 'Specialist on your line. Cutting it.';
+  return { role, text, actorId: payload.actorId };
+}
+
+/** At most one contest bark per ambient gap. */
+export function admitNpcCounterplayBark(host, payload, now) {
+  const bark = npcCounterplayBark(payload);
+  if (!bark || !host) return null;
+  const t = Number(now) || 0;
+  if (host._npcCounterplayAt != null && t - host._npcCounterplayAt < AMBIENT_GAP_STEP_S) return null;
+  host._npcCounterplayAt = t;
+  if (!Array.isArray(host._npcCounterplayBarks)) host._npcCounterplayBarks = [];
+  host._npcCounterplayBarks.push(bark);
+  return bark;
+}
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
 export const BODY_NEAR_MISS_RADIUS_WU = 70;
@@ -341,6 +363,14 @@ export const barkDirector = {
       this.bus.on('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
+      this._onNpcCounterplay = (payload) => {
+        const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
+        const voice = this.helpers && this.helpers.voice;
+        if (bark && voice && typeof voice.say === 'function') {
+          voice.say({ channel: 'bark', text: bark.text, kind: bark.role, ttl: 3, id: bark.actorId });
+        }
+      };
+      this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       this.bus.on('physics:impact', this._onBodyImpact);
     }
@@ -1272,6 +1302,7 @@ export const barkDirector = {
       if (this._onAdministrativeRouting) this.bus.off('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
+      if (this._onNpcCounterplay) this.bus.off('massline:npcCounterplay', this._onNpcCounterplay);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
     }

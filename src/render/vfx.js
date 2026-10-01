@@ -107,6 +107,7 @@ import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
 import { readCustomsWeir } from '../presentation/customsWeir.js';
 import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
 import {
+  broadcastDishBeatRecord,
   createStationSideEventVfxFrameScratch,
   resolveStationSideEventVfxProfile,
   STATION_SIDE_EVENT_VFX_CAPACITY,
@@ -2450,6 +2451,17 @@ export const vfx = {
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
     add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
+    add('station:broadcastTic', (p) => {
+      const rec = broadcastDishBeatRecord(p);
+      if (!rec) return;
+      this._onStationSideEvent({
+        kind: 'sensor_sweep',
+        eventId: `broadcast:${rec.stationId}:${rec.tic}`,
+        stationId: rec.stationId,
+        from: rec.pos,
+        to: rec.pos,
+      });
+    });
     add('ship:thrust', (p) => this._onThrust(p));
     add('ship:boostStart', (p) => this._onBoost(p, true));
     add('ship:boostStop', (p) => this._onBoost(p, false));
