@@ -6941,6 +6941,7 @@ export async function retryAuthoredPartLibrary(renderer, options = {}) {
 async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive, prefetchedLibrary = null) {
   let swapped = false;
   let authored = null;
+  let installedPreparedDisposer = null;
   try {
     if (!mayComposeAuthoredShipLive({
       ...options,
@@ -6989,7 +6990,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       return false;
     }
     registerPreparedAuthoredAdmission(scene, boundary, authored);
-    const installedPreparedDisposer = options.deferBoundaryPublication === true
+    installedPreparedDisposer = options.deferBoundaryPublication === true
       ? installPreparedBoundaryDisposer(boundary, () => (
         disposePreparedShipBoundaryResources(boundary, authored)
       ))
@@ -7189,7 +7190,11 @@ function installPreparedBoundaryDisposer(boundary, dispose) {
     if (completion) return completion;
     completion = Promise.resolve().then(dispose).then(
       (result) => {
-        delete boundary.userData.__disposePreparedAuthoredBoundary;
+        // A newer run may have re-armed the slot while this wrapper's completion settled —
+        // only delete the hook this install owns, never a replacement's.
+        if (boundary.userData.__disposePreparedAuthoredBoundary === installed) {
+          delete boundary.userData.__disposePreparedAuthoredBoundary;
+        }
         return result !== false;
       },
       (error) => {
