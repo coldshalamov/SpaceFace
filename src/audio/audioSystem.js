@@ -43,6 +43,7 @@ import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue } from '../ui/captions.js';
+import { pointInsideWantedSearch, readWantedSearchVolume, stepWantedSearchEdge } from '../presentation/wantedSearchVolume.js';
 import {
   createEnvironmentMixRuntime,
   resolveEnvironmentClass,
@@ -1064,6 +1065,28 @@ export function recipeForWeapon(weaponId) {
 // Fixed so a test can pin the attenuation; the handler must not duck music.
 export const CLAIM_RAID_WARNING_GAIN = 0.35;
 
+// INST-28. Leave the search ring on the falling clear sting; re-enter on the alert voice.
+export const WANTED_SEARCH_EDGE_CUES = Object.freeze({
+  enter: 'sfx_wanted_alert',
+  leave: 'sfx_wanted_clear',
+});
+
+// INST-29. Berth work uses the dock voices already authored for that place.
+export const SERVICE_BERTH_CUES = Object.freeze({
+  started: 'sfx_dock_clunk',
+  aborted: 'sfx_undock_release',
+});
+
+// INST-31. Three distinct existing recipes. Not the field-deploy accessibility voices.
+export const UNIQUE_LOOT_CUES = Object.freeze({
+  'uniqueLoot:choirBellPulse': 'sfx_eighth_bell_strike',
+  'uniqueLoot:nestbreakerSplit': 'sfx_mining_fracture_break',
+  'uniqueLoot:paleCoilBlink': 'sfx_scan_pulse',
+});
+
+// INST-32. A revealed build is the scan-resolve voice, once per target.
+export const BUILD_IDENTITY_REVEAL_CUE = 'sfx_scan_pulse';
+
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'moment.stinger': 'sfx_moment_stinger',
@@ -1957,6 +1980,12 @@ export const audio = {
     // INST-27: a bastion's raid warning uses the wanted-alert voice quietly.
     // One play per event. It does not duck the bed — urgency without a menu beep.
     bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
+    bus.on('service:started', () => this._onServiceBerthCue('started'));
+    bus.on('service:aborted', () => this._onServiceBerthCue('aborted'));
+    for (const eventName of Object.keys(UNIQUE_LOOT_CUES)) {
+      bus.on(eventName, () => this._onUniqueLootCue(eventName));
+    }
+    bus.on('buildIdentity:revealed', (p) => this._onBuildIdentityRevealed(p));
     bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
     bus.on('poi:discovered', (p) => this._onPoiDiscovered(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
@@ -4712,6 +4741,8 @@ export const audio = {
     this._clearDeferred();
     this._endDesiredLoops();
     this._reconcileDockedState(forceUndock);
+    rt._wantedSearchInside = null;
+    if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
   },
 
   _onDocked(p) {
@@ -4747,6 +4778,44 @@ export const audio = {
   _onClaimRaidWarning(payload) {
     if (!payload) return;
     this.play('sfx_wanted_alert', { gain: CLAIM_RAID_WARNING_GAIN });
+  },
+
+  _stepWantedSearchAudio() {
+    const state = this.state;
+    if (!state) return;
+    const volume = readWantedSearchVolume(state);
+    const player = state.entities && state.playerId != null && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(volume && player && player.pos
+      && pointInsideWantedSearch(volume, player.pos.x, player.pos.z));
+    const rt = this.rt || (this.rt = {});
+    const step = stepWantedSearchEdge(rt._wantedSearchInside, inside);
+    rt._wantedSearchInside = step.inside;
+    if (step.edge === 'leave') this.play(WANTED_SEARCH_EDGE_CUES.leave, { gain: 0.45 });
+    else if (step.edge === 'enter') this.play(WANTED_SEARCH_EDGE_CUES.enter, { gain: 0.4 });
+  },
+
+  _onServiceBerthCue(which) {
+    const id = SERVICE_BERTH_CUES[which];
+    if (!id) return;
+    this.play(id, { gain: which === 'started' ? 0.4 : 0.35 });
+  },
+
+  _onUniqueLootCue(eventName) {
+    const id = UNIQUE_LOOT_CUES[eventName];
+    if (!id) return;
+    this.play(id, { gain: 0.5 });
+  },
+
+  _onBuildIdentityRevealed(payload) {
+    if (!payload || payload.entityId == null) return;
+    const rt = this.rt || (this.rt = {});
+    const heard = rt._buildIdentityHeard || (rt._buildIdentityHeard = new Set());
+    const key = String(payload.entityId);
+    if (heard.has(key)) return;
+    heard.add(key);
+    this.play(BUILD_IDENTITY_REVEAL_CUE, { gain: 0.45 });
   },
 
   // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
@@ -5800,6 +5869,7 @@ export const audio = {
   _frame() {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
+    this._stepWantedSearchAudio();
     const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
     const now = ctx.currentTime;
 

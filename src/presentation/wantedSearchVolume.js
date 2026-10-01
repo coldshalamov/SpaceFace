@@ -18,3 +18,23 @@ export function readWantedSearchVolume(state) {
     opacity: 0.22,
   };
 }
+
+/** True when a world point sits inside the search ring. A missing volume is outside. */
+export function pointInsideWantedSearch(volume, x, z) {
+  if (!volume || !(volume.radius > 0)) return false;
+  const dx = (Number(x) || 0) - (Number(volume.x) || 0);
+  const dz = (Number(z) || 0) - (Number(volume.z) || 0);
+  return dx * dx + dz * dz <= volume.radius * volume.radius;
+}
+
+/**
+ * One edge per crossing. The first sample only latches, so spawning inside the ring
+ * does not play an enter cue. `previousInside` null means "not yet observed".
+ */
+export function stepWantedSearchEdge(previousInside, inside) {
+  const now = !!inside;
+  if (previousInside == null) return { inside: now, edge: null };
+  if (previousInside && !now) return { inside: now, edge: 'leave' };
+  if (!previousInside && now) return { inside: now, edge: 'enter' };
+  return { inside: now, edge: null };
+}
