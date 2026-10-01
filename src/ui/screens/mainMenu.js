@@ -78,6 +78,11 @@ function nav(ctx, method, arg) {
 function readSaveIndex(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
   if (sys) {
+    // Index cards only: the menu's per-render read must never touch blob bytes. The save
+    // system republishes the validated merged index under 'save:slotsValidated' (re-render
+    // below) — a stale card in that window costs the same click-time revalidation Continue
+    // always does.
+    if (typeof sys.listSlotsIndexCards === 'function') { try { return normalizeSlots(sys.listSlotsIndexCards()); } catch (e) {} }
     if (typeof sys.listSlots === 'function') { try { return normalizeSlots(sys.listSlots()); } catch (e) {} }
     if (sys.index && typeof sys.index === 'object') { try { return normalizeSlots(sys.index); } catch (e) {} }
   }
@@ -490,7 +495,7 @@ export const mainMenuScreen = {
     // shared-store sync and a completed save both re-read the index.
     this._offBus = [];
     if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
-      for (const evt of ['save:store-synced', 'save:completed']) {
+      for (const evt of ['save:store-synced', 'save:completed', 'save:slotsValidated']) {
         const off = ctx.bus.on(evt, () => { if (refs) this._render(ctx); });
         if (typeof off === 'function') this._offBus.push(off);
       }

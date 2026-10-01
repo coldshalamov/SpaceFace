@@ -1212,7 +1212,9 @@ export const save = {
       };
     }
     const t = nowMs();
-    this._updateIndex(slot, envelope, json);
+    this._updateIndex(slot, envelope, json,
+      backupCreated && previousPrepared && previousPrepared.env
+        ? { raw: previousRaw, env: previousPrepared.env } : null);
     indexMs = nowMs() - t;
     return {
       ok: true,
@@ -1332,7 +1334,7 @@ export const save = {
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
-  _updateIndex(slot, envelope, raw = null) {
+  _updateIndex(slot, envelope, raw = null, recoveryMeta = null) {
     try {
       // The fallback scanner is for Continue/list repair, not the write hot path. Re-validating every
       // primary and recovery envelope here made one autosave pay an O(all save bytes) index tax.
@@ -1340,12 +1342,13 @@ export const save = {
       // The card itself is the envelope just written. Live credits, sector, and objectives can move
       // during the chunked encode, and the slot list prefers this card when the timestamps tie.
       const idx = normalizeSlotIndex(this._readIndex());
+      const sectorNameOf = (sectorId) => {
+        const known = sectorId && this.state && this.state.world && this.state.world.sectors
+          && this.state.world.sectors[sectorId];
+        return known && (known.name || known.id) || '';
+      };
       const fromFile = envelope && envelope.data
-        ? slotCardFromEnvelopeData(slot, envelope, (sectorId) => {
-          const known = sectorId && this.state && this.state.world && this.state.world.sectors
-            && this.state.world.sectors[sectorId];
-          return known && (known.name || known.id) || '';
-        })
+        ? slotCardFromEnvelopeData(slot, envelope, sectorNameOf)
         : null;
       const card = fromFile || liveSlotSummary(slot, envelope, this.state);
       // Fingerprint the exact bytes just verified by the write path. The fallback scan can then
@@ -1353,6 +1356,13 @@ export const save = {
       // foreign writer) fails the hash and falls back to the full validate walk, so the
       // corruption-hiding contract is unchanged for every blob the hash does not cover.
       if (card && typeof raw === 'string') card._blobHash = fnv1a(raw);
+      // Same fingerprint for the recovery copy this write just rotated in: its bytes are already
+      // prepared here, so the scan can advertise the backup after one hash instead of a re-parse.
+      if (card && recoveryMeta && typeof recoveryMeta.raw === 'string') {
+        card._recoveryBlobHash = fnv1a(recoveryMeta.raw);
+        const recoveryCard = slotCardFromEnvelopeData(slot, recoveryMeta.env, sectorNameOf);
+        if (recoveryCard) card._recoveryCard = recoveryCard;
+      }
       idx[slot] = card;
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
     } catch (err) { /* index is best-effort; never fail a save over it */ }
@@ -1416,9 +1426,8 @@ export const save = {
     const indexed = normalizeSlotIndex(this._readIndex());
     // The signature walk already enumerated every save key and read every blob this tick —
     // hand the raws forward so the two scans never touch localStorage again.
-    const scanHashes = new Map();
-    const scanned = this._scanStoredSlots(indexed, raws, scanHashes);
-    const recovered = this._scanRecoverySlots(scanned, raws);
+    const scanned = this._scanStoredSlots(indexed, raws);
+    const recovered = this._scanRecoverySlots(indexed, scanned, raws);
     const merged = mergeSlotIndexes(indexed, scanned);
     for (const slot in recovered) {
       merged[slot] = Object.assign({}, merged[slot] || {}, recovered[slot], {
@@ -1431,34 +1440,165 @@ export const save = {
     for (const slot in merged) {
       if (!scanned[slot] && !recovered[slot]) delete merged[slot];
     }
-    // _blobHash is scan-internal bookkeeping — never publish it on slot cards.
+    // _blobHash/_recovery* are scan-internal bookkeeping — never publish them on slot cards.
     for (const slot in merged) {
-      if (merged[slot] && merged[slot]._blobHash !== undefined) {
-        merged[slot] = Object.assign({}, merged[slot]);
+      const m = merged[slot];
+      if (m && (m._blobHash !== undefined || m._recoveryBlobHash !== undefined || m._recoveryCard !== undefined)) {
+        merged[slot] = Object.assign({}, m);
         delete merged[slot]._blobHash;
+        delete merged[slot]._recoveryBlobHash;
+        delete merged[slot]._recoveryCard;
       }
     }
-    this._slotIndexCache = { sig, merged };
-    this._maybeSpeculateContinuePrepare(sig, merged, raws, scanHashes);
+    this._slotIndexCache = { sig, merged, authoritative: true };
+    this._maybeSpeculateContinuePrepare(sig, merged, raws);
     return { ...merged };
+  },
+
+  // Menu-visible slot cards without blob validation: index entries whose primary key still
+  // exists, plus recovery-only slots via the rotation-stamped recovery card. O(key names), no
+  // getItem — the authoritative scan still gates Continue/Save&Load, so a stale card only ever
+  // costs the same click-time fallthrough the 'Checking saves' window already accepts. First
+  // call per write generation kicks an async validation pass that demotes unverifiable cards.
+  listSlotsIndexCards() {
+    if (typeof localStorage === 'undefined') return {};
+    installSaveStoreWriteTracking();
+    const sig = 'gen:' + _saveStoreGeneration;
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { ...cache.merged };
+    const indexed = normalizeSlotIndex(this._readIndex());
+    const out = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || key === INDEX_KEY) continue;
+        if (key.startsWith(LS_PREFIX)) {
+          const slot = key.slice(LS_PREFIX.length);
+          const card = indexed[slot];
+          if (card) out[slot] = card;
+        } else if (key.startsWith(RECOVERY_PREFIX)) {
+          const slot = key.slice(RECOVERY_PREFIX.length);
+          const card = indexed[slot];
+          if (card && card._recoveryCard && !out[slot]) {
+            out[slot] = Object.assign({}, card._recoveryCard, {
+              slot, recoveryAvailable: true, integrity: 'recovery',
+            });
+          }
+        }
+      }
+    } catch (err) { /* enumeration is best-effort */ }
+    for (const slot in out) {
+      const m = out[slot];
+      out[slot] = Object.assign({}, m);
+      delete out[slot]._blobHash;
+      delete out[slot]._recoveryBlobHash;
+      delete out[slot]._recoveryCard;
+    }
+    this._scheduleSlotIndexValidation(sig);
+    return out;
+  },
+
+  // Once per write generation: verify every stored blob off the menu's critical path. Hash-
+  // trusted cards skip the worker entirely; untrusted bytes get a verdict-only worker meta.
+  // Survivors keep their index card; failures are demoted from the published cache.
+  _scheduleSlotIndexValidation(sig) {
+    if (this._slotIndexValidationSig === sig) return;
+    this._slotIndexValidationSig = sig;
+    (async () => {
+      try {
+        if (typeof localStorage === 'undefined') return;
+        const indexed = normalizeSlotIndex(this._readIndex());
+        const verdicts = {};
+        const primaryRaws = new Map();
+        const jobs = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key || key === INDEX_KEY) continue;
+          const isRecovery = key.startsWith(RECOVERY_PREFIX);
+          if (!isRecovery && !key.startsWith(LS_PREFIX)) continue;
+          const slot = key.slice((isRecovery ? RECOVERY_PREFIX : LS_PREFIX).length);
+          if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+          const raw = localStorage.getItem(key);
+          if (typeof raw !== 'string' || !raw) continue;
+          const card = indexed[slot];
+          const kind = isRecovery ? 'recovery' : 'primary';
+          const trustHash = isRecovery
+            ? (card && card._recoveryBlobHash)
+            : (card && card._blobHash);
+          if (typeof trustHash === 'string' && fnv1a(raw) === trustHash) {
+            verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: true });
+            continue;
+          }
+          if (!isRecovery) primaryRaws.set(slot, raw);
+          jobs.push(Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((v) => {
+            verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: !!(v && v.ok) });
+          }).catch(() => {
+            verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: false });
+          }));
+        }
+        await Promise.all(jobs);
+        // A newer write generation may have landed while the worker walked — republish under
+        // the current signature only if it is still the one this pass validated.
+        installSaveStoreWriteTracking();
+        if (('gen:' + _saveStoreGeneration) !== sig) return;
+        const curIndexed = normalizeSlotIndex(this._readIndex());
+        const merged = {};
+        for (const slot in verdicts) {
+          const v = verdicts[slot];
+          const card = curIndexed[slot];
+          if (v.primary && card) {
+            const clean = Object.assign({}, card);
+            delete clean._blobHash;
+            delete clean._recoveryBlobHash;
+            delete clean._recoveryCard;
+            merged[slot] = clean;
+          } else if (v.primary) {
+            // Verified blob with no index card (foreign write): the meta verdict already
+            // proved it restorable, so this re-parse only rebuilds the display card.
+            const env = this._prepareEnvelopeMeta(primaryRaws.get(slot));
+            const meta = env && slotCardFromEnvelopeData(slot, env, null);
+            if (meta) merged[slot] = meta;
+          } else if (v.primary === false) {
+            if (v.recovery && card && card._recoveryCard) {
+              merged[slot] = Object.assign({}, card._recoveryCard, {
+                slot, recoveryAvailable: true, integrity: 'recovery',
+              });
+            }
+          } else if (v.recovery && card && card._recoveryCard) {
+            merged[slot] = Object.assign({}, card._recoveryCard, {
+              slot, recoveryAvailable: true, integrity: 'recovery',
+            });
+          }
+        }
+        const cache = this._slotIndexCache;
+        if (cache && cache.sig === sig && cache.authoritative) return;
+        this._slotIndexCache = { sig, merged, authoritative: false };
+        this._maybeSpeculateContinuePrepare(sig, merged, null);
+        if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:slotsValidated', {});
+      } catch (err) { /* validation is best-effort */ }
+    })();
   },
 
   // The newest occupied slot is almost certainly what Continue resolves on the next click —
   // start its worker prepare during the menu beat so the click doesn't pay the parse+checksum
   // roundtrip cold. Once per index signature; loadAsync consumes only a slot+bytes match.
-  _maybeSpeculateContinuePrepare(sig, merged, raws, scanHashes = null) {
+  _maybeSpeculateContinuePrepare(sig, merged, raws) {
     try {
       if (!raws || typeof Worker !== 'function') return;
       const slot = selectLatestOccupiedSlot(merged);
       if (!slot) return;
-      const raw = raws.get(LS_PREFIX + slot);
+      const raw = raws ? raws.get(LS_PREFIX + slot)
+        : (typeof localStorage !== 'undefined' ? localStorage.getItem(LS_PREFIX + slot) : null);
       if (typeof raw !== 'string' || !raw) return;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig) return;
       this._speculativeContinuePrepare = {
         sig,
         slot,
-        blobHash: (scanHashes && scanHashes.get(slot)) || fnv1a(raw),
+        // Byte-identity is the staleness test — strictly stronger than the blobHash compare
+        // it replaces, and the click path resolves it via native string equality instead of
+        // rehashing a multi-MB blob on the main thread.
+        raw,
         promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
       };
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
@@ -1489,7 +1629,7 @@ export const save = {
     }
   },
 
-  _scanStoredSlots(indexed = {}, raws = null, scanHashes = null) {
+  _scanStoredSlots(indexed = {}, raws = null) {
     const out = {};
     if (raws == null && typeof localStorage === 'undefined') return out;
     try {
@@ -1511,11 +1651,7 @@ export const save = {
         // is never advertised — the Continue resolver depends on that hiding contract.
         const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
         if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string') {
-          const rawHash = fnv1a(raw);
-          // Hash computed anyway for the trust check — hand it to the Continue speculation so
-          // the same blob is not rehashed a second time in the same menu beat.
-          if (scanHashes) scanHashes.set(slot, rawHash);
-          if (rawHash === indexCard._blobHash) {
+          if (fnv1a(raw) === indexCard._blobHash) {
             const trusted = Object.assign({}, indexCard);
             delete trusted._blobHash;
             out[slot] = trusted;
@@ -1536,7 +1672,7 @@ export const save = {
     return out;
   },
 
-  _scanRecoverySlots(primarySlots = {}, raws = null) {
+  _scanRecoverySlots(indexed = {}, primarySlots = {}, raws = null) {
     const out = {};
     if (raws == null && typeof localStorage === 'undefined') return out;
     try {
@@ -1550,6 +1686,14 @@ export const save = {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
         if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
+        // The rotation stamps the recovery copy's fingerprint on the slot's index card, so a
+        // fresh-generation scan hash-compares instead of re-parsing a multi-MB backup.
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        if (indexCard && typeof indexCard._recoveryBlobHash === 'string' && typeof raw === 'string'
+            && fnv1a(raw) === indexCard._recoveryBlobHash && indexCard._recoveryCard) {
+          out[slot] = clonePlain(indexCard._recoveryCard);
+          continue;
+        }
         const env = this._prepareEnvelopeMeta(raw);
         if (!env) continue;
         const meta = slotCardFromEnvelopeData(slot, env, null);
@@ -1706,9 +1850,11 @@ export const save = {
       primaryRaw = localStorage.getItem(LS_PREFIX + best);
       backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
     } catch (err) { return null; }
-    const primary = await this._prepareEnvelopeMetaAsync(primaryRaw);
+    const [primary, backup] = await Promise.all([
+      this._prepareEnvelopeMetaAsync(primaryRaw),
+      this._prepareEnvelopeMetaAsync(backupRaw),
+    ]);
     if (primary.ok) return null;
-    const backup = await this._prepareEnvelopeMetaAsync(backupRaw);
     if (backup.ok) return null;
     return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
   },
@@ -3236,7 +3382,7 @@ export const save = {
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
     const specHit = spec && spec.slot === slot
-      && typeof raw === 'string' && spec.blobHash === fnv1a(raw);
+      && typeof raw === 'string' && spec.raw === raw;
     const primaryPromise = (specHit ? spec.promise : Promise.resolve(null))
       .then((prepared) => prepared || this._prepareEnvelopeStringAsync(raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture

@@ -157,7 +157,9 @@ async function boot() {
     const registry = createRegistry(ctx);
     ctx.registry = registry;
     const bootInitMetrics = await registry.initAsync({
-      budgetMs: 4,
+      // Each yield costs a rAF+task hop (~a frame); the loading shell owns the picture, so
+      // larger slices convert that scheduling overhead back into time-to-title.
+      budgetMs: 10,
       onProgress({ completed, total }) {
         bus.emit('game:loadingProgress', {
           id: 'boot-systems', progress: .20 + .72 * (total ? completed / total : 1), ceiling: .94,
@@ -537,16 +539,23 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     guard: runTransitionGuard,
     token: transitionToken,
     async prepareRun() {
+      // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
+      // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
+      enterLoadingMode(state, bus);
+      let cleared = 0;
       for (const e of [...state.entityList]) {
         clearEntityRuntime(e);
         bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
         if (!runTransitionGuard.isCurrent(transitionToken)) return;
+        if (++cleared % 16 === 0) {
+          await nextPaintSliced();
+          if (!runTransitionGuard.isCurrent(transitionToken)) return;
+        }
       }
       state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
       resetRunState(state, opts || {});
       resetCombatInputMode(state, registry);
-      enterLoadingMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Let the loading shell paint the "preparing" stage between the synchronous chunks —
       // the bar's smoothing loop only moves when the compositor gets a frame.
