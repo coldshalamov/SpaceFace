@@ -43884,7 +43884,7 @@
           13.260697
         ]
       },
-      "bytes": 785128,
+      "bytes": 839224,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -43979,6 +43979,14 @@
           "depthWrite": true,
           "doubleSided": false,
           "name": "Material_Armor_ivory",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
           "role": "opaqueHull"
         },
         {
@@ -44091,9 +44099,9 @@
         "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "61b5f1c1f70b407ddc2acacf93d25d49524d84ba836da761d8281fdacafe2a68",
-      "meshes": 25,
-      "nodes": 39,
+      "meshHash": "410d792d12c36525e26bd9f56d38d744d9b4b3b68b44088f1d1d90e9b91627c9",
+      "meshes": 36,
+      "nodes": 60,
       "note": null,
       "opening": null,
       "pivot": [
@@ -44417,7 +44425,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 33648,
+      "triangles": 35872,
       "unmeasuredHitVolumes": [
         "subsystem_tether_spool",
         "subsystem_transport_clamp"

@@ -150,28 +150,68 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   // the hatch, and the stow is gated on a deployed arm so a stray completion can't replay it.
   // Service payloads carry no entity id (yard jobs are always the player's) — the renderer
   // supplies the player id via playerEntityId.
-  // Both stow clips hold at rest (hold-ended) so they keep the rig parked after they finish —
-  // `state` (the newest-started clip) is therefore the live truth: 'serviceArm' means the arm is
-  // out, 'armorPeel' means the cap is raised.
-  const armOut = (controller) => controller.state === 'serviceArm';
+  // Arm/cap logical state is tracked in these sets, never on controller.state: both rigs share
+  // one bank whose hold-ended clips never leave state.clips, so 'latest' cannot tell arm truth
+  // from cap truth and dispatch order on service:completed would make the two gates mutually
+  // exclusive. A flag flips on dispatch and clears only when that rig's own stow/settle runs.
+  const armDeployedIds = new Set();
+  const capPeeledAt = new Map(); // entityId -> sim second the peel started
+  const SERVICE_GROUPS = ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow'];
+  const PEEL_S = 2.6; // armorPeel clip duration — a fix landing mid-peel settles instead.
   const onServiceStarted = (payload) => {
     if (!payload || payload.type !== 'repair') return;
-    dispatch('kestrel:serviceArm', playerId(), payload, (c) => c.state !== 'serviceArm');
+    const id = playerId();
+    if (id == null || armDeployedIds.has(id)) return;
+    armDeployedIds.add(id);
+    dispatch('kestrel:serviceArm', id, payload, () => true);
   };
   const onServiceDone = (payload) => {
-    dispatch('kestrel:serviceDone', playerId(), payload, armOut);
+    const id = playerId();
+    if (!armDeployedIds.delete(id)) return;
+    dispatch('kestrel:serviceDone', id, payload, () => true);
+  };
+  const onServiceAborted = (payload) => {
+    const id = playerId();
+    if (!armDeployedIds.delete(id)) return;
+    // An aborted job interrupts the deploy mid-flight — the designed stow's first keys assume
+    // full extension and would pop. Blend the service rig home from its live pose instead.
+    for (const controller of authoredMotionControllersFor(id)) {
+      try {
+        controller.settleGroups?.(0.9, simNow(), SERVICE_GROUPS);
+      } catch (error) {
+        console.warn('[authoredMotion] service:aborted settle rejected', error);
+      }
+    }
   };
   // ANI-07: the port shoulder cap peels on the first hull hit that reaches it and stays up as
   // the damage state; a finished repair re-seats it. Re-peeling needs the plate seated again
   // (a fresh hull hit while the plate is already loose does nothing new).
-  const peelUp = (controller) => controller.state === 'armorPeel';
   const onCombatDamage = (payload) => {
     if (!payload || payload.hullHit !== true) return;
-    dispatch('kestrel:armorPeel', payload.targetId, payload, (c) => !peelUp(c));
+    const id = payload.targetId;
+    if (id == null || capPeeledAt.has(id) || !authoredMotionControllersFor(id).length) return;
+    capPeeledAt.set(id, simNow());
+    dispatch('kestrel:armorPeel', id, payload, () => true);
   };
   const onRepairCompleted = (payload) => {
     if (!payload || payload.type !== 'repair') return;
-    dispatch('kestrel:armorFix', playerId(), payload, peelUp);
+    const id = playerId();
+    const peelStart = capPeeledAt.get(id);
+    if (peelStart === undefined) return;
+    capPeeledAt.delete(id);
+    if (simNow() - peelStart < PEEL_S) {
+      // The peel is still animating — armorStow's first key assumes the settled angle and
+      // would snap the cap; blend it home from its live pose instead.
+      for (const controller of authoredMotionControllersFor(id)) {
+        try {
+          controller.settleGroups?.(0.7, simNow(), ['kestrel_armor_cap']);
+        } catch (error) {
+          console.warn('[authoredMotion] armorFix settle rejected', error);
+        }
+      }
+      return;
+    }
+    dispatch('kestrel:armorFix', id, payload, () => true);
   };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
@@ -184,7 +224,7 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
     bus.on('ship:boostStop', onBoostStop),
     bus.on('service:started', onServiceStarted),
     bus.on('service:completed', onServiceDone),
-    bus.on('service:aborted', onServiceDone),
+    bus.on('service:aborted', onServiceAborted),
     bus.on('combat:damage', onCombatDamage),
     bus.on('service:completed', onRepairCompleted),
   ];

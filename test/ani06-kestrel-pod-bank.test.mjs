@@ -43,12 +43,15 @@ test('ANI-06 hatch swings ~104deg open, arm unfolds under it, and the stow parks
   // hatch hinge on the -X edge: blender rotY -> glTF rotZ (same axis family as the arm)
   const hatch = delta('serviceArm', 3.6, 'kestrel_pod_hatch');
   assert.ok(axisMag(hatch, 2) > Math.PI * 0.5, `hatch open ${axisMag(hatch, 2)} rad`);
-  // shoulder + elbow unfold: blender rotY -> glTF rotZ
+  // shoulder + elbow unfold: blender rotY -> glTF rotZ. Low flat reach aft, not a tall V:
+  // shoulder pitches ~55deg just clear of the opening, elbow counter-rotates ~105deg so the
+  // forearm lays horizontal aft over the pod's rear edge.
   const shoulder = delta('serviceArm', 3.6, 'kestrel_pod_arm_shoulder');
-  assert.ok(axisMag(shoulder, 2) > Math.PI * 0.45, `shoulder pitched ${axisMag(shoulder, 2)} rad`);
+  assert.ok(axisMag(shoulder, 2) > 0.8 && axisMag(shoulder, 2) < 1.15,
+    `shoulder pitched ${axisMag(shoulder, 2)} rad (~55deg — clear of the lid, stays low)`);
   const elbow = delta('serviceArm', 3.6, 'kestrel_pod_arm_elbow');
-  assert.ok(axisMag(elbow, 2) > 2.0 && axisMag(elbow, 2) < 2.6,
-    `elbow unbent ${axisMag(elbow, 2)} rad (forearm lays onto the work face)`);
+  assert.ok(axisMag(elbow, 2) > 1.6 && axisMag(elbow, 2) < 2.1,
+    `elbow counter-rotated ${axisMag(elbow, 2)} rad (~105deg — forearm flat aft, no tall V)`);
   assert.equal(clip('serviceArm').endMode, 'hold', 'service pose holds for the job duration');
   // stow returns every group to rest and HOLDS rest so the deployed hold can't re-claim them
   assert.equal(clip('serviceStow').endMode, 'hold');

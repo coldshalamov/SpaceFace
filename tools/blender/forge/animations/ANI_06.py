@@ -38,9 +38,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, '..')))
 import motion_bank  # noqa: E402
 
 RIG_ID = 'kestrel_pod'
-HATCH_RAD = math.radians(-100)   # lid swings up and over the -X edge (silhouetted, readable)
-SHOULDER_RAD = math.radians(100)  # folded -X-hanging chain pitches up through the opening
-ELBOW_RAD = math.radians(-137)    # forearm lays down past the knuckle — tip hovers the work face
+# Lid hinges on its +X (fore) edge and stands open at the pod's front edge — any aft-hung
+# pose would put the plate inside the arm's aft deploy plane and the forearm would clip it.
+HATCH_RAD = math.radians(100)
+# Low flat reach aft, not a tall inverted-V: the shoulder only pitches the folded chain
+# clear of the opening, then the elbow counter-rotates the forearm horizontal so the tip
+# lays back over the pod's aft edge — a compact work silhouette no longer than the pod.
+SHOULDER_RAD = math.radians(55)   # folded -X-hanging chain pitches up just clear of the lid
+ELBOW_RAD = math.radians(105)     # forearm counter-rotates flat aft — tip hovers the aft deck
 
 EVENTS = {
     'kestrel:serviceArm': 'serviceArm',
@@ -54,9 +59,9 @@ def register(ship, parts):
     The pod, band and hull are NOT in groups — only hatch + arm parts move, matching the
     reference where the green box stays welded to the shoulder.
     """
-    # Hinge on the hatch's -X (tail-side) edge — rotY swings the lid up and back past
-    # vertical so the open hatch reads as a plate stood against the hull, not an edge-on sliver.
-    ship.motion_group('kestrel_pod_hatch', pivot=(-2.7, 4.35, 1.92), objects=[parts['hatch']])
+    # Hinge on the hatch's +X (fore) edge — rotY swings the lid up to stand at the pod's front
+    # edge, out of the arm's aft deploy plane (an aft-hung lid is clipped by the forearm).
+    ship.motion_group('kestrel_pod_hatch', pivot=(-1.5, 4.35, 1.92), objects=[parts['hatch']])
     # Shoulder at the opening's +X edge inside the pod — the -X-hanging chain swings up out.
     ship.motion_group('kestrel_pod_arm_shoulder', pivot=(-1.7, 4.35, 1.55),
                       objects=[parts['arm_a']])
@@ -68,14 +73,14 @@ def register(ship, parts):
 def author(bank):
     """Keyframe deploy/stow on the pod rig (reference-aligned)."""
     arm = next(c for c in bank.clips if c.name == 'serviceArm')
-    for t, a in [(0.00, 0.0), (0.42, -0.9), (0.62, HATCH_RAD - 0.08), (0.78, HATCH_RAD)]:
+    for t, a in [(0.00, 0.0), (0.42, 0.9), (0.62, HATCH_RAD - 0.08), (0.78, HATCH_RAD)]:
         arm.key('kestrel_pod_hatch', t, rot=Euler((0.0, a, 0.0)))
     for t, a in [(0.00, 0.0), (0.72, 0.0), (1.55, SHOULDER_RAD * 0.82),
-                 (2.05, SHOULDER_RAD + 0.05), (2.30, SHOULDER_RAD - 0.02),
+                 (2.05, SHOULDER_RAD + 0.04), (2.30, SHOULDER_RAD - 0.015),
                  (2.60, SHOULDER_RAD)]:
         arm.key('kestrel_pod_arm_shoulder', t, rot=Euler((0.0, a, 0.0)))
     for t, a in [(0.00, 0.0), (1.10, 0.0), (1.90, ELBOW_RAD * 0.8),
-                 (2.30, ELBOW_RAD - 0.05), (2.60, ELBOW_RAD)]:
+                 (2.30, ELBOW_RAD + 0.04), (2.60, ELBOW_RAD)]:
         arm.key('kestrel_pod_arm_elbow', t, rot=Euler((0.0, a, 0.0)))
 
     stow = next(c for c in bank.clips if c.name == 'serviceStow')

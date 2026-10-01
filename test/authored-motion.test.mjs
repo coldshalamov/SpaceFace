@@ -219,3 +219,180 @@ test('installAuthoredMotionBus gates foreign pulses and replays', () => {
   assert.equal(controller.generation, 2);
   unbind();
 });
+
+// --- ANI-06/07 service-arm + armour-cap gating ---------------------------------
+
+const SERVICE_GROUPS_FLAT = ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow'];
+
+const SERVICE_BANK = {
+  schema: MOTION_BANK_SCHEMA,
+  rigId: 'kestrel_test',
+  sourceAssetId: 'SF_KESTREL_TEST',
+  sourceGlbSha256: '0'.repeat(64),
+  fps: 60,
+  bindings: [
+    { id: 'kestrel_pod_hatch', node: 'MOTION_KESTREL_POD_HATCH', parent: null,
+      restPose: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      requiredAtLod: [0] },
+    { id: 'kestrel_pod_arm_shoulder', node: 'MOTION_KESTREL_POD_ARM_SHOULDER', parent: null,
+      restPose: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      requiredAtLod: [0] },
+    { id: 'kestrel_pod_arm_elbow', node: 'MOTION_KESTREL_POD_ARM_ELBOW',
+      parent: 'kestrel_pod_arm_shoulder',
+      restPose: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      requiredAtLod: [0] },
+    { id: 'kestrel_armor_cap', node: 'MOTION_KESTREL_ARMOR_CAP', parent: null,
+      restPose: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      requiredAtLod: [0] },
+    { id: 'kestrel_dish', node: 'MOTION_KESTREL_DISH', parent: null,
+      restPose: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      requiredAtLod: [0] },
+  ],
+  clips: [
+    { name: 'serviceArm', durationS: 3.6, loop: false, endMode: 'hold',
+      channels: SERVICE_GROUPS_FLAT.map((group) => (
+        { group, path: 'translation', times: [0, 3.6], values: [0, 0, 0, 0, 0.5, 0] })) },
+    { name: 'serviceStow', durationS: 2.9, loop: false, endMode: 'hold',
+      channels: SERVICE_GROUPS_FLAT.map((group) => (
+        { group, path: 'translation', times: [0, 2.9], values: [0, 0.5, 0, 0, 0, 0] })) },
+    { name: 'armorPeel', durationS: 2.6, loop: false, endMode: 'hold',
+      channels: [
+        { group: 'kestrel_armor_cap', path: 'translation', times: [0, 2.6], values: [0, 0, 0, 0, 0.4, 0] },
+      ] },
+    { name: 'armorStow', durationS: 0.9, loop: false, endMode: 'hold',
+      channels: [
+        { group: 'kestrel_armor_cap', path: 'translation', times: [0, 0.9], values: [0, 0.4, 0, 0, 0, 0] },
+      ] },
+    { name: 'sweep', durationS: 1, loop: false, endMode: 'rest',
+      channels: [
+        { group: 'kestrel_dish', path: 'translation', times: [0, 1], values: [0, 0, 0, 0, 0.5, 0] },
+      ] },
+  ],
+  events: {
+    'kestrel:serviceArm': 'serviceArm',
+    'kestrel:serviceDone': 'serviceStow',
+    'kestrel:armorPeel': 'armorPeel',
+    'kestrel:armorFix': 'armorStow',
+    'scan:pulse': 'sweep',
+  },
+};
+
+function makeServiceBus() {
+  const handlers = new Map();
+  const bus = {
+    on: (type, fn) => {
+      const list = handlers.get(type) || [];
+      list.push(fn);
+      handlers.set(type, list);
+      return () => handlers.set(type, (handlers.get(type) || []).filter((f) => f !== fn));
+    },
+  };
+  const emit = (type, payload) => {
+    for (const fn of handlers.get(type) || []) fn(payload);
+  };
+  return { emit, bus };
+}
+
+function makeServiceRig() {
+  const root = new THREE.Object3D();
+  for (const name of ['MOTION_KESTREL_POD_HATCH', 'MOTION_KESTREL_POD_ARM_SHOULDER',
+    'MOTION_KESTREL_POD_ARM_ELBOW', 'MOTION_KESTREL_ARMOR_CAP', 'MOTION_KESTREL_DISH']) {
+    const pivot = new THREE.Object3D();
+    pivot.name = name;
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial());
+    pivot.add(mesh);
+    root.add(pivot);
+  }
+  return root;
+}
+
+test('service + armor gates are independent per channel on the shared bank', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 10;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  // Canonical flow: hull hit -> repair -> completion must fire BOTH stows, in either sub-order.
+  emit('combat:damage', { targetId: 'player-1', hullHit: true });
+  assert.ok(controller.clipActive('armorPeel'), 'peel dispatches on hull hit');
+  emit('service:started', { type: 'repair' });
+  assert.ok(controller.clipActive('serviceArm'), 'arm unfolds on repair start');
+  now = 14; // peel aged past its 2.6s deploy -> designed stow path, not a settle
+  emit('service:completed', { type: 'repair' });
+  assert.ok(controller.clipActive('serviceStow'), 'stow runs on completion');
+  assert.ok(controller.clipActive('armorStow'), 'armorFix still fires — the fix must not be gated by the just-started stow');
+  unbind();
+});
+
+test('hull hit during an active repair still stows the arm', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 20;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  emit('service:started', { type: 'repair' });
+  now = 21;
+  emit('combat:damage', { targetId: 'player-1', hullHit: true });
+  now = 25; // peel age 4s > 2.6s clip -> completed peel, so the fix runs the designed stow
+  emit('service:completed', { type: 'repair' });
+  assert.ok(controller.clipActive('serviceStow'), 'arm still stows — completion must not be lost to the peel ordering');
+  assert.ok(controller.clipActive('armorStow'), 'cap re-seats');
+  // a stray completion with nothing out is inert
+  controller.setState({ state: 'rest', startTimeS: 0 });
+  emit('service:completed', { type: 'repair' });
+  assert.equal(controller.state, 'rest');
+  unbind();
+});
+
+test('service:aborted blends the service rig home instead of snapping to the stow pose', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => 10, playerEntityId: () => 'player-1' });
+
+  // deploy mid-flight + a live dish sweep on another group
+  emit('service:started', { type: 'repair' });
+  emit('scan:pulse', { source: 'player-scanner', scannerId: 'player-1', seq: 1 });
+  emit('service:aborted', { type: 'repair' });
+  assert.ok(controller.clipActive('__settle__'), 'abort settles the service rig');
+  assert.ok(!controller.clipActive('serviceStow'), 'abort never runs the deploy-assuming stow');
+  assert.ok(controller.clipActive('sweep'), 'scoped settle leaves other rigs running');
+  // arm still counts as deployed until the settle lands? no — flag cleared at abort, so a
+  // following completion is inert.
+  emit('service:completed', { type: 'repair' });
+  unbind();
+});
+
+test('a repair completing mid-peel settles the cap from its live pose', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 30;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  emit('combat:damage', { targetId: 'player-1', hullHit: true });
+  now = 31; // peel age 1s < 2.6s clip — still animating, stow's first key would snap it
+  emit('service:completed', { type: 'repair' });
+  assert.ok(controller.clipActive('__settle__'), 'mid-peel fix blends the cap home');
+  assert.ok(!controller.clipActive('armorStow'), 'designed stow never runs mid-peel');
+  // and the next hull hit can peel again — the flag cleared with the fix
+  now = 40;
+  controller.setState({ state: 'rest', startTimeS: 40 });
+  emit('combat:damage', { targetId: 'player-1', hullHit: true });
+  assert.ok(controller.clipActive('armorPeel'), 'cap can peel again after a fix');
+  unbind();
+});

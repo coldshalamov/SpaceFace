@@ -137,6 +137,9 @@ def build():
     pod = F.box(s, 'RepairPod', (-1.45, 4.35, 1.2), (3.2, 1.9, 1.3), material='paint.green', bevel=0.08)
     band = F.box(s, 'RepairPodBand', (-0.6, 4.35, 1.2), (0.3, 2.0, 1.4), material='hazard', bevel=0.02)
     lid = F.box(s, 'RepairPodHatch', (-2.1, 4.35, 1.88), (1.2, 1.2, 0.08), material='paint2', bevel=0.01)
+    # Dark recess floor under the lid — when the hatch swings open the pod reads as hollow,
+    # not as a lid lifting off a solid green box. The folded arm sits just above this plate.
+    F.box(s, 'PodCavity', (-2.1, 4.35, 1.46), (1.14, 1.14, 0.1), material='dark', bevel=0.0)
     s.hook_part('HOOK_SECONDARY_POD', pod, band, lid)
 
     # ANI-06 proposed geometry: a compact two-joint service arm stowed INSIDE the pod under the

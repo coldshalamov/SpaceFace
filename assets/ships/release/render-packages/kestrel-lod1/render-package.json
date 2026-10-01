@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a1a4a3533eb59d8c4b87cfc266daaa8bd474cf17e1044e8aaa15c1cae6400d4a",
+  "contentHash": "fea13a73f803ab6b5116fa3cbb0c236638198b46466327c152f14183e1771ba0",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-drive-core.dynamic",
@@ -550,16 +550,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "196fbc1c20511e81efe8cb74fe7884f288a6028d9592592be396ec9df659d58d",
+      "geometryHash": "2851eee8aa8fbd4c9a77a49cd46893fd537b12f720db5d98141407da80b3fa81",
       "id": "sf.render.kestrel-lod1.mesh.lod1-armor.primitive.0",
-      "indexCount": 11598,
+      "indexCount": 11592,
       "indexed": true,
       "materialHash": "c51ab11e1351fa4ea0ffe236f4657593e2edb45097ce4e5eb4fcedb153b18ae2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3338
+      "vertexCount": 3335
     },
     {
       "bounds": {
@@ -900,16 +900,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e80e1e2c5ea9d071a252c1ea3a8b6f2652ef42209f195c5ad4d918532c675039",
+      "geometryHash": "e5f2c34285f6dba651b967d0a1f2a3af389847a92eb4f622b375a8d2b178114f",
       "id": "sf.render.kestrel-lod1.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 10434,
+      "indexCount": 10416,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3816
+      "vertexCount": 3807
     },
     {
       "bounds": {
@@ -925,32 +925,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27f83cde1b515f09f2946da5c272642417f8193fedd6954e20e8f93de28fb6bb",
+      "geometryHash": "984f3cd4294ba8d2148102b66af0ee2dbfc740f7414f121ba7104be720dd8fb4",
       "id": "sf.render.kestrel-lod1.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 6300,
+      "indexCount": 6336,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2171
+      "vertexCount": 2195
     },
     {
       "bounds": {
         "max": [
           3.993424892425537,
-          0.7580699467693922,
-          -3.400577293339256
+          0.7580688093060537,
+          -3.4005447716647756
         ],
         "min": [
-          0.5005035996437073,
-          0.621197149750078,
-          -5.798836006221291
+          0.5005616545677185,
+          0.6211982872134165,
+          -5.7987636237209665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fc4ca4135fb95ca0446bbfd965b45b7958d222b4678719c5ea3a019caba6472",
+      "geometryHash": "df83ea6b81e0451cdc21dd1fc38c24c0d614b5619be5e6acfd48f5617488dcac",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-armor-cap-hook-armor-port-armor.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -1039,18 +1039,18 @@
     {
       "bounds": {
         "max": [
-          -13.550974845536985,
-          1.3831815719604492,
-          -1.1432735919952393
+          -13.550976060912944,
+          1.3831658959388733,
+          -1.143296480178833
         ],
         "min": [
-          -13.639991760253906,
-          0.5556567907333374,
+          -13.639990545809269,
+          0.5556637346744537,
           -1.981439471244812
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9459a746bd751e1e2b8df75e08c159b63c3ef6c248face5814fb77469edc5a8",
+      "geometryHash": "0bdbd95f2d8e0b087a43482ed97f894554bdc032950ff83df04736f39e0ca8e0",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-0-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1064,18 +1064,18 @@
     {
       "bounds": {
         "max": [
-          -13.538984760642052,
-          2.0494286119937897,
-          0.41705521941185
+          -13.537992594763637,
+          2.049435943365097,
+          0.4170866310596466
         ],
         "min": [
-          -13.627981677651405,
-          1.4203660190105438,
-          -0.41708722710609436
+          -13.628007769584656,
+          1.4203734695911407,
+          -0.4170556962490082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65d2b6655dd51f91dc559a23d47fff81da1da8672f58d6df96d000220df8df74",
+      "geometryHash": "d3cb5b68bb3b75ddcbd4dfd163f8e31e18652129a0a33a3d33afa3e0c257ec58",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-1-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1089,18 +1089,18 @@
     {
       "bounds": {
         "max": [
-          -13.525988573208451,
-          1.3832119703292847,
-          1.9813649654388428
+          -13.525984646752477,
+          1.383173406124115,
+          1.9814070463180542
         ],
         "min": [
-          -13.616011627018452,
-          0.555639237165451,
-          1.143357753753662
+          -13.616015553474426,
+          0.5556308031082153,
+          1.143326759338379
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d1ea187b37a1e4528d913fd15860a6d5371b148b6696a9cade700f1a94c26f4",
+      "geometryHash": "5863f0a5e601d92c36ce821dc13986f3425965b36c67350b24785fd89993f515",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-2-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1109,23 +1109,23 @@
       "meshName": "LOD1_MOTION_KESTREL_IRIS_2_MechanicalDark",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 86
+      "vertexCount": 87
     },
     {
       "bounds": {
         "max": [
-          -13.550974845536985,
-          -0.5556567907333374,
-          1.981439471244812
+          -13.55097840318922,
+          -0.5556522607803345,
+          1.9813953638076782
         ],
         "min": [
-          -13.639991760253906,
-          -1.3831815719604492,
-          1.1432735919952393
+          -13.639988206326962,
+          -1.383213222026825,
+          1.143296480178833
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d887bc8cb2427761cac70414a529cb8ef8aaf06a1fe5ce5d70f367917d13f506",
+      "geometryHash": "598eafe8fc9d6cd0f6ed0248cc3d353f91d9eb212a11dbe5a1f90a6e93dc74a9",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-3-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1139,18 +1139,18 @@
     {
       "bounds": {
         "max": [
-          -13.538984760642052,
-          -1.4203660190105438,
-          0.41708722710609436
+          -13.537992594763637,
+          -1.4203734695911407,
+          0.4170556962490082
         ],
         "min": [
-          -13.627981677651405,
-          -2.0494286119937897,
-          -0.41705521941185
+          -13.628007769584656,
+          -2.049435943365097,
+          -0.4170866310596466
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22b4af67d51f7742ca9118ab6c137370bf7bad7a2617acb0b76a9a7ef3c70ec6",
+      "geometryHash": "4aa0ac1cbb20859a117a47f358b8dcb34218a855546742adbc7d228bb0e5d294",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-4-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1164,18 +1164,18 @@
     {
       "bounds": {
         "max": [
-          -13.525988573208451,
-          -0.555639237165451,
-          -1.143357753753662
+          -13.525984646752477,
+          -0.5556308031082153,
+          -1.143326759338379
         ],
         "min": [
-          -13.616011627018452,
-          -1.3832119703292847,
-          -1.9813649654388428
+          -13.616015553474426,
+          -1.383173406124115,
+          -1.9814070463180542
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33b6a2269e66fd2fe330ae0883a138419bf94a77e8ce7c6a201fe9e53262b18a",
+      "geometryHash": "8df02a980ad4d089ca7270831e1871395da0adea725644d35d1752c5e96dad8d",
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-5-mechanicaldark.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1184,7 +1184,7 @@
       "meshName": "LOD1_MOTION_KESTREL_IRIS_5_MechanicalDark",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-iris-5-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 86
+      "vertexCount": 87
     },
     {
       "bounds": {
@@ -2615,21 +2615,21 @@
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-motion-kestrel-armor-cap-hook-armor-port-armor",
       "localTransform": [
-        1.746460646390915,
+        1.7464316189289093,
         0,
         0,
         0,
         0,
-        1.746460646390915,
+        1.7464316189289093,
         0,
         0,
         0,
         0,
-        1.746460646390915,
+        1.7464316189289093,
         0,
-        -0.0030357539653778076,
+        -0.0030067265033721924,
         0.06963354349136353,
-        -1.1997065544128418,
+        -1.1996541023254395,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2644,21 +2644,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1.746460646390915,
+        1.7464316189289093,
         0,
         0,
         0,
         0,
-        1.746460646390915,
+        1.7464316189289093,
         0,
         0,
         0,
         0,
-        1.746460646390915,
+        1.7464316189289093,
         0,
-        2.246964246034622,
+        2.246993273496628,
         0.6896335482597351,
-        -4.599706649780273,
+        -4.599654197692871,
         1
       ]
     },
@@ -3434,7 +3434,7 @@
         0,
         0.5995264053344727,
         0,
-        0.6000238656997681,
+        -0.5999761819839478,
         -0.039999961853027344,
         0,
         1
@@ -3572,19 +3572,19 @@
       "sha256": "207667349013f9ccd390e026ed6ecc15b33ce90beedfe2ef13a23499a771ec90"
     },
     "sourceGlb": {
-      "bytes": 591328,
-      "sha256": "1d83f28e1b9fa8e31a8f12c04e1eb83be55dbabc5e42556e6a9a4aecfd91e9b3",
+      "bytes": 591732,
+      "sha256": "dc1852039308d11993e5ad2150f21f11956aa71f29af608f56d3c73d8d87cff0",
       "uri": "kestrel_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 202711,
-      "sha256": "54eb77c414585ccfb0b71ae11923f926e3a9668c80f0360c95c29c2a1ee73fa8",
+      "bytes": 212794,
+      "sha256": "63b64ff09d582d52f95ef35bcf41e05e14306d85acfa9821e3ba8667e11464e9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 865652,
-    "sha256": "6f7a659300099ffb09e778a8697c7274c3a801568ccfb3efaec8005c23e60edc",
+    "bytes": 865224,
+    "sha256": "4c0cb5a9aa55f444ad01533696edf8b7d36af44682da7b4a12f7637da7ca26bc",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4383,7 +4383,7 @@
           0,
           1,
           0,
-          -2.700000047683716,
+          -1.5,
           1.9199999570846558,
           -4.349999904632568,
           1
@@ -4400,7 +4400,7 @@
               1,
               0,
               0,
-              -2.700000047683716
+              -1.5
             ],
             [
               0,
@@ -5593,21 +5593,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.746460646390915,
+          1.7464316189289093,
           0,
           0,
           0,
           0,
-          1.746460646390915,
+          1.7464316189289093,
           0,
           0,
           0,
           0,
-          1.746460646390915,
+          1.7464316189289093,
           0,
-          2.246964246034622,
+          2.246993273496628,
           0.6896335482597351,
-          -4.599706649780273,
+          -4.599654197692871,
           1
         ],
         "name": "LOD1_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
@@ -6076,7 +6076,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
-  "runtimeHash": "cd2fb7202f894a29fe1967e94eb526298561de15de03151edb3c87ee619bff0e",
+  "runtimeHash": "8462c4e453eca9f4beadaa2a9911a9d62009eaf3e3e941acd30bb54dceea73a8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
