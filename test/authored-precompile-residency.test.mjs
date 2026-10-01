@@ -153,7 +153,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   });
 
   assert.equal(result.skipped, false);
-  assert.equal(result.retainedCanopyVariants, 19);
+  assert.equal(result.retainedCanopyVariants, 22);
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
   assert.ok(retainedVfxMaterialCount > 4, 'fixture must cover the retained VFX material family');
@@ -325,6 +325,26 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       roughnessMap: true, metalnessMap: true,
       transmission: 0, transparent: true, depthWrite: false,
       forceSinglePass: true, dithering: true, tangents: true,
+    },
+    // Non-canopy authored glass keeps authored transmission/BLEND programs: probes mint the
+    // shipped signatures verbatim, so transmission survives and no policy fields flip.
+    {
+      id: 'glass_trans', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0.65, transparent: false, depthWrite: true,
+      forceSinglePass: false, dithering: true, tangents: true,
+    },
+    {
+      id: 'glass_trans-uv1', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: 0.65, transparent: false, depthWrite: true,
+      forceSinglePass: false, dithering: true, tangents: true,
+    },
+    {
+      id: 'glass_blend-standard', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true,
+      transmission: undefined, transparent: true, depthWrite: true,
+      forceSinglePass: false, dithering: true, tangents: true,
     },
   ]);
   assert.deepEqual(getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });

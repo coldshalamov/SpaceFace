@@ -1028,8 +1028,61 @@ function addAuthoredCanopyPipelineWarmup(staging) {
         }
       },
     },
+    // Shipped glass that never reaches the canopy policy — names outside /canopy|cockpit.?glass/
+    // keep authored transmission or alpha-blend programs (GLB audit: cockpit glass = physical +
+    // transmission + DOUBLE_SIDED, with and without TEXCOORD_1; pelican/wasp window glass =
+    // standard + BLEND + DOUBLE_SIDED). Every existing probe mints the policy-converted key
+    // (transmission zeroed, forceSinglePass set), so these signatures would link cold at the
+    // first glass admission.
+    {
+      suffix: '_Glass',
+      skipPolicy: true,
+      layouts: ['trans', 'trans-uv1', 'blend-standard'],
+      make: (maps, axisId) => {
+        if (axisId === 'blend-standard') {
+          const material = new THREE.MeshStandardMaterial({
+            color: 0xd7edff,
+            metalness: 0,
+            roughness: 0.12,
+            side: THREE.DoubleSide,
+            transparent: true,
+            dithering: true,
+            map: baseColor,
+            normalMap: normal,
+            roughnessMap: surface,
+            metalnessMap: surface,
+            aoMap: surface,
+            emissiveMap: baseColor,
+          });
+          material.defines = { STANDARD: '' };
+          return material;
+        }
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xd7edff,
+          metalness: 0,
+          roughness: 0.12,
+          transmission: 0.65,
+          side: THREE.DoubleSide,
+          dithering: true,
+          map: baseColor,
+          normalMap: normal,
+          roughnessMap: surface,
+          metalnessMap: surface,
+          aoMap: surface,
+          emissiveMap: baseColor,
+        });
+        material.defines = { STANDARD: '', PHYSICAL: '' };
+        return material;
+      },
+      prepareGeometry: (geometry, axisId) => {
+        geometry.computeTangents();
+        if (axisId === 'trans-uv1' && geometry.attributes.uv) {
+          geometry.setAttribute('uv1', geometry.attributes.uv);
+        }
+      },
+    },
   ];
-  for (const { suffix, layouts, make, prepareGeometry } of classes) {
+  for (const { suffix, layouts, make, prepareGeometry, skipPolicy } of classes) {
     const classLayouts = Array.isArray(layouts) ? layouts : variants.map((variant) => variant.id);
     for (let i = 0; i < classLayouts.length; i++) {
       const id = classLayouts[i];
@@ -1037,7 +1090,7 @@ function addAuthoredCanopyPipelineWarmup(staging) {
       const { id: _variantId, ...maps } = variant || { id };
       const material = make(maps, id);
       material.name = `SF_Precompile_Canopy${suffix}_${id}`;
-      applyRealtimeCanopyPolicy(material);
+      if (skipPolicy !== true) applyRealtimeCanopyPolicy(material);
       const geometry = new THREE.PlaneGeometry(8, 5);
       if (typeof prepareGeometry === 'function') prepareGeometry(geometry, id);
       else geometry.computeTangents();
