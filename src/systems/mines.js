@@ -91,6 +91,16 @@ export const mines = {
     const ownerId = opts.ownerId == null ? null : opts.ownerId;
     if (ownerId != null && countOwnerMines(state, ownerId) >= MINE_OWNER_CAP) {
       if (this.bus) this.bus.emit('mines:capReached', { ownerId, cap: MINE_OWNER_CAP });
+      // FIGHT-07 — the player's refused press speaks through the voice floor and names the
+      // count; an NPC layer hitting its own cap stays silent (its verbs are not the player's UI).
+      if (ownerId === state.playerId && this.bus) {
+        this.bus.emit('voice:say', {
+          channel: 'alert',
+          id: 'mine-cap',
+          text: `Mine bay full — ${MINE_OWNER_CAP} already deployed`,
+          ttl: 2.5,
+        });
+      }
       return null;
     }
 
