@@ -1,3 +1,5 @@
+import { FIELD_JOB_SIGNATURE_CRAFT } from '../data/occupationalTrafficCraft.js';
+
 // Pure presentation grammar for the NPC job seam — "The Working Light" made visible.
 //
 // WHAT THIS IS: the read-only mapping from a job's (kind, phase, loaded) triple to the visual code a
@@ -308,6 +310,14 @@ const EXACT = Object.freeze({
   'patrol:transit': ON_THE_PIN,
   'patrol:approach': ON_THE_PIN,
   'patrol:hold': ON_THE_PIN,
+  // Inspection cutter: the same pin sweep a patrol shows. The sweep lamp is the scan.
+  // Not a new profile — a cutter that borrowed a freighter's burn would stop looking like law.
+  'cutter:transit': ON_THE_PIN,
+  'cutter:approach': ON_THE_PIN,
+  'cutter:hold': ON_THE_PIN,
+  'customs:transit': ON_THE_PIN,
+  'customs:approach': ON_THE_PIN,
+  'customs:hold': ON_THE_PIN,
   // Only a miner works a rock face; only a miner comes home under rock.
   'miner:work': BLIND_CONE,
   'miner:return': HOME_UNDER_ROCK,
@@ -356,6 +366,8 @@ export function resolveNpcJobSignature(kind, phase, loaded) {
   if (typeof phase !== 'string' || phase.length === 0) return null;
   const exact = EXACT[`${kind}:${phase}`];
   if (exact) return exact;
+  // Tanker included: a full hold is heavy_burn, an empty hold is clean_burn. Load picks
+  // the existing pair. There is no tanker profile.
   if (phase === 'transit' || phase === 'return') {
     return loaded ? HEAVY_BURN : CLEAN_BURN;
   }
@@ -371,6 +383,24 @@ export function resolveNpcJobSignaturePreferCue(kind, phase, loaded, cue) {
     const fromCue = NPC_JOB_SIGNATURE_PROFILES[cue];
     if (fromCue) return fromCue;
   }
+  return resolveNpcJobSignature(kind, phase, loaded);
+}
+
+/**
+ * Working light for a fielded tanker or inspection cutter.
+ * The tanker kind uses the load rule (heavy burn / clean burn). The cutter kind uses the
+ * pin sweep. Both results are entries of NPC_JOB_SIGNATURE_PROFILES — never a hull profile.
+ *
+ * @param {string} role traffic role — 'tanker' | 'customs' | 'cutter'
+ * @param {string} phase kernel phase
+ * @param {boolean} loaded hold is carrying
+ * @returns {object|null}
+ */
+export function resolveFieldedCraftSignature(role, phase, loaded) {
+  const craftRole = role === 'cutter' ? 'customs' : role;
+  const craft = FIELD_JOB_SIGNATURE_CRAFT.find((row) => row && row.role === craftRole);
+  if (!craft) return null;
+  const kind = craftRole === 'customs' ? 'cutter' : craftRole;
   return resolveNpcJobSignature(kind, phase, loaded);
 }
 

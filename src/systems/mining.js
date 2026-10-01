@@ -38,6 +38,7 @@ import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmiss
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
 import { isHostileToPlayer } from './scanner.js';
+import { SECTOR_IMPULSE_DANGER_CAP } from './sectorSim.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
 import { debrisCacheFor, spawnDebrisCachePods } from '../data/scanReveal.js';
@@ -126,7 +127,7 @@ const MINING_NOISE_DANGER = 70;
 // describing a mechanic that did not exist (src/ui/panels/moduleRisk.js:76 still says it does).
 // dangerModel.js is a pure kernel with no bus, so the wiring goes through the impulse seam its
 // runtime adapter already owns: sectorSim.js:103 subscribes to `sectorsim:impulse`.
-const MINING_NOISE_DANGER_IMPULSE = 0.05;   // sector-field danger added per threshold crossing
+export const MINING_NOISE_DANGER_IMPULSE = 0.05;   // sector-field danger added per threshold crossing
 const MINING_NOISE_IMPULSE_COOLDOWN_S = 45; // one crossing may pay once per this window
 
 // --- beam heat / vent rhythm ------------------------------------------------
@@ -2371,10 +2372,13 @@ export const mining = {
     this._noiseImpulseAt = now;
     const sectorId = state.world && state.world.currentSectorId;
     if (!sectorId) return;
+    // One impulse, cut to the field cap. sectorSim folds it into the danger node; the kernel
+    // then decays it. This does not spawn anyone — attention is the raised field, not a ship.
+    const danger = Math.min(SECTOR_IMPULSE_DANGER_CAP, MINING_NOISE_DANGER_IMPULSE);
     this.bus.emit('sectorsim:impulse', {
       kind: 'mining_noise',
       sectorId,
-      danger: MINING_NOISE_DANGER_IMPULSE,
+      danger,
     });
   },
 

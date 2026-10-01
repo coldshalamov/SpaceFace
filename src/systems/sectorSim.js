@@ -57,6 +57,9 @@ const OFFLINE_CAP_DAYS = Math.max(1, Math.floor((OFFLINE_CAP_SEC * OFFLINE_EFF) 
 const SECURITY_MIN = 0.02, SECURITY_MAX = 0.99;
 const DENSITY_MIN = 0, DENSITY_MAX = 0.80;
 const MAX_IMPULSES = 256;
+// One field impulse may not move danger by more than this. Mining noise and every other
+// caller share the clamp in injectImpulse — a louder ask is cut down, never stored raw.
+export const SECTOR_IMPULSE_DANGER_CAP = 0.35;
 const MAX_INTEL_ALERTS = 3;
 const MAX_APPLIED_EMBODIMENT_IDS = 4096;
 
@@ -488,7 +491,7 @@ export const sectorSim = {
       seq: ss.meta.nextImpulseSeq++,
       kind: String(raw.kind || 'external'),
       sectorId: raw.sectorId,
-      danger: clamp(Number(raw.danger) || 0, -0.35, 0.35),
+      danger: clamp(Number(raw.danger) || 0, -SECTOR_IMPULSE_DANGER_CAP, SECTOR_IMPULSE_DANGER_CAP),
       pricePressure: clamp(Number(raw.pricePressure) || 0, -0.60, 0.60),
     };
     if (raw.influence && typeof raw.influence === 'object') {
