@@ -1,13 +1,21 @@
-// Hull burst (hull-burst overhaul, slice C; design doc section 4). A timed, front-facing special
-// attack carried by one fitted utility module: the Gravity Bumper hurls what the nose touches.
+// Hull burst (hull-burst overhaul, slice C; owner principle 2026-09-30). A front-facing cone the
+// ship's fitted boost UPGRADE fires: the Gravity Bumper hurls what the nose touches, the Fire Lance
+// burns it, the Grip Bumper catches it.
 //
-// The verb: press the burst key, the wedge is live for `durationS`, then it recharges for clearly
-// longer than it lasted. While it runs, every HOSTILE ship or drone that enters the wedge is thrown
-// away once, at a speed set by how fast the nose and the target were closing (data/hullBurst.js).
-// That throw is ordinary combat physics: the same impulse route an impulse-charge blast takes
-// (physics-authority port, impulse provenance naming the player, the one hitstun law), so a hull
-// the burst throws tumbles, is a projectile for what it hits, and any kill it causes is the
-// player's (the slice-A fling pipeline). Nothing here writes a hull, a velocity, or a credit.
+// The verb: there is no burst key. The upgrade IS the boost — hold Shift and the wedge rides the
+// boost gesture, exactly while the boost meter is paying and not one tick longer. This system POLLS
+// the player's resource-gated `entity.flags.boosting` (flightV3 writes it; the update order runs
+// flightSlot before hullBurst in the same tick, so the poll always sees this tick's truth). Rising
+// edge lights the wedge, falling edge (release, a 0-energy cut-out, dock/jump/death) ends it. No
+// window, no recharge, no second meter: the boost meter is the only cost. The player may turn the
+// upgrade off (settings.gameplay.boostBurst); by default every boost fires it.
+//
+// While it runs, every HOSTILE ship or drone that enters the wedge is thrown away once, at a speed
+// set by how fast the nose and the target were closing (data/hullBurst.js). That throw is ordinary
+// combat physics: the same impulse route an impulse-charge blast takes (physics-authority port,
+// impulse provenance naming the player, the one hitstun law), so a hull the burst throws tumbles,
+// is a projectile for what it hits, and any kill it causes is the player's (the slice-A fling
+// pipeline). Nothing here writes a hull, a velocity, or a credit.
 //
 // Not hostile means nudged, never flung: an ally, a civilian or a neutral inside the wedge takes a
 // small push through the same port and nothing else (no stun, no credit, no heat).
@@ -39,6 +47,16 @@ function flashReduced(state) {
   const v = settings && settings.video;
   const a = settings && settings.accessibility;
   return !!((v && (v.motionReduce || v.flashReduce)) || (a && a.flashReduce));
+}
+
+/**
+ * The boost-upgrade switch (owner principle 2026-09-30: on by default; a player may turn it off).
+ * Absent reads as ON, the same forward-compat posture gameplay.velocityVectoring uses, so a
+ * profile written before the toggle existed keeps firing the upgrade on every boost.
+ */
+function boostBurstEnabled(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  return !(gameplay && gameplay.boostBurst === false);
 }
 
 function simNow(state) {
@@ -133,6 +151,8 @@ export const hullBurst = {
     this._latched = new WeakMap();
     // The hull the Grip Bumper is carrying (an entity object; state.hullBurst.grip holds only its id, as plain data).
     this._held = null;
+    // The boost gesture's previous poll: the rising edge lights the wedge, the falling edge ends it.
+    this._boostHeld = false;
     this._ensureRuntime();
     if (this.bus && typeof this.bus.on === 'function') {
       for (const event of ['game:new', 'save:loaded', 'save:restoring']) {
@@ -153,7 +173,7 @@ export const hullBurst = {
     const state = this.state;
     if (!state) return null;
     if (!state.hullBurst) {
-      state.hullBurst = { phase: 'ready', kind: null, activeUntil: 0, readyAt: 0, hits: 0, grip: null };
+      state.hullBurst = { phase: 'ready', kind: null, hits: 0, grip: null };
     }
     return state.hullBurst;
   },
@@ -161,14 +181,16 @@ export const hullBurst = {
   _reset() {
     const rt = this._ensureRuntime();
     if (!rt) return;
-    rt.phase = 'ready'; rt.kind = null; rt.activeUntil = 0; rt.readyAt = 0; rt.hits = 0; rt.grip = null;
+    rt.phase = 'ready'; rt.kind = null; rt.hits = 0; rt.grip = null;
     this._held = null;
+    this._boostHeld = false;
     this._latched = new WeakMap();
   },
 
   /**
-   * Try to light the wedge. Returns true when the burst started. The input edge and the bench both
-   * come through here, so the refusal rules live in one place.
+   * Try to light the wedge. Returns true when the burst started. The boost edge and the bench both
+   * come through here, so the refusal rules live in one place: a fitted module, a live player in
+   * flight, not already running, and the boost-upgrade switch not turned off in settings.
    */
   activate() {
     const state = this.state;
@@ -179,17 +201,15 @@ export const hullBurst = {
     if (state.mode && state.mode !== 'flight') return false;
     const def = fittedHullBurst(state);
     if (!def) return false;
-    const now = simNow(state);
-    if (rt.phase === 'active' || now < rt.readyAt) return false;
+    if (rt.phase === 'active') return false;
+    if (!boostBurstEnabled(state)) return false;
     rt.phase = 'active';
     rt.kind = def.id;
-    rt.activeUntil = now + def.durationS;
-    rt.readyAt = rt.activeUntil + def.cooldownS;
     rt.hits = 0;
     this._latched = new WeakMap();
     if (this.bus) {
       this.bus.emit('hullBurst:activated', {
-        kind: def.id, name: def.name, durationS: def.durationS, cooldownS: def.cooldownS,
+        kind: def.id, name: def.name,
         reachWu: def.reachWu, halfAngleRad: def.halfAngleRad,
       });
       // Presentation only (bus events; the sim never reads them back): a gravitic thrum and a flare at the nose.
@@ -207,12 +227,8 @@ export const hullBurst = {
     const rt = this.state && this.state.hullBurst;
     if (!rt || rt.phase !== 'active') return;
     if (this._held) this._release(reason);
-    rt.phase = 'cooling';
+    rt.phase = 'ready';
     this._latched = new WeakMap();
-    const now = simNow(this.state);
-    // Cutting it short keeps the recharge honest: the clock always runs from the moment it stopped.
-    const def = fittedHullBurst(this.state) || resolveHullBurst(rt.kind, 1);
-    if (reason !== 'expired' && def) rt.readyAt = now + def.cooldownS;
     if (this.bus) this.bus.emit('hullBurst:ended', { kind: rt.kind, reason, hits: rt.hits });
   },
 
@@ -220,22 +236,23 @@ export const hullBurst = {
     const state = this.state;
     const rt = this._ensureRuntime();
     if (!state || !rt) return;
-    const actions = state.input && state.input.actions;
-    if (actions && actions.hullBurst) {
-      actions.hullBurst = false;
-      // Pressing the key again while the Grip Bumper holds a hostage lets it go (and ends the burst: the
-      // recharge starts now, from the cut). For every other burst a press while active is simply refused.
-      if (rt.phase === 'active' && this._held) this._end('cut');
-      else this.activate();
-    }
-    const now = simNow(state);
-    if (rt.phase === 'cooling' && now >= rt.readyAt) {
-      rt.phase = 'ready';
-      if (this.bus) this.bus.emit('audio:cue', { id: 'sfx_wpn_capacitor_ready', gain: 0.6 });
+    // THE BURST IS THE BOOST (owner principle 2026-09-30). flightSlot steps before this system in
+    // the same tick, so flags.boosting is already this tick's resource-gated truth: a low-tank press
+    // that only dashes never sets it, and a 0-energy cut-out mid-hold clears it the tick it happens.
+    // Rising edge lights the wedge; falling edge ends it and lets any Grip hostage go. The
+    // `rt.phase === 'active'` term is the invariant's healer: a wedge that is somehow live without a
+    // held boost (a bench-lit activation that never came through the poll) is ended, never left
+    // burning past the gesture that owns it.
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const boosting = !!(player && player.flags && player.flags.boosting);
+    if (boosting && !this._boostHeld) {
+      this._boostHeld = true;
+      this.activate();
+    } else if (!boosting && (this._boostHeld || rt.phase === 'active')) {
+      this._boostHeld = false;
+      this._end('boostEnded');
     }
     if (rt.phase !== 'active') return;
-    if (now >= rt.activeUntil) { this._end('expired'); return; }
-    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     const def = fittedHullBurst(state);
     if (!player || player.alive === false || !def) { this._end('interrupted'); return; }
     if (this._held) this._carry(state, rt, def, player);
@@ -342,8 +359,8 @@ export const hullBurst = {
 
   /**
    * GRIP BUMPER: catch the first light hostile hull the wedge meets. It is held by _carry every tick until the
-   * burst ends, the player presses the key again, or the hostage dies. Anything else in the wedge is ignored
-   * while a hull is held (one hostage), and a hull too heavy to catch is not touched at all.
+   * boost gesture ends (release, cut-out, dock/jump/sector/death) or the hostage dies. Anything else in the
+   * wedge is ignored while a hull is held (one hostage), and a hull too heavy to catch is not touched at all.
    */
   _grip(state, rt, def, player, target, closing, hostile) {
     if (!hostile || this._held) return false;

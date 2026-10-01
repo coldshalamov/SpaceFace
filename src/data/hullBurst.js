@@ -1,5 +1,7 @@
-// Hull-burst overhaul, slice C (design doc docs/plans/2026-09-29-hull-burst-physics-overhaul-design.md
-// section 4): a timed, front-facing special attack carried by ONE fitted utility module.
+// Hull-burst overhaul, slice C (owner principle 2026-09-30): a front-facing cone carried by ONE
+// fitted boost upgrade. There is no burst key, no window and no recharge: the upgrade IS the boost.
+// Hold Shift and the wedge rides the gesture for exactly as long as the boost meter is paying; the
+// meter is the only cost. systems/hullBurst.js polls the boost flag; this file is the law it fires.
 //
 // One slot, one type: the fitted module names a type here and systems/hullBurst.js does the rest.
 // Every number below is an untuned placeholder (design doc section 11.6); the fixed-seed scene
@@ -23,9 +25,9 @@
 // long reach threw hulls 150 WU away, before anything visibly touched them, and latched a hull already inside
 // at ignition at its crawling speed for the rest of the window: found in review.)
 //
-// A hull is hit ONCE per activation, except that a much stronger hit can follow a weak one (`rehitFactor`,
-// `rehitMinGain`, `rehitGapS`): a press with a hostile already inside the wedge at a crawl gives it a nudge, and
-// accelerating into it afterwards is worth the full effect, not nothing.
+// A hull is hit ONCE per boost gesture, except that a much stronger hit can follow a weak one
+// (`rehitFactor`, `rehitMinGain`, `rehitGapS`): a boost with a hostile already inside the wedge at a crawl
+// gives it a nudge, and accelerating into it afterwards is worth the full effect, not nothing.
 
 // `effect` says what the wedge DOES to a hostile that enters it: 'throw' (momentum, the Gravity Bumper),
 // 'lance' (thermal damage through the combat kernel: contact kills light and medium hulls, heavies burn) or
@@ -38,9 +40,6 @@ export const HULL_BURST_TYPES = Object.freeze({
     blurb: 'throws hostile hulls at the nose, harder the faster you arrive',
     name: 'Gravity Bumper',
     moduleId: 'mod_gravity_bumper_s',
-    // Timing. The recharge is clearly longer than the window (design section 4).
-    durationS: 6,
-    cooldownS: 18,
     // The wedge.
     reachWu: 75,
     halfAngleRad: 0.5,        // ~29 degrees each side at the far edge
@@ -61,7 +60,7 @@ export const HULL_BURST_TYPES = Object.freeze({
     forwardBias: 0.65,        // throw direction = 0.65 x nose heading + 0.35 x centre-to-centre
     // What a non-hostile hull in the wedge gets instead: a nudge, never a fling or a stun.
     nudgeMaxDeltaVWuS: 12,
-    // Per-target latch: a hull is hurled once per activation, never re-hit every tick.
+    // Per-target latch: a hull is hurled once per boost gesture, never re-hit every tick.
     hitStunSource: 'hull_burst',
   }),
   // FIRE LANCE (design doc section 4): a narrow, short wedge you must fly straight at. Contact is thermal
@@ -75,8 +74,6 @@ export const HULL_BURST_TYPES = Object.freeze({
     blurb: 'burns through the hull at the nose: light and medium hulls die, heavies ignite',
     name: 'Fire Lance',
     moduleId: 'mod_fire_lance_s',
-    durationS: 4,
-    cooldownS: 16,
     reachWu: 60,
     halfAngleRad: 0.16,       // ~9 degrees: a lance, not a cone
     noseWidthWu: 9,
@@ -97,17 +94,15 @@ export const HULL_BURST_TYPES = Object.freeze({
   // GRIP BUMPER (design doc section 4): catches ONE light hostile hull on the nose and carries it: a
   // battering ram with a hostage. The hull is held at the nose by a spring-damper delivered as impulses
   // through the physics port (never a position write), its helm stays lost, and whatever it hits while
-  // carried is the player's doing (it is a loose hull, so slice A's projectile law applies). When the window
-  // ends, the player presses the key again, or the hostage dies, it is released at the player's speed and
-  // flies on as an ordinary flung hull (credit held, tumbling). Medium and heavy hulls are not catchable.
+  // carried is the player's doing (it is a loose hull, so slice A's projectile law applies). When the boost
+  // gesture ends, or the hostage dies, it is released at the player's speed and flies on as an ordinary
+  // flung hull (credit held, tumbling). Medium and heavy hulls are not catchable.
   grip: Object.freeze({
     id: 'grip',
     effect: 'grip',
     blurb: 'catches a light hull on the nose and carries it; press again to let it go',
     name: 'Grip Bumper',
     moduleId: 'mod_grip_bumper_s',
-    durationS: 6,
-    cooldownS: 20,
     reachWu: 80,
     halfAngleRad: 0.35,
     noseWidthWu: 16,
@@ -128,9 +123,8 @@ export const HULL_BURST_TYPES = Object.freeze({
   }),
 });
 
-/** Ranks scale a fitted type's duration and reach; rank 1 is the module as sold. */
+/** Ranks scale a fitted type's reach and throw; rank 1 is the module as sold. */
 export const HULL_BURST_RANK_GAIN = Object.freeze({
-  durationPerRank: 0.25,
   reachPerRank: 0.2,
   deltaVPerRank: 0.15,
 });
@@ -147,7 +141,6 @@ export function resolveHullBurst(kind, rank = 1) {
   return Object.freeze({
     ...type,
     rank: r + 1,
-    durationS: type.durationS * (1 + HULL_BURST_RANK_GAIN.durationPerRank * r),
     reachWu: type.reachWu * (1 + HULL_BURST_RANK_GAIN.reachPerRank * r),
     kneeWuS: type.kneeWuS * (1 + HULL_BURST_RANK_GAIN.deltaVPerRank * r),
     maxDeltaVWuS: type.maxDeltaVWuS * (1 + HULL_BURST_RANK_GAIN.deltaVPerRank * r),

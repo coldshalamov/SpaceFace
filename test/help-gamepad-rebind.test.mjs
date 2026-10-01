@@ -19,7 +19,7 @@ function padState(custom) {
 
 test('a stock (or missing) pad map keeps the authored dual-naming table byte for byte', () => {
   const stock = gamepadControlRows(null);
-  assert.equal(stock.length, 26);
+  assert.equal(stock.length, 25);
   assert.deepEqual(stock[2], ['Fire', null, 'RT / R2']);
   assert.deepEqual(stock[6], ['Shove (repulsor)', null, 'Y / △']);
   assert.deepEqual(stock[7], ['Accept / confirm', null, 'A / Cross']);
@@ -31,7 +31,6 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
   assert.deepEqual(stock[22], ['Travel burn', null, 'L3']);
   assert.deepEqual(stock[23], ['Auto-target', null, 'D-Pad Up']);
   assert.deepEqual(stock[24], ['Detonate charge', null, 'D-Pad Down']);
-  assert.deepEqual(stock[25], ['Hull burst', null, 'no default button — bind it under Settings → Controls']);
   const taught = [
     ['fire', 'Fire'], ['mine', 'Mine beam'], ['boost', 'Boost'], ['brake', 'Brake / reverse'],
     ['deployRepulsor', 'Shove (repulsor)'], ['accept', 'Accept / confirm'], ['massline', 'Massline'],
@@ -39,7 +38,7 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
     ['cycleTarget', 'Cycle target'], ['map', 'Open star-map'], ['codex', 'Open codex'],
     ['pause', 'Pause'], ['dock', 'Dock / activate'], ['cancel', 'Cancel / back'],
     ['tabPrev', 'Station tab: previous'], ['tabNext', 'Station tab: next'], ['travelBurn', 'Travel burn'],
-    ['autoTarget', 'Auto-target'], ['chargeDetonate', 'Detonate charge'], ['hullBurst', 'Hull burst'],
+    ['autoTarget', 'Auto-target'], ['chargeDetonate', 'Detonate charge'],
   ];
   assert.deepEqual(taught.map(([action]) => action).sort(), Object.keys(GAMEPAD_DEFAULT_BINDINGS).sort());
   for (const [, label] of taught) assert.equal(stock.some((row) => row[0] === label), true, label);

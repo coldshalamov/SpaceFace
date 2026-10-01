@@ -122,7 +122,6 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Travel burn', 'travelBurn', (g) => g],
   ['Auto-target', 'autoTarget', (g) => g],
   ['Detonate charge', 'chargeDetonate', (g) => g],
-  ['Hull burst', 'hullBurst', (g) => g],
 ]);
 
 // Rows with no pad action: analogue sticks, and two verbs a pad does not own. Keyed by LABEL, not
@@ -139,7 +138,7 @@ const GAMEPAD_ROW_ORDER = Object.freeze([
   'Massline', 'Anchor Mass Seed', 'Countermeasure', 'Drop bomb', 'Cycle bomb-bay payload',
   'Cycle target', 'Open star-map', 'Open codex', 'Open mission log', 'Pause', 'Dock / activate',
   'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
-  'Detonate charge', 'Hull burst',
+  'Detonate charge',
 ]);
 
 // The static rows carry no action, so their text is authored here. Everything else is derived.
@@ -215,7 +214,6 @@ export function controlSections(state) {
       ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
       ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
-      ['Hull burst (a Gravity Bumper, Fire Lance or Grip Bumper: for a few seconds the nose throws, burns or catches hostile hulls; middle-click also lights it)', 'hullBurst'],
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],

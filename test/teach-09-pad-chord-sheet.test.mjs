@@ -40,10 +40,12 @@ test('every pad binding the game declares has exactly one row, and no row invent
 
   const rows = gamepadControlRows(null);
   assert.equal(rows.length, declared.length + 4,
-    '26 rows: one per binding, plus two sticks and two verbs a pad does not own');
-  for (const expected of ['Accept / confirm', 'Station tab: previous', 'Station tab: next', 'Hull burst']) {
+    'one row per binding, plus two sticks and two verbs a pad does not own');
+  for (const expected of ['Accept / confirm', 'Station tab: previous', 'Station tab: next']) {
     assert.ok(rows.some(r => r[0] === expected), `Help is missing a row for "${expected}"`);
   }
+  // The hull burst is a boost upgrade now (owner principle 2026-09-30): no pad binding, so no row.
+  assert.ok(!rows.some(r => r[0] === 'Hull burst'), 'no phantom row for the retired burst verb');
 });
 
 test('a player who never opens Settings still reads the dual Xbox/PlayStation register', () => {
@@ -131,7 +133,7 @@ test('a multi-button binding names every button it holds instead of truncating t
     'a bare string is not a binding list');
 });
 
-test('an unbound button says so, and says which kind of unbound it is', () => {
+test('an unbound button says so, and the retired burst verb leaves no phantom row', () => {
   // Two different causes, two different sentences. A verb the game ships with no default button
   // is the game's gap; saying "unbound — Settings" there blames the player's profile.
   const cleared = byLabel(gamepadControlRows(
@@ -139,10 +141,11 @@ test('an unbound button says so, and says which kind of unbound it is', () => {
   assert.equal(cleared.get('Countermeasure'), 'unbound — Settings → Controls',
     'a binding the player cleared is their choice and says so');
 
+  // The hull burst is a boost upgrade now (owner principle 2026-09-30): no pad verb, so the sheet
+  // must not carry a Hull burst row at all — an unbound row for a keyless verb teaches a ghost.
   const shipped = byLabel(gamepadControlRows(null));
-  assert.equal(shipped.get('Hull burst'), 'no default button — bind it under Settings → Controls',
-    'hullBurst ships with no default; that is the game\'s gap, not the player\'s');
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.hullBurst, []);
+  assert.ok(!shipped.has('Hull burst'), 'no Hull burst row: the upgrade rides the boost button');
+  assert.ok(!('hullBurst' in GAMEPAD_DEFAULT_BINDINGS), 'and no pad action to bind');
 });
 
 test('the static rows are keyed by label, so inserting a row cannot mis-target one', () => {

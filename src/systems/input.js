@@ -291,15 +291,9 @@ const VERB_BINDINGS = {
   // VERB-13: one flight key dumps the selected hold lot as the payload body cargo already spawns.
   // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
   jettisonLot: ['Period'],
-  // Hull-burst overhaul slice C: light the fitted hull-burst module's wedge (Gravity Bumper). Every
-  // left-hand key and every standard pad button is already spoken for, and Backslash is referenced
-  // nowhere (audited 2026-09-29 against both scheme tables, ui/bindings.js and ui/input.js), so the
-  // default is Backslash and the verb is rebindable like every other. IntlBackslash is the same printed key
-  // on ISO layouts (the one next to left Shift; `Backslash` there is the key above Enter), so a UK/EU player
-  // who presses the key the pill prints is not ignored. Middle-click is a second trigger (mouse hand, and the
-  // middle button has no other flight authority). The pad has no unclaimed button: the verb is rebindable
-  // there (Settings > Controller) and unbound by default. The hullBurst system owns timing.
-  hullBurst: ['Backslash', 'IntlBackslash'],   // edge: light the hull-burst wedge (needs a fitted hull-burst module)
+  // The hull burst has NO verb of its own (owner principle 2026-09-30): the fitted boost upgrade
+  // rides the boost itself, and the hullBurst system polls the player's boost flag. There is no
+  // burst key to bind on keyboard, mouse or pad.
   // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -577,7 +571,7 @@ function applyFlightKeyTransition(keys, nextKeys) {
 const SAMPLED_EDGE_ACTIONS = new Set([
   'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'deployBeacon',
   'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
-  'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot', 'hullBurst',
+  'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
 ]);
 const KEY_EDGE_CAP = 64;
 
@@ -1054,7 +1048,6 @@ export const input = {
     this._m2HeldS = 0;
     this._m2ToolLane = null;
     this._m2SlingTargetId = null;
-    this._prevM1 = false;
     if (this._screen) this._screen.active = false;
     const committedInput = this.state && this.state.input;
     if (committedInput?.autoFire || committedInput?.drawFlight) resetAutoTargetPath(this);
@@ -1220,7 +1213,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
-      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false, hullBurst: false,
+      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -1238,7 +1231,7 @@ export const input = {
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
-      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.hullBurst = false;
+      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1247,7 +1240,6 @@ export const input = {
       writeAutoTargetVector(inp);
       this.cancelWorldObjectGesture('neutralize');
       this._m0 = false; this._m1 = false; this._m2 = false;
-      this._prevM1 = false;
       this._edgePrev = this._edgePrev || {};
       // A tap sampled in the same gap the screen opened must not wait in the queue and fire
       // on the way out. A key that stays down is already held, so it is not a new press later.
@@ -1514,8 +1506,8 @@ export const input = {
       }
     }
 
-    // Middle-click has no hidden flight authority. G auto-target is owned by autoTargetAssist.
-    this._prevM1 = this._m1;
+    // Middle-click has no flight authority (the hull burst's old middle-click trigger is gone; the
+    // upgrade rides the boost). G auto-target is owned by autoTargetAssist.
 
     // D-pad up is unused by ordinary flight and remains UI navigation while a screen is open.
     // In flight it requests the same explicit auto-target toggle as G; the next registered owner
@@ -1608,14 +1600,6 @@ export const input = {
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
     acts.jettisonLot = edge('jettisonLot');
-    // Keyboard edge, a controller edge (unbound unless the player binds it), or a middle-click press. The
-    // middle button's own previous-frame flag is kept here: _prevM1 is refreshed earlier in this tick.
-    const burstMmb = !!this._m1;
-    const burstMmbEdge = burstMmb && !this._burstMmbPrev;
-    this._burstMmbPrev = burstMmb;
-    acts.hullBurst = edge('hullBurst') || burstMmbEdge || !!(gp && gp.isConnected()
-      && this._gamepadLifecycleActionAllowed('hullBurst')
-      && gp.actions.hullBurst && gp.actions.hullBurst.pressed);
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
