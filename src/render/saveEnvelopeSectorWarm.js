@@ -25,6 +25,13 @@ import { authoredSetPieceById, megaHeistById } from '../data/missions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { worldSiteManifestById } from '../data/worldSiteManifests.js';
+import {
+  aceById,
+  escalatedStyleFromMemory,
+  returnCrewForAce,
+} from '../data/namedAces.js';
+import { NEMESIS_KITS, NEMESIS_RIVAL } from '../data/nemesisRival.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
@@ -41,6 +48,37 @@ const PALETTE_CLASS_BY_REF = new Map(
 function enemyFactionIdFor(def, explicit) {
   return explicit || (def && def.factionId)
     || (def && def.factionLawful ? 'faction_scn' : 'faction_reach');
+}
+
+// Promoted-pilot records carry every ace-shaped field returnCrewForAce reads — rebuild the
+// minimal ace object from the saved row rather than importing the aceMemory system module.
+function promotedAceShapeForRecord(id, rec) {
+  return {
+    id,
+    name: rec.name || null,
+    crew: rec.crew || null,
+    signatureBark: rec.signatureBark || null,
+    factionId: rec.factionId || null,
+    gimmickTag: rec.gimmickTag || null,
+    returnArchetype: rec.returnArchetype || null,
+    escortArchetype: rec.escortArchetype || null,
+    baseReturnLevel: rec.baseReturnLevel || null,
+  };
+}
+
+// Mirror of worldSiteKernel.evaluateStage + the materialization plan's placeId pick: the
+// last satisfied stage wins, a stage missing `requires` is always satisfied, and a stage
+// with no placeId falls through to the manifest's visual root.
+function siteStagePlaceId(manifest, record) {
+  const stages = Array.isArray(manifest && manifest.stages) ? manifest.stages : [];
+  let stage = stages.length ? stages[0] : null;
+  for (const candidate of stages) {
+    const requires = Array.isArray(candidate && candidate.requires) ? candidate.requires : [];
+    if (requires.every((op) => record.completedOperations && record.completedOperations[op])) {
+      stage = candidate;
+    }
+  }
+  return (stage && stage.placeId) || (manifest.visualRoot && manifest.visualRoot.placeId) || null;
 }
 
 // Mirror of visualFactory's hashId (stable fnv-1a over the entity id) — bare mission wrecks
@@ -344,13 +382,54 @@ export function saveEnvelopeSectorStubs(data) {
       data: { placeId: visual.placeId, claimSpecId: visual.claimSpecId, claimOwned: true },
     });
   }
+
+  // Fleet wingmen live in automation.fleet, not sector records — wingmen.js _spawnWingmen
+  // rematerializes every ledger row on sector:enter through makeShipEntitySpec with the
+  // Concord faction, so mirror the same defId route into the ship-warm lane.
+  const fleet = (data.automation && Array.isArray(data.automation.fleet)) ? data.automation.fleet : [];
+  for (const fs of fleet) {
+    const defId = fs && (fs.shipDefId || fs.defId);
+    if (!defId) continue;
+    out.shipStubs.push({
+      type: 'ship',
+      factionId: 'faction_scn',
+      data: { defId, lootTableId: null },
+    });
+  }
+  // Mining-drone groups repopulate live hulls on the first in-sector tick (_updateDrones →
+  // _spawnDroneEntities → type 'drone' → the census packaged body). One stub covers the file
+  // no matter how many groups the sector owes.
+  const droneGroups = (data.automation && Array.isArray(data.automation.drones)) ? data.automation.drones : [];
+  for (const g of droneGroups) {
+    if (g && g.sectorId === sector.id) { out.placeStubs.push({ type: 'drone' }); break; }
+  }
+  // The tethys heist set rematerializes its facilities + berth worker on every entry of its
+  // home sector (heistFacilities.materializeForSector) — none of the dressing passes above
+  // reach these place ids, and none of the record lanes cover the worker hull.
+  if (sector.id === 'sector_tethys_junction') {
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_catcher', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_fence', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_breakaway_fork', worldDressing: true } });
+    out.shipStubs.push({
+      type: 'ship',
+      factionId: 'faction_mts',
+      data: { defId: 'ship_mule', lootTableId: null },
+    });
+  }
+
+  // World-site roots mount the place id of their EVALUATED stage (stage.placeId falling back
+  // to the manifest's visual root) — warm the file the progressed record will actually mount.
   const siteRecords = data.sites && data.sites.worldById;
   if (siteRecords) {
+    const warmedSiteFiles = new Set();
     for (const id of Object.keys(siteRecords)) {
       const record = siteRecords[id];
-      if (record && record.sectorId === sector.id) {
-        out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_relay', worldDressing: true } });
-        break;
+      if (!record || record.sectorId !== sector.id) continue;
+      const manifest = worldSiteManifestById(record.manifestId);
+      const placeId = manifest ? siteStagePlaceId(manifest, record) : null;
+      if (placeId && !warmedSiteFiles.has(placeId)) {
+        warmedSiteFiles.add(placeId);
+        out.placeStubs.push({ type: 'fx', data: { placeId, worldDressing: true } });
       }
     }
   }
@@ -429,7 +508,7 @@ export function saveEnvelopeSectorStubs(data) {
       // The ambush wing spawns only after the convoy lands — a still-owed escort may owe it too.
       if ((params.ambushSize || 0) > 0) {
         for (const archetype of new Set(markArchetypePoolFor(m.riskTier))) {
-          out.roster.push({ archetype });
+          out.roster.push({ archetype, factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null) });
         }
       }
       continue;
@@ -501,13 +580,64 @@ export function saveEnvelopeSectorStubs(data) {
       continue;
     }
     if (ghostPack) {
-      out.roster.push({ archetype: 'reaver_pirate' }, { archetype: 'wasp_swarmer' });
+      out.roster.push(
+        { archetype: 'reaver_pirate', factionId: enemyFactionIdFor(ENEMY_BY_ID.get('reaver_pirate'), null) },
+        { archetype: 'wasp_swarmer', factionId: enemyFactionIdFor(ENEMY_BY_ID.get('wasp_swarmer'), null) },
+      );
       continue;
     }
     for (const archetype of new Set(markArchetypePoolFor(m.riskTier))) {
-      out.roster.push({ archetype });
+      out.roster.push({ archetype, factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null) });
+    }
+  }
+
+  // Restore-scheduled hostile rosters — due ace returns and a pending nemesis deployment —
+  // spawn through makeEnemySpawnSpec inside the restored sector's first seconds but never
+  // enter any record or mission pass above. Mirror each builder's archetype/faction pick;
+  // gated variants simply leave speculative decodes in the runway, which cost nothing.
+  const aceNow = (data.entities && Number.isFinite(data.entities.simTime))
+    ? data.entities.simTime : 0;
+  const aceMemory = data.aceMemory;
+  if (aceMemory && typeof aceMemory === 'object') {
+    for (const id of Object.keys(aceMemory)) {
+      if (ACE_MEMORY_META_KEYS.has(id)) continue;
+      const rec = aceMemory[id];
+      if (!rec || typeof rec !== 'object') continue;
+      if (rec.defeated === true || rec.returnScheduled !== true) continue;
+      if (Number.isFinite(rec.nextReturnAttemptAt) && rec.nextReturnAttemptAt > aceNow) continue;
+      if (!Number.isFinite(rec.returnAt) || rec.returnAt > aceNow) continue;
+      if (rec.promoted === true && rec.expired === true) continue;
+      const ace = aceById(id) || (rec.promoted === true ? promotedAceShapeForRecord(id, rec) : null);
+      if (!ace || ace.lifecycleOwner === 'nemesis') continue;
+      const crew = returnCrewForAce(ace, rec.returnTier || 1, escalatedStyleFromMemory(aceMemory, ace));
+      for (const ship of crew) {
+        out.roster.push({ archetype: ship.archetype, factionId: ace.factionId || 'faction_reach' });
+      }
+    }
+  }
+  // nemesis.js serializes {pending:{sectorId, plan, notBefore, dispatched}} — the encounter
+  // host's slot math picks the primary kit's boss + escort hulls and one secondary escort.
+  const nemesisPending = data.nemesis && data.nemesis.pending;
+  if (nemesisPending && nemesisPending.sectorId === sector.id && nemesisPending.plan) {
+    const plan = nemesisPending.plan;
+    const primary = NEMESIS_KITS[plan.primary];
+    if (primary) {
+      out.roster.push({ archetype: primary.bossArchetype, factionId: NEMESIS_RIVAL.factionId });
+      const escortCount = Number.isFinite(plan.escortCount) ? plan.escortCount : 0;
+      for (let slot = 1; slot <= escortCount; slot++) {
+        const kit = (slot === 2 && plan.secondary && NEMESIS_KITS[plan.secondary])
+          ? NEMESIS_KITS[plan.secondary] : primary;
+        out.roster.push({ archetype: kit.escortArchetype, factionId: NEMESIS_RIVAL.factionId });
+      }
     }
   }
 
   return out;
 }
+
+// aceMemory's serialized top level mixes pilot records with these metadata keys — only the
+// record rows are crew-bearing (normalizeMemory skips the same set, plus 'aces').
+const ACE_MEMORY_META_KEYS = new Set([
+  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
+  'aces',
+]);

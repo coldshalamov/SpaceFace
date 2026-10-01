@@ -259,20 +259,31 @@ export function setBoundaryStandInResolver(resolver) {
   boundaryStandInResolver = typeof resolver === 'function' ? resolver : null;
 }
 
-function lodStandInFor(entity, record, targetLengthX = null) {
+function lodStandInFor(entity, record, target = null) {
   const primitives = standInPrimitivesFor(record);
   const boundsSize = record && record.bounds && record.bounds.size;
   const sourceLength = Array.isArray(boundsSize) ? Number(boundsSize[0]) : 0;
   if (!primitives.length || !(sourceLength > 0)) return null;
+  const sourceMax = Math.max(1e-6, ...boundsSize.map((value) => Number(value) || 0));
   const group = new THREE.Group();
   group.name = 'AuthoredResolvingStandIn';
   // Identical normalization to the composed body: the hull part mounts at target length 1.72 and
   // the hull group scales by entity.radius — the stand-in applies both in one transform. A
   // boundary-seat stand-in instead scales to the envelope its pending stamp already claims, so
   // the silhouette fills the reach the frame is grading — stations read at near-committed size.
-  const entityScale = targetLengthX != null
-    ? targetLengthX
-    : WHOLE_SHIP_STAND_IN_TARGET_LENGTH * (Number.isFinite(entity && entity.radius) ? entity.radius : 1);
+  // Three arming semantics, matching the commit path: `fit` normalizes the record's longest
+  // axis (fitPackagedGroup / payload-fit commits), `scale` applies the authored draw scale
+  // (spindle payloads commit 1:1), `x` claims a committed X extent outright (place/station
+  // stamps measure authored size x draw scale at the source).
+  let entityScale = null;
+  if (target) {
+    if (Number.isFinite(target.fit)) entityScale = sourceLength * (target.fit / sourceMax);
+    else if (Number.isFinite(target.scale)) entityScale = sourceLength * target.scale;
+    else if (Number.isFinite(target.x)) entityScale = target.x;
+  }
+  if (entityScale == null) {
+    entityScale = WHOLE_SHIP_STAND_IN_TARGET_LENGTH * (Number.isFinite(entity && entity.radius) ? entity.radius : 1);
+  }
   group.scale.setScalar(entityScale / sourceLength);
   for (const primitive of primitives) {
     if (!primitive.geometry) continue;
@@ -295,11 +306,16 @@ function lodStandInFor(entity, record, targetLengthX = null) {
   return group;
 }
 
-function resolvingMarkerFor(entity) {
+function resolvingMarkerFor(entity, targetLengthX = null) {
   const marker = new THREE.Mesh(RESOLVING_MARKER_GEOMETRY, RESOLVING_MARKER_MATERIAL);
   marker.name = 'AuthoredResolvingMarker';
-  const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-  marker.scale.set(r * 1.7, r * 0.3, r * 0.85);
+  // The unit octahedron draws 2x its scale per axis — the authored-fit basis sizes the same
+  // proportions the 3.4r default claims, so a pending silhouette sits at committed size
+  // instead of swelling past the body it covers for.
+  const x = Number.isFinite(targetLengthX) && targetLengthX > 0
+    ? targetLengthX
+    : Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6) * 3.4;
+  marker.scale.set(x * 0.5, x * (0.3 / 3.4), x * 0.25);
   marker.userData.spacefaceSharedAsset = true;
   marker.userData.authoredResolvingMarker = true;
   return marker;
@@ -327,11 +343,21 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   if (Number.isFinite(options.standInTargetLength) && options.standInTargetLength > 0) {
     data.boundaryResolvingStandInLength = options.standInTargetLength;
   }
+  if (Number.isFinite(options.standInFitLength) && options.standInFitLength > 0) {
+    data.boundaryResolvingStandInFit = options.standInFitLength;
+  }
+  if (Number.isFinite(options.standInDrawScale) && options.standInDrawScale > 0) {
+    data.boundaryResolvingStandInScale = options.standInDrawScale;
+  }
   // Cover the marker's drawn extent for glass/cull classification: union it into an existing
   // stamp (the place envelope covers most stations) or seed one for un-stamped boundaries —
   // a payload capsule otherwise culls at collider presence while drawing a ~1.9x wider marker.
   const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-  const half = [r * 1.7, r * 0.3, r * 0.85];
+  // The union covers the marker's drawn extent — with an armed/committed basis that extent
+  // is the stand-in target, not the unarmed 3.4r default the octahedron used to claim.
+  const markerTargetX = boundaryStandInMarkerLength(boundaryStandInTarget(data, entity));
+  const markerX = Number.isFinite(markerTargetX) && markerTargetX > 0 ? markerTargetX : r * 3.4;
+  const half = [markerX * 0.5, markerX * (0.3 / 3.4) * 0.5, markerX * 0.25];
   const existing = data.visualBounds;
   if (existing && Array.isArray(existing.size)) {
     const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
@@ -364,13 +390,14 @@ export function materializeBoundaryResolvingMarker(boundary) {
   // (library plan or a settled warm decode), draw its real silhouette in the shared flat
   // materials instead of the abstract octahedron — strictly closer to the committed body.
   let marker = null;
+  const standInTarget = boundaryStandInTarget(data, entity);
   if (standInFile && boundaryStandInResolver) {
     let record = null;
     try { record = boundaryStandInResolver(entity, standInFile) || null; } catch { record = null; }
-    if (record) marker = lodStandInFor(entity, record, boundaryStandInTargetLength(data, entity));
+    if (record) marker = lodStandInFor(entity, record, standInTarget);
   }
   if (!marker) {
-    marker = resolvingMarkerFor(entity);
+    marker = resolvingMarkerFor(entity, boundaryStandInMarkerLength(standInTarget));
     if (standInFile && boundaryStandInResolver) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
@@ -393,13 +420,34 @@ export function materializeBoundaryResolvingMarker(boundary) {
 // (packaged props commit via fitPackagedGroup — the marker/zone radius is unrelated), else the
 // stamped pending envelope (stations and place roots carry the authored envelope from the wrap
 // census), else the marker's own X extent the boundary already advertises.
-function boundaryStandInTargetLength(data, entity) {
+function boundaryStandInTarget(data, entity) {
+  // fit: normalize the record's longest axis — capsules and packaged props commit through
+  // fitPackagedGroup / authoredPayloadDrawScale, so the stand-in must normalize on the same
+  // axis or an X-slim record inflates on the dimension nobody asked about.
+  const armedFit = data && Number(data.boundaryResolvingStandInFit);
+  if (Number.isFinite(armedFit) && armedFit > 0) return { fit: armedFit };
+  // scale: authored draw scale applied to the record verbatim (the spindle commits 1:1).
+  const armedScale = data && Number(data.boundaryResolvingStandInScale);
+  if (Number.isFinite(armedScale) && armedScale > 0) return { scale: armedScale };
+  // x: a committed X extent — an explicit arm, then the captured pre-union stamp.
   const armed = data && Number(data.boundaryResolvingStandInLength);
-  if (Number.isFinite(armed) && armed > 0) return armed;
+  if (Number.isFinite(armed) && armed > 0) return { x: armed };
+  const committed = data && Number(data.boundaryResolvingCommittedX);
+  if (Number.isFinite(committed) && committed > 0) return { x: committed };
   const stamped = data && data.visualBounds && Number(data.visualBounds.size && data.visualBounds.size[0]);
-  if (Number.isFinite(stamped) && stamped > 0) return stamped;
+  if (Number.isFinite(stamped) && stamped > 0) return { x: stamped };
   const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-  return r * 3.4;
+  return { x: r * 3.4 };
+}
+
+// Marker X-extent a stand-in target implies: fit arms bound the committed X from above (the
+// body's longest axis is at least its X), and x arms state it directly; scale arms carry no
+// static extent the fallback marker can claim.
+function boundaryStandInMarkerLength(target) {
+  if (!target) return null;
+  if (Number.isFinite(target.fit)) return target.fit;
+  if (Number.isFinite(target.x)) return target.x;
+  return null;
 }
 
 /**
@@ -454,7 +502,7 @@ export function upgradeAdmissionStandIn(boundary, resolveRecord) {
   try { record = typeof resolver === 'function' ? resolver(entity, standInFile) : null; }
   catch { record = null; }
   const standIn = record
-    ? lodStandInFor(entity, record, isBoundarySeat ? boundaryStandInTargetLength(boundaryData, entity) : null)
+    ? lodStandInFor(entity, record, isBoundarySeat ? boundaryStandInTarget(boundaryData, entity) : null)
     : null;
   if (!standIn) return false; // still nothing resident — keep waiting while pending
   substrate.remove(marker);
@@ -499,7 +547,10 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   if (standIn) {
     marker = standIn;
   } else {
-    marker = resolvingMarkerFor(entity);
+    marker = resolvingMarkerFor(
+      entity,
+      WHOLE_SHIP_STAND_IN_TARGET_LENGTH * (Number.isFinite(entity && entity.radius) ? entity.radius : 1),
+    );
     countedFallbackMarkers.add(marker);
     resolvingMarkerFallbacks++;
     publishResolvingMarkerFallbacks();
@@ -737,7 +788,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // capsules carry: no substitute identity, detaches at commit.
     installBoundaryResolvingMarker(root, entity, {
       standInFile: spec.file,
-      standInTargetLength: 2 * packagedFitRadius(entity, spec),
+      // Commit fits the record's longest axis to 2*packagedFitRadius — arm the same max-axis
+      // basis or an X-slim record draws its stand-in oversized on the axis nobody measures.
+      standInFitLength: 2 * packagedFitRadius(entity, spec),
     });
   } else {
     root.userData.authoredPendingFallbackDrawn = true;

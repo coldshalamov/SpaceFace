@@ -2834,24 +2834,44 @@ export const lawSecurity = {
       dwell.clear();
       return;
     }
-    const pods = this._coneScratchPods;
-    const occluders = this._coneScratchOccluders;
-    const scanners = this._coneScratchScanners;
+    const pods = this._coneScratchPods || (this._coneScratchPods = []);
+    const occluders = this._coneScratchOccluders || (this._coneScratchOccluders = []);
+    const scanners = this._coneScratchScanners || (this._coneScratchScanners = []);
     pods.length = 0;
     occluders.length = 0;
     scanners.length = 0;
+    // isJettisonedCargoPod requires type 'payload': visit only the payloads lane for pods so
+    // a pod-free tick never touches the other four lanes at all. Fixtures without a live
+    // index keep the full job-interactable census.
+    const indexLive = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads);
+    if (indexLive) {
+      for (let i = 0; i < index.payloads.length; i++) {
+        const entity = index.payloads[i];
+        if (entity && entity.pos && isJettisonedCargoPod(entity)) pods.push(entity);
+      }
+    } else {
+      forEachJobInteractable(state, (entity) => {
+        if (entity.pos && isJettisonedCargoPod(entity)) pods.push(entity);
+      });
+    }
+    if (pods.length === 0) {
+      for (const key of dwell.keys()) dwell.delete(key);
+      return;
+    }
+    // Scanners/occluders are only worth the lane sweep once pods exist.
     forEachJobInteractable(state, (entity) => {
       if (!entity.pos) return;
-      if (isJettisonedCargoPod(entity)) pods.push(entity);
       if (customsScanConeOf(entity)) scanners.push(entity);
       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
     });
-    if (scanners.length === 0 || pods.length === 0) {
+    if (scanners.length === 0) {
       for (const key of dwell.keys()) dwell.delete(key);
       return;
     }
 
-    const seen = new Set();
+    const seen = this._coneScratchSeen || (this._coneScratchSeen = new Set());
+    seen.clear();
     for (let s = 0; s < scanners.length; s++) {
       const scanner = scanners[s];
       const cone = customsScanConeOf(scanner);

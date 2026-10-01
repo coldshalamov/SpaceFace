@@ -2630,9 +2630,16 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   };
   // Same resolving-marker contract as pending ships and stations: an exact-identity payload
   // keeps the abstract affordance on the glass while admission runs instead of popping in.
-  installBoundaryResolvingMarker(boundary, entity, {
-    standInFile: authoredPayloadFileForEntity(entity),
-  });
+  // Arm the committed-fit basis so a pending silhouette draws at the size it will commit:
+  // the spindle mounts 1:1 (authored draw scale), capsule/pod fit their longest axis to
+  // 2*targetRadius — matching authoredPayloadDrawScale exactly.
+  const markerOptions = { standInFile: authoredPayloadFileForEntity(entity) };
+  if (authoredPayloadIsSpindle(entity)) {
+    markerOptions.standInDrawScale = 1;
+  } else {
+    markerOptions.standInFitLength = 2 * Math.max(1, Number(entity && entity.radius) || 3);
+  }
+  installBoundaryResolvingMarker(boundary, entity, markerOptions);
 
   let activeRoot = fallbackRoot;
   const setActiveRoot = (next) => {
@@ -3805,6 +3812,12 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
       center: [0, 0, 0],
       size: size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
     };
+    // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
+    // marker union swells the stamp, so stand-in sizing claims the authored basis.
+    const committedX = Number(size[0]) * scale;
+    if (Number.isFinite(committedX) && committedX > 0) {
+      boundary.userData.boundaryResolvingCommittedX = committedX;
+    }
   }
 }
 
@@ -7487,6 +7500,12 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
   // root belongs to the superseded admission — dispose it rather than retaining both generations
   // — then rebind lod0 to the freshly committed root.
   boundary.userData.refreshWholeShipLodFamily = (committedAuthored = null) => {
+    // A re-commit supersedes every in-flight demotion: clearing pendingLevel fails the queued
+    // load's own commit check (its root disposes through the lost-race path instead of ever
+    // swapping over this generation), and the promise slot is reset to match.
+    pendingLevel = null;
+    transitionPromise = null;
+    boundary.userData.wholeShipLodTransitionPromise = null;
     for (const level of Object.keys(roots)) {
       const root = roots[level];
       const composed = retainedComposed.get(level) || null;

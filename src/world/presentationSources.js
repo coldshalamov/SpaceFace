@@ -367,6 +367,23 @@ export function enemyHullDecodeKey(enemyId, factionId = null, trafficRole = null
   });
 }
 
+/**
+ * Same decode key for a squad row that already carries a complete ship spec: the spec's own
+ * defId selects the hull (no enemy-id indirection), faction still separates kitted files.
+ */
+export function shipDefHullDecodeKey(defId, factionId = null) {
+  if (typeof defId !== 'string' || !defId) return null;
+  const faction = typeof factionId === 'string' && factionId ? factionId : null;
+  return Object.freeze({
+    defId,
+    silhouette: '',
+    enemyId: null,
+    factionId: faction,
+    trafficRole: null,
+    key: `${defId}|` + (faction ? `|f:${faction}` : ''),
+  });
+}
+
 export function collectWaveHullDecodeKeys(plan) {
   const keys = new Map();
   const takeEnemy = (entry) => {

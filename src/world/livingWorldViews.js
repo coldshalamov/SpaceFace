@@ -104,6 +104,21 @@ export function entityIndexVersion(state) {
 }
 
 /**
+ * Membership version summed over a fixed lane set — survives churn on lanes outside it
+ * (projectile volleys, pickup drops) where the global entityIndexVersion dies. -1 when the
+ * index is unusable, same contract as entityIndexVersion's null.
+ */
+export function entityIndexLaneVersion(state, lanes) {
+  const index = state && state.entityIndex;
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return -1;
+  const laneVersions = index.laneVersions;
+  if (!laneVersions) return -1;
+  let sum = 0;
+  for (let i = 0; i < lanes.length; i++) sum += laneVersions[lanes[i]] || 0;
+  return sum;
+}
+
+/**
  * `worldRecordId` → live entity. The entity index carries a first-holder `byWorldRecordId`
  * map maintained at spawn/despawn, so this is O(1) once the index is ready. A miss — index
  * unready, a carrier stamped with its record id after spawn, or a duplicate keeper that

@@ -161,6 +161,7 @@ import {
   collectMeshPresentationEntities,
   collectWaveHullDecodeKeys,
   enemyHullDecodeKey,
+  shipDefHullDecodeKey,
   entityMatchesWaveHullRunway,
   isPresentationLedgerRow,
   ledgerAwarePos,
@@ -2862,9 +2863,16 @@ function warmEnemyRosterDecode(owner, enemyIds, residencyRole, sectorId = null) 
     // kit squads resolve a faction-specific hull/hulk, so the stub must carry the same axes.
     const record = entry && typeof entry === 'object' ? entry : null;
     const enemyId = record ? record.archetype : entry;
+    const spec = record && record.entitySpec;
     const key = enemyHullDecodeKey(enemyId,
       record ? record.factionId : null,
-      record ? record.trafficRole : null);
+      record ? record.trafficRole : null)
+      // An escape-hatch row carries a complete ship spec instead of an archetype — resolve
+      // the spec's own hull or it escapes every warm lane entirely.
+      || (spec && spec.type === 'ship'
+        ? shipDefHullDecodeKey((spec.data && spec.data.defId) || spec.shipId || null,
+            spec.factionId || (record && record.factionId) || null)
+        : null);
     if (!key || seen.has(key.key)) continue;
     seen.add(key.key);
     const stub = makeWaveHullDecodeStub(key);

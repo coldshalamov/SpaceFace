@@ -3,6 +3,7 @@
 
 import { DIRTY, hasDirty, collectDirtyIds } from './dirtyJournal.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 export const COMBAT_TABLE_SCHEMA = 'spaceface.combatTable.v1';
 
@@ -10,6 +11,8 @@ const FLAG_SHIP = 1 << 0;
 const FLAG_PROJECTILE = 1 << 1;
 const FLAG_PLAYER = 1 << 2;
 const FLAG_WRECK = 1 << 3;
+
+const COMBAT_TABLE_LANES = ['shipLike', 'projectiles', 'wrecks'];
 
 function grow(table, capacity) {
   table.capacity = capacity;
@@ -48,12 +51,14 @@ export function packCombatTable(state) {
   const tick = state.tick | 0;
   if (table.tick === tick && table.count >= 0) return table;
   const index = state.entityIndex;
-  const indexVersion = index && Number.isInteger(index.version) ? index.version : null;
+  // Rows cover shipLike + projectiles + wrecks — lane versions track exactly that domain,
+  // so fx/pickup/asteroid churn no longer forces the full Map.clear + column rewrite.
+  const indexVersion = entityIndexLaneVersion(state, COMBAT_TABLE_LANES);
   const membershipDirty = hasDirty(state, DIRTY.MEMBERSHIP);
   const poseDirty = hasDirty(state, DIRTY.POSE);
   // Roster drift outlives the per-tick dirty journal: beginDirtyTick wipes last
   // tick's marks before this pack runs, so MEMBERSHIP is never observed here.
-  // entityIndex.version bumps synchronously on every append/remove; a swapped
+  // Lane versions bump synchronously on every roster append/remove; a swapped
   // index object (save restore / new game) is drift even at a matching version.
   const rosterDrifted = table.packedOnce === true && (
     table._indexRef !== index

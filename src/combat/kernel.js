@@ -9,7 +9,7 @@ import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSu
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
 import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 const KERNELS = new WeakMap();
 
@@ -506,12 +506,14 @@ export function createCombatKernel(ctx, options = {}) {
   }
 }
 
+// The tick roster walks shipLike + stations + wrecks, so its latches only need those lane
+// versions — projectile/pickup/fx churn outside them no longer starves the sorted cache.
+const ROSTER_LANES = ['shipLike', 'stations', 'wrecks'];
+
 function combatTickIndexVersion(state) {
-  const index = state && state.entityIndex;
-  // ready === false means repairEntityIndex is mid-rebuild — the buckets are emptied/stale, so
-  // report the index unusable rather than let readers scan a partial domain entityList covers.
-  return index && index.__spacefaceEntityIndexV1 && index.ready === true
-    ? (Number(index.version) || 0) : -1;
+  // -1 reports the index unusable (mid-rebuild, unready, or lane counters absent) — readers
+  // then skip the index-version leg rather than scan a partial domain entityList covers.
+  return entityIndexLaneVersion(state, ROSTER_LANES);
 }
 
 /**

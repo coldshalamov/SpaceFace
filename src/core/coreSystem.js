@@ -489,6 +489,9 @@ function ensureEntityIndex(state) {
   state.entityIndex = {
     __spacefaceEntityIndexV1: true,
     version: 0,
+    // Per-lane membership counters: the global version dies on every projectile/fx churn,
+    // so readers whose domain is a fixed lane set latch the laneVersions sum instead.
+    laneVersions: Object.create(null),
     ready: false,
     ships: [],
     drones: [],
@@ -572,6 +575,7 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.damageables)) index.damageables = [];
   // Repairing a volatile lane leaves it valid-but-empty; force the next refresh
   // to rebuild rather than wait out the cadence on a corrupt index.
+  if (!index.laneVersions) index.laneVersions = Object.create(null);
   if (!Array.isArray(index.aiShips)) { index.aiShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.weaponShips)) { index.weaponShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.collidables)) index.collidables = [];
@@ -639,6 +643,7 @@ function clearEntityIndex(index) {
   index.byStationId.clear();
   index.byWorldRecordId.clear();
   index._indexedIds.clear();
+  index.laneVersions = Object.create(null);
   index._volatileReady = false;
 }
 
@@ -683,6 +688,7 @@ function appendEntityIndex(index, e) {
     case 'ship':
       index.ships.push(e);
       index.shipLike.push(e);
+      bumpLaneVersion(index, 'shipLike');
       index.damageables.push(e);
       if (e.data && e.data.ai) index.aiShips.push(e);
       if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
@@ -690,10 +696,12 @@ function appendEntityIndex(index, e) {
     case 'drone':
       index.drones.push(e);
       index.shipLike.push(e);
+      bumpLaneVersion(index, 'shipLike');
       index.damageables.push(e);
       break;
     case 'projectile':
       index.projectiles.push(e);
+      bumpLaneVersion(index, 'projectiles');
       break;
     case 'pickup':
       index.pickups.push(e);
@@ -703,6 +711,7 @@ function appendEntityIndex(index, e) {
       break;
     case 'station': {
       index.stations.push(e);
+      bumpLaneVersion(index, 'stations');
       index.statics.push(e);
       index.damageables.push(e);
       const data = e.data || {};
@@ -718,6 +727,7 @@ function appendEntityIndex(index, e) {
       break;
     case 'wreck':
       index.wrecks.push(e);
+      bumpLaneVersion(index, 'wrecks');
       index.mineables.push(e);
       break;
     case 'fx':
@@ -778,16 +788,16 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.radarAsteroids, e);
   removeFromIndexArray(index.ships, e);
   removeFromIndexArray(index.drones, e);
-  removeFromIndexArray(index.shipLike, e);
-  removeFromIndexArray(index.projectiles, e);
+  if (removeFromIndexArray(index.shipLike, e)) bumpLaneVersion(index, 'shipLike');
+  if (removeFromIndexArray(index.projectiles, e)) bumpLaneVersion(index, 'projectiles');
   removeFromIndexArray(index.pickups, e);
   removeFromIndexArray(index.payloads, e);
-  removeFromIndexArray(index.stations, e);
+  if (removeFromIndexArray(index.stations, e)) bumpLaneVersion(index, 'stations');
   removeFromIndexArray(index.dockStations, e);
   removeFromIndexArray(index.gates, e);
   removeFromIndexArray(index.asteroids, e);
   removeFromIndexArray(index.mineables, e);
-  removeFromIndexArray(index.wrecks, e);
+  if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
   removeFromIndexArray(index.fx, e);
   removeFromIndexArray(index.mines, e);
   removeFromIndexArray(index.vectorMines, e);
@@ -831,6 +841,11 @@ function removeEntityIndex(index, e) {
   index.version++;
 }
 
+function bumpLaneVersion(index, lane) {
+  const laneVersions = index.laneVersions;
+  if (laneVersions) laneVersions[lane] = (laneVersions[lane] || 0) + 1;
+}
+
 function removeFromIndexArray(list, e) {
   if (!Array.isArray(list)) return;
   const i = list.indexOf(e);
@@ -871,16 +886,20 @@ function removeEntitiesFromIndex(index, corpses) {
   removeCorpsesFromIndexArray(index.radarAsteroids, removed);
   removeCorpsesFromIndexArray(index.ships, removed);
   removeCorpsesFromIndexArray(index.drones, removed);
-  removeCorpsesFromIndexArray(index.shipLike, removed);
-  removeCorpsesFromIndexArray(index.projectiles, removed);
+  index.laneVersions.shipLike = (index.laneVersions.shipLike || 0)
+    + removeCorpsesFromIndexArray(index.shipLike, removed);
+  index.laneVersions.projectiles = (index.laneVersions.projectiles || 0)
+    + removeCorpsesFromIndexArray(index.projectiles, removed);
   removeCorpsesFromIndexArray(index.pickups, removed);
   removeCorpsesFromIndexArray(index.payloads, removed);
-  removeCorpsesFromIndexArray(index.stations, removed);
+  index.laneVersions.stations = (index.laneVersions.stations || 0)
+    + removeCorpsesFromIndexArray(index.stations, removed);
   removeCorpsesFromIndexArray(index.dockStations, removed);
   removeCorpsesFromIndexArray(index.gates, removed);
   removeCorpsesFromIndexArray(index.asteroids, removed);
   removeCorpsesFromIndexArray(index.mineables, removed);
-  removeCorpsesFromIndexArray(index.wrecks, removed);
+  index.laneVersions.wrecks = (index.laneVersions.wrecks || 0)
+    + removeCorpsesFromIndexArray(index.wrecks, removed);
   removeCorpsesFromIndexArray(index.fx, removed);
   removeCorpsesFromIndexArray(index.mines, removed);
   removeCorpsesFromIndexArray(index.vectorMines, removed);
