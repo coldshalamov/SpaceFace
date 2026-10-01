@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "inst-15-localmap-kit-tokens",
-      "date": "2026-09-23",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "local map container, panels, typography, controls, and canvas roles use deckplate and kit tokens",
-      "fingerprint": "domain=INSTRUMENT,verb=frame,subject=localmap,sector=global,layer=ui,tempo=screen",
-      "references": [],
-      "integration": "live",
-      "commit": "d5ff6b260",
-      "verification": "focused_green"
-    },
-    {
       "id": "world-19-vesta-hazard-weather",
       "date": "2026-09-23",
       "wf": "WF-04",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "401dc5be5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-33-mining-noise-danger",
+      "date": "2026-10-01",
+      "wf": "WF-03",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "loud mining's named event now lands a bounded danger impulse on the worked sector instead of a parallel private seam",
+      "fingerprint": "verb=mine,subject=sector-danger,sector=any,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "77e05da46",
       "verification": "focused_green"
     }
   ],
