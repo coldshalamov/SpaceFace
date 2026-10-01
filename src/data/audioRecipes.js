@@ -1577,6 +1577,17 @@ export const RECIPES = [
     repeatCount: 1,
     repeatIntervalS: 0.04,
   },
+  // Hitch latch is a softer triangle cousin of the massline lock, not a copy of it.
+  {
+    id: 'sfx_hitch_latch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 262,
+    freqSweep: [262, 174],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.14 },
+  },
   {
     id: 'sfx_tether_latch_body',
     category: 'weapon',
