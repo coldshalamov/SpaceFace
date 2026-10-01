@@ -110,7 +110,7 @@ import {
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
+import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
@@ -3146,7 +3146,10 @@ function warmLiveSectorFullExtras(owner, sectorId) {
     Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, stubs.sectorId)).catch(() => {});
   }
   for (const stub of stubs.shipStubs) warmSaveEnvelopeEntityDecode(owner, stub, stubs.sectorId);
-  warmEnemyRosterDecode(owner, stubs.roster, 'sector-full-extras', stubs.sectorId);
+  // The '-decode-runway' suffix is load-bearing: deadlineClass + WARM_PURPOSE_RESIDENCY_ROLE
+  // both classify off /runway/, and without it these roster hulls post AMBIENT and hard-pin
+  // on the session fallback owner instead of riding the warm lease.
+  warmEnemyRosterDecode(owner, stubs.roster, 'sector-full-extras-decode-runway', stubs.sectorId);
 }
 
 function warmSaveEnvelopeEntityDecode(owner, entity, sectorIdOverride) {
@@ -11686,6 +11689,21 @@ export const render = {
         warmEnemyRosterDecode(this, interdictionPool, 'interdiction-decode-runway', targetSectorId);
       }
     });
+    // An unfiled jump's destination only exists at confirm — the chargeStart arm above
+    // no-ops on its null targetSectorId, leaving the whole post-confirm charge window
+    // (~3.5-8s; chargeT is frozen until _unfiledConfirmed) unused while the destination
+    // census + FULL-extras cohort would decode inside enterSector.
+    onBus('jump:unfiledConfirmed', ({ returnSectorId } = {}) => {
+      beginIncomingSectorPrewarm(returnSectorId);
+      warmLiveSectorFullExtras(this, returnSectorId);
+    });
+    // Free-flight membership latches a candidate MEMBERSHIP_DWELL_S before the continuous
+    // enterSector — arm the promote cohort's decode during the dwell (the bag must already
+    // be materialized REDUCED; liveSectorFullExtrasStubs no-ops otherwise). Presentation
+    // tier so the stub walk lands in the drain lane, not inside the latch tick.
+    onBus('sector:membershipCandidate', ({ sectorId } = {}) => {
+      warmLiveSectorFullExtras(this, sectorId);
+    }, { presentation: true });
     onBus('player:death', ({ recoverable, recovery } = {}) => {
       // A recoverable defeat fixes its recovery dock in the receipt while the after-action
       // modal dwells — the destination census decodes through that window instead of
@@ -12305,6 +12323,12 @@ export const render = {
     // its residency metadata — the outgoing/current sector id would mislabel the retention
     // and let byte pressure evict the file the incoming sector is about to draw.
     const sectorStubs = saveEnvelopeSectorStubs(data);
+    // The saved sector's first materialize also re-rolls its ambient/enemy/boss roster and
+    // its ecology/machine dressing — envelope-derivable cohorts the base stub set lacks.
+    const fullExtras = saveEnvelopeFullExtrasStubs(data);
+    const placeStubs = sectorStubs.placeStubs.concat(fullExtras.placeStubs);
+    const shipStubs = sectorStubs.shipStubs.concat(fullExtras.shipStubs);
+    const roster = sectorStubs.roster.concat(fullExtras.roster);
     for (const record of persistent) warmSaveEnvelopeEntityDecode(this, record, sectorStubs.sectorId);
     // The saved player's hull is the one body the first frame must show — on a non-Kestrel
     // save its decode used to start at _spawnPlayer mid-restore instead of overlapping the
@@ -12318,15 +12342,15 @@ export const render = {
     // gates, POI landmarks, field geology heads, dressing rows, durable records, owed mission
     // rosters) rematerializes behind the authored-visuals gate — none of it is an envelope
     // entity, so without this pass their decodes start cold at enterSector.
-    for (const stub of sectorStubs.placeStubs) {
+    for (const stub of placeStubs) {
       Promise.resolve(warmPackagedEntityDecode(this, stub, null, false, sectorStubs.sectorId)).catch(() => {});
     }
-    for (const stub of sectorStubs.shipStubs) warmSaveEnvelopeEntityDecode(this, stub, sectorStubs.sectorId);
+    for (const stub of shipStubs) warmSaveEnvelopeEntityDecode(this, stub, sectorStubs.sectorId);
     // Roster entries decode through the same authored preload the spawn kick uses. The
     // menu-dwell caller is mode-free, so warmEnemyRosterDecode's flight/loading gate is
     // reproduced inline rather than invoked.
     const rosterSeen = new Set();
-    for (const entry of sectorStubs.roster) {
+    for (const entry of roster) {
       const key = entry && enemyHullDecodeKey(entry.archetype, entry.factionId || null, entry.trafficRole || null);
       if (!key || rosterSeen.has(key.key)) continue;
       rosterSeen.add(key.key);

@@ -18,6 +18,7 @@ import {
   wreckAftermathDressingForSector,
 } from '../data/wreckAftermathDressing.js';
 import { RECORD_KIND, recordShouldRematerialize, recordsForSector, stableRecordId } from '../world/worldRecords.js';
+import { embodimentRecordIntents, recordFromEmbodimentIntent } from '../world/embodimentRecipes.js';
 import { getDressingRow } from '../world/dressingTable.js';
 import { machineSitesForSector } from '../data/precursorMachines.js';
 import { alienSitesForSector, planInfestationModules } from '../data/alienEcology.js';
@@ -331,18 +332,7 @@ export function saveEnvelopeSectorStubs(data) {
   const coverBareMissionWrecks = () => {
     if (bareMissionWrecksCovered) return;
     bareMissionWrecksCovered = true;
-    const covered = new Set();
-    for (let i = 0; covered.size < 6 && i < 64; i += 1) {
-      const id = `envelope-warm:mission-wreck:${i}`;
-      const variant = hashId(id) % 6;
-      if (covered.has(variant)) continue;
-      covered.add(variant);
-      out.placeStubs.push({
-        id,
-        type: 'wreck',
-        data: { wreckClass: 'battlefield', parentType: 'ship' },
-      });
-    }
+    pushBareWreckResidues(out.placeStubs);
   };
 
   // Aftermath wreck markers serialize the victim's full visual identity (defId + the same
@@ -508,42 +498,15 @@ export function saveEnvelopeSectorStubs(data) {
 
   for (const rec of sectorRecords) {
     if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
-      // spawnSpecFromRecord stamps no hulk identity on rematerialized wrecks — every one
-      // resolves through the six-file aftermath table (military → corvette turret inside
-      // it), which the roster exemplar prewarm already decodes. Nothing to warm.
+      // Rematerialized wrecks resolve through the six-file aftermath residue table — the
+      // roster exemplar prewarm only covers survival arenas, so arm the same class cover.
+      coverBareMissionWrecks();
       continue;
     }
     // Convoy/npc/mission_target records rematerialize through the ship spec — the resolver
     // reads lootTableId then silhouette/defId, and the kit lane reads entity.factionId,
     // exactly as the spawned spec stamps them (spawnSpecFromRecord shell / makeEnemySpawnSpec).
-    // _spawnFromDurableRecord routes enemyTypeId+hostile-kind records through the enemy spec,
-    // whose lootTableId/defId come from the resolved def (unknown ids fall back to [0]).
-    const isEnemySpec = rec.enemyTypeId
-      && (rec.kind === RECORD_KIND.NPC
-        || rec.kind === RECORD_KIND.MISSION_TARGET
-        || rec.isBoss === true);
-    const stubData = { durable: true };
-    let stubFactionId = rec.factionId || null;
-    if (isEnemySpec) {
-      const def = ENEMY_BY_ID.get(rec.enemyTypeId) || ENEMY_TYPES[0];
-      stubData.lootTableId = def.id;
-      stubData.defId = def.shipId;
-      stubData.enemyTypeId = rec.enemyTypeId;
-      if (def.silhouette) stubData.silhouette = def.silhouette;
-      if (rec.trafficRole) stubData.trafficRole = rec.trafficRole;
-      stubFactionId = enemyFactionIdFor(def, rec.factionId);
-    } else {
-      stubData.lootTableId = rec.enemyTypeId || null;
-      stubData.defId = rec.shipDefId || 'ship_kestrel';
-      stubData.enemyTypeId = rec.enemyTypeId || null;
-      stubData.trafficRole = rec.trafficRole || null;
-    }
-    out.shipStubs.push({
-      id: rec.recordId,
-      type: 'ship',
-      factionId: stubFactionId,
-      data: stubData,
-    });
+    out.shipStubs.push(shipStubForRecord(rec));
   }
 
   // Owed mission targets in the saved sector (_spawnTargetsFor): named marks carry their hull
@@ -736,6 +699,68 @@ function liveEnemyPoolFor(sector) {
   return LIVE_PIRATE_ENEMIES;
 }
 
+// Bare wreck bodies (mission wrecks, aftermath residue, durable wreck records) pick their
+// packaged file by allocated-id hash across the six-class residue table — covering means
+// one stub per class so whatever the mount hashes to is already decoded. Callers keep a
+// once-flag; file-level dedupe makes repeats harmless anyway.
+function pushBareWreckResidues(placeStubs) {
+  const covered = new Set();
+  for (let i = 0; covered.size < 6 && i < 64; i += 1) {
+    const id = `envelope-warm:mission-wreck:${i}`;
+    const variant = hashId(id) % 6;
+    if (covered.has(variant)) continue;
+    covered.add(variant);
+    placeStubs.push({
+      id,
+      type: 'wreck',
+      data: { wreckClass: 'battlefield', parentType: 'ship' },
+    });
+  }
+}
+
+// Shared ship-stub shape for a rematerializing durable record — the resolver reads
+// lootTableId/silhouette/defId exactly as spawnSpecFromRecord stamps them; enemy-spec
+// records resolve through the def table (unknown ids fall back to [0]).
+function shipStubForRecord(rec) {
+  const isEnemySpec = rec.enemyTypeId
+    && (rec.kind === RECORD_KIND.NPC
+      || rec.kind === RECORD_KIND.MISSION_TARGET
+      || rec.isBoss === true);
+  const stubData = { durable: true };
+  let stubFactionId = rec.factionId || null;
+  if (isEnemySpec) {
+    const def = ENEMY_BY_ID.get(rec.enemyTypeId) || ENEMY_TYPES[0];
+    stubData.lootTableId = def.id;
+    stubData.defId = def.shipId;
+    stubData.enemyTypeId = rec.enemyTypeId;
+    if (def.silhouette) stubData.silhouette = def.silhouette;
+    if (rec.trafficRole) stubData.trafficRole = rec.trafficRole;
+    stubFactionId = enemyFactionIdFor(def, rec.factionId);
+  } else {
+    stubData.lootTableId = rec.enemyTypeId || null;
+    stubData.defId = rec.shipDefId || 'ship_kestrel';
+    stubData.enemyTypeId = rec.enemyTypeId || null;
+    stubData.trafficRole = rec.trafficRole || null;
+  }
+  return { id: rec.recordId, type: 'ship', factionId: stubFactionId, data: stubData };
+}
+
+// Promote's _reconcileEmbodimentRecordsChunks inserts current embodiment intents as durable
+// records BEFORE the record walk — enumerate the same insertions so callers union them
+// into both the combat-history gate and the ship-stub pass. Pure: only reads the cache.
+function embodimentStubsRecords(embodiment, sectorId, seed, sector) {
+  const records = [];
+  for (const intent of embodimentRecordIntents(embodiment, sectorId)) {
+    const rec = recordFromEmbodimentIntent(intent, {
+      seed,
+      tick: 0,
+      fallbackFactionId: (sector && (sector.owner || sector.factionId)) || 'faction_free',
+    });
+    if (rec) records.push(rec);
+  }
+  return records;
+}
+
 // Mirror of world.js liveRecordEntityIndex/farActorRecordIdSet — entities (or shelved far-actor
 // rows) already carrying a record id make its rematerialize an exactly-once skip.
 function liveSectorRecordHolderIds(state) {
@@ -780,42 +805,33 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
   const seed = (state.meta && Number.isFinite(state.meta.seed)) ? state.meta.seed : 1;
   const sectorRecords = recordsForSector(world.records, sector.id);
   const heldRecordIds = liveSectorRecordHolderIds(state);
+  // Promote inserts current embodiment intents as durable records BEFORE the record walk —
+  // union them into the combat-history gate and stub pass so their hulls warm too.
+  const intentRecords = embodimentStubsRecords(world.embodiment, sector.id, seed, sector);
 
   // Promote's first step rematerializes the sector's FULL-tier durable records — same stub
   // shape the envelope lane builds (enemy-spec records resolve through the def table).
   let bossRecordRematerializes = false;
-  for (const rec of sectorRecords) {
+  let hasRematerializingWrecks = false;
+  for (const rec of sectorRecords.concat(intentRecords)) {
     if (!rec || rec.alive === false) continue;
-    if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) continue;
-    if (rec.kind === RECORD_KIND.AFTERMATH && liveAftermathOwnsMarker(state, rec.markerId)) continue;
+    if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
+      if (recordShouldRematerialize(rec, 'FULL') && !heldRecordIds.has(rec.recordId)) {
+        hasRematerializingWrecks = true;
+      }
+      continue;
+    }
     if (!recordShouldRematerialize(rec, 'FULL')) continue;
     if (heldRecordIds.has(rec.recordId)) continue;
     if (rec.isBoss === true) bossRecordRematerializes = true;
-    const isEnemySpec = rec.enemyTypeId
-      && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss === true);
-    const stubData = { durable: true };
-    let stubFactionId = rec.factionId || null;
-    if (isEnemySpec) {
-      const def = ENEMY_BY_ID.get(rec.enemyTypeId) || ENEMY_TYPES[0];
-      stubData.lootTableId = def.id;
-      stubData.defId = def.shipId;
-      stubData.enemyTypeId = rec.enemyTypeId;
-      if (def.silhouette) stubData.silhouette = def.silhouette;
-      if (rec.trafficRole) stubData.trafficRole = rec.trafficRole;
-      stubFactionId = enemyFactionIdFor(def, rec.factionId);
-    } else {
-      stubData.lootTableId = rec.enemyTypeId || null;
-      stubData.defId = rec.shipDefId || 'ship_kestrel';
-      stubData.enemyTypeId = rec.enemyTypeId || null;
-      stubData.trafficRole = rec.trafficRole || null;
-    }
-    out.shipStubs.push({
-      id: rec.recordId,
-      type: 'ship',
-      factionId: stubFactionId,
-      data: stubData,
-    });
+    if (rec.recordSource === 'sector_embodiment' && world.records
+        && world.records.byId && world.records.byId[rec.recordId]) continue; // record pass covers it
+    out.shipStubs.push(shipStubForRecord(rec));
   }
+  // Rematerialized wreck/aftermath records mount a bare 'wreck' body whose packaged file is
+  // an allocated-id hash pick across the residue table — cover all six classes like the
+  // envelope lane does for mission wrecks.
+  if (hasRematerializingWrecks) pushBareWreckResidues(out.placeStubs);
 
   // POI dressing rows that promote to live actors — always runs (the promote re-arms them
   // even when dressing already exists), mirroring _promotePoiRowsToLive's own predicate.
@@ -912,7 +928,7 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
   const hostileFree = !(active.enemies && active.enemies.length)
     && !(active.dressing && active.dressing.length);
   if (hostileFree) {
-    const hadCombatHistory = sectorRecords.some((rec) => rec
+    const hadCombatHistory = sectorRecords.concat(intentRecords).some((rec) => rec
       && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
     if (!hadCombatHistory && (sector.enemyDensity || 0) > 0) {
       for (const zone of zonesForSector(sector.id)) {
@@ -946,5 +962,117 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
     }
   }
 
+  return out;
+}
+
+/**
+ * Envelope twin of liveSectorFullExtrasStubs for the menu-dwell warm: a save packet carries
+ * no residentSectors/sectorContents (migrations strips both — a restore always re-derives
+ * the bag at epoch 0), so the live bag gates collapse onto what the saved sector's FIRST
+ * materialize will mount. Everything the envelope already enumerates (stations, gates,
+ * fields, POI landmarks, palette literals, salted kit/wreck streams, world one-offs, durable
+ * records, mission targets) stays in saveEnvelopeSectorStubs — this adds only the cohorts
+ * the envelope lacked: ambient enemy pool + boss roster (fresh-materialize gates mirror
+ * _ensureSectorMaterializedChunks: ambient combatants re-roll only with no durable combat
+ * history, the boss needs an undefeated, unrecorded claim), ecology growth modules (same
+ * epoch-0 site stream; site state restores from the serialized alienEcology ledger), and
+ * machine-layer ring props. POI dressing rows promoted to live actors stay a live-only
+ * cohort — their place data lives on the generated bag row, unreachable from the packet.
+ */
+export function saveEnvelopeFullExtrasStubs(data) {
+  const out = { sectorId: null, placeStubs: [], shipStubs: [], roster: [] };
+  const sectorId = data && data.world && data.world.currentSectorId;
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  if (!sector) return out;
+  out.sectorId = sector.id;
+  const seed = (data.meta && Number.isFinite(data.meta.seed)) ? data.meta.seed : 1;
+  const recordsById = (data.world && data.world.records && data.world.records.byId) || {};
+  const sectorRecords = Object.keys(recordsById)
+    .map((id) => recordsById[id])
+    .filter((rec) => rec
+      && rec.alive !== false
+      && (rec.sectorId === sector.id || rec.homeSectorId === sector.id));
+  // Embodiment intents insert as durable records at the restore's promote — union them into
+  // the combat-history gate and emit a ship stub for any the record pass doesn't already own.
+  const intentRecords = embodimentStubsRecords(
+    data.world.embodiment, sector.id, seed, sector,
+  );
+  const hadCombatHistory = sectorRecords.concat(intentRecords).some((rec) => rec
+    && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
+  const heldRecordIdsForStubs = new Set(
+    ((data.entities && Array.isArray(data.entities.persistent)) ? data.entities.persistent : [])
+      .map((e) => e && e.data && e.data.worldRecordId)
+      .filter((id) => id != null),
+  );
+  let hasRematerializingWrecks = false;
+  for (const rec of sectorRecords.concat(intentRecords)) {
+    if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
+      if (recordShouldRematerialize(rec, 'FULL') && !heldRecordIdsForStubs.has(rec.recordId)) {
+        hasRematerializingWrecks = true;
+      }
+      continue;
+    }
+    if (rec.recordSource !== 'sector_embodiment') continue; // durable records already covered
+    if (recordsById[rec.recordId]) continue; // record pass in saveEnvelopeSectorStubs covers it
+    if (!recordShouldRematerialize(rec, 'FULL')) continue;
+    if (heldRecordIdsForStubs.has(rec.recordId)) continue;
+    out.shipStubs.push(shipStubForRecord(rec));
+  }
+  if (hasRematerializingWrecks) pushBareWreckResidues(out.placeStubs);
+
+  if (!hadCombatHistory && (sector.enemyDensity || 0) > 0) {
+    for (const zone of zonesForSector(sector.id)) {
+      const presence = zone && zone.presence;
+      if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;
+      const factionId = presence.factionId || zone.factionId || null;
+      for (const archetype of presence.archetypes) {
+        out.roster.push({
+          archetype,
+          factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), factionId),
+        });
+      }
+    }
+    for (const archetype of liveEnemyPoolFor(sector)) {
+      out.roster.push({
+        archetype,
+        factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+      });
+    }
+  }
+
+  const bossPoi = (sector.pois || []).find((p) => p && p.type === 'anomaly' && p.id === 'poi_boss');
+  if (bossPoi) {
+    const disc = data.world.discovery && data.world.discovery[sector.id];
+    const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
+    const recordClaims = sectorRecords.concat(intentRecords).some((rec) => rec && rec.isBoss === true
+      && (heldRecordIdsForStubs.has(rec.recordId) || recordShouldRematerialize(rec, 'FULL')));
+    if (!bossDefeated && !recordClaims) {
+      out.roster.push({ archetype: 'dreadnought_boss' });
+    }
+  }
+
+  // Fresh materialize is epoch 0 (residentSectors restore empty) — identical stream to the
+  // live enumerator's 'alien-ecology' draw.
+  const aeSites = data.world.alienEcology && data.world.alienEcology.sites;
+  for (const site of alienSitesForSector(sector.id)) {
+    if (!site || site.sterile) continue;
+    const siteState = (aeSites && aeSites[site.siteId] && aeSites[site.siteId].state) || 'dormant';
+    const siteRng = mulberry32(hash32(seed, sector.id, 0, 'alien-ecology', site.siteId));
+    for (const g of planInfestationModules(site, siteRng, siteState) || []) {
+      if (g && g.moduleId) {
+        out.placeStubs.push({
+          type: 'fx',
+          data: { placeId: `alien_growth_${g.moduleId}`, alienEcology: true },
+        });
+      }
+    }
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'alien_growth_filament_sheet', alienEcology: true } });
+  }
+  for (const site of machineSitesForSector(sector.id)) {
+    const ring = site && site.propRing;
+    if (ring && ring.propId) {
+      out.placeStubs.push({ type: 'fx', data: { placeId: ring.propId, machineSite: site.siteId } });
+    }
+  }
   return out;
 }

@@ -2199,6 +2199,12 @@ export const world = {
     const now = state.simTime || 0;
     if (!this._membershipCandidate || this._membershipCandidate.sectorId !== next) {
       this._membershipCandidate = { sectorId: next, sinceT: now };
+      // The dwell window before the switch is a warm runway for a candidate whose bag is
+      // already materialized REDUCED — continuous sector entry mounts the FULL-extras
+      // cohort with no charge screen to hide the decode.
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('sector:membershipCandidate', { sectorId: next });
+      }
       return;
     }
     if (now - this._membershipCandidate.sinceT < MEMBERSHIP_DWELL_S) return;
