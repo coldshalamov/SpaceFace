@@ -20,6 +20,7 @@ import {
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
+import { reelRebindText } from '../../systems/masslineInputGrammar.js';
 import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
@@ -815,7 +816,8 @@ export const settingsScreen = {
     build.break();
     REBINDABLE.forEach((action) => {
       const codes = live[action] || [];
-      const keyText = codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
+      const keyText = reelRebindText(action, codes)
+        || codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
       // `.sf-bind-btn--digit` marks a bare digit key (a hook kept from the legacy chip styling).
       build.key(REBIND_LABELS[action] || action, keyText,
         (btn) => this._capture(ctx, btn, action, live, base),
