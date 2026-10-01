@@ -463,9 +463,25 @@ export function createAssetResidencyRegistry(options = {}) {
     return false;
   }
 
+  // A served lease marks a body a live boundary actually admitted — observed demand. Its
+  // cache-only residue earns the same idle-sweep immunity as warm speculation, and under byte
+  // pressure it outranks warm: a body that was drawn once is the stronger return-visit signal.
+  function hasServedDecodeLease(entry) {
+    for (const metadata of entry.owners.values()) {
+      if (metadata && metadata.decodeServed === true) return true;
+    }
+    return false;
+  }
+
+  function softEvictionLeaseWeight(entry) {
+    if (hasServedDecodeLease(entry)) return 2;
+    if (hasWarmDecodeLease(entry)) return 1;
+    return 0;
+  }
+
   function sortSoftEvictionCandidates(candidates) {
     candidates.sort((a, b) => (
-      (hasWarmDecodeLease(a) ? 1 : 0) - (hasWarmDecodeLease(b) ? 1 : 0)
+      softEvictionLeaseWeight(a) - softEvictionLeaseWeight(b)
         || a.lastReleaseAtMs - b.lastReleaseAtMs
     ));
   }
@@ -602,9 +618,11 @@ export function createAssetResidencyRegistry(options = {}) {
         continue;
       }
       // A warm-decode lease still claims this entry for an inbound approach: sweeping it at the
-      // idle bound makes the residency poll re-decode the same file every ~30s. Warm leases stay
-      // byte-capped by the maxCacheOnlyBytes budget path below, so nothing grows unbound.
-      if (hasWarmDecodeLease(entry)) {
+      // idle bound makes the residency poll re-decode the same file every ~30s. A served lease
+      // is the same claim with observed demand behind it — the return visit re-decodes inside
+      // the admission lane and the body pops late. Both stay byte-capped by the
+      // maxCacheOnlyBytes budget path below, so nothing grows unbound.
+      if (hasWarmDecodeLease(entry) || hasServedDecodeLease(entry)) {
         if (maxCacheOnlyBytes != null) budgetCandidates.push(entry);
         continue;
       }

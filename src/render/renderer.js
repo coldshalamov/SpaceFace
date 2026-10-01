@@ -37,7 +37,7 @@ import {
   resolveIblSource,
 } from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -2438,7 +2438,16 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
  * off the same frame the state stops being pending.
  */
 function syncResolvingMarker(mesh) {
-  if (!mesh || !mesh.userData || !mesh.userData.resolvingMarker) return;
+  if (!mesh || !mesh.userData) return;
+  if (!mesh.userData.resolvingMarker) {
+    // Boundary-seat markers (stations/payloads) arm at wrap and materialize on the first
+    // evaluated pending frame — the earliest frame the affordance can draw anyway.
+    if (mesh.userData.wantsBoundaryResolvingMarker === true
+      && isAuthoredPendingStatus(mesh.userData.authoredAssetState)) {
+      materializeBoundaryResolvingMarker(mesh);
+    }
+    if (!mesh.userData.resolvingMarker) return;
+  }
   // GFX-12: a substrate built before the canonical library resolved retries its resident-record
   // lookup while pending, so a cold boot still converges on the ship's own low-detail stand-in.
   // Once the pending window closes the octahedron's fallback count is released with it.
@@ -7466,11 +7475,20 @@ export const render = {
         || (state.mode === 'flight'
           && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
           && admissionSubjectIsOnDeadlineGlass(subject, state));
-      const compilation = admissionOptions && admissionOptions.explicit === true
-        ? pipelineAdmissions.compileExplicit(subject, admissionOptions)
-        : (urgent
-          ? pipelineAdmissions.compile(subject, { ...admissionOptions, urgent: true })
-          : pipelineAdmissions.compile(subject));
+      let compilation;
+      try {
+        compilation = admissionOptions && admissionOptions.explicit === true
+          ? pipelineAdmissions.compileExplicit(subject, admissionOptions)
+          : (urgent
+            ? pipelineAdmissions.compile(subject, { ...admissionOptions, urgent: true })
+            : pipelineAdmissions.compile(subject));
+      } catch (error) {
+        // A synchronous throw before the promise chain exists bypasses the finally below:
+        // the hold would stick at +1 and the subject would stay latch-hidden forever.
+        if (counters) counters.admissionSubject = priorSubject;
+        markSubjectPipelinesPending(subject, false);
+        throw error;
+      }
       return compilation
         .then((result) => {
           // A linked program still stalls inside the presented frame while its
@@ -14414,7 +14432,7 @@ export const render = {
               return compile(subject);
             }
             if (subject && subject.userData) subject.userData.pipelinesPending = false;
-          });
+          }).catch(() => null);
         } else {
           void compileFn(m);
         }

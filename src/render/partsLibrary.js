@@ -19,7 +19,7 @@ import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '.
 import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
 import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
 import { dropWedgedAuthoredTasks, invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
-import { packagedPropSpec } from './visualOverrides.js';
+import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -2563,6 +2563,9 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     gracefulFallback: false,
     coordinateSystem: '+X forward, +Y up, +Z starboard; metres',
   };
+  // Same resolving-marker contract as pending ships and stations: an exact-identity payload
+  // keeps the abstract affordance on the glass while admission runs instead of popping in.
+  installBoundaryResolvingMarker(boundary, entity);
 
   let activeRoot = fallbackRoot;
   const setActiveRoot = (next) => {
@@ -2829,6 +2832,7 @@ function commitAuthoredCargoCapsuleBoundary(
   setActiveRoot,
   options = {},
 ) {
+  detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
@@ -3105,6 +3109,11 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     gracefulFallback: false,
   };
   stampPendingPlaceVisualBounds(boundary, entity);
+  // Authored-or-nothing stations must never show the procedural body, but an invisible seat
+  // pops in at commit whenever admission outlasts the runway — the same abstract marker
+  // contract pending ships get (no substitute identity; the per-frame sync drives it off
+  // authoredAssetState).
+  installBoundaryResolvingMarker(boundary, entity);
 
   let activeRoot = fallbackRoot;
   const setActiveVisualRoot = (next) => {
@@ -3438,6 +3447,16 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       'place-build-unavailable', null,
     );
   }
+  // The pre-compose stamp covers only the base record — re-stamp from the composed root's
+  // measured envelope so the compile-window grading sees the body's true drawn reach
+  // (base + overlay + extensions), not the under-covering record estimate.
+  if (authored.root && authored.root.userData && authored.root.userData.visualBounds) {
+    const measured = authored.root.userData.visualBounds;
+    boundary.userData.visualBounds = {
+      center: measured.center.slice(),
+      size: measured.size.slice(),
+    };
+  }
 
   registerPreparedAuthoredAdmission(scene, boundary, authored);
   let authoredDisposed = false;
@@ -3587,6 +3606,7 @@ function commitAuthoredPlaceBoundary(
 ) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
+  detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
@@ -3701,6 +3721,9 @@ export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, ce
   return worldSiteScale ?? censusScale ?? targetScale ?? authoredScale ?? 1;
 }
 
+const _composedPlaceBoundsBox = new THREE.Box3();
+const _composedPlaceBoundsVec = new THREE.Vector3();
+
 function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) {
   const palette = paletteFor(entity || {});
   const root = new THREE.Group();
@@ -3800,6 +3823,24 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       ? 'SOCKET_* markers remain available; authored mesh is presentation over a simulation-owned asteroid'
       : 'SOCKET_* markers remain available for debug/probes; world-place props are non-sim scenery',
   };
+  // Re-stamp the committed envelope from the measured composed root: record.bounds covers only
+  // the base part — the faction overlay, depth-prepass batches, approach yaw, and authored
+  // extensions draw past it (station_helios draws ~549x420 against a ~180 record stamp).
+  // entityVisualCullRadius prefers the stamp over its own lazy measurement, so an
+  // under-covering stamp would classify the biggest on-glass bodies at a fraction of their
+  // drawn reach for the root's whole life.
+  _composedPlaceBoundsBox.setFromObject(root);
+  if (!_composedPlaceBoundsBox.isEmpty()) {
+    const measuredCenter = _composedPlaceBoundsBox.getCenter(_composedPlaceBoundsVec);
+    root.userData.visualBounds = {
+      center: [measuredCenter.x, measuredCenter.y, measuredCenter.z],
+      size: [
+        _composedPlaceBoundsBox.max.x - _composedPlaceBoundsBox.min.x,
+        _composedPlaceBoundsBox.max.y - _composedPlaceBoundsBox.min.y,
+        _composedPlaceBoundsBox.max.z - _composedPlaceBoundsBox.min.z,
+      ],
+    };
+  }
   return {
     root,
     authoredParts: options.overlayRecord
@@ -4708,6 +4749,12 @@ function mergeQueuedJobOptions(queuedJob, request) {
     // byKey site), where a stamped epoch would poison that job's own commit. Only a
     // same-boundary join carries it, via carryAdmissionEpochToJoinedJob.
     if (optionKey === 'admissionEpoch') continue;
+    // Visible grading is monotonic: a job already posted to the glass lane must not be
+    // demoted by a later off-glass ask — promoteInFlightJobAdmissionVisible mirrors this.
+    if (optionKey === 'admissionVisible') {
+      if (incoming.admissionVisible === true) target.admissionVisible = true;
+      continue;
+    }
     if (incoming[optionKey] !== undefined) target[optionKey] = incoming[optionKey];
   }
 }
@@ -4720,9 +4767,12 @@ function mergeQueuedJobOptions(queuedJob, request) {
 function carryAdmissionEpochToJoinedJob(joinedJob, request) {
   const incomingEpoch = request && request.options && request.options.admissionEpoch;
   const target = joinedJob && joinedJob.options;
-  if (incomingEpoch != null && target && Object.isExtensible(target)
-      && target.admissionEpoch !== incomingEpoch) {
-    target.admissionEpoch = incomingEpoch;
+  if (incomingEpoch != null && target && Object.isExtensible(target)) {
+    // Never downgrade: a re-enqueued request can carry an epoch minted before the boundary's
+    // latest re-mark (e.g. a byKey-deferred joiner resuming its original bag after the
+    // boundary re-admitted). Writing it would strand the job — the strict-equality commit
+    // guards would drop the live run's only committer.
+    target.admissionEpoch = Math.max(Number(target.admissionEpoch) || 0, incomingEpoch);
   }
 }
 
