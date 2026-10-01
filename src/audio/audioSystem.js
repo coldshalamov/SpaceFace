@@ -1289,6 +1289,8 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   cone: 'sfx_field_deploy_cone',
   skim: 'sfx_field_deploy_skim',
   seed: 'sfx_field_deploy_seed',
+  'bombs:cycle': 'sfx_bomb_rack_cycle',
+  'bombs:rackChanged': 'sfx_bomb_rack_change',
 });
 
 export function resolveAudioCueRecipeId(cueId) {
@@ -2108,7 +2110,10 @@ export const audio = {
     bus.on('presentation:cue', (p) => {
       if (p && isPriorityCue(p)) this._applyPriorityCue(p);
     });
-    bus.on('toast', (p) => this._onCue((p && (p.kind === 'error' ? 'error' : 'click'))));
+    bus.on('toast', (p) => {
+      if (p && (p.silent === true || p.audio === false || p.audioOwnedByVerb === true)) return;
+      this._onCue((p && (p.kind === 'error' ? 'error' : 'click')));
+    });
     bus.on('alert', (p) => {
       if (!alertCueOwnsAudio(p)) return;
       this._onCue({

@@ -579,7 +579,7 @@ export const bombs = {
     const next = loaded[(index + 1) % loaded.length];
     rt.selectedId = next.id;
     this.bus.emit('bombs:cycle', { payloadId: next.id, name: bombDef(next.id).name, index: rt.rack.cells.indexOf(next) });
-    this.bus.emit('toast', { text: `Bomb bay: ${bombDef(next.id).name}`, kind: 'info', ttl: 1.6 });
+    this.bus.emit('toast', { text: `Bomb bay: ${bombDef(next.id).name}`, kind: 'info', ttl: 1.6, silent: true });
     return next.id;
   },
 
@@ -796,7 +796,7 @@ export const bombs = {
     normalizeStock(this.state.bombs);
     normalizeSelection(this.state.bombs);
     this.bus.emit('bombs:rackChanged', { rack: this.state.bombs.rack, stock: this.state.bombs.stock });
-    this.bus.emit('toast', { text, kind: 'info', ttl: 1.8 });
+    this.bus.emit('toast', { text, kind: 'info', ttl: 1.8, silent: true });
   },
 
   // One eligibility scan and one stable order per occupied tick, NOT eight payload-specific

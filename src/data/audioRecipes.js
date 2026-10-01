@@ -2866,6 +2866,30 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.14, sustain: 1.0, release: 0.2, peak: 0.22 },
     filterType: 'lowpass', filterFreq: 190, filterQ: 0.6,
   },
+  // VERB-23: Crisp mechanical ratchet/click for cycling active bomb bay slot
+  {
+    id: 'sfx_bomb_rack_cycle',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.03, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass',
+    filterFreq: 1850,
+    filterQ: 3.5,
+    pitchRange: [0.98, 1.02],
+  },
+  // VERB-23: Heavy mechanical latch click when bomb rack composition changes
+  {
+    id: 'sfx_bomb_rack_change',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.04 },
+    filterType: 'bandpass',
+    filterFreq: 1200,
+    filterQ: 2.2,
+    pitchRange: [0.96, 1.04],
+  },
 ];
 
 // PQ-158.00 — the sample-library hybrid bindings.
