@@ -20,17 +20,37 @@ export function worldSiteHistoryRows(ledger) {
       : `${receipt.complete ? 'Completed' : 'Progress'} — ${semanticLabel(receipt.operationId || receipt.componentId)}`,
     detail: receipt.kind === 'failure'
       ? `Recovery cycle ${Number(receipt.cycle) || 0}`
-      : `${formatWorkAmount(receipt.amountApplied)} work applied`,
+      : workAppliedDetail(receipt),
   })));
+}
+
+// A partial receipt carries its running total and threshold: the row names what is still
+// missing, not just what this request moved. Older receipts without the fields keep the
+// plain applied amount.
+function workAppliedDetail(receipt) {
+  const applied = formatWorkAmount(receipt.amountApplied);
+  const total = Number(receipt.appliedTotal);
+  const threshold = Number(receipt.workThreshold);
+  if (!(Number.isFinite(total) && Number.isFinite(threshold) && threshold > 0)) return `${applied} work applied`;
+  return `${applied} work applied — ${formatWorkAmount(total)} of ${formatWorkAmount(threshold)}`;
 }
 
 export function worldSiteHistoryPresentation(projection) {
   const ledger = projection && projection.ledger || {};
+  const pending = projection && Array.isArray(projection.pendingWork) ? projection.pendingWork : [];
   return Object.freeze({
     stageLabel: String(projection && projection.stageLabel || 'UNKNOWN STAGE'),
     completedCount: Math.max(0, Number(ledger.completedCount) || 0),
     failureCount: Math.max(0, Number(ledger.failureCount) || 0),
     rows: worldSiteHistoryRows(ledger),
+    // Durable partial work surviving leave/return: each row names the retained operation
+    // and the work still missing toward its threshold.
+    workRemaining: Object.freeze(pending.map((work) => Object.freeze({
+      operationId: String(work.operationId || ''),
+      componentId: String(work.componentId || ''),
+      label: semanticLabel(work.operationId || work.componentId),
+      detail: `${formatWorkAmount(work.applied)} of ${formatWorkAmount(work.threshold)} — ${formatWorkAmount(work.remaining)} to go`,
+    }))),
   });
 }
 
