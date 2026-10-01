@@ -419,13 +419,52 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   const onPodRescue = (payload) => {
     dispatch('survivorPod:rescueSelected', payload && payload.entityId, payload, () => true);
   };
+  // ANI-26: drill sessions carry an asteroid id, never the platform entity — the only
+  // platform the player can see is the one the session is happening at, so the drill
+  // lifecycle fans out to every live drill_platform rig. start also arms the feed creep
+  // on a side-band event (one bus event -> one clip).
+  const fanoutRig = (rigId, type, payload) => {
+    const anchor = anchorS(payload);
+    for (const controller of authoredMotionControllersForRig(rigId)) {
+      try {
+        controller.handleEvent?.(type, payload, anchor);
+      } catch (error) {
+        console.warn(`[authoredMotion] ${type} rejected by ${rigId} controller`, error);
+      }
+    }
+  };
+  const onDrillStart = (payload) => {
+    fanoutRig('drill_platform', 'drill:start', payload);
+    fanoutRig('drill_platform', 'drill:feed', payload);
+  };
+  const onDrillBreak = (payload) => fanoutRig('drill_platform', 'drill:break', payload);
+  const onDrillEnd = (payload) => fanoutRig('drill_platform', 'drill:end', payload);
+  // ANI-31: wasp body language — telegraph bristles the winglets, engagement punches the
+  // guns, fleeing tucks them. All entity-addressed; non-wasp rigs ignore the events.
+  const onAiTelegraph = (payload) => {
+    dispatch('ai:telegraph', payload && payload.entityId, payload, () => true);
+  };
+  const onAiFlee = (payload) => {
+    dispatch('ai:flee', payload && payload.entityId, payload, () => true);
+  };
+  const onPredationEngaged = (payload) => {
+    dispatch('encounter:predationEngaged', payload && payload.raiderId, payload, () => true);
+  };
+  // ANI-25: the berth answers the same dock verbs the hull does — resolve the station's
+  // dock-interior entity so the clamps/boom play their half of the handshake.
+  const dockInteriorId = (payload) => (payload && payload.stationId != null
+    && typeof entityForStationId === 'function'
+    ? entityForStationId(payload.stationId) : null);
   const onDockRange = (payload) => {
     const id = playerId();
-    if (id == null) return;
     if (payload && payload.inRange) {
-      strutsDown.add(id);
-      dispatch('dock:range', id, payload, () => true);
-    } else if (strutsLive(id)) {
+      // ANI-25: the berth's ready stance only fires on approach-in.
+      dispatch('dock:range', dockInteriorId(payload), payload, () => true);
+      if (id != null) {
+        strutsDown.add(id);
+        dispatch('dock:range', id, payload, () => true);
+      }
+    } else if (id != null && strutsLive(id)) {
       // Left range without docking — the bus event only covers 'in', so the stow rides a
       // side-band event rather than sharing dock:range with the deploy clip.
       strutsDown.delete(id);
@@ -433,15 +472,20 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     }
   };
   const onDocked = (payload) => {
+    dispatch('dock:docked', dockInteriorId(payload), payload, () => true);
     const id = playerId();
     if (id == null || !strutsLive(id)) return;
     dispatch('dock:docked', id, payload, () => true);
   };
   const onUndocked = (payload) => {
+    dispatch('dock:undocked', dockInteriorId(payload), payload, () => true);
     const id = playerId();
     if (id == null || !strutsLive(id)) return;
     strutsDown.delete(id);
     dispatch('dock:undocked', id, payload, () => true);
+  };
+  const onDockDenied = (payload) => {
+    dispatch('dock:denied', dockInteriorId(payload), payload, () => true);
   };
   const onRepairCompleted = (payload) => {
     if (!payload || payload.type !== 'repair') return;
@@ -617,9 +661,16 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('cruise:dropped', onCruiseDropped),
     bus.on('survivorPod:ejected', onPodEjected),
     bus.on('survivorPod:rescueSelected', onPodRescue),
+    bus.on('drill:start', onDrillStart),
+    bus.on('drill:break', onDrillBreak),
+    bus.on('drill:end', onDrillEnd),
+    bus.on('ai:telegraph', onAiTelegraph),
+    bus.on('ai:flee', onAiFlee),
+    bus.on('encounter:predationEngaged', onPredationEngaged),
     bus.on('dock:range', onDockRange),
     bus.on('dock:docked', onDocked),
     bus.on('dock:undocked', onUndocked),
+    bus.on('dock:denied', onDockDenied),
     bus.on('gate:range', onGateRange),
     bus.on('jump:chargeStart', onJumpChargeStart),
     bus.on('jump:start', onGateReset),
