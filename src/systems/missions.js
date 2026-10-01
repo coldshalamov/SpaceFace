@@ -9359,6 +9359,14 @@ export const missions = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between boards/active sections — a
+  // long campaign's boards + active list is the heaviest ledger left on this stretch. Yields
+  // sit only at section boundaries; per-row heist restore keeps the sync lane's order, so the
+  // run stays bit-identical.
+  *deserializeChunked(data) {
     if (!data) return;
     const state = this.state;
     state.missions.boards = data.boards || {};
@@ -9381,9 +9389,11 @@ export const missions = {
     } else {
       delete state.missions.postEndingReplay;
     }
+    yield 'missions-scalars';
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
     const heistRestoreTick = state.tick | 0;
-    state.missions.active = (data.active || []).map((a) => {
+    const restoredActive = [];
+    for (const a of data.active || []) {
       const row = {
         ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
         status: a.status || 'active',
@@ -9395,8 +9405,10 @@ export const missions = {
       // decided receipt, re-request a never-launched schedule, and otherwise reach
       // `unresolved_absent`. Never fabricate a capsule and never fabricate a payout.
       if (a && a.heist) row.heist = heistMissionRuntime.restore(a.heist, { tick: heistRestoreTick });
-      return row;
-    });
+      restoredActive.push(row);
+      if (restoredActive.length % 8 === 0) yield 'missions-active-batch';
+    }
+    state.missions.active = restoredActive;
     if (data.story) state.story = data.story;
     // Sidecar lives inside already-serialized state.story — migrate/init without save schema change.
     ensureCampaign47aState(state);

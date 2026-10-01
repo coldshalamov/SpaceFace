@@ -217,8 +217,12 @@ function nav(ctx, method, arg) {
 /** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
 function readSlots(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
-  // Preferred: save system exposes a slot index.
+  // Preferred: save system exposes a slot index. Index cards first — the per-render read
+  // must not pay the authoritative blob scan on a stale generation; the validated merge
+  // repaints on 'save:slotsValidated' (listener below) and every load click re-validates
+  // real bytes through _prepareEnvelopeStringAsync anyway.
   if (sys) {
+    if (typeof sys.listSlotsIndexCards === 'function') { try { return normalize(sys.listSlotsIndexCards()); } catch (e) {} }
     if (typeof sys.listSlots === 'function') { try { return normalize(sys.listSlots()); } catch (e) {} }
     if (sys.index && typeof sys.index === 'object') { try { return normalize(sys.index); } catch (e) {} }
   }
