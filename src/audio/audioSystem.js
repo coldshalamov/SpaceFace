@@ -1487,6 +1487,20 @@ export const MINE_BED_ALERT_DUCK = 0.35;      // the room tone under a live aler
 export const MINE_GRIND_ALERT_DUCK = 0.5;     // the grind under a live alert
 export const MINE_REFUSAL_SUPPRESS_MS = 5000; // law §5: identical refusals within 5s do not replay
 
+// ECON-03 — the station's refusal word per `economy:tradeFailed` reason. The toast owns the
+// sentence; the comms voice names the reason in one word the player can hear and read.
+export const TRADE_REFUSAL_WORD = Object.freeze({
+  not_docked: 'not docked',
+  credits: 'insufficient credits',
+  cargo_full: 'hold full',
+  no_cargo: 'nothing aboard to sell',
+  mission_cargo_locked: 'sealed contract cargo',
+  black_market_locked: 'the den is not open to you',
+  no_stock: 'out of stock',
+  price_changed: 'the price moved',
+  contamination_refusal: 'the lot is contaminated',
+});
+
 function mineCue(klass, priority, extra = {}) {
   return Object.freeze({
     klass,
@@ -1964,6 +1978,10 @@ export const audio = {
     });
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
+    // ECON-03 — a refused trade answers in the station's voice: one comms line naming the
+    // reason, captioned by the voice pipeline. Deliberately not ui_deny — the menu blip is
+    // the wrong register for a counter that declines you.
+    bus.on('economy:tradeFailed', (p) => this._onTradeFailed(p || {}));
     // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
     // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick,
     // but only on routes where jettisonImpulse's own audio:cue is flag-gated OFF; with the flag on
@@ -3893,6 +3911,21 @@ export const audio = {
     if (massline2Flag('jettisonImpulse')) return;
     if (!p || !(p.amount > 0)) return;
     this.play('sfx_massline_jettison', { gain: 0.7 });
+  },
+
+  // ECON-03 — `economy:tradeFailed` (economy.js handleTrade) is the one refusal event the counter
+  // speaks. A stable id per reason means rapid re-presses REPLACE the line on the voice floor
+  // instead of stacking refusals.
+  _onTradeFailed(p) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const reason = typeof p.reason === 'string' && p.reason ? p.reason : 'invalid';
+    const word = TRADE_REFUSAL_WORD[reason] || 'cannot complete';
+    this.bus.emit('voice:say', {
+      channel: 'comms',
+      id: `economy:tradeFailed:${reason}`,
+      text: `Refused — ${word}.`,
+      ttl: 3,
+    });
   },
 
   // The rock calving's two audible beats, keyed off the chain's own receipts. One family: groan
