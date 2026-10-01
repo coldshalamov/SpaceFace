@@ -95,8 +95,9 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
  * motion-system bindEvents calls. `clock` supplies the current sim second for event payloads that
  * carry no simTime of their own (mining events don't). Returns an unbind function.
  */
-export function installAuthoredMotionBus(bus, { clock } = {}) {
+export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   if (!bus || typeof bus.on !== 'function') return null;
+  const playerId = () => (typeof playerEntityId === 'function' ? playerEntityId() : null);
   const simNow = () => (typeof clock === 'function' ? Number(clock()) || 0 : 0);
   const dispatch = (type, entityId, payload, accept) => {
     if (entityId == null) return;
@@ -145,6 +146,33 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
   const onBoostStop = (payload) => {
     dispatch('ship:boostStop', payload.shipId, payload, irisOpen);
   };
+  // ANI-06: the repair-pod service arm only unfolds for repair jobs — a refuel never cracks
+  // the hatch, and the stow is gated on a deployed arm so a stray completion can't replay it.
+  // Service payloads carry no entity id (yard jobs are always the player's) — the renderer
+  // supplies the player id via playerEntityId.
+  // Both stow clips hold at rest (hold-ended) so they keep the rig parked after they finish —
+  // `state` (the newest-started clip) is therefore the live truth: 'serviceArm' means the arm is
+  // out, 'armorPeel' means the cap is raised.
+  const armOut = (controller) => controller.state === 'serviceArm';
+  const onServiceStarted = (payload) => {
+    if (!payload || payload.type !== 'repair') return;
+    dispatch('kestrel:serviceArm', playerId(), payload, (c) => c.state !== 'serviceArm');
+  };
+  const onServiceDone = (payload) => {
+    dispatch('kestrel:serviceDone', playerId(), payload, armOut);
+  };
+  // ANI-07: the port shoulder cap peels on the first hull hit that reaches it and stays up as
+  // the damage state; a finished repair re-seats it. Re-peeling needs the plate seated again
+  // (a fresh hull hit while the plate is already loose does nothing new).
+  const peelUp = (controller) => controller.state === 'armorPeel';
+  const onCombatDamage = (payload) => {
+    if (!payload || payload.hullHit !== true) return;
+    dispatch('kestrel:armorPeel', payload.targetId, payload, (c) => !peelUp(c));
+  };
+  const onRepairCompleted = (payload) => {
+    if (!payload || payload.type !== 'repair') return;
+    dispatch('kestrel:armorFix', playerId(), payload, peelUp);
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
@@ -154,6 +182,11 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     bus.on('ship:boostPreKick', onBoostPreKick),
     bus.on('ship:boostStart', onBoostStart),
     bus.on('ship:boostStop', onBoostStop),
+    bus.on('service:started', onServiceStarted),
+    bus.on('service:completed', onServiceDone),
+    bus.on('service:aborted', onServiceDone),
+    bus.on('combat:damage', onCombatDamage),
+    bus.on('service:completed', onRepairCompleted),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

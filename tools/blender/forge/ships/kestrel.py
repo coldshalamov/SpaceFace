@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import ANI_01  # noqa: E402
 import ANI_02  # noqa: E402
 import ANI_05  # noqa: E402
+import ANI_06  # noqa: E402
+import ANI_07  # noqa: E402
 
 SHIP_ID = 'kestrel'
 
@@ -137,6 +139,16 @@ def build():
     lid = F.box(s, 'RepairPodHatch', (-2.1, 4.35, 1.88), (1.2, 1.2, 0.08), material='paint2', bevel=0.01)
     s.hook_part('HOOK_SECONDARY_POD', pod, band, lid)
 
+    # ANI-06 proposed geometry: a compact two-joint service arm stowed INSIDE the pod under the
+    # hatch cutout — Z-folded flat at rest (two links stacked over each other) so the solid pod
+    # reads unchanged until the lid swings. The shoulder pivot sits at the opening's +X edge:
+    # pitching the -X-hanging chain up carries the whole arm out through the hole, then the
+    # elbow unbends the forearm toward the ship shoulder and parks its tool tip just outside.
+    arm_a = F.box(s, 'SvcArmA', (-2.3, 4.35, 1.55), (1.25, 0.16, 0.11), material='gunmetal')
+    arm_b = F.box(s, 'SvcArmB', (-2.2, 4.35, 1.62), (1.3, 0.14, 0.09), material='gunmetal')
+    arm_head = F.box(s, 'SvcHead', (-1.45, 4.35, 1.62), (0.24, 0.14, 0.16), material='dark')
+    arm_tip = F.light(s, 'SvcTip', (-1.28, 4.35, 1.68), 'glow_amber', size=0.08)
+
     # --- dorsal sensor dish (sensor damage part; ANI-01 motion rig) -----------------------------
     ped = F.cylinder(s, 'DishPedestal', (-2.2, -0.9, 2.1), (-2.2, -0.9, 2.85), 0.2, 0.13, material='gunmetal',
                      segments=16)
@@ -176,6 +188,11 @@ def build():
     cap = F.plate(s, 'ShoulderCap', [(4.0, 3.4), (3.1, 5.8), (0.5, 5.8), (0.5, 3.4)], z0=0.62,
                   thickness=0.14, material='paint2', chamfer=0.06)
     s.hook_part('HOOK_ARMOR_PORT', cap)
+
+    # ANI-06/07 author into the shared bank: pod hatch+arm on repair jobs, cap peel on hull hits.
+    ANI_06.build(s, {'hatch': lid, 'arm_a': arm_a, 'arm_b': [arm_b, arm_head, arm_tip]},
+                 source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    ANI_07.build(s, {'cap': cap}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
 
     # --- detail ------------------------------------------------------------------------------
     s.detail = 1

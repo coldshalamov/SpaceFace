@@ -10645,6 +10645,8 @@ export const render = {
     if (typeof this._authoredMotionUnbind === 'function') this._authoredMotionUnbind();
     this._authoredMotionUnbind = installAuthoredMotionBus(bus, {
       clock: () => Number(state.simTime) || 0,
+      // Station-service payloads carry no entity id — the jobs only ever belong to the player.
+      playerEntityId: () => state.playerId,
     });
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
