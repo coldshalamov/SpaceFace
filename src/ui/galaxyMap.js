@@ -1276,9 +1276,16 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
     }
   }
   const position = liveEntity && liveEntity.pos || { x: Number(body.x) || 0, z: Number(body.z) || 0 };
+  // LAW-09: a claim under a raid warning carries the live defense so the marker can offer the
+  // stand-down verb — the map reads truth, it never invents one.
+  const defense = body.spec && body.spec.defense;
   return {
     id: `player-claim:${body.id || body.poiId || 'unknown'}`,
     claimId: body.id || null,
+    defense: defense && defense.id && defense.phase ? {
+      id: defense.id, phase: defense.phase, deadlineAt: defense.deadlineAt || 0,
+      attackerName: defense.attackerName || null, attackerCount: defense.attackerCount || 0,
+    } : null,
     targetEntityId: liveEntity && liveEntity.id || null,
     kind: def ? `claim-${def.id.replace(/^spec_/, '')}` : 'claim',
     role,
@@ -2223,6 +2230,28 @@ export function resolveGalaxyMapPlotAction(state, target) {
     // True when the primary action ALREADY is this exact plot, so a secondary control can hide
     // instead of rendering a second button that does the same thing.
     redundant: !!(primary && primary.kind === 'route' && primary.targetSectorId === sectorId),
+  };
+}
+
+/**
+ * LAW-09 — the raid marker's stand-down verb. A claim under a live defense warning may be ignored
+ * on purpose: the player accepts the losses rather than answering the raid. The claims owner
+ * settles the warning through the same 'ignored' column the deadline lapse pays, so the verb is
+ * honest about what it does — the raid lands unmolested and takes its cut of stores.
+ */
+export function resolveClaimIgnoreAction(target) {
+  const defense = target && target.defense;
+  const can = !!(target && target.claimId && defense && defense.id && defense.phase === 'warning');
+  return {
+    id: 'ignore-raid',
+    label: 'Ignore raid',
+    available: can,
+    reason: can
+      ? 'Stand the claim down — the raid lands unmolested and takes its cut of stores'
+      : 'Only a live raid warning can be waived — an answered defense is already committed',
+    event: can
+      ? { name: 'claim:defenseIgnore', claimId: target.claimId, defenseId: defense.id }
+      : null,
   };
 }
 
@@ -5821,6 +5850,12 @@ _stepAnimation(now) {
       const plot = resolveGalaxyMapPlotAction(state, t);
       acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
     }
+    // LAW-09: a claim under a raid warning offers the stand-down verb — it only exists while a
+    // live warning can still be waived.
+    if (t.claimId && t.defense && t.defense.phase === 'warning') {
+      const ignore = resolveClaimIgnoreAction(t);
+      acts.push({ id: ignore.id, label: ignore.label, available: ignore.available, reason: ignore.reason });
+    }
     const html = acts.map((a) => `<button ${mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
     if (this._lastPlaceActionsHtml !== html) {
@@ -5846,6 +5881,14 @@ _stepAnimation(now) {
       this._updateEngageControl();
       this._updatePlotControl();
       this._updateRailSections(state);
+      return true;
+    }
+    if (id === 'ignore-raid') {
+      const action = resolveClaimIgnoreAction(t);
+      if (!action.available || !action.event) return false;
+      const bus = this._ctx && this._ctx.bus;
+      if (!bus) return false;
+      bus.emit(action.event.name, { claimId: action.event.claimId, defenseId: action.event.defenseId });
       return true;
     }
     if (id === 'bookmark') return this._addBookmark();
