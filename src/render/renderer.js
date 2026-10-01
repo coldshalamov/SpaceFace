@@ -2825,8 +2825,14 @@ function warmEnemyRosterDecode(owner, enemyIds, residencyRole, sectorId = null) 
   if (!state || !renderer || !renderer.domElement) return;
   const targetSector = sectorId || (state.world && state.world.currentSectorId) || null;
   const seen = new Set();
-  for (const enemyId of enemyIds) {
-    const key = enemyHullDecodeKey(enemyId);
+  for (const entry of enemyIds) {
+    // Entries are enemy-id strings or squad ship records {archetype, factionId, trafficRole} —
+    // kit squads resolve a faction-specific hull/hulk, so the stub must carry the same axes.
+    const record = entry && typeof entry === 'object' ? entry : null;
+    const enemyId = record ? record.archetype : entry;
+    const key = enemyHullDecodeKey(enemyId,
+      record ? record.factionId : null,
+      record ? record.trafficRole : null);
     if (!key || seen.has(key.key)) continue;
     seen.add(key.key);
     const stub = makeWaveHullDecodeStub(key);
@@ -2879,10 +2885,13 @@ function warmEncounterPendingDecode(owner) {
     if ((!Array.isArray(item.ships) || !item.ships.length)
       && (!Array.isArray(item.warmAssets) || !item.warmAssets.length)) continue;
     if (warmedAt.get(item) === item.dueAt) continue;
+    // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
+    // trafficRole where traffic-sourced) and the faction kit swaps both the hull file and
+    // the 'place'-slot hulk the roster's warm must resolve.
     const archetypes = [];
     for (const ship of item.ships || []) {
       const archetype = ship && ship.archetype;
-      if (typeof archetype === 'string' && archetype) archetypes.push(archetype);
+      if (typeof archetype === 'string' && archetype) archetypes.push(ship);
     }
     // warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills,
     // authored props) that no hull archetype covers — a session that missed the opening

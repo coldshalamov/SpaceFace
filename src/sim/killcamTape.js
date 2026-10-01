@@ -56,6 +56,7 @@ function createShipTrack() {
     kind: 'ship',
     visual: null,
     silhouette: null,
+    factionId: null,
     radius: 0,
     firstSample: 0,   // global sample index currently in ring slot 0
     lastSample: -1,   // global sample index of the newest written sample
@@ -185,6 +186,9 @@ export function createKillcamRecorder(options = {}) {
               track.player = state.playerId != null && e.id === state.playerId;
               track.visual = (e.data && (e.data.lootTableId || e.data.defId)) || null;
               track.silhouette = (e.data && e.data.silhouette) || null;
+              // Faction kits swap the whole-ship file — replay must resolve the livery the
+              // player actually fought, not the un-kitted base hull.
+              track.factionId = e.factionId || (e.data && e.data.factionId) || null;
               track.radius = Number.isFinite(e.radius) ? e.radius : 0;
             } else {
               track.team = e.team | 0;
@@ -309,6 +313,7 @@ export function encodeKillcamTape(recorder, meta = {}) {
     ships.push({
       team: track.team, player: track.player === true,
       visual: track.visual || null, silhouette: track.silhouette || null,
+      factionId: track.factionId || null,
       radius: track.radius || 0,
       b: start - fromSample,            // sample index inside the tape
       d: track.dead ? track.lastSample - fromSample : -1,
