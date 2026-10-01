@@ -39,6 +39,10 @@ const INTERCEPTOR_STRIKE_MAX_TICKS = 54;
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
+// How far a flyby runs before it wheels back. 520 carried the whole pack off-screen at the default
+// chase camera, so every pass read as flies leaving and returning; 380 keeps the gap readable
+// but the pack in frame.
+const INTERCEPTOR_EXTEND_DISTANCE_WU = 380;
 // Below this speed the target cannot maneuver out of a re-attack: a parked or drifting craft
 // gains nothing from the flyby's long extend leg, so the run wheels straight back into reform.
 // Only a CONTROL-dispatched responder takes that shortcut (securityDispatched). Every other
@@ -460,10 +464,10 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
-    (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
+    (distance >= INTERCEPTOR_EXTEND_DISTANCE_WU || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
     beginReform(record, tick);
   } else if (record.phase === 'breakaway' && age >= INTERCEPTOR_EXTEND_TICKS &&
-    (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
+    (distance >= INTERCEPTOR_EXTEND_DISTANCE_WU || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
     // A completed-disable egress lands here so the hull never re-approaches its spared target.
     // While the target stays disabled the caller re-pins this phase each tick; a repaired
     // target must release the ship back to its cycle instead of parking on a stale egress.

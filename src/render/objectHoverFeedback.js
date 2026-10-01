@@ -5,6 +5,16 @@ import { collectPresentedBodyLeaves } from './worldObjectPicking.js';
 // starfield shows. The tint carries relation (hostile red, ally cyan, anything else warm white) so
 // the glow answers "what is this" before the name tag does.
 const LIFT = 0.34;
+// A wash that reads on a 12 WU wasp would flood the screen on a station: big subjects get less.
+const LIFT_BIG_FROM_WU = 50;
+const LIFT_BIG_TO_WU = 260;
+const LIFT_BIG_FLOOR = 0.14;
+const _liftBox = new THREE.Box3();
+const _liftSize = new THREE.Vector3();
+export function hoverLiftForSize(sizeWu) {
+  const t = Math.min(1, Math.max(0, (sizeWu - LIFT_BIG_FROM_WU) / (LIFT_BIG_TO_WU - LIFT_BIG_FROM_WU)));
+  return LIFT + (LIFT_BIG_FLOOR - LIFT) * t;
+}
 export const HOVER_TINTS = Object.freeze({
   hostile: [1.0, 0.27, 0.31],
   friendly: [0.38, 0.82, 1.0],
@@ -128,6 +138,11 @@ export function createObjectHoverFeedback(env) {
       group.visible = false;
       return;
     }
+    try {
+      _liftBox.setFromObject(subject);
+      _liftBox.getSize(_liftSize);
+      material.uniforms.uLift.value = hoverLiftForSize(Math.max(_liftSize.x, _liftSize.z) * 0.5);
+    } catch (_) { material.uniforms.uLift.value = LIFT; }
     syncLeaves();
     group.visible = leafMeshes.size > 0;
   }
