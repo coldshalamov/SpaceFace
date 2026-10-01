@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "disabled-hull-rope-hail",
-      "date": "2026-09-25",
-      "wf": "WF-16",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A disabled hull asks for a rope and heals only while the line is held",
-      "fingerprint": "verb=hail,subject=disabled-hull,sector=any,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "631165a2d",
-      "verification": "focused_green"
-    },
-    {
       "id": "helios-starter-miner-shift",
       "date": "2026-09-25",
       "wf": "WF-01",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "5ade74789",
+      "verification": "focused_green"
+    },
+    {
+      "id": "FIGHT-02",
+      "date": "2026-10-01",
+      "wf": "WF-09",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "boss:defeated gains poiName payload; survivalAnnounce listens with per-defeat dedupe and player-kill gate, speaks one objective-channel line outside the run gate",
+      "fingerprint": "verb=announce,subject=boss,domain=fight,layer=voice",
+      "references": [],
+      "integration": "live",
+      "commit": "2955d09a5",
       "verification": "focused_green"
     }
   ],
