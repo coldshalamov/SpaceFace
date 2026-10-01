@@ -1318,6 +1318,23 @@ export function mapOperatorLabel(state) {
   return publicOperatorLabel(state);
 }
 
+/** One sentence the chart and the Verge comms line both use when Vale's gates are sealed. */
+export const VALE_GATES_CLOSED_LINE = 'The Verge revoked Vale\'s gate access. The lattice sealed these gates.';
+
+export function valeGatesAreClosed(state) {
+  return !!(state && state.story && state.story.verge && state.story.verge.valeGatesRevoked === true);
+}
+
+function sealValeGatePoint(state, point) {
+  if (!point || point.kind !== 'gate' || !valeGatesAreClosed(state)) return point;
+  point.closed = true;
+  point.open = false;
+  point.status = 'CLOSED';
+  point.statusLine = VALE_GATES_CLOSED_LINE;
+  point.playerVerb = VALE_GATES_CLOSED_LINE;
+  return point;
+}
+
 /** Build owned-site markers once for both SYSTEM and LOCAL unified-map models. */
 export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null) {
   const sid = sectorId || currentSectorId(state);
@@ -1412,6 +1429,30 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     marker.drawPos = globalToSectorLocalForSector(marker, sid);
     if (depotRoutes.has(body.id)) marker.travelRoute = depotRoutes.get(body.id);
     markers.push(marker);
+    const defense = body.spec && body.spec.defense;
+    if (defense && defense.phase === 'warning' && defense.id) {
+      const raidMarker = {
+        id: `claim-raid:${defense.id}`,
+        claimId: body.id,
+        defenseId: defense.id,
+        ignoreDefense: true,
+        kind: 'claim-raid',
+        role: 'RAID',
+        glyph: '▲',
+        color: INK.red,
+        name: `RAID · ${body.name || 'Claim'}`,
+        status: 'INBOUND',
+        statusLine: defense.motive || `${defense.attackerName || 'Raiders'} inbound`,
+        playerVerb: 'Ignore — leave the raid. The claim defense settles as ignored.',
+        consequence: 'Ignoring spends the stores the raid came for and freezes the site.',
+        riskLine: 'A warning left alone settles as ignored. Reaching the claim still starts the fight.',
+        named: true,
+        x: Number(body.x) || 0,
+        z: Number(body.z) || 0,
+      };
+      raidMarker.drawPos = globalToSectorLocalForSector(raidMarker, sid);
+      markers.push(raidMarker);
+    }
     const infrastructure = body.infrastructure;
     if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) continue;
     const operational = infrastructure.operational === true;
@@ -1717,6 +1758,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
             ? (data.gateTo || data.targetSectorId || data.linkSectorId || null)
             : null,
         });
+        if (isGate) sealValeGatePoint(state, points[points.length - 1]);
         seenIds.add(data.stationId || e.id);
       }
     }
@@ -1769,6 +1811,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
         sectorId: sid,
         targetSectorId: destId,
       });
+      sealValeGatePoint(state, points[points.length - 1]);
       seenIds.add(gateId);
     }
   }
@@ -1920,6 +1963,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       ageS: 0,
       confidence: 1,
     });
+    if (mapKind === 'gate') sealValeGatePoint(state, contacts[contacts.length - 1]);
   });
 
   // Remembered contacts (parity gap 3). Anything the intel still holds a track for but that is no
@@ -2100,6 +2144,15 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
     };
   }
 
+  if (target.kind === 'gate' && target.closed === true) {
+    return {
+      kind: 'closed',
+      label: 'Gate closed',
+      reason: target.statusLine || VALE_GATES_CLOSED_LINE,
+      coursePayload: null,
+    };
+  }
+
   if (target.kind === 'gate') {
     const dest = target.targetSectorId || target.gateTo || null;
     // In-range jump from a selected physical gate (player already approached).
@@ -2144,6 +2197,31 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
   else if (target.kind === 'waypoint') label = 'Track Waypoint';
   else if (target.kind === 'bearing') label = 'Set Bearing';
   return { kind: 'waypoint', label, coursePayload };
+}
+
+/**
+ * The raid marker's ignore verb. Emits the event claims already settles as ignored.
+ * Returns null when the selection is not a live claim-defense warning.
+ */
+export function resolveClaimDefenseIgnoreVerb(target) {
+  if (!target || target.ignoreDefense !== true || !target.defenseId) return null;
+  const bodyId = target.claimId || target.bodyId || null;
+  if (!bodyId) return null;
+  return {
+    id: 'ignore-defense',
+    label: 'Ignore',
+    available: true,
+    reason: target.playerVerb || 'Leave the raid. The claim defense settles as ignored.',
+    event: 'claim:defenseIgnore',
+    payload: { bodyId, claimId: bodyId, defenseId: target.defenseId },
+  };
+}
+
+export function emitClaimDefenseIgnore(bus, target) {
+  const verb = resolveClaimDefenseIgnoreVerb(target);
+  if (!bus || typeof bus.emit !== 'function' || !verb) return false;
+  bus.emit(verb.event, verb.payload);
+  return true;
 }
 
 /**
@@ -3248,6 +3326,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         courseLabel: p.courseLabel,
         courseArrivalRadius: p.courseArrivalRadius,
         statusLine: p.statusLine,
+        closed: p.closed === true,
         ledger: p.ledger,
         history: p.history,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
@@ -5205,8 +5284,9 @@ _stepAnimation(now) {
 
       html += `
         <div class="gm-ins-section">
-          <div class="gm-ins-kind">${t.kind.toUpperCase()} OBJECT</div>
+          <div class="gm-ins-kind">${t.kind.toUpperCase()} OBJECT${t.closed ? ' · CLOSED' : ''}</div>
           <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
+          ${t.closed && t.statusLine ? `<div class="gm-ins-note">${escapeMapHtml(t.statusLine)}</div>` : ''}
         </div>
 
         <div class="gm-ins-section">
@@ -5821,8 +5901,14 @@ _stepAnimation(now) {
       const plot = resolveGalaxyMapPlotAction(state, t);
       acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
     }
-    const html = acts.map((a) => `<button ${mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
-      ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
+    const ignoreDefense = resolveClaimDefenseIgnoreVerb(t);
+    if (ignoreDefense) acts.unshift(ignoreDefense);
+    const html = acts.map((a) => {
+      // Ignore is a claim-defense verb, not a chart-control id. The place-action button is enough.
+      const control = a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id);
+      return `<button ${control} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
+      ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
+    }).join('');
     if (this._lastPlaceActionsHtml !== html) {
       host.innerHTML = html;
       this._lastPlaceActionsHtml = html;
@@ -5833,6 +5919,9 @@ _stepAnimation(now) {
     const state = this._ctx && this._ctx.state;
     const t = this._selectedTarget;
     if (!state || !t || !id) return false;
+    if (id === 'ignore-defense') {
+      return emitClaimDefenseIgnore(this._ctx && this._ctx.bus, t);
+    }
     if (id === 'plot') {
       // A button that says "Plot course" must PLOT. It previously resolved the PRIMARY action,
       // which for an adjacent sector is "Set Course & Jump" — so it emitted `world:requestJump`
@@ -8781,6 +8870,7 @@ _drawSystem(g, state, w, h) {
         mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
         coursePos: p.coursePos, courseLabel: p.courseLabel,
         courseArrivalRadius: p.courseArrivalRadius, statusLine: p.statusLine,
+        closed: p.closed === true,
         ledger: p.ledger, history: p.history, searchText: p.searchText,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`
       };
@@ -9333,7 +9423,9 @@ _drawLocal(g, state, w, h) {
         sx: x, sy: y, radiusPx: Math.max(contactMark.pipPx, c.kind === 'asteroid' ? 6 : 11), kind: c.kind, id: c.id, x: c.x, z: c.z,
         entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
         hostile: c.hostile,
-        detail: `Contact · ${displayName} · ${c.kind.toUpperCase()}`
+        closed: c.closed === true,
+        statusLine: c.statusLine || null,
+        detail: `Contact · ${displayName} · ${c.kind.toUpperCase()}${c.statusLine ? ` · ${c.statusLine}` : ''}`
       });
 
       const lift = (c.id === hoverId || c.id === snapId) ? this._liftAmount(this._nowMs()) : 0;
@@ -9384,7 +9476,7 @@ _drawLocal(g, state, w, h) {
           id: `contact:${c.id}`,
           kind: c.kind,
           text: displayName,
-          lines: [displayName],
+          lines: c.statusLine ? [displayName, c.statusLine] : [displayName],
           x,
           y,
           anchorRadius: Math.max(contactMark.nameplatePx, c.kind === 'station' || c.kind === 'gate' ? 16 : 11),
@@ -10577,6 +10669,12 @@ function waypointClickTarget(wp, pos, sx, sy) {
     objective: true,
     markerKind: wp.markerKind || (wp.missionId || wp.onboarding ? 'mission-objective' : 'navigation'),
     id: 'active-waypoint',
+    claimId: wp.claimId || null,
+    defenseId: wp.defenseId || null,
+    ignoreDefense: wp.ignoreDefense === true,
+    playerVerb: wp.kind === 'claim_defense'
+      ? 'Ignore — leave the raid. The claim defense settles as ignored.'
+      : null,
     x: pos.x,
     z: pos.z,
     name: label,

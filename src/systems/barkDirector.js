@@ -714,10 +714,7 @@ export const barkDirector = {
     const text = lineFor(factionId, index);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
-    rec.said[situation] = true;
-    rec.lastSpokenAt = state.simTime || 0;
-    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
-    if (rec.history.length > 8) rec.history.shift();
+    // A refused say must not burn the one line. Mark the slot only after acceptance.
     const accepted = voice.say({
       channel: 'bark',
       text,
@@ -726,18 +723,21 @@ export const barkDirector = {
       id: `barkDirector:${entityId}:${situation}`,
       factionId,
     });
-    if (accepted) {
-      this._emit('barkDirector:voice', {
-        entityId: entity.id,
-        situation,
-        reason,
-        text,
-        factionId,
-        t: rec.lastSpokenAt,
-        ...(extra ? { source: extra.sourceEvent || extra.incidentReceiptId || null } : {}),
-      });
-    }
-    return !!accepted;
+    if (!accepted) return false;
+    rec.said[situation] = true;
+    rec.lastSpokenAt = state.simTime || 0;
+    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id,
+      situation,
+      reason,
+      text,
+      factionId,
+      t: rec.lastSpokenAt,
+      ...(extra ? { source: extra.sourceEvent || extra.incidentReceiptId || null } : {}),
+    });
+    return true;
   },
 
   /**

@@ -37,7 +37,31 @@ export const BINDINGS = Object.freeze({
   // PQ-183.02 global find. Slash is the classic find key (EVE, vim, quick-find) and free
   // repo-wide; text entry still wins, so typing '/' into a field never opens the palette.
   find: { key: '/', code: 'Slash', label: '/' },
+  // Floor voice pill. One key, not a chord. F6 is free of the flight verb table and the UI router.
+  // Critical squelch stays; voiceArbiter refuses the dismiss for those lines.
+  voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
 });
+
+/** True when this keydown is the floor-voice dismiss binding and not a chord. */
+export function voiceDismissBindingMatches(ev) {
+  const binding = BINDINGS.voiceDismiss;
+  if (!ev || !binding || binding.shift || binding.ctrl || binding.alt || binding.meta) return false;
+  if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return false;
+  const target = ev.target;
+  const tag = target && target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false;
+  if (target && target.isContentEditable) return false;
+  const key = ev.key != null ? String(ev.key) : '';
+  const code = ev.code != null ? String(ev.code) : '';
+  return key === binding.key || key.toLowerCase() === String(binding.key).toLowerCase() || code === binding.code;
+}
+
+/** Emit voice:dismiss once when the registered binding matches. Returns whether it emitted. */
+export function emitVoiceDismissFromBinding(bus, ev) {
+  if (!bus || typeof bus.emit !== 'function' || !voiceDismissBindingMatches(ev)) return false;
+  bus.emit('voice:dismiss', { source: 'binding', binding: 'voiceDismiss' });
+  return true;
+}
 
 // --- Device-aware prompt glyphs (PQ-164.01) ----------------------------------------------------
 // The bracket chip follows the last-used input device: ui/input.js owns device arbitration and

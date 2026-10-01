@@ -1247,6 +1247,15 @@ export const story = {
       assertive: true,
       shape: 'verge-gate-revocation',
     });
+    // One comms line says why. The chart reads valeGatesRevoked and seals the gate markers.
+    this._fireComms({
+      id: 'verge_vale_gates_revoked',
+      sender: 'VERGE LATTICE',
+      text: 'The Verge revoked Vale\'s gate access. The lattice sealed these gates.',
+      category: 'story',
+      ttl: 9,
+      persist: true,
+    });
     return true;
   },
 
