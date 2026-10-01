@@ -1060,6 +1060,10 @@ export function recipeForWeapon(weaponId) {
   return 'sfx_wpn_unclassified';
 }
 
+// INST-27. A bastion raid warning uses the wanted-alert recipe under the heat-flip voice.
+// Fixed so a test can pin the attenuation; the handler must not duck music.
+export const CLAIM_RAID_WARNING_GAIN = 0.35;
+
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'moment.stinger': 'sfx_moment_stinger',
@@ -1950,6 +1954,9 @@ export const audio = {
     // sound). A short low deny cue signals the setback without celebration.
     bus.on('mission:failed', () => this._onCue('deny'));
     bus.on('mission:expired', () => this._onCue('deny'));
+    // INST-27: a bastion's raid warning uses the wanted-alert voice quietly.
+    // One play per event. It does not duck the bed — urgency without a menu beep.
+    bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
     bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
     bus.on('poi:discovered', (p) => this._onPoiDiscovered(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
@@ -4733,6 +4740,13 @@ export const audio = {
     // Soft release whoosh then stop station hum — undock is decompress, not another clunk.
     this.play('sfx_undock_release', { gain: 0.55 });
     this._stopStationHum();
+  },
+
+  // A claim raid warning borrows the wanted-alert recipe at a fixed low gain.
+  // Below the heat-flip voice, and it never ducks music.
+  _onClaimRaidWarning(payload) {
+    if (!payload) return;
+    this.play('sfx_wanted_alert', { gain: CLAIM_RAID_WARNING_GAIN });
   },
 
   // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
