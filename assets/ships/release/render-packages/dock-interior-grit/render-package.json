@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c9932742e62ecb7fabc1a03cf93bbd8f42b6b466704844f4c8377dda87234d36",
+  "contentHash": "1a1e8ed9e942ca19ef8b1e264aec522c6c8ef267e6e34ecc5749ab776ab0d05a",
   "dynamicGroups": [
     {
       "id": "sf.render.dock-interior-grit.mesh.lod0-hook-nav-port.dynamic",
@@ -1407,7 +1407,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "281b9e7585209c5032d94a3a4b8a483526856d10cbdb18aacbc66925695ecb46",
+      "sha256": "db6e53e6c0233030808cb3ad99b0b3264ce1b410320cdb3ece2c0cf2e0349559",
       "uri": "pilots.json"
     }
   },
@@ -1912,7 +1912,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior_grit.glb"
   },
-  "runtimeHash": "b6651f3ff62a53e0322d7a5722585e82228621a35bf98e0f195b83d6dd8d0e83",
+  "runtimeHash": "76e9bd501374b2f72405055788c0daba69337c26efcd7f1171f49701a538ff7c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
