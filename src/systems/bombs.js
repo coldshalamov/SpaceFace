@@ -148,7 +148,7 @@ function normalizeSelection(rt) {
 }
 function normalizeRack(rt) {
   const rack = rt.rack;
-  let sockets = Math.floor(Number(rack.sockets));
+  let sockets = Number(rack.sockets);
   if (!Number.isSafeInteger(sockets) || sockets < 1) sockets = BOMB_RACK.socketsBase;
   rack.sockets = sockets;
   const cells = Array.isArray(rack.cells) ? rack.cells : (rack.cells = []);
@@ -157,23 +157,25 @@ function normalizeRack(rt) {
   for (let i = 0; i < sockets; i++) {
     const c = cells[i], def = c && BOMB_DEFS[c.id];
     if (!def) { if (cells[i] !== null) cells[i] = null; continue; }
-    const raw = Math.floor(Number(c.count));
-    const count = Math.max(0, Math.min(def.magazine, Number.isFinite(raw) ? raw : 0));
+    const raw = Number(c.count);
+    const count = Number.isSafeInteger(raw) && raw >= 0 ? Math.min(def.magazine, raw) : 0;
     if (c.count !== count || c.id !== def.id) cells[i] = { id: def.id, count };
   }
   // Sockets trimmed by a smaller normalized count hand their units back to the hangar —
   // shrinking a rack never destroys ordnance the player paid for.
   for (let i = sockets; i < cells.length; i++) {
     const c = cells[i];
-    if (c && BOMB_DEFS[c.id] && c.count > 0) rt.stock[c.id] = (rt.stock[c.id] || 0) + Math.floor(c.count);
+    if (c && BOMB_DEFS[c.id] && Number.isSafeInteger(c.count) && c.count > 0) {
+      rt.stock[c.id] = (rt.stock[c.id] || 0) + c.count;
+    }
   }
   cells.length = sockets;
 }
 function normalizeStock(rt) {
   const stock = rt.stock && typeof rt.stock === 'object' && !Array.isArray(rt.stock) ? rt.stock : (rt.stock = {});
   for (const id of Object.keys(stock)) {
-    const n = Math.floor(Number(stock[id]));
-    if (BOMB_DEFS[id] && n > 0) stock[id] = n; else delete stock[id];
+    const raw = Number(stock[id]);
+    if (BOMB_DEFS[id] && Number.isSafeInteger(raw) && raw > 0) stock[id] = raw; else delete stock[id];
   }
 }
 function ensureRuntime(state) {
@@ -590,7 +592,8 @@ export const bombs = {
     if (this._preparationInFlight) return false;
     const def = BOMB_DEFS[payloadId];
     if (!def) return false;
-    const n = Math.max(1, Math.floor(Number(units) || 0));
+    const n = Number(units);
+    if (!Number.isSafeInteger(n) || n <= 0) return false;
     const cost = def.price * n;
     const credits = Number(this.state.player && this.state.player.credits) || 0;
     if (credits < cost) {
@@ -612,7 +615,7 @@ export const bombs = {
   fitPayload({ socketIndex, payloadId } = {}) {
     if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state), def = BOMB_DEFS[payloadId];
-    const i = Math.floor(Number(socketIndex));
+    const i = Number(socketIndex);
     if (!def || !Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
     const cell = rt.rack.cells[i];
     if (cell && cell.id === payloadId) {
@@ -647,7 +650,7 @@ export const bombs = {
   unfitPayload({ socketIndex } = {}) {
     if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state);
-    const i = Math.floor(Number(socketIndex));
+    const i = Number(socketIndex);
     if (!Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
     const cell = rt.rack.cells[i];
     if (!cell) return false;
@@ -710,15 +713,17 @@ export const bombs = {
     if (this._preparationInFlight) return false;
     const def = BOMB_DEFS[payloadId];
     if (!def) return false;
+    const n = Number(units);
+    if (!Number.isSafeInteger(n) || n <= 0) return false;
     const rt = ensureRuntime(this.state);
     const have = rt.stock[payloadId] || 0;
-    const n = Math.min(have, Math.max(1, Math.floor(Number(units) || 0)));
-    if (n <= 0) return false;
-    const refund = Math.max(1, Math.floor(def.price * n * BOMB_RACK.sellbackFraction));
-    rt.stock[payloadId] = have - n;
+    const toSell = Math.min(have, n);
+    if (toSell <= 0) return false;
+    const refund = Math.max(1, Math.floor(def.price * toSell * BOMB_RACK.sellbackFraction));
+    rt.stock[payloadId] = have - toSell;
     this.bus.emit('economy:grantCredits', { amount: refund, reason: `ordnance:resell:${payloadId}` });
-    this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: -n });
-    this.bus.emit('toast', { text: `${n}× ${def.name} sold back — ${refund} cr.`, kind: 'info', ttl: 1.8 });
+    this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: -toSell });
+    this.bus.emit('toast', { text: `${toSell}× ${def.name} sold back — ${refund} cr.`, kind: 'info', ttl: 1.8 });
     return true;
   },
 
