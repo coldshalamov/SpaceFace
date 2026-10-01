@@ -28,11 +28,14 @@ import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { fieldEscapeOf } from '../data/fields.js';
+import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
@@ -1185,6 +1188,7 @@ export const onboarding = {
       if (this._accum < 0.2) return;
       this._accum = 0;
       this._noteMissingThreeUses();
+      this._teachFieldEscapes();
       if (!ob.active || ob.finished) return;
             this._tryAdvanceBeat();
       this._resolveProximityDone();
@@ -2609,6 +2613,32 @@ export const onboarding = {
     };
     if (ob) ob.beatAction = line;
     return true;
+  },
+
+  // TEACH-06 — FIELD_ESCAPES had no consumer: the first time a field volume actually owns the
+  // player hull, speak that power's authored escape once (player.hints keeps it once per kind per
+  // profile). Player-deployed fields exclude their source hull in the kernel, so this can only
+  // fire on NPC/environmental traps — a hostile well, an anchor snare, a stranger's cone.
+  _teachFieldEscapes() {
+    const st = this.state;
+    if (!st || !st.player) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    const snapshot = activeFieldSnapshot(st);
+    const hints = st.player.hints || {};
+    const profile = this._fieldEscapeProfile
+      || (this._fieldEscapeProfile = { id: null, type: null, team: null });
+    profile.id = player.id;
+    profile.type = player.type;
+    profile.team = player.team;
+    for (const field of snapshot) {
+      const escape = fieldEscapeOf(field && field.kind);
+      if (!escape || hints['fieldEscape:' + escape.id]) continue;
+      if (!fieldContainsPoint(field, player.pos.x, player.pos.z)) continue;
+      if (!fieldAffectsBody(field, profile)) continue;
+      this._showHint('fieldEscape:' + escape.id, escape.name + ' — ' + escape.sentence);
+      return; // one lesson per pass — a stack of fields must not stack toasts in one tick
+    }
   },
 
   _noteMissingThreeUses() {
