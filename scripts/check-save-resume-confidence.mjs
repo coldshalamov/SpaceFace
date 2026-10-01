@@ -43,7 +43,7 @@ assert.match(localizedCoreCopy, /continueSummary:\s*\{\s*label:\s*'Continue: \{s
   'localized core copy must explicitly label what Continue will load');
 assert.match(menu, /coreText\('continueSummary',\s*\{\s*summary\s*\}\)/,
   'mainMenu must render the localized Continue summary with the selected save metadata');
-assert.match(menu, /const latest = latestSave\(readSaveIndex\(ctx\)\);[\s\S]*ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*latest\.slot\s*\}\)/,
+assert.match(menu, /const latest = (?:this\._latestSave !== undefined[\s\S]*?: )?latestSave\(readSaveIndex\(ctx\)\);[\s\S]*ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*latest\.slot\s*\}\)/,
   'Continue should load the exact latest slot displayed in the title summary');
 assert.doesNotMatch(menu, /slot:\s*'latest'/,
   'Continue must not ask a second latest resolver to reinterpret the player-visible summary');
@@ -54,7 +54,7 @@ assert.doesNotMatch(menu, /boots straight into flight/,
 for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName', 'objectiveSummary', 'version']) {
   assert.match(save, new RegExp(field), `save index should include ${field} metadata`);
 }
-assert.match(save, /idx\[slot\]\s*=\s*fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\)/,
+assert.match(save, /fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\)[\s\S]*idx\[slot\]\s*=\s*card;/,
   'save index write should prefer the card frozen from the written envelope, with live state as fallback');
 assert.match(save, /slotCardFromEnvelopeData\(slot,\s*envelope/,
   'save index card should be built from the envelope that was just written, not post-encode live state');
@@ -106,7 +106,7 @@ assert.match(save, /if \(!options\.force && now - this\._lastAutosaveAt < AUTOSA
   'forced autosaves should bypass only the debounce gate');
 assert.match(save, /_slotIndexWithFallback\(\)/,
   'save system must recover slot metadata from stored envelopes when sf.save.index is missing or corrupt');
-assert.match(save, /_scanStoredSlots\(\)/,
+assert.match(save, /_scanStoredSlots\(/,
   'save system must scan stored slot envelopes as a best-effort index recovery path');
 
 const previousLocalStorage = globalThis.localStorage;
