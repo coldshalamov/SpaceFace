@@ -2484,6 +2484,7 @@ export const economy = {
             id: record.id,
             kind: record.kind,
             cause: record.cause,
+            causeWord: SESSION_SINK_CAUSES[record.kind] || null,
             amount: record.amount,
             reason: record.reason,
             at: record.at,

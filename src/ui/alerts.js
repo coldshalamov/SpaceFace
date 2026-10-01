@@ -400,6 +400,18 @@ export function createAlerts(ctx) {
     });
   });
 
+  // ECON-05 — a named sink charge posts one receipt line per ledger record, carrying its
+  // SESSION_SINK_KINDS word and the charge. chargeCredits only emits when credits actually moved,
+  // so zero-credit charges stay silent by construction; the record id keys the floor line.
+  bus.on('economy:sinkCharged', (p) => {
+    if (!p || p.id == null) return;
+    const amount = Math.max(0, Math.round(Number(p.amount) || 0));
+    const kind = String(p.kind || 'charge').toUpperCase();
+    const causeWord = typeof p.causeWord === 'string' && p.causeWord ? p.causeWord : p.cause;
+    const cause = typeof causeWord === 'string' && causeWord ? ` · ${causeWord}` : '';
+    announce({ key: `sink:${p.id}`, sev: 'info', text: `${kind} −${amount} CR${cause}`, ttl: 4 });
+  });
+
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
   // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.
   bus.on('combat:damage', (p) => {
