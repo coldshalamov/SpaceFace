@@ -945,4 +945,22 @@ export function shipLedgerHasFactOutside(state, excludeTypes) {
   return collectCandidates(state || {}, { probe: { exclude } }).probeHit;
 }
 
+/**
+ * Neutral fallback for optional module/equipment instance provenance (NXI-126).
+ * Legacy owned modules without provenance retain full usability and resolve
+ * to a neutral 'unrecorded' fallback — never flagged as stolen or given
+ * fabricated acquisition dates or invented legal history.
+ */
+export function formatInstanceProvenance(instance) {
+  if (!instance || typeof instance !== 'object') return 'unrecorded';
+  const raw = instance.provenance || instance.provenanceLabel || instance.provenanceRef;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  if (raw && typeof raw === 'object') {
+    if (typeof raw.label === 'string' && raw.label.trim()) return raw.label.trim();
+    if (typeof raw.sourceRef === 'string' && raw.sourceRef.trim()) return raw.sourceRef.trim();
+    if (typeof raw.source === 'string' && raw.source.trim()) return raw.source.trim();
+  }
+  return 'unrecorded';
+}
+
 export default buildShipLedger;
