@@ -25,6 +25,7 @@ import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } 
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import {
   clearPickupAcceptanceRetry,
@@ -1184,7 +1185,7 @@ export const mining = {
         state.playerId,
         state.simTime,
       )) continue;
-      if (pickupData.jettisonedCargo && e.collides === false) e.collides = true;
+      if (pickupData.jettisonedCargo && e.collides === false) { bumpCollidesFlipEpoch(); e.collides = true; }
       if (e.type === 'pickup') {
         const beamCollection = this._collectPickupOnBeamLine(e, player);
         if (beamCollection) {

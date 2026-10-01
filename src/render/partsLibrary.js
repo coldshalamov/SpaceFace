@@ -1821,15 +1821,19 @@ function placeFileStem(url) {
 
 // Offset-aware union over the base row's extent and (when present) the deterministic
 // overlay's census row — both draw at the same scale, and a garnish mounted off the hub
-// axis contributes its own center±half extent rather than just its size. The stamp
-// volume is anchored at the boundary origin, so the honest extent is 2·max(|min|,|max|).
-function placeVisualSizeWithOverlay(entity, size, center) {
-  if (!Array.isArray(size)) return size;
+// axis contributes its own center±half extent rather than just its size. Returns the
+// union's true authored-space box: an off-center union's far edge lives at (lo+hi)/2,
+// not the origin, so the stamp must carry the union center to claim it honestly.
+function placeVisualUnionWithOverlay(entity, size, center) {
+  if (!Array.isArray(size)) return null;
   const overlayRow = tradeHubOverlayCensusRowForEntity(entity);
   const overlaySize = overlayRow && overlayRow.bounds && overlayRow.bounds.size;
-  if (!Array.isArray(overlaySize)) return size;
+  if (!Array.isArray(overlaySize)) {
+    return { size, center: Array.isArray(center) ? center : [0, 0, 0] };
+  }
   const overlayCenter = overlayRow.bounds && overlayRow.bounds.center;
-  const out = [0, 0, 0];
+  const outSize = [0, 0, 0];
+  const outCenter = [0, 0, 0];
   for (let i = 0; i < 3; i++) {
     const baseHalf = (Number(size[i]) || 0) / 2;
     const baseC = Array.isArray(center) ? Number(center[i]) || 0 : 0;
@@ -1837,34 +1841,47 @@ function placeVisualSizeWithOverlay(entity, size, center) {
     const overC = Array.isArray(overlayCenter) ? Number(overlayCenter[i]) || 0 : 0;
     const lo = Math.min(baseC - baseHalf, overC - overHalf);
     const hi = Math.max(baseC + baseHalf, overC + overHalf);
-    out[i] = Math.max(Math.abs(lo), Math.abs(hi)) * 2;
+    outCenter[i] = (lo + hi) / 2;
+    outSize[i] = hi - lo;
   }
-  return out;
+  return { size: outSize, center: outCenter };
 }
 
 // AUTHORED_APPROACH_CHANNEL_DEG families yaw their composed root by (corridor−channel)
-// at install; the stamp claims the rotated extent statically — same resolvers, no decode.
+// at install; the stamp claims the rotated box statically — same resolvers, no decode.
 // A trade hub yawed ~55° draws a rotated silhouette, not the record's axis envelope.
-function placeStampEnvelopeSize(entity, size, boundary) {
-  if (!Array.isArray(size) || !entity || entity.type !== 'station') return size;
+// Takes and returns {size, center}: an off-center union's stamped center yaw-rotates
+// with the composed root (rotation.y maps (x,z) → (x·cos+z·sin, −x·sin+z·cos)).
+function placeStampEnvelopeBounds(entity, bounds, boundary) {
+  if (!bounds || !Array.isArray(bounds.size) || !entity || entity.type !== 'station') return bounds;
+  const size = bounds.size;
   const data = entity.data || {};
   const placeId = (boundary && boundary.userData && boundary.userData.placeId)
     || data.placeId
     || null;
   const channelDeg = AUTHORED_APPROACH_CHANNEL_DEG[placeId];
-  if (!Number.isFinite(channelDeg)) return size;
+  if (!Number.isFinite(channelDeg)) return bounds;
   const manifest = resolveCollisionProxyManifest(entity);
-  if (!manifest || !manifest.docking) return size;
+  if (!manifest || !manifest.docking) return bounds;
   const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
-  if (!Number.isFinite(corridorDeg)) return size;
+  if (!Number.isFinite(corridorDeg)) return bounds;
   const yawDeg = ((corridorDeg - channelDeg + 540) % 360) - 180;
-  if (!yawDeg) return size;
+  if (!yawDeg) return bounds;
   const rad = yawDeg * Math.PI / 180;
-  const c = Math.abs(Math.cos(rad));
-  const s = Math.abs(Math.sin(rad));
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const ac = Math.abs(c);
+  const as = Math.abs(s);
   const x = Number(size[0]) || 0;
   const z = Number(size[2]) || 0;
-  return [c * x + s * z, size[1], s * x + c * z];
+  const center = bounds.center;
+  const cx = Array.isArray(center) ? Number(center[0]) || 0 : 0;
+  const cy = Array.isArray(center) ? Number(center[1]) || 0 : 0;
+  const cz = Array.isArray(center) ? Number(center[2]) || 0 : 0;
+  return {
+    size: [ac * x + as * z, size[1], as * x + ac * z],
+    center: [cx * c + cz * s, cy, -cx * s + cz * c],
+  };
 }
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
@@ -2166,6 +2183,29 @@ export function liveSolidGlbCatalog() {
     fit: 'payload',
     entityRadius: 5,
     colliderKind: 'ball',
+    solid: true,
+  });
+
+  // packagedPropSpec's scenario/inline resolutions (visualOverrides.js): spawned props no
+  // other loop enumerates — without a row the pending stamp falls back to octahedron
+  // proportions and under-claims the committed silhouette.
+  add({
+    id: 'pod_47a_evidence_spindle',
+    family: 'pod',
+    file: 'pods/pod_47a_evidence_spindle.glb',
+    fit: 'payload',
+    entityRadius: 5,
+    colliderKind: 'ball',
+    solid: true,
+  });
+  add({
+    id: 'place_47a_rescue_capsule',
+    family: placeFamily('place_47a_rescue_capsule'),
+    file: 'places/place_47a_rescue_capsule.glb',
+    fit: 'place-scale',
+    placeScale: 1,
+    entityRadius: 12,
+    colliderKind: 'none',
     solid: true,
   });
 
@@ -3564,11 +3604,14 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         authoredEnvelope,
         censusScale: placeDrawScaleFromRow(modelTruthRow(placeFileStem(record.url)) || modelTruthRowForEntity(entity), entity),
       });
-      const stampedSize = placeStampEnvelopeSize(entity, placeVisualSizeWithOverlay(entity, size, center), boundary);
-      boundary.userData.visualBounds = {
-        center: center.map((value) => (Number(value) || 0) * pendingScale),
-        size: stampedSize.map((value) => (Number(value) || 0) * pendingScale),
-      };
+      const union = placeVisualUnionWithOverlay(entity, size, center);
+      const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
+      if (stampedBounds) {
+        boundary.userData.visualBounds = {
+          center: stampedBounds.center.map((value) => (Number(value) || 0) * pendingScale),
+          size: stampedBounds.size.map((value) => (Number(value) || 0) * pendingScale),
+        };
+      }
     }
   }
   if (!record || !boundary.parent) {
@@ -3878,8 +3921,10 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
         authoredEnvelope: Math.max(1e-6, ...size.map((value) => Number(value) || 0)),
         censusScale: placeDrawScaleFromRow(row, entity),
       });
-      const stampedSize = placeStampEnvelopeSize(entity, placeVisualSizeWithOverlay(entity, size, row.bounds && row.bounds.center), boundary);
-      const committedX = Number(stampedSize[0]) * committedScale;
+      const union = placeVisualUnionWithOverlay(entity, size, row.bounds && row.bounds.center);
+      const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
+      const stampedSize = stampedBounds && stampedBounds.size;
+      const committedX = stampedSize && Number(stampedSize[0]) * committedScale;
       if (Number.isFinite(committedX) && committedX > 0) {
         boundary.userData.boundaryResolvingCommittedX = committedX;
         boundary.userData.boundaryResolvingStandInFit = Math.max(diameter, committedX);
@@ -3910,10 +3955,11 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
     censusScale: placeDrawScaleFromRow(row, entity),
   });
   if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
-    const stampedSize = placeStampEnvelopeSize(entity, placeVisualSizeWithOverlay(entity, size, row.bounds && row.bounds.center), boundary);
+    const union = placeVisualUnionWithOverlay(entity, size, row.bounds && row.bounds.center);
+    const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
     boundary.userData.visualBounds = {
-      center: [0, 0, 0],
-      size: stampedSize.map((value) => Math.max(0, (Number(value) || 0) * scale)),
+      center: stampedBounds.center.map((value) => (Number(value) || 0) * scale),
+      size: stampedBounds.size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
     };
     // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
     // marker union swells the stamp, so stand-in sizing claims the authored basis.
@@ -4333,7 +4379,7 @@ function stationDepthPrepassDynamicNode(object) {
   const tags = userData.spacefaceTags || {};
   return !!(userData.animated || userData.hlod || userData.spacefaceSocket
     || userData.updateRuntimeState || userData.updateDriveState || userData.updateLod
-    || tags.drive || tags.mount);
+    || tags.drive || tags.mount || tags.motionGroup);
 }
 
 function stationDepthPrepassScope(source, root) {
@@ -4361,7 +4407,7 @@ function installStationOpaqueDepthPrepass(root, entity, bindings) {
     if (object.visible === false && !tags.lod) return;
     // A prepass sibling copies the source's local matrix once — only meshes whose own
     // transform never animates qualify (the same markers shouldFreezeStaticChild uses).
-    if (tags.drive || object.userData?.animated || object.userData?.hlod
+    if (tags.drive || tags.motionGroup || object.userData?.animated || object.userData?.hlod
       || object.userData?.updateRuntimeState || object.userData?.updateDriveState) return;
     if (!geometry.boundingSphere) geometry.computeBoundingSphere();
     const localRadius = Number(geometry.boundingSphere?.radius) || 0;

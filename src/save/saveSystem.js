@@ -77,6 +77,10 @@ const INDEX_KEY = LS_PREFIX + 'index';
 // re-validates every byte of the envelope.
 let _saveStoreGeneration = 0;
 let _saveStoreTrackedObject = null;
+// Optional subscriber for save-store writes — the save system installs its speculative
+// re-arm here so a mid-dwell write can refresh an armed generation instead of letting
+// it go stale until the click.
+let _onSaveStoreBump = null;
 
 function bumpSaveStoreGeneration(key) {
   if (key != null) {
@@ -84,6 +88,9 @@ function bumpSaveStoreGeneration(key) {
     if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX)) return;
   }
   _saveStoreGeneration++;
+  if (_onSaveStoreBump) {
+    try { _onSaveStoreBump(); } catch (err) { /* subscriber is best-effort */ }
+  }
 }
 
 function installSaveStoreWriteTracking() {
@@ -289,6 +296,17 @@ export const save = {
     bus.on('save:loadSpeculationTarget', (p) => {
       try { this.speculateLoadPrepare(p && p.slot); } catch (err) { /* best-effort */ }
     });
+    // An autosave landing mid-dwell (e.g. behind the after-action sheet) invalidates the
+    // armed spec's generation sig — re-arm for the same slot so the click still consumes
+    // a warm envelope. The slot's raw is re-read, so a same-slot write re-warms rather
+    // than staling; the frozen/menu gate inside speculateLoadPrepare keeps this inert
+    // in-flight.
+    _onSaveStoreBump = () => {
+      try {
+        const spec = this._speculativeContinuePrepare;
+        if (spec && spec.sig !== 'gen:' + _saveStoreGeneration) this.speculateLoadPrepare(spec.slot);
+      } catch (err) { /* speculation is best-effort */ }
+    };
     bus.on('settings:changed', (payload) => {
       if (!payload || payload.persist !== false) this._writeProfileSettings();
     });

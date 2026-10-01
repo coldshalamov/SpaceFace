@@ -17,7 +17,10 @@ import {
   WRECK_AFTERMATH_SALT,
   wreckAftermathDressingForSector,
 } from '../data/wreckAftermathDressing.js';
-import { RECORD_KIND, recordShouldRematerialize, stableRecordId } from '../world/worldRecords.js';
+import { RECORD_KIND, recordShouldRematerialize, recordsForSector, stableRecordId } from '../world/worldRecords.js';
+import { getDressingRow } from '../world/dressingTable.js';
+import { machineSitesForSector } from '../data/precursorMachines.js';
+import { alienSitesForSector, planInfestationModules } from '../data/alienEcology.js';
 import { markArchetypePoolFor } from '../data/bountyMarks.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
@@ -700,3 +703,246 @@ export const ACE_MEMORY_META_KEYS = new Set([
   'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
   'aces',
 ]);
+
+// ── Live-sector FULL-extras stubs ───────────────────────────────────────────────────────────
+// Twin of saveEnvelopeSectorStubs for a sector being charged into: a bag materialized REDUCED
+// carries none of the FULL extras — world._promoteSectorToFull only spawns dressing, ambient
+// enemies, the boss, and the live POI actors at/after sector:enter, so none of their files
+// appear in the live-entity census the charge warm walks, and every one would decode inside
+// the first flight window otherwise. Each branch mirrors the promote's own gate against the
+// live bag, so the stub set is the exact set the promote can mount — files for cohorts the
+// bag already built are never warmed. Optic lattices, fauna, and machine entities build
+// procedural meshes and have no file surface; records follow the envelope's own stub shapes.
+
+// Mirror of world.js poiMustStayLiveActor — promote re-arms a dressing row as a live actor
+// under the row's own data, so passing that data through as the stub resolves the same file.
+function poiPromotesToLiveActor(poi, activityObjectSlotId) {
+  if (activityObjectSlotId) return true;
+  if (!poi || typeof poi !== 'object') return false;
+  return poi.collides === true || !!poi.scannerSignalKind || !!poi.flavorTargetRef
+    || poi.requiresActiveScan === true || poi.landmark === true || !!poi.discoveryPlate
+    || poi.survivorPod === true || poi.recoveryEncounter === true || poi.claimable === true
+    || poi.hidden === true;
+}
+
+// Mirror of world.js _enemyPool — ambient rolls draw one of three static pools on the
+// sector's own security/tier axes.
+const LIVE_LAWFUL_ENEMIES = ['patrol_lawman'];
+const LIVE_PIRATE_ENEMIES = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
+const LIVE_FRONTIER_ENEMIES = ['corsair_raider', 'reaver_pirate', 'wasp_swarmer'];
+function liveEnemyPoolFor(sector) {
+  if (sector.security >= 0.6) return LIVE_LAWFUL_ENEMIES;
+  if (sector.tier >= 3) return LIVE_FRONTIER_ENEMIES;
+  return LIVE_PIRATE_ENEMIES;
+}
+
+// Mirror of world.js liveRecordEntityIndex/farActorRecordIdSet — entities (or shelved far-actor
+// rows) already carrying a record id make its rematerialize an exactly-once skip.
+function liveSectorRecordHolderIds(state) {
+  const held = new Set();
+  for (const e of (state && state.entityList) || []) {
+    if (e && e.data && e.data.worldRecordId != null) held.add(e.data.worldRecordId);
+  }
+  const farRows = state && state.world && state.world.farActors && state.world.farActors.rows;
+  for (const row of farRows || []) {
+    if (row && row.alive !== false && row.data && row.data.worldRecordId != null) {
+      held.add(row.data.worldRecordId);
+    }
+  }
+  return held;
+}
+
+// Mirror of world.js aftermathOwnsMarker — read-only: an AFTERMATH record owned by a marker
+// respawns as the marker's hulk, never as a thin record shell.
+function liveAftermathOwnsMarker(state, markerId) {
+  const bySector = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  if (!markerId || !bySector) return false;
+  for (const markers of Object.values(bySector)) {
+    if (Array.isArray(markers) && markers.some((m) => m && m.markerId === markerId)) return true;
+  }
+  return false;
+}
+
+/**
+ * Enumerate the authored visual files a resident sector's FULL-extras promote can mount.
+ * Pure reads only — never touches world rng, records, or the dressing table.
+ * @returns {{ sectorId: string|null, placeStubs: object[], roster: object[] }}
+ */
+export function liveSectorFullExtrasStubs(state, sectorId) {
+  const out = { sectorId: null, placeStubs: [], shipStubs: [], roster: [] };
+  const world = state && state.world;
+  const sector = sectorId && (world.sectors && world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId));
+  const active = world && world.sectorContents && world.sectorContents[sectorId];
+  // A bag already built at FULL (or absent — the charge path only reaches resident sectors,
+  // which all carry bags) has no promote cohort to warm.
+  if (!sector || !active || active.fullExtrasBuilt === true) return out;
+  out.sectorId = sector.id;
+  const seed = (state.meta && Number.isFinite(state.meta.seed)) ? state.meta.seed : 1;
+  const sectorRecords = recordsForSector(world.records, sector.id);
+  const heldRecordIds = liveSectorRecordHolderIds(state);
+
+  // Promote's first step rematerializes the sector's FULL-tier durable records — same stub
+  // shape the envelope lane builds (enemy-spec records resolve through the def table).
+  for (const rec of sectorRecords) {
+    if (!rec || rec.alive === false) continue;
+    if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) continue;
+    if (rec.kind === RECORD_KIND.AFTERMATH && liveAftermathOwnsMarker(state, rec.markerId)) continue;
+    if (!recordShouldRematerialize(rec, 'FULL')) continue;
+    if (heldRecordIds.has(rec.recordId)) continue;
+    const isEnemySpec = rec.enemyTypeId
+      && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss === true);
+    const stubData = { durable: true };
+    let stubFactionId = rec.factionId || null;
+    if (isEnemySpec) {
+      const def = ENEMY_BY_ID.get(rec.enemyTypeId) || ENEMY_TYPES[0];
+      stubData.lootTableId = def.id;
+      stubData.defId = def.shipId;
+      stubData.enemyTypeId = rec.enemyTypeId;
+      if (def.silhouette) stubData.silhouette = def.silhouette;
+      if (rec.trafficRole) stubData.trafficRole = rec.trafficRole;
+      stubFactionId = enemyFactionIdFor(def, rec.factionId);
+    } else {
+      stubData.lootTableId = rec.enemyTypeId || null;
+      stubData.defId = rec.shipDefId || 'ship_kestrel';
+      stubData.enemyTypeId = rec.enemyTypeId || null;
+      stubData.trafficRole = rec.trafficRole || null;
+    }
+    out.shipStubs.push({
+      id: rec.recordId,
+      type: 'ship',
+      factionId: stubFactionId,
+      data: stubData,
+    });
+  }
+
+  // POI dressing rows that promote to live actors — always runs (the promote re-arms them
+  // even when dressing already exists), mirroring _promotePoiRowsToLive's own predicate.
+  const sourceById = new Map((sector.pois || []).map((poi) => [poi.id, poi]));
+  for (const entry of active.pois || []) {
+    const row = entry && entry.id != null ? getDressingRow(state, entry.id) : null;
+    if (!row || !row.data || row.data.poi !== true) continue;
+    const data = row.data;
+    const bandHull = Number.isFinite(Number(data.quiessenceShipIndex));
+    const source = sourceById.get(data.poiId) || null;
+    const slot = typeof data.activityObjectSlotId === 'string' ? data.activityObjectSlotId : null;
+    if (!bandHull && !(source && poiPromotesToLiveActor(source, slot))) continue;
+    out.placeStubs.push({ type: 'fx', factionId: (source && source.factionId) || null, data });
+  }
+
+  // Dressing cohort — skipped entirely when the bag already carries dressing rows (promote's
+  // own gate), otherwise: palette literals, salted kit/wreck streams on the LIVE resident
+  // epoch, world one-offs, alien-ecology growth modules, and machine-layer ring props.
+  if (!(active.dressing && active.dressing.length)) {
+    const palette = paletteClassForSector(sector);
+    const literalIds = PALETTE_DRESSING_IDS[palette] || PALETTE_DRESSING_IDS.core;
+    for (const placeId of literalIds({
+      stations: (active.stations || []).length > 0,
+      gates: (active.gates || []).length > 0 || (sector.neighbors || []).length > 0 || !!sector.wormholeTo,
+      fields: (active.fields || []).length > 0,
+      wrecks: (active.pois || []).some((row) => row && (row.type === 'wreck' || row.type === 'derelict')),
+    })) {
+      if (placeId) out.placeStubs.push({ type: 'fx', data: { placeId, worldDressing: true } });
+    }
+    const rec = world.residentSectors && world.residentSectors[sectorId];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const anchors = {
+      stations: active.stations || [],
+      gates: active.gates || [],
+      fields: active.fields || [],
+      wrecks: (active.pois || []).filter((row) => row && (row.type === 'wreck' || row.type === 'derelict')),
+      origin: sectorGlobalOrigin(sector.id),
+      worldRadius: sector.worldRadius,
+      enemyDensity: sector.enemyDensity,
+    };
+    for (const row of everydaySpaceKitDressingForSector(
+      sector.id, palette, mulberry32(hash32(seed, sector.id, epoch, EVERYDAY_SPACE_KIT_SALT)), anchors,
+    )) {
+      out.placeStubs.push({ type: 'fx', data: { placeId: row.placeId, everydaySpaceKit: true } });
+    }
+    for (const row of wreckAftermathDressingForSector(
+      sector.id, palette, mulberry32(hash32(seed, sector.id, epoch, WRECK_AFTERMATH_SALT)), anchors,
+    )) {
+      out.placeStubs.push({ type: 'fx', data: { placeId: row.placeId, wreckAftermath: true } });
+    }
+    for (const oneOff of WORLD_ONE_OFFS) {
+      if (!oneOff || oneOff.sectorId !== sector.id || !oneOff.placeId) continue;
+      if (oneOff.physicalBody) {
+        const recordId = stableRecordId(seed, sector.id, RECORD_KIND.WRECK, `worldOneOff:${oneOff.id}`);
+        const durable = (world.records && world.records.byId || {})[recordId];
+        if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
+      }
+      out.placeStubs.push({ type: 'fx', data: { placeId: oneOff.placeId, worldOneOff: true } });
+      for (const part of (oneOff.cluster && oneOff.cluster.props) || []) {
+        if (part && part.placeId) {
+          out.placeStubs.push({ type: 'fx', data: { placeId: part.placeId, worldOneOff: true } });
+        }
+      }
+    }
+    // Ecology growth dressing is seeded per-site on (seed, sectorId, epoch=0, siteId) inside
+    // materializeAlienEcology; the ambient pass adds the filament-sheet body to non-sterile
+    // sites. Site state reads read-only — a warm must never write the ecology ledger.
+    const aeSites = world.alienEcology && world.alienEcology.sites;
+    for (const site of alienSitesForSector(sector.id)) {
+      if (!site || site.sterile) continue;
+      const siteState = (aeSites && aeSites[site.siteId] && aeSites[site.siteId].state) || 'dormant';
+      const siteRng = mulberry32(hash32(seed, sector.id, 0, 'alien-ecology', site.siteId));
+      for (const g of planInfestationModules(site, siteRng, siteState) || []) {
+        if (g && g.moduleId) {
+          out.placeStubs.push({
+            type: 'fx',
+            data: { placeId: `alien_growth_${g.moduleId}`, alienEcology: true },
+          });
+        }
+      }
+      out.placeStubs.push({ type: 'fx', data: { placeId: 'alien_growth_filament_sheet', alienEcology: true } });
+    }
+    for (const site of machineSitesForSector(sector.id)) {
+      const ring = site && site.propRing;
+      if (ring && ring.propId) {
+        out.placeStubs.push({ type: 'fx', data: { placeId: ring.propId, machineSite: site.siteId } });
+      }
+    }
+  }
+
+  // Enemies + boss spawn only when the bag has no combat presence at all. The zone-intent
+  // union plus the ambient pool covers every hull either spawn path can mount; the boss hull
+  // warms when a boss POI exists, is undefeated, and no boss record rematerializes to claim it.
+  const hostileFree = !(active.enemies && active.enemies.length)
+    && !(active.dressing && active.dressing.length);
+  if (hostileFree) {
+    const hadCombatHistory = sectorRecords.some((rec) => rec
+      && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
+    if (!hadCombatHistory && (sector.enemyDensity || 0) > 0) {
+      for (const zone of zonesForSector(sector.id)) {
+        const presence = zone && zone.presence;
+        if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;
+        const factionId = presence.factionId || zone.factionId || null;
+        for (const archetype of presence.archetypes) {
+          out.roster.push({
+            archetype,
+            factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), factionId),
+          });
+        }
+      }
+      for (const archetype of liveEnemyPoolFor(sector)) {
+        out.roster.push({
+          archetype,
+          factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+        });
+      }
+    }
+    const bossPoi = (sector.pois || []).find((p) => p && p.type === 'anomaly' && p.id === 'poi_boss');
+    if (bossPoi) {
+      const disc = world.discovery && world.discovery[sector.id];
+      const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
+      const liveBoss = active.boss && state.entities && state.entities.get(active.boss.entityId);
+      const recordClaims = out.shipStubs.some((stub) => stub.data && stub.data.isBoss === true)
+        || sectorRecords.some((rec) => rec && rec.isBoss === true && heldRecordIds.has(rec.recordId));
+      if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !recordClaims) {
+        out.roster.push({ archetype: 'dreadnought_boss' });
+      }
+    }
+  }
+
+  return out;
+}

@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 6,
-    "red": 191,
-    "rows": 197
+    "red": 193,
+    "rows": 199
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -1771,57 +1771,57 @@
     {
       "bounds": {
         "center": [
-          2.139976,
-          0.636253,
+          2.141006,
+          0.636252,
           0
         ],
         "max": [
-          4.600216,
-          1.483207,
+          4.602054,
+          1.483205,
           1.209109
         ],
         "min": [
-          -0.320263,
+          -0.320043,
           -0.210701,
           -1.209109
         ],
         "size": [
-          4.920479,
-          1.693908,
+          4.922096,
+          1.693907,
           2.418218
         ]
       },
-      "bytes": 691916,
+      "bytes": 535312,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_mining_drone",
         "kind": "proxy",
         "outline": [
-          2.448682,
-          2.376689,
-          2.231771,
-          0.627313,
-          0.88407,
-          1.181476,
-          1.183682,
-          1.25061,
-          0.9897,
-          1.037057,
-          2.182924,
-          2.400189,
-          2.400189,
-          2.182924,
-          1.037057,
-          0.987529,
-          1.250913,
-          1.183682,
-          1.181476,
-          0.88407,
-          0.627313,
-          2.234384,
-          2.376664,
-          2.448683
+          2.448865,
+          2.376872,
+          2.231898,
+          0.627639,
+          0.884157,
+          1.181146,
+          1.183112,
+          1.249781,
+          0.988764,
+          1.035858,
+          2.181243,
+          2.400064,
+          2.400065,
+          2.181243,
+          1.035858,
+          0.986494,
+          1.250055,
+          1.183112,
+          1.181146,
+          0.884157,
+          0.627639,
+          2.231898,
+          2.376848,
+          2.448861
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -1830,11 +1830,11 @@
         "worstSize": null
       },
       "drawOffset": [
-        -2.087578,
-        -0.620674,
+        -2.087896,
+        -0.620469,
         0
       ],
-      "drawScale": 0.975515,
+      "drawScale": 0.975194,
       "family": "drone",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -1956,13 +1956,13 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 34,
-      "nodes": 36,
+      "meshes": 43,
+      "nodes": 46,
       "note": null,
       "opening": null,
       "pivot": [
-        2.139976,
-        0.636253,
+        2.141006,
+        0.636252,
         0
       ],
       "proposedSkin": {
@@ -1976,8 +1976,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.928935,
-            "bz": -0.122297,
+            "bx": -0.929011,
+            "bz": -0.122307,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.1875
@@ -1985,8 +1985,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.837916,
-            "bz": -0.347076,
+            "bx": -0.837987,
+            "bz": -0.347105,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.1875
@@ -1994,8 +1994,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.67163,
-            "bz": -0.51536,
+            "bx": -0.671672,
+            "bz": -0.515392,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.1875
@@ -2003,8 +2003,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.108388,
-            "bz": -0.141254,
+            "bx": -0.108471,
+            "bz": -0.141362,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.1875
@@ -2012,8 +2012,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.109076,
-            "bz": -0.263333,
+            "bx": -0.10909,
+            "bz": -0.263366,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.1875
@@ -2021,8 +2021,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.053378,
-            "bz": -0.40545,
+            "bx": -0.053361,
+            "bz": -0.405314,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.1875
@@ -2030,8 +2030,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.053498,
-            "bz": -0.406361,
+            "bx": 0.053467,
+            "bz": -0.406126,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.1875
@@ -2039,8 +2039,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.167521,
-            "bz": -0.404432,
+            "bx": 0.167389,
+            "bz": -0.404113,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.1875
@@ -2048,8 +2048,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.200308,
-            "bz": -0.261046,
+            "bx": 0.20007,
+            "bz": -0.260737,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.1875
@@ -2057,8 +2057,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.276701,
-            "bz": -0.21232,
+            "bx": 0.276304,
+            "bz": -0.212016,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.1875
@@ -2066,8 +2066,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.763326,
-            "bz": -0.31618,
+            "bx": 0.762679,
+            "bz": -0.315912,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.1875
@@ -2075,8 +2075,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.908903,
-            "bz": -0.119659,
+            "bx": 0.908851,
+            "bz": -0.119653,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.1875
@@ -2084,8 +2084,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.908903,
-            "bz": 0.119659,
+            "bx": 0.908851,
+            "bz": 0.119653,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.1875
@@ -2093,8 +2093,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.763326,
-            "bz": 0.31618,
+            "bx": 0.762679,
+            "bz": 0.315912,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.1875
@@ -2102,8 +2102,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.276701,
-            "bz": 0.21232,
+            "bx": 0.276304,
+            "bz": 0.212016,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.1875
@@ -2111,8 +2111,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.199757,
-            "bz": 0.260329,
+            "bx": 0.199495,
+            "bz": 0.259987,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.1875
@@ -2120,8 +2120,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.16757,
-            "bz": 0.404549,
+            "bx": 0.167433,
+            "bz": 0.404219,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.1875
@@ -2129,8 +2129,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.053498,
-            "bz": 0.406361,
+            "bx": 0.053467,
+            "bz": 0.406126,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.1875
@@ -2138,8 +2138,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.053378,
-            "bz": 0.40545,
+            "bx": -0.053361,
+            "bz": 0.405314,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.1875
@@ -2147,8 +2147,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.109076,
-            "bz": 0.263333,
+            "bx": -0.10909,
+            "bz": 0.263366,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.1875
@@ -2156,8 +2156,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.108388,
-            "bz": 0.141254,
+            "bx": -0.108471,
+            "bz": 0.141362,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.1875
@@ -2165,8 +2165,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.672494,
-            "bz": 0.516023,
+            "bx": -0.671672,
+            "bz": 0.515392,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.1875
@@ -2174,8 +2174,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.837906,
-            "bz": 0.347072,
+            "bx": -0.837977,
+            "bz": 0.347101,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.1875
@@ -2183,23 +2183,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.928936,
-            "bz": 0.122297,
+            "bx": -0.929009,
+            "bz": 0.122306,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.1875
           }
         ],
-        "silhouetteRadius": 2.448683,
+        "silhouetteRadius": 2.448865,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1176,
-        "inwardFaceFraction": 0.2805,
-        "silhouetteRadius": 2.448683,
+        "boundaryEdges": 899,
+        "inwardFaceFraction": 0.27525,
+        "silhouetteRadius": 2.448865,
         "sliceY": 0
       },
       "sockets": [
@@ -2216,13 +2216,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 21618,
+      "triangles": 21616,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_mining_drone.glb",
       "worldSize": [
         4.8,
-        1.652432,
-        2.359007
+        1.651888,
+        2.358232
       ]
     },
     {
@@ -16853,7 +16853,7 @@
           101.302132
         ]
       },
-      "bytes": 1886724,
+      "bytes": 1965148,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -17037,8 +17037,8 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 37,
-      "nodes": 43,
+      "meshes": 109,
+      "nodes": 127,
       "note": null,
       "opening": "gate-throat",
       "pivot": [
@@ -17090,7 +17090,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 657,
+        "boundaryEdges": 606,
         "inwardFaceFraction": 0.42325,
         "silhouetteRadius": 67.353565,
         "sliceY": 0
@@ -17141,13 +17141,454 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 78521,
+      "triangles": 85442,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
       "worldSize": [
         25.26983,
         140,
         134.703885
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.406536,
+          0.173006,
+          0.00229
+        ],
+        "max": [
+          3.93,
+          1.896158,
+          1.54458
+        ],
+        "min": [
+          -3.116928,
+          -1.550145,
+          -1.54
+        ],
+        "size": [
+          7.046928,
+          3.446303,
+          3.08458
+        ]
+      },
+      "bytes": 473464,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:place_47a_rescue_capsule",
+        "kind": "proxy",
+        "outline": [
+          3.523465,
+          3.544359,
+          2.67385,
+          0.601976,
+          1.285851,
+          1.556057,
+          0.52237,
+          1.035551,
+          1.980587,
+          2.433756,
+          3.422727,
+          3.568032,
+          3.56731,
+          3.419635,
+          2.430616,
+          1.977289,
+          1.57078,
+          1.42358,
+          1.55605,
+          1.56947,
+          1.944018,
+          2.684447,
+          3.543066,
+          3.521643
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.406536,
+        0,
+        -0.00229
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:place_47a_rescue_capsule",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_47a_rescue_capsule",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 27,
+      "nodes": 29,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.406536,
+        0.173006,
+        0.00229
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.274586,
+            "bz": -0.03615,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.257482,
+            "bz": -0.106653,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.163553,
+            "bz": -0.125499,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.020392,
+            "bz": -0.026576,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.034628,
+            "bz": -0.0836,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.01475,
+            "bz": -0.112038,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.003506,
+            "bz": -0.026634,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.026646,
+            "bz": -0.064329,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.090329,
+            "bz": -0.11772,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.14768,
+            "bz": -0.113319,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.248118,
+            "bz": -0.102774,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.278268,
+            "bz": -0.036635,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.278208,
+            "bz": 0.036627,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.24788,
+            "bz": 0.102675,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.147472,
+            "bz": 0.113159,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.090162,
+            "bz": 0.117502,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.043715,
+            "bz": 0.105536,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.013309,
+            "bz": 0.101093,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.01475,
+            "bz": 0.112037,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.043673,
+            "bz": 0.105435,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.088474,
+            "bz": 0.115302,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.164254,
+            "bz": 0.126036,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.257383,
+            "bz": 0.106611,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.274436,
+            "bz": 0.03613,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 3.568032,
+        "toleranceWu": 2
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.27875,
+        "silhouetteRadius": 3.568032,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Airlock",
+          "position": [
+            3.92,
+            0.02,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 7740,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb",
+      "worldSize": [
+        7.046928,
+        3.446303,
+        3.08458
       ]
     },
     {
@@ -42203,56 +42644,56 @@
       "bounds": {
         "center": [
           0.175488,
-          1.630777,
+          1.630526,
           0
         ],
         "max": [
           13.321647,
-          4.531222,
-          3.914383
+          4.53126,
+          3.914392
         ],
         "min": [
           -12.970671,
-          -1.269668,
-          -3.914383
+          -1.270208,
+          -3.914392
         ],
         "size": [
           26.292317,
-          5.80089,
-          7.828766
+          5.801468,
+          7.828783
         ]
       },
-      "bytes": 1300504,
+      "bytes": 1350744,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:ship_hawser",
         "kind": "proxy",
         "outline": [
-          19.251888,
+          19.251891,
           18.284954,
-          7.477004,
-          5.258157,
-          4.441404,
+          7.476788,
+          5.25785,
+          4.441041,
           5.139681,
           0,
-          5.779289,
+          5.779182,
           6.438329,
           8.187816,
           18.426315,
-          19.226026,
-          19.226336,
+          19.226417,
+          19.226417,
           18.426315,
           8.187816,
-          6.438425,
-          5.779247,
+          6.438329,
+          5.779353,
           0,
           5.139681,
-          4.439767,
-          5.256774,
-          7.476032,
+          4.44013,
+          5.257081,
+          7.476247,
           18.284479,
-          19.251888
+          19.251891
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -42406,18 +42847,18 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.256072,
-        "height": 0.379485,
+        "halfWidth": 0.256073,
+        "height": 0.379522,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 56,
-      "nodes": 69,
+      "meshes": 71,
+      "nodes": 87,
       "note": null,
       "opening": null,
       "pivot": [
         0.175488,
-        1.630777,
+        1.630526,
         0
       ],
       "proposedSkin": {
@@ -42449,8 +42890,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.26242,
-            "bz": -0.201362,
+            "bx": -0.262412,
+            "bz": -0.201356,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.020455
@@ -42458,8 +42899,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.139964,
-            "bz": -0.182405,
+            "bx": -0.139956,
+            "bz": -0.182394,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.020455
@@ -42467,8 +42908,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.073778,
-            "bz": -0.178116,
+            "bx": -0.073772,
+            "bz": -0.178101,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.020455
@@ -42485,8 +42926,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.09705,
-            "bz": -0.2343,
+            "bx": 0.097048,
+            "bz": -0.234295,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.020455
@@ -42521,8 +42962,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.857421,
-            "bz": -0.112882,
+            "bx": 0.857438,
+            "bz": -0.112884,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.020455
@@ -42530,8 +42971,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.857435,
-            "bz": 0.112883,
+            "bx": 0.857438,
+            "bz": 0.112884,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.020455
@@ -42557,8 +42998,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.172623,
-            "bz": 0.224967,
+            "bx": 0.172621,
+            "bz": 0.224964,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.020455
@@ -42566,8 +43007,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.097049,
-            "bz": 0.234298,
+            "bx": 0.097051,
+            "bz": 0.234302,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.020455
@@ -42584,8 +43025,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.073749,
-            "bz": 0.178047,
+            "bx": -0.073756,
+            "bz": 0.178062,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.020455
@@ -42593,8 +43034,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.139926,
-            "bz": 0.182355,
+            "bx": -0.139934,
+            "bz": 0.182366,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.020455
@@ -42602,8 +43043,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.262385,
-            "bz": 0.201335,
+            "bx": -0.262393,
+            "bz": 0.201341,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.020455
@@ -42627,16 +43068,16 @@
             "r": 0.020455
           }
         ],
-        "silhouetteRadius": 19.251888,
+        "silhouetteRadius": 19.251891,
         "toleranceWu": 2.310227
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3606,
+        "boundaryEdges": 3689,
         "inwardFaceFraction": 0.13325,
-        "silhouetteRadius": 19.251888,
+        "silhouetteRadius": 19.251891,
         "sliceY": 0
       },
       "sockets": [
@@ -42741,15 +43182,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 64934,
+      "triangles": 65520,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/yard_tug.glb",
       "worldSize": [
         37.84,
-        8.348663,
-        11.26719
+        8.349494,
+        11.267214
       ]
     },
     {
@@ -48795,56 +49236,56 @@
       "bounds": {
         "center": [
           0,
-          0.41,
+          0.41003,
           0
         ],
         "max": [
-          3.06,
-          2.400069,
-          1.700197
+          3.24,
+          2.400117,
+          1.700142
         ],
         "min": [
-          -3.06,
-          -1.580069,
-          -1.700197
+          -3.24,
+          -1.580058,
+          -1.700142
         ],
         "size": [
-          6.12,
-          3.980138,
-          3.400394
+          6.48,
+          3.980176,
+          3.400285
         ]
       },
-      "bytes": 502072,
+      "bytes": 538732,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_cargo_pod_standard",
         "kind": "proxy",
         "outline": [
-          3.141903,
-          3.481237,
-          3.232885,
+          3.326815,
+          3.481222,
+          3.232961,
           2.174556,
           1.739909,
           1.610584,
           1.610584,
           1.739909,
           2.174556,
-          3.232885,
-          3.481237,
-          3.13905,
-          3.141752,
-          3.481136,
-          3.232885,
+          3.232962,
+          3.481222,
+          3.326815,
+          3.326815,
+          3.481222,
+          3.232962,
           2.174556,
           1.739909,
           1.610584,
           1.610584,
           1.739909,
           2.174556,
-          3.232885,
-          3.481136,
-          3.139069
+          3.232961,
+          3.481222,
+          3.326815
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -48939,13 +49380,13 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 19,
-      "nodes": 22,
+      "meshes": 61,
+      "nodes": 72,
       "note": null,
       "opening": null,
       "pivot": [
         0,
-        0.41,
+        0.41003,
         0
       ],
       "proposedSkin": {
@@ -48959,8 +49400,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.291673,
-            "bz": -0.0384,
+            "bx": -0.310006,
+            "bz": -0.040813,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.045
@@ -48968,8 +49409,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.303147,
-            "bz": -0.125568,
+            "bx": -0.303145,
+            "bz": -0.125567,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.045
@@ -48977,8 +49418,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.240615,
-            "bz": -0.18463,
+            "bx": -0.240621,
+            "bz": -0.184635,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.045
@@ -49040,8 +49481,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.240615,
-            "bz": -0.18463,
+            "bx": 0.240621,
+            "bz": -0.184635,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.045
@@ -49049,8 +49490,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.303147,
-            "bz": -0.125568,
+            "bx": 0.303145,
+            "bz": -0.125567,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.045
@@ -49058,8 +49499,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.291391,
-            "bz": -0.038362,
+            "bx": 0.310006,
+            "bz": -0.040813,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.045
@@ -49067,8 +49508,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.291659,
-            "bz": 0.038398,
+            "bx": 0.310006,
+            "bz": 0.040813,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.045
@@ -49076,8 +49517,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.303137,
-            "bz": 0.125564,
+            "bx": 0.303145,
+            "bz": 0.125567,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.045
@@ -49085,8 +49526,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.240615,
-            "bz": 0.18463,
+            "bx": 0.240621,
+            "bz": 0.184635,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.045
@@ -49148,8 +49589,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.240615,
-            "bz": 0.18463,
+            "bx": -0.240621,
+            "bz": 0.184635,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.045
@@ -49157,8 +49598,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.303137,
-            "bz": 0.125564,
+            "bx": -0.303145,
+            "bz": 0.125567,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.045
@@ -49166,14 +49607,14 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.291392,
-            "bz": 0.038363,
+            "bx": -0.310006,
+            "bz": 0.040813,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.045
           }
         ],
-        "silhouetteRadius": 3.481237,
+        "silhouetteRadius": 3.481222,
         "toleranceWu": 2
       },
       "reasons": [
@@ -49181,8 +49622,8 @@
       ],
       "shell": {
         "boundaryEdges": 0,
-        "inwardFaceFraction": 0.236,
-        "silhouetteRadius": 3.481237,
+        "inwardFaceFraction": 0.34375,
+        "silhouetteRadius": 3.481222,
         "sliceY": 0
       },
       "sockets": [
@@ -49207,13 +49648,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 11214,
+      "triangles": 20144,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
       "worldSize": [
-        6.12,
-        3.980138,
-        3.400394
+        6.48,
+        3.980176,
+        3.400285
       ]
     },
     {
@@ -51517,6 +51958,397 @@
         10.199679,
         5.308637,
         5.060018
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -0.105,
+          0.76,
+          -0.03498
+        ],
+        "max": [
+          2.6,
+          2.600097,
+          1.555168
+        ],
+        "min": [
+          -2.81,
+          -1.080097,
+          -1.625128
+        ],
+        "size": [
+          5.41,
+          3.680193,
+          3.180296
+        ]
+      },
+      "bytes": 451804,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:pod_47a_evidence_spindle",
+        "kind": "proxy",
+        "outline": [
+          5.00309,
+          5.274843,
+          5.339954,
+          4.130165,
+          3.124177,
+          2.778527,
+          2.768816,
+          2.836969,
+          4.040235,
+          5.319747,
+          5.67838,
+          0,
+          4.4745,
+          5.74085,
+          5.386552,
+          3.978976,
+          2.960571,
+          2.895405,
+          2.904693,
+          3.236899,
+          4.067559,
+          5.406336,
+          5.330066,
+          5.009303
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0.194085,
+        -1.404806,
+        0.064658
+      ],
+      "drawScale": 1.848429,
+      "family": "pod",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:pod_47a_evidence_spindle",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 5,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "pod_47a_evidence_spindle",
+      "lod": {
+        "lod0": true,
+        "lod1": false,
+        "lod2": false,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent_seal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 6,
+      "nodes": 7,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        -0.105,
+        0.76,
+        -0.03498
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 23,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.9524,
+            "bz": -0.125386,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.937709,
+            "bz": -0.388412,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.81556,
+            "bz": -0.625801,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.478507,
+            "bz": -0.623602,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.223807,
+            "bz": -0.540317,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.067313,
+            "bz": -0.511293,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.06706,
+            "bz": -0.509368,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.201825,
+            "bz": -0.487248,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.467557,
+            "bz": -0.609333,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.812354,
+            "bz": -0.623341,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.012273,
+            "bz": -0.419297,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.847586,
+            "bz": 0.111587,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.023816,
+            "bz": 0.424078,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.822954,
+            "bz": 0.631475,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.460099,
+            "bz": 0.599613,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.211285,
+            "bz": 0.510087,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.070364,
+            "bz": 0.534469,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.070607,
+            "bz": 0.536311,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.232434,
+            "bz": 0.561146,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.470884,
+            "bz": 0.613668,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.826093,
+            "bz": 0.633883,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.947913,
+            "bz": 0.392638,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.913211,
+            "bz": 0.120227,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.130769
+          }
+        ],
+        "silhouetteRadius": 5.74085,
+        "toleranceWu": 2
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.301,
+        "silhouetteRadius": 5.74085,
+        "sliceY": 0
+      },
+      "sockets": [],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 10608,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb",
+      "worldSize": [
+        10,
+        6.802576,
+        5.87855
       ]
     },
     {
@@ -56639,14 +57471,14 @@
           50.401846
         ]
       },
-      "bytes": 1692100,
+      "bytes": 1679584,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_fab",
         "kind": "proxy",
         "outline": [
-          64.198699,
+          64.203603,
           95.189587,
           75.472005,
           52.852658,
@@ -56669,7 +57501,7 @@
           52.852658,
           75.472005,
           95.189587,
-          64.198699
+          64.203603
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -56852,8 +57684,8 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 81,
-      "nodes": 94,
+      "meshes": 72,
+      "nodes": 82,
       "note": null,
       "opening": "dock-mouth",
       "pivot": [
@@ -56879,8 +57711,8 @@
           {
             "ax": -0.193966,
             "az": -0.025536,
-            "bx": -0.705013,
-            "bz": -0.092817,
+            "bx": -0.705067,
+            "bz": -0.092824,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.005
@@ -57059,8 +57891,8 @@
           {
             "ax": -0.193966,
             "az": 0.025536,
-            "bx": -0.705013,
-            "bz": 0.092817,
+            "bx": -0.705067,
+            "bz": 0.092824,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.005
@@ -57073,8 +57905,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 6021,
-        "inwardFaceFraction": 0.33825,
+        "boundaryEdges": 6056,
+        "inwardFaceFraction": 0.33725,
         "silhouetteRadius": 95.189587,
         "sliceY": 0
       },
@@ -57116,7 +57948,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 80003,
+      "triangles": 79927,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_fab.glb",
       "worldSize": [
@@ -65412,7 +66244,7 @@
       "bounds": {
         "center": [
           0.189672,
-          0.956797,
+          0.95675,
           0
         ],
         "max": [
@@ -65422,37 +66254,37 @@
         ],
         "min": [
           -10.370656,
-          -1.450231,
+          -1.450325,
           -3.57
         ],
         "size": [
           21.120656,
-          4.814056,
+          4.81415,
           7.14
         ]
       },
-      "bytes": 921672,
+      "bytes": 983096,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:traffic:salvor",
         "kind": "proxy",
         "outline": [
-          12.032837,
-          10.395946,
+          12.032737,
+          10.395319,
           4.823018,
-          2.215105,
+          2.215421,
           3.06984,
           2.87188,
           2.818304,
           2.966887,
           3.803358,
-          6.203517,
-          10.816849,
+          6.202881,
+          10.816315,
           12.32589,
           12.32589,
-          10.816849,
-          6.203517,
+          10.816315,
+          6.203239,
           3.803358,
           3.010411,
           2.818304,
@@ -65460,8 +66292,8 @@
           3.06984,
           2.249008,
           4.758923,
-          10.395373,
-          12.032837
+          10.395284,
+          12.032848
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -65640,17 +66472,17 @@
       ],
       "measuredProportions": {
         "halfWidth": 0.29073,
-        "height": 0.392042,
+        "height": 0.392049,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 49,
-      "nodes": 62,
+      "meshes": 81,
+      "nodes": 98,
       "note": null,
       "opening": null,
       "pivot": [
         0.189672,
-        0.956797,
+        0.95675,
         0
       ],
       "proposedSkin": {
@@ -65664,8 +66496,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.837972,
-            "bz": -0.110321,
+            "bx": -0.837965,
+            "bz": -0.11032,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.032143
@@ -65673,8 +66505,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.672845,
-            "bz": -0.278701,
+            "bx": -0.672803,
+            "bz": -0.278684,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.032143
@@ -65691,8 +66523,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.087623,
-            "bz": -0.114192,
+            "bx": -0.087636,
+            "bz": -0.11421,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.032143
@@ -65745,8 +66577,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.340208,
-            "bz": -0.261051,
+            "bx": 0.340172,
+            "bz": -0.261023,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.032143
@@ -65754,8 +66586,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.700621,
-            "bz": -0.290207,
+            "bx": 0.700585,
+            "bz": -0.290192,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.032143
@@ -65781,8 +66613,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.700621,
-            "bz": 0.290207,
+            "bx": 0.700585,
+            "bz": 0.290192,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.032143
@@ -65790,8 +66622,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.340208,
-            "bz": 0.261051,
+            "bx": 0.340192,
+            "bz": 0.261039,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.032143
@@ -65862,8 +66694,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.672807,
-            "bz": 0.278686,
+            "bx": -0.672801,
+            "bz": 0.278683,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.032143
@@ -65871,7 +66703,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.837972,
+            "bx": -0.837973,
             "bz": 0.110321,
             "id": "arm-23",
             "kind": "capsule",
@@ -65885,8 +66717,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2259,
-        "inwardFaceFraction": 0.16575,
+        "boundaryEdges": 2237,
+        "inwardFaceFraction": 0.115,
         "silhouetteRadius": 12.32589,
         "sliceY": 0
       },
@@ -65992,14 +66824,14 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37310,
+      "triangles": 37306,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
       "worldSize": [
         24.08,
-        5.488583,
+        5.48869,
         8.140429
       ]
     },
@@ -69499,56 +70331,56 @@
       "bounds": {
         "center": [
           0.175488,
-          1.630777,
+          1.630526,
           0
         ],
         "max": [
           13.321647,
-          4.531222,
-          3.914383
+          4.53126,
+          3.914392
         ],
         "min": [
           -12.970671,
-          -1.269668,
-          -3.914383
+          -1.270208,
+          -3.914392
         ],
         "size": [
           26.292317,
-          5.80089,
-          7.828766
+          5.801468,
+          7.828783
         ]
       },
-      "bytes": 1300504,
+      "bytes": 1350744,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:traffic:tug",
         "kind": "proxy",
         "outline": [
-          12.251202,
+          12.251203,
           11.63588,
-          4.758094,
-          3.3461,
-          2.826348,
+          4.757956,
+          3.345905,
+          2.826117,
           3.270706,
           0.408669,
-          3.677729,
+          3.677661,
           4.097118,
           5.210428,
           11.725837,
-          12.234744,
-          12.234941,
+          12.234993,
+          12.234993,
           11.725837,
           5.210428,
-          4.09718,
-          3.677703,
-          0.408746,
+          4.097118,
+          3.67777,
+          0.408669,
           3.270706,
-          2.825306,
-          3.34522,
-          4.757475,
+          2.825538,
+          3.345415,
+          4.757612,
           11.635578,
-          12.251202
+          12.251203
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -69702,18 +70534,18 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.256072,
-        "height": 0.379485,
+        "halfWidth": 0.256073,
+        "height": 0.379522,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 56,
-      "nodes": 69,
+      "meshes": 71,
+      "nodes": 87,
       "note": null,
       "opening": null,
       "pivot": [
         0.175488,
-        1.630777,
+        1.630526,
         0
       ],
       "proposedSkin": {
@@ -69745,8 +70577,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.258298,
-            "bz": -0.198199,
+            "bx": -0.258291,
+            "bz": -0.198193,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.032143
@@ -69754,8 +70586,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.136802,
-            "bz": -0.178283,
+            "bx": -0.136793,
+            "bz": -0.178272,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.032143
@@ -69763,8 +70595,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.07179,
-            "bz": -0.173316,
+            "bx": -0.071784,
+            "bz": -0.173301,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.032143
@@ -69790,8 +70622,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.095062,
-            "bz": -0.2295,
+            "bx": 0.09506,
+            "bz": -0.229496,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.032143
@@ -69826,8 +70658,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.85227,
-            "bz": -0.112204,
+            "bx": 0.852288,
+            "bz": -0.112206,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.032143
@@ -69835,8 +70667,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.852284,
-            "bz": 0.112205,
+            "bx": 0.852288,
+            "bz": 0.112206,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.032143
@@ -69862,8 +70694,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.169461,
-            "bz": 0.220846,
+            "bx": 0.169458,
+            "bz": 0.220842,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.032143
@@ -69871,8 +70703,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.095061,
-            "bz": 0.229498,
+            "bx": 0.095063,
+            "bz": 0.229503,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.032143
@@ -69880,8 +70712,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.001946,
-            "bz": 0.014783,
+            "bx": 0.001945,
+            "bz": 0.014777,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.032143
@@ -69898,8 +70730,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.071762,
-            "bz": 0.173248,
+            "bx": -0.071768,
+            "bz": 0.173263,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.032143
@@ -69907,8 +70739,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.136763,
-            "bz": 0.178234,
+            "bx": -0.136772,
+            "bz": 0.178245,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.032143
@@ -69916,8 +70748,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.258263,
-            "bz": 0.198172,
+            "bx": -0.258271,
+            "bz": 0.198178,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.032143
@@ -69941,16 +70773,16 @@
             "r": 0.032143
           }
         ],
-        "silhouetteRadius": 12.251202,
+        "silhouetteRadius": 12.251203,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3606,
+        "boundaryEdges": 3689,
         "inwardFaceFraction": 0.13325,
-        "silhouetteRadius": 12.251202,
+        "silhouetteRadius": 12.251203,
         "sliceY": 0
       },
       "sockets": [
@@ -70055,15 +70887,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 64934,
+      "triangles": 65520,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/yard_tug.glb",
       "worldSize": [
         24.08,
-        5.312785,
-        7.17003
+        5.313315,
+        7.170045
       ]
     },
     {

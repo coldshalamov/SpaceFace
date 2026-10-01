@@ -110,7 +110,7 @@ import {
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { ACE_MEMORY_META_KEYS, promotedAceShapeForRecord, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
+import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
@@ -2651,6 +2651,9 @@ function kickDecodeRunwayAssets(owner, entities) {
       const opts = wave
         ? { residencyRole: 'wave-hull-decode-runway' }
         : { residencyRole: 'decode-runway-prepare' };
+      // The spawn-kick sibling stamps the current sector — a sectorId-less warm is invisible
+      // to both rotation sweeps, so byte pressure could evict it before the pick draws.
+      opts.sectorId = (state.world && state.world.currentSectorId) || null;
       // A pick already inside the urgent bound posts the 'visible' decode class — the same
       // kickSpawnedEntityDecode grading — so its decode drains ahead of deadline-class warms.
       if (decodeSeconds(entity) <= TABLE_BUILD_URGENT_SECONDS) opts.admissionVisible = true;
@@ -2887,7 +2890,9 @@ function warmEnemyRosterDecode(owner, enemyIds, residencyRole, sectorId = null) 
       residencyRole,
       sectorId: targetSector,
     })).catch(() => {});
-    warmKillHulkDecode(owner, stub);
+    // Same cross-sector stamp the hull post carries — a kill on the far side must still
+    // charge its hulk/fragment files to the destination the caller actually named.
+    warmKillHulkDecode(owner, stub, targetSector);
   }
 }
 
@@ -3124,6 +3129,26 @@ function warmKillHulkDecode(owner, entity, sectorIdOverride) {
  * specs (id space differs from live ids, so the entity-id dedupe does not apply); the
  * loader's url::slot dedupe keeps repeated records to one decode per file.
  */
+/**
+ * FULL-extras promote warm — a bag materialized REDUCED mounts its dressing/enemies/boss/POI
+ * live actors only at/after sector:enter, so the live-entity census the charge warm walks
+ * never names their files. `liveSectorFullExtrasStubs` enumerates exactly the promote cohort
+ * off the live bag's own gates; the stubs resolve through the same packaged/ship/roster lanes
+ * as every other warm and stay file-deduped against the census warm.
+ */
+function warmLiveSectorFullExtras(owner, sectorId) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !renderer.domElement || !sectorId) return;
+  const stubs = liveSectorFullExtrasStubs(state, String(sectorId));
+  if (!stubs.sectorId) return;
+  for (const stub of stubs.placeStubs) {
+    Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, stubs.sectorId)).catch(() => {});
+  }
+  for (const stub of stubs.shipStubs) warmSaveEnvelopeEntityDecode(owner, stub, stubs.sectorId);
+  warmEnemyRosterDecode(owner, stubs.roster, 'sector-full-extras', stubs.sectorId);
+}
+
 function warmSaveEnvelopeEntityDecode(owner, entity, sectorIdOverride) {
   const renderer = owner && owner.renderer;
   if (!renderer || !entity || entity.alive === false || entity.isPlayer === true) return;
@@ -11651,6 +11676,10 @@ export const render = {
     });
     onBus('jump:chargeStart', ({ targetSectorId, via, interdictionPool } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
+      // A REDUCED-resident destination mounts its FULL-extras cohort (dressing, ambient
+      // enemies, boss, POI live actors) at promote — none of it is in the live-entity census
+      // the prewarm walks, so arm the same files inside the charge window.
+      warmLiveSectorFullExtras(this, targetSectorId);
       // A drive jump rolls interdiction on arrival — the squad's hulls decode during the
       // charge alongside the destination census instead of at the ambush reveal.
       if (via === 'drive' && Array.isArray(interdictionPool) && interdictionPool.length) {
@@ -11666,6 +11695,7 @@ export const render = {
       if (recoverable !== true || targetSectorId == null) return;
       if (String(targetSectorId) === String(state.world && state.world.currentSectorId || '')) return;
       beginIncomingSectorPrewarm(targetSectorId);
+      warmLiveSectorFullExtras(this, targetSectorId);
     });
     onBus('jump:chargeAbort', () => {
       const incoming = this._incomingSectorPrewarm;

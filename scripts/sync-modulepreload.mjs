@@ -23,18 +23,49 @@ const REGISTRY = join(root, 'src/core/registry.js');
 const BEGIN = '<!-- modulepreload:registry:begin -->';
 const END = '<!-- modulepreload:registry:end -->';
 
-// Static imports + re-exports only: `from 'rel'` or `import 'rel'`. Dynamic `import(...)`
-// never matches (no `from`), and the lazy testing/lab imports correctly stay out.
-const IMPORT_RE = /(?:from\s+|import\s+)['"](\.[^'"]+)['"]/g;
+// Static imports + re-exports only: `from 'x'` or `import 'x'`. Dynamic `import(...)`
+// never matches (a `(` follows `import`), and the lazy testing/lab imports correctly stay out.
+const IMPORT_RE = /(?:from\s+|import\s+)['"]([^'"]+)['"]/g;
 
-function staticImports(absPath) {
+// Repo-root markers a preloadable module lives under — mirrors the importmap targets.
+const ROOT_MARKERS = ['/src/', '/vendor/', '/node_modules/'];
+
+// Browser-ordered bare-specifier resolution through the document's own importmap:
+// exact key first, then longest trailing-slash prefix match.
+function resolveBareSpecifier(spec, importmap) {
+  let target = importmap[spec];
+  if (target == null) {
+    let bestLen = 0;
+    for (const key of Object.keys(importmap)) {
+      if (key.endsWith('/') && spec.startsWith(key) && key.length > bestLen) {
+        bestLen = key.length;
+        target = importmap[key] + spec.slice(key.length);
+      }
+    }
+  }
+  if (typeof target !== 'string' || !target.startsWith('./')) return null;
+  return target;
+}
+
+function staticImports(absPath, importmap) {
   const src = readFileSync(absPath, 'utf8');
   const dir = dirname(absPath);
   const out = [];
   for (const m of src.matchAll(IMPORT_RE)) {
-    const resolved = normalize(join(dir, m[1])).replace(/\\/g, '/');
-    if (!resolved.includes('/src/')) continue;
-    out.push(`.${resolved.slice(resolved.indexOf('/src/'))}`);
+    const spec = m[1];
+    if (spec.startsWith('.')) {
+      const resolved = normalize(join(dir, spec)).replace(/\\/g, '/');
+      let cut = -1;
+      for (const marker of ROOT_MARKERS) {
+        const i = resolved.indexOf(marker);
+        if (i !== -1 && (cut === -1 || i < cut)) cut = i;
+      }
+      if (cut === -1) continue;
+      out.push(`.${resolved.slice(cut)}`);
+    } else {
+      const target = resolveBareSpecifier(spec, importmap);
+      if (target) out.push(target);
+    }
   }
   return out;
 }
@@ -55,9 +86,21 @@ const endIdx0 = html.indexOf(END);
 const htmlSansBlock = beginIdx0 !== -1 && endIdx0 > beginIdx0
   ? html.slice(0, beginIdx0) + html.slice(endIdx0 + END.length)
   : html;
+// The document importmap is the specifiers' source of truth — bare imports resolve through
+// it exactly as the browser resolves them, so the walker covers the same graph.
+const importmapMatch = html.match(/<script\s+type="importmap"[^>]*>([\s\S]*?)<\/script>/);
+let importmap = {};
+if (importmapMatch) {
+  try {
+    importmap = JSON.parse(importmapMatch[1]).imports || {};
+  } catch {
+    importmap = {};
+  }
+}
+
 const existing = preloadedHrefs(htmlSansBlock);
-const mainImports = staticImports(MAIN);
-const registryImports = staticImports(REGISTRY);
+const mainImports = staticImports(MAIN, importmap);
+const registryImports = staticImports(REGISTRY, importmap);
 
 // Registry wave: the transitive static-import closure of main.js + registry.js, minus
 // anything already preloaded by the hand-maintained waves. The eval cascade would fetch
@@ -67,9 +110,11 @@ const registryImports = staticImports(REGISTRY);
 const seen = new Set(existing);
 const visited = new Set();
 const wanted = [];
-// DFS in source order: the queue holds `staticImports` results verbatim, so sibling order
-// matches each importer's own order.
-const queue = [...mainImports, ...registryImports];
+// BFS in source order: the queue holds `staticImports` results verbatim, so sibling order
+// matches each importer's own order. The hand-maintained wave seeds the walk too — its
+// files' unseen imports fetch just as lazily inside eval (e.g. KTX2Loader's transcoder
+// deps, three.module.js's three.core.js).
+const queue = [...mainImports, ...registryImports, ...existing];
 while (queue.length) {
   const href = queue.shift();
   if (visited.has(href)) continue;
@@ -77,7 +122,7 @@ while (queue.length) {
   const abs = join(root, href.slice(1));
   let next;
   try {
-    next = staticImports(abs);
+    next = staticImports(abs, importmap);
   } catch {
     continue; // an href that does not resolve on disk cannot be preloaded — leave it out.
   }
@@ -87,6 +132,11 @@ while (queue.length) {
   }
   queue.push(...next);
 }
+
+// Emit the block sorted: its content becomes a pure function of the covered set, so a
+// regeneration on an identical set (e.g. a PR merge ref whose src tree only reorders
+// discovery) cannot produce order-only drift.
+wanted.sort();
 
 // Main wave drift: every static import of main.js should appear as a modulepreload somewhere
 // in the document (hand-maintained list — this check only reports, never rewrites it). With
