@@ -65,6 +65,15 @@ export const OCCUPATIONAL_TRAFFIC_CRAFT = Object.freeze([
   }),
 ]);
 
-export const OCCUPATIONAL_JOB_KIND_BY_ROLE = Object.freeze(Object.fromEntries(
-  OCCUPATIONAL_TRAFFIC_CRAFT.map((row) => [row.role, row.jobKind]),
-));
+// Fielded TRAFFIC_ROLES roles that are working craft even though their PACKAGED hulls stay held
+// back above. This map is what lets _buildJobSpec hand them a real kind: a volatiles tanker is a
+// heavy hauler on the lane, and an inspection cutter's day is a patrol beat around its port.
+export const FIELDED_ROLE_JOB_KIND = Object.freeze({
+  tanker: 'hauler',
+  customs: 'patrol',
+});
+
+export const OCCUPATIONAL_JOB_KIND_BY_ROLE = Object.freeze({
+  ...Object.fromEntries(OCCUPATIONAL_TRAFFIC_CRAFT.map((row) => [row.role, row.jobKind])),
+  ...FIELDED_ROLE_JOB_KIND,
+});
