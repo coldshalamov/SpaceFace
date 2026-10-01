@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "f71a62ddc4307b1891040645099e3f5faa6da0ad9567f52d9c10d5c8aaee1b66",
+=======
+  "contentHash": "2ee46248565d325e55388f1e75782f205da3abffba2a8a0b6a242937822f0d8e",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port.dynamic",
@@ -1968,7 +1972,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2783,7 +2791,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "1ee9577daba6936dee97bd805baa5abbf2dbed1c248eae5f4cf7e651c17d009f",
+=======
+  "runtimeHash": "e6b70b38a0bc244dbd38c748de7b5136620163a29ec9f22323418cda2b645812",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "cc9505aad48b71277a887a28698becb644319b9e569e9eb77c162e6f49bd4931",
+=======
+  "contentHash": "70b475bb5a03afe5a6114af8a6aec6cc8d9a74002286b6761d9193c66348872d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -345,7 +349,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -515,7 +523,11 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "51e4083a05f4ba890a8ca0b127a0ccb0a87c9e237afaaaab563342642e6a66c8",
+=======
+  "runtimeHash": "ad330c1ff6e55979caac8a9731d3c84377daa9e26e5b7a652f98ca8e31528ccc",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

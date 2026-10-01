@@ -12,7 +12,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "f6a69a2631f862f456b8e7bcabaa31cd95da137cea2821a3434f0363dfa63e7d",
+=======
+  "contentHash": "0b41e5c5407bfff4fe1ba10bb2a6e1cac21ac0a16e74f54e4ebbf4241826313d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.breakaway-fork.mesh.lod0-hook-nav-port.dynamic",
@@ -2807,7 +2811,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3985,7 +3993,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_breakaway_fork.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "c28b3bf037ae5d4a9dcfa556e6c90c1591cfc137cc95949e7d2245480e64d02f",
+=======
+  "runtimeHash": "3afa75e0a3387feb3f967ad1a1cec7d2dcf3eba9ff3ab82ce91c7d227160c97c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

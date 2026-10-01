@@ -191,7 +191,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "5ef471a02dbf53b10cabf2e95fa5e16a6e7e34f2e198589c0908ff7668a3a20a",
+=======
+  "contentHash": "b528706e9458804c0e95a94291a9c1e13619be4dea0b886cccae5ca5128e0020",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -10281,7 +10285,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -15858,7 +15866,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__fresh.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "0da21ece37c70647f302c728c8311f0338ec059ea671b2b2af77eb7718f695de",
+=======
+  "runtimeHash": "ded464243c8414718cf15593ad0b80f5821f6fbfb6a6ecbed117a80d515c613e",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

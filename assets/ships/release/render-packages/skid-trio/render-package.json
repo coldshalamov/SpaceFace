@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "5fe284fb139f82a088a1b6a3bcc1bf4aff54d997c814a3859ba72dfa7ce1aa9c",
+=======
+  "contentHash": "c8a6977f6dc452558fba5f8f66b7b8f9d95deb5b72f4a1c298bb9daed137df10",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,7 +348,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -486,7 +494,11 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_trio.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "353c7c905494d7dc23f6785c5b56bf9583a2186f9c2c932262c9d5e9a0d102b6",
+=======
+  "runtimeHash": "e0d3296b4ec83c26b98375082840f3281b78902d1f65253b9030d683726320f4",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

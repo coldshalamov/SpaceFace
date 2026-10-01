@@ -335,7 +335,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "94b8c86890f4333d966462a5e7f14cf98ce8bd418fa2187937f07509c4d51e95",
+=======
+  "contentHash": "245ec3926360540049017c091d3b3816286a7707ad70969cef54194c53408c8c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.outpost-fence.mesh.lod0-hook-nav-port.dynamic",
@@ -3458,7 +3462,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -4934,7 +4942,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "1c8d0d90d0c0709f9ec434c70fb7d7a23bb56d34145320825bde083b75ac6b9c",
+=======
+  "runtimeHash": "f8ac73d7ee08e8a72617069577a377245408b79f05898a119d0b37d6d426cf33",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

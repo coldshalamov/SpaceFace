@@ -54,7 +54,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "d6674a8df16e51993ee2c3dcf3e079adc08cba0819e1a1b19a63cf47cfc93271",
+=======
+  "contentHash": "bf4ef6b19648be01602dd8e66b98390f051e85aa0243c1934fe0a12053b55170",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1741,7 +1745,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2227,7 +2235,11 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "da506b495c4dda4eda33f5628d7aa64cf39f62366360f40131f7bd695354fd12",
+=======
+  "runtimeHash": "d5fd35fedee16febe775ac1a2ec1fa64a08f001c285ac97e2351ea129fd67461",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

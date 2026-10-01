@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "372bee59a9276438f348f99e7b396315555e8581a2600dc647bfe0b8c258f8de",
+=======
+  "contentHash": "dd64ac25fa2c6e76c7d4a8f0f1c7b3e1f4bccd0147ef1bdc3d13c2a2065a014c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1282,7 +1286,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1856,7 +1864,11 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_resonator.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "307520e4eb2945405fb8ddcb2a8c63d9212a0e9769b8d3c006f4d1eb6d92035c",
+=======
+  "runtimeHash": "a0140278fc8b0f10208d2bf1d80fc5d15ba7f871eff08092fee3a361de06312b",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

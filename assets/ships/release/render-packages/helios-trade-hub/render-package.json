@@ -151,7 +151,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "e56765bf3424e695598d3e2d63c466f09fd43ec23aa640ab599797b9f11e5063",
+=======
+  "contentHash": "bace8fdd8fce5df299b6bc0dd5ad518526a606264a707e2d68acb3df9d4ae8d5",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4028,7 +4032,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -5827,7 +5835,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_trade_hub.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "46e1a1a8e1fb1e0b29c68fd40811a8a13d27264f174d3784828b5752e03dbd4a",
+=======
+  "runtimeHash": "4a19f47d6b173d90452faa10f40e097b1a0429720ef45029403f272709f72836",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

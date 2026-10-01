@@ -53,7 +53,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "2f44080db1b46b33fd402895f111680dd5fb4d781220731d5c483351d3682cab",
+=======
+  "contentHash": "d3ab036dbc9e584a55163c93422d0c800d945954af2a6019f205c0e7395dbac4",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1661,7 +1665,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2387,7 +2395,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "b40b11482d06c21fadb47d52ce66c9644c7368aeb67be7c7ff0eeb1538975c6c",
+=======
+  "runtimeHash": "e247ca7388f64b5cd6e05590590fa2c644c8f10c3eeee51bb3bb0698652390f4",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

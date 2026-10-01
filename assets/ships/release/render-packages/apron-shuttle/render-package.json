@@ -565,7 +565,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "a0b94b2cbee8c8328455b380e22801b0bb4b4c082862c8b7651335f63e8cbba6",
+=======
+  "contentHash": "a7f2a9bea64959fb8c852199fb452c1296413338e658093a01569c50e291650f",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.apron-shuttle.node.lod0-hook-drive-core.dynamic",
@@ -4371,7 +4375,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6334,7 +6342,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "759363dee70f82e40d5f53422f423d91d825b5be14a69733726e38718dd40311",
+=======
+  "runtimeHash": "964da2a97ec1b4d2ebcbaed5d029d61749e49990654529eeead86c77562040ab",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

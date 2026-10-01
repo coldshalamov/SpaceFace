@@ -565,7 +565,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "3170bf65cbf9b78630620e1300e5c10dfaf6fbebf8a353ce4e08d020b8580846",
+=======
+  "contentHash": "803660bd52b5bb03f49646a8308f885f366bb5a214533d3dd633ec1f1a7d5e3d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -5749,7 +5753,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -8275,7 +8283,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "b9928cc683029cad3137d441d44e2529f715b4a00b99751a0d4df3af55646e81",
+=======
+  "runtimeHash": "cb2c9e9ad639d104e11bf68aa6ccf3e9fcd5a4225cb5ce0b0697dbda42d30f57",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

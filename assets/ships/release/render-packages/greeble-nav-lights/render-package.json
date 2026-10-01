@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "565059ff7243ccecb53f8a4f1c648c4e40797799fffd650a703afce17c00dbf1",
+=======
+  "contentHash": "f86517231fab33e40c34e96228abdb70882e698a297ff28e8a6792e4c5916297",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,7 +348,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -514,7 +522,11 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "ecdebeb9823af78b1b008e1e55889598b27d4cabed95435b9055eef5fa0c9560",
+=======
+  "runtimeHash": "f4f497f10a3ca8e6ee340053006f6c26d95e77d35928b320c2f48ef723c8f16d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

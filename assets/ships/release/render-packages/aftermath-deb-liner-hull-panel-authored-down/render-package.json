@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "13db65a56ace7a6010528b8172239af49fcb2ebd60b86ea5a4f0121776fd8b60",
+=======
+  "contentHash": "221ba8ddf5de6860e7208dfc50b6171ee5b4f62cc1c4800ad697e14c5c6a6a30",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1299,7 +1303,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1731,7 +1739,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "2c5936ca6f5c72adca150fa6e03382b398f941c4f29c1383efe437f869525309",
+=======
+  "runtimeHash": "4ff44517baf158d552cdc5e2ec39df2b9daf4d270e56e6a5ce28a8b386b75c3e",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

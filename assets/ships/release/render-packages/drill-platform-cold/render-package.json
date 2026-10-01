@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "21cb2b37d9bb7f182d1883efc40d46e587ad16bab6ec1eaf21a6f1ecf65bc7ee",
+=======
+  "contentHash": "60c3a677d3ecb1dcd9770070daf77f430ca9c5a01bf82b7624685280002b6a94",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1450,7 +1454,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2074,7 +2082,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform_cold.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "07c8c862bc61d740776b5959bbabcbf1b1161072877b2640924ee050e9c25024",
+=======
+  "runtimeHash": "6a648357c267eb6a4fdee9ac0550910ff4a28088c32d39f0bd2b02ccf49105fe",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

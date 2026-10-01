@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "908a56a5816d6fde109d7306ad0c1fe7605edf8241e2f80070237348be647222",
+=======
+  "contentHash": "9bccc8377b3d96e876f6a2381764fb8caf33eb4b56ee6e10dc8f94558a3dc91d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.drill-platform.mesh.lod0-hook-nav-port.dynamic",
@@ -2656,7 +2660,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3727,7 +3735,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "5a5bc8bd9b4f1db0b1a9a35be47835084eba78c77755adfecf902e75d8709fd3",
+=======
+  "runtimeHash": "ac83d9b3a66996e597e87a75f8fd213f5f0b09bee65b901c65a5b1141f0d1bba",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

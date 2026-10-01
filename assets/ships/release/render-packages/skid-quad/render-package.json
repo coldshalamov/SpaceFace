@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "6431b4a64152ce0af84febc75ed7a432c4703ae6d8987b8357b5d073782d737d",
+=======
+  "contentHash": "153282c66f749e738977d4c5ee3e79afef9ae2e8d4fe661e0614f3e267da2be5",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,7 +348,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -486,7 +494,11 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_quad.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "fb2f0851e0d233995a4d840c98b91a9ef02c268517c7d9f0bfa4faddf75abd2e",
+=======
+  "runtimeHash": "9f288605a263398a74d4b95ffa1eb012e87f575d22fc5f7ed16027859268d98c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "ce0682f536b2f7421c4611eb81d8080e3439523e0041a4706d0329fc5aa4b6b5",
+=======
+  "contentHash": "d7d607abc1181b3f2178059251d52ec9655318c0e34891119a81c101e18d1af1",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -263,7 +267,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -373,7 +381,11 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_vents.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "468e8d9d677a6062fded70f3c36307fd083f6e60521052018c37eaa49a335290",
+=======
+  "runtimeHash": "d03a746455958ea60ea6b72a4d51fe86d90d064559a8d62ae0a0f57d14a479a3",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

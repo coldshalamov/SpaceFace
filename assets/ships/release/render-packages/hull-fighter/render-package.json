@@ -99,7 +99,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "99cbdca9f9c856b85a1b92c32b3268988fda63aae8d88950e1b3ca887a634c59",
+=======
+  "contentHash": "fd91b6fc1bfcd419c48e4178efab603c6d2500df10fc0757ea247c76b579de31",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1079,7 +1083,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1734,7 +1742,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_fighter.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "a5ef08a8bf424a8576134b9f123ecaecd7ad68f66a7940e810d2fb1cc0e3c97e",
+=======
+  "runtimeHash": "a67d72686b7a533912ddc78b1bb858c5b66a0cb438cd5f4388792df9e050027f",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

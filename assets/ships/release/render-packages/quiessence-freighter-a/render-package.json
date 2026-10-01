@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "01779e9d6ca6c7b5d4102fb5f2ca17b7be39f3e287d63c42ca849d5448406790",
+=======
+  "contentHash": "2118e3a005391dfbc09d41bbce12d4a26926218a3921dddf9d4131ecee0b2d09",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.quiessence-freighter-a.node.lod0-hook-drive-core.dynamic",
@@ -3774,7 +3778,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -5346,7 +5354,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_quiessence_freighter_a.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "695e7ded13a23836e8170f8b00345db6633b1c92d5091277a1dc440b873ceaa6",
+=======
+  "runtimeHash": "7fc2dcae4526abf3fc94eaf036b403c0e6e72ff8fc7c1a85d0b697f37ca0ff46",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

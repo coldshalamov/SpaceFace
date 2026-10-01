@@ -59,7 +59,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "81bd8a3973bb7f46259a9190c9eba2ad817c5281f8dad716ca18aa3ca738f107",
+=======
+  "contentHash": "572870fbde75d6d43eefc1e2aa3203cffdf4301530437d2f887fb8467f04aaa3",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.mining-drone.node.lod0-hook-drive-core.dynamic",
@@ -2967,7 +2971,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -4194,7 +4202,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "e8cf4b8a13c0781e29bc6edaa4c67f97fc9d1de43ca7a395883c807574aa2f13",
+=======
+  "runtimeHash": "715138ec77c0f9c2b312685836872c30a6f452dadefbad40be043d7820f91cbd",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

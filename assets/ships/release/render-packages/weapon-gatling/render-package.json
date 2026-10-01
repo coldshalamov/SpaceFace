@@ -54,7 +54,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "c8eaf04f9f785e6fb555609d4c145edbd8452738428347d39eb011053acb5d02",
+=======
+  "contentHash": "46aa8fc8c83f6bab285f777cd589e8dce8e279ba64008da2f25e44f5371237f0",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1490,7 +1494,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1947,7 +1955,11 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_gatling.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "1be26506bbe6f668ac8bda683d792b6243e43b68c0c8c67e641639908ff305c8",
+=======
+  "runtimeHash": "c81419edf6e808363e7ceb492f9d40ee403d7b83eb6282c000fe0c96b782e28c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

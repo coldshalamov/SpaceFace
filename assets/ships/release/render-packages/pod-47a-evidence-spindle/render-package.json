@@ -12,7 +12,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "be12ea17fce7bee8b276166ef004b748f1aba5986968735143c6f3e53bdfd2df",
+=======
+  "contentHash": "c154f771047eabddaa8f3bcf3645167fc4df70716b3d5ad2acb05a92b81f3985",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -661,7 +665,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -879,7 +887,11 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "403d14dd6d2fc6e10a218caabf4fc96b5de6debb0ec39738c197569075a73e95",
+=======
+  "runtimeHash": "de4f802d0d8d64400d259c4b57d8810e0bb2a9ff2f8a3c70d012e1bd310ab15e",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

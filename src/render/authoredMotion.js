@@ -414,6 +414,30 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       }
     }
   };
+  // ANI-15: emitter tips index inward while the ship is locked in the aperture charging a gate
+  // jump, then reset. physics emits gate:range on nearest-gate transitions, so the gate id that
+  // reported inRange most recently is the gate a 'gate'-via charge must be happening at.
+  let indexedGateId = null;
+  const onGateRange = (payload) => {
+    if (!payload) return;
+    if (payload.inRange) {
+      indexedGateId = payload.gateId;
+    } else if (payload.gateId === indexedGateId && !indexedClipHeld) {
+      indexedGateId = null;
+    }
+  };
+  let indexedClipHeld = false;
+  const indexing = (controller) => controller.clipActive?.('index');
+  const onJumpChargeStart = (payload) => {
+    if (!payload || payload.via !== 'gate' || indexedGateId == null) return;
+    indexedClipHeld = true;
+    dispatch('gate:index', indexedGateId, payload, (c) => !indexing(c));
+  };
+  const onGateReset = (payload) => {
+    indexedClipHeld = false;
+    if (indexedGateId == null) return;
+    dispatch('gate:reset', indexedGateId, payload, indexing);
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
@@ -443,6 +467,11 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('mining:start', onPodMiningStart),
     bus.on('mining:stop', onPodBeamStop),
     bus.on('craft:queueChanged', onCraftQueue),
+    bus.on('gate:range', onGateRange),
+    bus.on('jump:chargeStart', onJumpChargeStart),
+    bus.on('jump:start', onGateReset),
+    bus.on('jump:arrive', onGateReset),
+    bus.on('jump:chargeAbort', onGateReset),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "da6b26e053cb81456e3cb4118022f5d883edb9f766e62dccc807fb6bac6868b4",
+=======
+  "contentHash": "943fcacdd8f3e1c16742841f295d080478f1f23c55931adb52d93e2cd91b6e11",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,7 +348,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -514,7 +522,11 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_stabilator.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "1c23ed6ca1cb6d8965a007f1265103f868835d44b36bb6ccc735cfd7bb5cb9ce",
+=======
+  "runtimeHash": "6c87d714e34304174f0579c5b906fb0400cdddb0319a55be8eeaecfeb9ad60ce",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

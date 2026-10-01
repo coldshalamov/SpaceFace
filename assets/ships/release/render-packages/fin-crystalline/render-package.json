@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "7e015a15e90dc41ee5f1b279850c0bc7a4c66d0284a9b82541edbc8debc8b847",
+=======
+  "contentHash": "7992dcdae0e856fdf96dc504e320ba795d4178406e93b086f641c9857a0bb9e0",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -337,7 +341,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -506,7 +514,11 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_crystalline.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "2f717c470f7df297be6916ef5a470a7edca13637b2eaba94ad567727ab653d5b",
+=======
+  "runtimeHash": "5bbb3e8be925e467ff3c70253b29fe088290269a20cb7c02d5b35aeba5015adc",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

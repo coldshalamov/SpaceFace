@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "019fa14eeba8243ff75cb7f9c72a5fac269c5bcc9cb0e6c8d125794faca6e5af",
+=======
+  "contentHash": "9b4c897bf9e62ccd75706b073a72741b10583daa9f0e99088eda0061b1fe9d39",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4336,7 +4340,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6036,7 +6044,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "c11eb7c42387a466ff9d947193facc036d36d08b50262dfcceb6ea3ccbf89c05",
+=======
+  "runtimeHash": "1a19bba4305b6c646b76058816b6ed4166270caaf67cff086d86daadc1df2515",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

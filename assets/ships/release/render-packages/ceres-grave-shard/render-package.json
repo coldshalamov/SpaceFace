@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "491555588fcc96d458e5bd9310500d6eace88e683a1d7b6db3d1917994ed6683",
+=======
+  "contentHash": "7f97533dd8370485b78562b5bd7ac50947808c0905c7fd21a0bd3fb80eae64f7",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.dynamic",
@@ -3517,7 +3521,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -4900,7 +4908,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "44982cfc8c8b7289f7e24b0d87d3cd15b44522674f76ace586745b67ac5e8963",
+=======
+  "runtimeHash": "2e24d9358388787b67ed822642029e99c854f97b9cec17404a6fbe95e3aacf50",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

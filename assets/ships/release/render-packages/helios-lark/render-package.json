@@ -565,7 +565,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "4da6e6c2b83c5d625de51a6e4ff9a89e71785bf5ccaaf7d8d0c91bc3d89fc039",
+=======
+  "contentHash": "5aedac3e237651bf3fac426f80901dc0c01777bf1e2aa4bceca930fc0f17afc8",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.helios-lark.node.lod0-hook-drive-core.dynamic",
@@ -4371,7 +4375,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6334,7 +6342,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_lark.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "b08e60d329128a046c277fe0812de5126f63c117427af47beadaba4448b18461",
+=======
+  "runtimeHash": "9daa8b15f8f7bc91f4217dfebdca02f674deeca5189021f3c7d35334870ee81e",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

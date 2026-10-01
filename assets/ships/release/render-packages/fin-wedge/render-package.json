@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "f781385a35c3ba3de35d4db80b42b624d32144fc77a52659c5fa83d5e1fbfe31",
+=======
+  "contentHash": "e1e4d9ad783f6bf4efe72f918f8d69c85a405e28885e6679c368cd8205838d9a",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1074,7 +1078,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1344,7 +1352,11 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "173c96eba20e1e4288574ba3751ee5f87a1d5bc70804fe20c04dcc95400a96ff",
+=======
+  "runtimeHash": "fb26001da58acfdc6a7fd91ffa9563b73e8ac35c94b0cce27af99495b4377d0c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

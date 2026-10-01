@@ -283,7 +283,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "10b2f5f51582babf672a19c5ed88217cead1c0f356e4219a1e4eaad8195082ea",
+=======
+  "contentHash": "3aabcd823b1b61e650ef9e787fa1a71daa2c1e601da514e517a0fe14bc78b80b",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -12998,7 +13002,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -19553,7 +19561,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "6780d87b1ecefc45c87068838e089f7aa13027452b9303b107655799ba210206",
+=======
+  "runtimeHash": "bcace3606f7b2fc765fcaef4da91213740b6998d8ff5666e4c791d1a9f2090ff",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

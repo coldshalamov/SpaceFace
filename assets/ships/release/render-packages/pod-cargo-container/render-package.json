@@ -12,7 +12,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "a60bd2d6961c8c13e795795d640c951ef8a2de3b79214ee0424239647b5e6760",
+=======
+  "contentHash": "a041855898f28cba2b03c7fd5c91387858d20939eab454263db0cd2fecd8f235",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -580,7 +584,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -764,7 +772,11 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "1ccd6f3f9fc1f1530866be777b9d705ca23b54cd2ac4bf4d6ca0324a826746b3",
+=======
+  "runtimeHash": "61a4d45e9c669a701a4edb718186e9571a7c62f7bdb0a2bc98dd6882ba19569b",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

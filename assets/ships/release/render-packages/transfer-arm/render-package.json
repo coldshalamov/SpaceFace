@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "580ce78f584bd8dc3ce7f28eba19a6c2e9c931d566f540ccb8995bdea9afaf02",
+=======
+  "contentHash": "7551ac44159a75ba0ab6e0494c043c1364cc94a3202a751aaca8f23ebb8d174c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.dynamic",
@@ -2402,7 +2406,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3377,7 +3385,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "246af9bdb3c6235bbae4043a39613befdd5ed6f2462c6d4677134c37aa0212eb",
+=======
+  "runtimeHash": "c22b56089c9f754f10b00d2547c2a08ef4d93ac4fcc75285ad90b936dc5fbdbe",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

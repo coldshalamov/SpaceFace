@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "6e1b17c6cc415f073cc040f25ecebc77cbb3878d480a739a3a29e689b89bf84a",
+=======
+  "contentHash": "bf24b6ed7c63544aef1f0a0f225f598415f9f28e2eb0dc3ce0439719b9c0b394",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -992,7 +996,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1424,7 +1432,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold_bent.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "2873f173f53d791e5715548720705eecccf40be2df132fb47ec2369bfbb727e6",
+=======
+  "runtimeHash": "5c71506785d57a476724a51bbb2cefadee3c64c49a763bb6e4618e6947bec99f",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

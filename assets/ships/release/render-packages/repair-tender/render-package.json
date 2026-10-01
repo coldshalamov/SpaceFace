@@ -565,7 +565,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "e85f9738780346324df551b803275a9567c1c9f486803ba14b2725876198d06a",
+=======
+  "contentHash": "c5c68cdd85357ab8a0c781731b5a11dc71f7f99e10e12fee8da40054763c4934",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.repair-tender.node.lod0-hook-drive-core.dynamic",
@@ -4953,7 +4957,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -7141,7 +7149,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "3ea52a3d72528eb8755bd6a3e1d11a75c852472e7d5c1fe50d7c5481ca77cf41",
+=======
+  "runtimeHash": "e0b4ebcc5e13b07c246010d586779118a64ca5fc7241d94bce31b38afaab3fff",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

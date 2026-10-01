@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "c5a3f0e9166e9db096493582a006aa5bebbc01e7c92c543c39f7ba5e04158fb5",
+=======
+  "contentHash": "81be9e76df047cf63c517dbb9eaeea4763495748ac4a1c727e08486f3903ee7d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -410,7 +414,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -622,7 +630,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_end.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "b3e529251da711e9d635c6d220beef422a11bb43f0df7317cd3565ebe68e1dc4",
+=======
+  "runtimeHash": "397c901a94e2eeee64c141f8744ef7bea40703330ea58342a5de3a271dea2746",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

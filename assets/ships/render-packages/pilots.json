@@ -1247,8 +1247,8 @@
    "slot": "place",
    "releaseAssetId": "place_gate_jump_ring",
    "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-   "releaseSha256": "05a3e58e038f3f51a2a7cc2c4c6058862f626ea8dec2209668c06beb5fd0c7c7",
-   "releaseBytes": 1886724,
+   "releaseSha256": "dc3a76db4faf1b032bfe3ce026c18b6db5aa93aba976ab5a693905a21e52ded7",
+   "releaseBytes": 1965148,
    "dynamicNameIncludes": [
     "HOOK_DRIVE",
     "HOOK_NAV",

@@ -53,7 +53,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "a453a82061ac24fc8801555ceb1557fc52804b07a0f9b884c589cb1b3371ade2",
+=======
+  "contentHash": "0438230b0ac6669710fd806943536dbc3f276103b525c16a65aed96d3499dd66",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1065,7 +1069,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1504,7 +1512,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "bb4a0bff3f9af7f4d74c677ddd843f51849da21849807fdca57d9d51a14054e7",
+=======
+  "runtimeHash": "1aedffbce628d0a81b09c22e32187f75563ee306af480cf7035aae918823abad",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

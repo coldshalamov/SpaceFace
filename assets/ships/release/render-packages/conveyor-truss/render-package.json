@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "be5a9440c7deef6b86f2f541a4f8c80eab18c1a353eb5d95ac524e87220395db",
+=======
+  "contentHash": "c152b19bcf0bb4c1ee28710b6cf45d23e0ecf096f8869cdc084f021387819d27",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1748,7 +1752,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2464,7 +2472,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_truss.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "dd07210f9cf3cea692b9b7895670321c0daf49ce5fe3945640bf102e0b35ec5a",
+=======
+  "runtimeHash": "a0d8e635ee5d1b5796d1c06ff66fbf5e483da3aac5b39d8debbb97189aac4f74",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

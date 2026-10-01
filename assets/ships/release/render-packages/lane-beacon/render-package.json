@@ -59,7 +59,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "9653e277c2bc9e5fcab670c202b8843b1f62579c64acdbd8edf752151efb6d66",
+=======
+  "contentHash": "a495dca49fa94757c0036f1ea1aa0b1b4ddc38f91abd7cf1e061057080ed5c4e",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.lane-beacon.node.lod0-hook-nav-port.dynamic",
@@ -2723,7 +2727,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3806,7 +3814,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "6c7a06592e6904788a69a14b324731c79ed659877f54f5eb45b277fab2e23e24",
+=======
+  "runtimeHash": "74711f7748f915ddbee9b11d7bf521a267a9d206580016e5ad0cb1fa36a3b385",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

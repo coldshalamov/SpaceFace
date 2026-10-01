@@ -59,7 +59,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "c91806a20c02b0f591faa85f6c5fcacb3db5cf3b294f85194c7246582a48991b",
+=======
+  "contentHash": "3d1999681ce5a6fba97a36642e5b87d020c90c2ccac430b732fe5b0c67af5a05",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2847,7 +2851,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -4010,7 +4018,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_graffiti.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "8f4fe2a8caab9bad267203d34a3e714290244d801c9dc511b6c115378a2097ad",
+=======
+  "runtimeHash": "dc77ddc4e6726cc8668283176bcde65de3780a0344d11cb430d22855a5a3b77d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

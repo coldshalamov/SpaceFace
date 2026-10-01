@@ -565,7 +565,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "f75e49d7a07eee8c625d4fbd0533d2d78ca0dcdc63be22754e8f67dbeae8dad7",
+=======
+  "contentHash": "6b1ac8e1ebad204e271f430450f4c8f7e49a27104fd9063713b405e95e1382da",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.dynamic",
@@ -4470,7 +4474,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6465,7 +6473,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "c59392166e865135fa70606b893843a6a552c31be71eb24588aade6b7093f792",
+=======
+  "runtimeHash": "f55dad6feabe768695e69c142c6ab094e4e336272b27b41d1230611a1229ab30",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

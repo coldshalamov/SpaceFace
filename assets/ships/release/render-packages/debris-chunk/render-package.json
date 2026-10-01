@@ -59,7 +59,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "d5d20155a053508d28ab7e2468a0dc095bc896a2f45c2069f62b936c5a27e3fa",
+=======
+  "contentHash": "061783011ffad6d073ee876b7d41812c1341c953f936fbdfabecae23b1600d2a",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2513,7 +2517,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3485,7 +3493,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_debris_chunk.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "9fab2118ae95148c3e043af15c6f52c7d485467c6da3afc6960326fd6d047292",
+=======
+  "runtimeHash": "1891414bd3b5a9cc988ef8acf3ab063730e5097eb1a82b6101b228a7cd63c4f8",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

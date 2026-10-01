@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "c0b73198d8880c62d38bfb011ffd3c343080366f489116cc4050f51061600158",
+=======
+  "contentHash": "3c7122ca7a44e330d7dd75d7f41d60a244ec2607416af49caf21af905872c4f8",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -419,7 +423,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -620,7 +628,11 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_antennas.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "f83b8d6e8625109e8a39017c5f0ede3aded1323a272e1ad116711a2b5fca9dc7",
+=======
+  "runtimeHash": "031a64d17215f3576c70766e0758235cbe512142a804fba001ff619431b8b73b",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

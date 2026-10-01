@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "b89fec2ea2cecb6471ccbda79af7e35852734c931b874978d81f37885df61841",
+=======
+  "contentHash": "653f17efe86274f6bfa55daf5b474402c7329ffe6f781ad1f695dd1f20bfc61c",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -954,7 +958,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1353,7 +1361,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "f0ad95ea79236a2a5473b74ba29fb6758a1521ee0909c61deabd4cfb400882e5",
+=======
+  "runtimeHash": "ef2268588146df90ba7239679fb80b2574c23b0c672278dbe9f72ad7b4241d91",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

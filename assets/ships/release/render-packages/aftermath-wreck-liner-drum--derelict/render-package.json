@@ -145,7 +145,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "cb7ce3ae3ba700c9b4c9e2e247c84c36a5da424a5c2b0ce595d6e3299d032b3c",
+=======
+  "contentHash": "612dd4f218dc0f970a4fc1829d8f45ced0914dfe87e428576f18e4a117732da0",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -6229,7 +6233,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -9111,7 +9119,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "7434252b32021aa34ee04d69980d4c63979df090c9e234d23f458b463d6ba895",
+=======
+  "runtimeHash": "fefbb38541b11957dedf6facdb2578752e729c2d4fa6fc291c6c0bc7ccfade28",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

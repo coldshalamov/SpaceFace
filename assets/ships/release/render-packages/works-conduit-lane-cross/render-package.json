@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "0bd843847ab12833e957f82b105668e07e79711acbd875aaff0b5b5921acfaf0",
+=======
+  "contentHash": "6d376142825bdf3f36b7807184d2b181aa6a74b177d4d18b80ed08dd49223f5d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -410,7 +414,11 @@
     },
     "sourceManifest": {
       "bytes": 197728,
+<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+=======
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -622,7 +630,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_lane_cross.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "7b5566d260198d49eb5af6cd8228068f61041fc903d14d54b37fa2dffa2f063c",
+=======
+  "runtimeHash": "bf6e7c5741c912f35792b1ca7c7a27a99354d58090a5120f66f07e68b5016bb5",
+>>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
