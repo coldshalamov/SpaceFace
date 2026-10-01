@@ -37,7 +37,7 @@ import {
   resolveIblSource,
 } from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -95,6 +95,7 @@ import {
   swarmRosterShipExemplarSpecs,
   paletteWarmSubjectsForRecord,
   spawnableShipArchetypePrewarmUrls,
+  residentAuthoredRecordForFile,
   residentWholeShipStandInRecord,
   wholeShipVisualForEntity,
   resolve19305CensusAEntityPackagedFile,
@@ -907,7 +908,7 @@ function entityWithinPlayerRadius(entity, state, radius) {
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
   const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
-  const visual = entityVisualCullRadius(entity);
+  const visual = entityVisualCullRadius(entity, entity.mesh);
   const reach = Math.max(0, Number(radius) || 0) + visual;
   return delta.x * delta.x + delta.z * delta.z <= reach * reach;
 }
@@ -6198,6 +6199,8 @@ export const render = {
       // canonical library already has it — an octahedron only when nothing is resident. The
       // residency/decode registries key on the WebGLRenderer, not this system instance.
       admissionStandInRecord: (entity) => residentWholeShipStandInRecord(entity, { renderer: this.renderer }),
+      // Boundary seats (stations/place roots/capsules/packaged props) resolve by file through
+      // the same residency sources; registered once below since wraps never see this.renderer.
       onAuthoredAssetSwap: ({ boundary, root, entity } = {}) => {
         const target = boundary || root;
         if (target) {
@@ -6217,6 +6220,9 @@ export const render = {
         this._shadowReceiversDirty = true;
       },
     });
+    setBoundaryStandInResolver(
+      (entity, file) => residentAuthoredRecordForFile(file, { renderer: this.renderer }),
+    );
     // GFX-12 probe diagnostic: published as 0 up front so a clean cold New Game reports an actual
     // zero rather than a missing field; each octahedron fallback re-publishes the running count.
     state.render.resolvingMarkerFallbacks = resolvingMarkerFallbackCount();
@@ -15069,8 +15075,11 @@ export const render = {
       // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
       if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
       if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
+      const viewRadius = (entity && entity.alive !== false)
+        ? entityVisualCullRadius(entity, mesh)
+        : 0;
       if (entity && entity.alive !== false) {
-        world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
+        world.refreshVisibleEntity(slot, entity, viewRadius);
       }
       const dirty = world.dirtyMasks[slot];
       // A clean render root still needs a validity check against the latest completed fence. The
@@ -15109,6 +15118,7 @@ export const render = {
       _viewBandOptions.dz = mesh.position.z - bounds.z;
       _viewBandOptions.innerHalfX = innerView.halfX;
       _viewBandOptions.innerHalfZ = innerView.halfZ;
+      _viewBandOptions.radius = viewRadius;
       _viewBandOptions.forceInner = forceRender || neverCull;
       const viewBand = classifyEntityViewBand(_viewBandOptions);
       const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);

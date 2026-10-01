@@ -189,7 +189,11 @@ export function combatantAdmissionPriority(entity, liveState) {
     return null;
   }
   const distance = planarRangeWU(entity, player);
-  if (distance === null || distance > CAMERA_DIRECTOR_COMBAT_MAX_ZOOM) return null;
+  if (distance === null) return null;
+  // Grade the drawn edge, not the centre: a capital hostile centred beyond the zoom bound but
+  // with its envelope inside the fight-fit window still belongs on the combatant rung.
+  const edge = distance - entityVisualCullRadius(entity, entity.mesh);
+  if (edge > CAMERA_DIRECTOR_COMBAT_MAX_ZOOM) return null;
   return COMBATANT_ADMISSION_PRIORITY;
 }
 

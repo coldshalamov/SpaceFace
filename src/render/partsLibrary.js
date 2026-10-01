@@ -2219,17 +2219,20 @@ export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
 
 /**
  * The resident whole-ship record an admission stand-in may borrow — a synchronous lookup, never a
- * load. The production catalog is resident before control, so a pending ship's own low-detail body
- * is already decoded: split-file hulls keep it in the `_lod2` sibling GLB, single-file bodies carry
- * it as `tags.lod === 'lod2'` primitives on the lod0 record. Returns null when nothing is resident;
- * the caller falls back to the abstract resolving marker and counts the miss.
+ * load. A warm-decoded lod0 record wins (the real hull shape behind the stand-in); otherwise
+ * split-file hulls keep the low-detail body in the `_lod2` sibling GLB and single-file bodies
+ * carry it as `tags.lod === 'lod2'` primitives on the lod0 record. Returns null when nothing is
+ * resident; the caller falls back to the abstract resolving marker and counts the miss.
  */
 export function residentWholeShipStandInRecord(entity, options = {}) {
   const selection = wholeShipVisualForEntity(entity, options);
   if (!selection) return null;
   const lod2File = wholeShipLodFileForEntity(entity, 'lod2', options);
   const baseFile = wholeShipFileForResolution(entity, selection, options);
-  const candidates = lod2File && lod2File !== baseFile ? [lod2File, baseFile] : [baseFile];
+  // Prefer the real (lod0) record when it is already resident: the warm decode leaves the true
+  // hull shape available for the stand-in, and the commit swap becomes a zero-diff swap. The
+  // lod2 sibling stays the fallback — it is the guaranteed-resident catalog tier.
+  const candidates = lod2File && lod2File !== baseFile ? [baseFile, lod2File] : [baseFile];
   const seen = new Set();
   // Scan every resolved library the renderer holds: the entity plan lands in the canonical map,
   // while a split-file `_lod2` sibling decoded for a LOD demotion lives under the
@@ -2261,6 +2264,33 @@ export function residentWholeShipStandInRecord(entity, options = {}) {
     if (record) return record;
   }
   return null;
+}
+
+/**
+ * Generic-file twin of residentWholeShipStandInRecord: non-ship pending families (stations,
+ * place roots, cargo capsules, packaged props) know their authored file at wrap time but have no
+ * catalog selection to route through. Same two residency sources — the renderer's resolved
+ * libraries first, then the settled decode cache — and the same promise: a synchronous lookup,
+ * never a load. Returns null when nothing is resident; the caller keeps the abstract marker.
+ */
+export function residentAuthoredRecordForFile(file, options = {}) {
+  if (typeof file !== 'string' || !file) return null;
+  const resolved = options.renderer && resolvedLibraryByRenderer.get(options.renderer);
+  if (resolved instanceof Map) {
+    for (const library of resolved.values()) {
+      if (!(library instanceof Map)) continue;
+      for (const records of library.values()) {
+        const record = (records || []).find((candidate) => recordUrlEndsWith(candidate, file));
+        if (record) return record;
+      }
+    }
+  }
+  const decoded = peekSettledAuthoredRecords(options.renderer);
+  return decoded.find((candidate) => (
+    recordIsResident(candidate)
+      && typeof candidate.url === 'string'
+      && normalizePartUrl(candidate.url).endsWith(file)
+  )) || null;
 }
 
 /**
@@ -2581,7 +2611,9 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   };
   // Same resolving-marker contract as pending ships and stations: an exact-identity payload
   // keeps the abstract affordance on the glass while admission runs instead of popping in.
-  installBoundaryResolvingMarker(boundary, entity);
+  installBoundaryResolvingMarker(boundary, entity, {
+    standInFile: authoredPayloadFileForEntity(entity),
+  });
 
   let activeRoot = fallbackRoot;
   const setActiveRoot = (next) => {
@@ -2862,6 +2894,15 @@ function commitAuthoredCargoCapsuleBoundary(
   boundary.userData.__socketCache = new Map();
   delete boundary.userData.requestAuthoredUpgrade;
   delete boundary.userData.__setActiveVisualRoot;
+  // The resolving marker's envelope stamp only covers the marker's own drawn reach — copy the
+  // authored capsule's measured bounds (place-commit precedent) or drop the stamp entirely so
+  // cull grading no longer classifies the committed body at the marker envelope.
+  if (authored.root.userData && authored.root.userData.visualBounds) {
+    const measured = authored.root.userData.visualBounds;
+    boundary.userData.visualBounds = { center: measured.center.slice(), size: measured.size.slice() };
+  } else {
+    delete boundary.userData.visualBounds;
+  }
   const publish = () => {
     // Same residual-link guard as the ship commit: the exact-target prepare ran while this
     // root was detached, so pay any leftover variant here rather than in a presented pass.
@@ -3135,7 +3176,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   // pops in at commit whenever admission outlasts the runway — the same abstract marker
   // contract pending ships get (no substitute identity; the per-frame sync drives it off
   // authoredAssetState).
-  installBoundaryResolvingMarker(boundary, entity);
+  installBoundaryResolvingMarker(boundary, entity, { standInFile: placeFile });
 
   let activeRoot = fallbackRoot;
   const setActiveVisualRoot = (next) => {
@@ -3268,7 +3309,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   // boundary would draw nothing and pop in at commit. Arm the same resolving marker pending
   // ships, stations, and capsules carry — it unions into the pending stamp and detaches at
   // commitAuthoredPlaceBoundary.
-  if (!fallbackHasBody && !geologySkin) installBoundaryResolvingMarker(boundary, entity);
+  if (!fallbackHasBody && !geologySkin) {
+    installBoundaryResolvingMarker(boundary, entity, { standInFile: placeFile });
+  }
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -3483,6 +3526,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       center: measured.center.slice(),
       size: measured.size.slice(),
     };
+  } else {
+    // No measured envelope on the authored root — drop the marker/pre-compose stamp so the
+    // committed body classifies from lazy measurement instead of the pending envelope.
+    delete boundary.userData.visualBounds;
   }
 
   registerPreparedAuthoredAdmission(scene, boundary, authored);
@@ -4870,8 +4917,21 @@ export function enqueueBoundaryUpgrade(scene, job) {
       // with no committer (its trigger disarmed, no sweep re-arms it): a permanent stand-in on
       // e.g. station HLOD's dual-boundary nesting. Re-enqueue the joiner once the shared job
       // settles — byKey has already been cleared by then, so it queues as its own job and the
-      // decode is cache-warm. (No epoch carry: the counter is per-boundary.)
-      return keyedJob.completion.then(() => enqueueBoundaryUpgrade(scene, job));
+      // decode is cache-warm.
+      return keyedJob.completion.then(() => {
+        // The parked job's epoch was minted at its first request; if the boundary re-admitted
+        // under a newer epoch since, the re-enqueue must carry the newest counter or the
+        // resumed commit drops at the stale-run guard with no replacement committer.
+        const boundaryEpoch = job.boundary && job.boundary.userData
+          && job.boundary.userData.admissionEpoch;
+        if (boundaryEpoch != null) {
+          job.options = {
+            ...(job.options || {}),
+            admissionEpoch: Math.max((job.options && job.options.admissionEpoch) || 0, boundaryEpoch),
+          };
+        }
+        return enqueueBoundaryUpgrade(scene, job);
+      });
     }
     if (keyedJob.lifecycle === 'queued') {
       const staleIndex = state.jobs.indexOf(keyedJob);
