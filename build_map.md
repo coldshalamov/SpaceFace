@@ -402,15 +402,15 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
 | fight | free | enemies, bombs, countermeasures, squads | 96, 178, 179, 200, 202, 221, 231, 234 |
 | fields | free | fields | 94, 162 |
-| law | free | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
+| law | grok-15 | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
-| industry | free | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
+| industry | grok-15 | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
 | people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
 | ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
 | hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 220, 229, 236, 238, 239 |
 | missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
 | world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
-| story | free | story | 192, 215, 216, 253 |
+| story | grok-15 | story | 192, 215, 216, 253 |
 | input | free | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
 | physics | free | physics clocks, manifest | 258 |
