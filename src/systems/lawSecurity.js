@@ -184,6 +184,8 @@ const HIGH_SEC_WARRANT_MIN_DISTANCE = 900;
 
 export const lawSecurity = {
   name: 'lawSecurity',
+  // serialize() already cloneLawPlain's every returned field — skip the second defensive clone.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;

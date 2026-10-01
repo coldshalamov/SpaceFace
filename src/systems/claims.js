@@ -288,6 +288,9 @@ export function claimDefenseRating(body, bodies = []) {
 
 export const claims = {
   name: 'claims',
+  // serialize() deep-copies every field it returns — the owned flag keeps saveSystem from
+  // re-cloning the bodies payload a second time inside the single-task autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -2496,8 +2499,8 @@ export const claims = {
       specVersion: 1,
       bodies: (claims.bodies || []).map((b) => JSON.parse(JSON.stringify(b))),
     };
-    if (claims.meta) out.meta = { ...claims.meta };
-    if (claims.legacyMigration) out.legacyMigration = { ...claims.legacyMigration };
+    if (claims.meta) out.meta = JSON.parse(JSON.stringify(claims.meta));
+    if (claims.legacyMigration) out.legacyMigration = JSON.parse(JSON.stringify(claims.legacyMigration));
     if (claims.stationGrowth) out.stationGrowth = JSON.parse(JSON.stringify(claims.stationGrowth));
     if (claims.endgamePulls) out.endgamePulls = JSON.parse(JSON.stringify(claims.endgamePulls));
     if (claims.legendaryHeads) out.legendaryHeads = JSON.parse(JSON.stringify(claims.legendaryHeads));

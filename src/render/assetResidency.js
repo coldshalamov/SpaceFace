@@ -435,6 +435,7 @@ export function createAssetResidencyRegistry(options = {}) {
   // stage keeps its decode warm across an undock-to-redock gap, but under byte pressure its
   // oldest-idle entries release like any cache owner — the loader re-decodes on next touch.
   function isSoftResidencyOwner(metadata) {
+    if (metadata && metadata.softLease === true) return true;
     return isRenderPackageCacheOwner(metadata)
       || String(metadata && metadata.role || '').trim().toLowerCase() === 'runtime-cache';
   }

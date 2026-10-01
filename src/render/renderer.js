@@ -10712,7 +10712,7 @@ export const render = {
         this._unbindPresentationMesh(id, m);
         scene.remove(m); disposeObject(m); this._meshes.delete(id); this._meshesVersion += 1;
         this._noteShadowMeshRemoved(m);
-        this._publishAssetResidencyDiagnostics();
+        this._queueAssetResidencyDiagnosticsPublish();
       }
     });
     // Ship hull swap or loadout change (fit/upgrade) — rebuild the mesh so visible hardpoints,
@@ -13583,6 +13583,17 @@ export const render = {
     const diagnostics = this._assetResidency.canonicalDiagnostics();
     this.state.render.assetResidency = diagnostics;
     return diagnostics;
+  },
+
+  // Burst-safe variant: a bus flush carrying N corpse events rebuilds the canonical sort once
+  // at the microtask boundary instead of O(assets) per corpse.
+  _queueAssetResidencyDiagnosticsPublish() {
+    if (this._assetResidencyDiagnosticsPublishQueued === true) return;
+    this._assetResidencyDiagnosticsPublishQueued = true;
+    queueMicrotask(() => {
+      this._assetResidencyDiagnosticsPublishQueued = false;
+      this._publishAssetResidencyDiagnostics();
+    });
   },
 
   _bindPresentationMesh(entity, mesh) {

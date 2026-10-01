@@ -2743,7 +2743,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   try {
     await prepareAuthoredVisualPipelines(authored.root, options);
   } catch (error) {
-    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
     return failAuthoredCargoCapsuleAdmission(
       boundary,
       fallbackRoot,
@@ -2755,7 +2755,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     );
   }
   if (!boundary.parent) {
-    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-after-pipeline-compile');
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
@@ -2766,7 +2766,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     await publicationWait;
   }
   if (!boundary.parent) {
-    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
     boundary.userData.authoredAssetState = 'orphaned-before-swap';
     return false;
@@ -2781,7 +2781,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
         && boundary.userData.admissionEpoch !== options.admissionEpoch)
       || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
       || (entity && entity.alive === false)) {
-    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    await (disposePreparedCargoCapsule() || disposePreparedAuthoredBoundary(boundary));
     return false;
   }
   return commitAuthoredCargoCapsuleBoundary(
@@ -3464,7 +3464,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await prepareAuthoredVisualPipelines(authored.root, options);
     } catch (error) {
       try {
-        await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+        await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
       } catch (cleanupError) {
         throw new AggregateError(
           [error, cleanupError],
@@ -3478,7 +3478,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       );
     }
     if (!boundary.parent) {
-      await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
       return false;
     }
@@ -3488,7 +3488,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await publicationWait;
     }
     if (!boundary.parent) {
-      await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
       return false;
     }
@@ -3502,7 +3502,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
           && boundary.userData.admissionEpoch !== options.admissionEpoch)
         || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
         || (commitEntity && commitEntity.alive === false)) {
-      await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      await (disposePreparedPlace() || disposePreparedAuthoredBoundary(boundary));
       return false;
     }
     return commitAuthoredPlaceBoundary(
@@ -3658,7 +3658,18 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
   // buildPlacePropRoot resolves is stamped here instead. Static data: no decode needed.
   const row = modelTruthRowForEntity(entity);
   const size = row && row.bounds && row.bounds.size;
-  const scale = modelTruthPlaceDrawScale(entity);
+  const data = entity && entity.data || {};
+  // Same resolver the commit stamp uses: for a world-site root the authored placeScale wins over
+  // the census ratio (the D54 override) — stamping the census scale here would classify the
+  // boundary at a fraction of its drawn size for the whole queue wait. The census envelope only
+  // feeds the non-poi targetScale term, which loses to worldSiteScale/censusScale as intended.
+  const scale = resolvePlaceDrawScale(data, {
+    targetRadius: Number(data.placeTargetRadius),
+    authoredEnvelope: Array.isArray(size)
+      ? Math.max(1e-6, ...size.map((value) => Number(value) || 0))
+      : 1e-6,
+    censusScale: modelTruthPlaceDrawScale(entity),
+  });
   if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
     boundary.userData.visualBounds = {
       center: [0, 0, 0],
@@ -4767,7 +4778,12 @@ export function enqueueBoundaryUpgrade(scene, job) {
     if (jobStillNeeded(state, keyedJob)) {
       if (keyedJob.lifecycle === 'queued') mergeQueuedJobOptions(keyedJob, job);
       else promoteInFlightJobAdmissionVisible(keyedJob, job);
-      return keyedJob.completion;
+      // The shared job only commits its own boundary — the joiner's boundary sits 'loading'
+      // with no committer (its trigger disarmed, no sweep re-arms it): a permanent stand-in on
+      // e.g. station HLOD's dual-boundary nesting. Re-enqueue the joiner once the shared job
+      // settles — byKey has already been cleared by then, so it queues as its own job and the
+      // decode is cache-warm. (No epoch carry: the counter is per-boundary.)
+      return keyedJob.completion.then(() => enqueueBoundaryUpgrade(scene, job));
     }
     if (keyedJob.lifecycle === 'queued') {
       const staleIndex = state.jobs.indexOf(keyedJob);

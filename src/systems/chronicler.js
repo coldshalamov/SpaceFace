@@ -41,6 +41,8 @@ export function createChronicler(options = {}) {
   const shouldObserve = typeof options.shouldObserve === 'function' ? options.shouldObserve : () => true;
   return {
     name: 'chronicler',
+    // serialize() returns clone(this._memory) — already fully owned.
+    saveSnapshotOwned: true,
     init(ctx) {
       if (!ctx?.state || !ctx.bus || typeof ctx.bus.on !== 'function' || typeof ctx.bus.emit !== 'function') {
         throw new TypeError('Chronicler.init requires { state, bus }');
