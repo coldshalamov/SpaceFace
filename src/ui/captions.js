@@ -114,3 +114,14 @@ export function captionMasslineEvent(eventName, payload, captionsOn) {
   if (captionsOn === false) return { text, hidden: true, channel: 'massline' };
   return { text, hidden: false, channel: 'massline' };
 }
+
+export function fieldDeployCaption(kind, flagOrSettings) {
+  if (flagOrSettings) {
+    const ac = flagOrSettings.accessibility || flagOrSettings;
+    if (ac.captions === false) return null;
+  }
+  const caption = AUDIO_CUE_CAPTIONS[kind];
+  if (!caption) return null;
+  return { text: caption, channel: 'cue', kind };
+}
+

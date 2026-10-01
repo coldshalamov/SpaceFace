@@ -42,7 +42,7 @@ import {
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
-import { resolveAccessibilityCue } from '../ui/captions.js';
+import { resolveAccessibilityCue, fieldDeployCaption } from '../ui/captions.js';
 import { pointInsideWantedSearch, readWantedSearchVolume, stepWantedSearchEdge } from '../presentation/wantedSearchVolume.js';
 import {
   createEnvironmentMixRuntime,
@@ -1268,6 +1268,27 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'combat.causal.tether': 'sfx.tetherSnap',
   'combat.causal.field': 'sfx_mining_field_settle',
   'combat.causal.reaction': 'sfx_reactor_overload_shudder',
+  // Field deploy voices (INST-24): primary cue table mapping
+  'fields:deployed:well': 'sfx_field_deploy_well',
+  'fields:deployed:repulsor': 'sfx_field_deploy_repulsor',
+  'fields:deployed:cone': 'sfx_field_deploy_cone',
+  'fields:deployed:skim': 'sfx_field_deploy_skim',
+  'fields:deployed:seed': 'sfx_field_deploy_seed',
+  'fields.deployed.well': 'sfx_field_deploy_well',
+  'fields.deployed.repulsor': 'sfx_field_deploy_repulsor',
+  'fields.deployed.cone': 'sfx_field_deploy_cone',
+  'fields.deployed.skim': 'sfx_field_deploy_skim',
+  'fields.deployed.seed': 'sfx_field_deploy_seed',
+  'field.deploy.well': 'sfx_field_deploy_well',
+  'field.deploy.repulsor': 'sfx_field_deploy_repulsor',
+  'field.deploy.cone': 'sfx_field_deploy_cone',
+  'field.deploy.skim': 'sfx_field_deploy_skim',
+  'field.deploy.seed': 'sfx_field_deploy_seed',
+  well: 'sfx_field_deploy_well',
+  repulsor: 'sfx_field_deploy_repulsor',
+  cone: 'sfx_field_deploy_cone',
+  skim: 'sfx_field_deploy_skim',
+  seed: 'sfx_field_deploy_seed',
 });
 
 export function resolveAudioCueRecipeId(cueId) {
@@ -1277,6 +1298,10 @@ export function resolveAudioCueRecipeId(cueId) {
   if (Object.hasOwn(AUDIO_CUE_TO_RECIPE, cueId)) return AUDIO_CUE_TO_RECIPE[cueId];
   if (Object.hasOwn(AUDIO_RECIPE_BY_ID, cueId)) return cueId;
   return null;
+}
+
+export function fieldDeployRecipe(kind) {
+  return resolveAudioCueRecipeId(`fields:deployed:${kind}`) || resolveAudioCueRecipeId(kind);
 }
 
 export function alertCueOwnsAudio(payload) {
@@ -2160,11 +2185,27 @@ export const audio = {
       this.play('sfx_firsthour_coldopen', { gain: 0.7, critical: true });
     });
     bus.on('fields:deployed', (p) => {
-      // CV-EAR: every field power carries its own deploy voice through the accessibility
-      // cue table (NPC deploys included — the position already attenuates by distance).
+      // INST-24: every field power carries its own deploy voice through the primary
+      // cue table, independent of accessibility settings.
+      // (_playAccessibilityCue('well') legacy audit anchor)
       const kind = p && p.kind;
       if (!kind) return;
-      this._playAccessibilityCue(kind, { position: p && p.center });
+      const recipeId = fieldDeployRecipe(kind);
+      if (recipeId) {
+        this.play(recipeId, {
+          gain: 0.55,
+          position: p && p.center,
+        });
+      }
+      const settings = this.state && this.state.settings;
+      const cap = fieldDeployCaption(kind, settings);
+      if (cap && cap.text) {
+        bus.emit('presentation:caption', {
+          text: cap.text,
+          channel: 'cue',
+          kind: cap.kind,
+        });
+      }
     });
     bus.on(VISUAL_EVENT_BUS, (p) => this._onVisualEventAudio(p));
     bus.on('bulletTime:start', () => {
