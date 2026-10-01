@@ -283,7 +283,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "96549678d9691e5d2e34d048dfbc52843e86466db546588b8811b3638c78336c",
+  "contentHash": "2cc65b17f7cd6bda3067c579f85c204798870244ee8541e769b8c4d4ddda47c3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -12998,7 +12998,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
+      "sha256": "edf790dc8dc34d51abfcde3d67988ed0c7dad7e8de0de104694773134a24af68",
       "uri": "pilots.json"
     }
   },
@@ -19553,7 +19553,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb"
   },
-  "runtimeHash": "d97b1e2e5b1d45ab80cafdbb39264838ed8c88b25cb6b6663457e38d66da24f4",
+  "runtimeHash": "45e61317754b65421ca9e91912dcd54d4ff1d231525e338229b567f9d0779f11",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
