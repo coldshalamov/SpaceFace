@@ -65,6 +65,7 @@ import {
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
+  staleAuthoredRunVerdict,
   waitForOpeningGraphPublicationRelease,
   wholeShipVisualForEntity,
 } from './partsLibrary.js';
@@ -3873,6 +3874,10 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...residencyOptionsForBoundary(liveEntity, root, renderer),
       ...requestOptions,
     });
+    // Mint once at request: residencyOptionsForBoundary bumps the boundary epoch on every call,
+    // so every verdict write and the commit guard below compare this run's own epoch — including
+    // the pre-mint legs and the outer catch, which a .then-scoped mint could not reach.
+    const mintedAdmissionOptions = admissionOptions();
     // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
     // is compiled and its buffers uploaded while still detached, and publication waits on the
     // opening-graph release. Attaching straight to the live root linked the packaged materials
@@ -3888,6 +3893,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
+        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
         return false;
@@ -3935,6 +3941,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       }
       if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
@@ -3966,13 +3973,11 @@ function attachPackagedBody(root, relativeFile, entity) {
       fitPackagedGroup(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius));
       freezeStaticChildMatrices(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
-      // Mint once: residencyOptionsForBoundary bumps the boundary epoch on every call, so an
-      // error-path re-mint could classify a concurrent in-flight commit as stale.
-      const mintedAdmissionOptions = admissionOptions();
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
         // visual to publish — a breadcrumb, not a composition defect.
         const causes = error && Array.isArray(error.errors) && error.errors.length
@@ -4026,6 +4031,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
     }).catch((error) => {
+      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
       } else {

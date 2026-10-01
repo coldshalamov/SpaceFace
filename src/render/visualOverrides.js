@@ -31,6 +31,7 @@ import {
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
+  staleAuthoredRunVerdict,
   requiresProductionWholeShipForEntity,
   residencyOptionsForBoundary,
   waitForOpeningGraphPublicationRelease,
@@ -770,6 +771,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       ...residencyOptionsForBoundary(liveEntity, root, renderer),
       ...requestOptions,
     });
+    // Mint once at request: residencyOptionsForBoundary bumps the boundary epoch on every call,
+    // so every verdict write and the commit guard below compare this run's own epoch — including
+    // the pre-mint legs and the outer catch, which a .then-scoped mint could not reach.
+    const mintedAdmissionOptions = admissionOptions();
     // Same admission barrier as ship/capsule boundaries, without the serial upgrade queue: the
     // packaged body is compiled and its buffers uploaded while still detached, and publication
     // waits on the opening-graph release. Adding the group straight to the live scene left its
@@ -785,6 +790,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
+        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         return false;
       }
@@ -793,6 +799,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       packaged.userData.scenarioPackagedBody = true;
       instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
@@ -801,13 +808,11 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       freezeStaticChildMatrices(packaged);
       freezeStaticTransformRoot(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
-      // Mint once: residencyOptionsForBoundary bumps the boundary epoch on every call, so an
-      // error-path or publish-path re-mint would classify this run's own commit as stale.
-      const mintedAdmissionOptions = admissionOptions();
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
         // has no visual to publish — a breadcrumb, not a composition defect.
         const causes = error && Array.isArray(error.errors) && error.errors.length
@@ -877,6 +882,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }, options);
       return true;
     }).catch((error) => {
+      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-prop-owner-inactive');
       } else {

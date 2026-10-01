@@ -2329,6 +2329,25 @@ export function boundaryLiveEntity(boundary, fallback) {
 }
 
 /** True when the admission's residency owner is gone — the entity record died mid-admission. */
+/**
+ * A run is stale for terminal-verdict purposes when a newer admission owns the boundary epoch
+ * (re-admission while this run parked) or its own job was stall-aborted. A stale run's async
+ * continuation cannot be cancelled, so it keeps reaching fail/settle legs that predate the
+ * commit-point guards — its 'unavailable'/'same-semantic-fallback'/'procedural-settled' writes
+ * and readmission marks would stomp the live run's committed state or delete its publisher.
+ * Cleanup legs and epoch-scoped residency releases stay ungated; only verdict writes consult
+ * this. Compares the epoch minted for this run, never re-mints.
+ */
+export function staleAuthoredRunVerdict(boundary, options = {}) {
+  const data = boundary && boundary.userData;
+  if (!data) return true;
+  const minted = options && options.admissionEpoch;
+  if (minted != null && data.admissionEpoch != null && data.admissionEpoch !== minted) return true;
+  if (typeof (options && options.isAbortedStalledAdmission) === 'function'
+      && options.isAbortedStalledAdmission()) return true;
+  return false;
+}
+
 export function admissionOwnerInactive(options, entity, error = null) {
   const isActive = options && options.isResidencyOwnerActive;
   if (typeof isActive === 'function') {
@@ -2739,7 +2758,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'load-threw',
       error,
-      options.admissionEpoch,
+      options,
     );
   }
   if (!record) {
@@ -2750,7 +2769,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'load-unavailable',
       null,
-      options.admissionEpoch,
+      options,
     );
   }
   if (!boundary.parent) {
@@ -2770,7 +2789,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'build-threw',
       error,
-      options.admissionEpoch,
+      options,
     );
   }
   registerPreparedAuthoredAdmission(scene, boundary, authored);
@@ -2802,7 +2821,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       renderer,
       'pipeline-compile-failed',
       error,
-      options.admissionEpoch,
+      options,
     );
   }
   if (!boundary.parent) {
@@ -2852,8 +2871,16 @@ function failAuthoredCargoCapsuleAdmission(
   renderer,
   reason,
   error = null,
-  admissionEpoch = null,
+  options = null,
 ) {
+  const admissionEpoch = options && options.admissionEpoch;
+  // A stale run's failure is bookkeeping-only: the epoch-scoped release frees its own pins,
+  // but no verdict write — a readmission mark would delete the live run's publisher, and an
+  // 'unavailable'/visualRoot stamp would overwrite its committed state.
+  if (staleAuthoredRunVerdict(boundary, options || {})) {
+    releaseBoundaryResidency(renderer, boundary, `payload-${reason}`, admissionEpoch);
+    return false;
+  }
   // Owner-inactive readmission must be decided before the residency release: releasing a
   // still-mounted boundary marks it a dead owner forever and strands the re-admitted job.
   if (boundary.parent && admissionOwnerInactive(null, entity, error)) {
@@ -3624,6 +3651,15 @@ function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
   const admissionEntity = options.admissionEntity || entity;
+  // A stale run's fail legs are bookkeeping-only: the epoch-scoped release frees its own pins,
+  // but every verdict write — readmission mark, same-semantic-fallback settle, 'unavailable' —
+  // would stomp the live admission's committed state or burn its retry budget.
+  if (staleAuthoredRunVerdict(boundary, options || {})) {
+    if (!flags.residencyReleased) {
+      releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
+    }
+    return false;
+  }
   // Owner died mid-admission but the boundary stayed mounted (kept-GPU save recook). The abort
   // is a lifecycle event, not a content verdict — leave the boundary re-requestable so the
   // restored entity's reattach admits it instead of stranding a required shell at 'unavailable'.
@@ -7029,13 +7065,17 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       fallbackRoot,
       emptyAdmissionSubstrate: isEmptyAdmissionSubstrate(fallbackRoot),
     })) {
-      settleAuthoredShipToProceduralFallback(
-        boundary,
-        fallbackRoot,
-        entity,
-        setActive,
-        'flight-compose-gated',
-      );
+      // A stale run settling procedural here re-shows the fallback over the live epoch's
+      // committed authored root — the verdict belongs to the live admission.
+      if (!staleAuthoredRunVerdict(boundary, options)) {
+        settleAuthoredShipToProceduralFallback(
+          boundary,
+          fallbackRoot,
+          entity,
+          setActive,
+          'flight-compose-gated',
+        );
+      }
       releaseBoundaryResidency(renderer, boundary, 'flight-compose-gated', options.admissionEpoch);
       const tier1 = tier1CausalCounters();
       if (tier1) tier1.countAuthoredAdmissionJob('flight-compose-gated');
@@ -7069,9 +7109,11 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       if (tier1) tier1.countAuthoredAdmissionJob('composition');
     }
     if (!authored) {
-      boundary.userData.authoredAssetState = 'unavailable';
-      boundary.userData.authoredVisualRoot = 'none-build-failed';
-      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      if (!staleAuthoredRunVerdict(boundary, options)) {
+        boundary.userData.authoredAssetState = 'unavailable';
+        boundary.userData.authoredVisualRoot = 'none-build-failed';
+        setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      }
       releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable', options.admissionEpoch);
       return false;
     }
@@ -7129,7 +7171,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     if (options.overlapAuthoredPipelineCompile === true) {
       const pending = completeAdmission().catch(async (error) => {
         await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored,
-          options.admissionEpoch, installedPreparedDisposer);
+          options, installedPreparedDisposer);
         return false;
       });
       boundary.userData.authoredPipelineReady = pending;
@@ -7143,20 +7185,21 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     return await completeAdmission();
   } catch (error) {
     await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored,
-      options.admissionEpoch, installedPreparedDisposer);
+      options, installedPreparedDisposer);
     return false;
   }
 }
 
-async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, admissionEpoch = null, installedDisposer = null) {
+async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, options = {}, installedDisposer = null) {
+  const admissionEpoch = options && options.admissionEpoch;
   // A stall-aborted run keeps executing — promises cannot cancel — and its abandoned
   // continuation can throw after a fresh epoch committed the boundary. Cleanup legs are
   // already epoch/identity-guarded; the verdict writes were not: an unguarded mark or
   // 'unavailable' would overwrite the committed 'authored' state, delete the fresh run's
-  // deferred publish, and drop the live ship off lock lists. Same predicate
-  // releaseBoundaryResidency applies — only the verdict writes are gated, cleanup always runs.
-  const staleRunVerdict = admissionEpoch != null && boundary.userData.admissionEpoch != null
-    && boundary.userData.admissionEpoch !== admissionEpoch;
+  // deferred publish, and drop the live ship off lock lists. Epoch mismatch alone misses an
+  // aborted run whose boundary never re-minted — staleAuthoredRunVerdict covers both; cleanup
+  // always runs regardless.
+  const staleRunVerdict = staleAuthoredRunVerdict(boundary, options);
   if (!swapped) {
     releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed', admissionEpoch);
     const cleanupErrors = [];

@@ -9021,9 +9021,10 @@ export const render = {
               if (data.authoredAssetState !== 'awaiting-authored-admission') continue;
               try {
                 // The module wrapper re-stamps canonical surface program keys on the composed
-                // clone — calling the boundary hook raw would skip that dedupe.
+                // clone — calling the boundary hook raw would skip that dedupe. The cook is the
+                // deadline window: runway-class posts drain ahead of ambient warm still queued.
                 requestAuthoredUpgrade(mesh, renderer, scene, {
-                  residencyRole: 'crucible-roster-warm',
+                  residencyRole: 'crucible-roster-decode-runway',
                   sectorId,
                 });
               } catch (_) { /* a refused request leaves the live trigger armed */ }
@@ -9272,7 +9273,7 @@ export const render = {
               if (data.authoredAssetState !== 'awaiting-authored-admission') continue;
               try {
                 requestAuthoredUpgrade(mesh, renderer, scene, {
-                  residencyRole: 'crucible-roster-warm',
+                  residencyRole: 'crucible-roster-decode-runway',
                   sectorId: settleSectorId,
                 });
               } catch (_) { /* a refused request leaves the live trigger armed */ }
@@ -9922,6 +9923,11 @@ export const render = {
         try {
           crucibleWarm = this._beginCrucibleBoundedRosterWarm({
             yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+            // The cook's own window IS the deadline: decodes it posts must drain inside the
+            // bounded warm instead of queuing ambient behind sector-burst work and landing as
+            // spawn-time materialization kicks. Door/menu-staged warms stay ambient — their
+            // runway is the player's dwell, not a scheduled fight.
+            decodeDeadline: true,
             // Survival warms the wave roster (enemy hull exemplars + the player hull that only
             // spawns at the flight transition). The ordinary opening runs the scripted-intro
             // species manifest instead — the rescue cast's drone/wreck/payload/beacon and the
@@ -12585,6 +12591,13 @@ export const render = {
     // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
     if (root.parent !== scene) scene.add(root);
     const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    // The '-decode-runway' suffix rides both classifiers: WARM_PURPOSE_RESIDENCY_ROLE
+    // ('runway') keeps the soft-lease/evict-last warm accounting, and the deadline regex
+    // promotes every posted decode ahead of ambient warm inside the shared decode budget.
+    const decodeRole = options.decodeDeadline === true
+      ? 'crucible-roster-decode-runway'
+      : 'crucible-roster-warm';
+    warm.decodeRole = decodeRole;
     const track = (promise, label = 'warm') => {
       const settled = Promise.resolve(promise).catch(() => null);
       if (this._rosterPrewarmPending) {
@@ -12614,7 +12627,7 @@ export const render = {
         // finish() awaits the attach ahead of the compile batch.
         if (typeof mesh.userData?.requestAuthoredUpgrade === 'function') {
           warm.pendingAttachments.push(track(mesh.userData.requestAuthoredUpgrade(renderer, scene, {
-            residencyRole: 'crucible-roster-warm',
+            residencyRole: decodeRole,
             sectorId,
           }), `attach:${spec && spec.id}`));
         }
@@ -12679,7 +12692,7 @@ export const render = {
           const entry = { id: spec.id, boundary: ship, result: undefined };
           warm.boundaryKicks.push(entry);
           const kick = track(requestAuthoredUpgrade(ship, renderer, scene, {
-            residencyRole: 'crucible-roster-warm',
+            residencyRole: decodeRole,
             sectorId,
             upgradeJobKey: `${specPrefix}job:${spec.id}`,
           }), `ship:${spec.id}`);
@@ -12706,7 +12719,7 @@ export const render = {
         if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
           warm.pendingAttachments.push(track(
             hulk.userData.requestAuthoredUpgrade(renderer, scene, {
-              residencyRole: 'crucible-roster-warm',
+              residencyRole: decodeRole,
               sectorId,
             }),
             `hulk:${spec.id}`,
@@ -12731,7 +12744,7 @@ export const render = {
           // The module wrapper re-stamps canonical surface program keys on the composed clone —
           // calling the boundary hook raw would skip that dedupe.
           const kick = requestAuthoredUpgrade(mesh, renderer, scene, {
-            residencyRole: 'crucible-roster-warm',
+            residencyRole: decodeRole,
             sectorId,
           });
           // Backstop for boundaries mounted after the pre-drain kick: finish() awaits these
@@ -12843,7 +12856,7 @@ export const render = {
         renderer,
         slot,
         optional: true,
-        residencyRole: 'crucible-roster-warm',
+        residencyRole: decodeRole,
         sectorId,
         isResidencyOwnerActive: () => warm.building === true,
       }), `decode:${file}`));
@@ -12870,7 +12883,7 @@ export const render = {
         renderer,
         slot,
         optional: true,
-        residencyRole: 'crucible-roster-warm',
+        residencyRole: warm.decodeRole || 'crucible-roster-warm',
         sectorId,
         isResidencyOwnerActive: () => warm.building === true,
       }), `decode:${file}`));
@@ -13150,7 +13163,7 @@ export const render = {
         try {
           record = await warmPackageResidency.retainForInstance(
             { record, url, slot },
-            { loadPart: reloadAuthoredPart, sectorId },
+            { loadPart: reloadAuthoredPart, sectorId, role: warm.decodeRole || 'crucible-roster-warm' },
           );
         } catch (error) {
           console.warn('[render] crucible warm package reacquire failed', record.assetId || url, error);
@@ -13187,7 +13200,7 @@ export const render = {
             const instance = record.renderPackage.createInstance(
               warmPackageResidency.instanceOptions({
                 name: `SF_CrucibleWarm_${record.assetId || 'package'}`,
-                residencyRole: 'crucible-roster-warm',
+                residencyRole: warm.decodeRole || 'crucible-roster-warm',
                 sectorId,
               }),
             );
