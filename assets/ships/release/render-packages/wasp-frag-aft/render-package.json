@@ -5246,9 +5246,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 32675,
+      "bytes": 30819,
       "rigId": "wasp_frag_aft",
-      "sha256": "7fc87e5bebe36ecd5ca437e09770c72ba77ff7cc8c80145248f776af5ed55c13",
+      "sha256": "0137cd5b616a32b7dc6c758bd1a5fc73589fe2dfe777647c4725843251bd2094",
       "uri": "assets/ships/motions/wasp-frag-aft.motion.json"
     },
     "nodeCount": 53,
@@ -6299,7 +6299,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_wasp_frag_aft.glb"
   },
-  "runtimeHash": "035fec9cce63900601e818d46fe782cb69f5995d3010a9f8e0120fe0137af9c1",
+  "runtimeHash": "310c3933cf6e63254c5fad2121d2fb7893d25c75c89a8d86474785c2196af909",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
