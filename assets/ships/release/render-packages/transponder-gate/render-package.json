@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d6f0b113bd00a708c326a7bf5fcdf584cb6d31f21c9fbe7fb91b355782037a3c",
+  "contentHash": "123b66de353c010672d2a10f9ce704658db9ef7b1e97a9aace9bedc7d770bfee",
   "dynamicGroups": [
     {
       "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.dynamic",
@@ -2404,8 +2404,8 @@
       "uri": "place_transponder_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 212794,
-      "sha256": "98868a744bd2ba7099b1d0c1be0291cd9cfda144304eb3f14a610c5c7a46fe0c",
+      "bytes": 212795,
+      "sha256": "df44e6b5970f207f6972b29f0759cd3aac7afe80d4e9cb5a3da2b942ff71bb3a",
       "uri": "pilots.json"
     }
   },
@@ -3371,7 +3371,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-  "runtimeHash": "5c932592414bfd8df7239e47391b900cbd1fcdb25d42f660459d5b15404edd4f",
+  "runtimeHash": "7c37231862d4bcf76622cda8dfcdcd96f4e0afb519973c00b6cd758b9cedc056",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

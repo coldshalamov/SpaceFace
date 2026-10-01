@@ -43,6 +43,9 @@ def build():
 
     # === the triangular claim plate over the stone =================================
     F.plate(s, 'ClaimPlate', TRI, 0.9, 0.28, material='paint', chamfer=0.08)
+    # Identity trim, lit: one thin amber line round the plate's edge faces, so the triangle is
+    # outlined by its own light at the chase tilt (LOOK.md: lamps are light). No new material.
+    F.band(s, 'ClaimPlate', (0, 0, 1.04), (0, 0, 1), 0.1, 'glow_amber', inset=0.01, depth=-0.02)
     # hazard band on the plate rim — three edge strips, one broken corner
     for i in range(3):
         p0 = TRI[i]
