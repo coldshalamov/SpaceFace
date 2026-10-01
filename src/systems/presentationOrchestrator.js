@@ -1506,6 +1506,11 @@ export const presentationOrchestrator = {
   },
 
   _emitCue(cueId, payload, options = {}) {
+    // Both deferred lanes (presentation:cue via emitDeferred, cueSuppressed via _suppress)
+    // retain the payload object past the emit — an emitter whose record is pooled and
+    // rewritten by its next emit would hand queued readers mutated fields. Snapshot the
+    // top level here; nested refs stay fresh-per-emit literals by emitter contract.
+    payload = payload && typeof payload === 'object' ? { ...payload } : payload;
     const recipe = getPresentationRecipe(cueId);
     if (!recipe) {
       return this._suppress(cueId, payload, options, 'missing_recipe');

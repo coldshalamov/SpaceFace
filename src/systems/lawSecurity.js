@@ -2793,8 +2793,14 @@ export const lawSecurity = {
     // returns without writes. Same gate as _catchPodsInNets; fixtures without the index keep
     // the full job-interactable census.
     const index = state.entityIndex;
+    const dwell = this._podConeDwell || (this._podConeDwell = new Map());
+    // No live payloads → no pod keys can still accrue; drop the dwell rows outright so a
+    // long session can't leak one entry per pod ever scanned (same proof _weirPodDwell uses).
     if (index && index.__spacefaceEntityIndexV1 && index.ready === true
-      && Array.isArray(index.payloads) && index.payloads.length === 0) return;
+      && Array.isArray(index.payloads) && index.payloads.length === 0) {
+      dwell.clear();
+      return;
+    }
     const pods = this._coneScratchPods;
     const occluders = this._coneScratchOccluders;
     const scanners = this._coneScratchScanners;
@@ -2807,9 +2813,12 @@ export const lawSecurity = {
       if (customsScanConeOf(entity)) scanners.push(entity);
       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
     });
-    if (scanners.length === 0 || pods.length === 0) return;
+    if (scanners.length === 0 || pods.length === 0) {
+      for (const key of dwell.keys()) dwell.delete(key);
+      return;
+    }
 
-    const dwell = this._podConeDwell || (this._podConeDwell = new Map());
+    const seen = new Set();
     for (let s = 0; s < scanners.length; s++) {
       const scanner = scanners[s];
       const cone = customsScanConeOf(scanner);
@@ -2818,6 +2827,7 @@ export const lawSecurity = {
         const pod = pods[p];
         if (!pod.data) continue;
         const key = `${scanner.id}:${pod.id}`;
+        seen.add(key);
         const inside = pointInScanCone(cone.origin, cone.heading, cone.range, cone.halfAngle, pod.pos);
         if (!inside) {
           dwell.delete(key);
@@ -2825,6 +2835,13 @@ export const lawSecurity = {
         }
         pod.data.customsConeEntered = true;
         if (pod.data.customsScanned) continue;
+        // Legality is stamped once at spawn — an ineligible pod can never finish a scan, so it
+        // skips the occluder walk entirely (same gate order _dwellWeirPods uses).
+        const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
+        if (legality !== 'contraband') {
+          dwell.delete(key);
+          continue;
+        }
         let hidden = false;
         for (let o = 0; o < occluders.length; o++) {
           const hull = occluders[o];
@@ -2841,10 +2858,13 @@ export const lawSecurity = {
         const next = (Number(dwell.get(key)) || 0) + step;
         dwell.set(key, next);
         if (next < cone.dwellS) continue;
-        const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
-        if (legality !== 'contraband') continue;
         this._emitPodCustomsScan(scanner, pod);
       }
+    }
+    // Pods destroyed or departed between ticks leave their dwell rows behind — prune any
+    // key whose scanner×pod pair wasn't iterated this tick.
+    for (const key of dwell.keys()) {
+      if (!seen.has(key)) dwell.delete(key);
     }
   },
 
