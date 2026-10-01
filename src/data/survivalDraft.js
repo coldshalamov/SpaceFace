@@ -51,6 +51,11 @@ const FITTING_BY_ID = new Map([
   ...WEAPONS.map((def) => [def.id, def]),
   ...MODULES.map((def) => [def.id, def]),
 ]);
+
+/** A fitting as the player reads it: its authored name, never its id. */
+export function fittingName(defId) {
+  return FITTING_BY_ID.get(defId)?.name || null;
+}
 const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 
 function freezeDeep(value) {

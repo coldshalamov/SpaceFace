@@ -69,7 +69,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       buy.setAttribute('aria-label', `${buy.textContent}: ${lines.name}`);
       refusal.textContent = offer.purchased ? 'This item is part of your current build.'
         : !offer.available ? offer.unavailableReason || 'This offer cannot be fitted to the current build.'
-          : `${Math.max(0, credits - price).toLocaleString('en-US')} cr remaining after purchase${offer.replaces ? ' · replaces the fitted item' : ''}.`;
+          : `${Math.max(0, credits - price).toLocaleString('en-US')} cr remaining after purchase${offer.replaces ? ` · replaces ${offer.replacesName || 'the fitted item'}` : ''}.`;
     },
     buy,
   };

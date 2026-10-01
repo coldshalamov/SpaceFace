@@ -33,6 +33,7 @@ import {
   offerDraft,
   rerollPrice,
   swarmPurchasePrice,
+  fittingName,
 } from '../data/survivalDraft.js';
 import {
   bindSwarmRoleProblems,
@@ -168,7 +169,9 @@ export const survivalDraft = {
       // that seeded the trial would read "No compatible slot" while it is still wearing it.
       const legal = !!current || demoed;
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
-      return { ...offer, ...(current || {}), price, purchased, demoed,
+      const replaces = (current || offer).replaces ?? null;
+      return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
+        replacesName: replaces ? fittingName(replaces) : null,
         available: !purchased && legal && price != null && run.credits >= price,
         unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null };
