@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "sker-haven-standing-picket",
-      "date": "2026-09-26",
-      "wf": "WF-03",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Skerris Deep picket spawns off the Throne outside the station bubble and reads Reach standing; rep-gated door vets docking",
-      "fingerprint": "verb=tolerate,subject=outlaw-picket,sector=sker,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "86bfeb82e",
-      "verification": "focused_green"
-    },
-    {
       "id": "ordnance-drop-physical-voice",
       "date": "2026-09-26",
       "wf": "WF-13",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "b550b584f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ECON-03",
+      "date": "2026-10-01",
+      "wf": "WF-11",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "economy:tradeFailed was emitted and unheard; audioSystem now routes it to voice:say comms with a per-reason word table, replace-id dedupe, and no ui blip",
+      "fingerprint": "verb=refuse,subject=trade,domain=econ,layer=voice",
+      "references": [],
+      "integration": "live",
+      "commit": "c6de69f4e",
       "verification": "focused_green"
     }
   ],
