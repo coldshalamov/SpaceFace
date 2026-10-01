@@ -11,6 +11,7 @@ import {
   tableLookAtDelta,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
+import { entityPresenceRadius } from '../world/activityClassification.js';
 
 const _authoredLookDelta = { x: 0, z: 0 };
 
@@ -53,8 +54,7 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const dz = Number(look.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  const visual = Math.max(0, Number(entity.radius) || 0);
-  const surface = Math.max(0, distance - visual);
+  const surface = Math.max(0, distance - entityPresenceRadius(entity));
   if (surface <= immediate) return true;
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};

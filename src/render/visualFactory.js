@@ -3795,7 +3795,9 @@ function attachPackagedBody(root, relativeFile, entity) {
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
-      const publicationWait = waitForOpeningGraphPublicationRelease();
+      const publicationWait = waitForOpeningGraphPublicationRelease({
+        entity: boundaryLiveEntity(root, entity) || entity,
+      });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication');

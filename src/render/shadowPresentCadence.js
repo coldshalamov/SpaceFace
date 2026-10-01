@@ -12,3 +12,14 @@ export function shouldRefreshRealtimeShadowMap(options = {}) {
   if (last > SHADOW_PRESENT_LATE_MS && options.skippedLast !== true) return false;
   return true;
 }
+
+export function scheduleRealtimeShadowRefresh(renderer, light, requested) {
+  const shadowMap = renderer && renderer.shadowMap;
+  const shadow = light && light.shadow;
+  if (!shadowMap || !shadow) return false;
+  const refresh = !!requested;
+  shadow.autoUpdate = false;
+  shadow.needsUpdate = refresh;
+  shadowMap.needsUpdate = refresh;
+  return refresh;
+}

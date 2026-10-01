@@ -10,7 +10,9 @@ import {
   isEntityAuthoredUpgradeRelevant,
   isEntityMeshExpected,
   isEntityRenderRelevant,
+  serviceRenderMeshResidency,
 } from '../src/render/renderer.js';
+import { willEntityEnterAuthoredUpgradeRunway } from '../src/render/authoredAdmissionPolicy.js';
 import {
   admissionAnchorPos,
   authoredPrefetchRadius,
@@ -569,7 +571,8 @@ test('first-flight hold admits static ledger rocks on player-vel collect horizon
   };
   const parkedShip = {
     id: 203, type: 'ship', alive: true,
-    pos: { x: 900, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {},
+    pos: { x: 1600, z: 0 }, vel: { x: 0, z: 0 }, radius: 8,
+    activity: { presentationTier: 'R1_RUNWAY' }, data: {},
   };
   const state = {
     mode: 'flight',
@@ -586,7 +589,7 @@ test('first-flight hold admits static ledger rocks on player-vel collect horizon
       activityFrame: {
         complete: true,
         renderGlassIds: new Set([1]),
-        renderRunwayIds: new Set(),
+        renderRunwayIds: new Set([203]),
       },
     },
   };
@@ -596,5 +599,188 @@ test('first-flight hold admits static ledger rocks on player-vel collect horizon
   assert.equal(isEntityMeshExpected(sideRock, state), false,
     'static rock off the velocity vector stays deferred — no side-disc thrash');
   assert.equal(isEntityMeshExpected(parkedShip, state), false,
-    'non-ledger hulls keep the tighter prefetch window under the hold');
+    'a parked runway hull beyond the promote horizon keeps the hold');
+});
+
+test('first-flight hold owes an inbound wreck the promote horizon, not the prefetch window', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 }, maxSpeed: 160, radius: 8, data: {},
+  };
+  const inboundWreck = {
+    id: 210, type: 'wreck', alive: true,
+    pos: { x: 1200, z: 0 }, vel: { x: 0, z: 0 }, radius: 12, data: {},
+  };
+  const parkedWreck = {
+    id: 211, type: 'wreck', alive: true,
+    pos: { x: 2400, z: 0 }, vel: { x: 0, z: 0 }, radius: 12,
+    activity: { presentationTier: 'R1_RUNWAY' }, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player], [210, inboundWreck], [211, parkedWreck]]),
+    entityList: [player, inboundWreck, parkedWreck],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 },
+    settings: { video: { fov: 50 } },
+    render: {
+      firstFlightResidencyHoldUntil: 20,
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set([211]),
+      },
+    },
+  };
+  assert.equal(holdFirstFlightStreaming(state), true);
+  assert.equal(isEntityMeshExpected(inboundWreck, state), true,
+    'a wreck the approach brings to glass inside the promote horizon builds under the hold');
+  assert.equal(isEntityMeshExpected(parkedWreck, state), false,
+    'a parked wreck beyond the promote horizon keeps the hold');
+});
+
+test('a visual footprint wider than its collider earns admission before the pivot arrives', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160, radius: 8, data: {},
+  };
+  const wideBody = {
+    id: 220, type: 'ship', alive: true,
+    pos: { x: 1200, z: 0 }, vel: { x: 0, z: 0 }, radius: 3,
+    data: { visualRadius: 400 },
+  };
+  const leanBody = {
+    id: 221, type: 'ship', alive: true,
+    pos: { x: 1200, z: 0 }, vel: { x: 0, z: 0 }, radius: 3, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player], [220, wideBody], [221, leanBody]]),
+    entityList: [player, wideBody, leanBody],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 },
+    settings: { video: { fov: 50 } },
+    render: {
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set(),
+      },
+    },
+  };
+  assert.equal(isEntityRenderRelevant(wideBody, state), true,
+    'the drawn envelope reaches the decode disc before its pivot does');
+  assert.equal(isEntityRenderRelevant(leanBody, state), false,
+    'the same pivot with only its collider stays off the runway');
+  assert.equal(willEntityEnterAuthoredUpgradeRunway(wideBody, state), true,
+    'the authored runway measures the presence radius, not just the collider');
+  assert.equal(willEntityEnterAuthoredUpgradeRunway(leanBody, state), false);
+});
+
+test('admission anticipates the upcoming composed zoom, not just the live zoom', () => {
+  const glass90 = glassCornerWu(90, 50, 16 / 9, 60);
+  const glass330 = glassCornerWu(330, 50, 16 / 9, 60);
+  assert.ok(glass330 > glass90, 'a wider table is a larger glass');
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: TABLE_REFERENCE_SPEED_WU, z: 0 },
+    maxSpeed: TABLE_REFERENCE_SPEED_WU, radius: 8, data: {},
+  };
+  const dist = 8 + TABLE_REFERENCE_SPEED_WU * TABLE_PROMOTE_HORIZON_SECONDS
+    + (glass90 + glass330) / 2;
+  const body = {
+    id: 230, type: 'ship', alive: true,
+    pos: { x: Math.ceil(dist), z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {},
+  };
+  const mkState = (camera) => ({
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player], [230, body]]),
+    entityList: [player, body],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { tilt: 60, fov: 50, aspect: 16 / 9, ...camera },
+    settings: { video: { fov: 50 } },
+    render: {
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set(),
+      },
+    },
+  });
+  assert.equal(
+    isEntityRenderRelevant(body, mkState({ zoom: 330, liveZoom: 90, composedZoom: 330 })),
+    true,
+    'a body inside the upcoming wider table earns its runway before the zoom lands',
+  );
+  assert.equal(
+    isEntityRenderRelevant(body, mkState({ zoom: 90, liveZoom: 90, composedZoom: 90 })),
+    false,
+    'the same body is beyond the narrow live-zoom runway',
+  );
+});
+
+test('the decode runway warms an authored wreck blueprint during the first-flight hold', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 }, maxSpeed: 160, radius: 8, data: {},
+  };
+  const authoredWreck = {
+    id: 240, type: 'wreck', alive: true,
+    pos: { x: 1200, z: 0 }, vel: { x: 0, z: 0 }, radius: 12,
+    data: { wreckAftermath: true, archetypeGlb: 'place_aftermath_aft_cargo_module' },
+  };
+  const artlessPlace = {
+    id: 241, type: 'place', alive: true,
+    pos: { x: 900, z: 0 }, vel: { x: 0, z: 0 }, radius: 20, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player], [240, authoredWreck], [241, artlessPlace]]),
+    entityList: [player, authoredWreck, artlessPlace],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 },
+    settings: { video: { fov: 50 } },
+    render: {
+      firstFlightResidencyHoldUntil: 20,
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set(),
+      },
+    },
+  };
+  const owner = {
+    state,
+    renderer: {
+      domElement: {},
+      extensions: { has: () => false, get: () => null },
+      capabilities: { isWebGL2: true },
+    },
+    _activityFrame: { renderGlassIds: new Set([1]), renderRunwayIds: new Set() },
+    _meshes: new Map(),
+    _meshBuildQueuedIds: new Set(),
+    _meshBuildQueue: [],
+    _meshBuildQueueHead: 0,
+    _renderResidencyPollS: 0,
+    _sectorHandoffStreamHoldS: 0,
+    _meshReconcileDirty: true,
+    _deferNoncriticalMeshStreaming: false,
+  };
+  assert.equal(serviceRenderMeshResidency(owner, 0.5), 'held-first-flight');
+  assert.equal(owner._decodeRunwayPrefetchIds.has(240), true,
+    'the inbound authored wreck starts its blueprint request during the hold');
+  assert.equal(owner._decodeRunwayPrefetchIds.has(241), false,
+    'a place with no authored asset of its own is not kicked');
 });

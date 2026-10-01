@@ -320,6 +320,7 @@ export const onboarding = {
     this._miningRockId = null;
     this._trainerId = null;
     this._firstRunSplashPending = false;
+    this._preparedRescue = null;
 
     const bus = this.bus;
     // The first-run splash is the sole opening line. B0 waits until it is physically removed.
@@ -327,6 +328,26 @@ export const onboarding = {
     bus.on('ui:firstRunSplash:done', () => {
       this._firstRunSplashPending = false;
       try { this._tryAdvanceBeat(); } catch (_) { /* never let onboarding break the bus */ }
+    });
+    bus.on('game:scenePrepared', (p) => {
+      const state = this.state;
+      const player = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId)
+        : null;
+      const generation = state && state.render ? state.render.admissionRunGeneration : undefined;
+      queueMicrotask(() => {
+        try {
+          const live = this.state;
+          if (live !== state) return;
+          const livePlayer = live && live.entities && typeof live.entities.get === 'function'
+            ? live.entities.get(live.playerId)
+            : null;
+          if (livePlayer !== player) return;
+          const liveGeneration = live && live.render ? live.render.admissionRunGeneration : undefined;
+          if (liveGeneration !== generation) return;
+          this.prepareStartingScene(p || {});
+        } catch (_) {}
+      });
     });
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
     // The payload names a scenario slice for harness boots (47a sim, lab scenarios); those own
@@ -728,6 +749,7 @@ export const onboarding = {
     if (!hintsOn) {
       // Player opted out of the tutorial entirely — still give them the story objective tracker so
       // they're never without a "what now" (P2-14).
+      this._releasePreparedRescue();
       this._beginStoryMode();
       return;
     }
@@ -736,6 +758,7 @@ export const onboarding = {
     // The rescue opening stages on the default route only: harness boots that name a scenario
     // slice (47a sim, lab scenarios) keep their own cast and their golden snapshots.
     if (!payload || payload.scenario == null) this._beginRescue();
+    else this._releasePreparedRescue();
     // No intro modal (spec2/03 B0: "no modal"). The B0 line fires on the first update tick after the
     // 4 s silence gate (no predecessor → fires immediately).
     this._refreshBeatPanel();
@@ -789,6 +812,9 @@ export const onboarding = {
   },
 
   _teardown({ removeActors = true } = {}) {
+    const prepared = this._preparedRescue;
+    this._preparedRescue = null;
+    if (prepared && removeActors) this._discardPreparedRescue(prepared);
     const ob = this.state.onboarding; if (ob) ob.active = false;
     if (removeActors) {
       this._removeTrainingActors();
@@ -1447,16 +1473,82 @@ export const onboarding = {
     return entity && entity.alive !== false ? entity : null;
   },
 
+  prepareStartingScene(payload = {}) {
+    const st = this.state;
+    if (!st || st.mode !== 'loading') return false;
+    if (payload && payload.scenario != null) return false;
+    const run = st.run;
+    if (run && (run.kind === 'survival' || run.kind === 'lab') && run.phase !== 'inactive') return false;
+    if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return false;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return false;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+    const existing = this._preparedRescue;
+    if (existing && this._preparedCastIsAdoptable(existing)) return true;
+    this._releasePreparedRescue();
+    const rescue = freshRescueState();
+    const actors = this._createRescueCast(rescue);
+    if (!actors) return false;
+    this._preparedRescue = { state: st, player, rescue, actors };
+    return true;
+  },
+
+  _preparedCastIsAdoptable(prepared) {
+    const st = this.state;
+    if (!prepared || !st || prepared.state !== st) return false;
+    const entities = st.entities;
+    if (!entities || typeof entities.get !== 'function') return false;
+    if (entities.get(st.playerId) !== prepared.player) return false;
+    const rescue = prepared.rescue;
+    const actors = prepared.actors;
+    if (!rescue || !rescue.ids || !actors) return false;
+    for (const slot of Object.keys(rescue.ids)) {
+      const actor = actors[slot];
+      if (!actor || actor.alive === false || actor.id == null) return false;
+      if (entities.get(actor.id) !== actor) return false;
+    }
+    return true;
+  },
+
+  _discardPreparedRescue(prepared) {
+    const actors = prepared && prepared.actors;
+    if (!actors) return;
+    const entities = this.state && this.state.entities;
+    const player = this.state && this.state.player;
+    for (const slot of Object.keys(actors)) {
+      const actor = actors[slot];
+      if (!actor || actor.id == null) continue;
+      if (!entities || entities.get(actor.id) !== actor) continue;
+      if (this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(actor.id);
+      }
+      if (player && player.targetId === actor.id) player.targetId = null;
+    }
+  },
+
+  _releasePreparedRescue(removeActors = true) {
+    const prepared = this._preparedRescue;
+    this._preparedRescue = null;
+    if (prepared && removeActors) this._discardPreparedRescue(prepared);
+  },
+
   _beginRescue() {
     const st = this.state;
     const ob = st.onboarding;
-    if (!ob || ob.rescue) return;
-    ob.rescue = freshRescueState();
+    const prepared = this._preparedRescue;
+    this._preparedRescue = null;
+    if (!ob || ob.rescue) {
+      if (prepared) this._discardPreparedRescue(prepared);
+      return;
+    }
+    const adopted = this._preparedCastIsAdoptable(prepared);
+    if (prepared && !adopted) this._discardPreparedRescue(prepared);
+    ob.rescue = adopted ? prepared.rescue : freshRescueState();
     ob.rescue.startedAt = st.simTime || 0;
     ob.missingThree = freshMissingThreeState();
     ob.missingThree.startedAt = st.simTime || 0;
     ob.storeSentence = freshStoreSentenceState();
-    this._spawnRescueCast();
+    if (!adopted) this._spawnRescueCast();
     this.bus.emit('rescue:started', buildRescueStartedEvent(st.simTime || 0));
   },
 
@@ -1490,6 +1582,25 @@ export const onboarding = {
     stampStoreClause(rec, leftoverKey, this.state.simTime || 0);
   },
 
+  _createRescueCast(rescue) {
+    const st = this.state;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!rescue || !rescue.active || !player || !player.pos
+      || !this.helpers || !this.helpers.spawnEntity) return null;
+    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    makeRescueRockTowable(specs.rock);
+    const actors = {};
+    for (const slot of Object.keys(specs)) {
+      const spawned = this.helpers.spawnEntity(specs[slot]);
+      actors[slot] = spawned || null;
+      rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
+      if (spawned && spawned.data && (slot === 'derelict' || slot === 'beacon')) {
+        spawned._invulnUntil = Infinity;
+      }
+    }
+    return actors;
+  },
+
   _spawnRescueCast() {
     const st = this.state;
     const rescue = st.onboarding && st.onboarding.rescue;
@@ -1498,15 +1609,7 @@ export const onboarding = {
     if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
     // Remove any previous tableau before staging a fresh one (fail recovery, never a dupe).
     this._removeRescueActors();
-    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
-    makeRescueRockTowable(specs.rock);
-    for (const slot of Object.keys(specs)) {
-      const spawned = this.helpers.spawnEntity(specs[slot]);
-      rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
-      if (spawned && spawned.data && (slot === 'derelict' || slot === 'beacon')) {
-        spawned._invulnUntil = Infinity;
-      }
-    }
+    this._createRescueCast(rescue);
   },
 
   _removeRescueActors() {

@@ -51,6 +51,64 @@ test('compile issue key distinguishes onBeforeCompile bodies a sampled fingerpri
     'identical patch bodies share the issue signature');
 });
 
+test('compile issue key covers the r184 object/geometry program flags, not just names', () => {
+  const mat = new THREE.MeshStandardMaterial();
+  const box = () => new THREE.BoxGeometry();
+
+  const geoRGB = box();
+  geoRGB.setAttribute('color', new THREE.BufferAttribute(new Float32Array(72), 3));
+  const geoRGBA = box();
+  geoRGBA.setAttribute('color', new THREE.BufferAttribute(new Float32Array(96), 4));
+  const vertexColored = new THREE.MeshStandardMaterial({ vertexColors: true });
+  assert.notEqual(
+    openingCompileIssueKey(new THREE.Mesh(geoRGB, vertexColored)),
+    openingCompileIssueKey(new THREE.Mesh(geoRGBA, vertexColored)),
+    'vertexAlphas splits on color.itemSize 4, so attribute keys carry itemSize');
+
+  const morph1 = box();
+  morph1.morphAttributes.position = [new THREE.BufferAttribute(new Float32Array(72), 3)];
+  const morph2 = box();
+  morph2.morphAttributes.position = [
+    new THREE.BufferAttribute(new Float32Array(72), 3),
+    new THREE.BufferAttribute(new Float32Array(72), 3),
+  ];
+  assert.notEqual(
+    openingCompileIssueKey(new THREE.Mesh(morph1, mat)),
+    openingCompileIssueKey(new THREE.Mesh(morph2, mat)),
+    'morphTargetsCount rides the key — a 1-target and 2-target morph link separately');
+
+  assert.notEqual(
+    openingCompileIssueKey(new THREE.Mesh(box(), mat)),
+    openingCompileIssueKey(new THREE.InstancedMesh(box(), mat, 4)),
+    'instancing is a different program from a direct draw');
+
+  const instPlain = new THREE.InstancedMesh(box(), mat, 4);
+  const instColor = new THREE.InstancedMesh(box(), mat, 4);
+  instColor.setColorAt(0, new THREE.Color(1, 0, 0));
+  assert.notEqual(
+    openingCompileIssueKey(instPlain), openingCompileIssueKey(instColor),
+    'instancingColor is a program flag');
+
+  const instMorph = new THREE.InstancedMesh(box(), mat, 4);
+  instMorph.morphTexture = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+  assert.notEqual(
+    openingCompileIssueKey(instPlain), openingCompileIssueKey(instMorph),
+    'instancingMorph is a program flag');
+
+  const batchedPlain = new THREE.BatchedMesh(4, 256, 256, mat);
+  const batchedColor = new THREE.BatchedMesh(4, 256, 256, mat);
+  batchedColor._colorsTexture = new THREE.DataTexture(new Uint8Array(16), 1, 1);
+  assert.notEqual(
+    openingCompileIssueKey(batchedPlain), openingCompileIssueKey(batchedColor),
+    'batchingColor is a program flag');
+
+  const twin = new THREE.Mesh(box(), mat);
+  assert.equal(openingCompileIssueKey(twin), openingCompileIssueKey(new THREE.Mesh(box(), mat)),
+    'genuinely identical signatures still share the issue key');
+  assert.equal(openingCompileIssueKey({ isMesh: true }), null,
+    'an unkeyable subject stays null and therefore never dedupes');
+});
+
 test('family customProgramCacheKey values do not collapse distinct maps into one opening program', () => {
   const family = () => 'spaceface-common-rock-pbr';
   const mapA = new THREE.Texture();

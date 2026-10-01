@@ -33,6 +33,108 @@ function admissionOverrideMaterial(THREE) {
   return _admissionOverrideMaterial;
 }
 
+const _admissionKeyLights = new WeakMap();
+
+function copyTransformFields(dst, src) {
+  if (!dst || !src) return;
+  for (const key of ['position', 'quaternion', 'scale']) {
+    const value = src[key];
+    if (!value) continue;
+    if (dst[key] && typeof dst[key].copy === 'function') dst[key].copy(value);
+    else dst[key] = value;
+  }
+}
+
+const ADMISSION_SHADOW_CAMERA_KEYS = ['left', 'right', 'top', 'bottom', 'near', 'far', 'zoom'];
+
+function syncAdmissionTransform(staged, source) {
+  if (typeof source.getWorldPosition === 'function'
+      && typeof source.getWorldQuaternion === 'function'
+      && typeof source.getWorldScale === 'function'
+      && staged.position && staged.quaternion && staged.scale) {
+    source.getWorldPosition(staged.position);
+    source.getWorldQuaternion(staged.quaternion);
+    source.getWorldScale(staged.scale);
+    return;
+  }
+  copyTransformFields(staged, source);
+}
+
+function syncAdmissionShadow(cloneShadow, sourceShadow) {
+  if (!cloneShadow || !sourceShadow) return;
+  if (typeof cloneShadow.copy === 'function') {
+    cloneShadow.copy(sourceShadow);
+    if (cloneShadow.camera && typeof cloneShadow.camera.updateProjectionMatrix === 'function') {
+      cloneShadow.camera.updateProjectionMatrix();
+    }
+    return;
+  }
+  for (const key of ['bias', 'normalBias', 'radius', 'blurSamples', 'intensity']) {
+    if (typeof sourceShadow[key] === 'number') cloneShadow[key] = sourceShadow[key];
+  }
+  if (sourceShadow.mapSize && cloneShadow.mapSize) {
+    if (typeof cloneShadow.mapSize.copy === 'function') cloneShadow.mapSize.copy(sourceShadow.mapSize);
+    else cloneShadow.mapSize = sourceShadow.mapSize;
+  }
+  const camera = cloneShadow.camera;
+  const sourceCamera = sourceShadow.camera;
+  if (camera && sourceCamera) {
+    for (const key of ADMISSION_SHADOW_CAMERA_KEYS) {
+      if (typeof sourceCamera[key] === 'number') camera[key] = sourceCamera[key];
+    }
+    if (typeof camera.updateProjectionMatrix === 'function') camera.updateProjectionMatrix();
+  }
+}
+
+function admissionKeyLight(renderer, source, THREE) {
+  if (!renderer || !source || typeof THREE.DirectionalLight !== 'function') return null;
+  let perRenderer = _admissionKeyLights.get(renderer);
+  if (!perRenderer) {
+    perRenderer = new Map();
+    _admissionKeyLights.set(renderer, perRenderer);
+  }
+  let staged = perRenderer.get(source);
+  if (!staged) {
+    staged = new THREE.DirectionalLight();
+    staged.name = 'SF_AdmissionShadowDepthKey';
+    perRenderer.set(source, staged);
+  }
+  if (staged.color && source.color && typeof staged.color.copy === 'function') staged.color.copy(source.color);
+  else if (source.color !== undefined) staged.color = source.color;
+  if (typeof source.intensity === 'number') staged.intensity = source.intensity;
+  if (typeof source.visible === 'boolean') staged.visible = source.visible;
+  syncAdmissionTransform(staged, source);
+  staged.castShadow = true;
+  syncAdmissionShadow(staged.shadow, source.shadow);
+  if (staged.target && source.target) syncAdmissionTransform(staged.target, source.target);
+  return staged;
+}
+
+export function disposeAdmissionShadowResources(renderer, options = {}) {
+  const disposeGpu = options.disposeGpu !== false;
+  const perRenderer = renderer ? _admissionKeyLights.get(renderer) : null;
+  if (perRenderer) {
+    for (const staged of perRenderer.values()) {
+      const shadow = staged && staged.shadow;
+      if (shadow) {
+        if (disposeGpu && typeof shadow.dispose === 'function') shadow.dispose();
+        shadow.map = null;
+        shadow.mapPass = null;
+      }
+    }
+    perRenderer.clear();
+  }
+  if (renderer) _admissionKeyLights.delete(renderer);
+  if (_admissionScratchTarget) {
+    if (disposeGpu && typeof _admissionScratchTarget.dispose === 'function') _admissionScratchTarget.dispose();
+    _admissionScratchTarget = null;
+  }
+  if (_admissionOverrideMaterial) {
+    if (disposeGpu && typeof _admissionOverrideMaterial.dispose === 'function') _admissionOverrideMaterial.dispose();
+    _admissionOverrideMaterial = null;
+  }
+}
+
 export function collectShadowCastSubjects(roots) {
   const list = Array.isArray(roots) ? roots : [roots];
   const casting = [];
@@ -121,6 +223,8 @@ export function compileShadowDepthPipelines(options = {}) {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
   }
   const previousEnabled = shadowMap.enabled;
+  const previousNeedsUpdate = shadowMap.needsUpdate;
+  const previousAutoUpdate = shadowMap.autoUpdate;
   const previousCastShadow = light.castShadow;
   if (!forceEnable && (previousEnabled !== true || previousCastShadow !== true)) {
     return { skipped: true, reason: 'directional shadows inactive', subjects: 0 };
@@ -137,12 +241,15 @@ export function compileShadowDepthPipelines(options = {}) {
   if (!THREE || typeof THREE.Scene !== 'function') {
     return { skipped: true, reason: 'THREE.Scene unavailable for depth staging', subjects: 0 };
   }
+  const stagedKeyLight = admissionKeyLight(renderer, light, THREE);
+  if (!stagedKeyLight) {
+    return { skipped: true, reason: 'directional shadow clone unavailable', subjects: 0 };
+  }
   const staging = new THREE.Scene();
   staging.name = options.stagingName || 'SF_AdmissionShadowDepthPipelines';
   const colorOverride = admissionOverrideMaterial(THREE);
   if (colorOverride) staging.overrideMaterial = colorOverride;
   const homes = casting.map((root) => captureObjectHome(root));
-  const lightHome = captureObjectHome(light);
   // Reparent the real scene's lights (and directional/spot targets) into staging so the
   // render-state light counts baked into program keys match a live frame exactly.
   const stagedLightHomes = [];
@@ -208,7 +315,6 @@ export function compileShadowDepthPipelines(options = {}) {
   try {
     if (forceEnable) {
       shadowMap.enabled = true;
-      light.castShadow = true;
     }
     // A standalone WebGLShadowMap.render has no live render state — WebGLProgram.setProgram
     // dereferences currentRenderState.state.lights and throws — and any variant it does
@@ -217,10 +323,9 @@ export function compileShadowDepthPipelines(options = {}) {
     // renderer.render: staging carries the admitted casters plus the key light, the
     // one-shot needsUpdate flags force the shadow pass while autoUpdate stays off, and
     // the color side draws into a tiny scratch target so nothing reaches the screen.
-    if (typeof staging.add === 'function') staging.add(light);
-    if (light.target && light.target.isObject3D === true) {
-      stagedLightHomes.push(captureObjectHome(light.target));
-      staging.add(light.target);
+    if (typeof staging.add === 'function') staging.add(stagedKeyLight);
+    if (stagedKeyLight.target && stagedKeyLight.target.isObject3D === true) {
+      staging.add(stagedKeyLight.target);
     }
     for (const sceneLight of stagedLights) {
       staging.add(sceneLight);
@@ -246,7 +351,7 @@ export function compileShadowDepthPipelines(options = {}) {
     }
     if (typeof staging.updateMatrixWorld === 'function') staging.updateMatrixWorld(true);
     shadowMap.needsUpdate = true;
-    if (light.shadow) light.shadow.needsUpdate = true;
+    if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
     renderer.render(staging, camera);
     const programBindingFailures = [];
     if (casting.length > 0 && !originalRenderBufferDirect) {
@@ -268,18 +373,15 @@ export function compileShadowDepthPipelines(options = {}) {
   } finally {
     if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
     for (const object of castShadowRestore) object.castShadow = false;
-    if (forceEnable) {
-      shadowMap.enabled = previousEnabled;
-      light.castShadow = previousCastShadow;
-    }
+    shadowMap.enabled = previousEnabled;
+    shadowMap.needsUpdate = previousNeedsUpdate;
+    shadowMap.autoUpdate = previousAutoUpdate;
     for (const restore of restoreCasters) restore();
     restoreVisibility();
     for (const home of stagedLightHomes) restoreObjectHome(home);
-    restoreObjectHome(lightHome);
     for (const home of homes) restoreObjectHome(home);
     if (typeof staging.clear === 'function') staging.clear();
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
-    if (light.shadow) light.shadow.needsUpdate = true;
   }
 }
 
@@ -290,11 +392,12 @@ export function armAdmissionShadows(options = {}) {
   if (!shadowMap || !light || options.enabled !== true) return () => {};
   const previousEnabled = shadowMap.enabled;
   const previousCastShadow = light.castShadow;
+  const previousNeedsUpdate = light.shadow ? light.shadow.needsUpdate : undefined;
   shadowMap.enabled = true;
   light.castShadow = true;
   return () => {
     shadowMap.enabled = previousEnabled;
     light.castShadow = previousCastShadow;
-    if (light.shadow) light.shadow.needsUpdate = true;
+    if (light.shadow && previousNeedsUpdate !== undefined) light.shadow.needsUpdate = previousNeedsUpdate;
   };
 }
