@@ -32,6 +32,10 @@ export const PREDICT_GATE_ARM_SECONDS = 30;
 export const PREDICT_GATE_HOLD_SECONDS = 120;
 /** Captures both the gate dock ring (~70-90 WU) and the route follower's 260 WU handoff radius. */
 export const PREDICT_GATE_CAPTURE_RADIUS_WU = 260;
+/** Once armed, the gate arm survives while the player stays within this multiple of the capture
+ *  disc — a hull parked at the gate has no ballistic path to measure, and retracting its warm
+ *  under the T3 charge window is exactly the cold pop the arm exists to prevent. */
+export const PREDICT_GATE_HOLD_RADIUS_FACTOR = 4;
 
 function entitySectorIdOf(entity) {
   const data = entity && entity.data;
@@ -126,7 +130,15 @@ export function predictNextSector(state, options = {}) {
   const pvx = (player.vel && Number(player.vel.x)) || 0;
   const pvz = (player.vel && Number(player.vel.z)) || 0;
   let best = null;
-  for (const entity of entities.values ? entities.values() : []) {
+  // Gates are spawned stations carrying data.isGate, so the entity index's gates bucket is
+  // the exact membership domain — ~50-100× smaller than the whole-map walk every poll, with
+  // splice-order removal preserving entities.values() insertion order for the min-ttc pick.
+  const _gateIndex = state.entityIndex;
+  const gateScan = _gateIndex && _gateIndex.__spacefaceEntityIndexV1 && _gateIndex.ready === true
+    && Array.isArray(_gateIndex.gates)
+    ? _gateIndex.gates
+    : (entities.values ? entities.values() : []);
+  for (const entity of gateScan) {
     const to = gateDestination(entity);
     if (!to || to === currentSectorId) continue;
     if (entitySectorIdOf(entity) !== currentSectorId) continue;
@@ -136,6 +148,17 @@ export function predictNextSector(state, options = {}) {
       PREDICT_GATE_CAPTURE_RADIUS_WU,
     );
     const horizon = to === heldSectorId ? PREDICT_GATE_HOLD_SECONDS : PREDICT_GATE_ARM_SECONDS;
+    // Proximity hold for the already-armed sector: once the player is at its gate, keep the
+    // prediction while they linger near it — no velocity signal is required to keep intent.
+    // Infinity keeps it below any real ballistic arm toward a different gate.
+    if (to === heldSectorId) {
+      const holdRadius = radius * PREDICT_GATE_HOLD_RADIUS_FACTOR;
+      const dx = entity.pos.x - playerPos.x;
+      const dz = entity.pos.z - playerPos.z;
+      if (dx * dx + dz * dz <= holdRadius * holdRadius) {
+        if (!best) best = { sectorId: to, source: 'gate-approach', ttcSeconds: Infinity };
+      }
+    }
     const relVx = ((entity.vel && Number(entity.vel.x)) || 0) - pvx;
     const relVz = ((entity.vel && Number(entity.vel.z)) || 0) - pvz;
     const ttc = timeToEnterRadiusSeconds(

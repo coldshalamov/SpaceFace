@@ -1516,6 +1516,107 @@ test('in-flight keyed authored work settles before its replacement enters the se
   scene.remove(secondBoundary);
 });
 
+// A same-boundary dedupe join mints its request against the bumped admissionEpoch — the joined
+// job must carry that epoch or the stale-commit guard drops its mount with no replacement
+// committer. A different-boundary keyed join must never move epochs: the counter belongs to
+// each boundary's own userData.
+
+test('a same-boundary dedupe join carries the newest admissionEpoch onto the joined job', async () => {
+  const scene = new THREE.Scene();
+  const boundary = new THREE.Group();
+  scene.add(boundary);
+  const entity = { id: 'epoch-join', alive: true, mesh: boundary };
+  const firstStarted = deferred();
+  const releaseFirst = deferred();
+
+  const firstJob = {
+    key: 'epoch-join',
+    boundary,
+    entity,
+    options: { admissionEpoch: 1 },
+    run: async () => {
+      firstStarted.resolve();
+      await releaseFirst.promise;
+      return 'first-result';
+    },
+  };
+  const firstCompletion = enqueueBoundaryUpgrade(scene, firstJob);
+  await firstStarted.promise;
+
+  const secondCompletion = enqueueBoundaryUpgrade(scene, {
+    key: 'epoch-join',
+    boundary,
+    entity,
+    options: { admissionEpoch: 2 },
+    run: async () => 'never-run',
+  });
+  assert.equal(secondCompletion, firstCompletion, 'same-boundary request joins the in-flight job');
+  assert.equal(firstJob.options.admissionEpoch, 2,
+    'the joiner minted the newest epoch — the joined job must carry it or its commit is stale');
+
+  releaseFirst.resolve();
+  const receipt = await firstCompletion;
+  assert.equal(receipt.result, 'first-result');
+  scene.remove(boundary);
+});
+
+test('a different-boundary keyed join never moves the queued job admissionEpoch', async () => {
+  const scene = new THREE.Scene();
+  const laneBoundary = new THREE.Group();
+  const queuedBoundary = new THREE.Group();
+  const joinerBoundary = new THREE.Group();
+  scene.add(laneBoundary, queuedBoundary, joinerBoundary);
+  const laneEntity = { id: 'lane-holder', alive: true, mesh: laneBoundary };
+  const queuedEntity = { id: 'same-key-epoch', alive: true, mesh: queuedBoundary };
+  const joinerEntity = { id: 'same-key-epoch', alive: true, mesh: joinerBoundary };
+  const releaseLane = deferred();
+  const laneStarted = deferred();
+
+  const laneCompletion = enqueueBoundaryUpgrade(scene, {
+    key: 'lane-holder',
+    boundary: laneBoundary,
+    entity: laneEntity,
+    run: async () => {
+      laneStarted.resolve();
+      await releaseLane.promise;
+      return 'lane-result';
+    },
+  });
+  await laneStarted.promise;
+
+  const queuedJob = {
+    key: 'same-key-epoch',
+    boundary: queuedBoundary,
+    entity: queuedEntity,
+    options: { admissionEpoch: 7 },
+    run: async () => 'queued-result',
+  };
+  const queuedCompletion = enqueueBoundaryUpgrade(scene, queuedJob);
+
+  const joinerCompletion = enqueueBoundaryUpgrade(scene, {
+    key: 'same-key-epoch',
+    boundary: joinerBoundary,
+    entity: joinerEntity,
+    options: { admissionEpoch: 2 },
+    run: async () => 'never-run',
+  });
+  // A different-boundary join is gated on the leader's settle and then re-enqueues as its own
+  // job — the returned completion is the joiner's own, not the leader's promise.
+  assert.notEqual(joinerCompletion, queuedCompletion,
+    'same-key different-boundary request defers to the leader, then re-enqueues');
+  assert.equal(queuedJob.options.admissionEpoch, 7,
+    'a different-boundary join must not stamp its epoch onto the queued job');
+
+  releaseLane.resolve();
+  await laneCompletion;
+  const receipt = await queuedCompletion;
+  assert.equal(receipt.result, 'queued-result');
+  const joinerReceipt = await joinerCompletion;
+  assert.equal(joinerReceipt.result, 'never-run',
+    'the joiner then runs its own upgrade — its boundary gets its own committer');
+  scene.remove(laneBoundary, queuedBoundary, joinerBoundary);
+});
+
 // Arriving in a sector used to mean waiting for every rock in it. A body inside the arrival band
 // is revealed as soon as its own preparation is ready; the certified set still covers all of them.
 

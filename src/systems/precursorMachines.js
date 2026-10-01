@@ -179,24 +179,7 @@ export function tickMachineLayer(world, dt) {
   const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
   const now = Number(state.simTime) || 0;
 
-  const machinesCache = ae._machineScanCache || (ae._machineScanCache = {
-    version: -1, sectorId: null, machines: [],
-  });
-  const machinesVersion = entityIndexVersion(state);
-  // A null version means the index is not ready — walk every tick rather than cache-stale.
-  if (machinesVersion == null
-      || machinesCache.version !== machinesVersion
-      || machinesCache.sectorId !== sectorId) {
-    machinesCache.version = machinesVersion == null ? -1 : machinesVersion;
-    machinesCache.sectorId = sectorId;
-    machinesCache.machines.length = 0;
-    for (const e of state.entityList) {
-      if (!e || e.alive === false || !e.data || !e.data.machine) continue;
-      if (e.homeSectorId !== sectorId) continue;
-      machinesCache.machines.push(e);
-    }
-  }
-  const machines = machinesCache.machines;
+  const machines = machineScanForSector(state, sectorId);
 
   for (const site of sites) {
     const rec = machineSiteRec(state, site.siteId);
@@ -626,10 +609,9 @@ export function tickMachineLayer(world, dt) {
         if (!m.collectId) {
           let best = null;
           let bestD = Infinity;
-          for (const t2 of state.entityList) {
+          for (const t2 of sorterTargetsForSector(state, sectorId)) {
             if (!t2 || t2.alive === false || !t2.pos) continue;
             if (t2.homeSectorId !== sectorId) continue;
-            if (t2.type !== 'wreck' && t2.type !== 'pickup' && t2.type !== 'debris') continue;
             if (t2.data && t2.data.machineClaimed) continue;
             const dd = dist2(e.pos.x, e.pos.z, t2.pos.x, t2.pos.z);
             if (dd < kind.sweepR * kind.sweepR && dd < bestD) { bestD = dd; best = t2; }
@@ -689,19 +671,67 @@ export function refreshMachineLabels(world) {
   }
 }
 
+// Version-latched sector machine list, shared between tickMachineLayer and shepherdFieldAt:
+// rebuilt once per entity-index version (or sector switch) instead of walked per caller.
+// `alive` is still re-checked by each consumer since deaths don't bump the index version.
+function machineScanForSector(state, sectorId) {
+  const ae = ensureAlienEcologyState(state);
+  const machinesCache = ae._machineScanCache || (ae._machineScanCache = {
+    version: -1, sectorId: null, machines: [],
+  });
+  const machinesVersion = entityIndexVersion(state);
+  // A null version means the index is not ready — walk every call rather than cache-stale.
+  if (machinesVersion == null
+      || machinesCache.version !== machinesVersion
+      || machinesCache.sectorId !== sectorId) {
+    machinesCache.version = machinesVersion == null ? -1 : machinesVersion;
+    machinesCache.sectorId = sectorId;
+    machinesCache.machines.length = 0;
+    for (const e of state.entityList) {
+      if (!e || e.alive === false || !e.data || !e.data.machine) continue;
+      if (e.homeSectorId !== sectorId) continue;
+      machinesCache.machines.push(e);
+    }
+  }
+  return machinesCache.machines;
+}
+
 // ── Moving suppression (AE-233/M08) — shepherd engines carry a dead pocket with them. ────
 // Called from alienEcology.js wherever the static suppression field is consulted: if a
 // live shepherd entity is within its suppressionRadius of the point, the point is dead.
 export function shepherdFieldAt(state, sectorId, x, z) {
   if (!state || !state.entityList) return null;
-  for (const e of state.entityList) {
+  const kind = machineKindById('shepherd');
+  const r = (kind && kind.suppressionRadius) || 400;
+  const r2 = r * r;
+  for (const e of machineScanForSector(state, sectorId)) {
     const m = e && e.data && e.data.machine;
-    if (!m || m.kind !== 'shepherd' || e.alive === false || e.homeSectorId !== sectorId) continue;
-    const kind = machineKindById('shepherd');
-    const r = (kind && kind.suppressionRadius) || 400;
-    if (dist2(e.pos.x, e.pos.z, x, z) <= r * r) return e;
+    if (!m || m.kind !== 'shepherd' || e.alive === false) continue;
+    if (dist2(e.pos.x, e.pos.z, x, z) <= r2) return e;
   }
   return null;
+}
+
+// Version-latched claimable-target list for idle debris sorters — same latch shape as
+// machineScanForSector. Type/homeSectorId are spawn-stable; alive/claimed/pos re-checked
+// per call since they change without an index-version bump.
+function sorterTargetsForSector(state, sectorId) {
+  const ae = ensureAlienEcologyState(state);
+  const cache = ae._sorterTargetCache || (ae._sorterTargetCache = {
+    version: -1, sectorId: null, targets: [],
+  });
+  const version = entityIndexVersion(state);
+  if (version == null || cache.version !== version || cache.sectorId !== sectorId) {
+    cache.version = version == null ? -1 : version;
+    cache.sectorId = sectorId;
+    cache.targets.length = 0;
+    for (const e of state.entityList) {
+      if (!e || !e.pos || e.homeSectorId !== sectorId) continue;
+      if (e.type !== 'wreck' && e.type !== 'pickup' && e.type !== 'debris') continue;
+      cache.targets.push(e);
+    }
+  }
+  return cache.targets;
 }
 
 // ── Route gate (AE-108) ───────────────────────────────────────────────────────────────────

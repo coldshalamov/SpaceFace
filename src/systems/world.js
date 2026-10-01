@@ -146,7 +146,7 @@ import {
   bindEntityToRecord,
   captureEntityRecord,
   createEmptyRecordsBag,
-  deserializeRecordsBag,
+  normalizeRecordsBagChunked,
   ensureWorldRecords,
   entityHasDurableMarkers,
   entityIsDurableCandidate,
@@ -208,7 +208,7 @@ import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
   createEmptyResourceBodyBag,
-  deserializeResourceBodyBag,
+  normalizeResourceBodyBagChunked,
   ensureResourceBodies,
   findResourceBodyForEntity,
   serializeResourceBodyBag,
@@ -4849,7 +4849,12 @@ export const world = {
     jump._fuelCost = fuelCost;
     jump._unfiled = false;
     jump._unfiledConfirmed = false;
-    this.bus.emit('jump:chargeStart', { targetSectorId, via, chargeNeeded, playerId: this.state.playerId });
+    // Drive interdiction rolls on arrival against this sector's fixed hostile pool — publish
+    // it with the charge so the squad's hulls decode during the charge window.
+    this.bus.emit('jump:chargeStart', {
+      targetSectorId, via, chargeNeeded, playerId: this.state.playerId,
+      interdictionPool: via === 'drive' && target ? this._enemyPool(target) : null,
+    });
   },
 
   /**
@@ -4896,6 +4901,7 @@ export const world = {
       chargeNeeded: jump.chargeNeeded,
       unfiled: true,
       playerId: state.playerId,
+      interdictionPool: target ? this._enemyPool(target) : null,
     });
     return true;
   },
@@ -6272,6 +6278,12 @@ export const world = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: yields only at section boundaries (between the durable bag restores), never
+  // inside a section — the async lane paints between them while every call keeps sync order.
+  *deserializeChunked(data) {
     if (!data) return;
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
@@ -6300,13 +6312,16 @@ export const world = {
     this._pallasDecisionSignature = null;
     this._pallasDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
-    state.world.records = deserializeRecordsBag(data.records);
-    state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
+    state.world.records = yield* normalizeRecordsBagChunked(data.records);
+    yield 'world-records';
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies);
+    yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
     state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     deserializeAlienEcologyState(state, data.alienEcology);
+    yield 'world-alien-ecology';
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
     // than trusting a stale rendering frame that may have been smuggled into a payload.

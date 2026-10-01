@@ -449,11 +449,24 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function sortedEntitiesForTick() {
+    const indexVersion = combatTickIndexVersion(state);
+    // With the V1 index live, the tick + revision + version triple already pins the living
+    // set — every membership mutation bumps index.version and spawn/destroy emits bump the
+    // revision — so a hit can return before the O(living actors) walk that only feeds the
+    // length check and the sort input.
+    if (
+      indexVersion >= 0 &&
+      sortedCache &&
+      sortedCacheTick === state.tick &&
+      sortedCacheSeenRevision === sortedCacheRevision &&
+      sortedCacheIndexVersion === indexVersion
+    ) {
+      return sortedCache;
+    }
     sourceScratch.length = 0;
     forEachLivingWorldActor(state, pushSourceEntity);
     const source = sourceScratch;
     const length = source.length;
-    const indexVersion = combatTickIndexVersion(state);
     if (
       sortedCache &&
       sortedCacheTick === state.tick &&

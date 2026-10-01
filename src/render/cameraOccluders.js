@@ -95,7 +95,10 @@ function segmentApproach(ax, ay, az, bx, by, bz, cx, cy, cz) {
  * @param {object} cameraPos chase camera position, same local frame as record positions
  * @param {object} focusPos presented player position (the end of the protected sightline)
  * @param {number} dt frame delta seconds (already timescale-scaled by the caller)
- * @param {object} [opts] { playerId } — the protected entity is never ducked
+ * @param {object} [opts] { playerId, recordById, recordFrameId } — the protected entity is never
+ *   ducked; when recordById + recordFrameId are provided, a tracked entity that fell out of the
+ *   candidate bucket while still presented eases back instead of snapping, matching the old
+ *   full-scan target=0 path.
  * @returns {boolean} true when any sink value moved (instanced pools must re-submit matrices)
  */
 export function updateCameraOccluders(state, records, cameraPos, focusPos, dt, opts = {}) {
@@ -105,6 +108,8 @@ export function updateCameraOccluders(state, records, cameraPos, focusPos, dt, o
   state.sinkByOwner.clear();
   state.occludingCount = 0;
   const playerId = opts.playerId;
+  const recordById = opts.recordById;
+  const recordFrameId = opts.recordFrameId;
   const camX = cameraPos.x, camY = cameraPos.y, camZ = cameraPos.z;
   const fx = focusPos.x, fy = Number.isFinite(focusPos.y) ? focusPos.y : 0, fz = focusPos.z;
 
@@ -113,16 +118,11 @@ export function updateCameraOccluders(state, records, cameraPos, focusPos, dt, o
       const record = records[i];
       const entity = record && record.entity;
       if (!entity || entity.id === playerId) continue;
-      if (record.visible === false || record.viewCulled === true) continue;
       const mesh = record.mesh;
       if (!mesh) continue;
       // The authored pose is always on the plane; entries carry the current duck so a record
       // captured mid-slide still evaluates against y = 0.
       const radius = occluderRadius(entity);
-      if (!occluderDuckCandidate(entity)) {
-        if (entries.has(entity.id)) entries.get(entity.id).target = 0;
-        continue;
-      }
       const hit = segmentApproach(
         camX, camY, camZ,
         fx, fy, fz,
@@ -169,11 +169,25 @@ export function updateCameraOccluders(state, records, cameraPos, focusPos, dt, o
   const rateUp = DIP_UP_WU_PER_S * dt;
   for (const [id, entry] of entries) {
     if (entry.seen !== frameSeen) {
-      // Entity left the classified set this frame — restore the root once, then forget it.
-      restoreOccluderDip(entry);
-      entries.delete(id);
-      sinksMoved = true;
-      continue;
+      const record = recordById && recordById.get ? recordById.get(id) : null;
+      const stillPresented = record
+        && record.seenFrame === recordFrameId
+        && record.visible !== false
+        && record.viewCulled !== true
+        && !!record.mesh;
+      if (stillPresented) {
+        // Dropped out of the candidate bucket while its record still presents — the old
+        // full-scan path reached this entity every frame, so keep the eased target=0 rather
+        // than snapping its root back to the plane.
+        entry.target = 0;
+        entry.seen = frameSeen;
+      } else {
+        // Entity left the classified set this frame — restore the root once, then forget it.
+        restoreOccluderDip(entry);
+        entries.delete(id);
+        sinksMoved = true;
+        continue;
+      }
     }
     const target = entry.target || 0;
     if (entry.dip < target) entry.dip = Math.min(target, entry.dip + rateDown);

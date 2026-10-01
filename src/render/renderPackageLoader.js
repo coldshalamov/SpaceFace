@@ -134,12 +134,17 @@ export function createRenderPackageLoader(options = {}) {
     // runway residue otherwise reads identical to ambient package-cache residue and loses the
     // soft-eviction LRU race first, exactly the pop the flag exists to prevent.
     const decodeWarm = /warm|runway|prewarm|armory|predicted/i.test(String(loadOptions.residencyRole || ''));
+    // A package a boundary actually served outranks speculative residue the same way the decode
+    // cache's served flag does — on departure it keeps sweep immunity and loses the byte-pressure
+    // sort last instead of first. Without a consumer owner the load is ambient, not served.
+    const decodeServed = !decodeWarm && !!consumerOwner;
     const retainConsumer = (key) => {
       if (!consumerOwner) return;
       residency.retain(key, consumerOwner, {
         role: loadOptions.residencyRole || 'live-boundary',
         sectorId: loadOptions.residencySectorId || null,
         decodeWarm,
+        decodeServed,
       });
     };
     const existing = cache.get(contentHash);
@@ -153,8 +158,14 @@ export function createRenderPackageLoader(options = {}) {
         return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions);
       }
       retainConsumer(existing.key);
-      if (!existing.packageOwner && !retainPackageOwner(existing, decodeWarm)) {
+      if (!existing.packageOwner && !retainPackageOwner(existing, decodeWarm, decodeServed)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
+      }
+      // A live-boundary serve upgrades a speculation-warm package lease in place — residency
+      // .retain merges decodeServed onto the existing owner record.
+      else if (existing.packageOwner && decodeServed === true) {
+        residency.retain(existing.key, existing.packageOwner,
+          { role: 'render-package-cache', decodeWarm, decodeServed });
       }
       return loaded;
     }
@@ -174,6 +185,7 @@ export function createRenderPackageLoader(options = {}) {
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
       decodeWarm,
+      decodeServed,
     });
     entry.promise = Promise.resolve()
       .then(() => {
@@ -259,10 +271,10 @@ export function createRenderPackageLoader(options = {}) {
     return entry.promise;
   }
 
-  function retainPackageOwner(entry, decodeWarm = false) {
+  function retainPackageOwner(entry, decodeWarm = false, decodeServed = false) {
     if (disposed || entry.evicted) return false;
     const owner = createOwner('package-cache', entry.metadata.contentHash);
-    if (!residency.retain(entry.key, owner, { role: 'render-package-cache', decodeWarm })) return false;
+    if (!residency.retain(entry.key, owner, { role: 'render-package-cache', decodeWarm, decodeServed })) return false;
     entry.packageOwner = owner;
     entry.loaded?.markRetained();
     return true;
@@ -932,9 +944,16 @@ function isStalePackageCacheError(error) {
   return /trust-anchor mismatch|content hash mismatch|SHA-256 mismatch|byte length mismatch/i.test(message);
 }
 
+// A hung fetch would wedge the package task forever: the cache entry only evicts on settle,
+// so an unsettled corpse pins every later request to the same dead promise. AbortSignal.timeout
+// makes the task reject — a normal failure that self-evicts and retries on re-request.
+const RENDER_PACKAGE_FETCH_TIMEOUT_MS = 90000;
+
 async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
   const read = async (cache) => {
-    const response = await fetchImpl(url, { cache });
+    const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+      ? AbortSignal.timeout(RENDER_PACKAGE_FETCH_TIMEOUT_MS) : null;
+    const response = await fetchImpl(url, signal ? { cache, signal } : { cache });
     if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
     return new Uint8Array(await response.arrayBuffer());
   };

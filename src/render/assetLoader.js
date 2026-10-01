@@ -91,6 +91,10 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 
 const warned = new Set();
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
+// Warm-purpose decode roles (sector prewarm, decode runway, roster warm, predicts): decodes
+// that speculate on a spawn that has not arrived yet. Shared by the decode-cache retain below
+// and the ownerless-request soft-lease classification.
+const WARM_PURPOSE_RESIDENCY_ROLE = /warm|runway|prewarm|armory|predicted/i;
 const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
 const GLB_CHUNK_JSON = 0x4e4f534a;
@@ -550,7 +554,13 @@ export async function loadAuthoredPart(url, options = {}) {
   // pilot branch: render-package pilots are the dominant decode path and must classify too.
   const deadlineClass = options.admissionDeadline === true
     || options.admissionVisible === true
-    || /runway|deadline/i.test(String(options.residencyRole || ''));
+    // 'sector-prewarm' is the incoming-sector census — its decode window is the charge
+    // (or the zero-lead enter frame), a real deadline, not ambient warm. 'sector-prepared*'
+    // roles are that same sector's prepared bodies — the exact next-visible set on enter,
+    // so they post deadline beside the census charge rather than behind ambient roster
+    // warms. 'sector-predicted' and roster prewarms correctly stay ambient: long horizon,
+    // no deadline.
+    || /runway|deadline|sector-prewarm|sector-prepared/i.test(String(options.residencyRole || ''));
   // admissionVisible is a deadline superset: the spawn is already at the glass, so its worker
   // posts jump ahead of even other deadline waiters via the 'visible' budget class.
   const wrapDecodeClass = options.admissionVisible === true
@@ -567,10 +577,16 @@ export async function loadAuthoredPart(url, options = {}) {
   const cacheKey = `${url}::${slot || '*'}`;
   const residency = getAssetResidency(renderer);
   const residencyOwner = options.residencyOwner || runtime.defaultResidencyOwner;
+  // An ownerless warm decode has no boundary lifecycle to release its pin — a non-soft role on
+  // the session fallback owner would pin it forever. softLease keeps it in the soft tier and
+  // decodeWarm makes it lose byte-pressure eviction last (mirrors the decode-cache retain below).
+  const ownerlessWarm = !options.residencyOwner
+    && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
   const request = residency && residencyOwner
     ? residency.beginRequest(cacheKey, residencyOwner, {
       role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       sectorId: options.sectorId || null,
+      ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
     })
     : null;
   if (request && !request.shouldDecode()) {
@@ -634,8 +650,11 @@ export async function loadAuthoredPart(url, options = {}) {
       sectorId: options.sectorId || null,
       // Warm-purpose decodes (sector prewarm, decode runway, roster warm) speculate on future
       // use — a never-touched prewarm otherwise reads as the oldest idle entry and is the first
-      // casualty of byte pressure, so the spawn it covered still pops cold.
-      decodeWarm: /warm|runway|prewarm|armory|predicted/i.test(String(options.residencyRole || '')),
+      // casualty of byte pressure, so the spawn it covered still pops cold. Non-warm boundary
+      // retains are served bodies: they earn the same sweep immunity and lose the byte-pressure
+      // sort last — observed demand outranks speculated demand on return visits.
+      decodeWarm: WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
+      decodeServed: !WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
     });
   }
   return blueprint;
@@ -852,6 +871,38 @@ export async function invalidateAuthoredAsset(renderer, url = null) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Drop unfinished decode tasks for the given urls so a re-admission decodes fresh instead of
+ * deduping onto a wedged task that will never settle (the stall-abort path). Settled records
+ * stay — a produced blueprint is a valid cache hit, and a second caller deduped on the same
+ * task keeps its own Promise either way: only the cache entry is removed. The owner's pending
+ * request on each key is released so nothing re-pins the corpse.
+ */
+export function dropWedgedAuthoredTasks(renderer, urls, owner = null) {
+  const runtime = renderer && resolvedRuntimeByRenderer.get(renderer);
+  const residency = getAssetResidency(renderer);
+  if (!runtime || !Array.isArray(urls) || urls.length === 0) return 0;
+  let dropped = 0;
+  for (const url of urls) {
+    if (typeof url !== 'string' || !url) continue;
+    const prefix = `${url}::`;
+    for (const key of [...runtime.assets.keys()]) {
+      if (!key.startsWith(prefix)) continue;
+      const task = runtime.assets.get(key);
+      if (task && task.sfSettledRecord != null) continue;
+      if (residency && owner) residency.release(key, owner, 'upgrade-stall-abort');
+      runtime.assets.delete(key);
+      dropped++;
+    }
+    if (runtime.failures) {
+      for (const key of [...runtime.failures.keys()]) {
+        if (key.startsWith(prefix)) runtime.failures.delete(key);
+      }
+    }
+  }
+  return dropped;
 }
 
 export async function invalidateFailedAuthoredAssets(renderer) {

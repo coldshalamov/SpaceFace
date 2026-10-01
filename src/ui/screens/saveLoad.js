@@ -217,8 +217,12 @@ function nav(ctx, method, arg) {
 /** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
 function readSlots(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
-  // Preferred: save system exposes a slot index.
+  // Preferred: save system exposes a slot index. Index cards first — the per-render read
+  // must not pay the authoritative blob scan on a stale generation; the validated merge
+  // repaints on 'save:slotsValidated' (listener below) and every load click re-validates
+  // real bytes through _prepareEnvelopeStringAsync anyway.
   if (sys) {
+    if (typeof sys.listSlotsIndexCards === 'function') { try { return normalize(sys.listSlotsIndexCards()); } catch (e) {} }
     if (typeof sys.listSlots === 'function') { try { return normalize(sys.listSlots()); } catch (e) {} }
     if (sys.index && typeof sys.index === 'object') { try { return normalize(sys.index); } catch (e) {} }
   }
@@ -833,6 +837,7 @@ export const saveLoadScreen = {
     });
     // The slot list re-reads the store the moment it changes, not on the next periodic tick.
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
+    const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
     const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
 
     // Foot: Export, Import (the hidden file input stays), Back.
@@ -864,7 +869,7 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
-      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubCompleted,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubValidated, unsubCompleted,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -1392,6 +1397,7 @@ export const saveLoadScreen = {
       try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
       try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }

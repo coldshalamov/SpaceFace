@@ -298,6 +298,10 @@ export const encounterDirector = {
       this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));
       // The deterministic choice bridge (UI/test harness both speak this).
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
+      // A claim-defense warning is the whole decode lead for the squad it will fire: publish
+      // the deterministic roster at onset so presentation can warm the hulls during the
+      // countdown instead of decoding them at the glass on arrival.
+      this.bus.on('claim:defenseWarning', (p) => this._publishClaimDefenseRoster(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
@@ -525,6 +529,7 @@ export const encounterDirector = {
       }
     }
     dir.live = {};
+    dir.squadMembership = {};
     dir.pending = [];
     dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
     dir.plannedKey = null;                             // same-day re-entry must replan
@@ -555,6 +560,22 @@ export const encounterDirector = {
       const shape = ENCOUNTERS[k];
       const maxCd = now + (shape && shape.cooldownS ? shape.cooldownS : 900);
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
+    }
+    // Warnings restored mid-countdown never re-emit claim:defenseWarning — republish their
+    // rosters here so the resumed countdown still covers the squad's decode lead.
+    const bodies = (state.claims && state.claims.bodies) || [];
+    for (const body of bodies) {
+      const defense = body && body.spec && body.spec.defense;
+      if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
+      this._publishClaimDefenseRoster({
+        encounterId: defense.encounterId,
+        bodyId: body.id,
+        sectorId: body.sectorId,
+        pos: { x: body.x, z: body.z },
+        attackerCount: defense.attackerCount,
+        attackerName: defense.attackerName,
+        motive: defense.motive,
+      });
     }
     // A load is a non-continuous sector enter: _onSectorEnter early-returns while _saveRestoring,
     // and this handler is where the authored entry breath and planner were promised ("jump /
@@ -974,6 +995,66 @@ export const encounterDirector = {
       : { ok: false, reason: 'resolved_on_fire' };
   },
 
+  /** The deterministic claim-defense plan: seeded entirely by (meta.seed, encounterId), so the
+   * same inputs reproduce the same roster at warning onset, at request time, and after restore.
+   * Pure — a dedicated mulberry32 stream, never state.rng. */
+  _resolveClaimDefensePlan(state, payload) {
+    const shape = ENCOUNTERS.claim_threat;
+    if (!shape) return null;
+    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
+    if (!body || body.sectorId !== payload.sectorId) return null;
+    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
+    const zone = {
+      id: `claim-defense:${payload.claimId}`,
+      name: body.name || 'Player claim',
+      type: 'mining_belt',
+      center: { x: local.x, z: local.z },
+      radius: 760,
+      threat: 2,
+    };
+    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
+    if (!item || !item.ships.length) return null;
+    return { item, zone, shape, rng };
+  },
+
+  _publishClaimDefenseRoster(payload) {
+    if (!payload || !payload.encounterId) return;
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) return;
+    const plan = this._resolveClaimDefensePlan(state, {
+      encounterId: payload.encounterId,
+      claimId: payload.bodyId || payload.claimId,
+      anchor: payload.pos || payload.anchor,
+      sectorId: payload.sectorId,
+      attackerCount: payload.attackerCount,
+      motive: payload.motive,
+      attackerName: payload.attackerName,
+    });
+    if (!plan) return;
+    // Ship records, not bare archetype strings: kit squads resolve faction-specific hull
+    // and hulk files, so factionId/trafficRole ride the roster for the decode runway.
+    const seen = new Set();
+    const archetypes = [];
+    for (const ship of plan.item.ships) {
+      const archetype = ship && ship.archetype;
+      if (typeof archetype !== 'string' || !archetype) continue;
+      const factionId = ship.factionId || null;
+      const trafficRole = ship.trafficRole || null;
+      const token = `${archetype}|${factionId || ''}|${trafficRole || ''}`;
+      if (seen.has(token)) continue;
+      seen.add(token);
+      archetypes.push({ archetype, factionId, trafficRole });
+    }
+    if (!archetypes.length) return;
+    this.emit('encounter:claimDefenseRoster', {
+      encounterId: payload.encounterId,
+      sectorId: payload.sectorId || null,
+      archetypes,
+    });
+  },
+
   /** Materialize a claim-owned defense contract at its exact physical anchor. This bypasses the
    * ambient planner but still uses the normal director spawn budget, causality, doctrine, ROE,
    * telegraph, resolution, and receipt machinery. The durable id makes retries/save recovery
@@ -988,23 +1069,9 @@ export const encounterDirector = {
       return { ok: true, encounterId: payload.encounterId, reused: true };
     }
     if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
-    const shape = ENCOUNTERS.claim_threat;
-    if (!shape) return { ok: false, reason: 'missing_shape' };
-    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
-    if (!body || body.sectorId !== payload.sectorId) return { ok: false, reason: 'missing_claim' };
-
-    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
-    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
-    const zone = {
-      id: `claim-defense:${payload.claimId}`,
-      name: body.name || 'Player claim',
-      type: 'mining_belt',
-      center: { x: local.x, z: local.z },
-      radius: 760,
-      threat: 2,
-    };
-    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
-    if (!item || !item.ships.length) return { ok: false, reason: 'empty_plan' };
+    const plan = this._resolveClaimDefensePlan(state, payload);
+    if (!plan) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, shape, rng } = plan;
     item.encounterId = payload.encounterId;
     item.squadId = payload.encounterId;
     item.sectorId = payload.sectorId;
@@ -1340,6 +1407,7 @@ export const encounterDirector = {
           rec.ids.push(ent.id);
           live.ids.push(ent.id);
           live.roles[ent.id] = sh.role || 'squad';
+          indexSquadMember(dir, live, ent.id);
         }
       }
     } finally {
@@ -1436,6 +1504,7 @@ export const encounterDirector = {
     if (!entity || entity.id == null) return null;
     live.ids.push(entity.id);
     live.roles[entity.id] = 'freight_pod';
+    indexSquadMember(ensureDirectorState(this.state), live, entity.id);
     return entity;
   },
 
@@ -1755,6 +1824,7 @@ export const encounterDirector = {
       });
       if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
+    dropLiveSquadMembership(dir, live);
     delete dir.live[live.id];
   },
 
@@ -1779,6 +1849,7 @@ export const encounterDirector = {
       sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
       causality: live.causality ? { ...live.causality } : null,
     });
+    dropLiveSquadMembership(dir, live);
     delete dir.live[live.id];
   },
 
@@ -1916,6 +1987,7 @@ export const encounterDirector = {
           if (live.ids[index] === id) live.ids.splice(index, 1);
         }
         if (live.roles && typeof live.roles === 'object') delete live.roles[id];
+        dropSquadMember(dir, live, id);
       }
     }
   },
@@ -1944,16 +2016,29 @@ export const encounterDirector = {
       this.emit('encounter:namedCaptainDefeated', { captainId: externalCaptainId, entityId: p.id, byPlayer });
     }
     let handled = null;
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      const role = live.roles[p.id];
-      if (role !== undefined && live.ids.includes(p.id)) {
-        handled = live;
-        this._scriptEvent(live, 'squadKill', {
-          id: p.id, role, byPlayer, killerId: p.killerId,
-          pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
-        });
-        break;
+    // squadMembership answers the squad question in O(1); the walk below stays as the cold path
+    // for rows minted before the index (or lost to a stale save).
+    const memberLiveId = dir.squadMembership[p.id];
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    if (memberLive && memberLive.roles && memberLive.roles[p.id] !== undefined
+      && memberLive.ids.includes(p.id)) {
+      handled = memberLive;
+      this._scriptEvent(memberLive, 'squadKill', {
+        id: p.id, role: memberLive.roles[p.id], byPlayer, killerId: p.killerId,
+        pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+      });
+    } else {
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        const role = live.roles[p.id];
+        if (role !== undefined && live.ids.includes(p.id)) {
+          handled = live;
+          this._scriptEvent(live, 'squadKill', {
+            id: p.id, role, byPlayer, killerId: p.killerId,
+            pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+          });
+          break;
+        }
       }
     }
     if (handled || !byPlayer) return;
@@ -2595,16 +2680,19 @@ export const encounterDirector = {
   adoptCeresActivityAmbush(live, phase = 'offer') {
     if (!live || !(live.data && live.data.ceresActivityAmbush === true)) return [];
     const cohort = this._ceresActivityAmbushCohort();
-    const sampler = ensureDirectorState(this.state)._ceresActivityAmbush;
+    const dir = ensureDirectorState(this.state);
+    const sampler = dir._ceresActivityAmbush;
     live.data.adoptedWorldActors = true;
     live.data.restoreByRecordId = sampler && sampler.restoreByRecordId
       ? sampler.restoreByRecordId
       : Object.create(null);
+    dropLiveSquadMembership(dir, live);
     live.ids = [];
     live.roles = {};
     for (const entity of cohort) {
       live.ids.push(entity.id);
       live.roles[entity.id] = 'squad';
+      indexSquadMember(dir, live, entity.id);
       const ai = entity.data && entity.data.ai;
       if (ai) {
         const restore = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
@@ -2641,6 +2729,7 @@ export const encounterDirector = {
     )) ? 'conflict' : 'offer';
     const script = encounterScriptFor(live);
     if (!script || typeof script.resume !== 'function') {
+      dropLiveSquadMembership(dir, live);
       delete dir.live[live.id];
       return false;
     }
@@ -3237,6 +3326,10 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     levelBand,
     delay: 0,
     ships,
+    // Packaged bodies the fire path will spawn that share no hull archetype — scripted
+    // cargo-pod spills, authored props. Declared on the encounter body, carried on the
+    // pending item so the decode runway warms them before telegraph resolves.
+    warmAssets: Array.isArray(enc.warmAssets) && enc.warmAssets.length ? enc.warmAssets.slice() : null,
     // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
     // rock near their anchor (applied at spawnShips time, once per encounter).
     terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
@@ -3966,6 +4059,29 @@ function persistedFreightCarrierBinding(entity) {
   return { data, ai, manifest, custody, identityKey };
 }
 
+// entityId -> liveId, so a kill resolves its encounter row without walking every live encounter.
+// The map holds plain ids rather than live refs: it serializes like any other director row, and a
+// recycled entity id cannot claim a stale row because every drop compares before deleting.
+function indexSquadMember(dir, live, id) {
+  if (!dir.squadMembership || typeof dir.squadMembership !== 'object' || Array.isArray(dir.squadMembership)) {
+    dir.squadMembership = {};
+  }
+  dir.squadMembership[id] = live.id;
+}
+
+function dropSquadMember(dir, live, id) {
+  const membership = dir.squadMembership;
+  if (membership && membership[id] === (live && live.id)) delete membership[id];
+}
+
+function dropLiveSquadMembership(dir, live) {
+  const membership = dir.squadMembership;
+  if (!membership || !live || !Array.isArray(live.ids)) return;
+  for (const id of live.ids) {
+    if (membership[id] === live.id) delete membership[id];
+  }
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -3974,6 +4090,7 @@ function ensureDirectorState(state) {
   if (!Array.isArray(d.pending)) d.pending = [];
   if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
   if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
+  if (!d.squadMembership || typeof d.squadMembership !== 'object' || Array.isArray(d.squadMembership)) d.squadMembership = {};
   if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
   if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
   if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;

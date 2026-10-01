@@ -1,6 +1,7 @@
 // Observes completed evasions from fixed-tick body trajectories. Never writes physics or input.
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { bodyLife, journalFor, observeAppliedImpulse, angleBetween } from './stuntEvidence.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 
 const pt=p=>({x:p.x,z:p.z});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -27,6 +28,40 @@ const THREAT_SCAN_RANGE_SQ = THREAT_SCAN_RANGE_WU * THREAT_SCAN_RANGE_WU;
 function isThreatCandidateType(type) {
   return type === 'ship' || type === 'projectile' || type === 'drone';
 }
+
+// Threat candidate types are spawn-fixed, so the subset is latched on the entity-index
+// version (rebuilt once per spawn/despawn bump, walked in entities-Map order to keep
+// track-creation order identical) instead of re-walking every entity every sim tick.
+const _threatCandidates = { version: null, source: null, list: [] };
+function threatCandidatesFor(state) {
+  const version = entityIndexVersion(state);
+  const cache = _threatCandidates;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    for (const e of state.entities.values()) {
+      if (e && isThreatCandidateType(e.type)) cache.list.push(e);
+    }
+  }
+  return cache.list;
+}
+// Near-body history candidates have the same shape: pos/vel/collides-stable subset latched
+// on the index version; the cheap volatile checks (pos/vel alive/deleted) stay per tick.
+const _nearBodyCandidates = { version: null, source: null, list: [] };
+function nearBodyCandidatesFor(state) {
+  const version = entityIndexVersion(state);
+  const cache = _nearBodyCandidates;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    for (const e of state.entities.values()) {
+      if (e && e.collides !== false) cache.list.push(e);
+    }
+  }
+  return cache.list;
+}
 function hostileThreat(state,e,player) {
   const owner=e.ownerId!=null?state.entities.get(e.ownerId):e;
   if(!owner||!isHostileForAI(state,owner,player))return false;
@@ -50,7 +85,7 @@ export class StuntFlightObserver {
     const projectileLane=(state.entityIndex&&state.entityIndex.__spacefaceEntityIndexV1===true)
       ?state.entityIndex.projectiles:null;
     const quietNoAmmo=this.tracks.size===0&&Array.isArray(projectileLane)&&projectileLane.length===0;
-    for(const e of state.entities.values()) {
+    for(const e of threatCandidatesFor(state)) {
       if(!e?.pos||!e.vel||e.alive===false||e.id===player.id)continue;
       if(!isThreatCandidateType(e.type))continue;
       const dx=e.pos.x-player.pos.x,dz=e.pos.z-player.pos.z;
@@ -127,7 +162,7 @@ export class StuntFlightObserver {
     // a Math.hypot per entity per tick to learn that (PQ-210.01 Crucible CPU profile). Same
     // selection, same entity order, same 32-body cap.
     const nearR=L*8,nearSq=nearR*nearR,px=player.pos.x,pz=player.pos.z;
-    for(const e of state.entities.values()){
+    for(const e of nearBodyCandidatesFor(state)){
       if(frame.bodies.length>=32)break;
       if(!e?.pos||!e.vel||e.collides===false||e.id===player.id)continue;
       const dx=e.pos.x-px,dz=e.pos.z-pz;

@@ -1323,6 +1323,9 @@ function normalizeDepotServices(rows) {
 
 export const traffic = {
   name: 'traffic',
+  // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
+  // not defensively clone the (large) traffic payload a second time during autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -1405,6 +1408,21 @@ export const traffic = {
       this._restoreEpochPending = true;
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
+    });
+    this.bus.on('save:error', (p) => {
+      // A restore that dies mid-chunk never emits save:loaded — without this the epoch latch
+      // would starve every ambient top-up guard for the rest of the session. Only
+      // restore-lifecycle failures clear it: an unrelated write error arriving mid-restore
+      // must not reopen the ambient lanes while the envelope is still respawning.
+      const reason = p && p.reason;
+      if (reason !== 'load_failed' && reason !== 'visual_gate_failed'
+          && reason !== 'deferred_transition_failed') return;
+      if (this._restoreEpochPending === true) this._restoreEpochPending = false;
+      // Same lifecycle as the epoch latch: a failed restore leaves the disabled-hauler
+      // incident unable to terminalize (actor_absent gate) until the next successful load.
+      if (this._ceresDisabledHaulerRestorePending === true) {
+        this._ceresDisabledHaulerRestorePending = false;
+      }
     });
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
@@ -5119,7 +5137,7 @@ export const traffic = {
     }
 
     if (this.state && this.state.entities && typeof this.state.entities.forEach === 'function') {
-      this.state.entities.forEach((ent) => {
+      forEachLivingWorldActor(this.state, (ent) => {
         if (!ent || ent.id === caller.id || ent.alive === false || ent.type !== 'ship') return;
         if (ent.id === (this.state && this.state.playerId)) return;
         if (!ent.pos) return;
@@ -5855,7 +5873,7 @@ export const traffic = {
       }
     };
     if (state.entities && typeof state.entities.forEach === 'function') {
-      state.entities.forEach(checkPod);
+      forEachJobInteractable(state, checkPod);
     }
     if (bestPod) {
       return { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } };
@@ -10865,6 +10883,12 @@ export const traffic = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each section (release pass, incident normalizes, id compacts) is atomic —
+  // yields sit only at those boundaries so order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const previousTraffic = this.state && this.state.traffic;
     this._releaseCeresMinerHaulerHandoffControls(previousTraffic && previousTraffic.ceresMinerHaulerHandoff);
     this._releaseCeresTenderServiceControls(previousTraffic && previousTraffic.ceresTenderServiceIncident);
@@ -10874,6 +10898,7 @@ export const traffic = {
     this._ensureState();
     this._nextDepotDispatchAt = 0;
     this._depotWatchRequested = new Set();
+    yield 'traffic-releases';
     const depotServices = normalizeDepotServices(data?.depotServices);
     if (depotServices.length) this.state.traffic.depotServices = depotServices;
     else delete this.state.traffic.depotServices;
@@ -10901,6 +10926,7 @@ export const traffic = {
       ? normalizeCeresDisabledHaulerIncident(data.ceresDisabledHaulerIncident)
       : null;
     const validTrafficSave = !!(data && !Array.isArray(data) && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA);
+    yield 'traffic-incidents';
     this.state.traffic.passengerReceiptIds = compactStableIds(
       validTrafficSave ? data.passengerReceiptIds : [],
       PASSENGER_LINER_RECEIPT_CAP,

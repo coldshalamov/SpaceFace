@@ -91,13 +91,15 @@ export async function buildKillcamStage(built, io) {
   const visualKeys = new Map(); // key -> { proto, unitScale }
   for (const slotDef of film.ships) {
     const ship = slotDef.ship;
-    const key = `${ship.visual || ''}|${ship.silhouette || ''}`;
+    // Faction kits swap the whole-ship file — the blueprint key must carry the faction so
+    // two liveries of one hull don't alias onto whichever decoded first.
+    const key = `${ship.visual || ''}|${ship.silhouette || ''}|${ship.factionId || ''}`;
     if (visualKeys.has(key)) continue;
     visualKeys.set(key, null);
     let selection = null;
     try {
       selection = wholeShipVisualForEntity({
-        type: 'ship', team: ship.team,
+        type: 'ship', team: ship.team, factionId: ship.factionId || null,
         data: { lootTableId: ship.visual, silhouette: ship.silhouette },
       });
     } catch (error) {
@@ -159,7 +161,7 @@ export async function buildKillcamStage(built, io) {
   const slots = film.ships.map((slotDef) => ({
     def: slotDef,
     ship: slotDef.ship,
-    key: `${slotDef.ship.visual || ''}|${slotDef.ship.silhouette || ''}`,
+    key: `${slotDef.ship.visual || ''}|${slotDef.ship.silhouette || ''}|${slotDef.ship.factionId || ''}`,
     obj: null,
     phase: 0, // 0 waiting/cleared, 1 alive, 2 wreck, 3 no visual
     wreckT: -1, // seconds of film time at which the hull died

@@ -226,10 +226,11 @@ test('the live receipt plays the collision cue; the legacy double-emit stays one
   assert.equal(played[0].opts.ladderId, expected.ladderId);
   assert.equal(ducks.length, 1, 'an audible contact bows the music');
 
-  // The custom backend emits physics:impact AND collision for the same pair in the same tick.
-  bus.emit('collision', { aId: 1, bId: 2, dp: HULL_MASS * SOLVER_CLAMP_DV, impulse: 9.6, pos: { x: 40, z: 0 } });
-  assert.equal(played.length, 1, 'the legacy twin of the same contact must not double the voice');
-  bus.emit('collision', { aId: 2, bId: 1, dp: HULL_MASS * SOLVER_CLAMP_DV, impulse: 9.6, pos: { x: 40, z: 0 } });
+  // One physics:impact per contact — the pair+tick window still collapses a same-pair
+  // re-emit (a double-published receipt) into one voice.
+  bus.emit('physics:impact', physicsImpact(null, { tick: state.tick }));
+  assert.equal(played.length, 1, 'a same-pair re-emit in the same tick must not double the voice');
+  bus.emit('physics:impact', physicsImpact(null, { tick: state.tick, aId: 2, bId: 1 }));
   assert.equal(played.length, 1, 'pair order does not make a second contact');
 
   // A grind re-arms after the pair cooldown; a much harder re-contact interrupts inside it.

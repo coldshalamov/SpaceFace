@@ -811,10 +811,18 @@ export const sectorSim = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between the bag sections — the
+  // sector ledger adoption is the bulk of this span on a long campaign. Yields sit only
+  // between bags; assignment order is the sync lane's, so the run stays bit-identical.
+  *deserializeChunked(data) {
     const ss = this._ensureState();
     ss.sectors = data && data.sectors || {};
     ss.field = data && data.field || null;
     ss.impulses = data && Array.isArray(data.impulses) ? data.impulses.slice(-MAX_IMPULSES) : [];
+    yield 'sector-sim-sectors';
     const emb = data && data.embodiment || {};
     ss.embodiment = {
       epochKey: Number.isFinite(emb.epochKey) ? emb.epochKey : -1,

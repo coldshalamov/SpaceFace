@@ -37,6 +37,7 @@ import {
   wrapShipWithAuthoredParts,
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { canonicalizeInstalledSurfaceProgramKey } from './illustratedSurface.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
   applyIndustrialMaterialFamilies,
@@ -157,6 +158,9 @@ const RESOLVING_MARKER_MATERIAL = new THREE.MeshStandardMaterial({
   depthWrite: false,
 });
 RESOLVING_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
+// Canon-stamp puts the bare marker key inside the warmed Standard family space — without it the
+// first pending boundary pays a linkProgram on the exact frame the marker appears.
+canonicalizeInstalledSurfaceProgramKey(RESOLVING_MARKER_MATERIAL);
 
 // GFX-12: a pending authored ship shows its own lowest-detail resident body instead of the
 // abstract marker whenever the catalog record is already resident (the normal cold-start case —
@@ -165,7 +169,10 @@ RESOLVING_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
 // by the primitive's base/emissive colour — no maps, no vertex colours, no instancing — so the
 // stand-in links no new program variant in bloomScene, same as the marker it replaces.
 const STAND_IN_MATERIALS = new Map();
-const STAND_IN_LOD_PREFERENCE = ['lod2', 'lod1', 'lod0'];
+// lod0 first: every tier of the catalog record is already resident by the time a stand-in can
+// exist, so the pending body reads as the real hull shape in the same flat materials — strictly
+// closer to the authored body and a smaller swap-pop than a blocky coarse-tier silhouette.
+const STAND_IN_LOD_PREFERENCE = ['lod0', 'lod1', 'lod2'];
 const WHOLE_SHIP_STAND_IN_TARGET_LENGTH = 1.72;
 // A pending substrate retries its resident-record lookup at this cadence, not every frame —
 // the lookup scans the renderer's resolved libraries and settled decode cache.
@@ -217,6 +224,7 @@ function standInMaterialFor(primitiveMaterial) {
     });
     material.userData.spacefaceSharedAsset = true;
     material.userData.authoredResolvingMarker = true;
+    canonicalizeInstalledSurfaceProgramKey(material);
     material.dispose = () => {};
     STAND_IN_MATERIALS.set(key, material);
   }
@@ -224,7 +232,7 @@ function standInMaterialFor(primitiveMaterial) {
 }
 
 /**
- * Coarsest detail tier the record carries: lod2 where authored, else the lowest level present.
+ * Finest detail tier the record carries: lod0 where authored, else the nearest level present.
  * Untagged primitives are always-visible in the composed body, so they ride every tier here too.
  */
 function standInPrimitivesFor(record) {
@@ -280,6 +288,80 @@ function resolvingMarkerFor(entity) {
   marker.userData.spacefaceSharedAsset = true;
   marker.userData.authoredResolvingMarker = true;
   return marker;
+}
+
+/**
+ * Marker for authored-only boundaries whose procedural body must never reach the glass while
+ * admission is pending (PQ-193.12): stations and exact-identity payloads. The abstract
+ * octahedron publishes no substitute identity — the same marker ships draw under
+ * requiredWholeShip — so an admission that outlasts the runway (stall-abort readmission,
+ * transient retry backoff, pick-cap queuing) keeps a resolving affordance on the glass instead
+ * of an invisible seat that pops in at commit. syncResolvingMarker drives visibility off
+ * authoredAssetState each frame; commit/terminal paths need no bookkeeping here.
+ */
+export function installBoundaryResolvingMarker(boundary, entity) {
+  const data = boundary && boundary.userData;
+  if (!data || data.resolvingMarker || data.wantsBoundaryResolvingMarker === true) return null;
+  // Arms only: the marker mesh materializes on the first evaluated pending frame inside
+  // syncResolvingMarker, so the wrap-time child list stays exactly the hidden substrate.
+  data.wantsBoundaryResolvingMarker = true;
+  data.boundaryResolvingMarkerEntity = entity || null;
+  // Cover the marker's drawn extent for glass/cull classification: union it into an existing
+  // stamp (the place envelope covers most stations) or seed one for un-stamped boundaries —
+  // a payload capsule otherwise culls at collider presence while drawing a ~1.9x wider marker.
+  const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
+  const half = [r * 1.7, r * 0.3, r * 0.85];
+  const existing = data.visualBounds;
+  if (existing && Array.isArray(existing.size)) {
+    const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
+    const nextCenter = [0, 0, 0];
+    const nextSize = [0, 0, 0];
+    for (let i = 0; i < 3; i++) {
+      const lo = Math.min((Number(center[i]) || 0) - (Number(existing.size[i]) || 0) / 2, -half[i]);
+      const hi = Math.max((Number(center[i]) || 0) + (Number(existing.size[i]) || 0) / 2, half[i]);
+      nextCenter[i] = (lo + hi) / 2;
+      nextSize[i] = hi - lo;
+    }
+    data.visualBounds = { center: nextCenter, size: nextSize };
+  } else {
+    data.visualBounds = { center: [0, 0, 0], size: [half[0] * 2, half[1] * 2, half[2] * 2] };
+  }
+  return data.wantsBoundaryResolvingMarker === true ? data : null;
+}
+
+/**
+ * Materializes the armed boundary marker as a real child — called from syncResolvingMarker the
+ * first frame the boundary evaluates while pending, which is also the earliest frame it can
+ * draw. Starts hidden; the same sync pass flips it visible for the pending window.
+ */
+export function materializeBoundaryResolvingMarker(boundary) {
+  const data = boundary && boundary.userData;
+  if (!data || data.resolvingMarker || data.wantsBoundaryResolvingMarker !== true) return null;
+  const marker = resolvingMarkerFor(data.boundaryResolvingMarkerEntity);
+  marker.visible = false;
+  boundary.add(marker);
+  data.resolvingMarker = marker;
+  data.authoredResolvingMarker = true;
+  delete data.wantsBoundaryResolvingMarker;
+  delete data.boundaryResolvingMarkerEntity;
+  return marker;
+}
+
+/**
+ * Commit-time teardown for a boundary-seat resolving marker: the authored root is the seat's
+ * only drawable afterwards, so the boundary's child list must end as exactly its committed
+ * content. Terminal paths leave the marker attached and let syncResolvingMarker drive it.
+ */
+export function detachBoundaryResolvingMarker(boundary) {
+  const data = boundary && boundary.userData;
+  if (!data) return false;
+  delete data.wantsBoundaryResolvingMarker;
+  delete data.boundaryResolvingMarkerEntity;
+  const marker = data.resolvingMarker;
+  if (!marker) return false;
+  if (marker.parent) marker.parent.remove(marker);
+  delete data.resolvingMarker;
+  return true;
 }
 
 /**
@@ -342,7 +424,7 @@ export function releaseAdmissionStandInFallback(boundary) {
   return true;
 }
 
-function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null) {
+function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null, proceduralFallback = null) {
   const root = new THREE.Group();
   root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
   root.visible = false;
@@ -379,10 +461,23 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   }
   root.add(marker);
   root.userData.resolvingMarker = marker;
+  // A retry-exhausted non-required ship builds the sanctioned procedural body instead of
+  // keeping the octahedron forever; required ships stay authored-or-nothing (no thunk).
+  if (typeof proceduralFallback === 'function') {
+    root.userData.admissionProceduralFallback = proceduralFallback;
+  }
   root.userData.authoredResolvingMarker = true;
   root.userData.authoredAdmissionTemporaryDrawables = Math.max(1, marker.isMesh ? 1 : marker.children.length);
   root.userData.shipConstruction = 'authored-direct';
   root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
+  // The pending ship draws the resolving marker at 1.7·radius in X (or the stand-in hull at
+  // ~0.86·radius half-extent) while entityPresenceRadius classifies it at ~radius — stamp the
+  // drawn envelope so glass/runway culling covers what the marker actually paints. The stamp
+  // dies with the substrate when the authored body swaps in.
+  {
+    const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
+    root.userData.visualBounds = { center: [0, 0, 0], size: [r * 3.4, r * 0.6, r * 1.7] };
+  }
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',
     gracefulFallback: false,
@@ -512,6 +607,26 @@ function isPackagedBodyDescendant(object, root) {
   return false;
 }
 
+// A detached packaged group the admission run still owns: its primitives were minted fresh for
+// this mount, so geometry and material instances die with it. Shared-asset geometries keep
+// their pool pin; texture maps ride the packaged cache and are left alone.
+function disposeDetachedPackagedGroup(group) {
+  if (!group || typeof group.traverse !== 'function') return;
+  group.traverse((object) => {
+    if (!object) return;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+  });
+}
+
 function hideProceduralPropDrawables(root) {
   if (!root || typeof root.traverse !== 'function') return;
   root.traverse((object) => {
@@ -567,7 +682,20 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   const start = (renderer, scene, requestOptions = {}) => {
     const state = root.userData.authoredAssetState;
     const existing = root.userData.authoredUpgradePromise;
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      // Same join as the hulk packaged path: a glass-visible re-request re-grades the shared
+      // decode tail visible instead of leaving it behind ambient warms.
+      if (renderer && requestOptions && requestOptions.admissionVisible === true) {
+        const joiner = typeof requestOptions.loadAuthoredPart === 'function'
+          ? requestOptions.loadAuthoredPart
+          : loadAuthoredPart;
+        Promise.resolve(joiner(url, {
+          renderer, slot: spec.slot || slotForPackagedFile(spec.file), optional: true,
+          admissionVisible: true,
+        })).catch(() => {});
+      }
+      return existing;
+    }
     if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer || !scene) return null;
     if (state === 'authored') return Promise.resolve(true);
@@ -611,16 +739,19 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       freezeStaticChildMatrices(packaged);
       freezeStaticTransformRoot(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
+      // Mint once: residencyOptionsForBoundary bumps the boundary epoch on every call, so an
+      // error-path or publish-path re-mint would classify this run's own commit as stale.
+      const mintedAdmissionOptions = admissionOptions();
       try {
-        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
-        releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed');
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
         // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
         // has no visual to publish — a breadcrumb, not a composition defect.
         const causes = error && Array.isArray(error.errors) && error.errors.length
           ? error.errors
           : [error];
-        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+        const ownerInactive = admissionOwnerInactive(mintedAdmissionOptions, liveEntity, error)
           || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
         if (ownerInactive) {
           if (root.parent) {
@@ -636,15 +767,25 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         return false;
       }
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile');
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
       const publicationWait = waitForOpeningGraphPublicationRelease();
       if (publicationWait) await publicationWait;
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication');
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      // Same stale-run guard the other three commit paths carry: a run parked at the
+      // publication wait while its boundary re-admitted under a newer epoch must not mount
+      // its packaged root over the replacement's — the live epoch owns the boundary.
+      if ((mintedAdmissionOptions.admissionEpoch != null && root.userData.admissionEpoch != null
+            && root.userData.admissionEpoch !== mintedAdmissionOptions.admissionEpoch)
+          || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
+          || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
+        disposeDetachedPackagedGroup(packaged);
         return false;
       }
       hideProceduralPropDrawables(root);
@@ -652,7 +793,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
       // (owner chain, final visibility). One exact-target re-touch here pays any residual link
       // inside this continuation instead of the first presented bloom pass.
-      const touch = admissionOptions().touchAuthoredExactTarget;
+      const touch = mintedAdmissionOptions.touchAuthoredExactTarget;
       if (typeof touch === 'function') {
         try { touch(packaged); } catch (error) { reportVisualWarning(options, '[visualOverrides] packaged publish touch failed', error); }
       }
@@ -732,7 +873,14 @@ export function installVisualOverrides(factory, options = {}) {
       let standInRecord = null;
       try { standInRecord = admissionStandInRecord(entity); }
       catch (error) { reportVisualWarning(options, '[visualOverrides] admission stand-in lookup failed', error); }
-      visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord);
+      visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord,
+        requiredWholeShip
+          ? null
+          : () => {
+            const fallback = fallbackBuild(entity);
+            configureTransparentSinglePassSurfaces(fallback);
+            return fallback;
+          });
     } else if (isWorldPlaceProp(entity)) {
       const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
         ? fallbackBuild(entity)

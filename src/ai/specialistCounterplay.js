@@ -27,6 +27,7 @@
 // the recovery, so every bite is preceded by a visible wind-up and a full re-approach.
 import { specialistPlanByEnemyId } from './specialistPlans.js';
 import { wrapAngle } from './contracts.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 
 const CUT_COOLDOWN_TICKS = 90;
 const DISRUPT_COOLDOWN_TICKS = 120;
@@ -60,6 +61,24 @@ function enemyTypeId(entity) {
   return (data && (data.lootTableId || data.enemyTypeId)) || null;
 }
 
+// Warden membership is spawn-fixed — enemyTypeId is stamped on the spec before the entity
+// enters the index — so the roster latches on the entity-index version instead of walking
+// the whole map per routed hit. Volatile gates (alive/pos/team/distance) still run per call.
+const _wardRoster = { version: null, source: null, list: [] };
+function wardRosterFor(state) {
+  const version = entityIndexVersion(state);
+  const cache = _wardRoster;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    for (const e of shipsOf(state)) {
+      if (e && enemyTypeId(e) === WARD_ID) cache.list.push(e);
+    }
+  }
+  return cache.list;
+}
+
 /** Distance from a point to the segment AB, in the XZ plane. */
 export function pointSegmentDistance(point, a, b) {
   if (!point || !a || !b) return Infinity;
@@ -91,9 +110,8 @@ export function wardScreenTarget(state, attacker, target, origin) {
   if (enemyTypeId(target) === WARD_ID) return null;
   let best = null;
   let bestDist = Infinity;
-  for (const ent of shipsOf(state)) {
+  for (const ent of wardRosterFor(state)) {
     if (!ent || ent.alive === false || !ent.pos || ent.id === target.id) continue;
-    if (enemyTypeId(ent) !== WARD_ID) continue;
     if (target.team == null || ent.team !== target.team) continue;
     const radius = finite(ent.collisionRadius, 21) + 6;
     const dist = pointSegmentDistance(ent.pos, attacker.pos, target.pos);

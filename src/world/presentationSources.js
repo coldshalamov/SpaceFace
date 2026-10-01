@@ -20,6 +20,7 @@ import {
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+import { itineraryPositionInto } from './worldCatchup.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 
 const _farPromoteScratch = [];
@@ -44,6 +45,26 @@ export function isPresentationLedgerRow(entity) {
     || entity.fieldResident === true
     || entity.dressingResident === true
   ));
+}
+
+// Shelf-time pos for dormant ledger rows freezes at shelf; the sim's own freshness sweep
+// catches them up the same way — itinerary when the row carries an intent, ballistic
+// otherwise. Returns a shared scratch — callers must consume it before the next call.
+const _ledgerPredPos = { x: 0, z: 0 };
+export function ledgerAwarePos(entity, state) {
+  if (!isPresentationLedgerRow(entity) || !Number.isFinite(entity.lastExactT)) return entity.pos;
+  const simTime = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : ((state && state.tick) | 0) / 60;
+  const drift = Math.max(0, simTime - entity.lastExactT);
+  if (!(drift > 0)) return entity.pos;
+  if (entity.intent) {
+    const along = itineraryPositionInto(entity.intent, simTime, _ledgerPredPos);
+    if (along) return along;
+  }
+  _ledgerPredPos.x = (Number(entity.pos.x) || 0) + (Number(entity.vel && entity.vel.x) || 0) * drift;
+  _ledgerPredPos.z = (Number(entity.pos.z) || 0) + (Number(entity.vel && entity.vel.z) || 0) * drift;
+  return _ledgerPredPos;
 }
 
 export function resolveWorldPresentationEntity(state, id) {
@@ -323,34 +344,43 @@ const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
  * schedule/packages/swarm roster only (no dummy catalog). Silhouette matters:
  * wasp_swarmer decodes ashline_dart, not wasp_production.
  */
-export function enemyHullDecodeKey(enemyId) {
+export function enemyHullDecodeKey(enemyId, factionId = null, trafficRole = null) {
   if (typeof enemyId !== 'string' || enemyId.length === 0) return null;
   const def = ENEMY_BY_ID.get(enemyId);
   if (!def || typeof def.shipId !== 'string' || !def.shipId) return null;
   const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
-  const token = `${def.shipId}|${silhouette}`;
+  const faction = typeof factionId === 'string' && factionId ? factionId : null;
+  const role = typeof trafficRole === 'string' && trafficRole ? trafficRole : null;
+  // Faction kits swap the resolved whole-ship file (applyFactionWholeShipKit), and wasp kits
+  // additionally gate on the traffic role — both axes must separate the decode key or one
+  // squad's warm silently covers a different livery.
+  const token = `${def.shipId}|${silhouette}`
+    + (faction ? `|f:${faction}` : '')
+    + (role ? `|r:${role}` : '');
   return Object.freeze({
     defId: def.shipId,
     silhouette,
     enemyId,
+    factionId: faction,
+    trafficRole: role,
     key: token,
   });
 }
 
 export function collectWaveHullDecodeKeys(plan) {
   const keys = new Map();
-  const takeEnemy = (enemyId) => {
-    const key = enemyHullDecodeKey(enemyId);
+  const takeEnemy = (entry) => {
+    const key = entry && enemyHullDecodeKey(entry.enemyId, entry.factionId, entry.trafficRole);
     if (!key || keys.has(key.key)) return;
     keys.set(key.key, key);
   };
   if (!plan || plan.ok === false) return [];
   const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];
-  for (const entry of schedule) takeEnemy(entry && entry.enemyId);
+  for (const entry of schedule) takeEnemy(entry);
   const packages = Array.isArray(plan.packages) ? plan.packages : [];
-  for (const pkg of packages) takeEnemy(pkg && pkg.enemyId);
+  for (const pkg of packages) takeEnemy(pkg);
   const swarmRoster = plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
-  for (const entry of swarmRoster) takeEnemy(entry && entry.enemyId);
+  for (const entry of swarmRoster) takeEnemy(entry);
   return [...keys.values()];
 }
 
@@ -360,10 +390,20 @@ export function makeWaveHullDecodeStub(hullKey) {
   const silhouette = typeof hullKey.silhouette === 'string' ? hullKey.silhouette : '';
   const data = { defId: hullKey.defId };
   if (silhouette) data.silhouette = silhouette;
+  // Live spawns resolve whole ships by lootTableId before silhouette — carry the enemy id so
+  // the stub's authoredPreloadPlan follows the same selection.
+  if (typeof hullKey.enemyId === 'string' && hullKey.enemyId) data.lootTableId = hullKey.enemyId;
+  // Faction kits swap both the hull file and the 'place'-slot kill hulk
+  // (applyFactionWholeShipKit / hulkPackagedFileForEntity) — the stub must carry the squad's
+  // faction and traffic role or every warm resolves the un-kitted file.
+  if (typeof hullKey.factionId === 'string' && hullKey.factionId) data.factionId = hullKey.factionId;
+  if (typeof hullKey.trafficRole === 'string' && hullKey.trafficRole) data.trafficRole = hullKey.trafficRole;
   return {
     id: `wave-hull-decode:${hullKey.key || hullKey.defId}`,
     type: 'ship',
     alive: true,
+    factionId: typeof hullKey.factionId === 'string' && hullKey.factionId
+      ? hullKey.factionId : null,
     pos: { x: 0, z: 0 },
     data,
   };

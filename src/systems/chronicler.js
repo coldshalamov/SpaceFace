@@ -7,7 +7,7 @@ import { FACT_EVENTS, configFor, freshMemory, clone, finite, increment } from '.
 import { normalizeFact } from '../chronicler/normalize.js';
 import { ingestBatch, resolveLineage, pruneMemory } from '../chronicler/ledger.js';
 import { buildStoryView, semanticSignature, rankViews, recallText } from '../chronicler/narrative.js';
-import { restoreMemory } from '../chronicler/persistence.js';
+import { restoreMemory, restoreMemoryChunked } from '../chronicler/persistence.js';
 import { createChroniclerVoiceBridge } from '../chronicler/voiceBridge.js';
 
 function priority(f) {
@@ -41,6 +41,8 @@ export function createChronicler(options = {}) {
   const shouldObserve = typeof options.shouldObserve === 'function' ? options.shouldObserve : () => true;
   return {
     name: 'chronicler',
+    // serialize() returns clone(this._memory) — already fully owned.
+    saveSnapshotOwned: true,
     init(ctx) {
       if (!ctx?.state || !ctx.bus || typeof ctx.bus.on !== 'function' || typeof ctx.bus.emit !== 'function') {
         throw new TypeError('Chronicler.init requires { state, bus }');
@@ -329,10 +331,18 @@ export function createChronicler(options = {}) {
     },
     serialize() { return this._memory ? clone(this._memory) : null; },
     deserialize(data) {
-      if (!this._state) throw new Error('Initialize Chronicler before deserialize');
-      const candidate = restoreMemory(data, defaults, this._state.simTime);
-      this._adopt(candidate); this._clockBlocked = false;
+      for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
       return true;
+    },
+
+    // Generator twin so the async restore lane can paint inside the archive validation —
+    // a long campaign's pending/stories/profiles/legends walk is one atomic span otherwise.
+    *deserializeChunked(data) {
+      if (!this._state) throw new Error('Initialize Chronicler before deserialize');
+      const inner = restoreMemoryChunked(data, defaults, this._state.simTime);
+      let candidate;
+      for (const r of inner) { candidate = r; yield 'chronicler-memory-section'; }
+      this._adopt(candidate); this._clockBlocked = false;
     },
     newGame() {
       if (!this._state) return;

@@ -51,6 +51,34 @@ export function collectLocalSharedStoreKeys(storage = globalThis.localStorage) {
   return keys;
 }
 
+// Same collect, chunked: on a mature profile the getItem materialization is a multi-MB
+// main-thread stretch, so the boot-window collect yields the task queue every `chunkKeys`
+// shared keys instead of holding one uninterruptible task.
+export async function collectLocalSharedStoreKeysChunked(storage = globalThis.localStorage, options = {}) {
+  const keys = {};
+  if (!storage || typeof storage.key !== 'function' || typeof storage.getItem !== 'function') {
+    return keys;
+  }
+  const chunkKeys = Number.isFinite(options.chunkKeys) && options.chunkKeys > 0
+    ? Math.floor(options.chunkKeys) : 16;
+  const yieldQueue = typeof options.yieldQueue === 'function' ? options.yieldQueue : null;
+  try {
+    let sinceYield = 0;
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (!isSharedPlayerStoreKey(key)) continue;
+      keys[key] = storage.getItem(key);
+      if (yieldQueue && ++sinceYield >= chunkKeys) {
+        sinceYield = 0;
+        await yieldQueue();
+      }
+    }
+  } catch {
+    // localStorage scans are best-effort
+  }
+  return keys;
+}
+
 // Both stamp fields serialize within the envelope head (fmt, version, then savedAt), so a
 // bounded scan over the first bytes answers the merge's only question without materializing a
 // multi-MB parse per blob. Anything the head doesn't explain falls back to the full parse.

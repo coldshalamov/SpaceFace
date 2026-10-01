@@ -458,6 +458,13 @@ export const fields = {
       deployed:rt.deployed,anchored:rt.anchored,npcFields:rt.npcFields,hitches:rt.hitches,cooldowns:rt.cooldowns};
   },
   deserialize(raw,remap=new Map()) {
+    for (const _ of this.deserializeChunked(raw, remap)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between kernel/hitch/NPC sections —
+  // a mature deploy ledger is the heavy stretch on this path. Yields sit only at section
+  // boundaries; the register order is the sync lane's, so the run stays bit-identical.
+  *deserializeChunked(raw,remap=new Map()) {
     this._restoredOnLoad=false;
     if(raw?.revision!==1||!Array.isArray(raw.fields))return;
     const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
@@ -468,6 +475,7 @@ export const fields = {
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     this._orbitScanned = false;
     this._seedLockFieldId = null;
+    let restored = 0;
     for(const saved of raw.fields.slice(0,32)) {
       const f=structuredClone(saved);
       // Legacy saves may carry orbit_node entries — poses are recomputed from the
@@ -481,8 +489,11 @@ export const fields = {
       const d=raw.deployed?.[f.id];
       if(d&&this.state.entities.get(mapped(d.emitterId)))rt.deployed[f.id]={...d,emitterId:mapped(d.emitterId),expireAt:d.expireAt??Infinity};
       const a=raw.anchored?.[f.id];if(a)rt.anchored[f.id]={...a,sourceId:mapped(a.sourceId)};
+      if (++restored % 8 === 0) yield 'fields-kernel-batch';
     }
+    yield 'fields-kernel';
     for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId)};}
+    yield 'fields-hitches';
     // NPC cone recs are id-keyed mirror state for kernel fields already restored
     // above — without them the field lives on as an orphan nobody retires.
     for(const [sid,rec] of Object.entries(raw.npcFields??{})){if(rec&&this._kernel.has(rec.fieldId))rt.npcFields[mapped(sid)]={...rec,sourceId:mapped(rec.sourceId??sid)};}

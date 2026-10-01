@@ -1178,7 +1178,11 @@ export function serializeJob(job) {
   // route array of plain {id,pos:{x,z}} objects).
   if (rest.payload !== null && rest.payload !== undefined && !isJSONSafe(rest.payload)) {
     rest.payload = null;
-    if (Array.isArray(rest.healed)) rest.healed.push('payload:not-json-safe-at-serialize');
+    // `rest` shallow-spreads `job` — push on a fresh array or the marker lands in live state
+    // and repeats on every subsequent serialize of the same job.
+    if (Array.isArray(rest.healed)) {
+      rest.healed = [...rest.healed, 'payload:not-json-safe-at-serialize'];
+    }
   }
   const out = JSON.parse(JSON.stringify(rest));
   out.schema = NPC_JOB_SCHEMA;

@@ -13,7 +13,8 @@ import {
   tableLookAtDelta,
   tablePrefetchZoomFromState,
 } from './tabletopPolicy.js';
-import { entityPresenceRadius } from '../world/activityClassification.js';
+import { ledgerAwarePos } from '../world/presentationSources.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
@@ -107,7 +108,9 @@ const _openingFrameDelta = { x: 0, z: 0 };
  */
 export function openingFrameAdmissionPriority(entity, liveState) {
   if (!entity || entity.alive === false || !liveState) return null;
-  const pos = entity.pos;
+  // Dormant ledger rows freeze pos at shelf — the verdict must read the ballistic/itinerary
+  // projection the renderer's own glass test uses, or an inbound row misclassifies.
+  const pos = ledgerAwarePos(entity, liveState) || entity.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
   const camera = liveState.camera || {};
   const live = Number(camera.liveZoom);
@@ -137,10 +140,13 @@ export function openingFrameAdmissionPriority(entity, liveState) {
     pos,
     _openingFrameDelta,
   );
+  // Grade the stamped drawn envelope, not the collider: a pending boundary whose authored
+  // body draws 2-8x its presence radius belongs to glass while its envelope is on-glass,
+  // and unstamped entities classify at presence exactly as before.
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
-    radius: entityPresenceRadius(entity),
+    radius: entityVisualCullRadius(entity, entity.mesh),
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: 0,
@@ -203,7 +209,7 @@ export function survivalDefersArenaDressingJob(entity, liveState) {
   if (!run || run.kind !== 'survival' || !run.phase || run.phase === 'inactive') return false;
   if (!entity || entity.alive === false || entity.isPlayer === true) return false;
   if (!SURVIVAL_DEFERRED_DRESSING_TYPES.has(entity.type)) return false;
-  const pos = entity.pos;
+  const pos = ledgerAwarePos(entity, liveState) || entity.pos;
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
   // Until the camera has composed a single frame nothing is provably off the glass — early cook
   // sweeps admit normally and the combatant rung keeps that work behind the fight.
@@ -225,7 +231,7 @@ export function survivalDefersArenaDressingJob(entity, liveState) {
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
-    radius: entityPresenceRadius(entity),
+    radius: entityVisualCullRadius(entity, entity.mesh),
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: TABLE_FRAME_SKIRT_WU,

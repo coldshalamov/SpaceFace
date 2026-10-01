@@ -138,6 +138,18 @@ export function createAssetResidencyRegistry(options = {}) {
     else releasedPrimitiveOwners.add(owner);
   }
 
+  // Admission intent revives an owner: authored boundaries re-admit after a readmission marker
+  // (stall abort, owner-inactive keep) and a permanently-released mark would kill every request
+  // the fresh epoch mints. The old state was already torn down by cleanupOwnerState on release,
+  // so revival is just letting the next ownerState() rebuild it fresh.
+  function reviveOwner(owner) {
+    if (owner == null) return;
+    if (typeof owner === 'object' || typeof owner === 'function') releasedObjectOwners.delete(owner);
+    else releasedPrimitiveOwners.delete(owner);
+    const state = owners.get(owner);
+    if (state) state.released = false;
+  }
+
   function registerAsset(key, gpuResources, registration = {}) {
     const exactKey = String(key || '');
     if (!exactKey) throw new Error('Asset residency registration requires a stable key.');
@@ -224,7 +236,18 @@ export function createAssetResidencyRegistry(options = {}) {
     const entry = assets.get(String(key || ''));
     if (!entry || entry.state !== 'resident' || owner == null) return false;
     const state = ownerState(owner);
-    if (!state || state.released || entry.owners.has(owner)) return false;
+    if (!state || state.released) return false;
+    const existingMetadata = entry.owners.get(owner);
+    if (existingMetadata) {
+      // A warm-decode lease upgraded by a later boundary-scoped serve: observed demand outranks
+      // untouched speculation in the soft-eviction sort, and merging in place keeps the shared
+      // decode/package-cache lease honest without a release/re-retain bounce between sweeps.
+      if (existingMetadata.decodeWarm === true && metadata.decodeServed === true) {
+        existingMetadata.decodeWarm = false;
+        existingMetadata.decodeServed = true;
+      }
+      return false;
+    }
     const ownerMetadata = { ...metadata };
     if (ownerMetadata.presentationTier) {
       ownerMetadata.presentationTier = String(ownerMetadata.presentationTier);
@@ -423,6 +446,7 @@ export function createAssetResidencyRegistry(options = {}) {
   // stage keeps its decode warm across an undock-to-redock gap, but under byte pressure its
   // oldest-idle entries release like any cache owner — the loader re-decodes on next touch.
   function isSoftResidencyOwner(metadata) {
+    if (metadata && metadata.softLease === true) return true;
     return isRenderPackageCacheOwner(metadata)
       || String(metadata && metadata.role || '').trim().toLowerCase() === 'runtime-cache';
   }
@@ -450,9 +474,25 @@ export function createAssetResidencyRegistry(options = {}) {
     return false;
   }
 
+  // A served lease marks a body a live boundary actually admitted — observed demand. Its
+  // cache-only residue earns the same idle-sweep immunity as warm speculation, and under byte
+  // pressure it outranks warm: a body that was drawn once is the stronger return-visit signal.
+  function hasServedDecodeLease(entry) {
+    for (const metadata of entry.owners.values()) {
+      if (metadata && metadata.decodeServed === true) return true;
+    }
+    return false;
+  }
+
+  function softEvictionLeaseWeight(entry) {
+    if (hasServedDecodeLease(entry)) return 2;
+    if (hasWarmDecodeLease(entry)) return 1;
+    return 0;
+  }
+
   function sortSoftEvictionCandidates(candidates) {
     candidates.sort((a, b) => (
-      (hasWarmDecodeLease(a) ? 1 : 0) - (hasWarmDecodeLease(b) ? 1 : 0)
+      softEvictionLeaseWeight(a) - softEvictionLeaseWeight(b)
         || a.lastReleaseAtMs - b.lastReleaseAtMs
     ));
   }
@@ -585,6 +625,15 @@ export function createAssetResidencyRegistry(options = {}) {
         continue;
       }
       if (minAgeMs > 0 && nowMs - entry.lastReleaseAtMs < minAgeMs) {
+        if (maxCacheOnlyBytes != null) budgetCandidates.push(entry);
+        continue;
+      }
+      // A warm-decode lease still claims this entry for an inbound approach: sweeping it at the
+      // idle bound makes the residency poll re-decode the same file every ~30s. A served lease
+      // is the same claim with observed demand behind it — the return visit re-decodes inside
+      // the admission lane and the body pops late. Both stay byte-capped by the
+      // maxCacheOnlyBytes budget path below, so nothing grows unbound.
+      if (hasWarmDecodeLease(entry) || hasServedDecodeLease(entry)) {
         if (maxCacheOnlyBytes != null) budgetCandidates.push(entry);
         continue;
       }
@@ -1048,6 +1097,7 @@ export function createAssetResidencyRegistry(options = {}) {
     beginRequest,
     release,
     releaseOwner,
+    reviveOwner,
     releaseDetachedBoundaryOwners,
     releaseUnreferencedCacheOwners,
     handoffOwnerWhenCovered,
