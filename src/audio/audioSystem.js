@@ -1087,6 +1087,20 @@ export const UNIQUE_LOOT_CUES = Object.freeze({
 // INST-32. A revealed build is the scan-resolve voice, once per target.
 export const BUILD_IDENTITY_REVEAL_CUE = 'sfx_scan_pulse';
 
+// ECON-03: Failed trade audible refusal with captioned reason.
+export const TRADE_REFUSAL_CAPTIONS = Object.freeze({
+  credits: 'Insufficient Credits',
+  cargo_full: 'Hold Full',
+  no_cargo: 'No Cargo',
+  mission_cargo_locked: 'Contract Cargo Locked',
+  black_market_locked: 'Den Locked',
+  no_stock: 'Out of Stock',
+  tier_unavailable: 'Tier Unavailable',
+  contamination_refusal: 'Quarantine Refusal',
+  price_changed: 'Price Changed',
+  not_docked: 'Not Docked',
+});
+
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'moment.stinger': 'sfx_moment_stinger',
@@ -1962,6 +1976,7 @@ export const audio = {
     });
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
+    bus.on('economy:tradeFailed', (p) => this._onTradeFailed(p));
     // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
     // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick,
     // but only on routes where jettisonImpulse's own audio:cue is flag-gated OFF; with the flag on
@@ -4816,6 +4831,14 @@ export const audio = {
     if (heard.has(key)) return;
     heard.add(key);
     this.play(BUILD_IDENTITY_REVEAL_CUE, { gain: 0.45 });
+  },
+
+  _onTradeFailed(payload) {
+    this.play('sfx_ui_error', { gain: 0.65 });
+    const reason = payload && payload.reason;
+    const caption = TRADE_REFUSAL_CAPTIONS[reason]
+      || (typeof reason === 'string' ? reason.replace(/_/g, ' ').toUpperCase() : 'Trade Refused');
+    this._emitPresentationCaption(caption, { assertive: true, shape: 'arc' });
   },
 
   // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
