@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5bd8a09280378a7cbb66e6f9e5bf2950ed6f270013a27d7ce266e76441ac6194",
+  "contentHash": "4bad87847c66db72277f38d18a0e0a199c1df966d1c1831a4c8e564e76e7506b",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ea8bf623d3d4ee96d697bc320141193ae54810cc082d691368a679f7ce552cd",
+      "geometryHash": "0fd694d051cd2aa93576bab830aa5273fdfcdf7747a76bbf04281ea4454a4c3d",
       "id": "sf.render.yard-tug.node.lod0-armor.primitive.0",
       "indexCount": 32280,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d60e2817fdf3c56150629cc6670248113be7dbf920c93fbbec4f6bd317755c4b",
+      "geometryHash": "375c95301bf1830ed9d22aa0866de0b17cd48b481689749e05a364ad3e299fdb",
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -1348,7 +1348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c264734cca0ac5717d2723b62a5ef37a3fe05b6d307c3998909fccb2bffdd3ba",
+      "geometryHash": "0b635856b62b513db4fe0250f20748c062aa3a828fe53cfd6d5dd207e56e49c1",
       "id": "sf.render.yard-tug.node.lod1-armor.primitive.0",
       "indexCount": 8757,
       "indexed": true,
@@ -1412,18 +1412,18 @@
     {
       "bounds": {
         "max": [
-          -6.414230823516846,
-          2.8482757707603623,
-          -1.2511534339326504
+          -6.414133548736572,
+          2.8482554041513843,
+          -1.2509745596042139
         ],
         "min": [
-          -8.785764694213867,
-          1.1018506387702771,
-          -1.5499202364546176
+          -8.785612106323242,
+          1.1018710053792553,
+          -1.5500238897213476
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8175d69c321a9737343f00199809a2560d6b9a62555d323323fe5446d9ab6825",
+      "geometryHash": "7013ae36ed6262794733cb922e6b29c504dff7847558c9bacfad0195ded6c443",
       "id": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1432,7 +1432,7 @@
       "meshName": "LOD1_HOOK_ARMOR_WINCH_Armor",
       "nodeId": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor",
       "primitiveIndex": 0,
-      "vertexCount": 81
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -1948,7 +1948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60cddbd1b52161724553ff2b81ce1d1313b0016c8d1a5427156ae3f2f4bbd95c",
+      "geometryHash": "754fd0267002d57e5d59bf3408deea194d6eba83c5540068e4fcb6b389525d93",
       "id": "sf.render.yard-tug.node.lod2-armor.primitive.0",
       "indexCount": 4818,
       "indexed": true,
@@ -2012,18 +2012,18 @@
     {
       "bounds": {
         "max": [
-          -6.412871837615967,
-          2.8440364179592432,
-          -1.253417961983153
+          -6.412720203399658,
+          2.844038163223698,
+          -1.253252596833626
         ],
         "min": [
-          -8.78718090057373,
-          1.1060018959064184,
-          -1.5499258109050307
+          -8.787034034729004,
+          1.1060001506419637,
+          -1.5500508833146893
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e13f9d8ce199cf51692e57f3f12980f81ecf3e033a29d13423423b274949670",
+      "geometryHash": "1ec7077fbf357208cb8409525dc163fa5ef78608bece312c438a49e0ba165716",
       "id": "sf.render.yard-tug.node.lod2-hook-armor-winch-armor.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -4115,21 +4115,21 @@
     {
       "id": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor",
       "localTransform": [
-        1.1857669353485107,
+        1.185739278793335,
         0,
         0,
         0,
         0,
-        1.1857669353485107,
+        1.185739278793335,
         0,
         0,
         0,
         0,
-        1.1857669353485107,
+        1.185739278793335,
         0,
-        -7.5999977588653564,
+        -7.599872827529907,
         1.9750632047653198,
-        -1.400536835193634,
+        -1.4004992246627808,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4143,21 +4143,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.yard-tug.body",
       "worldTransform": [
-        1.1857669353485107,
+        1.185739278793335,
         0,
         0,
         0,
         0,
-        1.1857669353485107,
+        1.185739278793335,
         0,
         0,
         0,
         0,
-        1.1857669353485107,
+        1.185739278793335,
         0,
-        -7.5999977588653564,
+        -7.599872827529907,
         1.9750632047653198,
-        -1.400536835193634,
+        -1.4004992246627808,
         1
       ]
     },
@@ -5299,21 +5299,21 @@
     {
       "id": "sf.render.yard-tug.node.lod2-hook-armor-winch-armor",
       "localTransform": [
-        1.1871545314788818,
+        1.1871569156646729,
         0,
         0,
         0,
         0,
-        1.1871545314788818,
+        1.1871569156646729,
         0,
         0,
         0,
         0,
-        1.1871545314788818,
+        1.1871569156646729,
         0,
-        -7.600026369094849,
+        -7.599877119064331,
         1.9750191569328308,
-        -1.4016718864440918,
+        -1.4016517400741577,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5327,21 +5327,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.yard-tug.body",
       "worldTransform": [
-        1.1871545314788818,
+        1.1871569156646729,
         0,
         0,
         0,
         0,
-        1.1871545314788818,
+        1.1871569156646729,
         0,
         0,
         0,
         0,
-        1.1871545314788818,
+        1.1871569156646729,
         0,
-        -7.600026369094849,
+        -7.599877119064331,
         1.9750191569328308,
-        -1.4016718864440918,
+        -1.4016517400741577,
         1
       ]
     },
@@ -7024,19 +7024,19 @@
       "sha256": "6425016bef3ddcb1179c0dd08cb367ea784bcc27adbc00650d345a8036985322"
     },
     "sourceGlb": {
-      "bytes": 1350744,
-      "sha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
+      "bytes": 1350780,
+      "sha256": "ef15f2d8d6ddf8273e4fa5c62683377551894969ad7a0b172fdb7ada913ad320",
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "d3b2da47a085a238cf499c96bb3d0582f565db9dc3ff89230b66aad58db65be8",
+      "sha256": "5dfa8b6c5d74b983c6c9894307cb7866e0cc6182f27782aff0c27741b4656a59",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2523448,
-    "sha256": "88f44db5ae2014f40ddc705bf620c53ce49bfa8845fc3927fdac8768ffa4df1a",
+    "bytes": 2523360,
+    "sha256": "84e2267f04219cc484322b4cc6a16f8802b7280aec3e92abc59a12a5bfcf5d9b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8801,21 +8801,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.1857669353485107,
+          1.185739278793335,
           0,
           0,
           0,
           0,
-          1.1857669353485107,
+          1.185739278793335,
           0,
           0,
           0,
           0,
-          1.1857669353485107,
+          1.185739278793335,
           0,
-          -7.5999977588653564,
+          -7.599872827529907,
           1.9750632047653198,
-          -1.400536835193634,
+          -1.4004992246627808,
           1
         ],
         "name": "LOD1_HOOK_ARMOR_WINCH_Armor",
@@ -9258,21 +9258,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.1871545314788818,
+          1.1871569156646729,
           0,
           0,
           0,
           0,
-          1.1871545314788818,
+          1.1871569156646729,
           0,
           0,
           0,
           0,
-          1.1871545314788818,
+          1.1871569156646729,
           0,
-          -7.600026369094849,
+          -7.599877119064331,
           1.9750191569328308,
-          -1.4016718864440918,
+          -1.4016517400741577,
           1
         ],
         "name": "LOD2_HOOK_ARMOR_WINCH_Armor",
@@ -10261,7 +10261,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "2c1d06264f949da73b5d3eea29f20f36d64141d77eb765e9e7a0e80a677fb31a",
+  "runtimeHash": "7235fa29fc0d9d6d4dfe165417cef888c456c6558a3a7e0677fe26fc5bc6ff0f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

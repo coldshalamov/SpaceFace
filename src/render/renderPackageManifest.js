@@ -322,12 +322,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fab",
-    "expectedContentHash": "a460ce0c5aad2e81d084f6979fc2ebdbb1c5630c9db50979cea639d19749ff00",
+    "expectedContentHash": "7aeddc80ee70eb75cc9807984ca0ddcea6848ec5c4c1fba023542553f3a6260c",
     "key": "fab",
     "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_FAB",
     "slot": "place",
-    "sourceSha256": "e572fe1074600bb94644d3f843ce4bf810b0d475e4d238a41f3bb384ba9bbfad",
+    "sourceSha256": "21cdc89c2bc3ff4fe524f02622a93dbf1b5da2c36db1fa5348a756595af94517",
     "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb"
   },
   {
@@ -684,12 +684,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.jump-ring",
-    "expectedContentHash": "5f3a184fece48930da72a0c5b40c5625e6013f846be8a0b12d21e064beff3219",
+    "expectedContentHash": "a14f5b4b22c4eeaf88d605f0707e92ddfcb1555b38ff5bfedfbb2715409c63d1",
     "key": "jump-ring",
     "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json",
     "runtimeAssetId": "SF_PLACE_GATE_JUMP_RING",
     "slot": "place",
-    "sourceSha256": "dc3a76db4faf1b032bfe3ce026c18b6db5aa93aba976ab5a693905a21e52ded7",
+    "sourceSha256": "30ba09fc86d703703def0ad6891511115e8be53e6cf9f9197f327d4fbe6a9e10",
     "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
   {
@@ -944,12 +944,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.salvage-cutter",
-    "expectedContentHash": "43fe4a0ac3896481545a8bb4de0411b322cd8a1a1e4606109402714bfcf43ab7",
+    "expectedContentHash": "efd66e0666f645840ae77ed3f4cf7ff9dd9a6a19ea39a6018bee2d38d20c7bf4",
     "key": "salvage-cutter",
     "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
     "slot": "hull",
-    "sourceSha256": "dae478197eda03c9b5d07c5ec9fc25a05945ef87c7f6420ee12f4b1086f86335",
+    "sourceSha256": "a5584a407f6e1cce8f3af4262d8c404cc301e0e60cbdf88c268eafdaecb633ab",
     "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
   {
@@ -1374,12 +1374,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.yard-tug",
-    "expectedContentHash": "5bd8a09280378a7cbb66e6f9e5bf2950ed6f270013a27d7ce266e76441ac6194",
+    "expectedContentHash": "4bad87847c66db72277f38d18a0e0a199c1df966d1c1831a4c8e564e76e7506b",
     "key": "yard-tug",
     "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_YARD_TUG",
     "slot": "hull",
-    "sourceSha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
+    "sourceSha256": "ef15f2d8d6ddf8273e4fa5c62683377551894969ad7a0b172fdb7ada913ad320",
     "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
   {

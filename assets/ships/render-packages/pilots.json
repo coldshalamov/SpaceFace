@@ -629,8 +629,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_fab",
       "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb",
-      "releaseSha256": "e572fe1074600bb94644d3f843ce4bf810b0d475e4d238a41f3bb384ba9bbfad",
-      "releaseBytes": 1679584,
+      "releaseSha256": "21cdc89c2bc3ff4fe524f02622a93dbf1b5da2c36db1fa5348a756595af94517",
+      "releaseBytes": 1679748,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1247,8 +1247,8 @@
       "slot": "place",
       "releaseAssetId": "place_gate_jump_ring",
       "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-      "releaseSha256": "dc3a76db4faf1b032bfe3ce026c18b6db5aa93aba976ab5a693905a21e52ded7",
-      "releaseBytes": 1965148,
+      "releaseSha256": "30ba09fc86d703703def0ad6891511115e8be53e6cf9f9197f327d4fbe6a9e10",
+      "releaseBytes": 1962512,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1781,8 +1781,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_salvage_cutter",
       "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
-      "releaseSha256": "dae478197eda03c9b5d07c5ec9fc25a05945ef87c7f6420ee12f4b1086f86335",
-      "releaseBytes": 983096,
+      "releaseSha256": "a5584a407f6e1cce8f3af4262d8c404cc301e0e60cbdf88c268eafdaecb633ab",
+      "releaseBytes": 983104,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -2510,8 +2510,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_yard_tug",
       "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "releaseSha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
-      "releaseBytes": 1350744,
+      "releaseSha256": "ef15f2d8d6ddf8273e4fa5c62683377551894969ad7a0b172fdb7ada913ad320",
+      "releaseBytes": 1350780,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
