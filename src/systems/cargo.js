@@ -85,6 +85,7 @@ export function isPersistentCargo(state, commodityId) {
  */
 export function isUnsellableCargo(state, commodityId) {
   if (isPersistentCargo(state, commodityId)) return true;
+  if (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId)) return true;
   const active = state && state.missions && state.missions.active;
   if (!Array.isArray(active)) return false;
   for (const m of active) {

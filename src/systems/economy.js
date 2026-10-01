@@ -1451,6 +1451,7 @@ export const economy = {
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
     const allowContraband = toleratesContraband(info);
+    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
 
     const market = {};
     for (const def of COMMODITIES) {
@@ -1466,6 +1467,11 @@ export const economy = {
       // noMarketSeed goods exist only as player-brought stock (cradled specimens, one-off
       // recoveries): the station mints a neutral listing on first quote instead of seeding one.
       if (def.noMarketSeed === true) continue;
+      // High-tier commodities do not seed naturally at lower-tier stations: starter markets do not
+      // stock goods that only exist deeper in the world. If the player brings one, mintUnseededListing
+      // creates a liquidation listing so they can still sell it.
+      const marketTier = Math.max(0, Number(def.marketTier) || 0);
+      if (marketTier > stationTier) continue;
       // 'none'-role goods have no produce/consume pull, so drift them toward a neutral baseEq stock
       // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
       // role-driven surplus/shortage targets so A->B routes stay profitable.
@@ -1678,8 +1684,11 @@ export const economy = {
     let entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
     if (!def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+    const info = stationInfo(state, stationId);
+    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
+    const marketTier = Math.max(0, Number(def.marketTier) || 0);
     if (!entry) {
-      if (def.noMarketSeed !== true) {
+      if (def.noMarketSeed !== true && marketTier <= stationTier) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
       entry = this.mintUnseededListing(stationId, def);
@@ -1691,7 +1700,6 @@ export const economy = {
         priceImpactPct: 0, stockAfter: entry.stock,
       };
     }
-    const info = stationInfo(state, stationId);
     // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
     // custody refusal, not a price. Recomputed listings still carry the policy driver as the
     // explanation; execution and automation intake both flow through this quote gate.
@@ -1710,8 +1718,6 @@ export const economy = {
       }
     }
     const standing = priceModForState(state, info && info.factionId);
-    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
-    const marketTier = Math.max(0, Number(def.marketTier) || 0);
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
