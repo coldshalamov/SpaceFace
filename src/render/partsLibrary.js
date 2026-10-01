@@ -2313,6 +2313,9 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
   boundary.userData.authoredVisualRoot = 'none-pending-admission';
   boundary.userData.authoredReadmissionReason = reason || 'owner-inactive';
   delete boundary.userData.authoredUpgradePromise;
+  // The orphaned job's publish hook survives its own settle — drop it too, or the abandoned
+  // body's staged publish suppresses the replacement admission the re-request starts.
+  delete boundary.userData.__publishPreparedAuthoredBoundary;
   return true;
 }
 

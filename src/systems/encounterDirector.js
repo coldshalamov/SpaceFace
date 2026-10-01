@@ -1032,9 +1032,20 @@ export const encounterDirector = {
       attackerName: payload.attackerName,
     });
     if (!plan) return;
-    const archetypes = [...new Set(plan.item.ships
-      .map((ship) => ship && ship.archetype)
-      .filter((archetype) => typeof archetype === 'string' && archetype))];
+    // Ship records, not bare archetype strings: kit squads resolve faction-specific hull
+    // and hulk files, so factionId/trafficRole ride the roster for the decode runway.
+    const seen = new Set();
+    const archetypes = [];
+    for (const ship of plan.item.ships) {
+      const archetype = ship && ship.archetype;
+      if (typeof archetype !== 'string' || !archetype) continue;
+      const factionId = ship.factionId || null;
+      const trafficRole = ship.trafficRole || null;
+      const token = `${archetype}|${factionId || ''}|${trafficRole || ''}`;
+      if (seen.has(token)) continue;
+      seen.add(token);
+      archetypes.push({ archetype, factionId, trafficRole });
+    }
     if (!archetypes.length) return;
     this.emit('encounter:claimDefenseRoster', {
       encounterId: payload.encounterId,
