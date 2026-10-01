@@ -97,7 +97,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'fields:hitchLatched': 'sfx_tether_latch_lock',
   'fields:hitchCut': 'sfx_tether_twang',
 
-  'cruise:engaged': 'sfx_engine_boost',
+  'cruise:engaged': SILENT('Cruise engage is the lane-lock voice (travel.cruise.engaged → presentation.travel.lane_lock); a raw boost sting would double it.'),
   'cruise:dropped': SILENT('Dropping cruise is the thrust voice falling back.'),
   'cruise:charging': SILENT('Cruise charge is the thrust voice, not a new sting.'),
   'cruise:snared': 'sfx_hull_scrape',
