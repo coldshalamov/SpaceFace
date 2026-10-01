@@ -37,7 +37,11 @@ function visitArray(list, fn) {
 }
 
 function hasEntityIndex(state) {
-  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1);
+  // Marker+ready, same gate the strict accessors use: repairEntityIndex can reset ready
+  // mid-run, and serving the emptied buckets then would diverge from the entityList domain
+  // the unready readers fall back to.
+  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+    && state.entityIndex.ready === true);
 }
 
 const EMPTY_SHIP_LIKE = [];
@@ -93,7 +97,8 @@ export function indexedTypeScan(state, bucket) {
 /** Incremented on every indexed spawn/remove; a cheap "membership changed" watch for caches. */
 export function entityIndexVersion(state) {
   const index = state && state.entityIndex;
-  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+  return index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Number.isFinite(index.version)
     ? index.version
     : null;
 }

@@ -499,7 +499,10 @@ export function createCombatKernel(ctx, options = {}) {
 
 function combatTickIndexVersion(state) {
   const index = state && state.entityIndex;
-  return index && index.__spacefaceEntityIndexV1 ? (Number(index.version) || 0) : -1;
+  // ready === false means repairEntityIndex is mid-rebuild — the buckets are emptied/stale, so
+  // report the index unusable rather than let readers scan a partial domain entityList covers.
+  return index && index.__spacefaceEntityIndexV1 && index.ready === true
+    ? (Number(index.version) || 0) : -1;
 }
 
 /**

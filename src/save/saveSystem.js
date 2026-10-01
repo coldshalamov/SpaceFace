@@ -1525,6 +1525,9 @@ export const save = {
           ? collected.raws : null;
         const jobs = [];
         for (let i = 0; i < localStorage.length; i++) {
+          // The getItem + fnv1a walk is one synchronous task per write generation — slice it
+          // like the shared-store collect so a multi-MB store can't hitch a menu paint.
+          if (i > 0 && i % 16 === 0) await this._restoreFrameYield();
           const key = localStorage.key(i);
           if (!key || key === INDEX_KEY) continue;
           const isRecovery = key.startsWith(RECOVERY_PREFIX);
@@ -1609,7 +1612,7 @@ export const save = {
       if (typeof raw !== 'string' || !raw) return;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig) return;
-      this._speculativeContinuePrepare = {
+      const spec = this._speculativeContinuePrepare = {
         sig,
         slot,
         // Byte-identity is the staleness test — strictly stronger than the blobHash compare
@@ -1618,6 +1621,20 @@ export const save = {
         raw,
         promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
       };
+      // A prepare that resolves while the menu is still up names the hull/place set the saved
+      // sector will rematerialize — the decode runway can start overlapping dwell time instead
+      // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
+      // still kicks on the real save:envelopePrepared at click, and the click emit's decode
+      // dedupe makes the second pass nearly free.
+      spec.promise.then((prepared) => {
+        try {
+          if (this._speculativeContinuePrepare !== spec) return;
+          if (!prepared || prepared.ok !== true) return;
+          installSaveStoreWriteTracking();
+          if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
+          if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
+        } catch (err) { /* speculative warm is best-effort */ }
+      });
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
   },
 

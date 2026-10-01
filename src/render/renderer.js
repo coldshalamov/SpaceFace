@@ -11655,6 +11655,9 @@ export const render = {
     // the live world; its entity histogram is the only prefetch source that names the saved
     // sector's exact authored set this early.
     onBus('save:envelopePrepared', (p) => this._prefetchSaveEnvelopeVisuals(p));
+    // The speculative Continue prepare resolves during menu dwell — warm the same runway
+    // early; decode-task dedupe makes the click-time envelopePrepared emit nearly free.
+    onBus('save:envelopeSpecPrepared', (p) => this._prefetchSaveEnvelopeVisuals(p));
     // Between-round roster warm: every swarm wave ends in the armory, and the next wave's
     // newcomer set is fixed by its number, so the eligible-minus-covered cohort builds and
     // compiles during the shop dwell rather than inside the launch cook or the next round.

@@ -89,6 +89,7 @@ export async function buildKillcamStage(built, io) {
 
   // -- Ship visuals: one GLB blueprint per hull identity the tape actually carries.
   const visualKeys = new Map(); // key -> { proto, unitScale }
+  const picks = [];
   for (const slotDef of film.ships) {
     const ship = slotDef.ship;
     // Faction kits swap the whole-ship file — the blueprint key must carry the faction so
@@ -107,7 +108,19 @@ export async function buildKillcamStage(built, io) {
     }
     const file = selection && selection.file;
     if (!file) continue;
-    const record = await io.loadPart(file, 'hull');
+    picks.push({ key, file });
+  }
+  // A cold replay serializes one decode per hull inside the death-screen build — fan the
+  // unique-file decodes out two at a time at deadline class instead.
+  const decoded = new Map();
+  for (let i = 0; i < picks.length; i += 2) {
+    const batch = await Promise.all(picks.slice(i, i + 2).map(async ({ key, file }) => (
+      [key, await io.loadPart(file, 'hull', { admissionDeadline: true })]
+    )));
+    for (const [key, record] of batch) decoded.set(key, record);
+  }
+  for (const { key } of picks) {
+    const record = decoded.get(key);
     if (!record) continue;
     const proto = new THREE.Group();
     let span = 0;

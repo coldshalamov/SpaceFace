@@ -667,6 +667,11 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   // the root inside meshNeedsAuthoredDecode so the decode runway warms the file early.
   if (spec.hideImmediately) {
     hideProceduralPropDrawables(root);
+    // The hidden procedural form leaves an invisible seat for the whole admission window —
+    // these props (distress payloads, rescue-exit beacons, the 47-A story props) are
+    // disproportionately navigation targets, so arm the same resolving marker stations and
+    // capsules carry: no substitute identity, detaches at commit.
+    installBoundaryResolvingMarker(root, entity);
   } else {
     root.userData.authoredPendingFallbackDrawn = true;
   }
@@ -788,6 +793,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         disposeDetachedPackagedGroup(packaged);
         return false;
       }
+      detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ

@@ -145,6 +145,9 @@ export function createRenderPackageLoader(options = {}) {
         sectorId: loadOptions.residencySectorId || null,
         decodeWarm,
         decodeServed,
+        // Ownerless warms carry the same soft lease the GLB lane gives them — without it the
+        // session fallback owner makes this package immune to every soft-eviction pass.
+        ...(loadOptions.residencySoftLease === true ? { softLease: true } : {}),
       });
     };
     const existing = cache.get(contentHash);

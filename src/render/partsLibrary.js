@@ -1280,10 +1280,15 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
     if (entity.type === 'ship') {
       let lodLevel = options.lodLevel;
       if (!lodLevel && options.playerPos && entity.pos && entity.isPlayer !== true) {
-        const radius = Number(entity.radius) || 8;
-        const px = (radius / Math.max(entityDeadlineRank, 0.001))
-          * (Number(options.viewportHeight) || 800);
-        lodLevel = selectPrewarmLodLevel(px);
+        lodLevel = 'lod0';
+        // The projection only feeds selectPrewarmLodLevel's pick — which pins 'lod0' while
+        // runtime demotion is off — so spend it only when demotion can answer differently.
+        if (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true) {
+          const radius = Number(entity.radius) || 8;
+          const px = (radius / Math.max(entityDeadlineRank, 0.001))
+            * (Number(options.viewportHeight) || 800);
+          lodLevel = selectPrewarmLodLevel(px);
+        }
       }
       plan = authoredPreloadPlanForEntity(entity, {
         ...options,
@@ -3259,6 +3264,11 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     : (Number.isFinite(poiTargetRadius) && poiTargetRadius > 0 ? poiTargetRadius : null);
   boundary.userData.authoredGeologySkin = geologySkin;
   stampPendingPlaceVisualBounds(boundary, entity);
+  // An empty substrate is no stand-in: while the authored body queues/decodes/compiles the
+  // boundary would draw nothing and pop in at commit. Arm the same resolving marker pending
+  // ships, stations, and capsules carry — it unions into the pending stamp and detaches at
+  // commitAuthoredPlaceBoundary.
+  if (!fallbackHasBody && !geologySkin) installBoundaryResolvingMarker(boundary, entity);
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -7079,6 +7089,14 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
 }
 
 async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, admissionEpoch = null, installedDisposer = null) {
+  // A stall-aborted run keeps executing — promises cannot cancel — and its abandoned
+  // continuation can throw after a fresh epoch committed the boundary. Cleanup legs are
+  // already epoch/identity-guarded; the verdict writes were not: an unguarded mark or
+  // 'unavailable' would overwrite the committed 'authored' state, delete the fresh run's
+  // deferred publish, and drop the live ship off lock lists. Same predicate
+  // releaseBoundaryResidency applies — only the verdict writes are gated, cleanup always runs.
+  const staleRunVerdict = admissionEpoch != null && boundary.userData.admissionEpoch != null
+    && boundary.userData.admissionEpoch !== admissionEpoch;
   if (!swapped) {
     releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed', admissionEpoch);
     const cleanupErrors = [];
@@ -7104,16 +7122,18 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     const ownerInactiveOnly = failureCauses.every(
       (cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))),
     );
-    if ((ownerInactiveOnly || (entity && entity.alive === false)) && boundary.parent) {
-      // Kept-GPU recook: the boundary outlived the entity record that owned this admission.
-      // A terminal 'unavailable' here would strand the restored entity — the mesh is still
-      // mounted and reattach re-requests the upgrade for its live owner.
-      markAuthoredBoundaryForReadmission(boundary, 'owner-inactive');
-    } else {
-      // Fail closed: no substitute ship identity. Fix the load/composition bug; do not invent a junk hull.
-      boundary.userData.authoredAssetState = 'unavailable';
-      boundary.userData.authoredVisualRoot = 'none-build-failed';
-      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+    if (!staleRunVerdict) {
+      if ((ownerInactiveOnly || (entity && entity.alive === false)) && boundary.parent) {
+        // Kept-GPU recook: the boundary outlived the entity record that owned this admission.
+        // A terminal 'unavailable' here would strand the restored entity — the mesh is still
+        // mounted and reattach re-requests the upgrade for its live owner.
+        markAuthoredBoundaryForReadmission(boundary, 'owner-inactive');
+      } else {
+        // Fail closed: no substitute ship identity. Fix the load/composition bug; do not invent a junk hull.
+        boundary.userData.authoredAssetState = 'unavailable';
+        boundary.userData.authoredVisualRoot = 'none-build-failed';
+        setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      }
     }
     // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
     // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
@@ -7142,7 +7162,7 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         cause: error,
       });
     }
-  } else {
+  } else if (!staleRunVerdict) {
     boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
     console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
   }

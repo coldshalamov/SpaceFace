@@ -115,6 +115,9 @@ export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
 const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
 const NPC_SALVAGE_INTAKE_STATION_TYPES = new Set(['refinery', 'fab']);
+// The save:loaded refresh is sliced across this many adjacent listeners so the restore's
+// emit-slice drain can yield between ~4ms units instead of paying one ~30ms task.
+const ECONOMY_SAVE_LOADED_SLICES = 8;
 const REGIONAL_PRESSURE_RECIPES = Object.freeze(
   Object.values(allRegionalPressureRecipes()).flat(),
 );
@@ -1048,7 +1051,18 @@ export const economy = {
     bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {}));
     // Save owners restore after economy. Rebuild this derived read model only after factions and
     // sectorSim have restored their authoritative conflict/field state.
-    bus.on('save:loaded', () => this.refreshAllPersistentDemand({ reseedSynthetic: true }));
+    // A mature save's market refresh + synthetic reseed is ~30ms — too big for one emit-slice
+    // unit inside the restore drain. Split it across adjacent listeners at this ordering point:
+    // slices still finish before the next system's save:loaded handler (snapshot order), and
+    // the drain gets yield seams between them.
+    for (let s = 0; s < ECONOMY_SAVE_LOADED_SLICES; s++) {
+      const sliceIndex = s;
+      bus.on('save:loaded', () => this.refreshAllPersistentDemand({
+        reseedSynthetic: true,
+        sliceIndex,
+        sliceCount: ECONOMY_SAVE_LOADED_SLICES,
+      }));
+    }
     // Registry listener order places economy before sectorSim. If offline catch-up crosses a
     // blockade/surplus threshold, this receipt arrives after the field mutation and reconciles the
     // same derived quotes and omitted chart caches immediately.
@@ -1407,22 +1421,32 @@ export const economy = {
   },
 
   /** Save/load rebuilds derived quotes without inventing observations or history transitions. */
-  refreshAllPersistentDemand({ reseedSynthetic = false } = {}) {
+  refreshAllPersistentDemand({ reseedSynthetic = false, sliceIndex = 0, sliceCount = 1 } = {}) {
     const state = this.state;
     const markets = state && state.economy && state.economy.markets || {};
-    for (const stationId of Object.keys(markets)) {
-      this.refreshStationDemand(stationId, { recordHistory: false });
+    const ids = Object.keys(markets);
+    const s0 = Math.floor(ids.length * sliceIndex / sliceCount);
+    const s1 = Math.floor(ids.length * (sliceIndex + 1) / sliceCount);
+    for (let i = s0; i < s1; i++) {
+      this.refreshStationDemand(ids[i], { recordHistory: false });
     }
-    if (reseedSynthetic) this.reseedSyntheticPriceHistories();
+    if (reseedSynthetic) this.reseedSyntheticPriceHistories(sliceIndex, sliceCount);
   },
 
   /** Rebuild only chart caches omitted from saves; genuinely observed histories remain untouched. */
-  reseedSyntheticPriceHistories() {
+  reseedSyntheticPriceHistories(sliceIndex = 0, sliceCount = 1) {
     const keys = this._syntheticHistoryKeys;
     if (!(keys instanceof Set) || !keys.size) return 0;
+    const list = sliceCount > 1 ? [...keys] : keys;
+    const total = Array.isArray(list) ? list.length : list.size;
+    const k0 = Math.floor(total * sliceIndex / sliceCount);
+    const k1 = Math.floor(total * (sliceIndex + 1) / sliceCount);
     const state = this.state;
     let count = 0;
-    for (const key of keys) {
+    let index = -1;
+    for (const key of list) {
+      index += 1;
+      if (index < k0 || index >= k1) continue;
       const divider = key.indexOf('\u001f');
       if (divider < 1) continue;
       const stationId = key.slice(0, divider);

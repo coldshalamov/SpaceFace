@@ -1151,6 +1151,12 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       residencyOwner: options.residencyOwner || runtime.defaultResidencyOwner,
       residencyRole: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       residencySectorId: options.sectorId || null,
+      // Same ownerless-warm predicate as the GLB lane: with no boundary lifecycle to release
+      // the pin, a non-soft warm role on the session fallback owner would pin the package
+      // forever. softLease keeps it inside the soft-eviction tier; decodeWarm makes it lose
+      // the byte-pressure race last, mirroring the decode-cache retain.
+      residencySoftLease: !options.residencyOwner
+        && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
     }).then((renderPackage) => {
       // This outer cache is keyed by source URL while the loader evicts by content hash, and a
       // key only refreshes when the same URL is requested again — so a fulfilled task kept every
@@ -1192,10 +1198,13 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
   }
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
   const owner = options.residencyOwner || runtime.defaultResidencyOwner;
+  const ownerlessWarm = !options.residencyOwner
+    && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
   if (owner) {
     record.renderPackage.retain(owner, {
       role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       sectorId: options.sectorId || null,
+      ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
     });
   }
   return record;
