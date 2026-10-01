@@ -63,7 +63,12 @@ export function entityVisualCullRadius(entity, mesh = null) {
   if (Array.isArray(size)) {
     const x = Math.max(0, Number(size[0]) || 0);
     const z = Math.max(0, Number(size[2]) || 0);
-    return Math.max(presence, Math.hypot(x, z) * 0.5);
+    // Envelope stamps can sit off-origin (a composed body's far parts extend past the
+    // authored center); the cull radius must reach the far edge, not just half the size.
+    const center = bounds.center;
+    const cx = Array.isArray(center) ? Number(center[0]) || 0 : 0;
+    const cz = Array.isArray(center) ? Number(center[2]) || 0 : 0;
+    return Math.max(presence, Math.hypot(cx, cz) + Math.hypot(x, z) * 0.5);
   }
   if (data && String(data.authoredAssetState || '').startsWith('authored')) {
     return Math.max(presence, drawnCullRadiusForMesh(mesh));

@@ -715,6 +715,10 @@ function appendEntityIndex(index, e) {
     if (index.byWorldRecordIdCount instanceof Map) {
       index.byWorldRecordIdCount.set(worldRecordId, (index.byWorldRecordIdCount.get(worldRecordId) || 0) + 1);
     }
+    // Same stamp registerEntityWorldRecordId reads: the id this entity is counted under, so a
+    // post-spawn re-stamp decrements the right lane and remove decrements what was incremented.
+    e._wrIndexStamp = worldRecordId;
+    bumpLaneVersion(index, 'worldRecordIds');
   }
 
   switch (e.type) {
@@ -866,20 +870,27 @@ function removeEntityIndex(index, e) {
   }
   // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
   // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
+  // Decrement the id the entity was COUNTED under — a post-spawn re-stamp can leave
+  // data.worldRecordId pointing at a later id than the one the count incremented.
   const worldRecordId = e.data && e.data.worldRecordId;
-  if (worldRecordId != null && index.byWorldRecordIdCount instanceof Map) {
-    const n = (index.byWorldRecordIdCount.get(worldRecordId) || 0) - 1;
-    if (n > 0) index.byWorldRecordIdCount.set(worldRecordId, n);
-    else index.byWorldRecordIdCount.delete(worldRecordId);
+  const countedWorldRecordId = e && e._wrIndexStamp !== undefined ? e._wrIndexStamp : worldRecordId;
+  if (countedWorldRecordId != null && index.byWorldRecordIdCount instanceof Map) {
+    const n = (index.byWorldRecordIdCount.get(countedWorldRecordId) || 0) - 1;
+    if (n > 0) index.byWorldRecordIdCount.set(countedWorldRecordId, n);
+    else index.byWorldRecordIdCount.delete(countedWorldRecordId);
   }
-  if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
-    index.byWorldRecordId.delete(worldRecordId);
+  if (countedWorldRecordId != null) {
+    bumpLaneVersion(index, 'worldRecordIds');
+    e._wrIndexStamp = undefined;
+  }
+  if (countedWorldRecordId != null && index.byWorldRecordId.get(countedWorldRecordId) === e) {
+    index.byWorldRecordId.delete(countedWorldRecordId);
     const source = index._sourceList;
     if (Array.isArray(source)) {
       for (const survivor of source) {
         if (survivor && survivor !== e && survivor.alive !== false
-          && survivor.data && survivor.data.worldRecordId === worldRecordId) {
-          index.byWorldRecordId.set(worldRecordId, survivor);
+          && survivor.data && survivor.data.worldRecordId === countedWorldRecordId) {
+          index.byWorldRecordId.set(countedWorldRecordId, survivor);
           break;
         }
       }
@@ -1031,20 +1042,26 @@ function removeEntitiesFromIndex(index, corpses) {
     }
   }
   // Same remap for worldRecordId slots, one shared rescan for the whole corpse set — the
-  // sequential path re-scanned the list per vacated key, the batch scans it once.
+  // sequential path re-scanned the list per vacated key, the batch scans it once. Decrement
+  // the id each corpse was counted under (the _wrIndexStamp lane), not its current stamp.
   let vacatedWorldRecordIds = null;
   for (let i = 0; i < corpses.length; i++) {
     const e = corpses[i];
     if (!e || !removed.has(e)) continue;
     const worldRecordId = e.data && e.data.worldRecordId;
-    if (worldRecordId != null && index.byWorldRecordIdCount instanceof Map) {
-      const n = (index.byWorldRecordIdCount.get(worldRecordId) || 0) - 1;
-      if (n > 0) index.byWorldRecordIdCount.set(worldRecordId, n);
-      else index.byWorldRecordIdCount.delete(worldRecordId);
+    const countedId = e._wrIndexStamp !== undefined ? e._wrIndexStamp : worldRecordId;
+    if (countedId != null && index.byWorldRecordIdCount instanceof Map) {
+      const n = (index.byWorldRecordIdCount.get(countedId) || 0) - 1;
+      if (n > 0) index.byWorldRecordIdCount.set(countedId, n);
+      else index.byWorldRecordIdCount.delete(countedId);
     }
-    if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
-      index.byWorldRecordId.delete(worldRecordId);
-      (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(worldRecordId);
+    if (countedId != null) {
+      bumpLaneVersion(index, 'worldRecordIds');
+      e._wrIndexStamp = undefined;
+    }
+    if (countedId != null && index.byWorldRecordId.get(countedId) === e) {
+      index.byWorldRecordId.delete(countedId);
+      (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(countedId);
     }
   }
   if (vacatedWorldRecordIds && Array.isArray(index._sourceList)) {

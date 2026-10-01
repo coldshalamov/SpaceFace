@@ -3949,8 +3949,15 @@ export const npcJobsRuntime = {
     }
     const stationId = /^(?:home|origin|dest):(station_[a-z0-9_]+)$/.exec(waypoint.id || '')?.[1];
     if (stationId) {
-      const station = this.state.entityList.find((candidate) => candidate.alive
-        && candidate.type === 'station' && candidate.data?.stationId === stationId);
+      // First-holder map — same answer the entityList find returns (append is first-holder
+      // too, and corpse sweeps remap to the next live holder).
+      const index = this.state && this.state.entityIndex;
+      const indexed = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.byStationId instanceof Map ? index.byStationId.get(stationId) : null;
+      const station = (indexed && indexed.alive !== false && indexed.type === 'station')
+        ? indexed
+        : this.state.entityList.find((candidate) => candidate.alive
+          && candidate.type === 'station' && candidate.data?.stationId === stationId);
       if (station) {
         const reach = Math.max((station.radius || 0) + (entity.radius || 0) + 20,
           station.data?.dockRadius || 0);

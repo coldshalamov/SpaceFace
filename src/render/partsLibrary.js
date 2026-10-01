@@ -2750,6 +2750,9 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   } else {
     markerOptions.standInFitLength = 2 * Math.max(1, Number(entity && entity.radius) || 3);
   }
+  // The payload commit recenters the record bounds-center onto origin on all three axes —
+  // the stand-in previews the same committed frame or the capsule's silhouette teleports.
+  markerOptions.standInRecenter = 'xyz';
   installBoundaryResolvingMarker(boundary, entity, markerOptions);
 
   let activeRoot = fallbackRoot;
@@ -3320,8 +3323,14 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   // Authored-or-nothing stations must never show the procedural body, but an invisible seat
   // pops in at commit whenever admission outlasts the runway — the same abstract marker
   // contract pending ships get (no substitute identity; the per-frame sync drives it off
-  // authoredAssetState).
-  installBoundaryResolvingMarker(boundary, entity, { standInFile: placeFile });
+  // authoredAssetState). The commit recenters the authored bounds-center onto X,Z origin
+  // (centerAuthoredPlaceRoot) and may yaw the approach channel — the stand-in previews the
+  // same committed frame or the silhouette teleports at commit.
+  installBoundaryResolvingMarker(boundary, entity, {
+    standInFile: placeFile,
+    standInRecenter: 'xz',
+    standInYawDeg: authoredApproachYawDegFor(entity, boundary.userData.placeId || placeFileStem(placeFile)),
+  });
 
   let activeRoot = fallbackRoot;
   const setActiveVisualRoot = (next) => {
@@ -3455,7 +3464,11 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   // ships, stations, and capsules carry — it unions into the pending stamp and detaches at
   // commitAuthoredPlaceBoundary.
   if (!fallbackHasBody && !geologySkin) {
-    installBoundaryResolvingMarker(boundary, entity, { standInFile: placeFile });
+    installBoundaryResolvingMarker(boundary, entity, {
+      standInFile: placeFile,
+      standInRecenter: 'xz',
+      standInYawDeg: authoredApproachYawDegFor(entity, boundary.userData.placeId || placeFileStem(placeFile)),
+    });
   }
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
@@ -3957,8 +3970,19 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
   if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
     const union = placeVisualUnionWithOverlay(entity, size, row.bounds && row.bounds.center);
     const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
+    // centerAuthoredPlaceRoot recenters the record's authored bounds-center onto X,Z origin
+    // at commit (the measured stamp above then re-verifies in committed frame) — the pending
+    // stamp must describe that same frame or the classified envelope sits s·b_c off the
+    // silhouette it covers and shifts again at commit.
+    const recenterCenter = row.bounds && row.bounds.center;
     boundary.userData.visualBounds = {
-      center: stampedBounds.center.map((value) => (Number(value) || 0) * scale),
+      center: [
+        (Number(stampedBounds.center && stampedBounds.center[0]) || 0) * scale
+          - (Number(recenterCenter && recenterCenter[0]) || 0) * scale,
+        (Number(stampedBounds.center && stampedBounds.center[1]) || 0) * scale,
+        (Number(stampedBounds.center && stampedBounds.center[2]) || 0) * scale
+          - (Number(recenterCenter && recenterCenter[2]) || 0) * scale,
+      ],
       size: stampedBounds.size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
     };
     // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
@@ -4187,18 +4211,27 @@ const AUTHORED_APPROACH_CHANNEL_DEG = Object.freeze({
   place_station_trade_hub: 250,
 });
 
-function installAuthoredApproachYaw(root, entity, placeId) {
+// The committed approach-yaw for a station placeId, or null when none applies. Shared by the
+// compose (installAuthoredApproachYaw) and the pending stand-in arm — the marker must draw
+// the same yawed silhouette it previews or the approach-channel body snaps at commit.
+function authoredApproachYawDegFor(entity, placeId) {
   const channelDeg = AUTHORED_APPROACH_CHANNEL_DEG[placeId];
-  if (!Number.isFinite(channelDeg) || !root || !root.isObject3D) return;
-  if (!entity || entity.type !== 'station') return;
+  if (!Number.isFinite(channelDeg)) return null;
+  if (!entity || entity.type !== 'station') return null;
   const manifest = resolveCollisionProxyManifest(entity);
-  if (!manifest || !manifest.docking) return;
+  if (!manifest || !manifest.docking) return null;
   const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
-  if (!Number.isFinite(corridorDeg)) return;
+  if (!Number.isFinite(corridorDeg)) return null;
+  const yawDeg = ((corridorDeg - channelDeg + 540) % 360) - 180;
+  return yawDeg || null;
+}
+
+function installAuthoredApproachYaw(root, entity, placeId) {
+  if (!root || !root.isObject3D) return;
+  const yawDeg = authoredApproachYawDegFor(entity, placeId);
+  if (yawDeg == null) return;
   // Empirically verified on the live renderer: positive rotation.y moves an
   // authored-bearing-β feature to world bearing β + α in this transform chain.
-  const yawDeg = ((corridorDeg - channelDeg + 540) % 360) - 180;
-  if (!yawDeg) return;
   root.rotation.y = yawDeg * (Math.PI / 180);
   root.userData.authoredApproachYawDeg = yawDeg;
 }

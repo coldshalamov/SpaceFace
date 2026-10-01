@@ -35,6 +35,7 @@ import {
   forEachJobInteractable,
   forEachLivingWorldActor,
   indexedWorldRecordEntity,
+  registerEntityWorldRecordId,
 } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { getFarActor } from '../world/farActorTable.js';
@@ -4317,11 +4318,7 @@ export const traffic = {
    * live hull as absent and spawn a duplicate over its durable record.
    */
   _indexWorldRecordId(ent) {
-    const index = this.state && this.state.entityIndex;
-    const worldRecordId = ent && ent.data && ent.data.worldRecordId;
-    if (worldRecordId == null) return;
-    if (!index || !index.__spacefaceEntityIndexV1 || !(index.byWorldRecordId instanceof Map)) return;
-    if (!index.byWorldRecordId.has(worldRecordId)) index.byWorldRecordId.set(worldRecordId, ent);
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
   },
 
   /**
@@ -4873,8 +4870,30 @@ export const traffic = {
     const route = rec.worldSiteRoute;
     // The per-tick map can miss a carrier stamped with its record id after spawn; the helper
     // resolves those through the same entity walk and reseeds the index map on a hit.
-    const site = (worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId))
-      || entityWithWorldRecord(this.state, route.siteWorldRecordId);
+    let site = worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId);
+    if (!site) {
+      // A permanently-absent site is the index's documented negative hole: the map cannot
+      // cache a miss, so every routed freighter otherwise re-walks the entity set per tick.
+      // Memoize misses on the worldRecordIds lane — appends/removes and registered post-spawn
+      // stamps all bump it, so a served miss is bit-identical to what the fallback walk sees
+      // and the walk's repair path stays open across any mutation.
+      const index = this.state && this.state.entityIndex;
+      const lane = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.laneVersions ? (index.laneVersions.worldRecordIds || 0) : null;
+      const memo = this._worldSiteRouteMissMemo || (this._worldSiteRouteMissMemo = { lane: -1, ids: new Set() });
+      if (lane == null || memo.lane !== lane) {
+        memo.lane = lane == null ? -1 : lane;
+        memo.ids.clear();
+      }
+      if (!memo.ids.has(route.siteWorldRecordId)) {
+        site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
+        if (site) {
+          if (worldRecordIndex) worldRecordIndex.set(route.siteWorldRecordId, site);
+        } else {
+          memo.ids.add(route.siteWorldRecordId);
+        }
+      }
+    }
     const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
     const target = route.endpoint === 'station' ? station : site;
     let targetPos = target && target.pos;

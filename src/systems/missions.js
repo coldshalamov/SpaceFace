@@ -177,8 +177,9 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -7448,6 +7449,9 @@ export const missions = {
     ent.type = follow.targetType;
     if (ent.collides !== false) bumpCollidesFlipEpoch();
     ent.collides = false;
+    // The flip leaves a permanent stale member otherwise: the entity stays alive as the scan
+    // objective, so the collidables/spatial buckets it was appended under carry it forever.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
     ent.data = ent.data || {};
     ent.data.poiType = follow.targetType;
     ent.data.kind = follow.targetType;
@@ -7523,6 +7527,9 @@ export const missions = {
     ent.data.identityKey = key;
     ent.data.durable = true;
     ent.data.recordCreatedTick = this.state.tick | 0;
+    // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) (the contender path
+    // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
   },
 
   /**

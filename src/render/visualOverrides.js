@@ -285,7 +285,8 @@ function lodStandInFor(entity, record, target = null) {
   if (entityScale == null) {
     entityScale = WHOLE_SHIP_STAND_IN_TARGET_LENGTH * (Number.isFinite(entity && entity.radius) ? entity.radius : 1);
   }
-  group.scale.setScalar(entityScale / sourceLength);
+  const groupScale = entityScale / sourceLength;
+  group.scale.setScalar(groupScale);
   for (const primitive of primitives) {
     if (!primitive.geometry) continue;
     // The substrate teardown path respects this flag; residency eviction disposes through its own
@@ -302,6 +303,24 @@ function lodStandInFor(entity, record, target = null) {
     group.add(mesh);
   }
   if (!group.children.length) return null;
+  // Preview the commit's transform, not the authored frame: place/station bodies recenter the
+  // record's bounds-center onto X,Z origin (payloads/packaged all three axes) and station
+  // commits can yaw the approach channel — a stand-in drawn at authored offset snaps sideways
+  // at commit by up to half the silhouette.
+  if (target && (target.recenter === 'xz' || target.recenter === 'xyz')) {
+    const center = record.bounds && record.bounds.center;
+    const cx = Array.isArray(center) ? Number(center[0]) || 0 : 0;
+    const cy = Array.isArray(center) ? Number(center[1]) || 0 : 0;
+    const cz = Array.isArray(center) ? Number(center[2]) || 0 : 0;
+    group.position.set(
+      -cx * groupScale,
+      target.recenter === 'xyz' ? -cy * groupScale : 0,
+      -cz * groupScale,
+    );
+  }
+  if (target && Number.isFinite(target.yawDeg) && target.yawDeg !== 0) {
+    group.rotation.y = target.yawDeg * (Math.PI / 180);
+  }
   group.userData.spacefaceSharedAsset = true;
   group.userData.authoredResolvingMarker = true;
   return group;
@@ -349,6 +368,16 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   }
   if (Number.isFinite(options.standInDrawScale) && options.standInDrawScale > 0) {
     data.boundaryResolvingStandInScale = options.standInDrawScale;
+  }
+  // The committed body's recenter semantics ('xz' = place/station bounds-center onto X,Z
+  // origin via centerAuthoredPlaceRoot; 'xyz' = payload/packaged full-3-axis) plus any
+  // approach yaw — armed so the stand-in previews the committed frame instead of sitting at
+  // the authored offset and teleporting at commit.
+  if (options.standInRecenter === 'xz' || options.standInRecenter === 'xyz') {
+    data.boundaryResolvingStandInRecenter = options.standInRecenter;
+  }
+  if (Number.isFinite(options.standInYawDeg) && options.standInYawDeg !== 0) {
+    data.boundaryResolvingStandInYawDeg = options.standInYawDeg;
   }
   // Cover the marker's drawn extent for glass/cull classification: union it into an existing
   // stamp (the place envelope covers most stations) or seed one for un-stamped boundaries —
@@ -433,23 +462,36 @@ export function materializeBoundaryResolvingMarker(boundary) {
 // stamped pending envelope (stations and place roots carry the authored envelope from the wrap
 // census), else the marker's own X extent the boundary already advertises.
 function boundaryStandInTarget(data, entity) {
+  const frame = boundaryStandInCommittedFrame(data);
   // fit: normalize the record's longest axis — capsules and packaged props commit through
   // fitPackagedGroup / authoredPayloadDrawScale, so the stand-in must normalize on the same
   // axis or an X-slim record inflates on the dimension nobody asked about.
   const armedFit = data && Number(data.boundaryResolvingStandInFit);
-  if (Number.isFinite(armedFit) && armedFit > 0) return { fit: armedFit };
+  if (Number.isFinite(armedFit) && armedFit > 0) return { fit: armedFit, ...frame };
   // scale: authored draw scale applied to the record verbatim (the spindle commits 1:1).
   const armedScale = data && Number(data.boundaryResolvingStandInScale);
-  if (Number.isFinite(armedScale) && armedScale > 0) return { scale: armedScale };
+  if (Number.isFinite(armedScale) && armedScale > 0) return { scale: armedScale, ...frame };
   // x: a committed X extent — an explicit arm, then the captured pre-union stamp.
   const armed = data && Number(data.boundaryResolvingStandInLength);
-  if (Number.isFinite(armed) && armed > 0) return { x: armed };
+  if (Number.isFinite(armed) && armed > 0) return { x: armed, ...frame };
   const committed = data && Number(data.boundaryResolvingCommittedX);
-  if (Number.isFinite(committed) && committed > 0) return { x: committed };
+  if (Number.isFinite(committed) && committed > 0) return { x: committed, ...frame };
   const stamped = data && data.visualBounds && Number(data.visualBounds.size && data.visualBounds.size[0]);
-  if (Number.isFinite(stamped) && stamped > 0) return { x: stamped };
+  if (Number.isFinite(stamped) && stamped > 0) return { x: stamped, ...frame };
   const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-  return { x: r * 3.4 };
+  return { x: r * 3.4, ...frame };
+}
+
+// Committed-frame transforms the armed stand-in previews: recenter axes ('xz' = place/station,
+// 'xyz' = payload/packaged) and any approach yaw the commit applies — folded through the target
+// so lodStandInFor draws the silhouette exactly where the authored body lands.
+function boundaryStandInCommittedFrame(data) {
+  const frame = {};
+  const recenter = data && data.boundaryResolvingStandInRecenter;
+  if (recenter === 'xz' || recenter === 'xyz') frame.recenter = recenter;
+  const yawDeg = data && Number(data.boundaryResolvingStandInYawDeg);
+  if (Number.isFinite(yawDeg) && yawDeg !== 0) frame.yawDeg = yawDeg;
+  return frame;
 }
 
 // Marker X-extent a stand-in target implies: fit arms bound the committed X from above (the
@@ -850,6 +892,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       // Commit fits the record's longest axis to 2*packagedFitRadius — arm the same max-axis
       // basis or an X-slim record draws its stand-in oversized on the axis nobody measures.
       standInFitLength: fitLength,
+      // fitPackagedGroup recenters the measured box onto origin on all three axes — preview
+      // the same committed frame or the silhouette teleports at commit.
+      standInRecenter: 'xyz',
     });
     // The record is static data too: the census row for the packaged file states its authored
     // bounds, so the marker can draw the exact committed X (fit·x0/max) instead of the fit

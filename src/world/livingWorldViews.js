@@ -141,13 +141,43 @@ export function entityIndexLaneVersion(state, lanes) {
  * outlived the first holder — falls back to the same entity walk callers ran before, so no
  * record-holder is ever dropped (PERF-93). A walk hit reseeds the map; the next lookup is O(1).
  *
- * Latent trap for future callers: the miss path is O(N) — the map cannot cache a negative
- * because post-spawn `data.worldRecordId` stamping (e.g. factionPresence's tender rehydrate)
- * registers nothing with the index, so a version-keyed miss cache would close the walk's only
- * repair path. A caller polling per tick for a possibly-absent id must bound the rescan
- * itself — until a holder-registration pass unifies the stamp sites, no O(1)-miss cache is
- * sound here.
+ * Post-spawn `data.worldRecordId` stamps (traffic's durable freight, mission target identity,
+ * activityRuntime's captured dematerializations) register through
+ * `registerEntityWorldRecordId` — each bumps the `worldRecordIds` lane, so a miss-memo keyed
+ * on that lane is sound for per-tick callers polling possibly-absent ids: the memo only
+ * serves a negative while the carrier set is bit-identical to what the fallback walk would
+ * see, and any registration/append/remove invalidates it. An unregistered raw stamp keeps
+ * the historical trap — a memo cannot see it — so every new stamp site must register.
  */
+export function registerEntityWorldRecordId(index, entity) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || !(index.byWorldRecordId instanceof Map)) return;
+  if (!entity || !entity.data) return;
+  const id = entity.data.worldRecordId;
+  // _-prefixed stamp — shouldSkipEntitySaveKey drops it from serialized entities, and it
+  // never enters `data`. It records which id this entity is COUNTED under, making repeat
+  // stamps no-ops and an id swap decrement the stale lane exactly once.
+  const counted = entity._wrIndexStamp;
+  if (counted === id) return;
+  if (counted != null) {
+    if (index.byWorldRecordIdCount instanceof Map) {
+      const n = (index.byWorldRecordIdCount.get(counted) || 0) - 1;
+      if (n > 0) index.byWorldRecordIdCount.set(counted, n);
+      else index.byWorldRecordIdCount.delete(counted);
+    }
+    if (index.byWorldRecordId.get(counted) === entity) index.byWorldRecordId.delete(counted);
+    if (index.laneVersions) index.laneVersions.worldRecordIds = (index.laneVersions.worldRecordIds || 0) + 1;
+  }
+  entity._wrIndexStamp = id != null ? id : undefined;
+  if (id != null) {
+    // First holder wins — the same semantics appendEntityIndex uses, so map answers match the
+    // entity walk every caller ran before the index existed.
+    if (!index.byWorldRecordId.has(id)) index.byWorldRecordId.set(id, entity);
+    if (index.byWorldRecordIdCount instanceof Map) {
+      index.byWorldRecordIdCount.set(id, (index.byWorldRecordIdCount.get(id) || 0) + 1);
+    }
+    if (index.laneVersions) index.laneVersions.worldRecordIds = (index.laneVersions.worldRecordIds || 0) + 1;
+  }
+}
 export function indexedWorldRecordEntity(state, worldRecordId) {
   if (!state || worldRecordId == null || worldRecordId === '') return null;
   const index = state.entityIndex;

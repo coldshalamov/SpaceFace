@@ -31,6 +31,7 @@ import {
   entityIsDurableCandidate,
   upsertRecord,
 } from './worldRecords.js';
+import { registerEntityWorldRecordId } from './livingWorldViews.js';
 
 const RUNTIMES = new WeakMap();
 const RECENT_DAMAGE_TICKS = 120;
@@ -294,6 +295,9 @@ function captureDematerialized(state, entity, simTime, abstractTier) {
   upsertRecord(bag, captured);
   if (!entity.data) entity.data = {};
   entity.data.worldRecordId = captured.recordId;
+  // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) and the per-tick
+  // miss-memos see the new carrier instead of walking entities until some hit reseeds.
+  registerEntityWorldRecordId(state && state.entityIndex, entity);
   return captured;
 }
 
