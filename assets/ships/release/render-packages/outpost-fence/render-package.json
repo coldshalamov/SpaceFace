@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ad9d121ac1e866e5ad253237778ac6c6ec16120093ab2c226c3e1c81303c43bb",
+  "contentHash": "c130a5d3d16bd245949d8c5475cef7f2897ead46796b1b2b48aef67e129d43ca",
   "dynamicGroups": [
     {
       "id": "sf.render.outpost-fence.mesh.lod0-hook-nav-port.dynamic",
@@ -3458,7 +3458,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "1e28c3c27d39e7e933c3fa5c20560388624b6e960949952d502d58e1908bd0ed",
+      "sha256": "281b9e7585209c5032d94a3a4b8a483526856d10cbdb18aacbc66925695ecb46",
       "uri": "pilots.json"
     }
   },
@@ -4934,7 +4934,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb"
   },
-  "runtimeHash": "b961171d5e1c9613a1ecb86a2a0c9e2e8880272e9804d4f5d83a8a3058837cd5",
+  "runtimeHash": "e9fb0cef3e32d914356a3537c38987061399995efd900c03e60149c5c907b766",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

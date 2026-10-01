@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9f49bc1483c4e96a9bcdb8e426a106107b68df35fca77a2513150821dff80b32",
+  "contentHash": "c9d106775bf17f1ee1d4c8e49ff9f8ccf79d560318ceb0f5f0a4d397ddb2104b",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-hook-nav-port.dynamic",
@@ -3309,7 +3309,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "1e28c3c27d39e7e933c3fa5c20560388624b6e960949952d502d58e1908bd0ed",
+      "sha256": "281b9e7585209c5032d94a3a4b8a483526856d10cbdb18aacbc66925695ecb46",
       "uri": "pilots.json"
     }
   },
@@ -4631,7 +4631,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb"
   },
-  "runtimeHash": "8946461c7d75e6e571988f788b246aae0560f7a2ebfe80238acb214e2ed11c0f",
+  "runtimeHash": "41114acbba273fb1a03ac0dece143d75fb9ec9154500e0db0c521e863ff76d33",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
