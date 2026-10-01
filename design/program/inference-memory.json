@@ -74,58 +74,6 @@
   ],
   "units": [
     {
-      "id": "west-march-lane-faces",
-      "date": "2026-09-27",
-      "wf": "WF-01",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "The two west-march frontier sectors off the core (Hyperion Cut, Nyx March) now show one named working hull each — Ossa of the Cut Run running the claim ore, Nineola Hush running the Quiet's unlogged cargo — with target-panel gimmick labels; stamped through the proven traffic named-contact seam",
-      "fingerprint": "verb=name,subject=lane-life,sector=west_march,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "e02c4e0ef",
-      "verification": "focused_green"
-    },
-    {
-      "id": "expanse-writ-clerk",
-      "date": "2026-09-27",
-      "wf": "WF-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Docking at the Charon Expanse hunter exchange now gives the player a named writ clerk (Ferrow) speaking hunter register, and the bar's rumor names the sector's real Snapped-Tether Hab-Pod distress site — a lead the writ wall does not pay for",
-      "fingerprint": "verb=hear,subject=station-bar,sector=charon_expanse,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "79ae3e021",
-      "verification": "focused_green"
-    },
-    {
-      "id": "deep-anomaly-plates",
-      "date": "2026-09-27",
-      "wf": "WF-10",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Scanning/triangulating the three deep frontier anomalies (Resonance Obelisk, Orcus Signal, Wake Anomaly) now records an authored discovery plate in the exploration journal — the find finally tells you what it is instead of a generic triangulation line",
-      "fingerprint": "verb=find,subject=anomaly-plate,sector=frontier_south_east,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "61181719d",
-      "verification": "focused_green"
-    },
-    {
-      "id": "free-vael-contact-grammar",
-      "date": "2026-09-27",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Hailing an Io Reach or Ashfall hull no longer falls outside the contact system: faction_free and faction_vael get authored contact grammar (MUTUAL lean-share / CLAUSE accord-claim) bound to their live doctrines, plus sector-grounded register lines — the last two houses that spawned without contact words",
-      "fingerprint": "verb=speak,subject=faction-hail,sector=io_reach+ashfall,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "e723a2608",
-      "verification": "focused_green"
-    },
-    {
       "id": "ceres-chain-patrol-escort",
       "date": "2026-09-27",
       "wf": "WF-01",
@@ -1649,6 +1597,59 @@
       "commit": "12cbcdf84",
       "verification": "route_accepted",
       "evidence": "test/nxb-038-failed-job-continuation.test.mjs"
+    },
+    {
+      "id": "NXI-122",
+      "date": "2026-10-01",
+      "wf": "WF-10",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "class-band scans no longer leak hidden fittings into the badge",
+      "fingerprint": "verb=gate,subject=scan-basis,domain=buildIdentity,layer=systems",
+      "references": [],
+      "integration": "live",
+      "commit": "c95124416",
+      "verification": "focused_green"
+    },
+    {
+      "id": "NXI-123",
+      "date": "2026-10-01",
+      "wf": "WF-10",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "compact synergy names the fitted prerequisite pair",
+      "fingerprint": "verb=name,subject=prerequisite,domain=synergies,layer=data",
+      "references": [],
+      "integration": "live",
+      "commit": "c95124416",
+      "verification": "focused_green"
+    },
+    {
+      "id": "NXI-121",
+      "date": "2026-10-01",
+      "wf": "WF-10",
+      "mode": "recovery",
+      "verdict": "accepted",
+      "reason": "Set basis already dedupes; now pinned",
+      "fingerprint": "verb=dedupe,subject=fitting-ids,domain=buildIdentity,layer=systems",
+      "references": [],
+      "integration": "live",
+      "commit": "c95124416",
+      "verification": "route_accepted",
+      "evidence": "test/nxb-031-scanned-build-basis.test.mjs"
+    },
+    {
+      "id": "NXI-124",
+      "date": "2026-10-01",
+      "wf": "WF-10",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "every scan pulse re-classifies from live fittings; pinned",
+      "fingerprint": "verb=invalidate,subject=stale-badge,domain=buildIdentity,layer=systems",
+      "references": [],
+      "integration": "live",
+      "commit": "c95124416",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
