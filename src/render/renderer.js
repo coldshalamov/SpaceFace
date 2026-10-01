@@ -11512,6 +11512,11 @@ export const render = {
     onBus('encounter:resolved', (payload = {}) => {
       if (payload.encounterId && this._claimDefenseRosters) this._claimDefenseRosters.delete(payload.encounterId);
     });
+    onBus('claim:defenseResolved', (payload = {}) => {
+      // Pre-engagement settlements (ignored warnings) never emit encounter:resolved — prune
+      // the roster there too so settled defenses stop feeding the warm poll.
+      if (payload.encounterId && this._claimDefenseRosters) this._claimDefenseRosters.delete(payload.encounterId);
+    });
     onBus('heist:missionCue', ({ moment, variantId } = {}) => {
       // Breakaway pressure spawns at capsule launch on a fixed 3-file roster — schedule
       // acceptance is the earliest reliable signal, so the hulls decode during the countdown
