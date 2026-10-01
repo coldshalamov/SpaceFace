@@ -2779,6 +2779,19 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     boundary.userData.authoredAssetState = 'orphaned-before-swap';
     return false;
   }
+  // A stale run must not commit — the boundary re-admitted under a newer epoch while this
+  // run parked (stall-abort readmission), the job was stall-aborted, or its owner died.
+  // cancelQueuedJob/releaseBoundaryResidency are bookkeeping-only: this async run keeps
+  // executing, and without the epoch check its commit would mount a second authored root
+  // over the replacement's. The live epoch's commit owns the boundary; this run disposes
+  // only what it prepared. Mirrors the ship guard in commitAuthoredBoundary.
+  if ((options.admissionEpoch != null && boundary.userData.admissionEpoch != null
+        && boundary.userData.admissionEpoch !== options.admissionEpoch)
+      || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
+      || (entity && entity.alive === false)) {
+    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    return false;
+  }
   return commitAuthoredCargoCapsuleBoundary(
     boundary,
     fallbackRoot,
@@ -3493,12 +3506,25 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
       return false;
     }
+    // Same stale-run guard as the ship commit: a run that parked while its boundary
+    // re-admitted under a newer epoch (stall-abort readmission), or whose job was
+    // stall-aborted, or whose owner died, must not mount its authored root over the
+    // replacement commit. The live epoch owns the boundary; this run disposes only its
+    // own prepared tree.
+    const commitEntity = options.admissionEntity || entity;
+    if ((options.admissionEpoch != null && boundary.userData.admissionEpoch != null
+          && boundary.userData.admissionEpoch !== options.admissionEpoch)
+        || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
+        || (commitEntity && commitEntity.alive === false)) {
+      await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      return false;
+    }
     return commitAuthoredPlaceBoundary(
       boundary,
       fallbackRoot,
       authored,
       setActive,
-      options.admissionEntity || entity,
+      commitEntity,
       options,
     );
   };

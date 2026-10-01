@@ -153,7 +153,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   });
 
   assert.equal(result.skipped, false);
-  assert.equal(result.retainedCanopyVariants, 6);
+  assert.equal(result.retainedCanopyVariants, 4);
   assert.equal(exactTargetPrepareCalls, 1);
   assert.equal(legacyCompileCalls, 0);
   assert.ok(retainedVfxMaterialCount > 4, 'fixture must cover the retained VFX material family');
@@ -224,26 +224,14 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       transmission: 0, transparent: true, depthWrite: false,
       forceSinglePass: true, dithering: true, tangents: true,
     },
-    // STANDARD-class canopy probes mirror the same layouts for authored sources that arrive
-    // as MeshStandardMaterial — their program carries no PHYSICAL define, and the canopy policy
-    // no-ops on them (transmission absent), leaving stock material flags.
+    // The canonical canopy probe mints the post-canon program every authored canopy actually
+    // draws (physical + STANDARD/PHYSICAL defines + the full six-slot texture set). The policy
+    // fires on it exactly as on the runtime variants, so flags read post-policy.
     {
-      id: 'standard_surface', map: false, normalMap: false, aoMap: false,
+      id: 'canon_canon', map: true, normalMap: true, aoMap: true,
       roughnessMap: true, metalnessMap: true,
-      transmission: undefined, transparent: false, depthWrite: true,
-      forceSinglePass: false, dithering: true, tangents: true,
-    },
-    {
-      id: 'standard_normal-surface-ao', map: false, normalMap: true, aoMap: true,
-      roughnessMap: true, metalnessMap: true,
-      transmission: undefined, transparent: false, depthWrite: true,
-      forceSinglePass: false, dithering: true, tangents: true,
-    },
-    {
-      id: 'standard_base-normal-surface', map: true, normalMap: true, aoMap: false,
-      roughnessMap: true, metalnessMap: true,
-      transmission: undefined, transparent: false, depthWrite: true,
-      forceSinglePass: false, dithering: true, tangents: true,
+      transmission: 0, transparent: true, depthWrite: false,
+      forceSinglePass: true, dithering: true, tangents: true,
     },
   ]);
   assert.deepEqual(getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
