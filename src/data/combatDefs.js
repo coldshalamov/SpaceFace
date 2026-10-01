@@ -553,10 +553,8 @@ export const ENEMY_DOCTRINE_OVERRIDES = Object.freeze({
   // pack passes (short cycles, 120 WU commit band).
   wasp_swarmer: 'swarm_pack',
   choir_zealot: 'swarm_pack',
-  // The jackal was mis-filed as a ranged disengager — it KITED like a lancer. Its authored
-  // identity (telegraph cue `wake_mines`, counter hint `cut_tether_or_clear_wake`) is area
-  // denial: flank, telegraph, seed the wake, disengage, repeat.
-  mine_layer_jackal: 'mine_layer_wake',
+  // The jackal's area-denial identity (telegraph cue `wake_mines`, counter hint
+  // `cut_tether_or_clear_wake`) is declared on its own enemy row — no override needed.
   // The corsair elite is the roster's shield-breaker: closes through the band, telegraphs, lands
   // an ion/plasma lance (action_burst carries ion 8 + status_ionized), peels while the target's
   // capacitor is scrambled. The counterplay is capacitor discipline, not DPS racing.
