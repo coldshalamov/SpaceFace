@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7e015a15e90dc41ee5f1b279850c0bc7a4c66d0284a9b82541edbc8debc8b847",
+  "contentHash": "480cf95252f2e6bfb27be51d7b6ff84090385e3b584714617f5ac2ca32d5a8d2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -336,8 +336,8 @@
       "uri": "fin_crystalline.glb"
     },
     "sourceManifest": {
-      "bytes": 197728,
-      "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+      "bytes": 198942,
+      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
       "uri": "pilots.json"
     }
   },
@@ -506,7 +506,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_crystalline.glb"
   },
-  "runtimeHash": "2f717c470f7df297be6916ef5a470a7edca13637b2eaba94ad567727ab653d5b",
+  "runtimeHash": "cc2387e4b10063a018c16a6181ed8be9aadd114b39f5f0804b4bda55084dc8b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9f76da23c57d8ab4ed3cc04cdcc505715744cd887fc39b8d9f6c00efd4118af8",
+  "contentHash": "acd6e8a068acb4c75968a36e912d78bf011059354b7db17b40e278ccf9aaf479",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3547,8 +3547,8 @@
       "uri": "place_wasp_frag_bow.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "3a9f0c9d4ee6da486fb1ac9abff068c9ef6016ae34e3368f150a82492a73f962",
+      "bytes": 198942,
+      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
       "uri": "pilots.json"
     }
   },
@@ -4489,9 +4489,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 30814,
+      "bytes": 32670,
       "rigId": "wasp_frag_bow",
-      "sha256": "b74048598c04e7f8bdda5e60c7a2ddd9204affed033a9f038a46096c0da8f69c",
+      "sha256": "5b8ad7d222b3ad5551c87b378af3df83f0eda687737e5e58ede1e71adbffd383",
       "uri": "assets/ships/motions/wasp-frag-bow.motion.json"
     },
     "nodeCount": 44,
@@ -5236,7 +5236,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_wasp_frag_bow.glb"
   },
-  "runtimeHash": "416b777419857ebbfca304ba01c89a0c925f24f5a4f43bd6c7dc17ff7c6b8164",
+  "runtimeHash": "55b534683b509c4b0bbd473c3bfc02685fd58df8f5f4a5ed9fb98aa5629c4af7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

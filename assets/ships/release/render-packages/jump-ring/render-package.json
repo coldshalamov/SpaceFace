@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7d9189bdbd3ac84343fff0ca63dd2eb665c05bd683643b4de3d0249ab5b5412a",
+  "contentHash": "a65fa75bbdec6c04e79ac86fae452ef033b82f4740447c9c954f96bf24fd179b",
   "dynamicGroups": [
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.dynamic",
@@ -9548,8 +9548,8 @@
       "uri": "place_gate_jump_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 197728,
-      "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
+      "bytes": 198942,
+      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
       "uri": "pilots.json"
     }
   },
@@ -11111,9 +11111,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 151313,
+      "bytes": 160404,
       "rigId": "gate_emitter_index",
-      "sha256": "e2a2e274ba7b31de48de4017cf8a7ac1ff56a2dd476c53efb20b4a72f3855801",
+      "sha256": "e36752c9ba1ce46e1110d4b6a090bf73de52c237ab87a59887747eca223ac401",
       "uri": "assets/ships/motions/jump-ring.motion.json"
     },
     "nodeCount": 128,
@@ -14117,7 +14117,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "331c4d5c45d98a114e776d4352625fd807abe6fc66d750da509f04773c08ee96",
+  "runtimeHash": "43b1a7e660bbf7e7ca3af8abde5c8adf005d5caf4485a3758013aecefbfa48f9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
