@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8725fbe10a36c684d151c80e9900915a2cec9dfa3de898ba564d25498989015a",
+  "contentHash": "572870fbde75d6d43eefc1e2aa3203cffdf4301530437d2f887fb8467f04aaa3",
   "dynamicGroups": [
     {
       "id": "sf.render.mining-drone.node.lod0-hook-drive-core.dynamic",
@@ -2966,8 +2966,8 @@
       "uri": "place_mining_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 197727,
-      "sha256": "b3f459990ba74570e0625b80e047e88f11dd65ae7b722f7c83cde26cbd9b1444",
+      "bytes": 197728,
+      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
       "uri": "pilots.json"
     }
   },
@@ -4194,7 +4194,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
-  "runtimeHash": "4ee834361ff111211630dd622ba48df754e511a65938ed8253895faae97ea11a",
+  "runtimeHash": "715138ec77c0f9c2b312685836872c30a6f452dadefbad40be043d7820f91cbd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
