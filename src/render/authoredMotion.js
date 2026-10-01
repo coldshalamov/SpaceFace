@@ -362,6 +362,34 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
   const onGrindStop = (payload) => {
     dispatch('drone:grindStop', payload.id, payload, () => true);
   };
+  // ANI-11: the same starter beam accumulates split work against jettisoned cargo pods —
+  // the beam pries the seals, so the pod's door rig answers to events addressed at the
+  // POD (targetId), not the miner. mining:start verb 'split' fires the breach; an early
+  // disengage re-seals it.
+  const onPodMiningStart = (payload) => {
+    if (!payload || payload.verb !== 'split') return;
+    dispatch('mining:start', payload.targetId, payload, () => true);
+  };
+  const onPodBeamStop = (payload) => {
+    if (!payload || payload.targetId == null) return;
+    const simTime = payload?.simTime ?? simNow();
+    for (const controller of authoredMotionControllersFor(payload.targetId)) {
+      if (!controller.clipActive?.('breach')) continue;
+      const elapsed = controller.clipElapsed?.('breach', simTime);
+      const duration = controller.clipDuration?.('breach');
+      try {
+        if (elapsed != null && duration != null && elapsed < duration) {
+          // Mid-flight interrupt: glide the partial pose home — the seal clip's first keys
+          // assume the fully-open pose and would teleport the rig.
+          controller.settle?.(1.4, simTime);
+        } else {
+          controller.handleEvent?.('mining:stop', payload, simTime);
+        }
+      } catch (error) {
+        console.warn('[authoredMotion] pod seal rejected by controller', error);
+      }
+    }
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
@@ -388,6 +416,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     bus.on('salvage:cutComplete', onCutComplete),
     bus.on('drone:grindStart', onGrindStart),
     bus.on('drone:grindStop', onGrindStop),
+    bus.on('mining:start', onPodMiningStart),
+    bus.on('mining:stop', onPodBeamStop),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {
