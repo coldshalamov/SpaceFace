@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "51ca49e987238701e38ca553937da801a60a03b06301a2d7ded3d51e8e553d27",
-=======
-  "contentHash": "4f5294c5d298c68f8dd06321bf71007e6306d0b858499833643f915a7d28bcfe",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1426,11 +1422,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1787,11 +1779,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_lance.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "90b02b6e899be7fc16d7b683db77f9f63c1906afa40dc1ca72a07a43dca2dc9b",
-=======
-  "runtimeHash": "89aae07ff803a1a352f17f9a6b56965f7f3c1e21475537d39cc1a0e81254311c",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

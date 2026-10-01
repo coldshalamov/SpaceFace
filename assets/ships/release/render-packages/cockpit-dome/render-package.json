@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "98dd3d38567de4eafeb09765d7f51aa399948e9913afd9ee4658f12a3699e46f",
-=======
-  "contentHash": "18c1a659f718aa447bd2c5bd3dc626e1eed17b50a8b9432ebb98e6754fc53237",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1601,11 +1597,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2031,11 +2023,7 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "f271fc6b85cd9abe3fc5951ecb47c6b952cd4642fa48836ce2d0ddf0a819caf5",
-=======
-  "runtimeHash": "a7b3a06cf1b2ea74ffbfcea4df1cdd119d4bc5b1cec8d85204ab5803512a311f",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

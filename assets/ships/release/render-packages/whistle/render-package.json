@@ -12,11 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "b3b8300156f2d36715588c8bd941d2aff988ad9a92cd3a510ab4b027530064ad",
-=======
-  "contentHash": "1f191f6a9589d098d000db6041ba2f54c2fae0e9d1a3e7cb0f9e68694cc67971",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.whistle.node.lod0-hook-nav-port.dynamic",
@@ -1904,11 +1900,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2640,11 +2632,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_whistle.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "f89adbb96a63630dc53523228c7bb735d79a528b30764efd388b0fc8710bd002",
-=======
-  "runtimeHash": "db6d3f44da27f96aa78857e710adbecc31ed8f9b2d58f6e0eb68531dbc11b174",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

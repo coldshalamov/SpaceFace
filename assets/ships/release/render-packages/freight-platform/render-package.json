@@ -105,11 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "9bb910707087bb482522eeaef06ee774863d8f89fd554941b42b2effb7d18d41",
-=======
-  "contentHash": "061eeec32470e73258ea98c4fc9cbebcede5b84520572c5cf68a21dc8cb3bad1",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.freight-platform.mesh.lod0-hook-nav-starboard.dynamic",
@@ -2734,11 +2730,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3842,11 +3834,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_freight_platform.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "6fda4c67b3316be7c1d1569011d60c3588e159d59e2fac050e3ef0aaa79e09ec",
-=======
-  "runtimeHash": "0490948b44c8e8aaec3d3e15f96d6ba63376665604d7344c2281b9958d5cae71",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

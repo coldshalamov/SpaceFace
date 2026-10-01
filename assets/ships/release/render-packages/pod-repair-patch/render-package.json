@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "c1988dc239d396442fbfdf7533be4e6ca59414c4aead45f5b296787c31ee3659",
-=======
-  "contentHash": "859548bf43387ea90a06d6882696a8c52724460fdf8184259481f4d203790619",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -348,11 +344,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -494,11 +486,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_repair_patch.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "6f9192048e0c3fb3dacf3e5635807028873ff6abaaafdcf6ad9763dd83a0daa5",
-=======
-  "runtimeHash": "7fc265609e308213d93aea3ed7996702cf1a5b6a4311307a78ef9bbdd7e5c050",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

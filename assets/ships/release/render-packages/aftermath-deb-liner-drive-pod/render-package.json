@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "42ceb0282ce61f7d4d3ef8bb07ee842befef9f3beb46b7e419f2aff40cf2486a",
-=======
-  "contentHash": "e0f2dce85fb82e6ec286970646357cb51bf0167d5fa4c55e326aec0244e6c946",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2361,11 +2357,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3470,11 +3462,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_drive_pod.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "36a8a6b7cbb5ae52b76418e577d02df139513f857e2a203458f1b1d847055fcd",
-=======
-  "runtimeHash": "305e1609d39bbc8e3688f17150c7a5004524eda847b34ab4170fc1b7799e7408",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

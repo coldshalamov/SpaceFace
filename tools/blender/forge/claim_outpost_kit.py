@@ -186,6 +186,13 @@ def build_platform(s, opts=None):
         plan_box(s, f'Pad{k}KerbB', mu - 6.0, mv - 6.0, 1.9, 0.9, 0.9, 0.5,
                  material='hazard', bevel=0.0)
         F.light(s, f'Pad{k}Lamp', P(mu + 5.4, mv + 5.4, 2.6), 'glow_amber', size=0.35)
+        # Lit structure (GFX light-upgrades): one amber line down each pad rail's face (0.5 m: at the place tilt 0.2 m was one invisible pixel), so the
+        # four module pads read as lit squares at the place tilt (the lamps alone are dots there).
+        for e in (-1, 1):
+            F.band(s, f'Pad{k}RailU{e}', P(mu + e * 6.0, mv, 1.2), (1, 0, 0), 0.5, 'glow_amber',
+                   facing=(0, 1, 0), min_facing=0.5, inset=0.01, depth=-0.02)
+            F.band(s, f'Pad{k}RailV{e}', P(mu, mv + e * 6.0, 1.2), (0, 0, 1), 0.5, 'glow_amber',
+                   facing=(0, 1, 0), min_facing=0.5, inset=0.01, depth=-0.02)
         # struts from pad to frame verts so nothing floats
         ru, rv, _ = polar_plan(FRAME_R - 2.0, math.degrees(math.atan2(mv, mu)))
         plan_beams(s, f'Pad{k}Strut', [((ru, rv, 0.2), (mu, mv, 1.0))], 1.1,
@@ -222,6 +229,9 @@ def build_platform(s, opts=None):
     plan_box(s, 'DockDeck', 47.5, 0.0, 1.8, 18.0, 8.0, 0.8, material='paint.aged', bevel=0.05)
     plan_box(s, 'DockHead', 51.0, 0.0, 4.6, 7.0, 10.0, 5.0, material='paint', bevel=0.2)
     plan_box(s, 'DockHeadBand', 53.6, 0.0, 4.6, 0.6, 10.4, 4.2, material='stripe', bevel=0.0)
+    # ...and a lit amber line across the dock head's face so the berth reads from the lane
+    F.band(s, 'DockHead', P(49.4, 0.0, 4.6), (1, 0, 0), 0.7, 'glow_amber', facing=(0, 1, 0), min_facing=0.5,
+           inset=0.01, depth=-0.02)
     for e in (-1, 1):
         F.light(s, f'DockGuide{e}', P(51.6, e * 4.4, 5.6),
                 'glow_green' if e > 0 else 'glow_red', size=0.4)

@@ -565,11 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "09aea955ea5bde2a8ff42bab4972b7d4b201da4c9b47413c8908bdcdcc08ef80",
-=======
-  "contentHash": "a059c57c01590ec35cefb896f0bc253abd7063d18fc5c33b978cb3e9e9c346be",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-free-militia.node.lod0-hook-armor-flap-armor.dynamic",
@@ -4685,11 +4681,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6791,11 +6783,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_free_militia.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "e48313dcceaf65df003c624c767f83da227cfc517b09b406fab7bd02eb696307",
-=======
-  "runtimeHash": "2a3b1cf615578921808e1c36f5dbbf40a2e5019770ce60b0b5562459a97e87b3",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

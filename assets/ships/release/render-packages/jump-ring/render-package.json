@@ -243,11 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "7d9189bdbd3ac84343fff0ca63dd2eb665c05bd683643b4de3d0249ab5b5412a",
-=======
-  "contentHash": "04cabd93e64280c84296c0a62211fca36910e60fd1a1171d4b8661d6f29f174f",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.dynamic",
@@ -9553,11 +9549,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -14125,11 +14117,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "331c4d5c45d98a114e776d4352625fd807abe6fc66d750da509f04773c08ee96",
-=======
-  "runtimeHash": "74077f660aab533f99c524b3cdb8ce6ad2841971b2c9d20742b51676a6d28273",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

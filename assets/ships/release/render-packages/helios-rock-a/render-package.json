@@ -59,11 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "f05d3c3ad5fd780fbd99d86ae40586d372fa0b4d548d76b1fc7992c385f1a81a",
-=======
-  "contentHash": "2b0bf6d6f78257ef5fa4397e102b9231a33a24825f5f121530b35b9ea5aba4d5",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1123,11 +1119,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1623,11 +1615,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_a.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "596777a580dda9749924f6b9361a236c687d652a7513a6041c9c3e91d49381c4",
-=======
-  "runtimeHash": "7ef9af5007db1298f7e7518dc1e7e32ab55fddd372da379d34117c54f1808499",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

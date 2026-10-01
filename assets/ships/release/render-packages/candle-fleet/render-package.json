@@ -105,11 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "217aa46156dec3652c3e9136aa6ce82db01638547e218fc52ecc9b29cedd4fb2",
-=======
-  "contentHash": "72362a8780ff424822a873ccdd184db9ffb19fc0f9d4b3782f312ec535ef357f",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.candle-fleet.node.lod0-hook-nav-port.dynamic",
@@ -3813,11 +3809,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -5332,11 +5324,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "0f4ea08d577fde23f71d0eeed324a1110bd3a06416af3d739075e0bb7a04a108",
-=======
-  "runtimeHash": "855fabf8ee4320e7a6e327d0899bff4b9a4eb04f2529b85b5701ece625fe9c2a",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

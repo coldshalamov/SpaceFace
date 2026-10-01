@@ -427,11 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "2483578555b112b32f5bf4bcadcdebaebf2fbb97d7f85e227ebcdcb1d544a111",
-=======
-  "contentHash": "724afc44d3d1ebfcacc4be2d18d577a6ce59fe40344ce8e25a4f7759e1a9c718",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core.dynamic",
@@ -3395,11 +3391,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -5833,11 +5825,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "7f7ddeaa696e53866491c572ac2a26001faa08defdbf5845dbc0bc747072ff72",
-=======
-  "runtimeHash": "a1557c2a612db3fcf570ac0382a1ed439adc38caf8142595cebb1b6fbd47c14d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

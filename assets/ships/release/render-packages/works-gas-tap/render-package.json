@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "75a1fa33a14017249544390bd246e1d2f4fafa90c1010fcba7096963bf57cf45",
-=======
-  "contentHash": "8bf016c9629acca6995cbf2786896cc3cf48361208124442799eeaad66a3bc76",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -742,11 +738,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1161,11 +1153,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_gas_tap.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "841f18f8fb273f13a3f222c01406a2db95642cf18a83eccc5402cab683815c08",
-=======
-  "runtimeHash": "8c3a3585e741d7be80b8080bd50cb69bac4f6c5d6207d77a725d523f35728517",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

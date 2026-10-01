@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "d0c869fdd977d4fe808d5f5f37196ddc268d6012a3ce2af248a61e961f466807",
-=======
-  "contentHash": "191f057a86e90794d5cbb8829d45ebd6b42c577014636aea6bbe3882f57c5060",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1313,11 +1309,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1876,11 +1868,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod_derelict.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "1754e9a05321ace1dd8b95e0d5f259493da5cd1c0f2d19e6a81cceebaa6d4820",
-=======
-  "runtimeHash": "deb0117f834e09e8980ceaafa3061cbe4b2796a290a54d419a9cfc7165ceac1b",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

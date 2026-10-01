@@ -25,6 +25,11 @@ def build():
     # deck as four slabs around a central square hole
     F.box(s, 'DeckA', (0, -4.8, 4.0), (14.0, 5.0, 1.0), material='paint2', bevel=0.06)
     F.box(s, 'DeckB', (0, 4.8, 4.0), (14.0, 5.0, 1.0), material='paint2', bevel=0.06)
+    # Lit structure (GFX light-upgrades): one thin amber line along each long deck edge, outside the
+    # grates, so the square deck reads as a lit outline at the place tilt (LOOK.md: lamps are light).
+    for e in (-1, 1):
+        F.band(s, 'DeckA' if e < 0 else 'DeckB', (0, e * 7.0, 4.0), (0, 1, 0), 0.2, 'glow_amber',
+               facing=(0, 0, 1), min_facing=0.5, inset=0.01, depth=-0.02)
     F.box(s, 'DeckC', (-4.8, 0, 4.0), (4.4, 4.8, 1.0), material='paint.aged', bevel=0.06)
     F.box(s, 'DeckD', (4.8, 0, 4.0), (4.4, 4.8, 1.0), material='paint.aged', bevel=0.06)
     # recessed dark grating insets on the slabs

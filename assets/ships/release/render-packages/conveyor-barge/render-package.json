@@ -59,11 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "18fbf306f3b707b739132b7a143d3390724da5f7473f63f61853d5adccad6bd5",
-=======
-  "contentHash": "0c84d2f6a245f867555bec46ce42e28b37eaea5138c1b8c70511c60d76bca63e",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -2833,11 +2829,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3974,11 +3966,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "41574c19c426df487236fdbae6dcca04f18cf8d322186c502d1410cbebf9bdd0",
-=======
-  "runtimeHash": "29bf4f17d1e2182381e02bc84cadf633b0a7d0c43bc39b8b2993e3bb60fb645d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

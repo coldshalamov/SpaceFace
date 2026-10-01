@@ -37,6 +37,10 @@ def build():
               bevel=0.03)
         F.box(s, f'RailLip{e:+d}', (e * 1.7, 0, 9.85), (0.9, 19.4, 0.2), material='dark',
               bevel=0.0)
+        # Lit structure (GFX light-upgrades): one amber line down each dark rail lip the length of the
+        # arch, so the gantry reads as two lit tracks at the place tilt (LOOK.md: lamps are light).
+        F.band(s, f'RailLip{e:+d}', (e * 1.7, 0, 9.85), (1, 0, 0), 0.3, 'glow_amber', facing=(0, 0, 1),
+               min_facing=0.5, inset=0.01, depth=-0.02)
         # hazard only as short kerb ticks at the rail ends — narrow bands, mid value
         s.detail = 1
         for k in range(3):

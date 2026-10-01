@@ -565,11 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "07e5847435ff1bdf9310ed3677e13c97092ed0fd29afc914f053710a7baac563",
-=======
-  "contentHash": "cda0cdcc8a2831a0f95e3f72f167cd52dbdcb1fedf2c631ae92b471954970702",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.ranger-production-v1.node.lod0-hook-drive-core.dynamic",
@@ -2861,11 +2857,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -4147,11 +4139,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ranger_production_v1.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "e60607bbf0184d59bae3e49f8fa4ddd4175f584817ceb1f1d415f291445d4abb",
-=======
-  "runtimeHash": "9db6031d24bc2214499a4e6de4585a33a0b7fb61102c22899af7131f3d5d90c2",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

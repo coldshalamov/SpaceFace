@@ -565,11 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "a2510869d4929a221fb036984168b74246e249cfeb12ca0c794b7108e3fd8426",
-=======
-  "contentHash": "c1e5cf05c550df88b93584718d96a26a81c101b36a5848d5f6d9c7981302b014",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.survey-pin.node.lod0-hook-drive-core.dynamic",
@@ -4220,11 +4216,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6123,11 +6115,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/survey_pin.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "48a41ac8d235428792f60099b8bad0f804b6629c9b34a93ec22f65732143322c",
-=======
-  "runtimeHash": "7b2734401dcc121dfe834b2000df54f1b1b8453ec7098bdd3a07c185f2bf2dce",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

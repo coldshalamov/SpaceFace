@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "5dc24ac80d999ef9b2b1850f30d854e5354864e18a7501e16f5a571f23c0cb79",
-=======
-  "contentHash": "95b7288099f48536647de2b390e6ae89565395f7459aa4b1b9d96f0cd96aceb5",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1667,11 +1663,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2028,11 +2020,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "05d60c53bb961b974d183ce96616185caebb7b2ec80ffbc378f8002c19708bb2",
-=======
-  "runtimeHash": "bdd503dba0cc63a2d86b0d5488bdd4ea090155e433ab6c98a02f723080508275",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

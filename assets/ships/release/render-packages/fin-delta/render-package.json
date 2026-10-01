@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "14d11c6a077d78c6f34ec99eed23cc458a086c8e666b43162319ef0df0faa365",
-=======
-  "contentHash": "0d2f6e11e4fab5e8f4ba31eec681d9beadcb06096fd4631a5a3409f1bd5d2461",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -349,11 +345,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -523,11 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_delta.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "becfe135ec25619f35bff012c51771147262e461eeeae832a7c300615f7e62e2",
-=======
-  "runtimeHash": "2666bb11bcd020755ce3d7d8b3031d12d7a619d2f1fa754980fa6bc47620f21f",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

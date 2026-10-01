@@ -565,11 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "7a8f5eeff7a1e4dbdb2a8b57b4e5c52b026d94a5b85cd0fef95b26433a580141",
-=======
-  "contentHash": "c4ececf1407f513ff531eb5366fc0fc1ed1ff94198d7dffacd592feb1ba478f6",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.helios-arclight.node.lod0-hook-drive-core.dynamic",
@@ -4629,11 +4625,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6692,11 +6684,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_arclight.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "c510e8731291b5e217ae965cabbb843bfabb3fa8289b44a516bc09afbe64fd95",
-=======
-  "runtimeHash": "a0762985fc591310d954b10702c708c19f5f19163db5a5e9bbf9ae2416a7e1e5",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

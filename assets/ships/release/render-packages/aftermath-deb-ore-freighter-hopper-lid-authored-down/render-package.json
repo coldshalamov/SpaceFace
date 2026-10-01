@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "85ed9d352a3e4e5a8527f099ab3c3b2fadf7a29d018530cc671038206cd7b398",
-=======
-  "contentHash": "9e6038971d316bf60bc0cfad6f53b08572fb30bf3caa32d6572556cc28514156",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -532,11 +528,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -679,11 +671,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "14cf5909a5b4f76cbb1b5c48a1ec3fa724e7e1949a9722074e25c4b0d8a8db95",
-=======
-  "runtimeHash": "73ac29c65aff1f0df528dd1b6b91fd28576c97e27ed82ce2f3a5b1f6277dfa92",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

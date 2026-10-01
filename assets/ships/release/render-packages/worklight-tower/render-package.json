@@ -59,11 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "cccfe0678af766e6e2832b5ed010765eb947a364f358c326dfa11f2e3205e458",
-=======
-  "contentHash": "3bc5260bdc00768b25f88081b526d6ac4da12372a5419959ed1a7b843e841c8b",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.worklight-tower.mesh.lod0-hook-nav-port.dynamic",
@@ -2424,11 +2420,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3397,11 +3389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "f6472f46f3c60e617287957dd29e918542a3afc3892c5da303509eb322f2f79f",
-=======
-  "runtimeHash": "9ccc06b69f608844fa211026de0f59f078ca2f4b3fd7a4a6232149c964ba5329",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

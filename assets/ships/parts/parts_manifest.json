@@ -2277,8 +2277,8 @@
     }
    },
    "mount": "origin",
-   "tris": 16840,
-   "bytes": 2203616,
+   "tris": 21192,
+   "bytes": 2634400,
    "hooks": [],
    "sockets": [
     "SOCKET_Dock_Approach",
@@ -2340,8 +2340,8 @@
     }
    },
    "mount": "origin",
-   "tris": 24528,
-   "bytes": 3120044,
+   "tris": 28880,
+   "bytes": 3549220,
    "hooks": [],
    "sockets": [
     "SOCKET_Dock_Approach",
@@ -2477,8 +2477,8 @@
     }
    },
    "mount": "origin",
-   "tris": 26124,
-   "bytes": 2962656,
+   "tris": 30476,
+   "bytes": 3396904,
    "hooks": [],
    "sockets": [
     "SOCKET_Dock_Approach",
@@ -2497,12 +2497,12 @@
     ],
     "max": [
      56.5,
-     41.705169677734375,
+     41.70514678955078,
      8.527999877929688
     ],
     "dimensionsM": [
      98.20516586303711,
-     83.41033935546875,
+     83.41031646728516,
      23.138429641723633
     ]
    },
@@ -2540,8 +2540,8 @@
     }
    },
    "mount": "origin",
-   "tris": 30728,
-   "bytes": 3329024,
+   "tris": 35080,
+   "bytes": 3736864,
    "hooks": [],
    "sockets": [
     "SOCKET_Dock_Approach",
@@ -2603,8 +2603,8 @@
     }
    },
    "mount": "origin",
-   "tris": 27256,
-   "bytes": 3209192,
+   "tris": 31608,
+   "bytes": 3637652,
    "hooks": [],
    "sockets": [
     "SOCKET_Dock_Approach",
@@ -2617,9 +2617,9 @@
    ],
    "bounds": {
     "min": [
-     -43.18389129638672,
+     -43.18439483642578,
      -45.20000076293945,
-     -14.600001335144043
+     -14.600000381469727
     ],
     "max": [
      56.5,
@@ -2627,9 +2627,9 @@
      8.519124031066895
     ],
     "dimensionsM": [
-     99.68389129638672,
+     99.68439483642578,
      90.4000015258789,
-     23.119125366210938
+     23.11912441253662
     ]
    },
    "note": "Forge rebuild: claim ring with perimeter defence pylons and beam emitters.",
@@ -2666,8 +2666,8 @@
     }
    },
    "mount": "origin",
-   "tris": 22924,
-   "bytes": 2776856,
+   "tris": 27276,
+   "bytes": 3189868,
    "hooks": [],
    "sockets": [
     "SOCKET_Dock_Approach",
@@ -3148,8 +3148,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_drill_platform.glb",
-   "tris": 6388,
-   "bytes": 978272,
+   "tris": 6900,
+   "bytes": 1030692,
    "textureSize": 512,
    "tintable": {
     "hull": "Material_Hull",
@@ -3327,8 +3327,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_improvised_dock.glb",
-   "tris": 3064,
-   "bytes": 602024,
+   "tris": 3576,
+   "bytes": 654232,
    "textureSize": 512,
    "tintable": {
     "dark": "Material_Armor",
@@ -3529,8 +3529,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_maintenance_gantry.glb",
-   "tris": 8248,
-   "bytes": 1008208,
+   "tris": 8296,
+   "bytes": 1015888,
    "textureSize": 512,
    "tintable": {
     "dark": "Material_Armor",
@@ -3861,8 +3861,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_scrap_cage.glb",
-   "tris": 4912,
-   "bytes": 733292,
+   "tris": 4976,
+   "bytes": 746932,
    "textureSize": 512,
    "tintable": {
     "dark": "Material_Armor",
@@ -4583,8 +4583,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_transfer_arm.glb",
-   "tris": 4704,
-   "bytes": 773556,
+   "tris": 5856,
+   "bytes": 884692,
    "textureSize": 512,
    "tintable": {
     "hull": "Material_Hull",

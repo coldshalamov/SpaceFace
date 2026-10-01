@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "bcef446c90c5970d88e9c79bcb29d48eadf24a91a84f358651369f0547f20350",
-=======
-  "contentHash": "493d64c515cc14a41661e1e8bb01a6e65fb07ae07dafbe6216df545020b09720",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -778,11 +774,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1168,11 +1160,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "bed44f31741791d26f492ea3c3cebb2828b9bb44f59c9580f59ba964ecc9c9c1",
-=======
-  "runtimeHash": "d7e974386a303e2b8284d09ddadb4e0260a635b789c9c199ba4f82b055c441c5",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

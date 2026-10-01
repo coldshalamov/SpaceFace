@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "e032b8d6bbf095c8618d88396ac034ab3b85d5c19a76c79e2bc8770745c71a83",
-=======
-  "contentHash": "981da153db9dc82a8b38468b15ef8c684ca6c46b59f9726fa4edad78790c7d38",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1545,11 +1541,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1873,11 +1865,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "a629bf5254fdf44696d74383f17e93f8e1d3e99fa440e20d826d7ccdd0956aa8",
-=======
-  "runtimeHash": "b9b1eeea49500e5738ae0b89f97c17d6025b0f38c8d447286afff2a10bc167ee",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

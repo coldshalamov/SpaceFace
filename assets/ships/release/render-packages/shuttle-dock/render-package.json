@@ -99,11 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "ee8006f944978a4599263def6d82f2aad4ed1ddf4527de3bea57ae21455ebec4",
-=======
-  "contentHash": "056db87080b371f94f5bf03a316bc4395ff6f04b52dd72b8acca46a9b03b4d12",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2850,11 +2846,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -4098,11 +4090,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "345fbb1ac6750457adaedb0f5b6f139420572ec8237c7468d7ca7bfd880ff4f3",
-=======
-  "runtimeHash": "589b1bcf2073f11f7be96953ca6c243bea6785b9b1c35ad9df0684b1f9dd1739",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

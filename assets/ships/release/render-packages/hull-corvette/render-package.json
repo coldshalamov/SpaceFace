@@ -99,11 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "bb67c82594897353e2d0cca5a73dd2d325fc4cc983349a7774cb74cb041ef472",
-=======
-  "contentHash": "c1d97d031fc383081fee3d4d253bd10772da1f3a4a7650ec907106a91557e8d7",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1083,11 +1079,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1742,11 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_corvette.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "c66b0e2331ea632d2a665e636a6e898ca304c897106e162a54791a5c7ea3ba55",
-=======
-  "runtimeHash": "de3fc06f3633f595e2a6940fe7bbe137753031757ac5b42941ef533f8f5c9f88",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

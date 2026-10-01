@@ -59,11 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "9d9ce5277eba3ebecd4b122cd21fc61210e468d733212ed2e380eb7ed52e2a81",
-=======
-  "contentHash": "c0dbdf0f148c3c083e7d8c76427c61b0f32ba6fd7d89234a91b75a377e4cc42d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.dynamic",
@@ -2409,11 +2405,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -3379,11 +3371,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "3de017b31561c03bddcca1523aa29fa0c5bb05983029a35fc392367b0234920c",
-=======
-  "runtimeHash": "0d1a83231d7e90873c2207ddb4dbe2d8f54395fa02687d29d4780dc4e3f3b31f",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

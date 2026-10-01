@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "c12f873f6cfc0497f1eba850be613900471be2300a616a9c1ff2209a7f052721",
-=======
-  "contentHash": "4e8b8357045f22f8a6154f03479ab4d0e37ad4e1773b58cd84f035aea07891c5",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -931,11 +927,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -1303,11 +1295,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "d204a8b6c80732e107f32175d1d456708fb3b9d64a8918c412ec2c8d653ef75d",
-=======
-  "runtimeHash": "03ee4bdb8a521bfa66a3e26ca7f981658a59d4e561df66e591fdb54c264c095b",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

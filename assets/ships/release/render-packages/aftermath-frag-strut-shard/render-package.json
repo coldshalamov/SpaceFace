@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "0fb390c9990e831779ea366999d37c732365c1a9d182a1ab47758bb456b95fd7",
-=======
-  "contentHash": "02384f0bbd6d8cb1cf1974ec45876f512eff9ed1211824193dbffc7359c7f8f1",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [],
   "geometry": [
     {
@@ -482,11 +478,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -693,11 +685,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "714c74b87a911233dad0b4354837e79ec1214b5577f4a3a611e8c9a0cdfd6290",
-=======
-  "runtimeHash": "1f6959517f7e62de5565ab9fe7ca6ef67fb047cac10b1e63917a690ffa224b36",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

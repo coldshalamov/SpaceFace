@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "adb8718ae9b8f36c0386ae5d7d9357f552bac9dc32db7d8e4dfa62e3f82cc068",
-=======
-  "contentHash": "7600f7d7b11b7400f3a4b1970ab5fca84f88f36d4f854934606a3635bc49b771",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.dynamic",
@@ -1603,11 +1599,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -2177,11 +2169,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior_military.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "ad70d12040985d75fbe4f5b48988e59c333971aadb194581e8b2b389f490f040",
-=======
-  "runtimeHash": "32752062b908634657980fc26280b4810b3b4e664c9bf308f0a9ced98d1547e2",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

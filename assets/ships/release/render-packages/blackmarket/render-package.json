@@ -197,11 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "f4e1423c5ed33665beae64bd2a466dcc24c0cd08ab685010905f45e49cc0d265",
-=======
-  "contentHash": "db89760e594165985bdf4248b1ef309dfee254697743b8919aa11928065f6c4a",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.dynamic",
@@ -4511,11 +4507,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -6268,11 +6260,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "2551e0bd5fca71bfab7c68883ab7cde643558255d6a58e6ecb83e4d79537b377",
-=======
-  "runtimeHash": "9cd4654026ad057c0eda7d130d4ecb74b0a681c14b88b59721c6bdfda191d7bd",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

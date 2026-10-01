@@ -565,11 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
   "contentHash": "2da1bf325c0fb75c3841d21a3e59116d246cafdd30f1793e39362728d326a23e",
-=======
-  "contentHash": "1502e3c10d395d2d7bf11eb1c24785644486aefdbd72694d78bdea70c7801497",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "dynamicGroups": [
     {
       "id": "sf.render.rescue-lifter.node.lod0-hook-drive-core.dynamic",
@@ -4883,11 +4879,7 @@
     },
     "sourceManifest": {
       "bytes": 197728,
-<<<<<<< HEAD
       "sha256": "8cbc192b2613fee797062d90e223f9c7b12aa53d67d791e4e5be0fa9d3a441f0",
-=======
-      "sha256": "84edbb57439c68aae562a3455c30ac3deb55fbd2510fbb5e24412f770d0a275d",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
       "uri": "pilots.json"
     }
   },
@@ -7042,11 +7034,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/rescue_lifter.glb"
   },
-<<<<<<< HEAD
   "runtimeHash": "79dc02ff5a808c1372707f95e63dd13281cc61f0c9cfa2e6e8f8ffae6aa33b65",
-=======
-  "runtimeHash": "2c492c47566f300cf2ef62745fb577f1d37387bf75ddac8ac0a4938cee5829f9",
->>>>>>> origin/devin/1790812000-ani15-gate-emitters
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

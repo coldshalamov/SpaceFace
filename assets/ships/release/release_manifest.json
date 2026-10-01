@@ -2666,28 +2666,38 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_claim_outpost_base.glb",
    "release": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
-   "sourceSha256": "6123ce5436df472a414ae403aba311e820e18abe3609bcb1515ca569df1e5186",
-   "releaseSha256": "47a7a8159bf0e4b4500c740771836d100847fe482b9e92cfa7fadaea4f4c8afc",
-   "sourceBytes": 2203616,
-   "releaseBytes": 902628,
+   "sourceSha256": "47f9ed4c7283eeca1b104a9f2a8714feea078664cf8945baac96d8d6d85ae3c6",
+   "releaseSha256": "39949e590427a67e4156d2e9f01acb0b1f3ef2051e7b7f8d0e2e434264a529eb",
+   "sourceBytes": 2634400,
+   "releaseBytes": 833552,
    "textures": 6,
    "ktx2Textures": 6,
-   "meshoptBufferViews": 125,
-   "contractNodeCount": 40
+   "meshoptBufferViews": 121,
+   "contractNodeCount": 40,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_claim_outpost_catcher",
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_claim_outpost_catcher.glb",
    "release": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb",
-   "sourceSha256": "9416fa2ac04dde01cbf1165bca73ac1fbb25287fdc56898d7030ff779cd76c51",
-   "releaseSha256": "ee124451583360d329ad79e8f43b04ee5c6dcc940d46f6ab27629d5832ec3396",
-   "sourceBytes": 3120044,
-   "releaseBytes": 1161252,
+   "sourceSha256": "bb98193733b91009c9be2ad26945d2e91bd2fadc94563942e5edb85dd98a21af",
+   "releaseSha256": "62b0b8f49e877c2b49ed7397fe5cc32cd0e561d4c2167a0171626353a2c77e97",
+   "sourceBytes": 3549220,
+   "releaseBytes": 1094540,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 145,
-   "contractNodeCount": 46
+   "contractNodeCount": 46,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_breakaway_sp07",
@@ -2722,56 +2732,76 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_claim_outpost_bastion.glb",
    "release": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb",
-   "sourceSha256": "2b40c85c893126bc7bed1aab78cc4c29f51354257821f58e03aba029df71dc0d",
-   "releaseSha256": "bdf0e2e217b51b2ccfe61c9d86a43fb0a708e48410036168e925583da832e77f",
-   "sourceBytes": 2962656,
-   "releaseBytes": 1115492,
+   "sourceSha256": "bee2cf292e735c5845e79c201d2eef9e35b451803adb183184d35fdab0749f93",
+   "releaseSha256": "7abb145eb1b80320c9574d8bf1aa97e2b0b44216fd0e55dd93f2d83347510e2f",
+   "sourceBytes": 3396904,
+   "releaseBytes": 1052536,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 135,
-   "contractNodeCount": 43
+   "contractNodeCount": 43,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_claim_outpost_refinery",
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_claim_outpost_refinery.glb",
    "release": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
-   "sourceSha256": "f0bf9c482949f84ee0262ef538b06c417c11b76cb2008f7ed31aee4682aac7ed",
-   "releaseSha256": "620a4dfe3e3e6b506f01ed2bc1ec5686637e202aed0e3e3aee0a4f13b8c3ab2a",
-   "sourceBytes": 3329024,
-   "releaseBytes": 1216452,
+   "sourceSha256": "208eb07d2af1dac691c4548eca2a9991f365d76e363a8f2984eec449d311b270",
+   "releaseSha256": "986c1991d136d05b4dce1dea7eeefda93bbce0c698822a40bb7acc233d8a62d9",
+   "sourceBytes": 3736864,
+   "releaseBytes": 1142984,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 123,
-   "contractNodeCount": 40
+   "contractNodeCount": 40,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_claim_outpost_fence",
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_claim_outpost_fence.glb",
    "release": "assets/ships/release/parts/places/place_claim_outpost_fence.glb",
-   "sourceSha256": "7222cb71cf9e7adc5047daf79274ad46bc6fdaeabd7d0e714420f9f77994a650",
-   "releaseSha256": "9f0817baeeceaa08a04a959331ec739cb248044df28192540bc7d76e8d625133",
-   "sourceBytes": 3209192,
-   "releaseBytes": 1188192,
+   "sourceSha256": "5ca570eb29ea10c5594ca7abe6c2ae6ff1c7426235a7739ae3553cab6ad8d414",
+   "releaseSha256": "9cf8ee23dea1a2e75dda5221799f5a50de9762fa905ec114ef778dae075e1c68",
+   "sourceBytes": 3637652,
+   "releaseBytes": 1120196,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 135,
-   "contractNodeCount": 43
+   "contractNodeCount": 43,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_claim_outpost_relay",
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
    "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
-   "sourceSha256": "145cee60722cade1469ca637ab56a7d33c50197573d2342db198aa113465bda4",
-   "releaseSha256": "204ce45ee821da31e281b42da90ea6d58f58cbbac8c19d3544d5eaae8e03cf69",
-   "sourceBytes": 2776856,
-   "releaseBytes": 1075904,
+   "sourceSha256": "945d66a35df8d0c2c4b553cb8b5e5653c30fbae07a21cb17563f29f83cd7e005",
+   "releaseSha256": "b9d6bca8703a33ada88f78fd4770949a82906e6ad40fe04b5c1336b1a5302ff0",
+   "sourceBytes": 3189868,
+   "releaseBytes": 1004408,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 147,
-   "contractNodeCount": 46
+   "contractNodeCount": 46,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_cold_locker",
@@ -2904,14 +2934,19 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_drill_platform.glb",
    "release": "assets/ships/release/parts/places/place_drill_platform.glb",
-   "sourceSha256": "bcb1c0d3c863c030ffb5c04baff3e6c60a4400e62e723ee15da06308ec3e32a0",
-   "releaseSha256": "1ae49ec1de9d398866ccb03b0d247665ce463f3f82a62677b696b40d79013532",
-   "sourceBytes": 978272,
-   "releaseBytes": 567388,
+   "sourceSha256": "753c9ec5e22db46f7b087b96c939e49edc41872573551510cefd442c34a15999",
+   "releaseSha256": "7ada34142353c0a219a732386318937137c0297e90d9a5b60735ce4d787baa19",
+   "sourceBytes": 1030692,
+   "releaseBytes": 408656,
    "textures": 6,
    "ktx2Textures": 6,
-   "meshoptBufferViews": 115,
-   "contractNodeCount": 31
+   "meshoptBufferViews": 117,
+   "contractNodeCount": 31,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_extraction_mast",
@@ -2965,14 +3000,19 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_improvised_dock.glb",
    "release": "assets/ships/release/parts/places/place_improvised_dock.glb",
-   "sourceSha256": "af6accb942b92d2c66b32caff96ef4be339d9dce18c40bb5d857ee967af29f97",
-   "releaseSha256": "d7958774bd096a94b392fd190868cda4c56438f1c031bd5cd1267728f7b963b2",
-   "sourceBytes": 602024,
-   "releaseBytes": 447896,
+   "sourceSha256": "59ad400e9dbbbbe7b51dc1da6d792030dfdb6d921f7855f944d6b0a45b2fa551",
+   "releaseSha256": "7f4c50939b1f2e79133001dc1e7ce73ca24a7b19a83db9aba6ce3896d27cbc21",
+   "sourceBytes": 654232,
+   "releaseBytes": 287852,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 89,
-   "contractNodeCount": 31
+   "contractNodeCount": 31,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_interdiction_buoy",
@@ -3031,14 +3071,19 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_maintenance_gantry.glb",
    "release": "assets/ships/release/parts/places/place_maintenance_gantry.glb",
-   "sourceSha256": "f26c1722effa1b8f09f6555358764d6bc5e82b9bb702e67fcb4253f5604a66be",
-   "releaseSha256": "5ca101a559b7dc6437764fb2f2b0273dc0e01297eb7b8ea1b26afca9551c22e5",
-   "sourceBytes": 1008208,
-   "releaseBytes": 546936,
+   "sourceSha256": "f3774281c35d7bd5f05b374c8907372f27a64e65578da726e7474213d2317439",
+   "releaseSha256": "dd1aa25b94a4f62ccd7d16c282aa490f45ea7213b557c2f3ff4e97235b09d68e",
+   "sourceBytes": 1015888,
+   "releaseBytes": 377632,
    "textures": 6,
    "ktx2Textures": 6,
-   "meshoptBufferViews": 73,
-   "contractNodeCount": 23
+   "meshoptBufferViews": 77,
+   "contractNodeCount": 23,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_memorial_array",
@@ -3148,14 +3193,19 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_scrap_cage.glb",
    "release": "assets/ships/release/parts/places/place_scrap_cage.glb",
-   "sourceSha256": "141d6e58e52bd2793849e6dc6da4e4684d4e571b5eb563246cdf82cf436298c0",
-   "releaseSha256": "6890288d13ace038f54966994cf951e4b53c1955e02f478d0e49a3ea39a7ac40",
-   "sourceBytes": 733292,
-   "releaseBytes": 494196,
+   "sourceSha256": "42a93a223dbf8d536bfcc71b2d4f732b7414bf6cc7d75875520e1460d45d123a",
+   "releaseSha256": "0c37104a526a1249216accc8ec5f8446b6a881014734d4eb4ca4d7b5a041ceaa",
+   "sourceBytes": 746932,
+   "releaseBytes": 325528,
    "textures": 6,
    "ktx2Textures": 6,
-   "meshoptBufferViews": 111,
-   "contractNodeCount": 31
+   "meshoptBufferViews": 115,
+   "contractNodeCount": 31,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_sensor_mast",
@@ -3368,14 +3418,19 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_transfer_arm.glb",
    "release": "assets/ships/release/parts/places/place_transfer_arm.glb",
-   "sourceSha256": "2609bc1cd4e8f76db336e7dc622ecd5724a5e4e28db14c4adde9d73e00158c3a",
-   "releaseSha256": "8adbde1cafee904fc0b19349c5d922750cde2cc496a39c2a5041f1de9363fa83",
-   "sourceBytes": 773556,
-   "releaseBytes": 506220,
+   "sourceSha256": "aa6fa69c2b7e30400b96ec96ca940129426510a4a6cbe6d45fb99a90d09b1ef8",
+   "releaseSha256": "a54a4b4c03a57478c93d5e8037a15e31ec45125cdd7b13c2441a11e7a2ebe14a",
+   "sourceBytes": 884692,
+   "releaseBytes": 361684,
    "textures": 6,
    "ktx2Textures": 6,
    "meshoptBufferViews": 105,
-   "contractNodeCount": 28
+   "contractNodeCount": 28,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_transponder_gate",
