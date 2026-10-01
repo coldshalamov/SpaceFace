@@ -239,7 +239,9 @@ export const ENDGAME_PULL_LINES = Object.freeze({
 });
 
 export function endgamePullLine(pullId, tokens = {}) {
-  const template = ENDGAME_PULL_LINES[pullId] || 'The pull is done.';
+  // STORY-01: the power hole gets named even when the pull has no authored line — the fallback
+  // carries the victim faction's label rather than "the pull is done" with no consequence.
+  const template = ENDGAME_PULL_LINES[pullId] || 'The pull is done. {victim} marks the hole it left.';
   return fillGrowthTokens(template, {
     station: String(tokens.station || ''),
     module: String(tokens.module || ''),
@@ -247,6 +249,7 @@ export function endgamePullLine(pullId, tokens = {}) {
     depot: String(tokens.depot || ''),
     ace: String(tokens.ace || 'an ace'),
     head: String(tokens.head || 'a Massline head'),
+    victim: tokens.victim ? factionLabel(tokens.victim) : 'The board',
   });
 }
 
@@ -304,7 +307,7 @@ export function aceTrophyNewsLine(tokens = {}) {
 }
 
 function fillGrowthTokens(text, tokens) {
-  return String(text || '').replace(/\{(station|module|units|depot|ace|head)\}/g, (_match, key) => (
+  return String(text || '').replace(/\{(station|module|units|depot|ace|head|victim)\}/g, (_match, key) => (
     tokens[key] != null ? tokens[key] : ''
   ));
 }

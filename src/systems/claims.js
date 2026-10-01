@@ -2413,7 +2413,7 @@ export const claims = {
     };
     ledger.completed[pullId] = rec;
     ledger.completedOrder.push(pullId);
-    const text = endgamePullLine(pullId);
+    const text = endgamePullLine(pullId, { victim: rec.victimFactionId });
     this.bus.emit('endgame:pullCompleted', {
       pullId,
       kind: rec.kind,

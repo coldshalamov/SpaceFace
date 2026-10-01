@@ -490,7 +490,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| STORY-01 | A finished endgame pull is news, with the power hole it left named | `src/data/conflictReactions.js`, `src/systems/claims.js`, `src/ui/marketNews.js` | On seed 4242 a completed pull publishes one cited headline built from `endgamePullLine`; a focused test pins it | Publish uncited. Change pull power | OPEN |
+| STORY-01 | A finished endgame pull is news, with the power hole it left named | `src/data/conflictReactions.js`, `src/systems/claims.js`, `src/ui/marketNews.js` | On seed 4242 a completed pull publishes one cited headline built from `endgamePullLine`; a focused test pins it | Publish uncited. Change pull power | SHIPPED STORY-01 |
 | STORY-02 | Research points earned are announced with their source | `src/systems/missions.js`, `src/ui/alerts.js` | On seed 4242 `research:pointsChanged` raises one line naming the grant; a focused test pins it and none for a zero delta | Toast per point. Add a research screen | OPEN |
 | STORY-03 | Each stage of the Orrin witness case gets a comms line, not only the submission | `src/systems/world.js`, `src/ui/comms.js` | On seed 4242 each `orrinWitness:*` stage event produces one comms popup; a focused test pins one per stage | Add a dialogue choice. Change case rules | OPEN |
 | STORY-04 | The post-ending continuity objective appears in the mission log | `src/systems/story.js`, `src/ui/screens/missionLog.js` | On seed 4242 `story:postEndingContinuity` adds one objective row to the log model; a focused test pins it | Add an ending. Re-present a resolved ending (NXI-186) | SHIPPED STORY-04 7dee214dd |
