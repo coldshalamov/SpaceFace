@@ -1477,6 +1477,11 @@ export const save = {
     (async () => {
       try {
         if (typeof localStorage === 'undefined') return;
+        // An authoritative same-generation scan already hash-verified every blob — the walk
+        // below would re-materialize and re-hash the whole store only to discard its own
+        // result at the publish check.
+        const settled = this._slotIndexCache;
+        if (settled && settled.sig === sig && settled.authoritative) return;
         // The materialize+hash walk below must not run on the frame that invoked
         // listSlotsIndexCards — a mature store is a multi-MB brick inside the title
         // paint. Yield first; on a generation match the shared-store collect's raws
@@ -3286,17 +3291,27 @@ export const save = {
       }
       slot = resolved;
     }
-    let raw = null;
-    try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
-    catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
     // Consume the menu-time speculative prepare only when it targeted this exact slot AND the
     // bytes it read are still on disk — a stale speculation prepares fresh like a miss.
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
+    // A same-generation spec already proves the disk bytes: every tracked writer bumps the
+    // generation, so 'gen:' equality makes spec.raw identical to what getItem would return —
+    // the multi-MB materialize + byte compare stay off the click path.
+    installSaveStoreWriteTracking();
     const specHit = spec && spec.slot === slot
+      && spec.sig === 'gen:' + _saveStoreGeneration;
+    let raw = null;
+    if (!specHit) {
+      try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+      catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+    }
+    // A spec minted under an older generation still consumes, but only after byte equality
+    // proves nothing drifted since it read.
+    const specByteHit = !specHit && spec && spec.slot === slot
       && typeof raw === 'string' && spec.raw === raw;
-    const primaryPromise = (specHit ? spec.promise : Promise.resolve(null))
-      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(raw));
+    const primaryPromise = ((specHit || specByteHit) ? spec.promise : Promise.resolve(null))
+      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit ? spec.raw : raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
     // is main-thread serialize work that used to serialize after the roundtrip. A failed
     // primary falls through to the same snapshot: nothing destructive ran in between.
