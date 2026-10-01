@@ -8253,9 +8253,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 100912,
+      "bytes": 245686,
       "rigId": "yard_tug_winch",
-      "sha256": "2c8b0cd8d3e4d76a388b3f1a0fbfeda051d02c20f1aaa750ad327966dfc697d9",
+      "sha256": "1165fb67ce5a7e5767a14389cfd559b9d3a5ce3c57d16c115c97c6e9c4f52515",
       "uri": "assets/ships/motions/yard-tug.motion.json"
     },
     "nodeCount": 88,
@@ -10261,7 +10261,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "25d7d1695c85f8088c3bf07556a7d0cb8c99b47d4402f6e5d21f4ef2a0408940",
+  "runtimeHash": "d4c0fc59137edc0bc34fc0e4b5efa889dd7da2e832c99d4bd446af82680a42c7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

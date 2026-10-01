@@ -108,7 +108,13 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   };
 
   root.userData.authoredMotionControllers = live;
+  // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
+  let attachFired = false;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow) {
+    if (!attachFired) {
+      attachFired = true;
+      for (const controller of live) controller.handleEvent?.('authoredMotion:attach', {}, simNow);
+    }
     for (const controller of live) controller.update(simNow);
   };
   root.userData.authoredMotionEvent = function authoredMotionEvent(type, payload, simNow) {
@@ -208,6 +214,14 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   };
   const onLatchDenied = (payload) => {
     dispatch('tether:latchDenied', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
+  // ANI-21: the yard-tug hook rig answers to load events on the tug that fired the snare —
+  // a quiver must not steal the winch's hook/fairlead groups mid-payout or mid-reel.
+  const onSnareArmed = (payload) => {
+    dispatch('massline:snareArmed', payload && payload.sourceId, payload, (c) => !lineDeployed(c));
+  };
+  const onTetherStrain = (payload) => {
+    dispatch('tether:strain', PLAYER_ENTITY_ID, payload, (c) => !lineDeployed(c));
   };
   // ANI-05: drive iris on the boost lifecycle. stow is gated so a stray boostStop (or a ship that
   // never opened) doesn't replay the retract against an already-parked iris.
@@ -372,7 +386,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   };
   const onPodBeamStop = (payload) => {
     if (!payload || payload.targetId == null) return;
-    const simTime = payload?.simTime ?? simNow();
+    const simTime = anchorS(payload);
     for (const controller of authoredMotionControllersFor(payload.targetId)) {
       if (!controller.clipActive?.('breach')) continue;
       const elapsed = controller.clipElapsed?.('breach', simTime);
@@ -399,7 +413,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       ? entityForStationId(payload.stationId)
       : null;
     if (entityId == null) return;
-    const now = payload.simTime ?? simNow();
+    const now = anchorS(payload);
     for (const controller of authoredMotionControllersFor(entityId)) {
       try {
         if (payload.active === false) {
@@ -451,6 +465,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('tether:released', onTetherReleased),
     bus.on('massline:snareEnded', onSnareEnded),
     bus.on('tether:latchDenied', onLatchDenied),
+    bus.on('massline:snareArmed', onSnareArmed),
+    bus.on('tether:strain', onTetherStrain),
     bus.on('ship:boostPreKick', onBoostPreKick),
     bus.on('ship:boostStart', onBoostStart),
     bus.on('ship:boostStop', onBoostStop),

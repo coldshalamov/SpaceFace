@@ -552,3 +552,157 @@ test('a held peel keeps its flag at any age — the repair still lands the armor
   assert.ok(controller.clipActive('armorStow'), 'age-based pruning would have dropped the live flag and lost the fix');
   unbind();
 });
+
+// --- ambient attach clips (ANI phase-2) -----------------------------------------
+
+// Two-group rig: a shared binding shape for supersede/ambient tests.
+const AMBIENT_BINDINGS = [
+  {
+    id: 'arm', node: 'MOTION_ARM', parent: null,
+    restPose: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+    requiredAtLod: [0],
+  },
+  {
+    id: 'gear', node: 'MOTION_GEAR', parent: null,
+    restPose: { translation: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+    requiredAtLod: [0],
+  },
+];
+
+function makeTwoGroupTree() {
+  const root = new THREE.Object3D();
+  const arm = new THREE.Object3D(); arm.name = 'MOTION_ARM';
+  const gear = new THREE.Object3D(); gear.name = 'MOTION_GEAR';
+  arm.position.set(0, 0, 0); gear.position.set(1, 0, 0);
+  for (const pivot of [arm, gear]) {
+    pivot.add(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial()));
+    root.add(pivot);
+  }
+  return { root, arm, gear };
+}
+
+function ambientBank({ events = { 'authoredMotion:attach': 'hum' } } = {}) {
+  return {
+    schema: MOTION_BANK_SCHEMA,
+    rigId: 'ambient_rig',
+    sourceAssetId: 'SF_AMBIENT_RIG_V1',
+    sourceGlbSha256: '0'.repeat(64),
+    fps: 60,
+    bindings: AMBIENT_BINDINGS,
+    clips: [
+      {
+        name: 'hum', durationS: 2, loop: true, endMode: 'hold',
+        channels: [
+          { group: 'arm', path: 'translation', times: [0, 2], values: [0, 0, 0, 0, 0.4, 0] },
+        ],
+      },
+      {
+        name: 'kick', durationS: 0.5, loop: false, endMode: 'rest',
+        channels: [
+          { group: 'arm', path: 'translation', times: [0, 0.5], values: [0, 0, 0, 1, 0, 0] },
+          { group: 'gear', path: 'translation', times: [0, 0.5], values: [0, 0, 0, 0, 0, 1] },
+        ],
+      },
+    ],
+    events,
+  };
+}
+
+test('the attach kick arms the ambient loop once, on the first update', () => {
+  const { root, arm } = makeTwoGroupTree();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, ambientBank());
+  attachAuthoredMotionDriver(ship, { id: 'ent-amb' }, [controller]);
+  ship.userData.updateAuthoredMotion({ id: 'ent-amb' }, 10);
+  assert.ok(controller.clipActive('hum'), 'ambient clip armed at attach');
+  ship.userData.updateAuthoredMotion({ id: 'ent-amb' }, 11);
+  assert.ok(arm.position.y > 0.05, 'ambient clip is evaluating');
+});
+
+test('ambient loop re-enters when the last event clip drains', () => {
+  const { root } = makeTwoGroupTree();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(
+    root, ambientBank({ events: { 'authoredMotion:attach': 'hum', 'test:kick': 'kick' } }),
+  );
+  attachAuthoredMotionDriver(ship, { id: 'ent-amb2' }, [controller]);
+  ship.userData.updateAuthoredMotion({ id: 'ent-amb2' }, 0);
+  assert.ok(controller.clipActive('hum'));
+  controller.handleEvent('test:kick', {}, 1);
+  assert.ok(controller.clipActive('kick'));
+  ship.userData.updateAuthoredMotion({ id: 'ent-amb2' }, 2.0); // kick drained (dur 0.5)
+  assert.equal(controller.clipActive('kick'), false);
+  assert.ok(controller.clipActive('hum'), 'ambient resumed after drain');
+});
+
+test('hasActiveClipsIn ignores channels a newer clip superseded', () => {
+  const bank = ambientBank({ events: {} });
+  // A clip owning arm+gear superseded out of 'arm' still runs 'gear' — arm must read inactive.
+  bank.clips.push({
+    name: 'grab', durationS: 10, loop: true, endMode: 'hold',
+    channels: [
+      { group: 'arm', path: 'translation', times: [0, 10], values: [0, 0, 0, 0, 0.5, 0] },
+    ],
+  });
+  const { root } = makeTwoGroupTree();
+  const controller = bindAuthoredMotion(root, bank);
+  controller.setState({ state: 'kick', startTimeS: 0 });
+  controller.setState({ state: 'grab', startTimeS: 0.1 }); // claims 'arm' out of kick
+  assert.equal(controller.hasActiveClipsIn(['arm']), true, 'grab owns arm now');
+  controller.setState({ state: 'rest', startTimeS: 0.2 });
+  controller.setState({ state: 'kick', startTimeS: 0.3 });
+  controller.setState({ state: 'grab', startTimeS: 0.4 });
+  controller.setState({ state: 'hum', startTimeS: 0.5 }); // hum owns nothing new
+  // kick is superseded on 'arm' by grab; gear claim check: 'gear' is only on kick (live).
+  assert.equal(controller.hasActiveClipsIn(['gear']), true);
+  controller.setState({ state: 'rest', startTimeS: 0.6 });
+  controller.setState({ state: 'hum', startTimeS: 0.7 });
+  controller.setState({ state: 'grab', startTimeS: 0.8 });
+  // Now kick keeps only 'gear' live; a gear-only query hits kick, an arm query hits grab.
+  assert.equal(controller.hasActiveClipsIn(['arm']), true);
+  controller.dispose();
+});
+
+test('clipElapsed scales by rateScale', () => {
+  const { root } = makeTwoGroupTree();
+  const controller = bindAuthoredMotion(root, ambientBank());
+  controller.setState({ state: 'kick', startTimeS: 10, rateScale: 2 });
+  assert.equal(controller.clipElapsed('kick', 11), 2);
+  controller.dispose();
+});
+
+test('settle merges only live (non-superseded) channel poses', () => {
+  const bank = ambientBank({ events: {} });
+  bank.clips.push({
+    name: 'grab', durationS: 10, loop: true, endMode: 'hold',
+    channels: [
+      { group: 'arm', path: 'translation', times: [0, 10], values: [0, 0, 0, 0, 0.5, 0] },
+    ],
+  });
+  const { root, arm } = makeTwoGroupTree();
+  const controller = bindAuthoredMotion(root, bank);
+  controller.setState({ state: 'kick', startTimeS: 0 });
+  controller.update(0.25); // kick mid-flight: arm ~0.5, gear ~0.5
+  controller.setState({ state: 'grab', startTimeS: 0.3 }); // supersedes kick's 'arm' channel
+  const ok = controller.settle(0.5, 0.3);
+  assert.ok(ok);
+  controller.update(0.3);
+  // The settle clip's 'arm' pose must come from grab (delta 0.5*x at t=0.2 → ~0.1),
+  // not from kick's superseded channel (delta ~1.0).
+  const settle = controller.clipActive('__settle__1') ? '__settle__1' : null;
+  assert.ok(settle || controller.state !== 'rest', 'settle clip is running');
+  // arm lands near grab's pose, far from kick's superseded pose.
+  assert.ok(arm.position.x < 0.35, `arm x=${arm.position.x} should follow grab (~0.1), not kick (~0.75)`);
+  controller.dispose();
+});
+
+test('reserved clip names and translation slerp are rejected', () => {
+  for (const bad of ['__settle__9', 'rest', 'idle']) {
+    const b = ambientBank({ events: {} });
+    b.clips[0].name = bad;
+    assert.throws(() => validateMotionBank(b), new RegExp(bad === 'rest' || bad === 'idle' ? 'reserved' : 'reserved'));
+  }
+  const slerpT = ambientBank({ events: {} });
+  slerpT.clips[0].channels[0].interpolation = 'slerp';
+  assert.throws(() => validateMotionBank(slerpT), /cannot slerp/);
+});

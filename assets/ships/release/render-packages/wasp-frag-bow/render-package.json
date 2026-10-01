@@ -4489,9 +4489,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 32670,
+      "bytes": 30814,
       "rigId": "wasp_frag_bow",
-      "sha256": "5b8ad7d222b3ad5551c87b378af3df83f0eda687737e5e58ede1e71adbffd383",
+      "sha256": "b74048598c04e7f8bdda5e60c7a2ddd9204affed033a9f038a46096c0da8f69c",
       "uri": "assets/ships/motions/wasp-frag-bow.motion.json"
     },
     "nodeCount": 44,
@@ -5236,7 +5236,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_wasp_frag_bow.glb"
   },
-  "runtimeHash": "55b534683b509c4b0bbd473c3bfc02685fd58df8f5f4a5ed9fb98aa5629c4af7",
+  "runtimeHash": "df037a2b9cae8800d539717e7c990fd953c8a18ea55d56027ee2a773f8ea2712",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

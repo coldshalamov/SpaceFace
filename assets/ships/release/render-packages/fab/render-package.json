@@ -7323,9 +7323,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 425069,
+      "bytes": 659819,
       "rigId": "fab_yard_work",
-      "sha256": "4233ec5893a853a7e7de883dfff88be6f81826231efe38243815670b4eee8b7f",
+      "sha256": "ac6891d7932126b403c5a399bf5437180b419cd20c463e95d9e762fe143b7dcb",
       "uri": "assets/ships/motions/fab.motion.json"
     },
     "nodeCount": 83,
@@ -9341,7 +9341,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_fab.glb"
   },
-  "runtimeHash": "3f753ac9fa19e4b325d69dff255449f2b376ca35b02b10588209fbc1473d960f",
+  "runtimeHash": "cbb15dd95d0e4ddac874d8688725885209f74b91f2380d37d3bb82f9df0a7664",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

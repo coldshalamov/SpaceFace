@@ -153,6 +153,12 @@ export function validateMotionBank(bank) {
       throw new Error('motion bank clip requires a name.');
     }
     if (clipNames.has(clip.name)) throw new Error(`motion bank clip "${clip.name}" is declared twice.`);
+    if (clip.name.startsWith('__settle__') || clip.name === 'rest' || clip.name === 'idle') {
+      throw new Error(
+        `motion bank clip "${clip.name}" uses a reserved name — '__settle__N' is synthesized ` +
+        "at runtime and 'rest'/'idle' are the park states a bank clip could never be addressed by.",
+      );
+    }
     clipNames.add(clip.name);
     if (!Number.isFinite(clip.durationS) || clip.durationS <= 0) {
       throw new Error(`motion bank clip ${clip.name} durationS must be a positive finite number.`);
@@ -215,6 +221,11 @@ export function validateMotionBank(bank) {
       }
       if (!INTERPOLATIONS.has(channel.interpolation || (channel.path === 'rotation' ? 'slerp' : 'linear'))) {
         throw new Error(`motion bank clip ${clip.name} group ${channel.group} interpolation is not supported.`);
+      }
+      if (channel.path === 'translation' && channel.interpolation === 'slerp') {
+        // sampleChannel only ever slerps rotation; a declared-but-inert translation 'slerp'
+        // misstates the baked data.
+        throw new Error(`motion bank clip ${clip.name} group ${channel.group} translation cannot slerp.`);
       }
     }
   }
@@ -473,16 +484,19 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     // entity's flag must not outlive the clips it tracked).
     hasActiveClipsIn(groupIds = []) {
       const wanted = new Set(groupIds);
-      for (const name of state.clips.keys()) {
+      for (const [name, run] of state.clips) {
         const clip = clips.get(name);
-        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) return true;
+        // Live ownership, not declared channels: a clip superseded out of a group no longer
+        // poses it, so it must not count as 'still active there'.
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group)
+          && !(run.superseded && run.superseded.has(ch.group)))) return true;
       }
       return false;
     },
     clipElapsed(name, timeS) {
       const run = state.clips.get(name);
       if (!run) return null;
-      return (Number.isFinite(timeS) ? timeS : 0) - run.startS;
+      return ((Number.isFinite(timeS) ? timeS : 0) - run.startS) * run.rateScale;
     },
     clipDuration(name) {
       const clip = clips.get(name);
@@ -498,16 +512,20 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      */
     settle(durationS = 1.0, timeS = 0) {
       if (disposed || !state.clips.size) return false;
+      const at = Number.isFinite(timeS) ? timeS : 0;
       const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
       const merged = new Map();
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
         if (!clip) continue;
-        const t = (timeS - run.startS) * run.rateScale;
+        const t = (at - run.startS) * run.rateScale;
         const deltas = evaluateMotionClip(
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       const channels = [];
       for (const [groupId, delta] of merged) {
@@ -530,7 +548,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       };
       clips.set(settleName, settleClip);
       state.clips.clear();
-      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      state.clips.set(settleName, { startS: at, rateScale: 1 });
       trimParkedSettles();
       state.latest = settleName;
       state.parked = false;
@@ -547,6 +565,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      */
     settleGroups(durationS = 1.0, timeS = 0, groupIds = []) {
       if (disposed || !state.clips.size) return false;
+      const at = Number.isFinite(timeS) ? timeS : 0;
       const wanted = new Set(groupIds || []);
       if (!wanted.size) return false;
       const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
@@ -554,11 +573,14 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
         if (!clip) continue;
-        const t = (timeS - run.startS) * run.rateScale;
+        const t = (at - run.startS) * run.rateScale;
         const deltas = evaluateMotionClip(
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       const channels = [];
       for (const groupId of wanted) {
@@ -583,13 +605,17 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
       };
       clips.set(settleName, settleClip);
-      for (const name of [...state.clips.keys()]) {
+      for (const [name, run] of [...state.clips]) {
         const clip = clips.get(name);
-        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) {
+        // Drop a clip only when a LIVE (non-superseded) channel is being settled — declared
+        // overlap alone would kill a clip whose wanted groups were already claimed away,
+        // snapping its remaining live groups.
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group)
+          && !(run.superseded && run.superseded.has(ch.group)))) {
           state.clips.delete(name);
         }
       }
-      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      state.clips.set(settleName, { startS: at, rateScale: 1 });
       // Runs after settleName joins state.clips so the fresh clip is never collected as dead.
       trimParkedSettles();
       state.latest = settleName;
@@ -711,7 +737,21 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           }
         }
       }
-      if (!state.clips.size) state.parked = true;
+      // Ambient resume: a bank that maps the synthetic 'authoredMotion:attach' event to a
+      // LOOPING clip treats it as the rig's idle life — started once at attach (the render-side
+      // attach kick) and re-entered whenever the last event clip drains. One-shot attach clips
+      // and rigs that never declare the event are unaffected; an explicit rest setState still
+      // parks for a frame but the next update resumes ambient, which is what a docked machine
+      // should look like (calm, not dead).
+      if (!state.clips.size) {
+        state.parked = true;
+        const attachClip = (checked.events || {})['authoredMotion:attach'];
+        if (attachClip && clips.get(attachClip)?.loop) {
+          state.clips.set(attachClip, { startS: timeS, rateScale: 1 });
+          state.latest = attachClip;
+          state.parked = false;
+        }
+      }
     },
 
     /**
