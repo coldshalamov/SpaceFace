@@ -6976,10 +6976,15 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     if (prefetchedLibrary) {
       try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
     }
-    const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
-      ...options,
-      admissionDeadline: true,
+    // Decode runs at deadline floor; admissionVisible must stay live — a mid-run promotion
+    // stamped on the job bag by a join or an on-glass trigger has to reach the remaining
+    // per-part posts, or the tail of a hull that just came on-stage keeps ranking deadline.
+    const decodeOptions = { ...options, admissionDeadline: true };
+    Object.defineProperty(decodeOptions, 'admissionVisible', {
+      enumerable: true,
+      get: () => options.admissionVisible === true,
     });
+    const library = await preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions);
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
@@ -7623,6 +7628,10 @@ async function commitAuthoredBoundary(
 
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
+  // The visualBounds copied off the resolving-marker substrate was the marker's own drawn
+  // envelope (~1.9x hull radius); a committed boundary classifies from the measured authored
+  // hull via drawnCullRadiusForMesh.
+  delete boundary.userData.visualBounds;
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
   boundary.userData.proceduralFallbackParts = authored.fallbackParts;
@@ -7831,9 +7840,12 @@ function admitEntityPlan(renderer, options, library, plan) {
     lanes.set(partRoot, lane);
   }
   return new Promise((resolve, reject) => {
+    // Rank fields read the options bag live: a promotion stamped mid-queue re-ranks the
+    // entry the next time the lane re-sorts at pump.
     const entry = {
-      deadline: options && (options.admissionDeadline === true || options.admissionVisible === true),
-      visible: options && options.admissionVisible === true,
+      options,
+      get deadline() { return !!(options && (options.admissionDeadline === true || options.admissionVisible === true)); },
+      get visible() { return !!(options && options.admissionVisible === true); },
       run: async () => {
         // Re-check only after earlier demand has committed its records. Checking before joining
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
@@ -7874,6 +7886,9 @@ function admitEntityPlan(renderer, options, library, plan) {
 
 function pumpEntityPlanLane(lanes, partRoot, lane) {
   if (lane.running) return;
+  // Re-rank live flags before each pick: an entry promoted while queued takes the lane
+  // ahead of entries that outranked its frozen-at-push rank.
+  lane.queued.sort((a, b) => (b.visible === true ? 2 : (b.deadline === true ? 1 : 0)) - (a.visible === true ? 2 : (a.deadline === true ? 1 : 0)));
   const entry = lane.queued.shift();
   if (!entry) {
     lanes.delete(partRoot);
