@@ -46,6 +46,32 @@ export function blockedOutputAlertText(payload) {
   return BLOCKED_OUTPUT_STATES.has(s) ? 'OUTPUT BLOCKED' : null;
 }
 
+const HAZARD_ALERT_TEXT = Object.freeze({
+  radiation: 'RADIATION',
+  nebula: 'NEBULA',
+});
+
+/** WORLD-25: one persistent HUD alert on hazard entry, cleared on exit.
+ *  Radiation and nebula only. Boss intensity changes are not an entry. */
+export function hazardAlertCommand(payload) {
+  if (!payload || payload.reason === 'boss_defeated') return null;
+  const type = payload.zoneType || payload.type;
+  if (type !== 'radiation' && type !== 'nebula') return null;
+  const phase = payload.phase === 'enter' || payload.phase === 'exit'
+    ? payload.phase
+    : (payload.entered === true ? 'enter' : payload.entered === false ? 'exit' : null);
+  if (!phase) return null;
+  const key = `hazard:${type}`;
+  if (phase === 'exit') return { action: 'clear', key };
+  return {
+    action: 'raise',
+    key,
+    sev: type === 'radiation' ? 'danger' : 'warn',
+    text: HAZARD_ALERT_TEXT[type],
+    ttl: Infinity,
+  };
+}
+
 /** Per-machine blocked set so a running mill cannot hide a starved neighbour. */
 export function applyBlockedOutputMachine(blocked, payload) {
   const next = blocked instanceof Set ? new Set(blocked) : new Set();
@@ -369,6 +395,15 @@ export function createAlerts(ctx) {
   // are untouched. Tutorial longform ("Cargo hold full! Dock…") stays on the tutorial channel.
   bus.on('cargo:full', () => announce({ key: 'cargo-full', sev: 'warn', text: 'CARGO HOLD FULL', ttl: 2.5 }));
   bus.on('fuel:empty', () => announce({ key: 'fuel', sev: 'danger', text: 'OUT OF FUEL', ttl: 4 }));
+
+  // Hazard entry is a condition light, like missile lock: it stays while you are inside
+  // and clears when you leave. Not a new bar, and not a one-shot voice.
+  bus.on('hazard:changed', (payload) => {
+    const command = hazardAlertCommand(payload);
+    if (!command) return;
+    if (command.action === 'clear') clear(command.key);
+    else raise(command);
+  });
 
   // low-shield/hull driven from the HUD per-frame check via these helpers (status pills):
   return { raise, clear, tick };

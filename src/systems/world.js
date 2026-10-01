@@ -5227,19 +5227,39 @@ export const world = {
       const dx = player.pos.x - z.center.x, dz = player.pos.z - z.center.z;
       if (dx * dx + dz * dz <= z.radius * z.radius) {
         nowInside.add(i);
-        if (!inside.has(i)) this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+        if (!inside.has(i)) {
+          this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+          this._emitHazardPresence(player, z, 'enter');
+        }
         if (z.type === 'radiation') this._applyRadiationTick(player, z, dt, state);
       }
     }
     for (const i of inside) {
       if (!nowInside.has(i)) {
         const z = zones[i];
-        if (z) this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+        if (z) {
+          this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+          this._emitHazardPresence(player, z, 'exit');
+        }
       }
     }
     inside.clear();
     this._hazardSet = nowInside;
     this._hazardNextSet = inside;
+  },
+
+  // WORLD-25: radiation and nebula entry/exit raise the HUD alert line. Damage is unchanged.
+  // Boss aftermath keeps its own hazard:changed shape (reason: 'boss_defeated') and is not an entry.
+  _emitHazardPresence(player, zone, phase) {
+    if (!zone || (zone.type !== 'radiation' && zone.type !== 'nebula')) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('hazard:changed', {
+      entityId: player && player.id,
+      zoneType: zone.type,
+      hazardId: zone.id || null,
+      phase,
+      intensity: this._hazardEffectiveIntensity(zone),
+    });
   },
 
   // Authored intensity × the vent/roar scale the moving-hazard law stamps each tick (1 for
