@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "U8-sker-tithe-runner",
-      "date": "2026-09-26",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Sker Haven had traffic (9/min) and a repGated bazaar but no named lane identity — the levy market's lanes were anonymous. Vey Senna, TITHE-RUN, now deterministic pick via ensureNamedLaneContact with a gimmick label; loc catalog regenerated.",
-      "fingerprint": "verb=name,subject=lane-identity,sector=sker-haven,domain=world",
-      "references": [],
-      "integration": "live",
-      "commit": "6ee18f30a",
-      "verification": "focused_green"
-    },
-    {
       "id": "U7-mystery-patrol-pools",
       "date": "2026-09-26",
       "wf": "WF-02",
@@ -1637,6 +1624,19 @@
       "references": [],
       "integration": "live",
       "commit": "f9e574cc1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "STORY-03",
+      "date": "2026-10-01",
+      "wf": "WF-02",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "each orrinWitness stage event produces one comms popup; case_open+recorder_confirmed lines added under persistent seenComms dedupe",
+      "fingerprint": "verb=announce,subject=orrin-witness-stage,sector=comms,domain=story",
+      "references": [],
+      "integration": "live",
+      "commit": "d9a22efe4",
       "verification": "focused_green"
     }
   ],
