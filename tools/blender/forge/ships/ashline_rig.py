@@ -23,6 +23,7 @@ COLORS = {
     'hazard': '#d99a1e',
     'bare': '#868c93',     # honed steel
     'glow_drive': '#ff9a4a',
+    'glow_cyan.sodium': '#ff8a2a',   # sodium lifted to light (Ashline identity trim)
 }
 
 RAIL_Y = 1.2       # truss rails either side of the centreline (the corsair runs them tighter)
@@ -30,7 +31,7 @@ RAIL_Z = 0.25
 FRAME_X0, FRAME_X1 = -4.6, 5.2
 
 
-def build_frame(s, rail_y=RAIL_Y, bays=(-3.6, -2.2, -0.8, 0.6, 2.0, 3.4)):
+def build_frame(s, rail_y=RAIL_Y, bays=(-3.6, -2.2, -0.8, 0.6, 2.0, 3.4), lit_rails=True):
     """Open truss spine: two box rails with black caps (hazard-banded ends), cross ties, X bracing, a
     round keel tube underneath on struts."""
     cx_mid, length = (FRAME_X0 + FRAME_X1) / 2, FRAME_X1 - FRAME_X0
@@ -39,6 +40,12 @@ def build_frame(s, rail_y=RAIL_Y, bays=(-3.6, -2.2, -0.8, 0.6, 2.0, 3.4)):
           bevel=0.01)
     for x in (FRAME_X0 + 0.55, FRAME_X1 - 0.55):
         F.band(s, 'RailCap', (x, rail_y, 0), (1, 0, 0), 0.5, 'hazard', mirror=True)
+    if lit_rails:
+        # Identity trim, lit: a thin sodium line down each black rail cap between the hazard ends, so the
+        # open truss reads as two lit rails at the chase camera (LOOK.md: lamps are light).
+        F.band(s, 'RailCap', (cx_mid, rail_y, 0), (0, 1, 0), 0.08, 'glow_cyan.sodium', facing=(0, 0, 1),
+               min_facing=0.5, mirror=True, inset=0.004, depth=-0.01,
+               region=(('x', FRAME_X0 + 0.85, FRAME_X1 - 0.85),))
     ties = [FRAME_X0 + 0.3] + [b for b in bays] + [FRAME_X1 - 0.3]
     for i, x in enumerate(ties):
         F.box(s, f'Tie{i}', (x, 0.0, RAIL_Z), (0.26, rail_y * 2, 0.36), material='gunmetal', bevel=0.02)
