@@ -38,6 +38,7 @@ import {
   shipmentQty,
   shipmentUsed,
 } from './cargoCustody.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applyFuelShortage,
   boundDemandQty,
@@ -1212,7 +1213,7 @@ export const automation = {
     push(this._getRuntimeEntity(o.entityId));
     forEachDressingRow(this.state, push);
     // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
-    const list = (this.state && this.state.entityList) || [];
+    const list = indexedTypeScan(this.state, 'fx');
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (entity && entity.type === 'fx') push(entity);

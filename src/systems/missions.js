@@ -7260,13 +7260,29 @@ export const missions = {
   /**
    * Enemy-catalog archetypes a target-spawning mission can roll at its destination. The exact
    * roster is rolled at spawn, but the POOL is fixed at accept — warming the pool (≤4 unique
-   * hulls) covers every roll, plus the escort/claim hauler and ghost-pack nest ids.
+   * hulls) covers every roll, plus the escort/claim hauler, claim-site/rescue wasp crews,
+   * ghost-pack nest ids, and set-piece/capital encounter actors.
    */
   _missionTargetArchetypes(m) {
     const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
     if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
     if (m && (m.type === 'escort' || m.type === 'salvage_retrieval')) archetypes.add('mule_trader');
     if (m && m.params && m.params.ghostConvoy) { archetypes.add('reaver_pirate'); archetypes.add('wasp_swarmer'); }
+    // The restore stub covers these crews' hulls; the live jump projection must name them
+    // too or claim-site/rescue spawns decode at the glass.
+    if (contractClaimSiteMission(m)) archetypes.add('wasp_swarmer');
+    if (m && m.type === 'rescue_under_fire') archetypes.add('wasp_swarmer');
+    // Set pieces and capital contracts spawn their encounter's ship actors — same
+    // archetype-or-fallback pick as the spawn sites and the restore stub.
+    if (m && (m.type === 'authored_set_piece' || m.type === 'capital_boss')) {
+      const encounter = m.type === 'capital_boss'
+        ? capitalBossEncounter(m.params && m.params.encounterId)
+        : authoredEncounterOf(authoredDefinitionOf(m));
+      const fallback = m.type === 'capital_boss' ? 'bruiser_brawler' : 'wasp_swarmer';
+      for (const actor of (encounter && encounter.actors) || []) {
+        if (actor && actor.kind === 'ship') archetypes.add(actor.archetype || fallback);
+      }
+    }
     return [...archetypes];
   },
 

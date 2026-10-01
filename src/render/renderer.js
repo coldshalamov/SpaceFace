@@ -110,7 +110,8 @@ import {
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
+import { ACE_MEMORY_META_KEYS, promotedAceShapeForRecord, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
+import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
@@ -161,6 +162,7 @@ import {
   collectMeshPresentationEntities,
   collectWaveHullDecodeKeys,
   enemyHullDecodeKey,
+  enemySpawnFactionId,
   shipDefHullDecodeKey,
   entityMatchesWaveHullRunway,
   isPresentationLedgerRow,
@@ -2965,6 +2967,86 @@ function warmEncounterPendingDecode(owner) {
 }
 
 /**
+ * Reinforcement wings queue on aiEncounter.owner.pendingReinforcements with a 1-tick to
+ * ~1.5 s lead — the spawn-kick warm is the only decode arm they get, so a called-in wing
+ * materializes with its hull cold inside the arrival window. Poll the queue once per
+ * residency pass and warm each due member's hull (typeId + the faction the spawn will
+ * resolve drive the same faction-kit key) at deadline class while its due tick sits
+ * inside the runway. Abandoned/cancelled records drop off the queue and let the lease
+ * expire; the WeakMap dedupes repeat polls per record.
+ */
+function warmPendingReinforcementsDecode(owner) {
+  const state = owner && owner.state;
+  const pending = state && state.aiEncounter && state.aiEncounter.owner
+    && state.aiEncounter.owner.pendingReinforcements;
+  if (!Array.isArray(pending) || !pending.length) return;
+  const tick = Number.isFinite(state.tick) ? state.tick : 0;
+  const warmedAt = owner._reinforcementWarmDueTick
+    || (owner._reinforcementWarmDueTick = new WeakMap());
+  const bySector = new Map();
+  for (const item of pending) {
+    if (!item || typeof item.typeId !== 'string' || !item.typeId) continue;
+    if (!Number.isFinite(item.dueTick)
+        || item.dueTick - tick > TABLE_DECODE_RUNWAY_SECONDS * 60) continue;
+    if (warmedAt.get(item) === item.dueTick) continue;
+    warmedAt.set(item, item.dueTick);
+    const key = item.sectorId || '';
+    let bucket = bySector.get(key);
+    if (!bucket) {
+      bucket = { sectorId: item.sectorId || null, records: [] };
+      bySector.set(key, bucket);
+    }
+    bucket.records.push({
+      archetype: item.typeId,
+      factionId: enemySpawnFactionId(item.typeId, item.factionId),
+    });
+  }
+  for (const bucket of bySector.values()) {
+    warmEnemyRosterDecode(owner, bucket.records, 'reinforcement-decode-runway', bucket.sectorId);
+  }
+}
+
+/**
+ * A promoted ace's scheduled return (rec.returnAt) spawns its styled crew ~900 WU out with
+ * only the spawn-kick warm — the hulls decode cold right at the arrival edge the player is
+ * watching. Poll aceMemory once per residency pass and warm the exact crew returnCrewForAce
+ * will roll, mirroring _processReturns' gates (undefeated, returnScheduled, returnAt inside
+ * the runway, promoted-unexpired, non-nemesis owner). Records that settle through the
+ * moral-return ledger or defer simply let the lease expire; the WeakMap dedupes per record.
+ */
+function warmAceReturnDecode(owner) {
+  const state = owner && owner.state;
+  const memory = state && state.aceMemory;
+  if (!memory || typeof memory !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const warmedAt = owner._aceReturnWarmAt || (owner._aceReturnWarmAt = new WeakMap());
+  const records = [];
+  for (const [id, rec] of Object.entries(memory)) {
+    if (ACE_MEMORY_META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
+    if (rec.defeated === true || rec.returnScheduled !== true) continue;
+    if (Number.isFinite(rec.nextReturnAttemptAt) && rec.nextReturnAttemptAt > now) continue;
+    if (!Number.isFinite(rec.returnAt)
+        || rec.returnAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    if (rec.promoted === true && rec.expired === true) continue;
+    const ace = aceById(id) || (rec.promoted === true ? promotedAceShapeForRecord(id, rec) : null);
+    if (!ace || ace.lifecycleOwner === 'nemesis') continue;
+    if (warmedAt.get(rec) === rec.returnAt) continue;
+    warmedAt.set(rec, rec.returnAt);
+    // offers_work fields an unstyled crew — warming the escalated style decodes the wrong files.
+    const style = stanceForRecord(rec).stance === 'offers_work'
+      ? null : escalatedStyleFromMemory(memory, ace);
+    for (const ship of returnCrewForAce(ace, rec.returnTier || 1, style) || []) {
+      if (ship && typeof ship.archetype === 'string' && ship.archetype) {
+        records.push({ archetype: ship.archetype, factionId: ace.factionId || 'faction_reach' });
+      }
+    }
+  }
+  if (records.length) {
+    warmEnemyRosterDecode(owner, records, 'ace-return-decode-runway', null);
+  }
+}
+
+/**
  * Claim-defense warnings give the whole countdown as decode lead, but the trigger is the
  * player's own arrival — any tick of the window can fire the squad. Poll the live defenses
  * once per residency pass and warm each known roster (published by the director at onset and
@@ -3003,19 +3085,29 @@ function warmKillHulkDecode(owner, entity) {
   let file = null;
   try { file = (wholeShipVisualForEntity(entity, { requiredWholeShip: true }) || {}).file; }
   catch (_) { file = null; }
-  if (!file || files.has(file)) return;
-  files.add(file);
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
-  loadAuthoredPart(`${releaseRoot}${file}`, {
-    renderer,
-    slot: 'place',
-    optional: true,
-    residencyRole: 'kill-hulk-decode-runway',
-    sectorId: (state.world && state.world.currentSectorId) || null,
-  }).catch(() => {}).finally(() => {
-    files.delete(file);
-  });
+  const warmFile = (warmFilePath) => {
+    if (!warmFilePath || files.has(warmFilePath)) return;
+    files.add(warmFilePath);
+    loadAuthoredPart(`${releaseRoot}${warmFilePath}`, {
+      renderer,
+      slot: 'place',
+      optional: true,
+      residencyRole: 'kill-hulk-decode-runway',
+      sectorId: (state.world && state.world.currentSectorId) || null,
+    }).catch(() => {}).finally(() => {
+      files.delete(warmFilePath);
+    });
+  };
+  warmFile(file);
+  // Overkill fractures tear the hull into authored fragment GLBs on 'place'-slot pieces —
+  // slam kills are always on-glass at focal distance, so a hull that carries a fragment
+  // table warms those files alongside its whole-ship hulk.
+  const defId = entity.data && entity.data.defId;
+  for (const fragmentFile of fractureFragmentFilesForDef(defId) || []) {
+    warmFile(fragmentFile);
+  }
 }
 
 /**
@@ -14401,7 +14493,9 @@ export const render = {
     kickDecodeRunwayAssets(this, presentationList);
     updatePredictedSectorPrewarm(this);
     warmEncounterPendingDecode(this);
+    warmPendingReinforcementsDecode(this);
     warmClaimDefenseDecode(this);
+    warmAceReturnDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute

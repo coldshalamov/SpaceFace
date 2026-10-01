@@ -613,10 +613,16 @@ export const encounterDirector = {
   },
 
   _rebindPersistedFreightCustodyCarriers() {
-    const entities = this.state && this.state.entities;
-    if (!entities || typeof entities.values !== 'function') return 0;
+    // No open custodies means nothing the rebind feeds into — skip the entity walk entirely
+    // (the overwhelmingly common case; this is the heaviest indivisible save:loaded listener).
+    const dir = this.state && this.state.encounterDirector;
+    const custodies = dir && dir.stats && dir.stats.openFreightCustodies;
+    if (!Array.isArray(custodies) || custodies.length === 0) return 0;
+    // Carriers are always type === 'ship' — ride the shipLike bucket when the index is live,
+    // falling back to the entity Map for load owners that publish before the index rebuild.
+    const scan = indexedShipLikeOrEntitiesScan(this.state);
     let rebound = 0;
-    for (const entity of entities.values()) {
+    for (const entity of scan) {
       const binding = persistedFreightCarrierBinding(entity);
       if (!binding || binding.custody.carrierId === entity.id) continue;
       const previousCarrierId = binding.custody.carrierId;

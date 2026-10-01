@@ -9469,18 +9469,7 @@ export const traffic = {
   },
 
   _ceresCausalWorldRecordIdForSlot(slotId) {
-    if (typeof slotId !== 'string' || !slotId) return null;
-    const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
-    const worldRecordSlotId = entry && entry.slot && entry.slot.worldRecordSlotId
-      ? entry.slot.worldRecordSlotId
-      : `ceres:activity:${slotId}`;
-    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
-    return stableRecordId(
-      seed,
-      CERES_ACTIVITY_SECTOR_ID,
-      RECORD_KIND.CONVOY,
-      worldRecordSlotId,
-    );
+    return ceresActivityActorWorldRecordId(this.state, slotId);
   },
 
   /** True when the durable cast record is terminal (destroyed/defeated) — not merely absent this tick. */
@@ -11031,6 +11020,27 @@ function dominantAsteroidCommodity(asteroid) {
 
 function entityWithWorldRecord(state, worldRecordId) {
   return indexedWorldRecordEntity(state, worldRecordId);
+}
+
+/**
+ * The durable CONVOY worldRecordId a ceres activity actor is stamped under — the cast
+ * entry's authored worldRecordSlotId, else the `ceres:activity:` convention. Exported so
+ * slot-scoped lookups outside traffic (audio cue positioning) probe the world-record index
+ * instead of walking entityList.
+ */
+export function ceresActivityActorWorldRecordId(state, slotId) {
+  if (typeof slotId !== 'string' || !slotId) return null;
+  const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
+  const worldRecordSlotId = entry && entry.slot && entry.slot.worldRecordSlotId
+    ? entry.slot.worldRecordSlotId
+    : `ceres:activity:${slotId}`;
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  return stableRecordId(
+    seed,
+    CERES_ACTIVITY_SECTOR_ID,
+    RECORD_KIND.CONVOY,
+    worldRecordSlotId,
+  );
 }
 
 // Per-tick worldRecordId → entity index for callers that resolve several records in one pass

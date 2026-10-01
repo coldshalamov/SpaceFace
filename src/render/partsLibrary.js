@@ -1803,6 +1803,26 @@ export function tradeHubOverlayFileForEntity(entity) {
   return overlay || null;
 }
 
+// The faction garnish instantiates at the same draw scale as the base body, so its measured
+// census row unions into every envelope stamp that claims the boundary's drawn extent —
+// without it, multi-part hubs classify ~3x narrower than their composed silhouette.
+function tradeHubOverlayCensusRowForEntity(entity) {
+  const overlayFile = tradeHubOverlayFileForEntity(entity);
+  if (!overlayFile) return null;
+  const stem = overlayFile.slice(overlayFile.lastIndexOf('/') + 1).replace(/\.glb$/i, '');
+  return modelTruthRow(stem);
+}
+
+// Component-wise union over the base record size and (when present) the deterministic
+// overlay's census row — both draw at the same scale.
+function placeVisualSizeWithOverlay(entity, size) {
+  if (!Array.isArray(size)) return size;
+  const overlayRow = tradeHubOverlayCensusRowForEntity(entity);
+  const overlaySize = overlayRow && overlayRow.bounds && overlayRow.bounds.size;
+  if (!Array.isArray(overlaySize)) return size;
+  return size.map((value, i) => Math.max(Number(value) || 0, Number(overlaySize[i]) || 0));
+}
+
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
   const data = entity && entity.data || {};
@@ -3500,9 +3520,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         authoredEnvelope,
         censusScale: modelTruthPlaceDrawScale(entity),
       });
+      const stampedSize = placeVisualSizeWithOverlay(entity, size);
       boundary.userData.visualBounds = {
         center: center.map((value) => (Number(value) || 0) * pendingScale),
-        size: size.map((value) => (Number(value) || 0) * pendingScale),
+        size: stampedSize.map((value) => (Number(value) || 0) * pendingScale),
       };
     }
   }
@@ -3799,6 +3820,21 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
     // (Z-dominant places like the Resonant Cathedral) would otherwise draw a marker
     // diameter wide for a body committing at diameter·x0/max.
     boundary.userData.boundaryResolvingStandInFit = diameter;
+    // The marker's drawn X is the committed extent: census bounds stand in for the
+    // undecoded record (the exact bounds overwrite the estimate at commit).
+    const row = modelTruthRowForEntity(entity);
+    const size = row && row.bounds && row.bounds.size;
+    if (Array.isArray(size)) {
+      const committedScale = resolvePlaceDrawScale(entity && entity.data || {}, {
+        targetRadius,
+        authoredEnvelope: Math.max(1e-6, ...size.map((value) => Number(value) || 0)),
+        censusScale: modelTruthPlaceDrawScale(entity),
+      });
+      const committedX = Number(placeVisualSizeWithOverlay(entity, size)[0]) * committedScale;
+      if (Number.isFinite(committedX) && committedX > 0) {
+        boundary.userData.boundaryResolvingCommittedX = committedX;
+      }
+    }
     return;
   }
   // Boundaries that declare no authored target radius (every archetype station, every non-POI
@@ -3820,13 +3856,14 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
     censusScale: modelTruthPlaceDrawScale(entity),
   });
   if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
+    const stampedSize = placeVisualSizeWithOverlay(entity, size);
     boundary.userData.visualBounds = {
       center: [0, 0, 0],
-      size: size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
+      size: stampedSize.map((value) => Math.max(0, (Number(value) || 0) * scale)),
     };
     // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
     // marker union swells the stamp, so stand-in sizing claims the authored basis.
-    const committedX = Number(size[0]) * scale;
+    const committedX = Number(stampedSize[0]) * scale;
     if (Number.isFinite(committedX) && committedX > 0) {
       boundary.userData.boundaryResolvingCommittedX = committedX;
     }

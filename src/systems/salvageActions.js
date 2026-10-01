@@ -336,7 +336,7 @@ export const salvageActions = {
     const hotCores = this._sweepCoreFuses(state, state.simTime || 0);
     // INF-U19 v3: a hot ejected core inside its own warning window clears ships too.
     if (hotCores > 0) {
-      for (const entity of state.entityList || []) {
+      for (const entity of indexedTypeScan(state, 'pickups')) {
         if (!entity || entity.alive === false || entity.type !== 'pickup' || !entity.pos) continue;
         const data = entity.data;
         if (!data || data.ventedCore !== true) continue;

@@ -690,6 +690,11 @@ function appendEntityIndex(index, e) {
   // index bucket, but their member sets are type/data predicates readers latch on.
   if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
   if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
+  // Band-landmark carriers stamp flavor refs in their spawn-time data literal — append-time
+  // decidable, so a counter-only lane lets the proximity sampler ignore projectile churn.
+  if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
+    bumpLaneVersion(index, 'flavorCarriers');
+  }
   // First holder wins, matching the entities-map walk every worldRecordId lookup used to run.
   const worldRecordId = e.data && e.data.worldRecordId;
   if (worldRecordId != null && !index.byWorldRecordId.has(worldRecordId)) {
@@ -815,6 +820,9 @@ function removeEntityIndex(index, e) {
   if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
   if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
   if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
+  if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
+    bumpLaneVersion(index, 'flavorCarriers');
+  }
   removeFromIndexArray(index.mineables, e);
   if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
   removeFromIndexArray(index.fx, e);
@@ -928,6 +936,9 @@ function removeEntitiesFromIndex(index, corpses) {
     }
     if (e && e.data && e.data.machine) {
       index.laneVersions.machines = (index.laneVersions.machines || 0) + 1;
+    }
+    if (e && e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
+      index.laneVersions.flavorCarriers = (index.laneVersions.flavorCarriers || 0) + 1;
     }
   }
   removeCorpsesFromIndexArray(index.mineables, removed);

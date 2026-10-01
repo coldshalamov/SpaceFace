@@ -918,7 +918,8 @@ export const swarmArena = {
     // skips this machinery, so the wall has to check the room it is landing in. Snapshot the
     // blockers once: a wall rock must never read its own chordmates as ambient geometry.
     const blockers = [];
-    for (const e of state.entities.values()) {
+    const blockersDomain = indexedTypeScan(state, 'asteroids');
+    for (const e of blockersDomain) {
       if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
       blockers.push({ x: e.pos.x, z: e.pos.z, r: Number.isFinite(e.radius) ? e.radius : 0 });
     }

@@ -78,6 +78,17 @@
        pays each worker script's fetch + eval inside the budget window. -->
   <link rel="modulepreload" href="./src/render/glbPrepassWorker.js" />
   <link rel="preload" as="worker" href="./src/render/renderPackageDigestWorker.js" />
+  <!-- Lazy dynamic-import chains discovered on the first flight/physics frames: the
+       elementary voice chain mounts ~50-150ms into flight on a cold cache, the rapier
+       wrapper sits inside the physics-authority gate (serial for New Game), and
+       HDRLoader is the baked-IBL fallback — still a cold fetch on artifact loss. -->
+  <link rel="modulepreload" href="./node_modules/@elemaudio/web-renderer/dist/index.js" />
+  <link rel="modulepreload" href="./node_modules/@elemaudio/core/dist/index.js" />
+  <link rel="modulepreload" href="./vendor/elemaudio-deps/shallowequal.mjs" />
+  <link rel="modulepreload" href="./vendor/elemaudio-deps/invariant.mjs" />
+  <link rel="modulepreload" href="./vendor/elemaudio-deps/eventemitter3.mjs" />
+  <link rel="modulepreload" href="./src/core/rapierCollisionWorld.js" />
+  <link rel="modulepreload" href="./vendor/addons/loaders/HDRLoader.js" />
   <!-- uiRoot's menu-gating screens are dynamic imports by design; the menu push waits for
        these three registrations, so their fetch stays off the title→menu critical path. -->
   <link rel="modulepreload" href="./src/ui/screens/mainMenu.js" />

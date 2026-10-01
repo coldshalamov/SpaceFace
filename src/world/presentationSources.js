@@ -368,6 +368,17 @@ export function enemyHullDecodeKey(enemyId, factionId = null, trafficRole = null
 }
 
 /**
+ * Faction an enemy-catalog spawn resolves when the caller leaves factionId unset — caller
+ * override > archetype's own faction > lawful/hostile fallback (mirrors makeEnemySpawnSpec).
+ * Warm keys must carry the same faction or they decode the un-kitted file.
+ */
+export function enemySpawnFactionId(enemyId, explicit = null) {
+  const def = ENEMY_BY_ID.get(enemyId) || null;
+  return (typeof explicit === 'string' && explicit) || (def && def.factionId)
+    || (def && def.factionLawful ? 'faction_scn' : 'faction_reach');
+}
+
+/**
  * Same decode key for a squad row that already carries a complete ship spec: the spec's own
  * defId selects the hull (no enemy-id indirection), faction still separates kitted files.
  */

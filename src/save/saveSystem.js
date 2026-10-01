@@ -33,6 +33,7 @@ import {
 } from '../core/newGamePlus.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
+import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { ORBIT_ASSIST_STRENGTH } from '../core/flight/orbitAssist.js';
 import {
   SAVE_JOURNAL_EVENT,
@@ -281,6 +282,12 @@ export const save = {
       const loadDeferred = () => this.load((p && p.slot) || 'latest', { preferAsync: true });
       if (typeof defer === 'function' && defer(loadDeferred) === true) return;
       load();
+    });
+    // A screen that knows which slot the player is about to load names it here so the
+    // envelope can start decoding during dwell — pause arms 'quick' (the F9 target), the
+    // save/load page arms the row under the cursor.
+    bus.on('save:loadSpeculationTarget', (p) => {
+      try { this.speculateLoadPrepare(p && p.slot); } catch (err) { /* best-effort */ }
     });
     bus.on('settings:changed', (payload) => {
       if (!payload || payload.persist !== false) this._writeProfileSettings();
@@ -755,10 +762,20 @@ export const save = {
     return data;
   },
 
-  // The pause-menu Load capture runs while the sim is frozen: the same section generator
-  // driven on the restore lane’s deadline gate splits the multi-MB serialize into
-  // paint-seamed chunks without changing a single byte of the snapshot.
-  async _serializeDataPausedAsync() {
+  // True while the sim sits frozen at a tick boundary — the pause menu, dock, or any
+  // screenStack surface all skip full-tick systems (only input/save/stationServices
+  // keepalives run). The chunked snapshot walk is only coherent across its yields while
+  // this holds; between sections it is re-checked and an unfrozen capture retakes atomically.
+  _frozenTickBoundary() {
+    const state = this.state;
+    return !!(state && (state.mode === 'paused' || shouldSkipFullTickSystems(state)));
+  },
+
+  // The frozen-sim Load capture (pause menu, dock, any stacked screen) runs while the sim
+  // is frozen: the same section generator driven on the restore lane’s deadline gate splits
+  // the multi-MB serialize into paint-seamed chunks without changing a single byte of the
+  // snapshot. It only stays coherent while the freeze holds — every yield re-checks.
+  async _serializeDataFrozenAsync() {
     const it = this._serializeDataSteps();
     let lastYieldAt = nowMs();
     let r;
@@ -768,6 +785,9 @@ export const save = {
       if (nowMs() - lastYieldAt >= RESTORE_YIELD_SLICE_MS) {
         await this._restoreFrameYield();
         lastYieldAt = nowMs();
+        // If the sim unfreezes between sections the generator's prefix/suffix would mix
+        // frozen and live ticks — retake the snapshot atomically on the live state.
+        if (!this._frozenTickBoundary()) return this.serializeData();
       }
     }
     return r.value;
@@ -1690,29 +1710,55 @@ export const save = {
       if (typeof raw !== 'string' || !raw) return;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig) return;
-      const spec = this._speculativeContinuePrepare = {
-        sig,
-        slot,
-        // Byte-identity is the staleness test — strictly stronger than the blobHash compare
-        // it replaces, and the click path resolves it via native string equality instead of
-        // rehashing a multi-MB blob on the main thread.
-        raw,
-        promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
-      };
-      // A prepare that resolves while the menu is still up names the hull/place set the saved
-      // sector will rematerialize — the decode runway can start overlapping dwell time instead
-      // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
-      // still kicks on the real save:envelopePrepared at click, and the click emit's decode
-      // dedupe makes the second pass nearly free.
-      spec.promise.then((prepared) => {
-        try {
-          if (this._speculativeContinuePrepare !== spec) return;
-          if (!prepared || prepared.ok !== true) return;
-          installSaveStoreWriteTracking();
-          if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
-          if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
-        } catch (err) { /* speculative warm is best-effort */ }
-      });
+      this._armSpeculativePrepare(slot, raw, sig);
+    } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
+  },
+
+  _armSpeculativePrepare(slot, raw, sig) {
+    const spec = this._speculativeContinuePrepare = {
+      sig,
+      slot,
+      // Byte-identity is the staleness test — strictly stronger than the blobHash compare
+      // it replaces, and the click path resolves it via native string equality instead of
+      // rehashing a multi-MB blob on the main thread.
+      raw,
+      promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
+    };
+    // A prepare that resolves while the menu is still up names the hull/place set the saved
+    // sector will rematerialize — the decode runway can start overlapping dwell time instead
+    // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
+    // still kicks on the real save:envelopePrepared at click, and the click emit's decode
+    // dedupe makes the second pass nearly free.
+    spec.promise.then((prepared) => {
+      try {
+        if (this._speculativeContinuePrepare !== spec) return;
+        if (!prepared || prepared.ok !== true) return;
+        installSaveStoreWriteTracking();
+        if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
+        if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
+      } catch (err) { /* speculative warm is best-effort */ }
+    });
+  },
+
+  /**
+   * Arms the same speculative prepare as the menu Continue scan, but for a slot a screen
+   * names ahead of the click — pause arms 'quick' (the F9 target), save/load arms the row
+   * under the cursor. Gated to frozen or menu state: in-flight the speculation could race
+   * live ticks (still correct — the generation sig rejects drift — but wasted disk/worker
+   * work), so it stays off there.
+   */
+  speculateLoadPrepare(slot) {
+    try {
+      if (typeof Worker !== 'function' || typeof slot !== 'string' || !slot) return;
+      const state = this.state;
+      if (!(state && (state.mode === 'menu' || this._frozenTickBoundary()))) return;
+      installSaveStoreWriteTracking();
+      const sig = 'gen:' + _saveStoreGeneration;
+      const prior = this._speculativeContinuePrepare;
+      if (prior && prior.sig === sig && prior.slot === slot) return;
+      const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+      if (typeof raw !== 'string' || !raw) return;
+      this._armSpeculativePrepare(slot, raw, sig);
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
   },
 
@@ -3422,10 +3468,21 @@ export const save = {
       }
       slot = resolved;
     }
+    // Consume a screen-armed speculative prepare the same way loadAsync does: a
+    // same-generation spec already proves the disk bytes, so the multi-MB materialize
+    // stays off the click path. The worker prepare still runs — sync load can't await
+    // its promise — but the raw bytes are the win either way.
+    const spec = this._speculativeContinuePrepare;
+    this._speculativeContinuePrepare = null;
+    installSaveStoreWriteTracking();
+    const specHit = spec && spec.slot === slot
+      && spec.sig === 'gen:' + _saveStoreGeneration;
     let raw = null;
-    try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
-    catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
-    const primary = this._prepareEnvelopeString(raw);
+    if (!specHit) {
+      try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+      catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+    }
+    const primary = this._prepareEnvelopeString(specHit ? spec.raw : raw);
     if (primary.ok) {
       return this._restorePreparedEnvelope(primary, slot,
         skippedNewer ? { skippedNewer } : undefined);
@@ -4034,8 +4091,8 @@ export const save = {
 
   // Async twin for the worker-backed load lane: serializeData stays one coherent task on a ticking
   // run — live-state readers cannot split across future ticks and remain an authoritative snapshot.
-  // On a paused run the state is frozen, so the shared section generator drives with frame yields
-  // between sections instead — same bytes, spread across frames. Every pass after the capture walks
+  // On a frozen run (pause menu, dock, stacked screen) the state is frozen, so the shared section
+  // generator drives with frame yields between sections instead — same bytes, spread across frames. Every pass after the capture walks
   // the detached copy, so clone → migrate → normalize yield a frame between them
   // (same pacing _prepareEnvelopeStringAsync uses) instead of extending the capture brick.
   async _captureRollbackSnapshotAsync() {
@@ -4047,8 +4104,8 @@ export const save = {
     this._rollbackCaptureActive = true;
     let data;
     try {
-      if (this.state && this.state.mode === 'paused') {
-        data = await this._serializeDataPausedAsync();
+      if (this.state && this._frozenTickBoundary()) {
+        data = await this._serializeDataFrozenAsync();
       } else {
         data = this.serializeData();
       }

@@ -53,7 +53,7 @@ function enemyFactionIdFor(def, explicit) {
 
 // Promoted-pilot records carry every ace-shaped field returnCrewForAce reads — rebuild the
 // minimal ace object from the saved row rather than importing the aceMemory system module.
-function promotedAceShapeForRecord(id, rec) {
+export function promotedAceShapeForRecord(id, rec) {
   return {
     id,
     name: rec.name || null,
@@ -677,7 +677,7 @@ export function saveEnvelopeSectorStubs(data) {
 
 // aceMemory's serialized top level mixes pilot records with these metadata keys — only the
 // record rows are crew-bearing (normalizeMemory skips the same set, plus 'aces').
-const ACE_MEMORY_META_KEYS = new Set([
+export const ACE_MEMORY_META_KEYS = new Set([
   'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
   'aces',
 ]);

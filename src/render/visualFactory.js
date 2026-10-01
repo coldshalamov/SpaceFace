@@ -3257,6 +3257,20 @@ export function fractureFragmentFileForEntity(e) {
   return (spec && spec.file) || null;
 }
 
+/** Every authored fragment file a hull of this def can tear into — the warm lane's list. */
+export function fractureFragmentFilesForDef(defId) {
+  const table = defId && WRECK_FRAGMENT_FILES[defId];
+  if (!table) return null;
+  const files = [];
+  for (const entry of Object.values(table.seam || {})) {
+    if (entry && entry.file) files.push(entry.file);
+  }
+  for (const entry of Object.values(table.remainder || {})) {
+    if (entry && entry.file) files.push(entry.file);
+  }
+  return files.length ? files : null;
+}
+
 // The fragment GLBs are authored in intact-hull coordinates: fit each piece to its authored
 // share of the victim's envelope (victimRadius x share), not the mass-derived collision
 // radius — otherwise a 0.34-mass bow renders ~1.4x its true share of hull.

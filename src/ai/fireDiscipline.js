@@ -299,18 +299,48 @@ export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities,
   return CLEAR;
 }
 
+/**
+ * Per-lane flat-corpus scratch: the splinter scan replays over the same body set every
+ * shooter decision tick, so the row array and the indexOf Map are pooled per iterable
+ * rather than grown fresh per call. Every row is re-stamped from the live entity on each
+ * rebuild — poses stay current, and the splinterBody re-test keeps membership identical to
+ * a fresh walk (collides/alive flips need no version bump). The WeakMap key is the iterable
+ * itself: index buckets and aiFireIntent's pooled shelved wrapper are stable objects across
+ * ticks; a transient iterable just builds its own throwaway scratch like before.
+ */
+const OPTIC_LANE_SCRATCH = new WeakMap();
+
+function opticLaneScratch(entities) {
+  const keyable = entities && (typeof entities === 'object' || typeof entities === 'function');
+  let scratch = keyable ? OPTIC_LANE_SCRATCH.get(entities) : null;
+  if (!scratch) {
+    scratch = { rows: [], spare: [], indexOf: new Map() };
+    if (keyable) OPTIC_LANE_SCRATCH.set(entities, scratch);
+  }
+  return scratch;
+}
+
 /** Flat {x,z,radius,entity} rows — the shape `traceOpticRay` consumes. */
 function opticLaneBodiesFlat(entities) {
-  const bodies = [];
+  const scratch = opticLaneScratch(entities);
+  const bodies = scratch.rows;
+  const spare = scratch.spare;
+  let n = 0;
   for (const entity of opticLaneIterable(entities)) {
     if (!splinterBody(entity)) continue;
-    bodies.push({
-      x: entity.pos.x,
-      z: entity.pos.z,
-      radius: Number(entity.radius) || 0,
-      entity,
-    });
+    let row = n < bodies.length ? bodies[n] : (spare.length ? spare.pop() : null);
+    if (!row) {
+      row = { x: 0, z: 0, radius: 0, entity: null };
+      bodies.push(row);
+    }
+    row.x = entity.pos.x;
+    row.z = entity.pos.z;
+    row.radius = Number(entity.radius) || 0;
+    row.entity = entity;
+    n++;
   }
+  for (let i = n; i < bodies.length; i++) spare.push(bodies[i]);
+  bodies.length = n;
   return bodies;
 }
 
@@ -368,7 +398,8 @@ export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons
 
   // Direct fire is a wasted bolt. The replay needs the flat body set — build it only now.
   const bodies = opticLaneBodiesFlat(entities);
-  const indexOf = new Map();
+  const indexOf = opticLaneScratch(entities).indexOf;
+  indexOf.clear();
   for (let i = 0; i < bodies.length; i++) indexOf.set(bodies[i].entity, i);
   const targetIndex = indexOf.get(target);
   if (targetIndex == null) return null; // a bank can only bank onto a body the sim can see

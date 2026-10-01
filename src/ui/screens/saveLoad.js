@@ -1011,6 +1011,11 @@ export const saveLoadScreen = {
     }
     if (this._film) this._film.choose(id);
     if (!quiet) cue('move');
+    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
+    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots).
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('save:loadSpeculationTarget', { slot: id });
+    }
     this._renderStage(ctx);
   },
 

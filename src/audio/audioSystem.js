@@ -23,7 +23,8 @@ import { combatVerbRecipe } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
-import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -3951,7 +3952,30 @@ export const audio = {
   _ceresCausalActorPosition(actorSlotIds) {
     const slotId = Array.isArray(actorSlotIds) ? actorSlotIds[0] : null;
     if (typeof slotId !== 'string' || !slotId) return null;
-    const entityList = this.state && this.state.entityList;
+    const state = this.state;
+    // Activity slots bind 1:1 — the freighter ledger and the cast's durable world-record
+    // cover every actor traffic spawns, so the O(entityList) walk only remains for a
+    // stamped entity outside both (activity-adopted strays). Same resolution order as
+    // traffic's _ceresCausalActorBySlot.
+    const freighters = state && state.traffic && state.traffic.freighters;
+    if (Array.isArray(freighters)) {
+      for (let i = 0; i < freighters.length; i++) {
+        const rec = freighters[i];
+        if (!rec || rec.activityActorSlotId !== slotId) continue;
+        const candidate = state.entities && state.entities.get && state.entities.get(rec.id);
+        if (candidate && candidate.alive !== false && candidate.data
+          && candidate.data.activityActorSlotId === slotId && candidate.pos) {
+          return { x: candidate.pos.x, z: candidate.pos.z };
+        }
+      }
+    }
+    const worldRecordId = ceresActivityActorWorldRecordId(state, slotId);
+    const bound = worldRecordId && indexedWorldRecordEntity(state, worldRecordId);
+    if (bound && bound.alive !== false && bound.data
+      && bound.data.activityActorSlotId === slotId && bound.pos) {
+      return { x: bound.pos.x, z: bound.pos.z };
+    }
+    const entityList = state && state.entityList;
     if (Array.isArray(entityList)) {
       for (let i = 0; i < entityList.length; i++) {
         const candidate = entityList[i];
