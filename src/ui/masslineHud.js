@@ -39,6 +39,7 @@ import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 // the law's own protected definition and the release geometry's advisory corridor. Read
 // only on both sides — the cue never touches release authority.
 import { isLawProtectedBody } from '../systems/lawSecurity.js';
+import { isMassSeedTetherEligible } from '../systems/massSeed.js';
 import { resolveThrowCollateral } from '../combat/masslineReleaseGeometry.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
@@ -145,6 +146,29 @@ export function bracketReadText(read) {
 export function bracketPaintText(read) {
   if (!read || read.state === 'CAN' || read.state === 'OUT OF RANGE') return '';
   return read.reason || '';
+}
+
+// VERB-25 — a mass-seed anchor says its own state on the latch preview, so the pilot aiming at it
+// can read whether the line will hold before committing. The word pairs with the bracket read: a
+// locking seed still shows its denial shape, an armed seed shows HOLDS.
+export function massSeedPreviewRead(entity) {
+  const data = entity && entity.data;
+  if (!data || data.massSeed !== true) return null;
+  const st = data.massSeedState;
+  const phase = st && typeof st.phase === 'string' ? st.phase : '';
+  const eligible = isMassSeedTetherEligible(entity);
+  let word;
+  if (phase === 'travel') word = 'SEED EN ROUTE';
+  else if (phase === 'locking') word = 'SEED LOCKING';
+  else if (phase === 'warning') word = 'SEED UNSTABLE';
+  else if (phase === 'collapsing') word = 'SEED COLLAPSING';
+  else word = eligible ? 'SEED HOLDS' : 'SEED NOT READY';
+  return { eligible, phase, word };
+}
+
+export function massSeedPreviewWord(entity) {
+  const read = massSeedPreviewRead(entity);
+  return read ? read.word : '';
 }
 
 /** Shape id on the acquisition mark: open diamond, broken ring, or crossed diamond. */
@@ -753,12 +777,23 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = Math.round(finite(player && player.physicsBody && player.physicsBody.mass)
     || finite(player && player.mass));
   let selectedMass = 0;
+  let seedTetherEligible = 0;
+  let massSeedPhase = '';
   if (selected.targetId != null && state.entities && typeof state.entities.get === 'function') {
     const selectedEntity = state.entities.get(selected.targetId);
     const bodyMass = selectedEntity && selectedEntity.physicsBody && selectedEntity.physicsBody.mass;
     selectedMass = Math.round(finite(bodyMass) || finite(selectedEntity && selectedEntity.mass));
+    // VERB-25: aiming at a seed publishes its latch eligibility into the preview model, so the
+    // acquisition pill repaints the frame the anchor's lock flips rather than one frame late.
+    const seedRead = massSeedPreviewRead(selectedEntity);
+    if (seedRead) {
+      seedTetherEligible = seedRead.eligible ? 1 : 0;
+      massSeedPhase = seedRead.phase;
+    }
   }
   fields[index++] = selectedMass;
+  fields[index++] = seedTetherEligible;
+  fields[index++] = massSeedPhase;
   // INF-014: solver-owned strain (quantized so the bar rolls with it).
   let strain = 0;
   if (playerState.tether && playerState.tether.active) {
@@ -992,8 +1027,13 @@ export const masslineHud = {
     const cueY = pinned ? pinned.y : targetScreen.y;
     const ready = selected.status === 'ready';
     const read = resolveMasslineBracketRead(selected.status, selected.reason);
-    const text = bracketReadText(read);
-    const paint = bracketPaintText(read);
+    // VERB-25: a mass-seed anchor appends its own state word — the preview says whether the line
+    // will hold, not just that something is under the cursor.
+    const seedWord = massSeedPreviewWord(target);
+    const baseText = bracketReadText(read);
+    const basePaint = bracketPaintText(read);
+    const text = seedWord ? `${baseText ? `${baseText} · ` : ''}${seedWord}` : baseText;
+    const paint = seedWord ? `${basePaint ? `${basePaint} · ` : ''}${seedWord}` : basePaint;
     const captionWidth = estimateCaptionWidth(paint || text);
     const placed = placeBracketWords(
       { x: cueX, y: cueY },
