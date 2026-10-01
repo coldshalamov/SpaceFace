@@ -185,6 +185,21 @@ test('completed run projects one selectable keepsake and only unresolved named-h
   assert.equal(buildNewGamePlusCandidate({ ...data, missions: { story: { endgameChoice: null } } }), null);
 });
 
+test('NXI-189: a built preview then canceled leaves the completed save byte-equivalent', () => {
+  const data = completedRunData();
+  const before = JSON.stringify(data);
+  const candidate = buildNewGamePlusCandidate(data, { slot: 'legacy', savedAt: 'now' });
+  const overlay = buildNewGamePlusOverlay(data, { keepsakeId: 'unique_veil_cutter' }, { slot: 'legacy' });
+  assert.ok(candidate && overlay, 'the preview built');
+  assert.equal(JSON.stringify(data), before, 'candidate + overlay builds never touch the source record');
+  // The canceled path also must not alias: editing what the preview handed back cannot reach
+  // the completed run's inventory, ending, or knowledge data.
+  overlay.keepsake.defId = 'corrupted';
+  overlay.grudges.push({ aceId: 'ghost' });
+  overlay.worldFacts.flags.push('ghost_flag');
+  assert.equal(JSON.stringify(data), before, 'the preview carries no live references into the source');
+});
+
 test('save owner discovers and revalidates a completed source without exposing the full run', () => {
   const env = envelopeFor(completedRunData());
   withStorage([['sf.save.legacy', JSON.stringify(env)]], () => {
