@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "missing-five-rail",
-      "date": "2026-09-26",
-      "wf": "WF-15",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "repulsor and clearing cone now teach on the first-hour rail like boost, stroke, and well",
-      "fingerprint": "verb=teach,subject=field-verbs,sector=first-hour,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "0148c7eef",
-      "verification": "focused_green"
-    },
-    {
       "id": "cluster-detonation-receipt",
       "date": "2026-09-26",
       "wf": "WF-15",
@@ -1637,6 +1624,19 @@
       "references": [],
       "integration": "live",
       "commit": "d7ae7d51d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "WORLD-25",
+      "date": "2026-10-01",
+      "wf": "WF-04",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "hazard:enter raises a keyed persistent pill (RADIATION FIELD warn / NEBULA FIELD info), hazard:exit clears it; entity-gated",
+      "fingerprint": "verb=alert,subject=hazard-membership,sector=hud,domain=world",
+      "references": [],
+      "integration": "live",
+      "commit": "34c620e25",
       "verification": "focused_green"
     }
   ],
