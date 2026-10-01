@@ -23,12 +23,18 @@ def build():
 
     # --- pedestal + slew ring -------------------------------------------------------------------------
     F.box(s, 'Base', (-2.0, 0, 0.9), (5.0, 4.4, 1.8), material='paint2', bevel=0.15)
+    # Lit structure (GFX light-upgrades): an amber line along both long edges of the graphite base
+    # and a ring round the pedestal under the slew band, so the crane's foot reads lit (LOOK.md).
+    for e in (-1, 1):
+        F.band(s, 'Base', (-2.0, e * 1.9, 0.9), (0, 1, 0), 0.3, 'glow_amber', facing=(0, 0, 1), min_facing=0.5,
+               inset=0.01, depth=-0.02)
     for k in range(4):
         a = math.radians(45 + k * 90)
         F.box(s, f'BaseFoot{k}', (-2.0 + math.cos(a) * 2.6, math.sin(a) * 2.4, 0.35),
               (1.4, 1.2, 0.7), material='paint.aged', bevel=0.05)
     F.cylinder(s, 'Pedestal', (-2.0, 0, 1.8), (-2.0, 0, 3.6), 1.7, material='paint2',
                segments=20)
+    F.band(s, 'Pedestal', (-2.0, 0, 2.6), (0, 0, 1), 0.3, 'glow_amber', inset=0.01, depth=-0.02)
     F.cylinder(s, 'SlewBand', (-2.0, 0, 3.4), (-2.0, 0, 4.2), 1.85, material='hazard',
                segments=20)
 
