@@ -79,6 +79,35 @@ const MODULE_DEF_BY_ID = new Map([
 ]);
 const SHIP_DEF_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 
+function heldDefIds(state) {
+  const held = new Set();
+  const player = state && state.player;
+  const owned = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
+  const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
+  const fittings = owned[index] && Array.isArray(owned[index].fittings) ? owned[index].fittings : [];
+  for (const defId of fittings) if (typeof defId === 'string' && defId) held.add(defId);
+  const inventory = Array.isArray(player && player.moduleInventory) ? player.moduleInventory : [];
+  for (const item of inventory) if (item && typeof item.defId === 'string' && item.defId) held.add(item.defId);
+  return held;
+}
+
+/**
+ * An already-owned unique, or any non-weapon whose second copy changes nothing.
+ * Swarm guns stay: the ruleset grants usable additional stock of a weapon.
+ */
+export function isNoOpDuplicateOffer(offer, held, ruleset) {
+  if (!offer || typeof offer.defId !== 'string' || !held || !held.has(offer.defId)) return false;
+  if (offer.kind === SWARM_HULL_OFFER_KIND || offer.kind === SWARM_SERVICE_OFFER_KIND) return false;
+  if (offer.kind === EVOLUTION_OFFER_KIND) return false;
+  const def = MODULE_DEF_BY_ID.get(offer.defId);
+  if (!def) return false;
+  if (def.unique === true) return true;
+  if (offer.replaces === offer.defId) return true;
+  if (isSwarmRuleset(ruleset) && def.slotType === 'weapon' && def.unique !== true) return false;
+  if (def.slotType && def.slotType !== 'weapon') return true;
+  return false;
+}
+
 function prettyDefId(defId) {
   if (!defId) return 'empty';
   return String(defId).replace(/^(wpn|mod)_/, '').replace(/_/g, ' ');
@@ -142,8 +171,10 @@ export const survivalDraft = {
 
   /** Live offers for the draft surface. Empty when no draft is open. */
   currentOffers() {
-    const offers = this._offers ? this._offers.slice() : [];
     const run = liveSurvivalRun(this.state);
+    const held = heldDefIds(this.state);
+    const offers = (this._offers ? this._offers.slice() : [])
+      .filter((offer) => !isNoOpDuplicateOffer(offer, held, run && run.ruleset));
     if (!run || !isSwarmRuleset(run.ruleset) || !this._draftInput) return offers;
     // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
     // initially want the same empty slot; the second purchase must see the new loadout.
@@ -316,6 +347,8 @@ export const survivalDraft = {
     if (isSwarmRuleset(run.ruleset)) {
       this._offers = this._offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
     }
+    const held = heldDefIds(this.state);
+    this._offers = this._offers.filter((offer) => !isNoOpDuplicateOffer(offer, held, run.ruleset));
     if (this._offers.length === 0) {
       // Nothing legal to offer on this hull. Resolve immediately rather than opening an empty
       // surface the player cannot dismiss.
@@ -1147,12 +1180,18 @@ export const survivalDraft = {
 
   _finish(detail) {
     this._resolved = true;
-    this._emit('run:draftResolved', {
+    const resolved = {
       wave: this._wave,
       picked: detail.picked,
       applied: !!detail.applied,
       reason: detail.reason || null,
-    });
+    };
+    // The run already listens. Emit only when a modifier actually landed, so a skip
+    // still closes through run:draftResolved and does not look like a second choice.
+    if (resolved.applied && resolved.picked != null) {
+      this._emit('run:modifierChosen', resolved);
+    }
+    this._emit('run:draftResolved', resolved);
   },
 
   /**
@@ -1164,22 +1203,44 @@ export const survivalDraft = {
     if (!ships || typeof ships.grantModule !== 'function' || typeof ships.fitModule !== 'function') {
       return { ok: false, reason: 'no_ships_owner' };
     }
-    if (!ships.grantModule({ defId: offer.defId, reason: 'crucible:draft' })) {
-      return { ok: false, reason: 'grant_refused' };
+    const def = MODULE_DEF_BY_ID.get(offer.defId);
+    if (def && typeof ships.moduleFitBlocker === 'function') {
+      const blocker = ships.moduleFitBlocker({ slotIndex: offer.slotIndex, def });
+      if (blocker) return { ok: false, reason: 'fit_refused' };
     }
     const player = this.state && this.state.player;
     const inventory = (player && player.moduleInventory) || [];
+    const before = new Set(inventory.map((item) => item && item.instanceId));
+    if (!ships.grantModule({ defId: offer.defId, reason: 'crucible:draft' })) {
+      return { ok: false, reason: 'grant_refused' };
+    }
     let instance = null;
     for (let i = inventory.length - 1; i >= 0; i--) {
-      if (inventory[i] && inventory[i].defId === offer.defId) {
-        instance = inventory[i];
+      const item = inventory[i];
+      if (item && item.defId === offer.defId && !before.has(item.instanceId)) {
+        instance = item;
         break;
       }
     }
-    if (!instance || instance.instanceId == null) return { ok: false, reason: 'grant_missing' };
+    if (!instance || instance.instanceId == null) {
+      this._dropGranted(inventory, before);
+      return { ok: false, reason: 'grant_missing' };
+    }
     const fitted = ships.fitModule({ slotIndex: offer.slotIndex, instanceId: instance.instanceId });
-    if (!fitted) return { ok: false, reason: 'fit_refused' };
+    if (!fitted) {
+      this._dropGranted(inventory, before);
+      return { ok: false, reason: 'fit_refused' };
+    }
     return { ok: true, reason: null };
+  },
+
+  /** A refused fit must not leave the granted copy behind for a retry to stack. */
+  _dropGranted(inventory, before) {
+    if (!Array.isArray(inventory)) return;
+    for (let i = inventory.length - 1; i >= 0; i--) {
+      const item = inventory[i];
+      if (item && !before.has(item.instanceId)) inventory.splice(i, 1);
+    }
   },
 
   _ships() {
