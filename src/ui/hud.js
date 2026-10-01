@@ -28,7 +28,7 @@ import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { catalogHullFacts } from '../systems/ships.js';
-import { salvageBayReading } from '../systems/cargo.js';
+import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
@@ -3457,9 +3457,11 @@ export function createHud(ctx, alerts) {
     }
 
     const jetBtn = contentEl.querySelector('.sf-btn-jettison');
-    const missionCmdtyIds = getMissionCargoIds(state);
     const persistent = isPersistentCargoId(state, commodityId);
-    const isLocked = persistent || missionCmdtyIds.has(commodityId);
+    // NXB-025 — the seal binds the reserved count; units free of the manifest still dump.
+    const sealed = reservedCargoQty(state, commodityId);
+    const jettable = persistent ? 0 : sellableCargoQty(state, commodityId);
+    const isLocked = jettable <= 0;
 
     if (isLocked) {
       jetBtn.disabled = true;
@@ -3473,20 +3475,23 @@ export function createHud(ctx, alerts) {
         jetBtn.setAttribute('aria-label', 'Jettison unavailable. Contract cargo cannot be jettisoned');
       }
     } else {
+      const dumpQty = Math.min(qty, jettable);
       jetBtn.disabled = false;
-      jetBtn.title = `Jettison all ${qty} units of ${name}`;
+      jetBtn.title = sealed > 0
+        ? `Jettison ${dumpQty} free units of ${name} — ${sealed} sealed for contract`
+        : `Jettison all ${dumpQty} units of ${name}`;
       jetBtn.textContent = 'Jettison';
-      jetBtn.setAttribute('aria-label', `Jettison all ${qty} units of ${name}`);
+      jetBtn.setAttribute('aria-label', `Jettison ${dumpQty} units of ${name}`);
       jetBtn.onclick = async () => {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         const ok = await confirm({
           title: 'Confirm Jettison',
-          body: `Are you sure you want to jettison ${qty}x ${name}? This action is permanent.`,
+          body: `Are you sure you want to jettison ${dumpQty}x ${name}? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract and stay aboard.)` : ''}`,
           confirmLabel: 'Jettison',
           danger: true
         });
         if (ok) {
-          ctx.bus.emit('cargo:jettison', { commodityId, qty });
+          ctx.bus.emit('cargo:jettison', { commodityId, qty: dumpQty });
         }
       };
     }
@@ -3672,7 +3677,9 @@ export function createHud(ctx, alerts) {
       const name = escapeHtml(cargoDisplayName(id));
       const vol = itemVolumes[id];
       const persistent = isPersistentCargoId(state, id);
-      const isLocked = persistent || missionCmdtyIds.has(id);
+      // NXB-025 — the lock marks units that cannot leave; a partly-sealed lot still
+      // carries its contract badge but is not all locked.
+      const isLocked = persistent || sellableCargoQty(state, id) <= 0;
 
       let legalClass = 'legal';
       if (def && def.legality === 'restricted') legalClass = 'restricted';

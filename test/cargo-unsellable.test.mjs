@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { cargo, isUnsellableCargo } from '../src/systems/cargo.js';
+import { cargo, isUnsellableCargo, reservedCargoQty, sellableCargoQty } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
 
 function stateWith(active = [], persistentCargo = []) {
@@ -54,7 +54,7 @@ test('ordinary haul and trade cargo remains sellable', () => {
   assert.equal(JSON.stringify(state), before, 'the sellability check must be read-only');
 });
 
-function tradeHarness({ preloadedCargo }) {
+function tradeHarness({ preloadedCargo, sealedQty = 4, held = 4 }) {
   const commodityId = 'cmdty_microchips';
   const state = {
     meta: { seed: 1 },
@@ -65,12 +65,12 @@ function tradeHarness({ preloadedCargo }) {
         id: 'delivery',
         status: 'active',
         preloadedCargo,
-        params: { cmdtyId: commodityId },
+        params: { cmdtyId: commodityId, qty: sealedQty },
       }],
     },
     player: {
       credits: 100,
-      cargo: { items: { [commodityId]: 4 }, capVolume: 40, usedVolume: 4, usedMass: 4 },
+      cargo: { items: { [commodityId]: held }, capVolume: 40, usedVolume: held, usedMass: held },
       stats: {},
       tradeLedger: [],
       tradeLots: {},
@@ -151,4 +151,65 @@ test('live sell intent explains the sealed-cargo rejection', () => {
     emitted.find((entry) => entry.name === 'economy:tradeFailed')?.payload?.reason,
     'mission_cargo_locked',
   );
+});
+
+test('NXB-025: free units of a sealed commodity sell while the manifest stays locked', () => {
+  // Held 7, contract reserves 4 → the player owns 3 units outright.
+  const { commodityId, state, system } = tradeHarness({ preloadedCargo: true, sealedQty: 4, held: 7 });
+  assert.equal(reservedCargoQty(state, commodityId), 4);
+  assert.equal(sellableCargoQty(state, commodityId), 3);
+  assert.equal(isUnsellableCargo(state, commodityId), false, 'a partly-free lot is not a locked row');
+
+  const result = system.execute('station_test', commodityId, 'sell', 2);
+  assert.equal(result.ok, true);
+  assert.equal(result.qty, 2);
+  assert.equal(state.player.cargo.items[commodityId], 5, 'the sealed four never left the hold');
+  assert.equal(state.player.credits, 120);
+});
+
+test('NXB-025: an over-free sale clamps to the unreserved quantity', () => {
+  const { commodityId, state, system } = tradeHarness({ preloadedCargo: true, sealedQty: 4, held: 7 });
+  const result = system.execute('station_test', commodityId, 'sell', 7);
+  assert.equal(result.ok, true);
+  assert.equal(result.qty, 3, 'only the free units settle');
+  assert.equal(state.player.cargo.items[commodityId], 4, 'the manifest is untouched');
+});
+
+test('NXB-025: jettison dumps free units and keeps the sealed manifest aboard', () => {
+  const commodityId = 'cmdty_microchips';
+  const { state } = tradeHarness({ preloadedCargo: true, sealedQty: 4, held: 7 });
+  state.playerId = 1;
+  state.simTime = 0;
+  state.entities = new Map([[1, {
+    id: 1, pos: { x: 0, z: 0 }, rot: 0, vel: { x: 0, z: 0 }, radius: 6,
+  }]]);
+  const system = Object.create(cargo);
+  system.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: { spawnEntity() { return { id: 99 }; } },
+  });
+
+  const dumped = system.jettison(commodityId, 7);
+  assert.equal(dumped, 3, 'the free three dump; the sealed four stay');
+  assert.equal(state.player.cargo.items[commodityId], 4);
+});
+
+test('NXB-025: two contracts on one commodity stack their reservations', () => {
+  const commodityId = 'cmdty_microchips';
+  const state = {
+    missions: {
+      active: [
+        { id: 'a', status: 'active', preloadedCargo: true, params: { cmdtyId: commodityId, qty: 3 } },
+        { id: 'b', status: 'active', preloadedCargo: true, params: { cmdtyId: commodityId, qty: 5 } },
+      ],
+    },
+    story: { persistentCargo: [] },
+    player: { cargo: { items: { [commodityId]: 9 } } },
+  };
+  assert.equal(reservedCargoQty(state, commodityId), 8);
+  assert.equal(sellableCargoQty(state, commodityId), 1);
+  // The first contract settles → its three release; the other's five stay sealed.
+  state.missions.active[0].status = 'completed';
+  assert.equal(sellableCargoQty(state, commodityId), 4);
 });

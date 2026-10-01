@@ -363,15 +363,53 @@ export const countermeasures = {
     }
     const cfg = eq.cm;
 
-    // Break locks: any ship whose combat.lockTarget is THIS ship loses lockProgress (chaff fully,
-    // ECM partially). This is the "missile can't maintain track through the cloud" effect.
+    // Nothing to answer: chaff/ECM are purely reactive — with no lock on this hull and no inbound
+    // seeker, a deploy would burn the cooldown for an empty cloud. Refuse honestly with a distinct
+    // reason (NXI-046: 'no_lock' is not 'cooldown'). The decoy buoy stays deployable — baiting
+    // seekers that haven't locked yet is its whole authored job.
+    if (cfg.kind !== 'decoy' && !this._missileThreat(e, this.state)) {
+      this._denyDeploy(e, cfg.kind, 'no_lock', 0);
+      return false;
+    }
+
+    // Break ONE lineage: the particular lock this deploy defeats. Priority goes to a shooter whose
+    // live missile is already inbound on this hull (that lock produced the threat being answered),
+    // then the attacker furthest along its acquisition. Every other attacker keeps its lock and
+    // progress — one countermeasure answers one lock, it does not erase every threat at once.
     const breakPct = cfg.lockBreakPct != null ? cfg.lockBreakPct : 1.0;
-    for (const other of countermeasureShipCandidates(this.state)) {
-      if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
-      const oc = other.data && other.data.combat;
-      if (oc && oc.lockTarget === e.id) {
+    let brokenLockShipId = null;
+    {
+      const lockers = [];
+      for (const other of countermeasureShipCandidates(this.state)) {
+        if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
+        const oc = other.data && other.data.combat;
+        if (oc && oc.lockTarget === e.id) lockers.push(other);
+      }
+      if (lockers.length) {
+        const inboundOwners = new Set();
+        const projectiles = (this.state.entityIndex && this.state.entityIndex.projectiles)
+          || this.state.entityList || [];
+        for (const p of projectiles) {
+          const d = p && p.data;
+          if (!p || !p.alive || p.type !== 'projectile' || !d || d.kind !== 'missile') continue;
+          if (d.targetId === e.id && d.ownerId != null) inboundOwners.add(d.ownerId);
+        }
+        let best = null;
+        for (const other of lockers) {
+          const progress = (other.data.combat && other.data.combat.lockProgress) || 0;
+          const inbound = inboundOwners.has(other.id) ? 1 : 0;
+          // Inbound seeker beats build progress; ties resolve on progress, then lowest id —
+          // the pick must be deterministic for replay, never map-iteration luck.
+          if (!best || inbound > best.inbound
+              || (inbound === best.inbound && progress > best.progress)
+              || (inbound === best.inbound && progress === best.progress && other.id < best.other.id)) {
+            best = { other, inbound, progress };
+          }
+        }
+        const oc = best.other.data.combat;
         oc.lockProgress = Math.max(0, (oc.lockProgress || 0) * (1 - breakPct));
-        if (oc.lockProgress <= 0) oc.lockTarget = null;
+        if (oc.lockProgress <= 0) { oc.lockTarget = null; oc.lockTargetGeneration = null; }
+        brokenLockShipId = best.other.id;
       }
     }
 
@@ -396,6 +434,7 @@ export const countermeasures = {
     this.bus.emit('countermeasure:deployed', {
       shipId: e.id, kind: cfg.kind, x: e.pos.x, z: e.pos.z,
       radius: cfg.radius, durationS: cfg.durationS, decoyId,
+      brokenLockShipId,
     });
     this.bus.emit('audio:cue', { id: CM_KIND_AUDIO[cfg.kind] || 'cm_chaff' });
     if (e.id === this.state.playerId) {
@@ -424,7 +463,9 @@ export const countermeasures = {
       sev: 'warn',
       text: reason === 'cooldown'
         ? `COUNTERMEASURE RECHARGING ${Math.ceil(Math.max(0, Number(readyIn) || 0))}s`
-        : 'NO COUNTERMEASURE FITTED',
+        : reason === 'no_lock'
+          ? 'NO INBOUND LOCK — HELD'
+          : 'NO COUNTERMEASURE FITTED',
       ttl: 1.6,
     });
     this.bus.emit('audio:cue', { id: 'ui_deny' });

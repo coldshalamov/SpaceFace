@@ -14,7 +14,7 @@ import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
-import { isUnsellableCargo } from '../../../systems/cargo.js';
+import { isUnsellableCargo, reservedCargoQty, sellableCargoQty } from '../../../systems/cargo.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -695,7 +695,7 @@ export function createMarketScreen(ctx) {
 
   function tradeQuantityLimit(state, row) {
     if (mode === 'sell' && row && isUnsellableCargo(state, row.id)) return 0;
-    if (mode === 'sell') return heldQty(state, row.id);
+    if (mode === 'sell') return sellableCargoQty(state, row.id);
     const free = holdFree(state);
     const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
     const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
@@ -704,9 +704,12 @@ export function createMarketScreen(ctx) {
   }
 
   // A sealed lot stays on the sell list. The dial, the sale line, and the hold
-  // arc must describe no sale of it, including after Fewer or More.
+  // arc must describe no sale of it, including after Fewer or More. NXB-025:
+  // the pin binds the sealed count — units free of the reservation still dial.
   function pinSealedSellQuantity(state, id = selectedId) {
-    if (mode === 'sell' && id && isUnsellableCargo(state, id)) qty = 0;
+    if (mode === 'sell' && id && reservedCargoQty(state, id) > 0) {
+      qty = Math.min(qty, sellableCargoQty(state, id));
+    }
   }
 
   function openTradeMode(nextMode, state, options = {}) {
@@ -1574,10 +1577,14 @@ export function createMarketScreen(ctx) {
     if (go) {
       if (go.disabled) return;
       if (tradeBusy) return;
-      const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
+      let tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
       const tradeState = ctx.state || {};
-      if (mode === 'sell' && isUnsellableCargo(tradeState, selectedId)) return;
+      if (mode === 'sell') {
+        const free = sellableCargoQty(tradeState, selectedId);
+        if (free <= 0) return;
+        tradeQty = Math.min(tradeQty, free);
+      }
       const quotedRow = tradedList(tradeState).find((row) => row.id === selectedId) || null;
       const freshQuote = quotedRow ? selectedTradeQuote(tradeState, quotedRow, tradeQty) : null;
       const decision = marketGoDecision({

@@ -500,6 +500,30 @@ const MISSION_MUTATIONS = Object.freeze({
   ]))),
 });
 const ESCORT_TURN_DELAY_S = 12;
+// NXI-149: a plainly settled failure names the condition that actually failed — the title alone
+// is not a reason. Unknown reasons fall back to nothing (the title still carries the name).
+const FAIL_REASON_WORD = Object.freeze({
+  abandoned: 'the job was abandoned',
+  escort_abandoned: 'the convoy was left behind',
+  escortee_lost: 'the convoy lead went down',
+  pods_lost: 'the load went down with the run',
+  core_lost: 'the core broke up in transit',
+  ship_lost: 'your ship went down with the manifest',
+  deadline: 'the window lapsed',
+  seed_asset_lost: 'the seed asset was lost',
+  target_lost: 'the mark is gone',
+  busted: 'the lot was seized',
+  heist_failed: 'the job fell apart',
+  failed: 'the contract could not be completed',
+});
+function failReasonWord(reason) {
+  const text = reason == null ? '' : String(reason);
+  if (FAIL_REASON_WORD[text]) return FAIL_REASON_WORD[text];
+  if (text.startsWith('clause_broken:') || text.startsWith('condition_broken:')) {
+    return 'a contract clause was broken';
+  }
+  return null;
+}
 const MUTATION_TOAST = Object.freeze({
   salvage: (title) => `Convoy lost — the wreck is still out there. Salvage contract live: ${title}.`,
   restitution: (title) => `Contract broken — the manifest is now a debt. Restitution job live: ${title}.`,
@@ -535,6 +559,17 @@ export function escortLossSite(pos, sectorId) {
   const z = Number(pos.z);
   if (!Number.isFinite(x) || !Number.isFinite(z) || sectorId == null) return null;
   return { sectorId: String(sectorId), wreckPos: { x, z } };
+}
+
+/** NXB-038: is this convoy hull's drive dead? Reads the combat-subsystem runtime record the
+ *  same way latchRepair/surrenderRecovery do — a disabled drive is a towable hull, not a corpse. */
+function driveDisabledRuntime(state, entityId) {
+  const runtime = state && state.combat && state.combat.entities
+    ? state.combat.entities[String(entityId)]
+    : null;
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!((drive && drive.effectiveDisabled === true)
+    || (runtime && runtime.capabilities && runtime.capabilities.drive === false));
 }
 
 /**
@@ -4484,6 +4519,7 @@ export const missions = {
     this.bus.emit('research:pointsChanged', {
       researchPoints: state.player.researchPoints,
       source: `first:${eventName}`,
+      scope: spec.scope,
       granted: rp,
     });
     return rp;
@@ -6733,7 +6769,11 @@ export const missions = {
       const rp = m.type === 'recon_scan' ? (4 + (m.riskTier || 0) * 2) : (2 + (m.riskTier || 0));
       researchPoints = rp;
       state.player.researchPoints = (state.player.researchPoints || 0) + rp;
-      this.bus.emit('research:pointsChanged', { researchPoints: state.player.researchPoints });
+      this.bus.emit('research:pointsChanged', {
+        researchPoints: state.player.researchPoints,
+        source: `mission:${m.type}`,
+        granted: rp,
+      });
     }
     // Honored contract terms pay fieldwork RP — a settlement-time grant, not a researchFirsts
     // entry, because a mission's clauses can honor exactly once when it completes.
@@ -7161,7 +7201,12 @@ export const missions = {
     } else if (voided) {
       this.bus.emit('toast', { text: `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`, kind: 'warn', ttl: 5 });
     } else {
-      this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
+      const why = failReasonWord(reason);
+      this.bus.emit('toast', {
+        text: `Mission FAILED: ${m.title}${why ? ` — ${why}` : ''}`,
+        kind: 'error',
+        ttl: 4,
+      });
     }
     this._recordStoryMissionFailure(m, reason || 'failed');
     this._cleanupTargets(m);
@@ -7927,6 +7972,36 @@ export const missions = {
    *  (pure geometry — no RNG). */
   _steerEscortee(m, state, dt) {
     const lead = state.entities.get(m._escorteeId);
+    // NXB-038: a drive-disabled convoy hull is a recoverable loss with a real continuation —
+    // a taut tow line repairs a friendly drive — but only if the player is TOLD it went dead.
+    // Say it once per contract (params.* rides the save), then let the sim decide the rest.
+    if (!m.params || m.params.helperDisabledSaid !== true) {
+      let deadHull = null;
+      if (lead && lead.alive && driveDisabledRuntime(state, lead.id)) deadHull = lead;
+      if (!deadHull) {
+        for (const id of m.targetEntityIds || []) {
+          if (id === m._escorteeId) continue;
+          const e = state.entities.get(id);
+          if (e && e.alive && e.data && e.data.escortee === true && driveDisabledRuntime(state, e.id)) {
+            deadHull = e;
+            break;
+          }
+        }
+      }
+      if (deadHull) {
+        m.params = m.params || {};
+        m.params.helperDisabledSaid = true;
+        const pilot = promotedPilotIdentity(0, m.id);
+        this.bus.emit('comms:popup', {
+          sender: pilot.name,
+          text: lead === deadHull
+            ? `${pilot.crew}: my drive is dead — put a line on the hull or this leg dies out here.`
+            : `${pilot.crew}: a wing hauler is dead in the water — tow her or we settle short.`,
+          category: 'mission',
+          ttl: 6,
+        });
+      }
+    }
     // Destination point shared by the whole convoy: the dest station entity if it's loaded in
     // the current sector, else the player (so the convoy tags along until the player jumps it
     // into the destination sector).
@@ -8572,6 +8647,20 @@ export const missions = {
         e.data.contractClaimCrewOf = null;
         e.data.salvorClaimId = null;
         e.data.claimRole = null;
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
+      // NXI-150: surviving convoy wings outlive a lost lead the same way — a FAILED escort
+      // releases them to lane life (unpinned, unstamped) rather than despawning bodies the
+      // contract no longer owns. A later kill still drops the real manifest they were hauling.
+      // Completion is different: the convoy docked, and the sweep reads as the crew dispersing.
+      if (m.status !== 'completed'
+          && e.data.escortee === true && String(missionIdentityOf(e)) === String(m.id)) {
+        e.data.escortee = null;
+        e.data.missionTag = null;
+        e.data.missionId = null;
+        if (e.data.intent) { e.data.intent.moveX = 0; e.data.intent.moveZ = 0; e.data.intent.boost = false; }
+        targetIds.delete(e.id);
         const budget = this.helpers && this.helpers.spawnBudget;
         if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
       }

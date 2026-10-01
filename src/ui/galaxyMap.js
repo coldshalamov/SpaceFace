@@ -5802,6 +5802,11 @@ _stepAnimation(now) {
             <span class="gm-ins-row-val">${escapeMapHtml(row.detail)}</span>
           </li>`).join('')}</ol>`
       : '<div class="gm-ins-note">No activity receipts recorded yet.</div>';
+    const workRemaining = history && Array.isArray(history.workRemaining) ? history.workRemaining : [];
+    const retained = workRemaining.length
+      ? `<div class="gm-ins-section"><div class="gm-ins-title">Work in progress</div>${workRemaining.map((work) => `
+          <div class="gm-ins-row"><span>${escapeMapHtml(work.label)}</span><span class="gm-ins-row-val">${escapeMapHtml(work.detail)}</span></div>`).join('')}</div>`
+      : '';
     return `<div class="gm-ins-section">
         <div class="gm-ins-kind">World Site history</div>
         <div class="gm-ins-target-name">${escapeMapHtml(target && target.name || 'World Site')}</div>
@@ -5809,6 +5814,7 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Completed</span><span class="gm-ins-row-val">${Math.max(0, Number(history && history.completedCount) || 0)}</span></div>
         <div class="gm-ins-row"><span>Failures</span><span class="gm-ins-row-val">${Math.max(0, Number(history && history.failureCount) || 0)}</span></div>
       </div>
+      ${retained}
       <div class="gm-ins-section"><div class="gm-ins-title">Recent activity</div>${activity}</div>`;
   },
 

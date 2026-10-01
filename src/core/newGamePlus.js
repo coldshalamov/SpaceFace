@@ -118,6 +118,9 @@ export function leftoverNewRunLine(candidate) {
   else if (titleCount) clauses.push(`${titleCount} ${titleCount === 1 ? 'title' : 'titles'}`);
   const fact = clean(candidate.worldFactTitle);
   if (fact) clauses.push(fact);
+  // NXI-191 — the confirmation states the reset instead of implying it: every physical
+  // obligation and holding ends with the run; only the named carries survive.
+  clauses.push('cargo, credits, contracts and claims reset');
   return clauses.filter(Boolean).join(' · ');
 }
 

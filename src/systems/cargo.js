@@ -83,16 +83,37 @@ export function isPersistentCargo(state, commodityId) {
  * consumers (`_deliverCargo`, `_removePreloadedContractCargo`) that remove preloaded cargo through
  * the writer directly. The guard belongs on player intent, not on the writer.
  */
-export function isUnsellableCargo(state, commodityId) {
-  if (isPersistentCargo(state, commodityId)) return true;
+/**
+ * NXB-025 — units of `commodityId` sealed by active contracts. A preloaded delivery reserves
+ * exactly `params.qty` units until it delivers or ends; units the player bought or salvaged on top
+ * of the manifest are their own. Persistent story cargo seals the entire held lot.
+ */
+export function reservedCargoQty(state, commodityId) {
+  const held = Math.max(0, Math.floor(
+    Number(state && state.player && state.player.cargo && state.player.cargo.items
+      && state.player.cargo.items[commodityId]) || 0));
+  if (isPersistentCargo(state, commodityId)) return held > 0 ? held : 1;
   const active = state && state.missions && state.missions.active;
-  if (!Array.isArray(active)) return false;
+  if (!Array.isArray(active)) return 0;
+  let reserved = 0;
   for (const m of active) {
     if (m && m.status === 'active' && m.preloadedCargo === true && m.params && m.params.cmdtyId === commodityId) {
-      return true;
+      reserved += Math.max(1, Math.floor(Number(m.params.qty) || 1));
     }
   }
-  return false;
+  return reserved;
+}
+
+/** Units free to sell or jettison: held minus the sealed reservation, floored at zero. */
+export function sellableCargoQty(state, commodityId) {
+  const held = Math.max(0, Math.floor(
+    Number(state && state.player && state.player.cargo && state.player.cargo.items
+      && state.player.cargo.items[commodityId]) || 0));
+  return Math.max(0, held - reservedCargoQty(state, commodityId));
+}
+
+export function isUnsellableCargo(state, commodityId) {
+  return reservedCargoQty(state, commodityId) > 0 && sellableCargoQty(state, commodityId) <= 0;
 }
 
 /** The lot a flight jettison dumps.
@@ -722,7 +743,10 @@ export const cargo = {
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
   jettison(commodityId, qty, options = null) {
-    if (isUnsellableCargo(this.state, commodityId)) return 0;
+    const free = sellableCargoQty(this.state, commodityId);
+    if (free <= 0) return 0;
+    qty = qty == null ? free : Math.min(Math.max(0, Math.floor(Number(qty) || 0)), free);
+    if (qty <= 0) return 0;
     const state = this.state;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const dumped = removeCargo(state, commodityId, qty);

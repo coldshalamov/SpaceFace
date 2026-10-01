@@ -26,6 +26,7 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { SHIPS } from '../../data/ships.js';
 import {
   CRUCIBLE_ARENA_ID,
+  CRUCIBLE_RULESETS,
   crucibleHullSetupFor,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
@@ -115,6 +116,12 @@ export function applyRunShareCode(code) {
   const decoded = decodeRunShareCode(code);
   if (!decoded.ok) return { ok: false, error: decoded.error };
   const fields = runShareSpecFields(decoded.spec);
+  // NXB-020: a ruleset this build does not ship is a different game — the attempt is
+  // not comparable. Normalizing it to the default ruleset would silently replay the
+  // challenge under new rules, which is exactly what the envelope must not do.
+  if (fields.ruleset && !CRUCIBLE_RULESETS.includes(fields.ruleset)) {
+    return { ok: false, error: `ruleset "${fields.ruleset}" is not in this version — the attempt is not comparable` };
+  }
   let starterId = fields.starterId && starterKnown(fields.starterId)
     ? fields.starterId
     : null;

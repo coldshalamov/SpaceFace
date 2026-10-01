@@ -15,6 +15,7 @@
 //      voice is not duplicated bottom-right or via a second live region.
 //
 import { BINDINGS, promptLabel } from './bindings.js';
+import { stationName } from './sectorLawPresenter.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
@@ -37,6 +38,30 @@ export const VOICE_OWNED_ALERT_TEXTS = Object.freeze([
 ]);
 
 const BLOCKED_OUTPUT_STATES = new Set(['starved', 'no-power', 'backlogged']);
+
+// STORY-02 — short grant names for `research:pointsChanged`. The writer carries `scope`
+// (first-grant kind) or a `source` slug; an unknown slug still reads as fieldwork.
+function researchGrantKey(p) {
+  if (typeof p.scope === 'string' && p.scope) return `first-${p.scope}`;
+  const s = typeof p.source === 'string' && p.source ? p.source : 'unknown';
+  return s.replace(/[^a-z0-9_-]/gi, '_');
+}
+
+function researchGrantLabel(p) {
+  if (typeof p.scope === 'string' && p.scope) return `first ${p.scope}`;
+  const s = typeof p.source === 'string' ? p.source : '';
+  if (s === 'scan_rp_bonus') return 'scan bonus';
+  if (s === 'clause_honor') return 'honored clause';
+  if (s.startsWith('mission:')) {
+    const t = s.slice(8);
+    if (t === 'recon_scan') return 'recon contract';
+    if (t === 'salvage_retrieval') return 'salvage contract';
+    return 'contract';
+  }
+  if (s.startsWith('story:')) return 'story fieldwork';
+  if (s.startsWith('first:')) return 'first fieldwork';
+  return 'fieldwork';
+}
 
 /** Flight-HUD status line for a mill that cannot produce. Not a one-voice bark: it stays up
  *  while the machine is blocked so reduce-motion still has a word when shake/zoom are off. */
@@ -350,6 +375,62 @@ export function createAlerts(ctx) {
   });
   bus.on('game:started', () => refreshBlockedMillsFromSites());
   bus.on('save:loaded', () => refreshBlockedMillsFromSites());
+
+  // STORY-02 — a research grant names itself: missions is the sole RP writer and every emit
+  // carries source+granted; one alert line per grant, keyed by source so same-event grants
+  // (mission pay + honored clause) each get their line while a repeated source coalesces.
+  bus.on('research:pointsChanged', (p) => {
+    const granted = Number(p && p.granted);
+    if (!(granted > 0)) return;
+    announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} RP — ${researchGrantLabel(p)}`, ttl: 4 });
+  });
+
+  // ECON-04 — an NPC salvage lot the market absorbed posts one receipt line naming the yard and
+  // the lot's nominal value. Keyed by intake id so a duplicate application refreshes in place.
+  bus.on('economy:salvageIntakeApplied', (p) => {
+    if (!p || p.ok !== true) return;
+    const qty = Math.max(0, Math.round(Number(p.qty) || 0));
+    const value = Math.max(0, Math.round(Number(p.valueCr) || 0));
+    const yard = stationName(ctx.state, p.yardId);
+    announce({
+      key: `salvage-intake:${p.intakeId || p.lotId || 'x'}`,
+      sev: 'info',
+      text: `SALVAGE INTAKE — ${qty}t scrap taken in at ${yard} · ~${value} CR`,
+      ttl: 4,
+    });
+  });
+
+  // ECON-05 — a named sink charge posts one receipt line per ledger record, carrying its
+  // SESSION_SINK_KINDS word and the charge. chargeCredits only emits when credits actually moved,
+  // so zero-credit charges stay silent by construction; the record id keys the floor line.
+  bus.on('economy:sinkCharged', (p) => {
+    if (!p || p.id == null) return;
+    const amount = Math.max(0, Math.round(Number(p.amount) || 0));
+    const kind = String(p.kind || 'charge').toUpperCase();
+    const causeWord = typeof p.causeWord === 'string' && p.causeWord ? p.causeWord : p.cause;
+    const cause = typeof causeWord === 'string' && causeWord ? ` · ${causeWord}` : '';
+    announce({ key: `sink:${p.id}`, sev: 'info', text: `${kind} −${amount} CR${cause}`, ttl: 4 });
+  });
+
+  // WORLD-25 — hazard-zone membership uses the persistent pill the HUD already owns: entry
+  // raises the named field line, exit clears it. world.js emits hazard:enter/hazard:exit with
+  // the player entity id; other entities' zone crossings never reach this surface.
+  const HAZARD_SEV = { radiation: 'warn', nebula: 'info' };
+  bus.on('hazard:enter', (p) => {
+    if (!p || p.entityId !== (ctx.state && ctx.state.playerId)) return;
+    const type = typeof p.zoneType === 'string' ? p.zoneType : '';
+    if (!type) return;
+    raise({
+      key: `hazard:${type}`,
+      sev: HAZARD_SEV[type] || 'info',
+      text: `${type.replace(/_/g, ' ').toUpperCase()} FIELD`,
+      ttl: Infinity,
+    });
+  });
+  bus.on('hazard:exit', (p) => {
+    if (!p || p.entityId !== (ctx.state && ctx.state.playerId)) return;
+    if (typeof p.zoneType === 'string' && p.zoneType) clear(`hazard:${p.zoneType}`);
+  });
 
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
   // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.

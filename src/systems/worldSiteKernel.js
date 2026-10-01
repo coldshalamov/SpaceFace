@@ -561,6 +561,10 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
     requestStreamId,
     requestSequence,
     amountApplied: after - before,
+    // A partial receipt names the retained total and the authored threshold so downstream
+    // readouts can say what is still missing without re-walking the record.
+    appliedTotal: after,
+    workThreshold: operation.threshold,
     complete,
     tick: finiteTick(request.tick),
   });
@@ -778,6 +782,25 @@ export function projectWorldSite(manifest, record) {
       recentReceipts: clonePlain(array(record.receipts).slice(-5)),
     },
     traffic: { ...clonePlain(manifest.trafficHook || {}), siteId: manifest.id, stageId: plan.stageId, active: true },
+    // Retained partial work, resolved against authored thresholds: every entry names the
+    // operation, the durable applied amount, and what is still missing.
+    pendingWork: manifest.components.flatMap((def) => {
+      const progress = record.components[def.id] && record.components[def.id].progress;
+      return Object.keys(isPlainObject(progress) ? progress : {}).sort()
+        .map((operationId) => {
+          const operation = manifest.operations.find((candidate) => candidate.id === operationId);
+          const applied = Math.max(0, Number(progress[operationId]) || 0);
+          const threshold = operation && Number.isFinite(operation.threshold)
+            ? operation.threshold : applied;
+          return {
+            componentId: def.id,
+            operationId,
+            applied,
+            threshold,
+            remaining: Math.max(0, threshold - applied),
+          };
+        });
+    }),
     components: manifest.components.map((def) => ({ id: def.id, label: def.label, ...clonePlain(record.components[def.id]) })),
     payloads: clonePlain(record.payloads),
     receivers: clonePlain(record.receivers),
