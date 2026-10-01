@@ -3091,14 +3091,19 @@
    "kind": "part:places",
    "source": "assets/ships/parts/places/place_mining_drone.glb",
    "release": "assets/ships/release/parts/places/place_mining_drone.glb",
-   "sourceSha256": "657b20af677289642abf7c457253eac0f64b00ab8417a62e6f32508d1709d79c",
-   "releaseSha256": "ef15148260f418e719078413ad4eddb92de53eea0aad7598009185fb45731ef2",
-   "sourceBytes": 1476272,
-   "releaseBytes": 691916,
+   "sourceSha256": "9d45641685c052808959c78b102e296312c95218b057da892d3279fcf716d65d",
+   "releaseSha256": "8f8f40ca08f796105eb41d5831509c35feb6844592f23a1ca868668dd5e5191f",
+   "sourceBytes": 1482560,
+   "releaseBytes": 535312,
    "textures": 6,
    "ktx2Textures": 6,
-   "meshoptBufferViews": 120,
-   "contractNodeCount": 34
+   "meshoptBufferViews": 152,
+   "contractNodeCount": 43,
+   "textureProfiles": {
+    "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+    "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+    "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+   }
   },
   {
    "id": "place_nav_buoy",

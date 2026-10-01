@@ -1541,8 +1541,8 @@
    "slot": "place",
    "releaseAssetId": "place_mining_drone",
    "sourceUrl": "assets/ships/release/parts/places/place_mining_drone.glb",
-   "releaseSha256": "ef15148260f418e719078413ad4eddb92de53eea0aad7598009185fb45731ef2",
-   "releaseBytes": 691916,
+   "releaseSha256": "8f8f40ca08f796105eb41d5831509c35feb6844592f23a1ca868668dd5e5191f",
+   "releaseBytes": 535312,
    "dynamicNameIncludes": [
     "HOOK_DRIVE",
     "HOOK_NAV",

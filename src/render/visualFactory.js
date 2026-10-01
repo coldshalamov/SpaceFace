@@ -3862,9 +3862,9 @@ function attachPackagedBody(root, relativeFile, entity) {
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
-      // Banked packages (fracture fragments) mount through the node graph so the MOTION_*
-      // pivots the motion bank drives actually exist in the scene — the flat-primitive path
-      // bakes every transform into world-space meshes and leaves the rig no nodes.
+      // Banked packages (mining drone, fracture fragments) mount through the node graph so the
+      // MOTION_* pivots the motion bank drives actually exist in the scene — the flat-primitive
+      // path bakes every transform into world-space meshes and leaves the rig no nodes.
       const motionControllers = [];
       if (record.motionBank && record.renderPackage
           && typeof record.renderPackage.createInstance === 'function') {

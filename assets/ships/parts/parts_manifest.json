@@ -3728,8 +3728,8 @@
    "category": "places",
    "priority": "P1",
    "file": "places/place_mining_drone.glb",
-   "tris": 21618,
-   "bytes": 1476272,
+   "tris": 21616,
+   "bytes": 1482560,
    "textureSize": 1024,
    "tintable": {
     "hull": "Material_Hull",
