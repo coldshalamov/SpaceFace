@@ -1921,6 +1921,7 @@ export const audio = {
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('loot:overflowConverted', (p) => this._onOverflowConverted(p));
+    bus.on('loot:magnetCaptured', (p) => this._onMagnetCaptured(p));
     // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
     // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
     bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
@@ -3808,6 +3809,20 @@ export const audio = {
         rate: SCOOP_CHIME_RATES[step],
       });
     }
+  },
+
+  // Loot magnet (mod_loot_magnet_s): a pod drifting into the ring gets one soft catch ping —
+  // deliberately OFF the scoop ladder; pickup:collected still owns the seat sound when the pod
+  // is actually claimed. Emitted once per pod id per sector window, so this can never ladder.
+  _onMagnetCaptured(p) {
+    if (!p || p.podId == null) return;
+    if (p.playerId != null && this.state && p.playerId !== this.state.playerId) return;
+    const pod = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.podId) : null;
+    const pos = pod && pod.pos;
+    const position = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      ? { x: pos.x, z: pos.z } : null;
+    this.play('sfx_vent_chime', { position, gain: 0.35, rate: 0.9 });
   },
 
   // Stunt chain (CV-EAR slice 3): each player trick in the live combo plucks one step up the

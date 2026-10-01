@@ -1873,6 +1873,7 @@ function worldEntityLabel(entity) {
   const data = entity && entity.data;
   const label = data && (data.displayName || data.name || data.label);
   if (typeof label === 'string' && label.trim()) return label.trim();
+  if (data && (data.massSeed === true || data.kind === 'mass_seed')) return 'Mass Seed';
   const type = entity && entity.type || 'endpoint';
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }

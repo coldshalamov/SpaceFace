@@ -43,7 +43,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `nemesisEncounter` | `systems/nemesisEncounter.js` | 9 | 0 | 0 | — |
 | `capitalBossEncounters` | `systems/capitalBossEncounters.js` | 149 | 2 | 0 | `capitalBoss:telegraphEnd`×2 |
 | `ai` | `systems/tacticalAI.js` (+ legacy) | 1266 | 2 | 0 | `ai:telegraph`×1, `ai:doctrinePhase`×1 |
-| `barkDirector` | `systems/barkDirector.js` | 1687 | 1 | 24 | `audio:cue`×1 |
+| `barkDirector` | `systems/barkDirector.js` | 1749 | 1 | 26 | `audio:cue`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 844 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
 | `beacons` | `systems/beacons.js` | 216 | 5 | 2 | `audio:cue`×3, `economy:chargeCredits`×1, `beacon:deployed`×1 |
@@ -83,7 +83,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `masslineSnares` | `systems/masslineSnares.js` | 682 | 7 | 5 | `massline:snareArmed`×1, `massline:snareDeployed`×1, `ai:telegraph`×1 |
 | `masslineThrow` | `systems/masslineThrow.js` | 811 | 9 | 2 | `audio:cue`×3, `massline:releaseCancelled`×1, `massline:releaseWindow`×1 |
 | `masslineImpactDamage` | `systems/masslineImpactDamage.js` | 135 | 0 | 3 | — |
-| `lootShards` | `systems/lootShards.js` | 1199 | 8 | 5 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
+| `lootShards` | `systems/lootShards.js` | 1205 | 8 | 4 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
 | `terrainAnchors` | `systems/terrainAnchors.js` | 400 | 0 | 6 | — |
 | `jettisonImpulse` | `systems/jettisonImpulse.js` | 95 | 1 | 1 | `audio:cue`×1 |
 | `mining` | `systems/mining.js` | 3013 | 50 | 10 | `beam:denied`×5, `mining:yield`×5, `mining:start`×3 |
@@ -138,7 +138,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `chronicler` | `systems/chronicler.js` | 354 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 688 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
 | `onboarding` | `systems/onboarding.js` | 3105 | 19 | 68 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
-| `masslineHud` | `ui/masslineHud.js` | 1971 | 0 | 3 | — |
+| `masslineHud` | `ui/masslineHud.js` | 1972 | 0 | 3 | — |
 | `massSeedHud` | `ui/massSeedHud.js` | 381 | 0 | 0 | — |
 | `fieldHud` | `ui/fieldHud.js` | 317 | 0 | 0 | — |
 | `planetHud` | `ui/planetHud.js` | 193 | 0 | 0 | — |
@@ -148,7 +148,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `noFireAdvisory` | `data/stationBubbles.js` | 250 | 0 | 1 | — |
 | `moralTrapSystem` | *(not found)* | — | — | — | — |
 | `voiceArbiter` | `ui/voiceArbiter.js` | 452 | 4 | 2 | `voice:clear`×2, `voice:surface`×2 |
-| `save` | `save/saveSystem.js` | 4954 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
+| `save` | `save/saveSystem.js` | 4960 | 37 | 27 | `save:error`×22, `save:started`×2, `mode:changed`×2 |
 
 ## Render-phase order (every animation frame)
 
