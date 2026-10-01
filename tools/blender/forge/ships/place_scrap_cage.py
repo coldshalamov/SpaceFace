@@ -49,6 +49,11 @@ def build():
             F.beams(s, f'Rail{py}{d}', [((X0, py, d), (X1, py, d))], 0.28,
                     material='bare.steel')
         F.beams(s, f'RailX{d}', [((X1, Y0, d), (X1, Y1, d))], 0.28, material='bare.steel')
+    # Lit structure (GFX light-upgrades): an amber stripe along both long top rails (post rings were one
+    # pixel at the place tilt), so the pen reads as two lit edges (LOOK.md: lamps are light).
+    for py in (Y0, Y1):
+        F.band(s, f'Rail{py}1.9', ((X0 + X1) / 2, py, 1.9), (0, 0, 1), 0.14, 'glow_amber', inset=0.01,
+               depth=-0.02)
     # diagonal braces on the sides
     for py in (Y0, Y1):
         F.beams(s, f'Brace{py}', [((X0 + 0.3, py, 0.4), (X1 - 0.3, py, 2.4))], 0.18,
