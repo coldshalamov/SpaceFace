@@ -88,7 +88,7 @@ export const mines = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return null;
     if (!opts.pos || !Number.isFinite(opts.pos.x) || !Number.isFinite(opts.pos.z)) return null;
-    const ownerId = opts.ownerId == null ? null : opts.ownerId;
+    const ownerId = opts.ownerId != null ? opts.ownerId : (state && state.playerId != null ? state.playerId : null);
     if (ownerId != null && countOwnerMines(state, ownerId) >= MINE_OWNER_CAP) {
       if (this.bus) this.bus.emit('mines:capReached', { ownerId, cap: MINE_OWNER_CAP });
       return null;

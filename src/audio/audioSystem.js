@@ -1101,8 +1101,12 @@ export const TRADE_REFUSAL_CAPTIONS = Object.freeze({
   not_docked: 'Not Docked',
 });
 
+// FIGHT-07: Mine cap refusal voice (combat refusal, distinct from UI error blip)
+export const MINE_CAP_REFUSAL_RECIPE = 'sfx_massline_deny';
+
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
+  'mines:capReached': MINE_CAP_REFUSAL_RECIPE,
   'moment.stinger': 'sfx_moment_stinger',
   click: 'sfx_ui_click', ui_click: 'sfx_ui_click', uiClick: 'sfx_ui_click',
   hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
@@ -2004,6 +2008,7 @@ export const audio = {
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
     bus.on('economy:tradeFailed', (p) => this._onTradeFailed(p));
+    bus.on('mines:capReached', (p) => this._onMineCapReached(p));
     // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
     // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick,
     // but only on routes where jettisonImpulse's own audio:cue is flag-gated OFF; with the flag on
@@ -4887,6 +4892,17 @@ export const audio = {
     this._emitPresentationCaption(caption, { assertive: true, shape: 'arc' });
   },
 
+  _onMineCapReached(payload) {
+    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65 });
+    const cap = payload && Number.isFinite(payload.cap) ? payload.cap : 6;
+    this._emitPresentationCaption(`Mine Cap Reached (${cap})`, {
+      assertive: true,
+      shape: 'arc',
+      channel: 'refusal',
+      cap,
+    });
+  },
+
   // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
   // writer). Fully packet-driven: every emit carries previousValue, so each verdict derives from
   // the packet itself and no cross-run or post-load transient can stale it. Only edges speak:
@@ -4962,6 +4978,8 @@ export const audio = {
       shape: opts.shape || 'arc',
       physical: opts.physical === true,
       showVisible: opts.showVisible !== false,
+      channel: opts.channel || 'cue',
+      ...opts,
     });
   },
 
