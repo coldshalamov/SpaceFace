@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "inf-wf05-concussion-s",
-      "date": "2026-09-23",
-      "wf": "WF-05",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "small concussion cannon provides dedicated S-slot momentum displacement tool for light hulls",
-      "fingerprint": "verb=shove,subject=concussion_s,sector=combat,layer=simulation,tempo=tactical,domain=weapons",
-      "references": [],
-      "integration": "live",
-      "commit": "f2dd8ef9e8b57d63131c8a923060d6ed62bef58c",
-      "verification": "focused_green"
-    },
-    {
       "id": "fuel-low-before-empty",
       "date": "2026-09-23",
       "wf": "WF-13",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "5d5473bec",
+      "verification": "focused_green"
+    },
+    {
+      "id": "law-09-claim-defense-ignore",
+      "date": "2026-10-01",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "raid marker ignore verb settles a live defense warning through the ignored column; stale/engaged defenses cannot be waived",
+      "fingerprint": "verb=ignore,subject=claim-raid-warning,sector=any,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "9e93c64ee",
       "verification": "focused_green"
     }
   ],
