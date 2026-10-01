@@ -433,6 +433,87 @@ export function adaptBombProjectileProxy(bomb) {
   };
 }
 
+/**
+ * Kinematic redirect. The bomb stays the motion owner: same body, fuse, arming, and source.
+ * A rejected shove consumes nothing. The contributor is recorded beside the original owner.
+ */
+export function redirectLiveBomb(bomb, impulse, contributorId, tick = 0) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) {
+    return { ok: false, reason: 'not_bomb', consumed: false };
+  }
+  const data = bomb.data;
+  if (data.retired || data.phase === 'spent' || data.phase === 'field' || bomb.alive === false) {
+    return { ok: false, reason: 'not_redirectable', consumed: false };
+  }
+  const ix = Number(impulse && impulse.x) || 0;
+  const iz = Number(impulse && impulse.z) || 0;
+  if (!(Math.hypot(ix, iz) > 0)) return { ok: false, reason: 'no_impulse', consumed: false };
+  const armed = data.armed === true;
+  const armedAt = data.armedAt;
+  const detonateAt = data.detonateAt;
+  const ownerId = data.ownerId;
+  const phase = data.phase;
+  const mass = Math.max(0.25, Number(bomb.mass) || 2);
+  if (!bomb.vel) bomb.vel = { x: 0, z: 0 };
+  bomb.vel.x = (Number(bomb.vel.x) || 0) + ix / mass;
+  bomb.vel.z = (Number(bomb.vel.z) || 0) + iz / mass;
+  bomb.physicsBody = false;
+  data.armed = armed;
+  data.armedAt = armedAt;
+  data.detonateAt = detonateAt;
+  data.ownerId = ownerId;
+  data.phase = phase;
+  data.redirectContributor = {
+    id: contributorId == null ? null : contributorId,
+    tick: tick | 0,
+    impulse: { x: ix, z: iz },
+  };
+  recordImpulseProvenance(bomb, {
+    actorId: contributorId == null ? null : contributorId,
+    weaponId: 'bomb_redirect',
+    tag: 'bomb_redirect',
+    appliedTick: tick | 0,
+    magnitude: Math.hypot(ix, iz),
+    sourceOwnerId: ownerId == null ? null : ownerId,
+  });
+  return {
+    ok: true,
+    consumed: true,
+    bombId: bomb.id,
+    ownerId,
+    contributorId: contributorId == null ? null : contributorId,
+    armed,
+    detonateAt,
+    phase,
+  };
+}
+
+/** A destroyed casing is not a lock or a selected target. Dissipating effects are left alone. */
+export function clearDestroyedBombLocks(state, bomb) {
+  if (!bomb) return;
+  const id = bomb.id;
+  if (bomb.data) {
+    bomb.data.lockable = false;
+    bomb.data.interaction = null;
+  }
+  if (!state) return;
+  const player = state.player;
+  if (player) {
+    if (player.targetId === id) player.targetId = null;
+    if (player.gunTargetId === id) player.gunTargetId = null;
+  }
+  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  for (const entity of list) {
+    const combat = entity && entity.data && entity.data.combat;
+    if (!combat) continue;
+    if (combat.lockTarget === id) {
+      combat.lockTarget = null;
+      combat.lockProgress = 0;
+    }
+    if (combat.targetId === id) combat.targetId = null;
+  }
+}
+
 export const bombs = {
   name: 'bombs',
   saveSnapshotOwned: true,
@@ -1188,6 +1269,12 @@ export const bombs = {
     return null;
   },
 
+  redirect(bomb, impulse, contributorId, state = this.state) {
+    const result = redirectLiveBomb(bomb, impulse, contributorId, state && state.tick);
+    if (result.ok) this.bus?.emit('bombs:redirected', result);
+    return result;
+  },
+
   _onProjectileHit(payload) {
     if (!this.state || !payload) return false;
     const target = this.state.entities.get(payload.targetId);
@@ -1216,6 +1303,9 @@ export const bombs = {
       d.phase = 'spent';
     }
     adaptBombProjectileProxy(bomb);
+    d.lockable = false;
+    d.interaction = null;
+    clearDestroyedBombLocks(state, bomb);
     this.bus?.emit('bombs:destroyed', {
       bombId, payloadId, ownerId, shotBy, pos, reason, trigger: reason,
     });

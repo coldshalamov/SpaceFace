@@ -81,6 +81,41 @@ export function bombFieldEnvelope(now, startedAt, durationS, endStrength = 1) {
 // cannot reverse relative velocity. Compensation uses the solver's effective mass, so goo's
 // existing massScale wallow cannot accidentally immunize its victim to this separate brake.
 // Multiple overlapping clouds split one tick's damping budget, preventing stack overshoot.
+/**
+ * Armed, arming, and spent ordnance must not share a target description.
+ * Spent is not a live interaction even if a field is still dissipating.
+ */
+export function bombInteractionState(bomb) {
+  if (!bomb || bomb.type !== 'bomb' || !bomb.data) return null;
+  const data = bomb.data;
+  const spent = data.retired === true || data.phase === 'spent' || bomb.alive === false;
+  if (spent) {
+    return {
+      state: 'spent',
+      label: 'Spent bomb casing',
+      interactable: false,
+      lockable: false,
+      hint: null,
+    };
+  }
+  if (data.armed === true && (data.phase === 'drift' || data.phase === 'warning')) {
+    return {
+      state: 'armed',
+      label: 'Armed drift bomb',
+      interactable: true,
+      lockable: true,
+      hint: 'Shoot the casing or shove it off the line',
+    };
+  }
+  return {
+    state: 'arming',
+    label: 'Arming drift bomb',
+    interactable: true,
+    lockable: true,
+    hint: 'The fuze is not live — a shot still breaks the casing',
+  };
+}
+
 export function fillBombViscosityImpulse(out, velocity, frame, effectiveMass, dt, dragPerS, share = 1) {
   out.x = out.y = out.z = 0;
   if (!(dt > 0) || !Number.isFinite(dt) || !(effectiveMass > 0) || !Number.isFinite(effectiveMass)) return false;

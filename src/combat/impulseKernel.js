@@ -279,6 +279,7 @@ export function recordImpulseProvenance(entity, input = {}) {
     tag,
     appliedTick,
     magnitude: nonNegative(input.magnitude),
+    ...(input.sourceOwnerId != null ? { sourceOwnerId: input.sourceOwnerId } : {}),
     ...(inheritedHold != null ? { holdUntilTick: inheritedHold } : {}),
   });
   RECENT_IMPULSES.set(entity, record);

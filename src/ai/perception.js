@@ -247,6 +247,37 @@ function contactKey(contact) {
   return `${contact.kind}|${stableId(contact.id)}`;
 }
 
+/** Body token a lock or missile must match. A reused entity id with a new token is not the old target. */
+export function targetIdentityGeneration(entity) {
+  if (!entity) return 0;
+  const data = entity.data;
+  if (data && data.identityGeneration != null && data.identityGeneration !== '') return data.identityGeneration;
+  if (entity.generation != null && entity.generation !== '') return entity.generation;
+  return 0;
+}
+
+/**
+ * Drop only the lock contact this decoy defeated. Every other perceived threat stays.
+ * A contact without a lock lineage is not a lock and is kept.
+ */
+export function suppressDefeatedLock(contacts, lineage) {
+  if (!Array.isArray(contacts)) return [];
+  if (!lineage) return contacts.slice();
+  const out = [];
+  for (const contact of contacts) {
+    if (!contact) continue;
+    const line = contact.lockLineage;
+    const matchesLine = !!(line
+      && line.shooterId === lineage.shooterId
+      && line.generation === lineage.generation
+      && line.targetId === lineage.targetId);
+    const matchesLock = !line && contact.kind === 'lock' && contact.id === lineage.shooterId;
+    if (matchesLine || matchesLock) continue;
+    out.push(contact);
+  }
+  return out;
+}
+
 function idSort(a, b) {
   const ak = stableId(a), bk = stableId(b);
   return ak < bk ? -1 : (ak > bk ? 1 : 0);

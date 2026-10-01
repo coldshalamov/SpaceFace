@@ -18,7 +18,8 @@
 // This system is the SINGLE WRITER of primed state; fields.js only reports the grind.
 import { CHAIN_REACTION, IMPULSE_CHARGES, MASSLINE_COMBOS } from '../data/impulseCharges.js';
 import { LIGHT_COOKOFF, lightCookoffEligible, lightCookoffHits } from '../combat/lightCookoff.js';
-import { removeCargo } from './cargo.js';
+import { addCargo, removeCargo } from './cargo.js';
+import { redirectLiveBomb } from './bombs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
   COLLISION_CONSEQUENCE_LIMITS,
@@ -34,6 +35,18 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 
 const CHARGE_COMMODITY = 'cmdty_impulse_charge';
+
+/**
+ * An eligibility rejection does not debit. A throw that already paid (a deliberate miss)
+ * is not charged again. Only a newly accepted throw spends one charge.
+ */
+export function ordnanceChargeDebit(stock, request) {
+  const have = Math.max(0, Math.floor(Number(stock) || 0));
+  if (!request || request.accepted !== true) return have;
+  if (request.alreadyPaid === true) return have;
+  if (!(have >= 1)) return have;
+  return have - 1;
+}
 const STICK_TYPES = new Set(['ship', 'drone', 'asteroid']);
 const BLAST_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const CHARGE_BY_ID = new Map(Object.entries(IMPULSE_CHARGES));
@@ -964,11 +977,20 @@ export const impulseCharges = {
     const trap = repulsionTrapFitted(state);
     const chargeId = trap ? 'charge_repulsion_trap' : 'charge_standard';
     const def = chargeDef(chargeId);
+    const have = Number(state.player && state.player.cargo && state.player.cargo.items
+      && state.player.cargo.items[CHARGE_COMMODITY]) || 0;
+    const alreadyPaid = rt.debitedThrowTick === state.tick;
+    const nextStock = ordnanceChargeDebit(have, { accepted: true, alreadyPaid });
+    if (alreadyPaid || nextStock === have) {
+      if (!alreadyPaid) this.bus.emit('toast', { text: 'No impulse charges in cargo', kind: 'error', ttl: 2 });
+      return;
+    }
     const consumed = removeCargo(state, CHARGE_COMMODITY, 1);
     if (consumed <= 0) {
       this.bus.emit('toast', { text: 'No impulse charges in cargo', kind: 'error', ttl: 2 });
       return;
     }
+    rt.debitedThrowTick = state.tick;
 
     const aftDrop = bombPropulsionAvailable(state)
       && !!(actions.brake || state.input.brake || Number(state.input.moveZ) < -0.5);
@@ -1023,6 +1045,12 @@ export const impulseCharges = {
         spawnPos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
       },
     });
+
+    if (!charge) {
+      addCargo(state, CHARGE_COMMODITY, consumed);
+      rt.debitedThrowTick = -1;
+      return;
+    }
 
     rt.throwCdT = def.armTimeS;
     this.bus.emit('charge:thrown', { chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z } });
@@ -1225,6 +1253,21 @@ export const impulseCharges = {
           dirZ = lz / len;
           magnitude = impulse * falloff * combo.def.impulseMult;
         }
+      }
+      // A drift bomb is not a rigid body and is not ropeable. The bomb owner applies the
+      // shove on its own kinematic velocity. A rejected bomb spends no extra charge.
+      if (ent.type === 'bomb') {
+        const redirected = redirectLiveBomb(
+          ent,
+          { x: dirX * magnitude, z: dirZ * magnitude },
+          ownerId,
+          state.tick,
+        );
+        if (redirected.ok) {
+          hits.push(ent.id);
+          considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
+        }
+        continue;
       }
       // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the center
       // of mass. Magnitude impulse × falloff is the old per-entity Δv × mass — same physics,

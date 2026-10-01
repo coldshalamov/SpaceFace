@@ -408,6 +408,9 @@ function scoreAction(def, self, target, distance, directive, config, collectReas
 
 function maneuverFor(def, directive, target, freeze = Object.freeze) {
   const kind = maneuverKindFor(def, directive);
+  const corridor = directive && directive.objective && directive.objective.reason === 'wounded_corridor'
+    ? directive.objective.flightPoint
+    : null;
   return freeze({
     kind,
     targetId: target ? target.id : null,
@@ -415,8 +418,10 @@ function maneuverFor(def, directive, target, freeze = Object.freeze) {
     formationSlot: directive.formation.slot,
     formationVelocity: directive.formation.velocity,
     formationBound: directive.formation.bound,
-    breakFormation: directive.formation.breakFormation,
+    breakFormation: directive.formation.breakFormation || corridor != null,
     reason: directive.objective.reason,
+    flightPoint: corridor || null,
+    squadCorridor: corridor != null,
   });
 }
 
