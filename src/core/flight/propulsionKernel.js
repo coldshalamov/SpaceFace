@@ -227,6 +227,54 @@ export function previewCounterThrust(bodyLike, profileLike, assistMode = 'assist
 }
 
 /**
+ * Where a held pilot brake leaves the ship, for HUD previews — previewCounterThrust carried to
+ * the brake's own floor. The brake law is proportional (−v_local / τ, τ = assist.pilotBrakeHorizonS)
+ * clamped to brake authority per local axis, so each axis decays in two phases: saturated
+ * constant decel while |v| > a·τ, then the exponential tail — which ends at assist.deadSpeed,
+ * because below that floor the kernel stops commanding and the ship creeps on at a crawl.
+ * Closed form per axis: the same law the tick integrates, not a second braking model. The brake
+ * is exempt from the newtonian early-out (reactionAssistAcceleration), so assistMode is carried
+ * for the accel preview but the stop answer is mode-insensitive. Advisory only: the HUD reports
+ * the read, it never brakes.
+ */
+export function previewBrakeStop(bodyLike, profileLike, assistMode = 'assisted') {
+  const body = normalizeBody(bodyLike);
+  const profile = normalizeProfile(profileLike || {});
+  const axes = localAxes(body.rot);
+  const vLocal = worldToLocal(body.vel, axes);
+  const settings = profile.assist || {};
+  const horizon = positive(settings.pilotBrakeHorizonS, 0.72);
+  const dead = positive(settings.deadSpeed, 0.18);
+  const limits = reactionBrakeLimits(profile);
+  const axisStop = (v, limit) => {
+    const speed = Math.abs(v);
+    if (!(speed > dead) || !(limit > EPS) || !(horizon > EPS)) return 0;
+    const saturateAt = limit * horizon;
+    const saturated = speed > saturateAt
+      ? (speed * speed - saturateAt * saturateAt) / (2 * limit)
+      : 0;
+    const tail = (Math.min(speed, saturateAt) - dead) * horizon;
+    return Math.sign(v) * (saturated + Math.max(0, tail));
+  };
+  // Forward motion spends reverse authority; a backward drift spends forward authority. The
+  // strafe limit is symmetric.
+  const stopLocal = {
+    forward: axisStop(vLocal.forward, vLocal.forward >= 0 ? limits.reverse : limits.forward),
+    lateral: axisStop(vLocal.lateral, limits.strafe),
+  };
+  const stopOffset = localToWorld(stopLocal, axes);
+  const stopDistance = Math.hypot(stopOffset.x, stopOffset.z);
+  return {
+    accel: previewCounterThrust(body, profile, assistMode),
+    speed: length2(body.vel),
+    horizonS: horizon,
+    deadSpeed: dead,
+    stopDistance,
+    projectedStop: { x: body.pos.x + stopOffset.x, z: body.pos.z + stopOffset.z },
+  };
+}
+
+/**
  * Resolve a drive's travel-speed ceiling in WU/s. Pure, side-effect free and exported so the HUD
  * can draw the V-MAX line on the velocity tape without re-deriving the rule (D5).
  *

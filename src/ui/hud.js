@@ -35,7 +35,7 @@ import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution, evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
-import { resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
+import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
@@ -752,6 +752,17 @@ export function travelTapeNavigationState(nav = {}) {
   return { manual: !autopilotActive && !executorEngaged, arrival };
 }
 
+/** The stop vector a held pilot brake is buying right now — the kernel's own brake law carried
+ * to rest (propulsionKernel.previewBrakeStop), never a second braking model. Null whenever the
+ * brake is not held, so "the model carries it while braking and nothing otherwise" is structural. */
+export function resolveBrakeStopPreview(player, profile, input) {
+  if (!player || !input) return null;
+  const braking = !!((input.actions && input.actions.brake) || input.brake);
+  if (!braking) return null;
+  const mode = (player._flightFrame && player._flightFrame.assistMode) || input.assistMode || 'assisted';
+  return previewBrakeStop(player, profile, mode);
+}
+
 /** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
  * this status; the HUD only names it and never interprets or changes drive behavior. */
 export function travelTapeLaneStatus(status = null) {
@@ -1240,6 +1251,8 @@ function injectTravelTapeStyle() {
     flex-wrap:wrap; font-family:var(--k-text); font-size:var(--k-fs-data); }
   .sf-vtape__state { color:var(--vt-brass); flex:0 0 auto; }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape[data-state="braking"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape--stopping .sf-vtape__arclabel { color:var(--vt-amber); }
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
   /* The spool note stays inside the instrument's own box: a long break reason wraps to a second
      line rather than running over the neighbouring cluster readouts. */
@@ -4856,7 +4869,10 @@ export function createHud(ctx, alerts) {
     const speed = Math.hypot(p.vel.x, p.vel.z);
     const active = driveState !== 'off';
     const nearCeiling = ceiling > 0 && speed >= ceiling * 0.8;
-    const want = active || nearCeiling;
+    // A held pilot brake is a third reveal condition: the tape carries the stop vector the brake
+    // is buying even with the drive off — ordinary flight braking is exactly when it matters.
+    const brakeStop = resolveBrakeStopPreview(p, profile, state.input);
+    const want = active || nearCeiling || !!brakeStop;
 
     // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
     // prefers-reduced-motion); this tracked value only decides when the element is fully retired
@@ -4868,11 +4884,13 @@ export function createHud(ctx, alerts) {
     if (!want && _vtapeAlpha <= 0.001) {
       setClass(vt.root, 'sf-vtape--brake', false);
       setClass(vt.root, 'sf-vtape--approach', false);
+      setClass(vt.root, 'sf-vtape--stopping', false);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
       _vtapeBrakeOn = false;
       return;
     }
 
-    setAttr(vt.root, 'data-state', driveState);
+    setAttr(vt.root, 'data-state', driveState === 'off' && brakeStop ? 'braking' : driveState);
 
     // --- tape: current speed against the per-family ceiling ---
     const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
@@ -4890,7 +4908,9 @@ export function createHud(ctx, alerts) {
     if (slow) {
       setText(vt.vmaxText, 'V-MAX ' + Math.round(ceiling));
       // Every state prints its NAME — hue is never the only carrier (WCAG 1.4.1).
-      setText(vt.state, driveState === 'off' ? 'DRIVE OFF' : 'DRIVE ' + driveState.toUpperCase());
+      setText(vt.state, driveState === 'off'
+        ? (brakeStop ? 'BRAKING' : 'DRIVE OFF')
+        : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
       if (driveState === 'spooling') note = 'SPOOLING…';
       else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
@@ -4901,14 +4921,19 @@ export function createHud(ctx, alerts) {
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
     }
 
-    // --- approach row: the stopping arc, manual burns only ---
+    // --- approach row: the stopping arc, manual burns and the held brake ---
     const nav = state.nav || {};
     const { manual, arrival } = travelTapeNavigationState(nav);
 
     // The follower auto-brakes, so its arc would be noise. Only a hand-flown approach gets this.
     const cue = (manual && arrival) ? evaluateArrivalCue(p, profile, arrival) : null;
     const showArc = !!(cue && cue.active && Number.isFinite(cue.distance));
-    setClass(vt.root, 'sf-vtape--approach', showArc);
+    // With no destination on the row, the held brake's own stop vector takes it: the span is the
+    // distance to rest and the ring marks the rest point — same visual language as the arrival arc.
+    const showBrakeStop = !showArc
+      && !!(brakeStop && Number.isFinite(brakeStop.stopDistance) && brakeStop.stopDistance > 0);
+    setClass(vt.root, 'sf-vtape--approach', showArc || showBrakeStop);
+    setClass(vt.root, 'sf-vtape--stopping', showBrakeStop);
 
     if (showArc) {
       // The arc reads as a span: how far the ship WILL travel before rest, against where the
@@ -4923,6 +4948,13 @@ export function createHud(ctx, alerts) {
           : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
             + ' WU · ' + String(cue.bestMode).replace('-', ' ').toUpperCase());
       }
+    } else if (showBrakeStop) {
+      const span = Math.max(brakeStop.stopDistance, 1) * 1.1;
+      const endPct = (clamp01(brakeStop.stopDistance / span) * 100).toFixed(1) + '%';
+      setStyle(vt.arcStop, 'width', endPct);
+      setStyle(vt.arcRing, 'left', endPct);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
+      if (slow) setText(vt.arcLabel, 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' WU');
     }
 
     // --- BRAKE NOW ---
