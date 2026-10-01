@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
-import { modelTruthMountFractions, modelTruthPlaceDrawScale } from '../data/modelTruth.js';
+import { modelTruthMountFractions, modelTruthPlaceDrawScale, modelTruthRowForEntity } from '../data/modelTruth.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -2424,7 +2424,9 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   function authoredAssetTrigger(renderer, scene, ...rest) {
     if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
     if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
-    startAuthoredUpgrade(renderer, scene);
+    // onBeforeRender only fires with the fallback root inside the presented frustum — the most
+    // in-frame a pending boundary can be — so the upgrade posts at the visible decode class.
+    startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
   }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
@@ -3089,7 +3091,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     assetBoundary: 'GLTFKit v1 — authored station archetype',
     gracefulFallback: false,
   };
-  stampPendingPlaceVisualBounds(boundary);
+  stampPendingPlaceVisualBounds(boundary, entity);
 
   let activeRoot = fallbackRoot;
   const setActiveVisualRoot = (next) => {
@@ -3217,7 +3219,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.placeTargetRadius = geologySkin ? entity.radius
     : (Number.isFinite(poiTargetRadius) && poiTargetRadius > 0 ? poiTargetRadius : null);
   boundary.userData.authoredGeologySkin = geologySkin;
-  stampPendingPlaceVisualBounds(boundary);
+  stampPendingPlaceVisualBounds(boundary, entity);
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -3613,15 +3615,30 @@ function commitAuthoredPlaceBoundary(
  * of authored units, so that envelope is stamped here; the exact record bounds overwrite the
  * estimate in upgradePlaceBoundary.
  */
-function stampPendingPlaceVisualBounds(boundary) {
+function stampPendingPlaceVisualBounds(boundary, entity) {
   if (!boundary || !boundary.userData || boundary.userData.visualBounds) return;
   const targetRadius = Number(boundary.userData.placeTargetRadius);
-  if (!Number.isFinite(targetRadius) || targetRadius <= 0) return;
-  const diameter = targetRadius * 2;
-  boundary.userData.visualBounds = {
-    center: [0, 0, 0],
-    size: [diameter, diameter, diameter],
-  };
+  if (Number.isFinite(targetRadius) && targetRadius > 0) {
+    const diameter = targetRadius * 2;
+    boundary.userData.visualBounds = {
+      center: [0, 0, 0],
+      size: [diameter, diameter, diameter],
+    };
+    return;
+  }
+  // Boundaries that declare no authored target radius (every archetype station, every non-POI
+  // place) would classify at presence radius for the whole queue wait — drawn envelopes run
+  // ~2-8x presence per the model-truth census, so the same measured bounds x draw-scale pair
+  // buildPlacePropRoot resolves is stamped here instead. Static data: no decode needed.
+  const row = modelTruthRowForEntity(entity);
+  const size = row && row.bounds && row.bounds.size;
+  const scale = modelTruthPlaceDrawScale(entity);
+  if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
+    boundary.userData.visualBounds = {
+      center: [0, 0, 0],
+      size: size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
+    };
+  }
 }
 
 // Place draw-scale resolution. A POI's declared draw size (placeTargetRadius, else placeScale)

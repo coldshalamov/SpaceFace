@@ -551,9 +551,12 @@ export async function loadAuthoredPart(url, options = {}) {
   const deadlineClass = options.admissionDeadline === true
     || options.admissionVisible === true
     // 'sector-prewarm' is the incoming-sector census — its decode window is the charge
-    // (or the zero-lead enter frame), a real deadline, not ambient warm. 'sector-predicted'
-    // and roster prewarms correctly stay ambient: long horizon, no deadline.
-    || /runway|deadline|sector-prewarm/i.test(String(options.residencyRole || ''));
+    // (or the zero-lead enter frame), a real deadline, not ambient warm. 'sector-prepared*'
+    // roles are that same sector's prepared bodies — the exact next-visible set on enter,
+    // so they post deadline beside the census charge rather than behind ambient roster
+    // warms. 'sector-predicted' and roster prewarms correctly stay ambient: long horizon,
+    // no deadline.
+    || /runway|deadline|sector-prewarm|sector-prepared/i.test(String(options.residencyRole || ''));
   // admissionVisible is a deadline superset: the spawn is already at the glass, so its worker
   // posts jump ahead of even other deadline waiters via the 'visible' budget class.
   const wrapDecodeClass = options.admissionVisible === true

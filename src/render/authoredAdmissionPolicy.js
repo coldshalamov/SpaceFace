@@ -11,8 +11,8 @@ import {
   tableLookAtDelta,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
-import { entityPresenceRadius } from '../world/activityClassification.js';
 import { isPresentationLedgerRow } from '../world/presentationSources.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 import { itineraryVelocityInto } from '../world/worldCatchup.js';
 
 const _authoredLookDelta = { x: 0, z: 0 };
@@ -71,7 +71,10 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const dz = Number(look.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  const visual = entityPresenceRadius(entity);
+  // Grade the stamped drawn envelope, not the collider: a pending boundary whose authored
+  // body draws 2-8x its presence radius enters the runway while its envelope is on-glass,
+  // and unstamped entities classify at presence exactly as before.
+  const visual = entityVisualCullRadius(entity, entity.mesh);
   const surface = Math.max(0, distance - visual);
   if (surface <= immediate) return true;
   const camera = state && state.camera || {};

@@ -13,8 +13,8 @@ import {
   tableLookAtDelta,
   tablePrefetchZoomFromState,
 } from './tabletopPolicy.js';
-import { entityPresenceRadius } from '../world/activityClassification.js';
 import { ledgerAwarePos } from '../world/presentationSources.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
@@ -140,10 +140,13 @@ export function openingFrameAdmissionPriority(entity, liveState) {
     pos,
     _openingFrameDelta,
   );
+  // Grade the stamped drawn envelope, not the collider: a pending boundary whose authored
+  // body draws 2-8x its presence radius belongs to glass while its envelope is on-glass,
+  // and unstamped entities classify at presence exactly as before.
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
-    radius: entityPresenceRadius(entity),
+    radius: entityVisualCullRadius(entity, entity.mesh),
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: 0,
@@ -228,7 +231,7 @@ export function survivalDefersArenaDressingJob(entity, liveState) {
   const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
-    radius: entityPresenceRadius(entity),
+    radius: entityVisualCullRadius(entity, entity.mesh),
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: TABLE_FRAME_SKIRT_WU,
