@@ -179,6 +179,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+<<<<<<< HEAD
   // ANI-03: the massline winch pays out when its owner attaches a tether or deploys a snare,
   // reacts on snap catch, winds on reel pumps, and slack-releases on release/denial. Events
   // that name the winch owner route by actorId/sourceId; player-side telemetry events carry
@@ -329,12 +330,22 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     }
     dispatch('kestrel:armorFix', id, payload, () => true);
   };
+  // ANI-08: every spawned fracture piece is its own entity with its own controller set —
+  // the torn-edge clip fires per piece, not per victim.
+  const onHullFractured = (payload) => {
+    const pieceIds = payload && payload.pieceIds;
+    if (!Array.isArray(pieceIds)) return;
+    for (const pieceId of pieceIds) {
+      dispatch('wreck:rupture', pieceId, payload, () => true);
+    }
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+<<<<<<< HEAD
     bus.on('tether:attached', onTetherAttached),
     bus.on('massline:snareDeployed', onSnareDeployed),
     bus.on('tether:snapCatch', onSnapCatch),
@@ -350,6 +361,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     bus.on('service:aborted', onServiceAborted),
     bus.on('combat:damage', onCombatDamage),
     bus.on('service:completed', onRepairCompleted),
+    bus.on('hull:fractured', onHullFractured),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

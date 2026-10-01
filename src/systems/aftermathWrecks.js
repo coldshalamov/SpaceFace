@@ -328,7 +328,7 @@ function boundedVictimMass(mass) {
 // presentation metadata — none of it feeds a gameplay decision.
 const VICTIM_VISUAL_FIELDS = Object.freeze(['defId', 'lootTableId', 'silhouette', 'assetRef', 'trafficRole']);
 
-function victimVisualFor(data) {
+export function victimVisualFor(data) {
   const src = data && typeof data === 'object' ? data : {};
   const visual = {};
   let any = false;
@@ -1609,6 +1609,16 @@ export const aftermathWrecks = {
     const identity = this._specForMarker(marker, { atKill: true });
     entity.data = Object.assign(entity.data || {}, identity.data);
     entity.data.salvagePool = poolForMarker(marker);
+    // ANI-08: a bound fracture piece (the remainder) must keep its authored-fragment identity
+    // across sector teardown — persist it on the marker so _specForMarker restamps it on the
+    // rematerialized wreck instead of falling back to the whole-ship hulk.
+    if (entity.data.fracturePiece) {
+      marker.fracturePiece = entity.data.fracturePiece;
+      marker.fractureSeamId = entity.data.fractureSeamId || null;
+      marker.fractureVisual = entity.data.fractureVisual ? { ...entity.data.fractureVisual } : null;
+      marker.fractureVictimRadius = Number.isFinite(entity.data.fractureVictimRadius)
+        ? entity.data.fractureVictimRadius : null;
+    }
     // Sector teardown reads the top-level field: an adopted mining body otherwise stays homeless
     // and survives eviction beside the marker's own respawn (same hole as the spec stamp).
     if (marker.sectorId) entity.homeSectorId = marker.sectorId;
@@ -1884,6 +1894,18 @@ export const aftermathWrecks = {
         hulkOfDefId: marker.victimDefId || null,
         hulkVisual: marker.victimVisual ? { ...marker.victimVisual } : null,
         hulkFactionId: marker.victimFactionId || null,
+        // Fracture identity persists — the rematerialized remainder draws the authored aft
+        // fragment (and its motion bank) instead of regressing to the whole-ship hulk. Only
+        // stamped when the marker carries it: a null here would clobber a live fracture
+        // piece's own stamp through the identity merge.
+        ...(marker.fracturePiece ? {
+          fracturePiece: marker.fracturePiece,
+          fractureSeamId: marker.fractureSeamId || null,
+          fractureVisual: marker.fractureVisual ? { ...marker.fractureVisual } : null,
+          fractureVictimRadius: Number.isFinite(marker.fractureVictimRadius)
+            ? marker.fractureVictimRadius : null,
+          fractureRuptureFired: marker.fractureRuptureFired === true,
+        } : {}),
         // Sim-time of the kill — the render's ember pass cools the hull off this stamp;
         // a marker from an old field spawns already-cold, which is the truth.
         killedAt: Number.isFinite(marker.t) ? marker.t : 0,
@@ -1966,6 +1988,9 @@ export const aftermathWrecks = {
     marker.victimRot = boundedPoseAngle(entity.rot);
     marker.victimPitch = boundedPoseAngle(entity.pitch);
     marker.victimBank = boundedPoseAngle(entity.bank);
+    // The rupture clip already fired on the live piece — carry that so a rematerialized
+    // fragment doesn't replay the kick long after the kill.
+    if (entity.data && entity.data.fractureRuptureFired === true) marker.fractureRuptureFired = true;
     return true;
   },
 

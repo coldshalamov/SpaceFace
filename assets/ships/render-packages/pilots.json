@@ -4979,6 +4979,36 @@
    "outputDir": "assets/ships/release/render-packages/quiessence-freighter-c",
    "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-c/render-package.json",
    "sceneRoot": true
+  },
+  {
+   "key": "wasp-frag-bow",
+   "assetId": "sf.render.wasp-frag-bow",
+   "runtimeAssetId": "SF_WASP_FRAG_BOW",
+   "kind": "place",
+   "slot": "place",
+   "releaseAssetId": "place_wasp_frag_bow",
+   "sourceUrl": "assets/ships/release/parts/places/place_wasp_frag_bow.glb",
+   "releaseSha256": "9d8192b0bb20b8f1d83994b9778eebcc2ef9a47999301bddfcf97c6c58056d9f",
+   "releaseBytes": 441960,
+   "dynamicNameIncludes": [],
+   "outputDir": "assets/ships/release/render-packages/wasp-frag-bow",
+   "metadataUrl": "assets/ships/release/render-packages/wasp-frag-bow/render-package.json",
+   "sceneRoot": true
+  },
+  {
+   "key": "wasp-frag-aft",
+   "assetId": "sf.render.wasp-frag-aft",
+   "runtimeAssetId": "SF_WASP_FRAG_AFT",
+   "kind": "place",
+   "slot": "place",
+   "releaseAssetId": "place_wasp_frag_aft",
+   "sourceUrl": "assets/ships/release/parts/places/place_wasp_frag_aft.glb",
+   "releaseSha256": "3631dfd1916a1dad409db0e23762cb8643dc9b112f445e15491c3180caf380a1",
+   "releaseBytes": 896400,
+   "dynamicNameIncludes": [],
+   "outputDir": "assets/ships/release/render-packages/wasp-frag-aft",
+   "metadataUrl": "assets/ships/release/render-packages/wasp-frag-aft/render-package.json",
+   "sceneRoot": true
   }
  ]
 }

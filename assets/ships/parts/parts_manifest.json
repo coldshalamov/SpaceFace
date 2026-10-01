@@ -8567,6 +8567,105 @@
     ]
    },
    "note": "Quiessence becalmed freighter C (new place): tank-line hauler with saddle tanks and aft bridge, cold engines, warm bunk windows, faint violet beacon."
+  },
+  {
+   "id": "place_wasp_frag_bow",
+   "category": "places",
+   "priority": "P2",
+   "file": "places/place_wasp_frag_bow.glb",
+   "tris": 11008,
+   "bytes": 1191604,
+   "textureSize": 512,
+   "tintable": {
+    "hull": "Material_Hull",
+    "mechanical": "Material_Mechanical",
+    "canopy": "Material_Canopy"
+   },
+   "note": "ANI-08 wasp rupture bow fragment: nose+canopy+chine sheared at x=1.2, torn collar/ribs/ember edge, two residual-motion torn flaps.",
+   "hooks": [],
+   "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Tether_Massline",
+    "SOCKET_Trail_Main",
+    "SOCKET_Trail_Port",
+    "SOCKET_Trail_Starboard",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+   ],
+   "mount": "origin",
+   "bounds": {
+    "min": [
+     1.100000023841858,
+     -1.3268308639526367,
+     -3.991018533706665
+    ],
+    "max": [
+     10.900153160095215,
+     1.426935076713562,
+     3.99101185798645
+    ],
+    "dimensionsM": [
+     9.800153136253357,
+     2.7537659406661987,
+     7.982030391693115
+    ]
+   },
+   "triangleMetric": "lod0"
+  },
+  {
+   "id": "place_wasp_frag_aft",
+   "category": "places",
+   "priority": "P2",
+   "file": "places/place_wasp_frag_aft.glb",
+   "tris": 33600,
+   "bytes": 2954900,
+   "textureSize": 512,
+   "tintable": {
+    "hull": "Material_Hull",
+    "dark": "Material_Armor",
+    "mechanical": "Material_Mechanical",
+    "thruster": "Material_Thruster"
+   },
+   "note": "ANI-08 wasp rupture aft fragment: aft fuselage+nacelles+wings+tail sheared at x=1.2, torn collar/ribs/ember edge, residual torn flap + mast whip.",
+   "hooks": [],
+   "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Tether_Massline",
+    "SOCKET_Trail_Main",
+    "SOCKET_Trail_Port",
+    "SOCKET_Trail_Starboard",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+   ],
+   "mount": "origin",
+   "bounds": {
+    "min": [
+     -10.720288276672363,
+     -1.3468307256698608,
+     -8.079795837402344
+    ],
+    "max": [
+     3.900055408477783,
+     1.75,
+     8.079795837402344
+    ],
+    "dimensionsM": [
+     14.620343685150146,
+     3.096830725669861,
+     16.159591674804688
+    ]
+   },
+   "triangleMetric": "lod0"
   }
  ],
  "runtimeSlots": {
