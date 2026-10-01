@@ -2216,8 +2216,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_claim_mark.glb",
-   "tris": 4130,
-   "bytes": 490676,
+   "tris": 4834,
+   "bytes": 531020,
    "textureSize": 128,
    "tintable": {
     "hull": "Material_Hull",
@@ -2227,19 +2227,19 @@
    "note": "Forge rebuild of the claim mark: a prospector's staked beacon â€” driven shaft, weld collar, cage frame, lamp lens and streamer tabs.",
    "bounds": {
     "min": [
-     -1.8924951553344727,
+     -1.8985084295272827,
      -2.4396607875823975,
-     -2.0891335010528564
+     -2.0976765155792236
     ],
     "max": [
-     2.288727283477783,
+     2.297881841659546,
      5.202000141143799,
      1.5201542377471924
     ],
     "dimensionsM": [
-     4.181222438812256,
+     4.196390271186829,
      7.641660928726196,
-     3.609287738800049
+     3.617830753326416
     ]
    },
    "mount": "origin",
@@ -3364,8 +3364,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_interdiction_buoy.glb",
-   "tris": 3336,
-   "bytes": 562856,
+   "tris": 4232,
+   "bytes": 645368,
    "textureSize": 512,
    "note": "Forge rebuild: Concord field buoy â€” octagonal drum, emitter cage, authority lights.",
    "hooks": [],
@@ -3375,19 +3375,19 @@
    "mount": "origin",
    "bounds": {
     "min": [
-     -3.2353427410125732,
+     -3.2391514778137207,
      -2.200000047683716,
-     -3.23732328414917
+     -3.238264799118042
     ],
     "max": [
-     3.23732328414917,
+     3.2390472888946533,
      2.832371234893799,
-     3.2375316619873047
+     3.2381131649017334
     ],
     "dimensionsM": [
-     6.472666025161743,
+     6.478198766708374,
      5.032371282577515,
-     6.474854946136475
+     6.476377964019775
     ]
    },
    "triangleMetric": "lod0",
@@ -3493,8 +3493,8 @@
    "category": "places",
    "priority": "P2",
    "file": "places/place_lane_pin.glb",
-   "tris": 9240,
-   "bytes": 773300,
+   "tris": 10304,
+   "bytes": 829612,
    "textureSize": 0,
    "tintable": {
     "hull": "Material_Hull",
@@ -3505,17 +3505,17 @@
    "note": "Forge rebuild of the lane pin: a tall navigation mast on a tripod ballast foot, chevron light housing, vane rings, speed lamps.",
    "bounds": {
     "min": [
-     -4.822023868560791,
+     -4.821012496948242,
      -2.049999952316284,
      -5.300000190734863
     ],
     "max": [
-     4.822383403778076,
+     4.821012496948242,
      9.57619571685791,
      5.300000190734863
     ],
     "dimensionsM": [
-     9.644407272338867,
+     9.642024993896484,
      11.626195669174194,
      10.600000381469727
     ]
