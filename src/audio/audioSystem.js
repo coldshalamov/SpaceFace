@@ -18,10 +18,17 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { WEAPONS } from '../data/weapons.js';
-import { CUE_GAIN } from '../presentation/throttleAnswer.js';
-import { combatVerbRecipe } from './combatVerbCues.js';
+import { CUE_GAIN, engineIdleCue } from '../presentation/throttleAnswer.js';
+import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
-import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
+import {
+  bindBombAudio,
+  isBombFieldLoopCue,
+  isBombStatusLoopCue,
+  startBombFieldLoop,
+  BOMB_FIELD_LOOP_PREFIX,
+  BOMB_STATUS_LOOP_PREFIX,
+} from './bombAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import {
   buildElementaryVoiceGraph,
@@ -496,7 +503,43 @@ export function resolveAudioThreatContext(state, player, rt) {
   // silencing the mix while the camera still framed a combat pair. The mix relaxes only when the
   // last commitment dies; incoming-fire warnings are separate lanes and stay untouched.
   if (committedHostiles > 0) threat = Math.max(threat, 0.45);
-  return { threat, nearbyHostiles, shieldPct, calmZone, engaged, committedHostiles };
+  return {
+    threat, nearbyHostiles, shieldPct, calmZone, engaged, committedHostiles,
+    activeEncounter, doctrineThreat, recentDamage,
+  };
+}
+
+/** Silence floor for the combat pressure bed once nothing is still threatening. */
+export const QUIET_BED_GAIN = 0.0001;
+
+/**
+ * The crowded bed follows live threats. A recent-damage tail, with no hostile,
+ * encounter, or doctrine still in the picture, does not keep the growl.
+ * Docked flight is quiet even if the damage window has not expired.
+ */
+export function combatPressureThreat(context, docked) {
+  if (docked || !context) return 0;
+  if ((context.committedHostiles || 0) > 0
+    || context.activeEncounter || context.doctrineThreat
+    || (context.nearbyHostiles || 0) > 0) {
+    return clamp(Number(context.threat) || 0, 0, 1);
+  }
+  return 0;
+}
+
+export function pressureBedGainForThreat(threat) {
+  const t = clamp(Number(threat) || 0, 0, 1);
+  if (t <= 0.02) return QUIET_BED_GAIN;
+  return PRESSURE_MIX.bedBaseGain + Math.pow(t, 1.6) * PRESSURE_MIX.bedGain;
+}
+
+/** Player verb, refusal, and immediate warning stay readable under the crowded families. */
+export function mixCueStaysReadable(recipeId, opts) {
+  if (opts && (opts.primary || opts.refusalSource || opts.warning)) return true;
+  const id = String(recipeId || '');
+  if (id === 'sfx_massline_deny') return true;
+  if (id.includes('alert') || id.includes('_hull') || id === 'sfx_hull_stress_groan') return true;
+  return false;
 }
 
 // Build a fast id->recipe lookup over the data array. Prototype-less on purpose: `{}` inherits
@@ -1868,6 +1911,7 @@ export const audio = {
     rt._commsDuckUntilS = 0;
     rt._commsDuckGain = COMMS_DUCK.gain;
     rt._commsDuckLive = 1;
+    rt._commsPhrases = [];
     // Pressure layer + spool strand — continuous beds built once with the other flight beds.
     rt._pressureNoise = null; rt._pressureFilter = null; rt._pressureGain = null;
     rt._pressureSub = null; rt._pressureSubGain = null;
@@ -2309,6 +2353,7 @@ export const audio = {
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
     bindMinimalActionAudio(this, bus);
     bindBombAudio(this, bus);
+    installCombatVerbCueDispatch(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -2731,10 +2776,10 @@ export const audio = {
   _updatePressureLayer() {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || rt._paused || !rt._pressureGain) return;
-    const threat = clamp(Number(rt.threat) || 0, 0, 1);
+    const docked = !!(rt._docked || (this.state && this.state.ui && this.state.ui.docked));
+    const threat = combatPressureThreat(rt.threatContext, docked);
     const now = ctx.currentTime;
-    const gain = threat <= 0.02 ? 0.0001
-      : PRESSURE_MIX.bedBaseGain + Math.pow(threat, 1.6) * PRESSURE_MIX.bedGain;
+    const gain = pressureBedGainForThreat(threat);
     const freq = PRESSURE_MIX.bedBaseHz + threat * PRESSURE_MIX.bedSpanHz;
     const sub = Math.max(0.0001,
       Math.pow(clamp((threat - PRESSURE_MIX.subAt) / (1 - PRESSURE_MIX.subAt), 0, 1), 2) * PRESSURE_MIX.subGain);
@@ -3028,7 +3073,7 @@ export const audio = {
     const pressure = clamp(Number(rt.threat) || 0, 0, 1);
     const combatPressure = 1 + PRESSURE_MIX.combatLift * pressure;
     const musicPressure = 1 - PRESSURE_MIX.musicDuck * pressure;
-    const commsDuck = t < (rt._commsDuckUntilS || 0) ? (rt._commsDuckGain || COMMS_DUCK.gain) : 1;
+    const commsDuck = this._activeCommsDuck(t);
     rt._commsDuckLive = commsDuck;
 
     const engineVal = a.engine == null ? 0.7 : a.engine;
@@ -3080,13 +3125,51 @@ export const audio = {
     const rt = this.rt;
     if (!rt) return;
     const now = rt.ctx ? rt.ctx.currentTime : 0;
-    const dur = Number.isFinite(seconds) ? seconds : COMMS_DUCK.defaultS;
-    rt._commsDuckUntilS = Math.max(rt._commsDuckUntilS || 0, now + Math.max(0.2, dur));
-    rt._commsDuckGain = Number.isFinite(gain) ? gain : COMMS_DUCK.gain;
+    const dur = Math.max(0.2, Number.isFinite(seconds) ? seconds : COMMS_DUCK.defaultS);
+    const duckGain = Number.isFinite(gain) ? gain : COMMS_DUCK.gain;
+    const endS = now + dur;
+    const phrases = rt._commsPhrases || (rt._commsPhrases = []);
+    phrases.push({ endS, endWall: this._wallClockMs() + dur * 1000, gain: duckGain });
+    if (phrases.length > 8) phrases.shift();
+    rt._commsDuckUntilS = Math.max(rt._commsDuckUntilS || 0, endS);
+    rt._commsDuckGain = duckGain;
     invalidateBusGainCache(rt, 'engine');
     invalidateBusGainCache(rt, 'ambient');
     invalidateBusGainCache(rt, 'combat');
     invalidateBusGainCache(rt, 'music');
+  },
+
+  /**
+   * Live comms duck. Each phrase releases once, on the audio clock or the wall clock
+   * (a suspended context must not hold the bow after the phrase is over). A later
+   * phrase keeps the bow when an earlier one ends.
+   */
+  _activeCommsDuck(nowS) {
+    const rt = this.rt;
+    if (!rt) return 1;
+    const wall = this._wallClockMs();
+    const phrases = rt._commsPhrases;
+    if (!phrases || phrases.length === 0) {
+      return nowS < (rt._commsDuckUntilS || 0) ? (rt._commsDuckGain || COMMS_DUCK.gain) : 1;
+    }
+    let gain = 1;
+    let live = false;
+    let maxEnd = 0;
+    for (let i = phrases.length - 1; i >= 0; i--) {
+      const phrase = phrases[i];
+      if (nowS >= phrase.endS || wall >= phrase.endWall) {
+        phrases.splice(i, 1);
+        continue;
+      }
+      live = true;
+      if (phrase.endS >= maxEnd) {
+        maxEnd = phrase.endS;
+        gain = phrase.gain;
+      }
+    }
+    rt._commsDuckUntilS = live ? maxEnd : 0;
+    if (!live) rt._commsDuckGain = COMMS_DUCK.gain;
+    return live ? gain : 1;
   },
 
   // ---- one-shot SFX API ----
@@ -3105,8 +3188,10 @@ export const audio = {
       return null;
     }
     // Strict hierarchy: while speech / objective / critical warning owns the ear,
-    // do not stack weapon fire or routine UI noise on top of it.
-    if (this._isCriticalSquelchActive() && !this._isPriorityVoice(recipeId, opts)) {
+    // do not stack weapon fire or routine UI noise on top of it. The player's own
+    // verb, a refusal, and an immediate warning stay readable through that window.
+    if (this._isCriticalSquelchActive() && !this._isPriorityVoice(recipeId, opts)
+      && !mixCueStaysReadable(recipeId, opts)) {
       if (busName === 'ui' || busName === 'combat') return null;
     }
     // A critical comms cue owns the ear — the world mix bows for its phrase.
@@ -3192,7 +3277,9 @@ export const audio = {
     }
 
     this._noteRecipeHeard(recipeId);
-    this._evictIfFull();
+    if (!this._reserveVoiceSlot(mixCueStaysReadable(recipeId, opts) || this._isPriorityVoice(recipeId, opts))) {
+      return null;
+    }
     const voice = playRecipe(ctx, recipe, dest, {
       peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
       id: rt._nextVoiceId++, trackId: opts.trackId || null,
@@ -3230,30 +3317,67 @@ export const audio = {
     return audioRecipeBasePeak(recipe);
   },
 
-  _evictIfFull() {
+  _dropVoiceAt(idx) {
     const rt = this.rt;
-    if (rt.voices.length < MAX_AUDIO_VOICES) return;
-    const now = rt.ctx ? rt.ctx.currentTime : 0;
-    let worstIdx = -1;
-    let maxPriority = -Infinity;
-    for (let i = 0; i < rt.voices.length; i++) {
-      const v = rt.voices[i];
-      if (v.loop) continue;
-      const age = now - v.startedAt;
-      const quietness = 1.0 - Math.min(1.0, Math.max(0.0, v.callGain || 1.0));
-      const priority = age * (quietness + 0.1); 
-      if (priority > maxPriority) {
-        maxPriority = priority;
-        worstIdx = i;
+    const v = rt.voices[idx];
+    if (!v) return;
+    try { releaseVoice(rt.ctx, v); } catch (_) {}
+    disposeVoice(v);
+    if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
+    rt.voices.splice(idx, 1);
+    if (rt.loops) {
+      for (const key in rt.loops) if (rt.loops[key] === v) delete rt.loops[key];
+    }
+  },
+
+  /**
+   * Keep the voice count inside MAX_AUDIO_VOICES. A readable cue may displace a
+   * bomb-field loop; anything else waits rather than stacking past the budget.
+   */
+  _reserveVoiceSlot(protect) {
+    const rt = this.rt;
+    if (!rt || !rt.voices) return false;
+    const oldestDisposable = () => {
+      const now = rt.ctx ? rt.ctx.currentTime : 0;
+      let worstIdx = -1;
+      let maxPriority = -Infinity;
+      for (let i = 0; i < rt.voices.length; i++) {
+        const v = rt.voices[i];
+        if (v.loop) continue;
+        const age = now - (v.startedAt || 0);
+        const quietness = 1 - Math.min(1, Math.max(0, v.callGain || 1));
+        const priority = age * (quietness + 0.1);
+        if (priority > maxPriority) {
+          maxPriority = priority;
+          worstIdx = i;
+        }
+      }
+      return worstIdx;
+    };
+    while (rt.voices.length >= MAX_AUDIO_VOICES) {
+      const idx = oldestDisposable();
+      if (idx < 0) break;
+      this._dropVoiceAt(idx);
+    }
+    if (rt.voices.length < MAX_AUDIO_VOICES) return true;
+    if (protect && rt.loops) {
+      for (const key of Object.keys(rt.loops)) {
+        if (!key.startsWith(BOMB_FIELD_LOOP_PREFIX) && !key.startsWith(BOMB_STATUS_LOOP_PREFIX)) continue;
+        const voice = rt.loops[key];
+        const idx = rt.voices.indexOf(voice);
+        if (idx >= 0) this._dropVoiceAt(idx);
+        else {
+          this._endLoopVoice(voice);
+          delete rt.loops[key];
+        }
+        if (rt.voices.length < MAX_AUDIO_VOICES) return true;
       }
     }
-    if (worstIdx >= 0) {
-      const v = rt.voices[worstIdx];
-      try { releaseVoice(rt.ctx, v); } catch (_) {}
-      disposeVoice(v);
-      if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
-      rt.voices.splice(worstIdx, 1);
-    }
+    return rt.voices.length < MAX_AUDIO_VOICES;
+  },
+
+  _evictIfFull() {
+    this._reserveVoiceSlot(false);
   },
 
   _playerPos() {
@@ -3288,6 +3412,7 @@ export const audio = {
       rate: signature.rate,
       detune: signature.detune,
       entity: owner,
+      primary: p.ownerId != null && p.ownerId === this.state.playerId,
     });
     // Heavy mounts earn their capacitor spool on the recharge tail (see _maybeChargeWhine).
     this._maybeChargeWhine(p, owner);
@@ -4639,6 +4764,7 @@ export const audio = {
     // rt._paused: no sustained world loop may start under a pause/menu veil — every caller's
     // desire flag survives and the sim owner re-arms the loop on resume.
     if (rt._lifecycleSuspended || rt._paused || !ctx || ctx.state !== 'running') return null;
+    if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES) return null;
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     const entity = options.entity || null;
@@ -4811,6 +4937,11 @@ export const audio = {
     if (!rt) return;
     this._clearDeferred();
     this._endDesiredLoops();
+    this._releaseDockedFieldLoops();
+    if (rt._commsPhrases) rt._commsPhrases.length = 0;
+    rt._commsDuckUntilS = 0;
+    rt._commsDuckGain = COMMS_DUCK.gain;
+    rt._commsDuckLive = 1;
     this._reconcileDockedState(forceUndock);
     rt._wantedSearchInside = null;
     if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
@@ -4841,6 +4972,8 @@ export const audio = {
     this._markMusicDirty();
     // Soft release whoosh then stop station hum — undock is decompress, not another clunk.
     this.play('sfx_undock_release', { gain: 0.55 });
+    const idle = engineIdleCue({ undockIdle: true, throttle: 0 });
+    if (idle.play) this.play(idle.recipe, { gain: Math.pow(10, idle.db / 20) });
     this._stopStationHum();
   },
 
@@ -5876,6 +6009,29 @@ export const audio = {
     }
   },
 
+  _combatMixDocked() {
+    const rt = this.rt;
+    const state = this.state;
+    const player = state && state.entities && state.playerId != null && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    return !!(rt && rt._docked)
+      || !!(state && state.ui && state.ui.docked)
+      || !!(player && player.flags && player.flags.docked);
+  },
+
+  /** Drop bomb field and status loops. The next undocked sync restarts a field that is still live. */
+  _releaseDockedFieldLoops() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    for (const key of Object.keys(rt.loops)) {
+      if (!key.startsWith(BOMB_FIELD_LOOP_PREFIX) && !key.startsWith(BOMB_STATUS_LOOP_PREFIX)) continue;
+      const voice = rt.loops[key];
+      if (voice) this._endLoopVoice(voice);
+      delete rt.loops[key];
+    }
+  },
+
   // ---- alarm scheduler (lookahead, ctx.currentTime based, no setInterval drift) ----
   _tickAlarms() {
     const rt = this.rt, ctx = rt.ctx;
@@ -5888,8 +6044,9 @@ export const audio = {
       hullPct = player.hullMax > 0 ? clamp(player.hull / player.hullMax, 0, 1) : 1;
     }
     const alive = player && player.alive;
-    rt.alarms.lowShield = !!(alive && shieldPct < 0.18);
-    rt.alarms.lowHull = !!(alive && hullPct < 0.20);
+    const dockedQuiet = this._combatMixDocked();
+    rt.alarms.lowShield = !!(alive && !dockedQuiet && shieldPct < 0.18);
+    rt.alarms.lowHull = !!(alive && !dockedQuiet && hullPct < 0.20);
 
     if (ctx.state !== 'running') return;
     const now = ctx.currentTime;
@@ -6046,7 +6203,12 @@ export const audio = {
       this._updateDryFire();
     }
     if (rt._loopPositionDirty || now >= (rt._nextLoopPositionUpdate || 0)) {
-      if (!rt._paused && typeof this._syncBombAudio === 'function') this._syncBombAudio();
+      if (!rt._paused && typeof this._syncBombAudio === 'function') {
+        // Docked quiet releases field loops; undock reconciles any field that is still live.
+        // A dead field drops on this same pass even when no new one-shot arrives.
+        if (this._combatMixDocked()) this._releaseDockedFieldLoops();
+        else this._syncBombAudio();
+      }
       this._updateLoopPositions(now);
       rt._nextLoopPositionUpdate = now + LOOP_POSITION_UPDATE_S;
       rt._loopPositionDirty = false;
