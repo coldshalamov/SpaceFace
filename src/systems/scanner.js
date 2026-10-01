@@ -27,6 +27,13 @@ import {
 } from '../data/pallasHiddenCache.js';
 import { kettleLineSignalCopy } from '../data/kettleLine.js';
 import {
+  applyClueObservation,
+  cloneClueBook,
+  emptyClueBook,
+  normalizeClueBook,
+  shipmentReadingFromReveal,
+} from '../data/scanClues.js';
+import {
   PLANET_STATE_DEFS,
   PLANET_SIGNAL_RANGE,
   planetSignalAnchor,
@@ -472,7 +479,10 @@ function anomalyTriangulationDetail(result, config) {
 }
 
 function freshSignalState() {
-  return { schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null };
+  return {
+    schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null,
+    clues: emptyClueBook(),
+  };
 }
 
 function ensureSignalState(state) {
@@ -483,6 +493,10 @@ function ensureSignalState(state) {
   if (!own.completed || typeof own.completed !== 'object' || Array.isArray(own.completed)) own.completed = {};
   if (!Array.isArray(own.receipts)) own.receipts = [];
   if (!own.triangulations || typeof own.triangulations !== 'object' || Array.isArray(own.triangulations)) own.triangulations = {};
+  if (!own.clues || typeof own.clues !== 'object' || Array.isArray(own.clues)) own.clues = emptyClueBook();
+  else if (!own.clues.subjects || typeof own.clues.subjects !== 'object' || Array.isArray(own.clues.subjects)) {
+    own.clues.subjects = {};
+  }
   return own;
 }
 
@@ -565,6 +579,10 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (entity.data && entity.data.requiresTriangulation) continue;
     const kind = signalKindForEntity(entity);
     if (!kind) continue;
+    const shipment = kind === 'ship' ? shipmentReadingFromReveal(entity.data && entity.data.scanRevealed) : null;
+    // Trusted traffic keeps the ordinary signature. Only a declared or conflicting
+    // hold reading becomes a clue, so a patrol flyby does not mint shipment memory.
+    const fileShipment = shipment && shipment.observedReading !== 'trusted';
     add({
       id: `signal:entity:${entity.id}`,
       kind,
@@ -573,6 +591,13 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       pos: entity.pos,
       range: profile.nearRadius,
       repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
+      ...(fileShipment ? {
+        observedClaim: shipment.observedClaim,
+        observedReading: shipment.observedReading,
+        observedRelation: shipment.observedRelation,
+        clueKind: shipment.clueKind,
+        clueSubjectId: `manifest:${entity.id}`,
+      } : {}),
     });
   }
 
@@ -613,6 +638,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (!row || row.sectorId !== sectorId || row.status === 'resolved' || row.status === 'aftermath') continue;
     const kind = signalKindForLivingPoi(row);
     if (!kind || !row.zoneCenter) continue;
+    const shipmentLane = row.familyId === 'convoy_industrial_route';
     add({
       id: `signal:living:${row.behaviorId}`,
       kind,
@@ -620,6 +646,12 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       entityId: null,
       pos: row.zoneCenter,
       range: profile.hiddenPoiRadius,
+      // Public lane sentence only. Contract text, true cargo, and status enums stay off the clue.
+      ...(shipmentLane ? {
+        observedClaim: 'shipment on the industrial lane',
+        clueKind: 'shipment',
+        clueSubjectId: `shipment:${row.behaviorId}`,
+      } : {}),
     });
   }
 
@@ -714,13 +746,23 @@ function pruneSignalRecords(own) {
 
 function cloneSignalRecord(record) {
   if (!record || typeof record !== 'object') return null;
-  return {
+  const clone = {
     ...record,
     pos: pos2(record.pos),
     triangulation: record.triangulation && typeof record.triangulation === 'object'
       ? { ...record.triangulation }
       : null,
   };
+  if (record.clue && record.clue.subjectId) {
+    const cloned = cloneClueBook({ subjects: { [record.clue.subjectId]: record.clue } });
+    const subject = cloned.subjects[record.clue.subjectId];
+    clone.clue = subject ? {
+      ...subject,
+      status: 'current',
+      revised: Array.isArray(subject.history) && subject.history.length > 0,
+    } : null;
+  }
+  return clone;
 }
 
 function cloneSignalReceipt(receipt) {
@@ -771,6 +813,7 @@ function cloneSignalState(own) {
     receipts: (own.receipts || []).map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP),
     triangulations,
     trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
+    clues: cloneClueBook(own.clues),
   };
 }
 
@@ -807,6 +850,7 @@ function normalizeSignalState(data) {
     .map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP);
   normalized.trackedId = source.trackedId && normalized.records[source.trackedId]
     && !normalized.completed[source.trackedId] ? source.trackedId : null;
+  normalized.clues = normalizeClueBook(source.clues);
   pruneSignalRecords(normalized);
   return normalized;
 }
@@ -1218,6 +1262,7 @@ export const scanner = {
         record.status = 'investigated';
         record.trackable = false;
       }
+      this._noteClue(own, candidate, record, now);
       own.records[record.id] = record;
       rows.push(record);
     }
@@ -1261,6 +1306,10 @@ export const scanner = {
       });
       return true;
     }
+    if (record.clue && record.clue.revised && record.clue.route) {
+      this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos } });
+      return this._retargetClue(record);
+    }
     const course = {
       pos: { x: record.pos.x, z: record.pos.z },
       targetEntityId: record.entityId,
@@ -1272,6 +1321,44 @@ export const scanner = {
     };
     this.bus.emit('ui:setCourse', course);
     this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos }, course });
+    return true;
+  },
+
+  // A later reading of the same shipment or worksite updates only that clue.
+  // The observed claim is filed; hidden cargo on the candidate is not copied.
+  _noteClue(own, candidate, record, now) {
+    if (!own || !candidate || !candidate.observedClaim || !record) return null;
+    if (!own.clues) own.clues = emptyClueBook();
+    const result = applyClueObservation(own.clues, {
+      subjectId: candidate.clueSubjectId || candidate.id,
+      kind: candidate.clueKind || 'shipment',
+      claim: candidate.observedClaim,
+      reading: candidate.observedReading || null,
+      relation: candidate.observedRelation || null,
+      pos: record.pos,
+      at: now,
+    });
+    if (!result || !result.revised || !result.hypothesis) return result;
+    record.detail = result.playerLine || record.detail;
+    record.clue = result.hypothesis;
+    if (own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
+      this._retargetClue(record);
+    }
+    return result;
+  },
+
+  _retargetClue(record) {
+    const route = record && record.clue && record.clue.route;
+    if (!route || !route.pos || !this.bus || typeof this.bus.emit !== 'function') return false;
+    this.bus.emit('ui:setCourse', {
+      pos: { x: route.pos.x, z: route.pos.z },
+      targetEntityId: record.entityId || null,
+      label: route.label || record.classification,
+      reason: route.reason,
+      waypointKind: 'signal',
+      arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
+      autopilot: true,
+    });
     return true;
   },
 
