@@ -27,7 +27,7 @@
 // the recovery, so every bite is preceded by a visible wind-up and a full re-approach.
 import { specialistPlanByEnemyId } from './specialistPlans.js';
 import { wrapAngle } from './contracts.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 const CUT_COOLDOWN_TICKS = 90;
 const DISRUPT_COOLDOWN_TICKS = 120;
@@ -64,15 +64,25 @@ function enemyTypeId(entity) {
 // Warden membership is spawn-fixed — enemyTypeId is stamped on the spec before the entity
 // enters the index — so the roster latches on the entity-index version instead of walking
 // the whole map per routed hit. Volatile gates (alive/pos/team/distance) still run per call.
+// Members are always type 'ship' (warden_escort → ship_bastion), so the live index path
+// latches the shipLike lane only: projectile spawn/expire churn bumps the whole-map version
+// several times a frame under fire while shipLike stays still, and the rebuild pool is the
+// ship bucket, not every entity. Membership and order are identical on both paths.
+const WARD_LANES = ['shipLike'];
 const _wardRoster = { version: null, source: null, list: [] };
 function wardRosterFor(state) {
-  const version = entityIndexVersion(state);
+  const index = state && state.entityIndex;
+  const useIndex = !!(index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.shipLike));
+  const version = useIndex ? entityIndexLaneVersion(state, WARD_LANES) : entityIndexVersion(state);
+  const src = useIndex ? index.shipLike : (state && state.entities);
   const cache = _wardRoster;
-  if (version == null || cache.version !== version || cache.source !== state.entities) {
+  if (version == null || version === -1 || cache.version !== version || cache.source !== src) {
     cache.version = version;
-    cache.source = state.entities;
+    cache.source = src;
     cache.list.length = 0;
-    for (const e of shipsOf(state)) {
+    const pool = useIndex ? index.shipLike : shipsOf(state);
+    for (const e of pool) {
       if (e && enemyTypeId(e) === WARD_ID) cache.list.push(e);
     }
   }

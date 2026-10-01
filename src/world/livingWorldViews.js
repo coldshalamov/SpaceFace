@@ -4,6 +4,10 @@
 // cargo interactables). Asteroids and dressing FX never enter those loops. Type buckets on
 // entityIndex are the source when present; otherwise the master list is filtered.
 
+// Lane counters can never reach this in a session (one bump per indexed append/remove), so
+// epoch*STRIDE + sum stays a collision-free ordering key well inside float precision.
+const LANE_EPOCH_STRIDE = 1e9;
+
 export function isDressingEntity(entity) {
   return !!(entity && entity.type === 'fx');
 }
@@ -115,7 +119,9 @@ export function entityIndexLaneVersion(state, lanes) {
   if (!laneVersions) return -1;
   let sum = 0;
   for (let i = 0; i < lanes.length; i++) sum += laneVersions[lanes[i]] || 0;
-  return sum;
+  // The lane counters reset on clear and can re-accrue to the identical sum while membership
+  // differs — folding the clear epoch keeps a sum-latched cache from false-matching "unchanged".
+  return sum + (Number.isFinite(index.laneEpoch) ? index.laneEpoch : 0) * LANE_EPOCH_STRIDE;
 }
 
 /**

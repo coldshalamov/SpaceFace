@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
-import { modelTruthMountFractions, modelTruthPlaceDrawScale, modelTruthRowForEntity } from '../data/modelTruth.js';
+import { modelTruthMountFractions, modelTruthPlaceDrawScale, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -2635,7 +2635,14 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   // 2*targetRadius — matching authoredPayloadDrawScale exactly.
   const markerOptions = { standInFile: authoredPayloadFileForEntity(entity) };
   if (authoredPayloadIsSpindle(entity)) {
-    markerOptions.standInDrawScale = 1;
+    // The spindle commits 1:1 in WU, so its drawn extents ARE the authored bounds — arm
+    // the fit basis at the authored envelope (the census row is static data) instead of
+    // falling through to the unarmed 3.4r marker, which drew ~3.5x oversized.
+    const sp07Row = modelTruthRow(entity && entity.data && entity.data.authoredPayloadAssetId);
+    const sp07Size = sp07Row && sp07Row.bounds && sp07Row.bounds.size;
+    markerOptions.standInFitLength = (sp07Size && Number.isFinite(Number(sp07Size[0])))
+      ? Math.max(Number(sp07Size[0]), Number(sp07Size[1]) || 0, Number(sp07Size[2]) || 0)
+      : 2 * Math.max(1, Number(entity && entity.radius) || 3);
   } else {
     markerOptions.standInFitLength = 2 * Math.max(1, Number(entity && entity.radius) || 3);
   }
@@ -3787,6 +3794,11 @@ function stampPendingPlaceVisualBounds(boundary, entity) {
       center: [0, 0, 0],
       size: [diameter, diameter, diameter],
     };
+    // The commit resolves targetScale = diameter/envelope on the record's longest axis —
+    // the fit basis, not the X stamp, is the honest stand-in claim: X-slim records
+    // (Z-dominant places like the Resonant Cathedral) would otherwise draw a marker
+    // diameter wide for a body committing at diameter·x0/max.
+    boundary.userData.boundaryResolvingStandInFit = diameter;
     return;
   }
   // Boundaries that declare no authored target radius (every archetype station, every non-POI

@@ -77,6 +77,17 @@
   <link rel="modulepreload" href="./src/ui/screens/mainMenu.js" />
   <link rel="modulepreload" href="./src/ui/screens/motionAsk.js" />
   <link rel="modulepreload" href="./src/ui/screens/newGame.js" />
+  <!-- The rest of the boot-wave screens (BOOT_SCREEN_EXPORTS in uiRoot.js): small modules a
+       first-seconds menu click otherwise discovers fetch-by-fetch behind the "is initializing"
+       toast. The heavy station/ship/galaxyMap wave stays deferred and never gates interaction. -->
+  <link rel="modulepreload" href="./src/ui/screens/pause.js" />
+  <link rel="modulepreload" href="./src/ui/screens/gameOver.js" />
+  <link rel="modulepreload" href="./src/ui/screens/settings.js" />
+  <link rel="modulepreload" href="./src/ui/screens/saveLoad.js" />
+  <link rel="modulepreload" href="./src/ui/screens/help.js" />
+  <link rel="modulepreload" href="./src/ui/screens/credits.js" />
+  <link rel="modulepreload" href="./src/ui/screens/crucible.js" />
+  <link rel="modulepreload" href="./src/ui/screens/demoEnd.js" />
   <!-- The loading shell's own typefaces: without a preload the first painted frame pays a
        font-display:swap FOUT on the wordmark and readouts (~330KB, self-hosted). -->
   <link rel="preload" as="font" type="font/woff2" crossorigin href="./styles/fonts/bricolage-grotesque-var.woff2" />

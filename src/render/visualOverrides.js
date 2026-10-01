@@ -20,6 +20,7 @@ import {
   GENERIC_TOW_PACKAGED_PROP,
   SCENARIO_47A_PACKAGED_PROPS,
 } from '../data/scenarios/47aLiveScene.js';
+import { modelTruthRow } from '../data/modelTruth.js';
 import {
   admissionOwnerInactive,
   authoredReadmissionStatus,
@@ -357,7 +358,9 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   // is the stand-in target, not the unarmed 3.4r default the octahedron used to claim.
   const markerTargetX = boundaryStandInMarkerLength(boundaryStandInTarget(data, entity));
   const markerX = Number.isFinite(markerTargetX) && markerTargetX > 0 ? markerTargetX : r * 3.4;
-  const half = [markerX * 0.5, markerX * (0.3 / 3.4) * 0.5, markerX * 0.25];
+  // The octahedron draws 2x its scale per axis, so each half extent is exactly the scale
+  // term — the Y term carries no extra 0.5 (the drawn Y half is markerX·0.3/3.4 itself).
+  const half = [markerX * 0.5, markerX * (0.3 / 3.4), markerX * 0.25];
   const existing = data.visualBounds;
   if (existing && Array.isArray(existing.size)) {
     const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
@@ -397,7 +400,7 @@ export function materializeBoundaryResolvingMarker(boundary) {
     if (record) marker = lodStandInFor(entity, record, standInTarget);
   }
   if (!marker) {
-    marker = resolvingMarkerFor(entity, boundaryStandInMarkerLength(standInTarget));
+    marker = resolvingMarkerFor(entity, boundaryStandInDrawnX(data, standInTarget));
     if (standInFile && boundaryStandInResolver) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
@@ -448,6 +451,17 @@ function boundaryStandInMarkerLength(target) {
   if (Number.isFinite(target.fit)) return target.fit;
   if (Number.isFinite(target.x)) return target.x;
   return null;
+}
+
+/**
+ * Drawn X extent for the marker itself: a committedX stamp states the body's eventual
+ * drawn X exactly (fit arms only bound it from above — X-slim records overdraw the
+ * marker by their aspect ratio otherwise). The cull union still takes the fit bound.
+ */
+function boundaryStandInDrawnX(data, target) {
+  const committed = data && Number(data.boundaryResolvingCommittedX);
+  if (Number.isFinite(committed) && committed > 0) return committed;
+  return boundaryStandInMarkerLength(target);
 }
 
 /**
@@ -585,13 +599,18 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   root.userData.authoredAdmissionTemporaryDrawables = Math.max(1, marker.isMesh ? 1 : marker.children.length);
   root.userData.shipConstruction = 'authored-direct';
   root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
-  // The pending ship draws the resolving marker at 1.7·radius in X (or the stand-in hull at
-  // ~0.86·radius half-extent) while entityPresenceRadius classifies it at ~radius — stamp the
-  // drawn envelope so glass/runway culling covers what the marker actually paints. The stamp
-  // dies with the substrate when the authored body swaps in.
+  // The pending ship draws the resolving marker at 1.72·radius in X (or the stand-in hull
+  // armed at the same basis) while entityPresenceRadius classifies it at ~radius — stamp
+  // the drawn envelope so glass/runway culling covers what the marker actually paints.
+  // Y/Z keep a wider margin than the octahedron's drawn axes on purpose: a resident
+  // stand-in record's hull breadth isn't bounded by the marker formula. The stamp dies
+  // with the substrate when the authored body swaps in.
   {
     const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-    root.userData.visualBounds = { center: [0, 0, 0], size: [r * 3.4, r * 0.6, r * 1.7] };
+    root.userData.visualBounds = {
+      center: [0, 0, 0],
+      size: [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7],
+    };
   }
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',
@@ -786,12 +805,22 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // these props (distress payloads, rescue-exit beacons, the 47-A story props) are
     // disproportionately navigation targets, so arm the same resolving marker stations and
     // capsules carry: no substitute identity, detaches at commit.
+    const fitLength = 2 * packagedFitRadius(entity, spec);
     installBoundaryResolvingMarker(root, entity, {
       standInFile: spec.file,
       // Commit fits the record's longest axis to 2*packagedFitRadius — arm the same max-axis
       // basis or an X-slim record draws its stand-in oversized on the axis nobody measures.
-      standInFitLength: 2 * packagedFitRadius(entity, spec),
+      standInFitLength: fitLength,
     });
+    // The record is static data too: the census row for the packaged file states its authored
+    // bounds, so the marker can draw the exact committed X (fit·x0/max) instead of the fit
+    // upper bound — an X-slim record's marker otherwise overdraws by its aspect ratio.
+    const specRow = modelTruthRow(spec.file.replace(/^.*\//, '').replace(/\.glb$/i, ''));
+    const specSize = specRow && specRow.bounds && specRow.bounds.size;
+    if (specSize && Number.isFinite(Number(specSize[0])) && Number(specSize[0]) > 0) {
+      const specMax = Math.max(Number(specSize[0]), Number(specSize[1]) || 0, Number(specSize[2]) || 0);
+      if (specMax > 0) root.userData.boundaryResolvingCommittedX = fitLength * (Number(specSize[0]) / specMax);
+    }
   } else {
     root.userData.authoredPendingFallbackDrawn = true;
   }

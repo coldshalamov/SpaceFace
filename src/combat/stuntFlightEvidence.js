@@ -1,7 +1,7 @@
 // Observes completed evasions from fixed-tick body trajectories. Never writes physics or input.
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { bodyLife, journalFor, observeAppliedImpulse, angleBetween } from './stuntEvidence.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 const pt=p=>({x:p.x,z:p.z});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -33,8 +33,13 @@ function isThreatCandidateType(type) {
 // version (rebuilt once per spawn/despawn bump, walked in entities-Map order to keep
 // track-creation order identical) instead of re-walking every entity every sim tick.
 const _threatCandidates = { version: null, source: null, list: [] };
+// Members are ship|projectile|drone — shipLike+projectiles lanes cover them exactly, so
+// wreck/station/payload churn during stunt windows can't rebuild the list. -1 (index
+// unready) falls back to the whole-version contract.
+const THREAT_CANDIDATE_LANES = ['shipLike', 'projectiles'];
 function threatCandidatesFor(state) {
-  const version = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, THREAT_CANDIDATE_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   const cache = _threatCandidates;
   if (version == null || cache.version !== version || cache.source !== state.entities) {
     cache.version = version;

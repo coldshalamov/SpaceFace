@@ -13,14 +13,18 @@ import {
 } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { buildSlotList, fits } from '../systems/ships.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 // Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
 // to walk the whole entity map per call. The subset preserves entities.values() order and
 // every volatile gate (slot stamps, opportunity state) still re-runs per candidate.
 const _hailAsteroids = { version: null, source: null, list: [] };
+// Members are asteroids only — latch the asteroids lane so ship/payload/projectile churn
+// can't rebuild the subset. -1 (index unready) falls back to the whole-version contract.
+const HAIL_ASTEROID_LANES = ['asteroids'];
 function hailAsteroidsOf(state) {
-  const version = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, HAIL_ASTEROID_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   const cache = _hailAsteroids;
   if (version == null || cache.version !== version || cache.source !== state.entities) {
     cache.version = version;

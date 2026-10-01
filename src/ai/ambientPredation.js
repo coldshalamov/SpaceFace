@@ -43,7 +43,7 @@ import {
   protectedStationAt,
 } from './engagementAuthority.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../systems/lootShards.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 export const AMBIENT_PREDATION = Object.freeze({
   evalPeriodS: 2,            // pairing cadence inside the director's 1 Hz tick
@@ -1231,8 +1231,13 @@ function entityScan(state) {
 // exactly, so early-breaks (maxRaidScan) pick the identical entities, and every volatile
 // gate (predation stamps, alive, hostility, liveIds) still re-runs per call per entity.
 const _ambientEntitySubsets = { version: null, source: null, ships: [], shipOrStation: [], pods: [] };
+// Members are ship/station/payload/pickup — latch the lane sum over exactly that domain so
+// projectile/fx churn during combat stops re-walking the entity map per index bump. The
+// rebuild still runs the same entityScan (member order is load-bearing), only the key moves.
+const AMBIENT_SUBSET_LANES = ['shipLike', 'stations', 'payloads', 'pickups'];
 function ambientEntitySubsets(state) {
-  const version = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, AMBIENT_SUBSET_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   const cache = _ambientEntitySubsets;
   if (version == null || cache.version !== version || cache.source !== state.entities) {
     cache.version = version;

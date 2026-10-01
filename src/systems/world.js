@@ -1316,6 +1316,10 @@ export const world = {
       }
       yield 'materialize:enemies';
       this._ensureOpticStructures(sector, active);
+      // Built-at-FULL stamp: _promoteSectorToFull skips its whole rescan when set — the bag
+      // already carries dressing/enemies/records from this build. Keys on the tier the bag
+      // was BUILT at, not rec.tier (the materialize call itself overwrites rec.tier below).
+      active.fullExtrasBuilt = true;
     }
 
     state.world.sectorContents[sectorId] = active;
@@ -1347,6 +1351,11 @@ export const world = {
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     const active = state.world.sectorContents[sectorId];
     if (!sector || !active) return;
+    // A bag already built at FULL carries records/dressing/enemies/optics from its own
+    // materialize — promoting it re-walked the entire record bag a second time in one
+    // unyielded task (the largest restore-lane brick on a mature save). Bags built REDUCED
+    // or stripped since still run the full promote below.
+    if (active.fullExtrasBuilt === true) return;
     // Rematerialize durable combat/convoy/mission records first (idempotent).
     const rematerialized = this._rematerializeSectorRecords(
       sectorId,
@@ -1567,6 +1576,7 @@ export const world = {
     active.dressing = [];
     active.worldOneOffSpins = [];
     if (active.boss) delete active.boss;
+    active.fullExtrasBuilt = false;
   },
 
   _demoteSectorToRecordOnly(sectorId) {
@@ -1698,7 +1708,7 @@ export const world = {
     const bag = ensureWorldRecords(state.world);
     // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
     if (tier === RESIDENCY_TIER.FULL && opts.restoreDurableRecords !== true) {
-      this._reconcileEmbodimentRecords(sectorId, bag);
+      yield* this._reconcileEmbodimentRecordsChunks(sectorId, bag);
     }
     const list = recordsForSector(bag, sectorId);
     const liveByRecordId = liveRecordEntityIndex(state);
@@ -1751,13 +1761,18 @@ export const world = {
    * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
    * generated recipes retire once their live body is gone; destroyed tombstones stay under the
    * existing MAX_RECORDS_PER_SECTOR bound so an old outcome cannot be re-rolled.
+   * The intent/stale/insert phases yield at the same 8-row cadence the records loop uses, so a
+   * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
+   * generator that exists to be chunked; the sync wrapper drains inline with identical output.
    */
-  _reconcileEmbodimentRecords(sectorId, bag = ensureWorldRecords(this.state.world)) {
+  *_reconcileEmbodimentRecordsChunks(sectorId, bag = ensureWorldRecords(this.state.world)) {
     const intents = embodimentRecordIntents(this.state.world.embodiment, sectorId);
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const sector = this.state.world.sectors && this.state.world.sectors[sectorId];
     const current = [];
+    let processed = 0;
     for (const intent of intents) {
+      if ((++processed & 7) === 0) yield 'reconcile:intents-batch';
       const rec = recordFromEmbodimentIntent(intent, {
         seed,
         tick: this.state.tick | 0,
@@ -1771,6 +1786,7 @@ export const world = {
     // outcomes (destroyed/defeated) are history and remain as bounded tombstones.
     const liveByRecordId = liveRecordEntityIndex(this.state);
     for (const rec of recordsForSector(bag, sectorId)) {
+      if ((++processed & 7) === 0) yield 'reconcile:stale-batch';
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
       if (liveByRecordId.has(rec.recordId)) continue;
@@ -1779,11 +1795,19 @@ export const world = {
 
     let inserted = 0;
     for (const rec of current) {
+      if ((++processed & 7) === 0) yield 'reconcile:insert-batch';
       // Never overwrite an existing active/damaged/destroyed record for this identity.
       if (bag.byId[rec.recordId]) continue;
       if (upsertRecord(bag, rec)) inserted++;
     }
     return { inserted, retained: current.length - inserted, current: current.length };
+  },
+
+  _reconcileEmbodimentRecords(sectorId, bag = ensureWorldRecords(this.state.world)) {
+    const it = this._reconcileEmbodimentRecordsChunks(sectorId, bag);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
   },
 
   /**

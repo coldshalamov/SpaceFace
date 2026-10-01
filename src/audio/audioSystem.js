@@ -23,6 +23,7 @@ import { combatVerbRecipe } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
+import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import {
   buildElementaryVoiceGraph,
   legacyContinuousGain,
@@ -5972,7 +5973,12 @@ export const audio = {
       // walks those ~small lists instead of the whole entityList. Interned id/loop keys ride a
       // WeakMap so nothing allocates a String(entity.id) per ship per run.
       const index = this.state.entityIndex;
-      const indexVersion = index && Number.isFinite(index.version) ? index.version : null;
+      // Members are ship|drone|freighter — shipLike carries ships+drones, the counter-only
+      // 'freighters' lane tracks the radarContacts-only type, so churn on the rest of
+      // radarContacts (stations/asteroids) can't rebuild the candidate list. -1 (index
+      // unready) plays the old null role: no latch.
+      const laneVersion = entityIndexLaneVersion(this.state, ['shipLike', 'freighters']);
+      const indexVersion = laneVersion === -1 ? null : laneVersion;
       const buckets = (index && index.shipLike && index.radarContacts) ? index : null;
       if (indexVersion == null || rt._remoteCandVersion !== indexVersion || !buckets) {
         rt._remoteCandVersion = indexVersion;

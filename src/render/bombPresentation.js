@@ -7,7 +7,15 @@ import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope } from '../combat/bombDynamics.js';
 import { readFrameOrigin, interpolateGlobalToFrame } from './frameCoordinates.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+
+// The telegraph census only reads index.bombs — latch that lane so projectile/pickup churn
+// can't wake the quiet latch every frame. -1 (index unready) plays the old null role.
+const BOMB_PRESENT_LANES = ['bombs'];
+function bombMembershipVersion(state) {
+  const laneVersion = entityIndexLaneVersion(state, BOMB_PRESENT_LANES);
+  return laneVersion === -1 ? null : laneVersion;
+}
 import { FIELD_LIFECYCLES, smooth01 } from './forceLanguage/effectLifecycle.js';
 import { FlowEnvironment } from './forceLanguage/flowEnvironment.js';
 import { BombFlowSurface, createBombFlowPrecompileMesh } from './forceLanguage/bombFlowSurface.js';
@@ -302,7 +310,7 @@ export class BombPresentationBatch {
   // No index (version null) refuses the latch so entityList fallback stays truthful.
   // False-wake falls through to one full update and re-latches when empty.
   _quietMaybeAwake(state) {
-    const version = entityIndexVersion(state);
+    const version = bombMembershipVersion(state);
     if (version == null) return true;
     return version !== this._quietVersion;
   }
@@ -401,7 +409,7 @@ export class BombPresentationBatch {
     // Fully idle empty (no bombs, no aftermath parcels or particles still animating)
     // → quiet latch when membership version is trustworthy. Soft-GPU fps not claimed.
     if (this.count === 0 && stats.particles === 0 && (this.flow?.count || 0) === 0) {
-      const version = entityIndexVersion(state);
+      const version = bombMembershipVersion(state);
       if (version != null) {
         this._quietEmpty = true;
         this._quietVersion = version;

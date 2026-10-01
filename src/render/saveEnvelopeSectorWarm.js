@@ -30,8 +30,8 @@ import {
   aceById,
   escalatedStyleFromMemory,
   returnCrewForAce,
+  stanceForRecord,
 } from '../data/namedAces.js';
-import { NEMESIS_KITS, NEMESIS_RIVAL } from '../data/nemesisRival.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
@@ -407,6 +407,7 @@ export function saveEnvelopeSectorStubs(data) {
   // home sector (heistFacilities.materializeForSector) — none of the dressing passes above
   // reach these place ids, and none of the record lanes cover the worker hull.
   if (sector.id === 'sector_tethys_junction') {
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_relay', worldDressing: true } });
     out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_catcher', worldDressing: true } });
     out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_fence', worldDressing: true } });
     out.placeStubs.push({ type: 'fx', data: { placeId: 'place_breakaway_fork', worldDressing: true } });
@@ -422,15 +423,47 @@ export function saveEnvelopeSectorStubs(data) {
   const siteRecords = data.sites && data.sites.worldById;
   if (siteRecords) {
     const warmedSiteFiles = new Set();
+    let sectorSites = 0;
     for (const id of Object.keys(siteRecords)) {
       const record = siteRecords[id];
       if (!record || record.sectorId !== sector.id) continue;
+      sectorSites++;
       const manifest = worldSiteManifestById(record.manifestId);
       const placeId = manifest ? siteStagePlaceId(manifest, record) : null;
       if (placeId && !warmedSiteFiles.has(placeId)) {
         warmedSiteFiles.add(placeId);
         out.placeStubs.push({ type: 'fx', data: { placeId, worldDressing: true } });
       }
+    }
+    // planWorldSiteMaterialization also emits bare 'wreck' proxy rows for every manifest
+    // component/collisionProxy — they hash-pick from the same residue table mission wrecks
+    // use, so any in-sector site record needs the bare-wreck cover.
+    if (sectorSites > 0) coverBareMissionWrecks();
+  }
+  // Anchored claim sites re-ensure their massline relay on entry (asteroidSites
+  // _syncClaims/_ensureBeacon): anchored + in-sector + survey lifecycle 'producing'.
+  // Same relay file the tethys facility mounts — one stub covers every eligible site.
+  const claimSites = data.sites && data.sites.byId;
+  if (claimSites) {
+    for (const id of Object.keys(claimSites)) {
+      const site = claimSites[id];
+      if (!site || site.anchored !== true || site.sectorId !== sector.id) continue;
+      if (!site.survey || site.survey.lifecycle !== 'producing') continue;
+      out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_relay', worldDressing: true } });
+      break;
+    }
+  }
+  // An open recovery record in the restored sector respawns a bare 'wreck' derelict on
+  // entry (recoveryEncounter _materialize) — its parentType picks from the same residue
+  // table mission wrecks use. "Open" = a record with no filed outcome.
+  const recState = data.recoveryEncounters;
+  if (recState && recState.records && typeof recState.records === 'object') {
+    const outcomes = recState.outcomes && typeof recState.outcomes === 'object' ? recState.outcomes : {};
+    for (const id of Object.keys(recState.records)) {
+      const rec = recState.records[id];
+      if (!rec || rec.sectorId !== sector.id || outcomes[id]) continue;
+      coverBareMissionWrecks();
+      break;
     }
   }
 
@@ -609,28 +642,26 @@ export function saveEnvelopeSectorStubs(data) {
       if (rec.promoted === true && rec.expired === true) continue;
       const ace = aceById(id) || (rec.promoted === true ? promotedAceShapeForRecord(id, rec) : null);
       if (!ace || ace.lifecycleOwner === 'nemesis') continue;
-      const crew = returnCrewForAce(ace, rec.returnTier || 1, escalatedStyleFromMemory(aceMemory, ace));
+      // _spawnReturn gates a promoted record whose spared-debt already revealed through the
+      // authored moral-return encounter — the ledger counts it settled, no crew fields.
+      const debts = data.story && data.story.moralMemory && data.story.moralMemory.debts;
+      if (rec.promoted === true && debts && debts[rec.id] && debts[rec.id].status === 'revealed') continue;
+      // offers_work routes to _spawnWorkOffer with an UNSTYLED crew (style=null); warming
+      // the escalated style's counter hulls there decodes the wrong files. Other stances
+      // take the styled hostile crew exactly as the live path builds it.
+      const style = stanceForRecord(rec).stance === 'offers_work'
+        ? null : escalatedStyleFromMemory(aceMemory, ace);
+      const crew = returnCrewForAce(ace, rec.returnTier || 1, style);
       for (const ship of crew) {
         out.roster.push({ archetype: ship.archetype, factionId: ace.factionId || 'faction_reach' });
       }
     }
   }
-  // nemesis.js serializes {pending:{sectorId, plan, notBefore, dispatched}} — the encounter
-  // host's slot math picks the primary kit's boss + escort hulls and one secondary escort.
-  const nemesisPending = data.nemesis && data.nemesis.pending;
-  if (nemesisPending && nemesisPending.sectorId === sector.id && nemesisPending.plan) {
-    const plan = nemesisPending.plan;
-    const primary = NEMESIS_KITS[plan.primary];
-    if (primary) {
-      out.roster.push({ archetype: primary.bossArchetype, factionId: NEMESIS_RIVAL.factionId });
-      const escortCount = Number.isFinite(plan.escortCount) ? plan.escortCount : 0;
-      for (let slot = 1; slot <= escortCount; slot++) {
-        const kit = (slot === 2 && plan.secondary && NEMESIS_KITS[plan.secondary])
-          ? NEMESIS_KITS[plan.secondary] : primary;
-        out.roster.push({ archetype: kit.escortArchetype, factionId: NEMESIS_RIVAL.factionId });
-      }
-    }
-  }
+  // A serialized nemesis.pending never deploys post-restore: nemesis.js's save:loaded
+  // reconcile unconditionally _cancelPending's it ('save load invalidated in-flight
+  // deployment'), and the encounter host requires pending.dispatched for the request id,
+  // so hulls warmed here could never mount. The real re-planned deployment warms its
+  // roster via warmNemesisSquadDecode on the ~6 s announce window — no stub needed.
 
   return out;
 }

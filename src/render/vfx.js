@@ -56,7 +56,7 @@ import {
 } from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
 import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
 import { notePresentationFrame } from './presentationSimClock.js';
@@ -287,6 +287,9 @@ import { spawnCausalStructuralBurst } from './combat/causalStructuralBurst.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
+const VFX_TRAIL_LANES = ['shipLike'];
+const WRECK_WISPS_LANES = ['wrecks'];
+const LOOT_MAGNET_LANES = ['pickups', 'payloads'];
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
 // Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
@@ -3083,8 +3086,11 @@ export const vfx = {
   _refreshTrailCandidates() {
     const list = indexedShipLikeScan(this.state);
     // Index membership can churn in place at a stable length (swap-remove + append), so the
-    // version watch catches same-length changes that the ref/length pair would miss.
-    const version = entityIndexVersion(this.state);
+    // version watch catches same-length changes that the ref/length pair would miss. The
+    // cache is ship/drone-only, so it latches the shipLike lane — projectile/pickup churn
+    // no longer re-sorts two arrays every frame. -1 (index unready) acts like the old
+    // null: constant sentinel, ref+length legs carry the entityList fallback path.
+    const version = entityIndexLaneVersion(this.state, VFX_TRAIL_LANES);
     if (!this._trailCacheDirty && this._trailListRef === list
       && this._trailListLength === list.length && this._trailListVersion === version) return;
     this._trailCandidates.length = 0;
@@ -11785,7 +11791,10 @@ export const vfx = {
   // entityIndexVersion only. No index (version null) refuses the latch so
   // entityList fallback stays truthful. Soft-GPU fps not claimed.
   _lootMagnetQuietMaybeAwake() {
-    const version = entityIndexVersion(this.state);
+    // Members are pickups+payloads — latch those lanes so combat volleys can't wake the
+    // empty latch every frame. -1 (index unready) plays the old null role.
+    const laneVersion = entityIndexLaneVersion(this.state, LOOT_MAGNET_LANES);
+    const version = laneVersion === -1 ? null : laneVersion;
     if (version == null) return true;
     return version !== this._lootMagnetQuietIndexVersion;
   },
@@ -11805,7 +11814,8 @@ export const vfx = {
     const pickups = indexedTypeScan(state, 'pickups');
     const payloads = indexedTypeScan(state, 'payloads');
     if (!pickups.length && !payloads.length) {
-      const version = entityIndexVersion(state);
+      const magnetLane = entityIndexLaneVersion(state, LOOT_MAGNET_LANES);
+      const version = magnetLane === -1 ? null : magnetLane;
       if (version != null) {
         this._lootMagnetQuietEmpty = true;
         this._lootMagnetQuietIndexVersion = version;
@@ -11924,7 +11934,10 @@ export const vfx = {
   // entityIndexVersion only. No index (version null) refuses the latch so
   // entityList fallback stays truthful. Soft-GPU fps not claimed.
   _wreckWispsQuietMaybeAwake() {
-    const version = entityIndexVersion(this.state);
+    // Members are index.wrecks only — latch that lane so projectile/pickup churn can't
+    // wake the empty latch every frame. -1 (index unready) plays the old null role.
+    const laneVersion = entityIndexLaneVersion(this.state, WRECK_WISPS_LANES);
+    const version = laneVersion === -1 ? null : laneVersion;
     if (version == null) return true;
     return version !== this._wreckWispsQuietIndexVersion;
   },
@@ -11957,7 +11970,8 @@ export const vfx = {
     // Empty wrecks: clear residual slots once, then latch when version trustworthy.
     this._cadenceWreckWisps = 0;
     if (this._wreckWispSlots) this._wreckWispSlots.clear();
-    const version = entityIndexVersion(state);
+    const wispsLane = entityIndexLaneVersion(state, WRECK_WISPS_LANES);
+    const version = wispsLane === -1 ? null : wispsLane;
     if (version != null) {
       this._wreckWispsQuietIdle = true;
       this._wreckWispsQuietIndexVersion = version;
