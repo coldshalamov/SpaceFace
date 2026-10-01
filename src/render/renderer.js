@@ -10652,6 +10652,8 @@ export const render = {
     });
     this._authoredMotionUnbind = installAuthoredMotionBus(bus, {
       clock: () => this._authoredClockAdvance(),
+      // Raw simTime lets the bus translate simTime-carrying payloads onto the authored clock.
+      simClock: () => Number(state.simTime) || 0,
       // Station-service payloads carry no entity id — the jobs only ever belong to the player.
       playerEntityId: () => state.playerId,
     });

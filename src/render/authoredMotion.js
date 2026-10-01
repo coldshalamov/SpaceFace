@@ -123,19 +123,33 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
 
 /**
  * Wire gameplay events to bound controllers. Called once with the session bus, next to the other
- * motion-system bindEvents calls. `clock` supplies the current sim second for event payloads that
- * carry no simTime of their own (mining events don't). Returns an unbind function.
+ * motion-system bindEvents calls. `clock` supplies the authored-motion clock second for event
+ * payloads that carry no simTime of their own (mining events don't); `simClock` supplies raw
+ * simTime so simTime-carrying payloads can be translated onto the authored clock — the two run
+ * in the same units while the sim advances but diverge whenever the dock freeze pins simTime.
+ * Returns an unbind function.
  */
-export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
+export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId } = {}) {
   if (!bus || typeof bus.on !== 'function') return null;
   const playerId = () => (typeof playerEntityId === 'function' ? playerEntityId() : null);
   const simNow = () => (typeof clock === 'function' ? Number(clock()) || 0 : 0);
+  const rawSimNow = () => (typeof simClock === 'function' ? Number(simClock()) : null);
+  // Clip anchors live on the clock the evaluators run. While the dock freeze pins simTime the
+  // authored clock keeps advancing on wall dt, so a payload's simTime is translated onto that
+  // domain — anchoring on raw simTime would leave the anchor permanently behind the eval clock
+  // after any freeze and every later sim-anchored clip would evaluate past its end and park.
+  const anchorS = (payload) => {
+    const raw = rawSimNow();
+    return payload && payload.simTime != null && raw != null
+      ? simNow() + (Number(payload.simTime) - raw)
+      : simNow();
+  };
   const dispatch = (type, entityId, payload, accept) => {
     if (entityId == null) return;
     for (const controller of authoredMotionControllersFor(entityId)) {
       if (!accept(controller)) continue;
       try {
-        controller.handleEvent?.(type, payload, payload?.simTime ?? simNow());
+        controller.handleEvent?.(type, payload, anchorS(payload));
       } catch (error) {
         console.warn(`[authoredMotion] ${type} rejected by controller`, error);
       }
@@ -192,17 +206,26 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   const armJobs = new Map(); // entityId -> { jobId, at }
   const capPeeledAt = new Map(); // entityId -> sim second the peel started
   const SERVICE_GROUPS = ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow'];
+  const CAP_GROUPS = ['kestrel_armor_cap'];
   const PEEL_S = 2.6; // armorPeel clip duration — a fix landing mid-peel settles instead.
   const DEPLOY_S = 3.6; // serviceArm clip duration — a completion inside it settles instead.
-  const STALE_S = 600; // entries older than this are dropped — rebuilds must not skew gates.
+  const anyActiveClips = (id, groupIds) => authoredMotionControllersFor(id)
+    .some((c) => typeof c.hasActiveClipsIn === 'function' && c.hasActiveClipsIn(groupIds));
   const pruneStaleFlags = () => {
-    const now = simNow();
-    for (const [id, rec] of armJobs) if (now - rec.at > STALE_S) armJobs.delete(id);
-    for (const [id, at] of capPeeledAt) if (now - at > STALE_S) capPeeledAt.delete(id);
+    // A flag whose rig runs no clip in its groups is dead — an entity rebuild replaced the
+    // controllers under it, and a late completion must not dispatch a stow whose first keys
+    // assume a pose that isn't there. A held clip keeps its flag at any age: a peel left
+    // unrepaired is still physically up, so pruning by age would re-dispatch it and snap the
+    // plate to its rest first key.
+    for (const id of [...armJobs.keys()]) if (!anyActiveClips(id, SERVICE_GROUPS)) armJobs.delete(id);
+    for (const id of [...capPeeledAt.keys()]) if (!anyActiveClips(id, CAP_GROUPS)) capPeeledAt.delete(id);
   };
   const isRepairJob = (payload) => payload && payload.type === 'repair';
-  const matchesJob = (rec, payload) => rec.jobId == null || payload.jobId == null
-    || rec.jobId === payload.jobId;
+  // Only a completion/abort for the job that started the deploy may consume its flag: the
+  // yard emits jobId on all three service events, so a foreign repair-typed emit (instant
+  // repairs have no jobId) can no longer fold a live deploy.
+  const matchesJob = (rec, payload) => rec.jobId == null
+    || (payload != null && payload.jobId === rec.jobId);
   const settleServiceRig = (id, durationS) => {
     // An interrupted deploy mid-flight must not snap to serviceStow's first keys — they
     // assume full extension. Blend the service rig home from its live pose instead.
@@ -224,6 +247,7 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   };
   const onServiceDone = (payload) => {
     if (!isRepairJob(payload)) return;
+    pruneStaleFlags();
     const id = playerId();
     const rec = id != null ? armJobs.get(id) : null;
     if (!rec || !matchesJob(rec, payload)) return;
@@ -236,6 +260,7 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   };
   const onServiceAborted = (payload) => {
     if (payload && payload.type && payload.type !== 'repair') return;
+    pruneStaleFlags();
     const id = playerId();
     const rec = id != null ? armJobs.get(id) : null;
     if (!rec || !matchesJob(rec, payload)) return;
@@ -255,6 +280,7 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   };
   const onRepairCompleted = (payload) => {
     if (!payload || payload.type !== 'repair') return;
+    pruneStaleFlags();
     const id = playerId();
     const peelStart = capPeeledAt.get(id);
     if (peelStart === undefined) return;
@@ -264,7 +290,7 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
       // would snap the cap; blend it home from its live pose instead.
       for (const controller of authoredMotionControllersFor(id)) {
         try {
-          controller.settleGroups?.(0.7, simNow(), ['kestrel_armor_cap']);
+          controller.settleGroups?.(0.7, simNow(), CAP_GROUPS);
         } catch (error) {
           console.warn('[authoredMotion] armorFix settle rejected', error);
         }

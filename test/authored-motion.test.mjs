@@ -20,6 +20,7 @@ import {
 import {
   attachAuthoredMotionDriver,
   authoredMotionControllersFor,
+  createAuthoredClock,
   installAuthoredMotionBus,
 } from '../src/render/authoredMotion.js';
 
@@ -440,8 +441,7 @@ test('completions for other job types or job ids never consume the arm flag', ()
   unbind();
 });
 
-test('createAuthoredClock follows sim while it advances and wall time while frozen', async () => {
-  const { createAuthoredClock } = await import('../src/render/authoredMotion.js');
+test('createAuthoredClock follows sim while it advances and wall time while frozen', () => {
   let sim = 100;
   let wall = 50;
   const clock = createAuthoredClock({ simNow: () => sim, wallNow: () => wall });
@@ -461,4 +461,86 @@ test('createAuthoredClock follows sim while it advances and wall time while froz
   wall += 0.25;
   const after = clock();
   assert.ok(after >= 112.8 && after <= 113.3, 'a sim reset never runs clips backwards');
+});
+
+test('simTime-carrying payloads are translated onto the authored clock across a dock freeze', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let sim = 100;
+  let wall = 0;
+  const authored = createAuthoredClock({ simNow: () => sim, wallNow: () => wall });
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, {
+    clock: authored, simClock: () => sim, playerEntityId: () => 'player-1',
+  });
+
+  assert.equal(authored(), 100);
+  for (let i = 0; i < 40; i += 1) { wall += 0.5; authored(); } // docked 20s, frame-by-frame
+  assert.equal(authored(), 120);
+  // scanner emitted its clip anchor as raw simTime=100 while the eval clock reads 120 —
+  // without translation the clip would evaluate 20s past its end and park instantly.
+  emit('scan:pulse', { source: 'player-scanner', scannerId: 'player-1', seq: 1, simTime: 100 });
+  controller.update(120.4);
+  assert.ok(controller.clipActive('sweep'), 'sweep stays alive on the authored clock after a freeze');
+  unbind();
+});
+
+test('a flag whose rig lost its clips is pruned — a late completion cannot pop a stow', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 10;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  emit('service:started', { type: 'repair', jobId: 'job-1' });
+  assert.ok(controller.clipActive('serviceArm'), 'arm deployed');
+  // entity rebuild: the controllers were replaced and the new rig is at rest — the flag in
+  // the bus closure is now dead and must be pruned, not stowed against.
+  controller.settle(0.05, 10);
+  controller.update(11);
+  emit('service:completed', { type: 'repair', jobId: 'job-1' });
+  assert.ok(!controller.clipActive('serviceStow'), 'no deployed-first-key pop on a rebuilt rig');
+  assert.ok(!anySettleActive(controller), 'nothing left to blend — the flag was simply dead');
+  unbind();
+});
+
+test('a payload-less abort neither crashes nor consumes a jobId-flagged deploy', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => 10, playerEntityId: () => 'player-1' });
+
+  emit('service:started', { type: 'repair', jobId: 'job-1' });
+  emit('service:aborted'); // foreign payload-less abort — old matchesJob threw here
+  assert.ok(controller.clipActive('serviceArm'), 'deploy survives the unattributable abort');
+  emit('service:aborted', { type: 'repair', jobId: 'job-1' });
+  assert.ok(anySettleActive(controller), 'the real abort still settles the rig');
+  unbind();
+});
+
+test('a held peel keeps its flag at any age — the repair still lands the armor fix', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 30;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  emit('combat:damage', { targetId: 'player-1', hullHit: true });
+  assert.ok(controller.clipActive('armorPeel'), 'cap peeled');
+  now = 730; // the peel is a held pose, not a flag lifetime — damage stays up for minutes
+  emit('service:completed', { type: 'repair' });
+  assert.ok(controller.clipActive('armorStow'), 'age-based pruning would have dropped the live flag and lost the fix');
+  unbind();
 });

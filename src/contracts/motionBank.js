@@ -460,6 +460,17 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     },
     clipActive(name) { return state.clips.has(name); },
     activeClipNames() { return [...state.clips.keys()]; },
+    // Bus-side stale-state probe: a hold-ended clip keeps its group claimed, so 'any clip
+    // touching these groups' is the truth for whether a rig is still posed (a rebuilt
+    // entity's flag must not outlive the clips it tracked).
+    hasActiveClipsIn(groupIds = []) {
+      const wanted = new Set(groupIds);
+      for (const name of state.clips.keys()) {
+        const clip = clips.get(name);
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) return true;
+      }
+      return false;
+    },
     groups,
 
     /**
@@ -503,6 +514,12 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       clips.set(settleName, settleClip);
       state.clips.clear();
       state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      // Parked settles can never run again — drop them from the bank map so a long session
+      // of aborts/early-completions can't accumulate dead clip objects. Must run after
+      // state.clips.clear() so the just-superseded settles are collected too.
+      for (const name of [...clips.keys()]) {
+        if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
+      }
       state.latest = settleName;
       state.parked = false;
       return true;
@@ -559,6 +576,10 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         if (clip && clip.channels.some((ch) => wanted.has(ch.group))) {
           state.clips.delete(name);
         }
+      }
+      // Same parked-settle trim — clips dropped above may include prior settles.
+      for (const name of [...clips.keys()]) {
+        if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
       }
       state.clips.set(settleName, { startS: timeS, rateScale: 1 });
       state.latest = settleName;
@@ -661,7 +682,10 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       if (clip === undefined) return false;
       return this.setState({
         state: clip,
-        startTimeS: Number.isFinite(payload && payload.simTime) ? payload.simTime : simNow,
+        // simNow is the effective anchor: the bus has already translated any payload.simTime
+        // onto the eval clock's domain. Re-reading it here would anchor into raw sim time,
+        // which diverges from the eval clock across any dock freeze.
+        startTimeS: simNow,
         generation: payload && payload.seq,
       });
     },
