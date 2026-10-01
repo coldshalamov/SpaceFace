@@ -796,21 +796,30 @@ export const weapons = {
     // Fastest open mount governs the warn/launch cadence; the 1.2 s floor is only the default
     // for racks that author no time — starting there silently ignored slower authored locks.
     if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
-    if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; return; }
+    if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; combat.lockTargetGeneration = null; return; }
     const tgt = this._resolveTarget(e);
     // Cloak interplay (flag massline2.cloak): a target dark to THIS shooter cannot grow a lock and
     // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
     // under a scanner burn) the lock behaves exactly as before. One gate, player and NPC alike.
     const darkened = !!tgt && cloakHidesEntityFrom(state, e, tgt);
     if (tgt && !darkened && this._inLockCone(e, tgt)) {
+      // Entity ids recycle: if the resolved target is a NEW occupant of the id this lock was
+      // built on, the stale lineage cannot hand its progress over — the fresh body starts at 0.
+      if (combat.lockTarget === tgt.id
+          && combat.lockTargetGeneration != null
+          && tgt.occupantGeneration != null
+          && combat.lockTargetGeneration !== tgt.occupantGeneration) {
+        combat.lockProgress = 0;
+      }
       combat.lockTarget = tgt.id;
+      combat.lockTargetGeneration = tgt.occupantGeneration != null ? tgt.occupantGeneration : null;
       combat.lockProgress = Math.min(1, (combat.lockProgress || 0) + dt / Math.max(0.05, lockTimeS));
     } else {
       // lock decays when target leaves the cone / is gone / went dark — a darkened target bleeds
       // on the cloak window so a completed lock holds for a beat and then drops.
       const decayS = darkened ? CLOAK_LOCK_DROP_S : Math.max(0.05, lockTimeS);
       combat.lockProgress = Math.max(0, (combat.lockProgress || 0) - dt / decayS);
-      if (combat.lockProgress <= 0) combat.lockTarget = null;
+      if (combat.lockProgress <= 0) { combat.lockTarget = null; combat.lockTargetGeneration = null; }
     }
   },
 
@@ -862,8 +871,19 @@ export const weapons = {
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
       if (!d.armed) { d.armed = true; }
-      const decoy = missileDecoyAim(d);
-      const tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
+      let decoy = missileDecoyAim(d);
+      let tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
+      // A recycled id is not the lineage this round locked: when the occupant generation moved on,
+      // the seeker adopts the chaff vocabulary on its own last course — still a physical round that
+      // collides and TTLs normally, but it can never re-home onto the new body under the old id.
+      if (!decoy && tgt && d.targetGeneration != null
+          && tgt.occupantGeneration != null && tgt.occupantGeneration !== d.targetGeneration) {
+        const heading = Number.isFinite(p.rot) ? p.rot : Math.atan2(p.vel.z, p.vel.x);
+        d.diverted = true;
+        d.divertPos = { x: p.pos.x + Math.cos(heading) * 400, z: p.pos.z + Math.sin(heading) * 400 };
+        tgt = null;
+        decoy = missileDecoyAim(d);
+      }
       // Cloak interplay (flag massline2.cloak): a target dark to THIS seeker bleeds its tracking
       // quality — turn authority scales down over CLOAK_SEEKER_DROP_S (ECM-style bleed on
       // data.turnRate), then the round adopts the chaff vocabulary: diverted onto a divertPos
@@ -1411,6 +1431,9 @@ export const weapons = {
     }
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
+      // The seeker locked ONE occupant of this id — ids recycle, so the generation rides with the
+      // round and a stale lineage can never re-home onto the new body that inherits the number.
+      data.targetGeneration = tgt && tgt.occupantGeneration != null ? tgt.occupantGeneration : null;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
       data.projSpeed = projSpeed;
       // accelerate from launch speed to projSpeed over the projectile's flight
