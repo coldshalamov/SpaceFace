@@ -783,12 +783,14 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
 
   // Promote's first step rematerializes the sector's FULL-tier durable records — same stub
   // shape the envelope lane builds (enemy-spec records resolve through the def table).
+  let bossRecordRematerializes = false;
   for (const rec of sectorRecords) {
     if (!rec || rec.alive === false) continue;
     if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) continue;
     if (rec.kind === RECORD_KIND.AFTERMATH && liveAftermathOwnsMarker(state, rec.markerId)) continue;
     if (!recordShouldRematerialize(rec, 'FULL')) continue;
     if (heldRecordIds.has(rec.recordId)) continue;
+    if (rec.isBoss === true) bossRecordRematerializes = true;
     const isEnemySpec = rec.enemyTypeId
       && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss === true);
     const stubData = { durable: true };
@@ -936,7 +938,7 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
       const disc = world.discovery && world.discovery[sector.id];
       const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
       const liveBoss = active.boss && state.entities && state.entities.get(active.boss.entityId);
-      const recordClaims = out.shipStubs.some((stub) => stub.data && stub.data.isBoss === true)
+      const recordClaims = bossRecordRematerializes
         || sectorRecords.some((rec) => rec && rec.isBoss === true && heldRecordIds.has(rec.recordId));
       if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !recordClaims) {
         out.roster.push({ archetype: 'dreadnought_boss' });
