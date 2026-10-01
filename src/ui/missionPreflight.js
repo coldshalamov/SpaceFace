@@ -567,6 +567,16 @@ function missionTaskEstimate(m) {
   }
 }
 
+/** The fitted ship's sustained travel speed in WU/s, or null when no ship is resolved. */
+function shipTransitSpeedWuPerS(state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const speed = Number(player && player.maxSpeed)
+    || Number(state && state.player && state.player.maxSpeed);
+  return Number.isFinite(speed) && speed > 0 ? speed : null;
+}
+
 export function missionTimePacing(m, state) {
   const simTime = Number(state && state.simTime) || 0;
   const deadline = Number(m && (m.deadline_s != null ? m.deadline_s : m.deadlineS));
@@ -575,21 +585,34 @@ export function missionTimePacing(m, state) {
     : Number(m && (m.expiresInS != null ? m.expiresInS : (m.timeLimitS != null ? m.timeLimitS : m.time_limit_s)));
   if (!Number.isFinite(timeLimit) || timeLimit <= 0) return null;
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
-  const cruise = Number(cfg && cfg.cruiseSpeedRef) || MISSION_TUNING.cruiseSpeedRef || 140;
+  // NXB-039: the estimate answers for the fitted ship, not a reference hull; and an
+  // uncharted off-sector leg must mark the window an estimate, not a promise.
+  const shipSpeed = shipTransitSpeedWuPerS(state);
+  const cruise = shipSpeed || Number(cfg && cfg.cruiseSpeedRef) || MISSION_TUNING.cruiseSpeedRef || 140;
   const distance = Math.max(0, Number(m && m.distance) || 0);
-  const estimate = distance / Math.max(1, cruise) + missionTaskEstimate(m);
+  const destSectorId = missionDestSectorId(m);
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  const routeKnown = !(destSectorId && currentSectorId && destSectorId !== currentSectorId && distance <= 0);
+  const estimate = (routeKnown ? distance / Math.max(1, cruise) : 0) + missionTaskEstimate(m);
   const slack = estimate > 0 ? timeLimit / estimate : null;
+  const uncertain = !routeKnown
+    ? 'the route beyond this lane is uncharted'
+    : (!shipSpeed ? "this ship's travel speed is not on record" : null);
   const critical = timeLimit <= TIMER_CRITICAL_S;
   const tight = critical || timeLimit <= TIMER_TIGHT_S || (slack != null && slack < 1.6);
   return {
     chip: {
-      kind: critical ? 'bad' : (tight ? 'warn' : 'ok'),
-      text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} timer`,
+      kind: critical ? 'bad' : (tight || uncertain ? 'warn' : 'ok'),
+      text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} timer${uncertain ? ' · est' : ''}`,
     },
     warning: critical
       ? 'Timer is critical; accept only if the route is staged and the ship is ready to launch.'
-      : (tight ? 'Timer is tight for the route distance; refuel, repair, and launch directly after accepting.' : null),
+      : (tight
+        ? `Timer is tight for the route distance; refuel, repair, and launch directly after accepting.${uncertain ? ` Window is an estimate — ${uncertain}.` : ''}`
+        : (uncertain ? `Window is an estimate — ${uncertain}.` : null)),
     slack,
+    estimateS: estimate,
+    basis: { shipSpeed, routeKnown },
   };
 }
 
