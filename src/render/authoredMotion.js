@@ -282,6 +282,12 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       }
     }
   };
+  // ANI-17: the canopy rides the repair lifecycle — it hinges up while the pod arm works
+  // and swings shut however the job ends (stow, early settle, or abort). Gated on the
+  // canopyOpen clip so an interrupt never replays the rise against a closing canopy.
+  const closeCanopy = (id) => {
+    dispatch('kestrel:canopyClose', id, null, (c) => c.clipActive?.('canopyOpen'));
+  };
   const onServiceStarted = (payload) => {
     if (!isRepairJob(payload)) return;
     pruneStaleFlags();
@@ -289,6 +295,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     if (id == null || armJobs.has(id)) return;
     armJobs.set(id, { jobId: payload.jobId ?? null, at: simNow() });
     dispatch('kestrel:serviceArm', id, payload, () => true);
+    dispatch('kestrel:canopyOpen', id, payload, (c) => !c.clipActive?.('canopyOpen'));
   };
   const onServiceDone = (payload) => {
     if (!isRepairJob(payload)) return;
@@ -299,9 +306,11 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     armJobs.delete(id);
     if (simNow() - rec.at < DEPLOY_S) {
       settleServiceRig(id, 0.9);
+      closeCanopy(id);
       return;
     }
     dispatch('kestrel:serviceDone', id, payload, () => true);
+    closeCanopy(id);
   };
   const onServiceAborted = (payload) => {
     if (payload && payload.type && payload.type !== 'repair') return;
@@ -311,6 +320,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     if (!rec || !matchesJob(rec, payload)) return;
     armJobs.delete(id);
     settleServiceRig(id, 0.9);
+    closeCanopy(id);
   };
   // ANI-07: the port shoulder cap peels on the first hull hit that reaches it and stays up as
   // the damage state; a finished repair re-seats it. Re-peeling needs the plate seated again
@@ -322,6 +332,45 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     if (id == null || capPeeledAt.has(id) || !authoredMotionControllersFor(id).length) return;
     capPeeledAt.set(id, simNow());
     dispatch('kestrel:armorPeel', id, payload, () => true);
+  };
+  // ANI-18: a real hullBurst jolts the hull — but only when the cap isn't already peeled
+  // (a flinch claiming kestrel_armor_cap would steal a live peel/stow) and the dish isn't
+  // mid-scan (claiming dish+stem would park the scan head for the rest of the sweep).
+  const flinchFree = (c) => !c.clipActive?.('armorPeel')
+    && !c.clipActive?.('armorStow') && !c.clipActive?.('scan');
+  const onHullBurstHit = (payload) => {
+    dispatch('hullBurst:hit', payload && payload.targetId, payload, flinchFree);
+  };
+  // ANI-16: landing gear on dock approach — the rams drop on entering dock range, load as
+  // the ship settles onto the pad, and tuck on undock. Every strut clip's first key assumes
+  // the deployed pose except deploy itself, so settle/stow are gated on the gear being down
+  // (a stray undock or range-drop can never pop the skids out then back in).
+  const strutsDown = new Set();
+  const STRUT_GROUPS = ['kestrel_strut_p', 'kestrel_strut_s', 'kestrel_strut_f'];
+  const strutsLive = (id) => strutsDown.has(id) || anyActiveClips(id, STRUT_GROUPS);
+  const onDockRange = (payload) => {
+    const id = playerId();
+    if (id == null) return;
+    if (payload && payload.inRange) {
+      strutsDown.add(id);
+      dispatch('dock:range', id, payload, () => true);
+    } else if (strutsLive(id)) {
+      // Left range without docking — the bus event only covers 'in', so the stow rides a
+      // side-band event rather than sharing dock:range with the deploy clip.
+      strutsDown.delete(id);
+      dispatch('kestrel:strutsStow', id, payload, () => true);
+    }
+  };
+  const onDocked = (payload) => {
+    const id = playerId();
+    if (id == null || !strutsLive(id)) return;
+    dispatch('dock:docked', id, payload, () => true);
+  };
+  const onUndocked = (payload) => {
+    const id = playerId();
+    if (id == null || !strutsLive(id)) return;
+    strutsDown.delete(id);
+    dispatch('dock:undocked', id, payload, () => true);
   };
   const onRepairCompleted = (payload) => {
     if (!payload || payload.type !== 'repair') return;
@@ -372,9 +421,13 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     // Always accept: the sim refires on the clip's own cadence and a mid-flight restart is a
     // smaller visual cost than a swallowed refire leaving the drum parked while it still grinds.
     dispatch('drone:grindStart', payload.id, payload, () => true);
+    // ANI-22: the sense vane folds for the grind on a side-band event — one bus event maps
+    // to one clip, so the vane can't share drone:grindStart with the drum cycle.
+    dispatch('drone:vaneStow', payload.id, payload, () => true);
   };
   const onGrindStop = (payload) => {
     dispatch('drone:grindStop', payload.id, payload, () => true);
+    dispatch('drone:vaneDeploy', payload.id, payload, () => true);
   };
   // ANI-11: the same starter beam accumulates split work against jettisoned cargo pods —
   // the beam pries the seals, so the pod's door rig answers to events addressed at the
@@ -474,6 +527,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('service:completed', onServiceDone),
     bus.on('service:aborted', onServiceAborted),
     bus.on('combat:damage', onCombatDamage),
+    bus.on('hullBurst:hit', onHullBurstHit),
     bus.on('service:completed', onRepairCompleted),
     bus.on('hull:fractured', onHullFractured),
     bus.on('salvage:npcExtraction', onNpcExtraction),
@@ -483,6 +537,9 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('mining:start', onPodMiningStart),
     bus.on('mining:stop', onPodBeamStop),
     bus.on('craft:queueChanged', onCraftQueue),
+    bus.on('dock:range', onDockRange),
+    bus.on('dock:docked', onDocked),
+    bus.on('dock:undocked', onUndocked),
     bus.on('gate:range', onGateRange),
     bus.on('jump:chargeStart', onJumpChargeStart),
     bus.on('jump:start', onGateReset),

@@ -694,32 +694,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "ae07d9839d6447831a0f6508cd2566ba9166bd9aeb3fd0e8862a322947493c2e",
+    "expectedContentHash": "ef13df41a43faccd7ef9e4e38c5e22a6fad275a14eb9b64fa9f7c3df4d899e23",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "cf9ddcf62a9f731ba835ffadbb0097f231c4052d772504fcd5728fb60c8b9fa4",
+    "sourceSha256": "1bc107c8086b8fa0ccbfd8c3924a53c58f074f83f2cafd8eb8da0ae269fbffa8",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb"
   },
   {
     "assetId": "sf.render.kestrel-lod1",
-    "expectedContentHash": "2cafe2d80a44dbe51e663fae5f8a7a1fda1610a31af5129671746914915f248f",
+    "expectedContentHash": "49119e4f2dd8b85669997a2de67d7849f50c78aa7c534263228fda4f60b194f7",
     "key": "kestrel-lod1",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "dc1852039308d11993e5ad2150f21f11956aa71f29af608f56d3c73d8d87cff0",
+    "sourceSha256": "ec10eb9ebd3777ba95a60696f47c008fc1e9b8efd8d86f656313edecee121543",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
   {
     "assetId": "sf.render.kestrel-lod2",
-    "expectedContentHash": "9e56012f37e32ba8bab43743e5267185a75890dd044972a97080d43e039fdd25",
+    "expectedContentHash": "67db4f90cd4389006726160e981bdfcb075729624d944bed99a069ddcc461678",
     "key": "kestrel-lod2",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
     "slot": "hull",
-    "sourceSha256": "16e9e627838ec94514d1248fa020d8e7242246066a7a04fff5420fff7aeb44c6",
+    "sourceSha256": "189a702bbff56fafa7955759c25e04f1b0966232d8771d252fb9336356ff420f",
     "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
   },
   {
@@ -824,12 +824,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mining-drone",
-    "expectedContentHash": "8313754dd48981c3181739591820cec2ad9e5eaf968df57a784d22d249d11ce3",
+    "expectedContentHash": "050e6bdfcd5dd596c0bc9c9ac76ada1ecfb22908c36e9aa2d7601d90be030f05",
     "key": "mining-drone",
     "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
     "runtimeAssetId": "SF_PART_PLACE_MINING_DRONE",
     "slot": "place",
-    "sourceSha256": "8f8f40ca08f796105eb41d5831509c35feb6844592f23a1ca868668dd5e5191f",
+    "sourceSha256": "aa00da14b842b2081b1aa36574ef0e77f08d3706f05ec6596a692253a57f655f",
     "sourceUrl": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
   {
