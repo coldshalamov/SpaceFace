@@ -33,6 +33,7 @@ import {
   stanceForRecord,
 } from '../data/namedAces.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { zonesForSector } from '../data/sectorZones.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -465,6 +466,14 @@ export function saveEnvelopeSectorStubs(data) {
       coverBareMissionWrecks();
       break;
     }
+  }
+
+  // Derelict-field zones spawn 0-3 bare 'wreck' salvage points on every sector:enter and
+  // every restore re-plans them (save:restoring wipes points/plannedSectorId in salvage.js)
+  // — the wrecks pick from the same residue classes the mission bare-wreck cover already
+  // warms, so a zone in this sector must arm the same cover.
+  if ((zonesForSector(sector.id) || []).some((z) => z && z.type === 'derelict_field' && z.center)) {
+    coverBareMissionWrecks();
   }
 
   // sector_ceres_belt re-points three ambient drone props onto the throughline activity bodies
