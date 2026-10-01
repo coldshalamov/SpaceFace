@@ -626,7 +626,7 @@ export const ui = {
         if (payload.targetId === this.state?.playerId) return;
         const isShield = !!(payload.shieldHit && payload.shieldDamage > 0);
         triggerHitTick(isShield ? 'shield' : 'hull');
-      });
+      }, { presentation: true });
 
       this.bus.on('entity:killed', (payload) => {
         if (!payload || payload.killerId !== this.state?.playerId) return;

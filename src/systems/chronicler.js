@@ -162,6 +162,8 @@ export function createChronicler(options = {}) {
           for (const k of droppedDedupe) this._retainedKeys.delete(k);
           const retained = new Set(m.stories.map(s => s.id));
           for (const key of this._views.keys()) if (!retained.has(key)) this._views.delete(key);
+          // ingest/prune just mutated m.stories — the publisher's id map rebuilds lazily.
+          this._storyByIdMap = null;
           this._nextWake = now;
         }
         // Do not publish an intermediate proof while its later packets are still in the inbox.
@@ -186,12 +188,26 @@ export function createChronicler(options = {}) {
       }
     },
     _emit(event, payload) { this._bus?.emit(event, clone(payload)); },
+    // id→story lookup for the publisher/wake passes, which run post-ingest inside update —
+    // stories only mutate in that ingest block (or via a _memory swap, caught by identity),
+    // so one build covers every find below.
+    _storyById(m) {
+      if (this._storyByIdMemory !== m) {
+        this._storyByIdMemory = m;
+        this._storyByIdMap = null;
+      }
+      if (!this._storyByIdMap) {
+        this._storyByIdMap = new Map();
+        for (const s of m.stories) this._storyByIdMap.set(s.id, s);
+      }
+      return this._storyByIdMap;
+    },
     _publish(now) {
       const m = this._memory;
       const ranked = rankViews([...this._views.values()], { minScore: m.config.minNewsScore }, now);
       let announcements = 0;
       for (const view of ranked) {
-        const story = m.stories.find(s => s.id === view.id);
+        const story = this._storyById(m).get(view.id);
         if (now - story.updatedAt < m.config.settleSeconds || story.announcedRevision >= story.revision) continue;
         story.announcedRevision = story.revision; // reserve before synchronous callbacks/re-entry
         increment(m.metrics, 'storiesPublished');
@@ -225,12 +241,12 @@ export function createChronicler(options = {}) {
       }
       if (m.config.publishNews && due(m.cadence.newsAt, now, m.config.newsCooldown)) {
         const view = ranked.find(v => {
-          const s = m.stories.find(s => s.id === v.id);
+          const s = this._storyById(m).get(v.id);
           return now - s.updatedAt >= m.config.settleSeconds && s.newsRevision < s.revision
             && due(s.newsAt, now, m.config.storyCooldown);
         });
         if (view) {
-          const story = m.stories.find(s => s.id === view.id);
+          const story = this._storyById(m).get(view.id);
           story.newsRevision = story.revision; story.newsAt = now; m.cadence.newsAt = now;
           increment(m.metrics, 'newsPublished');
           this._emit('news:publish', publication(view, view.summary));
@@ -239,11 +255,11 @@ export function createChronicler(options = {}) {
       }
       if (m.config.offerRadio && due(m.cadence.radioAt, now, m.config.radioCooldown)) {
         const view = ranked.find(v => {
-          const s = m.stories.find(s => s.id === v.id);
+          const s = this._storyById(m).get(v.id);
           return now - s.updatedAt >= m.config.recallMinAge && s.radioRevision < s.revision;
         });
         if (view) {
-          m.stories.find(s => s.id === view.id).radioRevision = view.revision;
+          this._storyById(m).get(view.id).radioRevision = view.revision;
           m.cadence.radioAt = now;
           increment(m.metrics, 'radioOffered');
           this._emit('chronicler:radio', { ...publication(view, recallText(view, now)), channel: 'band' });
@@ -256,7 +272,7 @@ export function createChronicler(options = {}) {
       let next = Infinity;
       for (const v of this._views.values()) {
         if (v.visibility !== 'public' || v.score < m.config.minNewsScore) continue;
-        const s = m.stories.find(s => s.id === v.id);
+        const s = this._storyById(m).get(v.id);
         const settled = s.updatedAt + m.config.settleSeconds;
         if (s.announcedRevision < s.revision) next = Math.min(next, settled);
         if (m.config.publishNews && s.newsRevision < s.revision) {

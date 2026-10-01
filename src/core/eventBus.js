@@ -32,6 +32,11 @@ export function createBus() {
   const presentationSets = new Map(); // event -> Set<fn> (presentation-tier listeners)
   const presentationSnaps = new Map();
   const presentationQueue = []; // [{ event, payload, fns, index }] — drained per frame
+  const presentationSlicePool = [];
+  // Pooled-payload events (physics:impact, combat:damage refill one record per emit) register
+  // an emit-time snapshotter: a queued presentation tail must read the fields a synchronous
+  // listener saw — not the values the next emit refilled before the frame drain ran.
+  const payloadSnapshots = new Map(); // event -> payload => clonedPayload
   let presentationDrainClaimed = false;
   let deferred = [];
   const deferredPool = [];
@@ -98,11 +103,34 @@ export function createBus() {
       dispatchRange(fns, payload, event, 0, fns.length);
       return;
     }
-    presentationQueue.push({ event, payload, fns, index: 0 });
+    const snapshot = payloadSnapshots.get(event);
+    const slice = presentationSlicePool.pop() || { event: null, payload: null, fns: null, index: 0 };
+    slice.event = event;
+    slice.payload = snapshot ? snapshot(payload) : payload;
+    slice.fns = fns;
+    slice.index = 0;
+    presentationQueue.push(slice);
     // A claimed-but-unpumped drain (hidden tab, suspended shell) must not accumulate
     // unboundedly: drop the oldest slices past the cap — losing a mid-burst visual tail is
     // cheaper than minutes of deferred drain when the pump resumes.
-    if (presentationQueue.length > 64) presentationQueue.shift();
+    if (presentationQueue.length > 64) recyclePresentationSlice(presentationQueue.shift());
+  }
+
+  function recyclePresentationSlice(slice) {
+    if (!slice) return;
+    slice.event = null;
+    slice.payload = null;
+    slice.fns = null;
+    slice.index = 0;
+    presentationSlicePool.push(slice);
+  }
+
+  // Emitter-side pooled-payload contract: registers the snapshot a deferred tail should read.
+  // Registering the same fn again is a no-op, so pool owners may re-arm cheaply after clear().
+  function setPayloadSnapshot(event, fn) {
+    if (typeof fn !== 'function') { payloadSnapshots.delete(event); return; }
+    if (payloadSnapshots.get(event) === fn) return;
+    payloadSnapshots.set(event, fn);
   }
 
   function emitAll(event, payload) {
@@ -176,7 +204,11 @@ export function createBus() {
   }
 
   function drainPresentationTail(budget = PRESENTATION_LISTENER_DRAIN_BUDGET) {
-    const limit = Math.max(1, Math.floor(Number(budget) || PRESENTATION_LISTENER_DRAIN_BUDGET));
+    const base = Math.max(1, Math.floor(Number(budget) || PRESENTATION_LISTENER_DRAIN_BUDGET));
+    // Depth-scaled floor: a fixed 8/frame budget makes a kill clump or sector re-entry lag
+    // linearly (~200ms at ~100 pending). Scaling with queued invocations caps per-emit lag at
+    // ~4 frames while still spending only what the caller's frame-ms gate allows.
+    const limit = Math.max(base, Math.ceil(pendingPresentationCount() / 4));
     let ran = 0;
     while (ran < limit && presentationQueue.length) {
       const head = presentationQueue[0];
@@ -185,7 +217,7 @@ export function createBus() {
       ran += 1;
       try { fn(head.payload, head.event); }
       catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
-      if (head.index >= head.fns.length) presentationQueue.shift();
+      if (head.index >= head.fns.length) recyclePresentationSlice(presentationQueue.shift());
     }
     return ran;
   }
@@ -224,6 +256,8 @@ export function createBus() {
     presentationSets.clear();
     presentationSnaps.clear();
     presentationQueue.length = 0;
+    presentationSlicePool.length = 0;
+    payloadSnapshots.clear();
     deferred = [];
     deferredPool.length = 0;
     sliceBudgets.clear();
@@ -234,6 +268,7 @@ export function createBus() {
     on, off, once, emit, queue, flush, clear,
     setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount,
     claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
+    setPayloadSnapshot,
     _listeners: listeners,
   };
 }

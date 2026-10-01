@@ -319,15 +319,15 @@ export const barkDirector = {
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('entity:spawned', this._onEntitySpawnedBark);
-      this.bus.on('entity:spawned', this._onCounterHintSpawn);
+      this.bus.on('entity:spawned', this._onEntitySpawnedBark, { presentation: true });
+      this.bus.on('entity:spawned', this._onCounterHintSpawn, { presentation: true });
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('save:loaded', this._onStuntLoad);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
       this.bus.on('combat:outcome', this._onCombatOutcome);
       this.bus.on('ship:livingHullChanged', this._onHullHistory);
       this.bus.on('voice:surface', this._onStuntSurface);
-      this.bus.on('combat:damage', this._onStuntDamage);
+      this.bus.on('combat:damage', this._onStuntDamage, { presentation: true });
       this.bus.on('story:stuntIncidentUpdated', this._onStuntTrick);
       this.bus.on('story:stuntIncidentRecorded', this._onStuntTrick);
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
@@ -347,7 +347,7 @@ export const barkDirector = {
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
-      this.bus.on('physics:impact', this._onBodyImpact);
+      this.bus.on('physics:impact', this._onBodyImpact, { presentation: true });
     }
   },
 

@@ -161,7 +161,7 @@ export const presentationOrchestrator = {
       // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.
       this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
       this.bus.on('massline:releaseValidated', (payload) => this._onMasslineReleaseValidated(payload || {})),
-      this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
+      this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {}), { presentation: true }),
       this.bus.on('ai:telegraph', (payload) => this._onDoctrineTelegraph(payload || {})),
       this.bus.on('ai:counterTether', (payload) => this._onCounterTether(payload || {})),
       this.bus.on('ai:doctrinePhase', (payload) => this._onDoctrinePhase(payload || {})),

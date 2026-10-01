@@ -280,6 +280,7 @@ export function createDamageRouter(context, statusService, options = {}) {
 
     if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
     if (bus) {
+      if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('combat:damage', snapshotDamagePayload);
       if (input && input.wardFromId != null) {
         const hit = packet.hit;
         const warded = {
@@ -508,6 +509,11 @@ const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
 // synchronously within the emit; the deferred presentation lane snapshots top-level fields at
 // _emitCue entry. Every field must be rewritten on each use or removed; nested sub-objects
 // (channels, before, after, pos, approach, normal, origin) are never pooled.
+// Deferred presentation tails queue this pooled record past the emit — the shallow clone
+// below freezes every field they can read (nested refs are fresh-per-packet per above).
+function snapshotDamagePayload(p) {
+  return { ...p };
+}
 const _damageEmitPayload = {
   targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
   damageType: null, emp: false, channels: null,

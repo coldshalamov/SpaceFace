@@ -300,7 +300,7 @@ export const flybyFocus = {
     this._pickWakeSeq = 0;
     ensureFocus(this.state);
     if (this.bus && typeof this.bus.on === 'function') {
-      this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
+      this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p), { presentation: true }));
     }
     const resetOn = (event, reason) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;

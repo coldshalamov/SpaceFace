@@ -1902,12 +1902,12 @@ export const audio = {
       if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
       this.play('sfx_cm_chaff', { position: { x: pos.x, z: pos.z }, gain: 0.45 });
     });
-    bus.on('combat:damage', (p) => this._onDamage(p));
+    bus.on('combat:damage', (p) => this._onDamage(p), { presentation: true });
     // Contact sound rides the physics authority's receipt: `physics:impact` is the single
     // emit per contact on every backend (the legacy `collision` twin was retired — its
     // fields were a strict subset of the pooled payload's, and the pair+tick dedupe window
     // already collapsed the double-emit into one voice).
-    bus.on('physics:impact', (p) => this._onCollision(p));
+    bus.on('physics:impact', (p) => this._onCollision(p), { presentation: true });
     // Optic lattice contacts: weapons settles bolt-vs-prism and publishes the response here.
     // Each response kind owns one cue, and a ring can light a whole lattice neighborhood in a
     // single tick — the handlers collapse the burst through the shared `_heardRecipes` window,

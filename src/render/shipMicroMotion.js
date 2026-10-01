@@ -1276,7 +1276,7 @@ export function createShipMicroMotionTracker() {
     if (!bus || typeof bus.on !== 'function') return;
     busRef = bus;
     busSubscribers.push(bus.on('entity:killed', onKilled, { presentation: true }));
-    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
     busSubscribers.push(bus.on('sector:enter', clearSpiralMemory));
     busSubscribers.push(bus.on('save:loaded', clearSpiralMemory));
     busSubscribers.push(bus.on('game:newGame', clearSpiralMemory));

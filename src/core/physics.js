@@ -1604,6 +1604,11 @@ const _impactTraumaCtx = {
 // the dispatch, and the one deferred consumer (collisionConsequences._deferCraftContact)
 // snapshots field-by-field via snapshotContactPayload — nothing retains the object past the
 // emit, so one refilled record replaces the per-contact literal + pos/normal objects.
+// Deferred presentation tails queue this pooled record past the emit — they receive the
+// emit-time clone below (pos/normal are pooled sub-objects, everything else is scalar).
+function snapshotImpactPayload(p) {
+  return { ...p, pos: { ...p.pos }, normal: { ...p.normal } };
+}
 const _impactPayload = {
   consequenceKernelVersion: 1,
   backend: 'custom',
@@ -1652,6 +1657,7 @@ function impactPairKeyFor(aKey, bKey) {
 
 function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options = {}) {
   if (!bus || typeof bus.emit !== 'function') return 0;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('physics:impact', snapshotImpactPayload);
   const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
   if (!(dp > 0)) return 0;
   const playerId = state && state.playerId;

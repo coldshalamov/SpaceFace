@@ -559,7 +559,7 @@ export function createGamepad(ctx) {
     registerSlam(momentum);
   };
   if (bus && typeof bus.on === 'function') {
-    bus.on('physics:impact', onImpact);
+    bus.on('physics:impact', onImpact, { presentation: true });
     bus.on('combat:collisionConsequence', onImpact);
   }
 

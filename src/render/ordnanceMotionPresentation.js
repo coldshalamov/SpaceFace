@@ -255,7 +255,7 @@ export function createOrdnanceMotionTracker() {
 
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
-    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
     busSubscribers.push(bus.on('mines:armed', onMineArmed));
     busSubscribers.push(bus.on('bombs:dropped', onBombDropped));
     busSubscribers.push(bus.on('charge:thrown', onChargeThrown));
