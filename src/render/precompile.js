@@ -907,26 +907,42 @@ function addAuthoredCanopyPipelineWarmup(staging) {
         ...maps,
       }),
     },
-    // Authored canopies also arrive sourced as MeshStandardMaterial — a STANDARD-only program
-    // the transmission probes can never mint (applyRealtimeCanopyPolicy needs transmission>0),
-    // so a late spawn's first presented frame links it inside renderBufferDirect. Mirror the
-    // same three texture-slot layouts in the standard class; the policy call no-ops on them
-    // exactly as it does on the runtime variants.
+    // The observed draw-time miss this warmup exists for is `physical,STANDARD`: every authored
+    // canopy loads through assetLoader's physical conversion — MeshPhysicalMaterial with
+    // defines { STANDARD, PHYSICAL } — and the program-canon pass then fills all six texture
+    // slots plus dithering, so a sourced MeshStandardMaterial never reaches the GPU and a
+    // standard-class probe mints a key nothing can hit. Mint the one key the real canopy
+    // program owns: physical + STANDARD/PHYSICAL defines + the canonical slot set.
     {
-      suffix: '_Standard',
-      make: (maps) => new THREE.MeshStandardMaterial({
-        color: 0xd7edff,
-        metalness: 0,
-        roughness: 0.12,
-        side: THREE.DoubleSide,
-        dithering: true,
-        ...maps,
-      }),
+      suffix: '_Canon',
+      layouts: ['canon'],
+      make: () => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xd7edff,
+          metalness: 0,
+          roughness: 0.12,
+          transmission: 0.65,
+          side: THREE.DoubleSide,
+          forceSinglePass: true,
+          dithering: true,
+          map: baseColor,
+          normalMap: normal,
+          roughnessMap: surface,
+          metalnessMap: surface,
+          aoMap: surface,
+          emissiveMap: baseColor,
+        });
+        material.defines = { STANDARD: '', PHYSICAL: '' };
+        return material;
+      },
     },
   ];
-  for (const { suffix, make } of classes) {
-    for (let i = 0; i < variants.length; i++) {
-      const { id, ...maps } = variants[i];
+  for (const { suffix, layouts, make } of classes) {
+    const classLayouts = Array.isArray(layouts) ? layouts : variants.map((variant) => variant.id);
+    for (let i = 0; i < classLayouts.length; i++) {
+      const id = classLayouts[i];
+      const variant = variants.find((entry) => entry.id === id);
+      const { id: _variantId, ...maps } = variant || { id };
       const material = make(maps);
       material.name = `SF_Precompile_Canopy${suffix}_${id}`;
       applyRealtimeCanopyPolicy(material);
@@ -934,7 +950,7 @@ function addAuthoredCanopyPipelineWarmup(staging) {
       geometry.computeTangents();
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = `SF_Precompile_Canopy${suffix}_${id}`;
-      mesh.userData.precompileCanopyVariant = suffix ? `standard_${id}` : id;
+      mesh.userData.precompileCanopyVariant = suffix ? `${suffix.replace(/^_/, '').toLowerCase()}_${id}` : id;
       mesh.position.set(i * 10, suffix ? 48 : 28, 0);
       root.add(mesh);
     }

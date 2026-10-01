@@ -2598,9 +2598,12 @@ function kickDecodeRunwayAssets(owner, entities) {
       pending.add(entity.id);
       started += 1;
       const wave = entityMatchesWaveHullRunway(entity, state);
+      // Non-wave runway picks need a warm role too — without one the decode lands soft-only,
+      // oldest-idle-first under byte pressure, and can evict between approach polls so the
+      // hull re-decodes at the glass. 'decode-runway-prepare' matches the warm-purpose regex.
       const opts = wave
         ? { residencyRole: 'wave-hull-decode-runway' }
-        : {};
+        : { residencyRole: 'decode-runway-prepare' };
       // A pick already inside the urgent bound posts the 'visible' decode class — the same
       // kickSpawnedEntityDecode grading — so its decode drains ahead of deadline-class warms.
       if (decodeSeconds(entity) <= TABLE_BUILD_URGENT_SECONDS) opts.admissionVisible = true;
@@ -2795,6 +2798,39 @@ function warmNemesisSquadDecode(owner, payload) {
   const secondary = NEMESIS_KITS[payload.secondary];
   if (secondary) archetypes.push(secondary.escortArchetype);
   warmEnemyRosterDecode(owner, archetypes, 'nemesis-announce-decode-runway', payload.sectorId);
+}
+
+/**
+ * Generic paced encounters sit in encounterDirector.pending with their full squad roster
+ * (item.ships[].archetype) from plan time — but telegraph→spawn resolves in the same tick,
+ * so without a lead-window warm the squad decodes only through the entity:spawned kick,
+ * inside the marker window at the glass. Poll the pending list once per residency pass:
+ * an item whose dueAt sits inside the decode runway warms every planned archetype at
+ * deadline class. Gate-deferred items mutate dueAt to the new window and re-warm (the
+ * lease refresh keeps them alive); the WeakMap dedupes repeats at the same dueAt, and
+ * file-level dedupe caps redundant decodes the rest of the way. Items that fizzle or get
+ * cancelled simply let their lease expire — nothing mounts on the roster's behalf.
+ */
+function warmEncounterPendingDecode(owner) {
+  const state = owner && owner.state;
+  const pending = state && state.encounterDirector && state.encounterDirector.pending;
+  if (!Array.isArray(pending) || !pending.length) return;
+  const now = state.simTime || 0;
+  const warmedAt = owner._encounterPendingWarmDueAt
+    || (owner._encounterPendingWarmDueAt = new WeakMap());
+  for (const item of pending) {
+    if (!item || !Number.isFinite(item.dueAt) || item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    if (!Array.isArray(item.ships) || !item.ships.length) continue;
+    if (warmedAt.get(item) === item.dueAt) continue;
+    const archetypes = [];
+    for (const ship of item.ships) {
+      const archetype = ship && ship.archetype;
+      if (typeof archetype === 'string' && archetype) archetypes.push(archetype);
+    }
+    if (!archetypes.length) continue;
+    warmedAt.set(item, item.dueAt);
+    warmEnemyRosterDecode(owner, archetypes, 'encounter-pending-decode-runway', item.sectorId);
+  }
 }
 
 /**
@@ -14016,6 +14052,7 @@ export const render = {
     }
     kickDecodeRunwayAssets(this, presentationList);
     updatePredictedSectorPrewarm(this);
+    warmEncounterPendingDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
