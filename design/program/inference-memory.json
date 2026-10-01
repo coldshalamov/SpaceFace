@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "U7-mystery-patrol-pools",
-      "date": "2026-09-26",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Four authored encounters (botched procedure, wrong laugh, literalized drawer, customs logic net) were parked forever: only combat/civilian pressure pools existed and the pacing gate vetoes unfunded decks. Mystery banks in derelict/anomaly zones; patrol scales with security and cordons.",
-      "fingerprint": "verb=fund,subject=encounter-decks,sector=all,domain=encounters",
-      "references": [],
-      "integration": "live",
-      "commit": "aac9aadd6",
-      "verification": "focused_green"
-    },
-    {
       "id": "U11-bounty-wrecks-salvage",
       "date": "2026-09-26",
       "wf": "WF-10",
@@ -1637,6 +1624,19 @@
       "references": [],
       "integration": "live",
       "commit": "d9a22efe4",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ECON-04",
+      "date": "2026-10-01",
+      "wf": "WF-11",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "salvageIntakeApplied now carries valueCr; alerts raises one keyed receipt line naming yard+value; dup applications never re-emit",
+      "fingerprint": "verb=receipt,subject=salvage-intake,sector=alerts,domain=econ",
+      "references": [],
+      "integration": "live",
+      "commit": "b25ba4756",
       "verification": "focused_green"
     }
   ],
