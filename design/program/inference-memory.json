@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "scan-glyph-ore-truth",
-      "date": "2026-09-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A scan pulse stamps silicate as Si and a rare rock as Xe, and the chart and appraisal use that same glyph.",
-      "fingerprint": "verb=read,subject=asteroid-ore,sector=any,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "dbd2a74222d9954d1cac4d0011d11bdb8384deba",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-wf01-rescue-craft",
       "date": "2026-09-23",
       "wf": "WF-01",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "44cc263a3",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pro-09-voice-dismiss-key",
+      "date": "2026-10-01",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Delete binding emits voice:dismiss; the floor pill clears once, danger lines stay protected",
+      "fingerprint": "verb=dismiss,subject=voice-pill,sector=any,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "353cd9185",
       "verification": "focused_green"
     }
   ],
