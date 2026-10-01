@@ -1242,7 +1242,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // Small kill: short hit-stop + camera kiss.
       this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
       this.bus.emit('camera:kill', {});
-    });
+    }, { presentation: true });
 
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
     // and a death cam (PQ-159.02) so the wreck is a picture, not a cut.

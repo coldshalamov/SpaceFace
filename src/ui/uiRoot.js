@@ -632,14 +632,14 @@ export const ui = {
         if (!payload || payload.killerId !== this.state?.playerId) return;
         if (payload.id === this.state?.playerId) return;
         triggerHitTick('kill');
-      });
+      }, { presentation: true });
 
       // INF-053: when the LOCKED target dies, say DESTROYED in the lock's own voice, whatever
       // else the kill pays. Any killer counts — the lock's subject is a corpse either way.
       this.bus.on('entity:killed', (payload) => {
         const toast = destroyedLockToast(this.state, payload);
         if (toast) this.bus.emit('toast', toast);
-      });
+      }, { presentation: true });
     }
     const autoTargetFlightStick = document.createElement('div');
     autoTargetFlightStick.id = 'auto-target-flight-stick';

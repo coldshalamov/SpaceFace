@@ -151,13 +151,17 @@ export function createChronicler(options = {}) {
         m.clock = now;
         const batch = m.pending.splice(0, m.config.factsPerUpdate);
         if (batch.length) {
-          ingestBatch(m, batch);
-          this._refreshViews(true);
-          pruneMemory(m, this._views, now);
+          // ingestBatch returns the post-merge ids of stories whose (nodes, edges, statuses)
+          // actually changed — buildStoryView+semanticSignature are the O(archive) line in
+          // combat ticks, so only touched stories re-render. The link gauges are already
+          // published by resolveLineage when it runs, and statuses cannot move when it
+          // doesn't, so a second flatMap recount here was pure duplicate work.
+          const { touched, droppedDedupe } = ingestBatch(m, batch);
+          this._refreshViews(true, touched);
+          for (const k of pruneMemory(m, this._views, now)) this._retainedKeys.delete(k);
+          for (const k of droppedDedupe) this._retainedKeys.delete(k);
           const retained = new Set(m.stories.map(s => s.id));
           for (const key of this._views.keys()) if (!retained.has(key)) this._views.delete(key);
-          this._refreshLinkGauges();
-          this._retainedKeys = new Set([...m.pending, ...m.stories.flatMap(s => s.nodes)].map(f => f.dedupe));
           this._nextWake = now;
         }
         // Do not publish an intermediate proof while its later packets are still in the inbox.
@@ -168,15 +172,9 @@ export function createChronicler(options = {}) {
         return batch.length;
       } finally { this._updating = false; }
     },
-    _refreshLinkGauges() {
-      const m = this._memory;
-      const statuses = m.stories.flatMap(s => s.nodes.map(f => f.parentStatus));
-      m.metrics.unresolvedLinks = statuses.filter(s => s === 'pending' || s === 'capacity').length;
-      m.metrics.ambiguousLinks = statuses.filter(s => s === 'ambiguous').length;
-      m.metrics.invalidLinks = statuses.filter(s => ['commodity_mismatch', 'custody_mismatch', 'overdrawn_proof'].includes(s)).length;
-    },
-    _refreshViews(revise) {
+    _refreshViews(revise, only = null) {
       for (const story of this._memory.stories) {
+        if (only && !only.has(story.id)) continue;
         const view = buildStoryView(story);
         const signature = semanticSignature(view);
         if (revise && signature !== story.signature) {

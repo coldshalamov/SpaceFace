@@ -172,8 +172,8 @@ export const presentationOrchestrator = {
         this.bus.on(sourceEvent, (payload) => this._onCombatActionLifecycle(sourceEvent, payload || {}))
       )),
       this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
-      this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {})),
-      this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id)),
+      this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {}), { presentation: true }),
+      this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id), { presentation: true }),
       this.bus.on('cruise:charging', (payload) => this._onTravelCruiseCharging(payload || {})),
       this.bus.on('cruise:engaged', (payload) => this._onTravelCruiseEngaged(payload || {})),
       this.bus.on('cruise:dropped', (payload) => this._onTravelCruiseDropped(payload || {})),

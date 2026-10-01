@@ -13,7 +13,7 @@ import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
 import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
-import { SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
+import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -193,6 +193,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const bus = registry?.ctx?.bus || null;
   if (bus && typeof bus.setEmitSliceBudget === 'function') {
     bus.setEmitSliceBudget('sector:enter', SECTOR_ENTER_LISTENER_BUDGET);
+  }
+  // The frame pump owns the presentation-tier listener drain — burst-event presentation
+  // tails (kill/despawn vfx, toasts, mesh unbinds) slice across frames instead of running
+  // inside the emit that fired them.
+  if (bus && typeof bus.claimPresentationDrain === 'function') {
+    bus.claimPresentationDrain();
   }
   if (state && state.world) state.world.sliceArrival = true;
 
@@ -970,6 +976,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       const sliceBus = registry?.ctx?.bus;
       if (sliceBus && typeof sliceBus.drainEmitSlice === 'function') {
         sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+      }
+      if (sliceBus && typeof sliceBus.drainPresentationTail === 'function') {
+        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET);
       }
       _stepCapArgs.frameDt = 0;
       _stepCapArgs.fixedDt = LOOP_FIXED_DT;

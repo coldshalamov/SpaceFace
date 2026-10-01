@@ -5414,10 +5414,10 @@ export function createRendererLifecycleBindings({
     return remove;
   }
 
-  function onBus(event, callback) {
+  function onBus(event, callback, opts = null) {
     if (!active || !bus || typeof bus.on !== 'function') return () => false;
     const guarded = guard(callback);
-    const returnedUnsubscribe = bus.on(event, guarded);
+    const returnedUnsubscribe = bus.on(event, guarded, opts);
     let removed = false;
     const remove = () => {
       if (removed) return false;
@@ -5998,7 +5998,7 @@ export const render = {
     );
     const lifecycle = createRendererLifecycleBindings({ bus: ctx.bus });
     this._rendererLifecycle = lifecycle;
-    const onBus = (event, callback) => lifecycle.onBus(event, callback);
+    const onBus = (event, callback, opts) => lifecycle.onBus(event, callback, opts);
     const scheduleTimeout = (callback, delay) => lifecycle.setTimeout(callback, delay);
     this.state = ctx.state;
     this.bus = ctx.bus;
@@ -10878,7 +10878,7 @@ export const render = {
         this._noteShadowMeshRemoved(m);
         this._queueAssetResidencyDiagnosticsPublish();
       }
-    });
+    }, { presentation: true });
     // Ship hull swap or loadout change (fit/upgrade) — rebuild the mesh so visible hardpoints,
     // engines and tier reflect the current ship. Without this the mesh is frozen at spawn and a
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,

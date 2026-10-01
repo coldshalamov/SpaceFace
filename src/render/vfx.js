@@ -2364,7 +2364,7 @@ export const vfx = {
 
   _subscribe() {
     const bus = this.bus;
-    const add = (name, fn) => this._subs.push(bus.on(name, fn));
+    const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
@@ -2415,13 +2415,16 @@ export const vfx = {
         this._momentumSinkQuietSeq = -1;
       }
     });
-    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); });
+    // Kill/despawn bursts fan out to these tails inside one emit — the per-kill structural
+    // spawn + spall compose is the single heaviest tail — so they ride the presentation
+    // tier's per-frame drain instead of the sim tick.
+    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); }, { presentation: true });
     add('entity:destroyed', (p) => {
       clearTumbleCadenceFor(p);
       this._forgetMomentumSinkEntity(p);
       this._markEntityCacheDirtyIfTrailType(p);
       this._onDestroyed(p);
-    });
+    }, { presentation: true });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._resetRibbonTrails(p && p.id); this._markEntityCacheDirty(); });
     add(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresJobActionReceipt(p));

@@ -8,6 +8,13 @@
 
 export const SECTOR_ENTER_LISTENER_BUDGET = 32;
 export const SECTOR_ENTER_DRAIN_BUDGET = 4;
+// Presentation-tier listeners (bus.on(event, fn, { presentation: true })): burst events like
+// entity:killed / entity:destroyed fan out to ~dozen presentation-pure tails that used to run
+// inside the emit — mid-tick for synchronous events, inside the flush task for queued ones.
+// Once a presentation runner claims the drain, those tails enqueue and run a bounded number
+// per frame; the sim tail still executes in-tick exactly as before. Without a claim (headless
+// sims, tests) presentation listeners dispatch inline at emit — identical to a plain listener.
+export const PRESENTATION_LISTENER_DRAIN_BUDGET = 8;
 
 function dispatchRange(fns, payload, event, start, end) {
   const last = Math.min(fns.length, end);
@@ -22,30 +29,38 @@ function dispatchRange(fns, payload, event, start, end) {
 export function createBus() {
   const listeners = new Map(); // event -> Set<fn>
   const listenerSnapshots = new Map(); // event -> { dirty, fns }
+  const presentationSets = new Map(); // event -> Set<fn> (presentation-tier listeners)
+  const presentationSnaps = new Map();
+  const presentationQueue = []; // [{ event, payload, fns, index }] — drained per frame
+  let presentationDrainClaimed = false;
   let deferred = [];
   const deferredPool = [];
   const sliceBudgets = new Map();
   let emitSlice = null;
 
-  function invalidateSnapshot(event) {
-    const snap = listenerSnapshots.get(event);
+  function invalidateSnapshot(snaps, event) {
+    const snap = snaps.get(event);
     if (snap) snap.dirty = true;
   }
 
-  function on(event, fn) {
-    let set = listeners.get(event);
-    if (!set) { set = new Set(); listeners.set(event, set); }
+  function on(event, fn, opts = null) {
+    const presentation = !!(opts && opts.presentation === true);
+    const table = presentation ? presentationSets : listeners;
+    const snaps = presentation ? presentationSnaps : listenerSnapshots;
+    let set = table.get(event);
+    if (!set) { set = new Set(); table.set(event, set); }
     set.add(fn);
-    invalidateSnapshot(event);
+    invalidateSnapshot(snaps, event);
     return () => off(event, fn);
   }
 
   function off(event, fn) {
-    const set = listeners.get(event);
-    if (!set) return;
-    set.delete(fn);
-    invalidateSnapshot(event);
-    if (set.size === 0) listeners.delete(event);
+    for (const [table, snaps] of [[listeners, listenerSnapshots], [presentationSets, presentationSnaps]]) {
+      const set = table.get(event);
+      if (!set) continue;
+      if (set.delete(fn)) invalidateSnapshot(snaps, event);
+      if (set.size === 0) table.delete(event);
+    }
   }
 
   function once(event, fn) {
@@ -53,13 +68,13 @@ export function createBus() {
     return unsub;
   }
 
-  function snapshotListeners(event) {
-    const set = listeners.get(event);
+  function snapshotListeners(table, snaps, event) {
+    const set = table.get(event);
     if (!set || set.size === 0) return null;
-    let snap = listenerSnapshots.get(event);
+    let snap = snaps.get(event);
     if (!snap) {
       snap = { dirty: true, fns: null };
-      listenerSnapshots.set(event, snap);
+      snaps.set(event, snap);
     }
     if (snap.dirty) {
       // Publish a NEW array instead of mutating snap.fns in place: an emit already iterating the
@@ -74,10 +89,26 @@ export function createBus() {
     return snap.fns;
   }
 
-  function emitAll(event, payload) {
-    const fns = snapshotListeners(event);
+  function dispatchPresentation(event, payload) {
+    const fns = snapshotListeners(presentationSets, presentationSnaps, event);
     if (!fns) return;
-    dispatchRange(fns, payload, event, 0, fns.length);
+    if (!presentationDrainClaimed) {
+      // No runner owns the frame pump — dispatch inline so headless sims and tests observe the
+      // same synchronous listener contract they always had.
+      dispatchRange(fns, payload, event, 0, fns.length);
+      return;
+    }
+    presentationQueue.push({ event, payload, fns, index: 0 });
+    // A claimed-but-unpumped drain (hidden tab, suspended shell) must not accumulate
+    // unboundedly: drop the oldest slices past the cap — losing a mid-burst visual tail is
+    // cheaper than minutes of deferred drain when the pump resumes.
+    if (presentationQueue.length > 64) presentationQueue.shift();
+  }
+
+  function emitAll(event, payload) {
+    const fns = snapshotListeners(listeners, listenerSnapshots, event);
+    if (fns) dispatchRange(fns, payload, event, 0, fns.length);
+    dispatchPresentation(event, payload);
   }
 
   function startEmitSlice(event, payload, budget) {
@@ -85,10 +116,11 @@ export function createBus() {
     // tail outright — every listener past the cut never heard the first sector:enter. Drain the
     // remainder synchronously so no listener is ever skipped; the newest emit still wins order.
     while (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER);
-    const fns = snapshotListeners(event);
-    if (!fns) return;
+    const fns = snapshotListeners(listeners, listenerSnapshots, event);
+    if (!fns) { dispatchPresentation(event, payload); return; }
     emitSlice = { event, payload, fns, index: 0 };
     drainEmitSlice(budget);
+    dispatchPresentation(event, payload);
   }
 
   function emit(event, payload) {
@@ -131,6 +163,32 @@ export function createBus() {
     return emitSlice ? emitSlice.fns.length - emitSlice.index : 0;
   }
 
+  /** The frame-loop owner claims the presentation drain; headsless contexts stay inline. */
+  function claimPresentationDrain() {
+    presentationDrainClaimed = true;
+  }
+
+  function drainPresentationTail(budget = PRESENTATION_LISTENER_DRAIN_BUDGET) {
+    const limit = Math.max(1, Math.floor(Number(budget) || PRESENTATION_LISTENER_DRAIN_BUDGET));
+    let ran = 0;
+    while (ran < limit && presentationQueue.length) {
+      const head = presentationQueue[0];
+      const fn = head.fns[head.index];
+      head.index += 1;
+      ran += 1;
+      try { fn(head.payload, head.event); }
+      catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
+      if (head.index >= head.fns.length) presentationQueue.shift();
+    }
+    return ran;
+  }
+
+  function pendingPresentationCount() {
+    let n = 0;
+    for (const slice of presentationQueue) n += slice.fns.length - slice.index;
+    return n;
+  }
+
   /** Defer an event to the next flush() (end of sim step). */
   function queue(event, payload) {
     const item = deferredPool.pop() || { event: null, payload: null };
@@ -156,6 +214,9 @@ export function createBus() {
   function clear() {
     listeners.clear();
     listenerSnapshots.clear();
+    presentationSets.clear();
+    presentationSnaps.clear();
+    presentationQueue.length = 0;
     deferred = [];
     deferredPool.length = 0;
     sliceBudgets.clear();
@@ -165,6 +226,7 @@ export function createBus() {
   return {
     on, off, once, emit, queue, flush, clear,
     setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount,
+    claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
     _listeners: listeners,
   };
 }

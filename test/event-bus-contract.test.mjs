@@ -259,3 +259,71 @@ test('a once() listener emitting a new sliced event still fires once and every t
   assert.deepEqual(seen, ['a:x', 'once:x', 'b:x', 'c:x', 'a:y', 'b:y', 'c:y']);
   assert.equal(bus.pendingEmitSliceCount(), 0);
 });
+
+test('presentation-tier listeners run inline until a drain is claimed, then slice across drains', () => {
+  const bus = createBus();
+  const seen = [];
+  bus.on('e', (p) => seen.push(`sim:${p}`));
+  bus.on('e', (p) => seen.push(`p0:${p}`), { presentation: true });
+  bus.on('e', (p) => seen.push(`p1:${p}`), { presentation: true });
+  bus.emit('e', 'a');
+  assert.deepEqual(seen, ['sim:a', 'p0:a', 'p1:a'], 'unclaimed: presentation listeners dispatch inline like plain ones');
+  bus.claimPresentationDrain();
+  bus.emit('e', 'b');
+  assert.deepEqual(seen.slice(-1), ['sim:b'], 'claimed: the sim tail still runs in-emit; presentation tails queue');
+  assert.equal(bus.pendingPresentationCount(), 2);
+  bus.drainPresentationTail(1);
+  assert.deepEqual(seen.slice(-1), ['p0:b'], 'drain takes its own budget');
+  bus.drainPresentationTail(8);
+  assert.deepEqual(seen.slice(-1), ['p1:b']);
+  assert.equal(bus.pendingPresentationCount(), 0);
+});
+
+test('presentation queue preserves per-emit FIFO and off() retracts a queued tier listener', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('e', (p) => seen.push(`x:${p}`), { presentation: true });
+  bus.on('e', (p) => seen.push(`y:${p}`), { presentation: true });
+  bus.emit('e', 1);
+  bus.emit('e', 2);
+  const offY = bus.on('e', (p) => seen.push(`y:${p}`), { presentation: true });
+  // The snapshot semantics of the sim tier apply per-emit slice too: a listener added after
+  // the first emit is absent from it, present in later slices.
+  bus.emit('e', 3);
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen, ['x:1', 'y:1', 'x:2', 'y:2', 'x:3', 'y:3', 'y:3'], 'slices drain in emit order; late listener joins from its own emit');
+  offY();
+  bus.emit('e', 4);
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen.slice(-2), ['x:4', 'y:4'], 'off() hits both tier tables by fn identity');
+});
+
+test('a queued presentation tail emitting synchronously lands behind the drain, not ahead of it', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('e', (p) => { seen.push(`p0:${p}`); if (p === 'a') bus.emit('e', 'nested'); }, { presentation: true });
+  bus.on('e', (p) => seen.push(`p1:${p}`), { presentation: true });
+  bus.emit('e', 'a');
+  bus.drainPresentationTail(2);
+  assert.deepEqual(seen, ['p0:a', 'p1:a'], 'the nested emit queues behind the current slice');
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen.slice(-2), ['p0:nested', 'p1:nested']);
+});
+
+test('clear() drops the presentation queue; a claimed bus keeps slicing after clear', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('e', () => seen.push('x'), { presentation: true });
+  bus.emit('e');
+  bus.clear();
+  assert.equal(bus.pendingPresentationCount(), 0, 'clear() aborts queued presentation tails');
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen, []);
+  bus.on('e', () => seen.push('fresh'), { presentation: true });
+  bus.emit('e');
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen, ['fresh'], 'the claim survives clear(): the runner still owns the frame pump');
+});

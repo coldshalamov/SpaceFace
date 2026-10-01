@@ -1947,8 +1947,8 @@ export const audio = {
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
       this.play('sfx_shield_restore', { position, gain: isPlayer ? 0.8 : 0.4 });
     });
-    bus.on('entity:killed', (p) => this._onKilled(p));
-    bus.on('entity:destroyed', (p) => this._onDestroyed(p));
+    bus.on('entity:killed', (p) => this._onKilled(p), { presentation: true });
+    bus.on('entity:destroyed', (p) => this._onDestroyed(p), { presentation: true });
     bus.on('player:death', (p) => this._onPlayerDeath(p));
     bus.on('player:respawn', (p) => this._onPlayerRespawn(p));
     bus.on('mining:start', (p) => this._onMiningStart(p));
