@@ -1634,6 +1634,19 @@
       "integration": "live",
       "commit": "2c7b0874b",
       "verification": "focused_green"
+    },
+    {
+      "id": "verb-27-brake-stop-preview",
+      "date": "2026-10-01",
+      "wf": "WF-05",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "previewCounterThrust authored for HUD previews but unconsumed; previewBrakeStop carries the kernel brake law (per-axis saturated+exponential to deadSpeed floor) to a settle vector on the travel tape's third reveal condition",
+      "fingerprint": "verb=brake,subject=travel_tape_stop_vector,sector=flight,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "4ad3aac7a",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
