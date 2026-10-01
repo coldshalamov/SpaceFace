@@ -3,6 +3,8 @@
 // These rows name module combinations that are already mechanically real. They do not add stats;
 // checks prove each advertised drawback matches getDerivedStats() for the validation hull.
 
+import { MODULES } from './modules.js';
+
 export const SYNERGY_TELLS = Object.freeze([
   synergy({
     id: 'rammer_truck',
@@ -47,6 +49,7 @@ export const SYNERGY_TELLS = Object.freeze([
 ]);
 
 const SYNERGY_BY_ID = new Map(SYNERGY_TELLS.map((row) => [row.id, row]));
+const MODULE_NAME_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod.name || mod.id]));
 
 function synergy(row) {
   const moduleIds = Object.freeze(row.moduleIds.slice().sort());
@@ -80,12 +83,14 @@ export function synergiesForFittings(fittings) {
 
 export function compactSynergy(row) {
   if (!row) return null;
+  const names = row.moduleIds.map((id) => MODULE_NAME_BY_ID.get(id) || id);
   return Object.freeze({
     id: row.id,
     label: row.label,
     benefit: row.benefit,
     drawback: row.drawback.label,
     drawbackStat: row.drawback.stat,
+    requires: `fitted together: ${names.join(' + ')}`,
     modules: row.moduleIds.slice(),
   });
 }

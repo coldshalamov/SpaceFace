@@ -169,11 +169,14 @@ function roleFallback(role) {
 }
 
 export function classifyBuildIdentity(input, options = {}) {
-  const ids = moduleIdsForBuild(input);
+  const reveal = options.reveal || null;
+  // The badge may only reason over fittings the scan actually disclosed: a
+  // class-band contact names the hull role, never the hidden loadout.
+  const fittingsDisclosed = !reveal || reveal.quality === 'full' || reveal.quality === 'deep';
+  const ids = fittingsDisclosed ? moduleIdsForBuild(input) : [];
   const defs = moduleDefs(ids);
   const idSet = new Set(ids);
   const shipDef = options.shipDef || shipDefForEntity(input, options.shipId);
-  const reveal = options.reveal || null;
   const role = roleText(shipDef, input, reveal);
   const basis = {
     shipId: shipDef && shipDef.id || options.shipId || reveal && reveal.shipId || null,
