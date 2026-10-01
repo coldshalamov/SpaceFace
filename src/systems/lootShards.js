@@ -253,6 +253,44 @@ export function stampVolatilePresentation(target, commodityId) {
   return target;
 }
 
+/**
+ * NXI-029 — the dominant volatile lot inside a multi-commodity pool. The pod's hazard reads from
+ * the lot it mostly IS: largest quantity wins, ties break lexically so the pick is deterministic.
+ * Inert pools return null — inert cargo stays inert.
+ */
+export function dominantVolatileCommodityId(pool) {
+  if (!pool || typeof pool !== 'object') return null;
+  let best = null;
+  let bestQty = 0;
+  for (const id of Object.keys(pool)) {
+    const qty = Math.max(0, Math.floor(Number(pool[id]) || 0));
+    if (qty <= 0 || !volatileClassOf(id)) continue;
+    if (qty > bestQty || (qty === bestQty && best != null && id < best)) {
+      best = id;
+      bestQty = qty;
+    }
+  }
+  return best;
+}
+
+/**
+ * NXI-029 — keep volatile identity through dump and recovery on pooled manifest bodies. A pod
+ * whose whole cargo is one commodity already stamps via applyJettisonedCargoData; a pooled
+ * manifest body carries salvagePool instead, so its headline commodity goes to
+ * `primaryCommodityId` (the freightCausality convention: lexical first) and its dominant
+ * volatile lot gets the class/lamp/silhouette stamp. Inert pools mark nothing.
+ */
+export function stampManifestVolatilePresentation(data) {
+  const pool = data && data.salvagePool;
+  if (!data || !pool || typeof pool !== 'object') return data;
+  if (data.primaryCommodityId == null) {
+    const ids = Object.keys(pool).filter((id) => (Math.floor(Number(pool[id])) || 0) > 0).sort();
+    if (ids.length) data.primaryCommodityId = ids[0];
+  }
+  stampVolatilePresentation(data, dominantVolatileCommodityId(pool));
+  return data;
+}
+
 export function fieldProfileForVolatilePod(pod, out = null) {
   const klass = volatileClassOf(pod && pod.data);
   const body = pod && pod.physicsBody;
@@ -1136,6 +1174,9 @@ export const lootShards = {
     });
     // Save/Continue: payloads are not world-record candidates; persist via entity flags.
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    // NXI-029 — a volatile haul keeps its hazard identity on the spilled body: the lamp and slam
+    // class the player can read before deciding whether to slam it, scoop it, or leave it.
+    stampManifestVolatilePresentation(entity.data);
     victim.data.manifestPayloadDropped = true;
 
     enforceCivilianManifestPayloadCap(
@@ -1196,6 +1237,7 @@ export const lootShards = {
               && (data.ownerId == null || String(data.ownerId) === String(identity.ownerId))));
         if (!freightMatch && !payloadMatch) continue;
         stampCargoIdentity(data, identity);
+        stampManifestVolatilePresentation(data);
         stamped += 1;
       }
     }
