@@ -601,9 +601,11 @@ export const masslineThrow = {
     const runtime = ensureThrowSubtree(state);
     const prediction = predictionReceipt(runtime.selfSolution || {});
     const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
+    const earnedBonus = selfSlingBonusDv(speed, this._swing.load, true);
     const receipt = { releaseId, source: 'massline', physicsEarned: true,
       targetId: runtime.selfSolution && runtime.selfSolution.targetId,
-      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0, load: this._swing.load,
+      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0,
+      selfSlingBonusDv: Math.round(earnedBonus), load: this._swing.load,
       exitAngle: Math.atan2(player.vel.z, player.vel.x), exitSpeed: speed, tick: state.tick,
       prediction, impulses: [], releasePosition: { x: finite(player.pos.x), z: finite(player.pos.z) } };
     runtime.lastSelfSling = receipt;

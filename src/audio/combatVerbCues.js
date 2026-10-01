@@ -98,6 +98,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'cloak:faded': 'sfx_cloak_fade',
   'cloak:dropped': 'sfx_massline_cloak_off',
   'massline:releaseCancelled': 'sfx_ui_switch_detent',
+  'weapons:momentumSinkPlanted': 'sfx_vector_mine',
+  'weapons:momentumSinkReleased': 'sfx_ui_drawer_latch',
   'fields:hitchCut': 'sfx_tether_twang',
 
   'cruise:engaged': SILENT('Cruise engage is owned by the lane-lock voice (presentation.travel.lane_lock); a boost row would double it.'),
