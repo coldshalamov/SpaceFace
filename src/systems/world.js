@@ -163,6 +163,7 @@ import {
   upsertRecord,
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
@@ -2967,6 +2968,9 @@ export const world = {
     ent.type = 'wreck';
     if (ent.collides !== true) bumpCollidesFlipEpoch();
     ent.collides = true;
+    // The reuse path can revive an entity appended collides:false — re-key the collision
+    // slice or its hull physically collides while broadphase/splinter lanes see nothing.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
     ent.radius = oneOff.radius;
     ent.mass = mass;
     ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),

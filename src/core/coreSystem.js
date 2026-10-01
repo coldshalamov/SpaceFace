@@ -905,6 +905,40 @@ function removeFromIndexArray(list, e) {
   return false;
 }
 
+/**
+ * Post-spawn collides flips. append ran `if (e.collides)` exactly once at spawn and flips
+ * never re-key, so an F→T body keeps real Rapier collision (physics syncs entityList) while
+ * every bucket consumer — projectile broadphase (spatialStatics/spatialDynamics), autopilot
+ * obstacles, optic-lane bodies, framing and spawn clearance — treats it as absent. The flip
+ * sites bump collidesFlipEpoch for the epoch-keyed caches; this re-keys just the collision
+ * slice to match e.collides. Direction-agnostic, though today only F→T sites call it:
+ * T→F stale presence is the separate, conservative over-inclusion caveat.
+ */
+export function syncEntityCollisionIndexMembership(index, e) {
+  if (!index || !index.__spacefaceEntityIndexV1 || !e || e.alive === false) return;
+  repairEntityIndex(index);
+  // An entity the index never tracked must not enter a bucket here — removeEntityIndex
+  // early-returns on unindexed ids, which would strand the row permanently.
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
+  const present = index.collidables.indexOf(e) !== -1;
+  const want = !!e.collides;
+  if (want === present) return;
+  if (want) {
+    index.collidables.push(e);
+    if (isMovableEntity(e)) {
+      index.spatialDynamics.push(e);
+    } else {
+      index.spatialStatics.push(e);
+      index.spatialStaticVersion++;
+    }
+  } else {
+    removeFromIndexArray(index.collidables, e);
+    if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
+    removeFromIndexArray(index.spatialDynamics, e);
+  }
+  index.version++;
+}
+
 // Batch counterpart of removeEntityIndex for multi-corpse ticks (sweep, sector despawn). One
 // membership filter per bucket drops the whole corpse set while preserving survivor order
 // exactly as the sequential indexOf+splice pass did — same final index state, and the version

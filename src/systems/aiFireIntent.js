@@ -18,7 +18,7 @@ import {
   PD_SCREEN_DEFAULT_RADIUS,
 } from '../ai/pdScreen.js';
 import { isPlayerWanted } from './heat.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { collidesFlipEpoch, indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { queryCombatTableRadius } from '../core/combatTable.js';
 import { solveLeadAngle } from './weapons.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -334,7 +334,9 @@ export function opticLaneBodiesWithShelved(state) {
       sig: () => {
         const index = state && state.entityIndex;
         const field = state && state.world && state.world.asteroidField;
-        return `${(state && state.tick) | 0}:${(index && Number(index.version)) || 0}:${(field && Number(field.version)) || 0}`;
+        // collidesFlipEpoch folds in post-spawn collides flips — the corpus member predicate
+        // reads e.collides, and a flip bumps only the epoch, not index/field versions.
+        return `${(state && state.tick) | 0}:${(index && Number(index.version)) || 0}:${(field && Number(field.version)) || 0}:${collidesFlipEpoch()}`;
       },
       values() {
         return (function* () {

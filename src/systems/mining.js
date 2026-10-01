@@ -26,6 +26,7 @@ import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import {
   clearPickupAcceptanceRetry,
@@ -1185,7 +1186,13 @@ export const mining = {
         state.playerId,
         state.simTime,
       )) continue;
-      if (pickupData.jettisonedCargo && e.collides === false) { bumpCollidesFlipEpoch(); e.collides = true; }
+      // The embargo spawned this pod collides:false and no append ever re-runs — re-key the
+      // collision buckets alongside the epoch bump or broadphase/splinter lanes ignore it.
+      if (pickupData.jettisonedCargo && e.collides === false) {
+        bumpCollidesFlipEpoch();
+        e.collides = true;
+        syncEntityCollisionIndexMembership(state.entityIndex, e);
+      }
       if (e.type === 'pickup') {
         const beamCollection = this._collectPickupOnBeamLine(e, player);
         if (beamCollection) {
