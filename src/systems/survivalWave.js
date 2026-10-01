@@ -556,6 +556,62 @@ export const survivalWave = {
     return total;
   },
 
+  _resolveCohortEntity(id, member) {
+    if (member && member.entity && member.entity.alive !== false) return member.entity;
+    if (this.state && this.state.entities && typeof this.state.entities.get === 'function') {
+      const live = this.state.entities.get(id);
+      if (live) return live;
+    }
+    return member ? member.entity : null;
+  },
+
+  _isCohortMemberDisabled(id, member) {
+    const entity = this._resolveCohortEntity(id, member);
+    if (!entity) return false;
+    if (entity.alive === false) return true;
+    if (entity.disabled === true || entity.data?.disabled === true || entity.data?.neutralized === true) {
+      return true;
+    }
+    if (entity.flags && entity.flags.disabled === true) {
+      return true;
+    }
+    if (entity.data && entity.data.ai && entity.data.ai.state === 'disabled') {
+      return true;
+    }
+    const combat = this.state && this.state.combat && this.state.combat.entities
+      ? this.state.combat.entities[String(id)] : null;
+    if (combat && combat.capabilities) {
+      if (combat.capabilities.drive === false && combat.capabilities.weapon === false) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  _isCohortMemberActionable(id, member) {
+    const entity = this._resolveCohortEntity(id, member);
+    if (!entity || entity.alive === false) return false;
+    return !this._isCohortMemberDisabled(id, member);
+  },
+
+  _disabledCohortCount() {
+    if (!this._cohort || this._cohort.size === 0) return 0;
+    let count = 0;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberDisabled(id, member)) count += 1;
+    }
+    return count;
+  },
+
+  _actionableCohortCount() {
+    if (!this._cohort || this._cohort.size === 0) return 0;
+    let count = 0;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberActionable(id, member)) count += 1;
+    }
+    return count;
+  },
+
   _checkCleared(run) {
     if (this._cleared) return;
     if (!this._active) return;
@@ -569,7 +625,7 @@ export const survivalWave = {
       if (!playerIsAlive(this.state)) return;
       const durationSeconds = this._durationSeconds();
       if (this._swarm.killTarget) {
-        if (this._admittedTotal < this._plannedBodies || this._pending.length || this._cohort.size) return;
+        if (this._admittedTotal < this._plannedBodies || this._pending.length || this._actionableCohortCount() > 0) return;
       } else if (this._elapsedSeconds() < durationSeconds) return;
       this._cleared = true;
       this._active = false;
@@ -582,6 +638,7 @@ export const survivalWave = {
         admitted: this._admittedTotal,
         killed: this._resolved,
         survivors: this._cohort.size,
+        disabledSurvivors: this._disabledCohortCount(),
         starved: this._requestedTotal > 0 && this._admittedTotal === 0,
         tick: this._cursor,
         runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
@@ -589,8 +646,10 @@ export const survivalWave = {
       return;
     }
     if (this._pending && this._pending.length > 0) return;
-    for (const member of this._cohort.values()) {
-      if (this._blockingRoles.size === 0 || this._blockingRoles.has(member && member.role)) return;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberActionable(id, member)) {
+        if (this._blockingRoles.size === 0 || this._blockingRoles.has(member && member.role)) return;
+      }
     }
     this._cleared = true;
     this._active = false;
@@ -598,6 +657,8 @@ export const survivalWave = {
       wave: this._wave,
       requested: this._requestedTotal,
       admitted: this._admittedTotal,
+      survivors: this._cohort.size,
+      disabledSurvivors: this._disabledCohortCount(),
       // A wave the cap starved completely resolves rather than deadlocking; the receipt says so
       // instead of leaving a silent empty wave that reads like a cleared one.
       starved: this._requestedTotal > 0 && this._admittedTotal === 0,
