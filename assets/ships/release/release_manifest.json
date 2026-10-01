@@ -4104,14 +4104,14 @@
    "kind": "part:wholeships",
    "source": "assets/ships/parts/wholeships/yard_tug.glb",
    "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
-   "sourceSha256": "3aa01310cb56e2ea64b553598fec5fe04c3e4ecdedb210c7f10755b5e3c13da1",
-   "releaseSha256": "7fc0515da6c3f2797a8107baa079412aa3307576f947aaef6d93d33bc526e321",
-   "sourceBytes": 3712280,
-   "releaseBytes": 1300504,
+   "sourceSha256": "5f56345140e6aff5ffdd1fc3364df34e747d8832982e0ea3b0632b0b927ed4a0",
+   "releaseSha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
+   "sourceBytes": 3774460,
+   "releaseBytes": 1350744,
    "textures": 6,
    "ktx2Textures": 6,
-   "meshoptBufferViews": 201,
-   "contractNodeCount": 67
+   "meshoptBufferViews": 261,
+   "contractNodeCount": 82
   },
   {
    "id": "wholeship_warden_production_v1",

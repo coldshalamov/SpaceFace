@@ -2510,8 +2510,8 @@
    "slot": "hull",
    "releaseAssetId": "wholeship_yard_tug",
    "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
-   "releaseSha256": "7fc0515da6c3f2797a8107baa079412aa3307576f947aaef6d93d33bc526e321",
-   "releaseBytes": 1300504,
+   "releaseSha256": "311a5f3197d4521b77796fedfd520fc4c7a8dd5a7cb4a2644d7c148d2f71c769",
+   "releaseBytes": 1350744,
    "dynamicNameIncludes": [
     "HOOK_DRIVE",
     "HOOK_NAV",
