@@ -299,6 +299,9 @@ export const survivalAnnounce = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || null;
     this._unsubs = [];
+    // Per-session defeat keys — a durable boss record may re-emit on demote/reload replays and
+    // each defeat deserves exactly one announcement, so this set survives _reset.
+    this._bossDefeatedKeys = new Set();
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
@@ -309,6 +312,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', () => { this._muted = true; }));
+    this._unsubs.push(this.bus.on('boss:defeated', (p) => this._onBossDefeated(p || {})));
   },
 
   destroy() {
@@ -516,6 +520,28 @@ export const survivalAnnounce = {
     }
     // A fresh wave_intro means the previous wave's line budget is spent and gone.
     if (phase === 'wave_intro') this._hintsThisWave = 0;
+  },
+
+  /**
+   * FIGHT-02 — the world's capital-boss defeat is announced by this same voice. The dreadnought
+   * POI fight happens outside a survival run, so this path bypasses the run gate and the
+   * per-wave budget on purpose; it is still one line, deduped per defeat record, and only when
+   * the player's own kill produced it.
+   */
+  _onBossDefeated(payload) {
+    if (this._muted || !payload) return;
+    if (payload.killerId !== (this.state && this.state.playerId)) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const key = `${payload.sectorId || '?'}:${payload.poiId || '?'}`;
+    if (this._bossDefeatedKeys.has(key)) return;
+    this._bossDefeatedKeys.add(key);
+    const name = typeof payload.poiName === 'string' && payload.poiName ? payload.poiName : 'The capital signature';
+    this.bus.emit('voice:say', {
+      channel: 'objective',
+      id: `boss:defeated:${key}`,
+      text: `${name} is down.`,
+      ttl: 6,
+    });
   },
 };
 

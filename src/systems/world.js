@@ -887,7 +887,12 @@ export const world = {
         });
       }
     }
-    this.bus.emit('boss:defeated', { sectorId, poiId, killerId: p.killerId || null });
+    this.bus.emit('boss:defeated', {
+      sectorId,
+      poiId,
+      killerId: p.killerId || null,
+      poiName: (poi && poi.name) || rec.name || null,
+    });
   },
 
   // =========================================================================================
