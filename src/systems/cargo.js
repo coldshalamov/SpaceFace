@@ -96,6 +96,106 @@ export function isUnsellableCargo(state, commodityId) {
   return false;
 }
 
+function heldCargoQuantity(state, commodityId) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  return Math.max(0, Math.floor(Number(items && items[commodityId]) || 0));
+}
+
+/**
+ * Remaining sealed claim for one preloaded contract.
+ * An accounted `sealedRemaining` is the owner's record. A known `qty` with no delivery
+ * record reserves the full obligation — old saves must not invent delivered progress.
+ * No quantity at all is ambiguous: the whole held stack stays sealed.
+ */
+function preloadedClaim(mission) {
+  if (!mission || mission.preloadedCargo !== true || !mission.params) return null;
+  const commodityId = mission.params.cmdtyId;
+  if (typeof commodityId !== 'string' || !commodityId) return null;
+  const params = mission.params;
+  if (params.sealAccounted === true && Number.isFinite(Number(params.sealedRemaining))) {
+    return {
+      commodityId,
+      remaining: Math.max(0, Math.floor(Number(params.sealedRemaining))),
+      explicit: true,
+    };
+  }
+  const qty = Number(params.qty);
+  if (Number.isFinite(qty) && qty > 0) {
+    return { commodityId, remaining: Math.floor(qty), explicit: true };
+  }
+  return { commodityId, remaining: null, explicit: false };
+}
+
+function activePreloadedClaims(state, commodityId) {
+  const active = state && state.missions && state.missions.active;
+  if (!Array.isArray(active)) return [];
+  const claims = [];
+  for (const mission of active) {
+    if (!mission || mission.status !== 'active') continue;
+    const claim = preloadedClaim(mission);
+    if (!claim || claim.commodityId !== commodityId) continue;
+    claims.push({ mission, claim });
+  }
+  return claims;
+}
+
+/** Units of `commodityId` ordinary sale and jettison must leave aboard. */
+export function reservedCargoQuantity(state, commodityId) {
+  const held = heldCargoQuantity(state, commodityId);
+  if (isPersistentCargo(state, commodityId)) return held;
+  if (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId)) return held;
+  const claims = activePreloadedClaims(state, commodityId);
+  if (!claims.length) return 0;
+  if (claims.some((row) => !row.claim.explicit)) return held;
+  let reserved = 0;
+  for (const row of claims) reserved += row.claim.remaining;
+  return reserved;
+}
+
+/** Units the player may sell or dump. Held minus a valid reservation, never below zero. */
+export function sellableCargoQuantity(state, commodityId) {
+  if (isPersistentCargo(state, commodityId)) return 0;
+  if (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId)) return 0;
+  const held = heldCargoQuantity(state, commodityId);
+  const claims = activePreloadedClaims(state, commodityId);
+  if (!claims.length) return held;
+  if (claims.some((row) => !row.claim.explicit)) return 0;
+  let reserved = 0;
+  for (const row of claims) reserved += row.claim.remaining;
+  return Math.max(0, held - reserved);
+}
+
+/**
+ * Units this contract may take out of the hold without spending another contract's reservation.
+ * Ambiguous rows (no quantity) release only the legacy single-unit obligation, capped by
+ * explicit siblings. An explicit row releases its own remaining units, and nothing when an
+ * ambiguous sibling still seals the whole stack.
+ */
+export function releasableContractUnits(state, mission) {
+  const claim = preloadedClaim(mission);
+  if (!claim) return 0;
+  const held = heldCargoQuantity(state, claim.commodityId);
+  let explicitOthers = 0;
+  let ambiguousSibling = false;
+  const active = state && state.missions && state.missions.active;
+  if (Array.isArray(active)) {
+    for (const other of active) {
+      if (!other || other === mission || other.id === mission.id || other.status !== 'active') continue;
+      const sibling = preloadedClaim(other);
+      if (!sibling || sibling.commodityId !== claim.commodityId) continue;
+      if (!sibling.explicit) ambiguousSibling = true;
+      else explicitOthers += sibling.remaining;
+    }
+  }
+  const room = Math.max(0, held - explicitOthers);
+  if (!claim.explicit) {
+    const qty = Math.max(1, Math.floor(Number(mission.params && mission.params.qty) || 1));
+    return Math.min(qty, room);
+  }
+  if (ambiguousSibling) return 0;
+  return Math.min(claim.remaining, room);
+}
+
 /** The lot a flight jettison dumps.
  *  A held explicit focus is that lot, or a refusal when the lot is sealed.
  *  Another dumpable lot is the default only when no held focus was chosen.
@@ -109,12 +209,13 @@ export function selectedJettisonLot(state) {
     ? state.ui.selectedCommodityId
     : '';
   const focus = fromHold || fromUi;
-  // An explicit sealed or persistent lot is a refusal. Do not substitute a different good.
+  // An explicit fully sealed or persistent lot is a refusal. Do not substitute a different good.
+  // A lot that still has unreserved units dumps those units, not a neighbor.
   if (focus && Number(items[focus]) > 0) {
-    return isUnsellableCargo(state, focus) ? null : focus;
+    return sellableCargoQuantity(state, focus) > 0 ? focus : null;
   }
   const ids = Object.keys(items)
-    .filter((id) => Number(items[id]) > 0 && !isUnsellableCargo(state, id))
+    .filter((id) => Number(items[id]) > 0 && sellableCargoQuantity(state, id) > 0)
     .sort();
   return ids[0] || null;
 }
@@ -723,7 +824,11 @@ export const cargo = {
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
   jettison(commodityId, qty, options = null) {
-    if (isUnsellableCargo(this.state, commodityId)) return 0;
+    // Exact amount: a request that would touch sealed units dumps nothing.
+    if (isUnsellableCargo(this.state, commodityId)) {
+      const requested = Math.max(0, Math.floor(Number(qty) || 0));
+      if (requested > sellableCargoQuantity(this.state, commodityId)) return 0;
+    }
     const state = this.state;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const dumped = removeCargo(state, commodityId, qty);

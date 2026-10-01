@@ -14,7 +14,8 @@ import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
-import { isUnsellableCargo } from '../../../systems/cargo.js';
+import { isUnsellableCargo, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
+import { compareDockedFreight, formatFreightComparison } from '../../../systems/economy.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -694,7 +695,9 @@ export function createMarketScreen(ctx) {
   }
 
   function tradeQuantityLimit(state, row) {
-    if (mode === 'sell' && row && isUnsellableCargo(state, row.id)) return 0;
+    if (mode === 'sell' && row && isUnsellableCargo(state, row.id)) {
+      return sellableCargoQuantity(state, row.id);
+    }
     if (mode === 'sell') return heldQty(state, row.id);
     const free = holdFree(state);
     const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
@@ -706,7 +709,13 @@ export function createMarketScreen(ctx) {
   // A sealed lot stays on the sell list. The dial, the sale line, and the hold
   // arc must describe no sale of it, including after Fewer or More.
   function pinSealedSellQuantity(state, id = selectedId) {
-    if (mode === 'sell' && id && isUnsellableCargo(state, id)) qty = 0;
+    if (mode === 'sell' && id && isUnsellableCargo(state, id) && sellableCargoQuantity(state, id) <= 0) qty = 0;
+  }
+
+  function sellOpeningQuantity(state, id) {
+    const held = heldQty(state, id);
+    if (!isUnsellableCargo(state, id)) return held;
+    return sellableCargoQuantity(state, id);
   }
 
   function openTradeMode(nextMode, state, options = {}) {
@@ -722,7 +731,7 @@ export function createMarketScreen(ctx) {
     if (mode === 'sell' && rows.length) {
       const held = rows.find((r) => heldQty(state, r.id) > 0) || rows[0];
       selectedId = held.id;
-      qty = heldQty(state, held.id);
+      qty = sellOpeningQuantity(state, held.id);
       pinSealedSellQuantity(state, held.id);
     } else {
       qty = 1;
@@ -815,7 +824,7 @@ export function createMarketScreen(ctx) {
     }
     dressRows();
     if (!changed) return;
-    qty = mode === 'sell' ? heldQty(ctx.state || {}, id) : 1;
+    qty = mode === 'sell' ? sellOpeningQuantity(ctx.state || {}, id) : 1;
     pinSealedSellQuantity(ctx.state || {}, id);
     const state = ctx.state || {};
     renderStage(state); renderConsole(state);
@@ -1374,8 +1383,12 @@ export function createMarketScreen(ctx) {
         intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
     // Priority matters: with no quote yet (qty 0, or nothing affordable) creditReady is false by
     // construction, and checking it first blamed credits on first paint of a stockless market.
-    const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id);
+    const freeSell = mode === 'sell' ? sellableCargoQuantity(state, r.id) : 0;
+    const sealedUnits = mode === 'sell' && isUnsellableCargo(state, r.id)
+      ? reservedCargoQuantity(state, r.id) : 0;
+    const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id) && freeSell <= 0;
     const note = sealedHold ? 'Sealed contract cargo cannot be sold'
+      : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
       : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
       : qty < 1 ? ''
       : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
@@ -1431,13 +1444,20 @@ export function createMarketScreen(ctx) {
   function renderRoutes(state) {
     let trades = [];
     try { trades = computeBestTrades(state, stationId(state)) || []; } catch (_) { trades = []; }
-    const rows = trades.slice(0, 3).map((t) => {
+    const rows = trades.slice(0, 3).map((t, index) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const card = formatRouteCard(t);
+      let comparison = '';
+      if (index === 0) {
+        try {
+          const freight = compareDockedFreight(state, stationId(state), t);
+          comparison = freight ? ` · ${formatFreightComparison(freight)}` : '';
+        } catch (_) { comparison = ''; }
+      }
       return (
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
-            `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
+            `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
@@ -1577,7 +1597,8 @@ export function createMarketScreen(ctx) {
       const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
       const tradeState = ctx.state || {};
-      if (mode === 'sell' && isUnsellableCargo(tradeState, selectedId)) return;
+      if (mode === 'sell' && isUnsellableCargo(tradeState, selectedId)
+        && tradeQty > sellableCargoQuantity(tradeState, selectedId)) return;
       const quotedRow = tradedList(tradeState).find((row) => row.id === selectedId) || null;
       const freshQuote = quotedRow ? selectedTradeQuote(tradeState, quotedRow, tradeQty) : null;
       const decision = marketGoDecision({
