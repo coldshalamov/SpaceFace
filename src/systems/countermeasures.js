@@ -71,6 +71,17 @@ function ensureCm(e) {
   return e.data.cm;
 }
 
+// A finite stock (live block, else the fitting) is a magazine. Unset stays the cooldown
+// dispenser — not an empty tube. Callers must not raise this number on a refusal.
+function liveCountermeasureStock(cm, cfg) {
+  if (cm && Number.isFinite(cm.stock)) return cm.stock;
+  if (cfg && Number.isFinite(cfg.stock)) {
+    cm.stock = cfg.stock;
+    return cm.stock;
+  }
+  return null;
+}
+
 /** Bench A/B: production default ON. Quiet latch skips ship walks when no CM/PDS interest. */
 let COUNTERMEASURES_QUIET_LATCH = true;
 export function setCountermeasuresQuietLatchForBench(enabled) {
@@ -353,11 +364,28 @@ export const countermeasures = {
       return false;
     }
     const cm = ensureCm(e);
+    const cfg = eq.cm;
+    const stock = liveCountermeasureStock(cm, cfg);
+    // Empty is its own refusal: no success cue, no buoy, and the count stays empty.
+    if (stock != null && !(stock >= 1)) {
+      this._denyDeploy(e, cfg.kind, 'empty', 0);
+      return false;
+    }
     if (cm.cooldownT > 0) {
-      this._denyDeploy(e, eq.cm.kind, 'cooldown', cm.cooldownT);
+      this._denyDeploy(e, cfg.kind, 'cooldown', cm.cooldownT);
       return false; // not ready
     }
-    const cfg = eq.cm;
+    // Chaff and ECM answer an incoming lock or missile. A decoy buoy is bait you place
+    // before anyone has a lock, so that case is not this refusal.
+    if (cfg.kind !== 'decoy') {
+      ensureCountermeasureRuntime(this);
+      if (!this._missileThreat(e, this.state)) {
+        this._denyDeploy(e, cfg.kind, 'no_lock', 0);
+        return false;
+      }
+    }
+
+    if (stock != null) cm.stock = stock - 1;
 
     // Break locks: any ship whose combat.lockTarget is THIS ship loses lockProgress (chaff fully,
     // ECM partially). This is the "missile can't maintain track through the cloud" effect.
@@ -401,7 +429,7 @@ export const countermeasures = {
   },
 
   // A refused deploy is a beat the player must hear, never a silent `return false`: the sim event
-  // names the reason (kind + readyIn on cooldown; no_module otherwise) for any listener, and the
+  // names the reason (cooldown, empty, no_lock, or no_module) for any listener, and the
   // player additionally gets the one-voice alert + shared deny cue — the same channels the
   // weapons vent / mining vent refusals use. AI auto-deploy gates on fittings + cooldown before
   // calling _tryDeploy, so in practice only the player lands in the denied branches.
@@ -415,12 +443,18 @@ export const countermeasures = {
       tick: this.state.tick,
     });
     if (e.id !== this.state.playerId) return;
+    const ready = Math.ceil(Math.max(0, Number(readyIn) || 0));
+    const text = reason === 'cooldown'
+      ? `COUNTERMEASURE RECHARGING ${ready}s`
+      : reason === 'empty'
+        ? 'COUNTERMEASURES EMPTY'
+        : reason === 'no_lock'
+          ? 'NO INCOMING LOCK'
+          : 'NO COUNTERMEASURE FITTED';
     this.bus.emit('alert', {
       key: 'cm-denied',
       sev: 'warn',
-      text: reason === 'cooldown'
-        ? `COUNTERMEASURE RECHARGING ${Math.ceil(Math.max(0, Number(readyIn) || 0))}s`
-        : 'NO COUNTERMEASURE FITTED',
+      text,
       ttl: 1.6,
     });
     this.bus.emit('audio:cue', { id: 'ui_deny' });
