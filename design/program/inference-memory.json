@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "choir-zealot-verse-hail",
-      "date": "2026-09-23",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A spawned Choir zealot carries the Pattern contact and opens on the faction's own attack line.",
-      "fingerprint": "verb=hail,subject=choir-zealot,sector=any,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "9b0d2dfd8376c1b314157c640bc8197ccff7273c",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-wf06-volatile-cargo-expansion",
       "date": "2026-09-23",
       "wf": "WF-06",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "f361091cc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "TEACH-06",
+      "date": "2026-10-01",
+      "wf": "WF-01",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "onboarding consumes FIELD_ESCAPES: caught in a field teaches its authored escape once per kind",
+      "fingerprint": "verb=hint,subject=field_escape,sector=any,domain=teach",
+      "references": [],
+      "integration": "live",
+      "commit": "ee2d4c14e",
       "verification": "focused_green"
     }
   ],
