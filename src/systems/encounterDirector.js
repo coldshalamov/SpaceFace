@@ -298,6 +298,10 @@ export const encounterDirector = {
       this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));
       // The deterministic choice bridge (UI/test harness both speak this).
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
+      // A claim-defense warning is the whole decode lead for the squad it will fire: publish
+      // the deterministic roster at onset so presentation can warm the hulls during the
+      // countdown instead of decoding them at the glass on arrival.
+      this.bus.on('claim:defenseWarning', (p) => this._publishClaimDefenseRoster(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
@@ -555,6 +559,22 @@ export const encounterDirector = {
       const shape = ENCOUNTERS[k];
       const maxCd = now + (shape && shape.cooldownS ? shape.cooldownS : 900);
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
+    }
+    // Warnings restored mid-countdown never re-emit claim:defenseWarning — republish their
+    // rosters here so the resumed countdown still covers the squad's decode lead.
+    const bodies = (state.claims && state.claims.bodies) || [];
+    for (const body of bodies) {
+      const defense = body && body.spec && body.spec.defense;
+      if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
+      this._publishClaimDefenseRoster({
+        encounterId: defense.encounterId,
+        bodyId: body.id,
+        sectorId: body.sectorId,
+        pos: { x: body.x, z: body.z },
+        attackerCount: defense.attackerCount,
+        attackerName: defense.attackerName,
+        motive: defense.motive,
+      });
     }
     // A load is a non-continuous sector enter: _onSectorEnter early-returns while _saveRestoring,
     // and this handler is where the authored entry breath and planner were promised ("jump /
@@ -974,6 +994,55 @@ export const encounterDirector = {
       : { ok: false, reason: 'resolved_on_fire' };
   },
 
+  /** The deterministic claim-defense plan: seeded entirely by (meta.seed, encounterId), so the
+   * same inputs reproduce the same roster at warning onset, at request time, and after restore.
+   * Pure — a dedicated mulberry32 stream, never state.rng. */
+  _resolveClaimDefensePlan(state, payload) {
+    const shape = ENCOUNTERS.claim_threat;
+    if (!shape) return null;
+    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
+    if (!body || body.sectorId !== payload.sectorId) return null;
+    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
+    const zone = {
+      id: `claim-defense:${payload.claimId}`,
+      name: body.name || 'Player claim',
+      type: 'mining_belt',
+      center: { x: local.x, z: local.z },
+      radius: 760,
+      threat: 2,
+    };
+    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
+    if (!item || !item.ships.length) return null;
+    return { item, zone, shape, rng };
+  },
+
+  _publishClaimDefenseRoster(payload) {
+    if (!payload || !payload.encounterId) return;
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) return;
+    const plan = this._resolveClaimDefensePlan(state, {
+      encounterId: payload.encounterId,
+      claimId: payload.bodyId || payload.claimId,
+      anchor: payload.pos || payload.anchor,
+      sectorId: payload.sectorId,
+      attackerCount: payload.attackerCount,
+      motive: payload.motive,
+      attackerName: payload.attackerName,
+    });
+    if (!plan) return;
+    const archetypes = [...new Set(plan.item.ships
+      .map((ship) => ship && ship.archetype)
+      .filter((archetype) => typeof archetype === 'string' && archetype))];
+    if (!archetypes.length) return;
+    this.emit('encounter:claimDefenseRoster', {
+      encounterId: payload.encounterId,
+      sectorId: payload.sectorId || null,
+      archetypes,
+    });
+  },
+
   /** Materialize a claim-owned defense contract at its exact physical anchor. This bypasses the
    * ambient planner but still uses the normal director spawn budget, causality, doctrine, ROE,
    * telegraph, resolution, and receipt machinery. The durable id makes retries/save recovery
@@ -988,23 +1057,9 @@ export const encounterDirector = {
       return { ok: true, encounterId: payload.encounterId, reused: true };
     }
     if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
-    const shape = ENCOUNTERS.claim_threat;
-    if (!shape) return { ok: false, reason: 'missing_shape' };
-    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
-    if (!body || body.sectorId !== payload.sectorId) return { ok: false, reason: 'missing_claim' };
-
-    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
-    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
-    const zone = {
-      id: `claim-defense:${payload.claimId}`,
-      name: body.name || 'Player claim',
-      type: 'mining_belt',
-      center: { x: local.x, z: local.z },
-      radius: 760,
-      threat: 2,
-    };
-    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
-    if (!item || !item.ships.length) return { ok: false, reason: 'empty_plan' };
+    const plan = this._resolveClaimDefensePlan(state, payload);
+    if (!plan) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, shape, rng } = plan;
     item.encounterId = payload.encounterId;
     item.squadId = payload.encounterId;
     item.sectorId = payload.sectorId;

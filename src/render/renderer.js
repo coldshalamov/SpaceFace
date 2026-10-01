@@ -2873,6 +2873,30 @@ function warmEncounterPendingDecode(owner) {
 }
 
 /**
+ * Claim-defense warnings give the whole countdown as decode lead, but the trigger is the
+ * player's own arrival — any tick of the window can fire the squad. Poll the live defenses
+ * once per residency pass and warm each known roster (published by the director at onset and
+ * after restore); ignored or settled outcomes simply let the warm lease expire.
+ */
+function warmClaimDefenseDecode(owner) {
+  const state = owner && owner.state;
+  const rosters = owner && owner._claimDefenseRosters;
+  const bodies = state && state.claims && state.claims.bodies;
+  if (!rosters || !rosters.size || !Array.isArray(bodies)) return;
+  const warmedAt = owner._claimDefenseWarmed
+    || (owner._claimDefenseWarmed = new WeakMap());
+  for (const body of bodies) {
+    const defense = body && body.spec && body.spec.defense;
+    if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
+    const roster = rosters.get(defense.encounterId);
+    if (!roster || warmedAt.get(defense) === defense.deadlineAt) continue;
+    warmedAt.set(defense, defense.deadlineAt);
+    warmEnemyRosterDecode(owner, roster.archetypes, 'claim-defense-decode-runway',
+      roster.sectorId || body.sectorId);
+  }
+}
+
+/**
  * A kill wreck is the victim's own whole-ship GLB — decoded under the 'place' slot, which the
  * hull's 'hull'-slot decode never produces. Every runway-decoded ship is killable, so warm its
  * resolved hulk file alongside the hull plan; file dedupe keeps the extra work to one 'place'
@@ -5636,6 +5660,13 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   const disposeGpu = !contextLost;
   const scene = owner.scene || null;
   const state = owner.state || null;
+
+  // A publish queued just before teardown would drain after clearRendererStateReferences nulls
+  // the references it guards on — flush it synchronously so the teardown-time snapshot lands.
+  if (owner._assetResidencyDiagnosticsPublishQueued === true) {
+    owner._assetResidencyDiagnosticsPublishQueued = false;
+    try { owner._publishAssetResidencyDiagnostics?.(); } catch (_) { /* diagnostics only */ }
+  }
 
   // Generation/cancellation work must be retired before any owned root is removed. Async manager
   // cleanup remains responsible for boundaries still in preparation; generation guards prevent it
@@ -11369,8 +11400,13 @@ export const render = {
     const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
       includePrefetch: true,
     });
-    onBus('jump:chargeStart', ({ targetSectorId } = {}) => {
+    onBus('jump:chargeStart', ({ targetSectorId, via, interdictionPool } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
+      // A drive jump rolls interdiction on arrival — the squad's hulls decode during the
+      // charge alongside the destination census instead of at the ambush reveal.
+      if (via === 'drive' && Array.isArray(interdictionPool) && interdictionPool.length) {
+        warmEnemyRosterDecode(this, interdictionPool, 'interdiction-decode-runway', targetSectorId);
+      }
     });
     onBus('player:death', ({ recoverable, recovery } = {}) => {
       // A recoverable defeat fixes its recovery dock in the receipt while the after-action
@@ -11415,6 +11451,18 @@ export const render = {
       // The tell window is exactly long enough to decode the announced roster — start the
       // boss/escort hulls at announcement rather than at spawn so arrival shows real models.
       warmNemesisSquadDecode(this, payload);
+    });
+    onBus('encounter:claimDefenseRoster', (payload = {}) => {
+      // The director publishes the deterministic claim-defense squad at warning onset — hold
+      // the roster so the residency pass can warm it through the countdown. The player's own
+      // arrival fires the encounter, so there is no fixed dueAt to gate on; the warning phase
+      // itself is the lead window.
+      if (!payload.encounterId || !Array.isArray(payload.archetypes) || !payload.archetypes.length) return;
+      const rosters = this._claimDefenseRosters || (this._claimDefenseRosters = new Map());
+      rosters.set(payload.encounterId, { archetypes: payload.archetypes, sectorId: payload.sectorId || null });
+    });
+    onBus('encounter:resolved', (payload = {}) => {
+      if (payload.encounterId && this._claimDefenseRosters) this._claimDefenseRosters.delete(payload.encounterId);
     });
     onBus('heist:missionCue', ({ moment, variantId } = {}) => {
       // Breakaway pressure spawns at capsule launch on a fixed 3-file roster — schedule
@@ -14134,6 +14182,7 @@ export const render = {
     kickDecodeRunwayAssets(this, presentationList);
     updatePredictedSectorPrewarm(this);
     warmEncounterPendingDecode(this);
+    warmClaimDefenseDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
