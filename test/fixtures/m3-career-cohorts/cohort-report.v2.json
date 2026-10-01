@@ -31,17 +31,17 @@
       "career": "hauler",
       "minutes": 30,
       "seed": 3232800769,
-      "credits": 16445,
-      "netWorth": 24445,
-      "earnedValue": 11445,
-      "creditsPerMin": 381.5,
+      "credits": 33564,
+      "netWorth": 41564,
+      "earnedValue": 28564,
+      "creditsPerMin": 952.13,
       "completedLoops": 1,
-      "completedContracts": 12,
-      "failedContracts": 2,
+      "completedContracts": 17,
+      "failedContracts": 1,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 1578.4,
-      "actionS": 208,
+      "travelS": 1508.1,
+      "actionS": 280,
       "bottlenecks": [
         {
           "code": "contract_accept_refused",
@@ -50,18 +50,10 @@
         {
           "code": "contract_serve_failed",
           "detail": "settle_incomplete"
-        },
-        {
-          "code": "spread_collapse",
-          "detail": "Route cmdty_ore_iron→station_helios collapsed"
-        },
-        {
-          "code": "market_exhaustion",
-          "detail": "All early routes cooling while live stock recovers"
         }
       ],
       "adaptersUsed": [],
-      "authorityReceipts": 24,
+      "authorityReceipts": 33,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -70,17 +62,17 @@
       "career": "hauler",
       "minutes": 60,
       "seed": 3232800769,
-      "credits": 16356,
-      "netWorth": 51356,
-      "earnedValue": 46356,
-      "creditsPerMin": 772.6,
+      "credits": 24836,
+      "netWorth": 59836,
+      "earnedValue": 54836,
+      "creditsPerMin": 913.93,
       "completedLoops": 1,
-      "completedContracts": 28,
-      "failedContracts": 4,
+      "completedContracts": 31,
+      "failedContracts": 3,
       "shipId": "ship_mule",
       "phase": "mule",
-      "travelS": 3104.6,
-      "actionS": 480,
+      "travelS": 3050.2,
+      "actionS": 520,
       "bottlenecks": [
         {
           "code": "contract_accept_refused",
@@ -92,15 +84,11 @@
         },
         {
           "code": "spread_collapse",
-          "detail": "Route cmdty_ore_iron→station_helios collapsed"
-        },
-        {
-          "code": "market_exhaustion",
-          "detail": "All early routes cooling while live stock recovers"
+          "detail": "Route cmdty_ore_bronzium→station_helios collapsed"
         }
       ],
       "adaptersUsed": [],
-      "authorityReceipts": 58,
+      "authorityReceipts": 63,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -109,17 +97,17 @@
       "career": "hauler",
       "minutes": 90,
       "seed": 3232800769,
-      "credits": 89227,
-      "netWorth": 124227,
-      "earnedValue": 119227,
-      "creditsPerMin": 1324.74,
+      "credits": 118108,
+      "netWorth": 153108,
+      "earnedValue": 148108,
+      "creditsPerMin": 1645.64,
       "completedLoops": 1,
-      "completedContracts": 45,
-      "failedContracts": 7,
+      "completedContracts": 49,
+      "failedContracts": 5,
       "shipId": "ship_mule",
       "phase": "mule",
-      "travelS": 4618.8,
-      "actionS": 776,
+      "travelS": 4556.4,
+      "actionS": 824,
       "bottlenecks": [
         {
           "code": "contract_accept_refused",
@@ -131,7 +119,7 @@
         }
       ],
       "adaptersUsed": [],
-      "authorityReceipts": 95,
+      "authorityReceipts": 101,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -279,10 +267,10 @@
       "career": "prospector",
       "minutes": 30,
       "seed": 3232808963,
-      "credits": 8329,
-      "netWorth": 17215,
-      "earnedValue": 3329,
-      "creditsPerMin": 110.97,
+      "credits": 8308,
+      "netWorth": 17158,
+      "earnedValue": 3308,
+      "creditsPerMin": 110.27,
       "completedLoops": 2,
       "completedContracts": 2,
       "failedContracts": 0,
@@ -307,10 +295,10 @@
       "career": "prospector",
       "minutes": 60,
       "seed": 3232808963,
-      "credits": 13088,
-      "netWorth": 21088,
-      "earnedValue": 8088,
-      "creditsPerMin": 134.8,
+      "credits": 12944,
+      "netWorth": 20944,
+      "earnedValue": 7944,
+      "creditsPerMin": 132.4,
       "completedLoops": 5,
       "completedContracts": 5,
       "failedContracts": 0,
@@ -340,10 +328,10 @@
       "career": "prospector",
       "minutes": 90,
       "seed": 3232808963,
-      "credits": 1710,
-      "netWorth": 17823,
-      "earnedValue": 11710,
-      "creditsPerMin": 130.11,
+      "credits": 1130,
+      "netWorth": 17039,
+      "earnedValue": 11130,
+      "creditsPerMin": 123.67,
       "completedLoops": 7,
       "completedContracts": 7,
       "failedContracts": 0,
@@ -379,160 +367,20 @@
       "30": {
         "ok": true,
         "horizonMin": 30,
-        "endingCapital": 16445,
-        "earnedValue": 11445,
-        "creditsPerMin": 381.5,
-        "netWorth": 24445,
+        "endingCapital": 33564,
+        "earnedValue": 28564,
+        "creditsPerMin": 952.13,
+        "netWorth": 41564,
         "completedLoops": 1,
-        "completedContracts": 12,
-        "failedContracts": 2,
+        "completedContracts": 17,
+        "failedContracts": 1,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 1800,
-          "travelS": 1578.4,
-          "actionS": 208,
-          "dockS": 0,
-          "recoveryS": 0,
-          "idleS": 13.6
-        },
-        "bottlenecks": [
-          {
-            "code": "contract_accept_refused",
-            "detail": "mo_station_ceres_0_1"
-          },
-          {
-            "code": "contract_serve_failed",
-            "detail": "settle_incomplete"
-          },
-          {
-            "code": "spread_collapse",
-            "detail": "Route cmdty_ore_iron→station_helios collapsed"
-          },
-          {
-            "code": "market_exhaustion",
-            "detail": "All early routes cooling while live stock recovers"
-          }
-        ],
-        "adaptersUsed": [],
-        "assertionFails": [],
-        "assertionWarns": [],
-        "hullDamageHp": 0,
-        "readiness": 1,
-        "ownedWeapons": [
-          "wpn_pulse_laser_s"
-        ],
-        "researchedNodes": [],
-        "researchPoints": 4,
-        "deaths": 0,
-        "liveSeams": [
-          "economy.ensureMarket/quote/execute",
-          "cargo add/remove via execute",
-          "ships.buyShip",
-          "factions via economy:tradeCompleted",
-          "economy.update time authority + market restock",
-          "missions.ensureBoard/acceptMission cargo_delivery+bulk_trade serves; settle via dock:docked/_onTrade → _completeMission → economy:grantCredits"
-        ]
-      },
-      "60": {
-        "ok": true,
-        "horizonMin": 60,
-        "endingCapital": 16356,
-        "earnedValue": 46356,
-        "creditsPerMin": 772.6,
-        "netWorth": 51356,
-        "completedLoops": 1,
-        "completedContracts": 28,
-        "failedContracts": 4,
-        "shipId": "ship_mule",
-        "phase": "mule",
-        "purchases": [
-          {
-            "kind": "ship",
-            "id": "ship_mule",
-            "price": 35000,
-            "reason": "buyShip:ship_mule",
-            "atS": 3056.5,
-            "creditsBefore": 40166,
-            "creditsAfter": 5166,
-            "authority": "ships.buyShip"
-          }
-        ],
-        "time": {
-          "simS": 3600,
-          "travelS": 3104.6,
-          "actionS": 480,
-          "dockS": 0,
-          "recoveryS": 0,
-          "idleS": 15.4
-        },
-        "bottlenecks": [
-          {
-            "code": "contract_accept_refused",
-            "detail": "mo_station_ceres_0_1"
-          },
-          {
-            "code": "contract_serve_failed",
-            "detail": "settle_incomplete"
-          },
-          {
-            "code": "spread_collapse",
-            "detail": "Route cmdty_ore_iron→station_helios collapsed"
-          },
-          {
-            "code": "market_exhaustion",
-            "detail": "All early routes cooling while live stock recovers"
-          }
-        ],
-        "adaptersUsed": [],
-        "assertionFails": [],
-        "assertionWarns": [],
-        "hullDamageHp": 0,
-        "readiness": 1,
-        "ownedWeapons": [
-          "wpn_pulse_laser_s"
-        ],
-        "researchedNodes": [],
-        "researchPoints": 16,
-        "deaths": 0,
-        "liveSeams": [
-          "economy.ensureMarket/quote/execute",
-          "cargo add/remove via execute",
-          "ships.buyShip",
-          "factions via economy:tradeCompleted",
-          "economy.update time authority + market restock",
-          "missions.ensureBoard/acceptMission cargo_delivery+bulk_trade serves; settle via dock:docked/_onTrade → _completeMission → economy:grantCredits"
-        ]
-      },
-      "90": {
-        "ok": true,
-        "horizonMin": 90,
-        "endingCapital": 89227,
-        "earnedValue": 119227,
-        "creditsPerMin": 1324.74,
-        "netWorth": 124227,
-        "completedLoops": 1,
-        "completedContracts": 45,
-        "failedContracts": 7,
-        "shipId": "ship_mule",
-        "phase": "mule",
-        "purchases": [
-          {
-            "kind": "ship",
-            "id": "ship_mule",
-            "price": 35000,
-            "reason": "buyShip:ship_mule",
-            "atS": 3056.5,
-            "creditsBefore": 40166,
-            "creditsAfter": 5166,
-            "authority": "ships.buyShip"
-          }
-        ],
-        "time": {
-          "simS": 5394.8,
-          "travelS": 4618.8,
-          "actionS": 776,
+          "simS": 1788.1,
+          "travelS": 1508.1,
+          "actionS": 280,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
@@ -556,7 +404,135 @@
           "wpn_pulse_laser_s"
         ],
         "researchedNodes": [],
-        "researchPoints": 27,
+        "researchPoints": 8,
+        "deaths": 0,
+        "liveSeams": [
+          "economy.ensureMarket/quote/execute",
+          "cargo add/remove via execute",
+          "ships.buyShip",
+          "factions via economy:tradeCompleted",
+          "economy.update time authority + market restock",
+          "missions.ensureBoard/acceptMission cargo_delivery+bulk_trade serves; settle via dock:docked/_onTrade → _completeMission → economy:grantCredits"
+        ]
+      },
+      "60": {
+        "ok": true,
+        "horizonMin": 60,
+        "endingCapital": 24836,
+        "earnedValue": 54836,
+        "creditsPerMin": 913.93,
+        "netWorth": 59836,
+        "completedLoops": 1,
+        "completedContracts": 31,
+        "failedContracts": 3,
+        "shipId": "ship_mule",
+        "phase": "mule",
+        "purchases": [
+          {
+            "kind": "ship",
+            "id": "ship_mule",
+            "price": 35000,
+            "reason": "buyShip:ship_mule",
+            "atS": 2133.8,
+            "creditsBefore": 41211,
+            "creditsAfter": 6211,
+            "authority": "ships.buyShip"
+          }
+        ],
+        "time": {
+          "simS": 3570.2,
+          "travelS": 3050.2,
+          "actionS": 520,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "contract_accept_refused",
+            "detail": "mo_station_ceres_0_1"
+          },
+          {
+            "code": "contract_serve_failed",
+            "detail": "settle_incomplete"
+          },
+          {
+            "code": "spread_collapse",
+            "detail": "Route cmdty_ore_bronzium→station_helios collapsed"
+          }
+        ],
+        "adaptersUsed": [],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 19,
+        "deaths": 0,
+        "liveSeams": [
+          "economy.ensureMarket/quote/execute",
+          "cargo add/remove via execute",
+          "ships.buyShip",
+          "factions via economy:tradeCompleted",
+          "economy.update time authority + market restock",
+          "missions.ensureBoard/acceptMission cargo_delivery+bulk_trade serves; settle via dock:docked/_onTrade → _completeMission → economy:grantCredits"
+        ]
+      },
+      "90": {
+        "ok": true,
+        "horizonMin": 90,
+        "endingCapital": 118108,
+        "earnedValue": 148108,
+        "creditsPerMin": 1645.64,
+        "netWorth": 153108,
+        "completedLoops": 1,
+        "completedContracts": 49,
+        "failedContracts": 5,
+        "shipId": "ship_mule",
+        "phase": "mule",
+        "purchases": [
+          {
+            "kind": "ship",
+            "id": "ship_mule",
+            "price": 35000,
+            "reason": "buyShip:ship_mule",
+            "atS": 2133.8,
+            "creditsBefore": 41211,
+            "creditsAfter": 6211,
+            "authority": "ships.buyShip"
+          }
+        ],
+        "time": {
+          "simS": 5380.4,
+          "travelS": 4556.4,
+          "actionS": 824,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "contract_accept_refused",
+            "detail": "mo_station_ceres_0_1"
+          },
+          {
+            "code": "contract_serve_failed",
+            "detail": "settle_incomplete"
+          }
+        ],
+        "adaptersUsed": [],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 39,
         "deaths": 0,
         "liveSeams": [
           "economy.ensureMarket/quote/execute",
@@ -779,10 +755,10 @@
       "30": {
         "ok": true,
         "horizonMin": 30,
-        "endingCapital": 8329,
-        "earnedValue": 3329,
-        "creditsPerMin": 110.97,
-        "netWorth": 17215,
+        "endingCapital": 8308,
+        "earnedValue": 3308,
+        "creditsPerMin": 110.27,
+        "netWorth": 17158,
         "completedLoops": 2,
         "completedContracts": 2,
         "failedContracts": 0,
@@ -827,10 +803,10 @@
       "60": {
         "ok": true,
         "horizonMin": 60,
-        "endingCapital": 13088,
-        "earnedValue": 8088,
-        "creditsPerMin": 134.8,
-        "netWorth": 21088,
+        "endingCapital": 12944,
+        "earnedValue": 7944,
+        "creditsPerMin": 132.4,
+        "netWorth": 20944,
         "completedLoops": 5,
         "completedContracts": 5,
         "failedContracts": 0,
@@ -880,10 +856,10 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 1710,
-        "earnedValue": 11710,
-        "creditsPerMin": 130.11,
-        "netWorth": 17823,
+        "endingCapital": 1130,
+        "earnedValue": 11130,
+        "creditsPerMin": 123.67,
+        "netWorth": 17039,
         "completedLoops": 7,
         "completedContracts": 7,
         "failedContracts": 0,
@@ -896,8 +872,8 @@
             "price": 15000,
             "reason": "buyShip:ship_pelican",
             "atS": 4984.4,
-            "creditsBefore": 16710,
-            "creditsAfter": 1710,
+            "creditsBefore": 16130,
+            "creditsAfter": 1130,
             "authority": "ships.buyShip"
           }
         ],
@@ -951,25 +927,25 @@
     "ok": true,
     "fails": [],
     "warns": [
-      "extreme_cross_disparity_30m ratio=9.52",
-      "extreme_cross_disparity_60m ratio=11.95",
-      "extreme_cross_disparity_90m ratio=33.94"
+      "extreme_cross_disparity_30m ratio=23.76",
+      "extreme_cross_disparity_60m ratio=14.13",
+      "extreme_cross_disparity_90m ratio=42.16"
     ],
     "disparity": {
       "30": {
         "min": 40.07,
-        "max": 381.5,
-        "ratio": 9.52
+        "max": 952.13,
+        "ratio": 23.76
       },
       "60": {
         "min": 64.67,
-        "max": 772.6,
-        "ratio": 11.95
+        "max": 913.93,
+        "ratio": 14.13
       },
       "90": {
         "min": 39.03,
-        "max": 1324.74,
-        "ratio": 33.94
+        "max": 1645.64,
+        "ratio": 42.16
       }
     }
   },
@@ -992,19 +968,19 @@
       {
         "seed": 3232800769,
         "ok": true,
-        "endingCapital": 16445,
-        "earnedValue": 11445,
-        "creditsPerMin": 381.5,
+        "endingCapital": 33564,
+        "earnedValue": 28564,
+        "creditsPerMin": 952.13,
         "completedLoops": 1,
-        "completedContracts": 12,
+        "completedContracts": 17,
         "assertionFails": []
       },
       {
         "seed": 3232800785,
         "ok": true,
-        "endingCapital": 20719,
-        "earnedValue": 15719,
-        "creditsPerMin": 523.97,
+        "endingCapital": 27689,
+        "earnedValue": 22689,
+        "creditsPerMin": 756.3,
         "completedLoops": 1,
         "completedContracts": 15,
         "assertionFails": []
@@ -1012,11 +988,11 @@
       {
         "seed": 3232800801,
         "ok": true,
-        "endingCapital": 20843,
-        "earnedValue": 15843,
-        "creditsPerMin": 528.1,
-        "completedLoops": 2,
-        "completedContracts": 11,
+        "endingCapital": 22628,
+        "earnedValue": 17628,
+        "creditsPerMin": 587.6,
+        "completedLoops": 3,
+        "completedContracts": 12,
         "assertionFails": []
       }
     ],
@@ -1060,9 +1036,9 @@
       {
         "seed": 3232808963,
         "ok": true,
-        "endingCapital": 8329,
-        "earnedValue": 3329,
-        "creditsPerMin": 110.97,
+        "endingCapital": 8308,
+        "earnedValue": 3308,
+        "creditsPerMin": 110.27,
         "completedLoops": 2,
         "completedContracts": 2,
         "assertionFails": []
@@ -1070,9 +1046,9 @@
       {
         "seed": 3232808979,
         "ok": true,
-        "endingCapital": 8384,
-        "earnedValue": 3384,
-        "creditsPerMin": 112.8,
+        "endingCapital": 8358,
+        "earnedValue": 3358,
+        "creditsPerMin": 111.93,
         "completedLoops": 2,
         "completedContracts": 2,
         "assertionFails": []
@@ -1080,9 +1056,9 @@
       {
         "seed": 3232808995,
         "ok": true,
-        "endingCapital": 8338,
-        "earnedValue": 3338,
-        "creditsPerMin": 111.27,
+        "endingCapital": 8308,
+        "earnedValue": 3308,
+        "creditsPerMin": 110.27,
         "completedLoops": 2,
         "completedContracts": 2,
         "assertionFails": []
@@ -1092,7 +1068,7 @@
   "multiSeedDistinct": {
     "hauler": 3,
     "hunter": 3,
-    "prospector": 3
+    "prospector": 2
   },
   "multiSeedOk": false,
   "reloadProof": {
@@ -1227,14 +1203,14 @@
           "id": "ship_mule",
           "price": 35000,
           "reason": "buyShip:ship_mule",
-          "atS": 3056.5,
-          "creditsBefore": 40166,
-          "creditsAfter": 5166,
+          "atS": 2133.8,
+          "creditsBefore": 41211,
+          "creditsAfter": 6211,
           "authority": "ships.buyShip"
         }
       ],
       "researchUnlocks": [],
-      "firstPurchaseAtS": 3056.5
+      "firstPurchaseAtS": 2133.8
     },
     "hunter": {
       "roleHull": "ship_wasp",
@@ -1261,8 +1237,8 @@
           "price": 15000,
           "reason": "buyShip:ship_pelican",
           "atS": 4984.4,
-          "creditsBefore": 16710,
-          "creditsAfter": 1710,
+          "creditsBefore": 16130,
+          "creditsAfter": 1130,
           "authority": "ships.buyShip"
         }
       ],

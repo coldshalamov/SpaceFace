@@ -473,6 +473,7 @@ export const stationServices = {
       const e = playerEntity(state);
       const meta = job.meta || {};
       this.bus.emit('service:completed', {
+        jobId: job.id,
         type: 'repair',
         cost: meta.cost,
         restoredHull: Number.isFinite(meta.restoredHull) ? meta.restoredHull : job.applied,
@@ -489,6 +490,7 @@ export const stationServices = {
         this.bus.emit('fuel:changed', { current: state.fuel.current, max: state.fuel.max });
       }
       this.bus.emit('service:completed', {
+        jobId: job.id,
         type: 'refuel',
         cost: job.meta && job.meta.cost,
         units: job.applied,

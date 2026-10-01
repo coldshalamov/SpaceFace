@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "86c05ee93dbf1c7e729f6e15197543e1e598ccc773062b66d57c250f901560aa",
+  "contentHash": "3f7ba0627c3ca9402e09d29841d74e74c2d1ca454b0ba4b39953af92c4cc5113",
   "dynamicGroups": [
     {
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-hook-nav-port.dynamic",
@@ -2626,8 +2626,8 @@
       "uri": "var_station_trade_hub_scn_overlay_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 212795,
-      "sha256": "6ad96f51a2017a9ec303285ca2a0a577796a2672af36ea4087d156c0985da48d",
+      "bytes": 198942,
+      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
       "uri": "pilots.json"
     }
   },
@@ -3650,7 +3650,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb"
   },
-  "runtimeHash": "93bc0ee320b9696b92a43385d61885d4f96b0edd2e2e3f0ba01e767c410283f2",
+  "runtimeHash": "5b41c896b861a3d7c0a6e9e42261c8184e0322b1a99415dbe4e4eb963ab578e1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

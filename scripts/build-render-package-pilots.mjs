@@ -197,7 +197,42 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
       spatialClusterId: clusterId,
     };
   });
-  const byNodeName = new Map(meshRecords.map((record) => [record.node, record]));
+  // MOTION_* pivots are dynamic even with no mesh of their own — they carry the authored
+  // transform their welded children ride (ANI-00 rigid motion groups). List them as semantic
+  // nodes so the compiled package can seal a motion bank (sceneRoot pilots do the same).
+  const pivotRecords = [];
+  const pivotByNode = new Map();
+  for (const node of descendants) {
+    const nodeName = node.getName();
+    if (node.getMesh() || !nodeName.startsWith('MOTION_')) continue;
+    assertUniqueNodeName(pilot, node, names);
+    const dynamic = (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
+    pivotRecords.push({
+      id: allocId(`${pilot.assetId}.mesh.${idToken(nodeName)}`),
+      node: nodeName,
+      role: dynamic ? 'dynamic' : 'immutable',
+      parentId: rootId,
+      mergeBoundary: nodeName,
+      pipelineKey: 'root',
+      transparency: 'opaque',
+      cullingGroup: 'asset',
+      independentlyCulled: false,
+      spatialClusterId: clusterId,
+    });
+    pivotByNode.set(node, pivotRecords[pivotRecords.length - 1]);
+  }
+  const semanticByNode = new Map();
+  for (const node of meshNodes) {
+    const record = meshRecords.find((entry) => entry.node === node.getName());
+    if (record && !semanticByNode.has(node)) semanticByNode.set(node, record);
+  }
+  for (const [node, record] of pivotByNode) semanticByNode.set(node, record);
+  for (const [node, record] of pivotByNode) {
+    let parent = node.getParentNode();
+    while (parent && parent !== rootNode && !semanticByNode.has(parent)) parent = parent.getParentNode();
+    if (parent && parent !== rootNode) record.parentId = semanticByNode.get(parent).id;
+  }
+  const byNodeName = new Map([...meshRecords, ...pivotRecords].map((record) => [record.node, record]));
   const anchors = descendants
     .filter((node) => !node.getMesh() && String(node.getName() || '').startsWith('SOCKET_'))
     .map((node) => {
@@ -232,7 +267,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
       cullingGroup: 'asset',
       independentlyCulled: false,
       spatialClusterId: clusterId,
-    }, ...meshRecords],
+    }, ...meshRecords, ...pivotRecords],
     anchors,
     dynamicGroups,
     mergeGroups: [],

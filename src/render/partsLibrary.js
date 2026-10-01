@@ -157,14 +157,22 @@ const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
 // slot follow the entity's own authoredPayloadAssetId; the capsule variant below is untouched.
 const AUTHORED_SP07_PAYLOAD_ASSET_ID = 'place_breakaway_sp07';
 const AUTHORED_SP07_PAYLOAD_FILE = 'places/place_breakaway_sp07.glb';
+// ANI-11: jettisoned-cargo payloads (the pods the starter beam splits) render the rigged
+// place pod — its render package carries the door rig's MOTION_* pivots + sealed motion bank.
+// Matches data.payloadType === 'jettisoned_cargo' (JETTISONED_CARGO_PAYLOAD_TYPE in lootShards).
+const AUTHORED_RIGGED_POD_FILE = 'places/place_cargo_pod_standard.glb';
 function authoredPayloadIsSpindle(entity) {
   return entity?.data?.authoredPayloadAssetId === AUTHORED_SP07_PAYLOAD_ASSET_ID;
 }
+function authoredPayloadIsRiggedPod(entity) {
+  return entity?.data?.payloadType === 'jettisoned_cargo';
+}
 export function authoredPayloadFileForEntity(entity) {
+  if (authoredPayloadIsRiggedPod(entity)) return AUTHORED_RIGGED_POD_FILE;
   return authoredPayloadIsSpindle(entity) ? AUTHORED_SP07_PAYLOAD_FILE : AUTHORED_CARGO_CAPSULE_FILE;
 }
 export function authoredPayloadSlotForEntity(entity) {
-  return authoredPayloadIsSpindle(entity) ? 'place' : 'pod';
+  return (authoredPayloadIsSpindle(entity) || authoredPayloadIsRiggedPod(entity)) ? 'place' : 'pod';
 }
 // Draw-time fit: the spindle is authored 1:1 in WU (scale 1 always); the capsule keeps
 // the longest-axis fit. Exported for the PQ-195.00 render-selector contract test.
@@ -2831,6 +2839,9 @@ function commitAuthoredCargoCapsuleBoundary(
 
 function disposeDetachedAuthoredCargoCapsule(root) {
   if (!root) return;
+  // The authored-motion driver registers controllers under the entity id; a parked/admission-
+  // failed tree must release them the same way the boundary teardown path does.
+  if (typeof root.userData?.detachAuthoredMotion === 'function') root.userData.detachAuthoredMotion();
   // Authored compositions use cloned batch geometry plus materials marked by the shared-resource
   // policy. Reuse the established detached-place disposer so only owner-local GPU resources retire.
   disposeDetachedPlaceFallback(root);
@@ -2876,6 +2887,9 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   canonicalizeMaplessHullMaterials(root, palette);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
+  // Payload bodies that carry a sealed motion bank (e.g. the rigged cargo pod) get the
+  // same per-frame/per-event driver as ships, so mining events reach their bound pivots.
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
   root.position.set(
@@ -3682,6 +3696,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   specializeClaimRelayOpaqueMaterials(root, placeId);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
+  // Places carrying a sealed motion bank (e.g. the rigged cargo pod) animate off the same
+  // entity-keyed driver surface as ships.
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
   root.userData.authoredSourceEnvelope = authoredEnvelope;
   root.userData.authoredWorldScale = scale;
   root.userData.placeTargetRadius = Number.isFinite(targetRadius) && targetRadius > 0 ? targetRadius : null;

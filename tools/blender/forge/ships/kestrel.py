@@ -7,6 +7,7 @@ repair pod on the port shoulder, a dorsal sensor dish. What changed is the build
 surfaces (no grime/scratch noise), crisp bevelled armour, one livery, lights where a crew needs them.
 All nine gameplay sockets sit exactly where the live game expects them.
 """
+import math
 import os
 import sys
 
@@ -16,6 +17,9 @@ import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_01  # noqa: E402
 import ANI_02  # noqa: E402
+import ANI_05  # noqa: E402
+import ANI_06  # noqa: E402
+import ANI_07  # noqa: E402
 
 SHIP_ID = 'kestrel'
 
@@ -133,7 +137,20 @@ def build():
     pod = F.box(s, 'RepairPod', (-1.45, 4.35, 1.2), (3.2, 1.9, 1.3), material='paint.green', bevel=0.08)
     band = F.box(s, 'RepairPodBand', (-0.6, 4.35, 1.2), (0.3, 2.0, 1.4), material='hazard', bevel=0.02)
     lid = F.box(s, 'RepairPodHatch', (-2.1, 4.35, 1.88), (1.2, 1.2, 0.08), material='paint2', bevel=0.01)
+    # Dark recess floor under the lid — when the hatch swings open the pod reads as hollow,
+    # not as a lid lifting off a solid green box. The folded arm sits just above this plate.
+    F.box(s, 'PodCavity', (-2.1, 4.35, 1.46), (1.14, 1.14, 0.1), material='dark', bevel=0.0)
     s.hook_part('HOOK_SECONDARY_POD', pod, band, lid)
+
+    # ANI-06 proposed geometry: a compact two-joint service arm stowed INSIDE the pod under the
+    # hatch cutout — Z-folded flat at rest (two links stacked over each other) so the solid pod
+    # reads unchanged until the lid swings. The shoulder pivot sits at the opening's +X edge:
+    # pitching the -X-hanging chain up carries the whole arm out through the hole, then the
+    # elbow unbends the forearm toward the ship shoulder and parks its tool tip just outside.
+    arm_a = F.box(s, 'SvcArmA', (-2.3, 4.35, 1.55), (1.25, 0.16, 0.11), material='gunmetal')
+    arm_b = F.box(s, 'SvcArmB', (-2.2, 4.35, 1.62), (1.3, 0.14, 0.09), material='gunmetal')
+    arm_head = F.box(s, 'SvcHead', (-1.45, 4.35, 1.62), (0.24, 0.14, 0.16), material='dark')
+    arm_tip = F.light(s, 'SvcTip', (-1.28, 4.35, 1.68), 'glow_amber', size=0.08)
 
     # --- dorsal sensor dish (sensor damage part; ANI-01 motion rig) -----------------------------
     ped = F.cylinder(s, 'DishPedestal', (-2.2, -0.9, 2.1), (-2.2, -0.9, 2.85), 0.2, 0.13, material='gunmetal',
@@ -154,12 +171,31 @@ def build():
                               source_asset_id=E_spec_asset_id())
     # ANI-02 authors into the shared bank — one kestrel.motion.json carries every rig's clips.
     ANI_02.build(s, {'cutter': cutter}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    # ANI-05 proposed geometry: six rigid iris petals inside the DriveBell mouth, hidden under
+    # the inner rim at rest; they slide toward the axis on boost and read as the fan over the
+    # glowing core. One motion group per petal so each slides along its own radial direction.
+    iris_petals = []
+    for i in range(ANI_05.PETALS):
+        # Alternate the plate plane a few mm so neighbouring blades never sit coplanar.
+        petal = F.plate_v(s, f'IrisPetal{i}', ANI_05.petal_outline(math.radians(i * 60 + 30)),
+                          ANI_05.PETAL_X - 0.09 + (i % 3) * 0.012, 0.09, plane='yz',
+                          material='dark', chamfer=0.02, bevel=0.01)
+        iris_petals.append(petal)
+    # Static hub the fan reads against when the iris opens — a shallow chrome dome on the axis.
+    F.cylinder(s, 'IrisHub', (ANI_05.PETAL_X - 0.16, 0, 0), (ANI_05.PETAL_X + 0.1, 0, 0),
+               0.42, 0.16, material='bare', segments=20, bevel=0.03)
+    ANI_05.build(s, {'petals': iris_petals}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     s.ani01_bank = ani01_bank
 
     # --- armour plate that sheds under damage (port shoulder cap) ------------------------
     cap = F.plate(s, 'ShoulderCap', [(4.0, 3.4), (3.1, 5.8), (0.5, 5.8), (0.5, 3.4)], z0=0.62,
                   thickness=0.14, material='paint2', chamfer=0.06)
     s.hook_part('HOOK_ARMOR_PORT', cap)
+
+    # ANI-06/07 author into the shared bank: pod hatch+arm on repair jobs, cap peel on hull hits.
+    ANI_06.build(s, {'hatch': lid, 'arm_a': arm_a, 'arm_b': [arm_b, arm_head, arm_tip]},
+                 source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    ANI_07.build(s, {'cap': cap}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
 
     # --- detail ------------------------------------------------------------------------------
     s.detail = 1

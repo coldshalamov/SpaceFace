@@ -436,6 +436,17 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     parked: true,
   };
   let disposed = false;
+  // Each settle gets its own clip name — two settles in one tick (scoped blends on
+  // different rigs sharing this bank) would otherwise clobber one another by name.
+  let settleSerial = 0;
+  // Parked settles can never run again — drop them from the bank map so a long session
+  // of aborts/early-completions can't accumulate dead clip objects. Run only after the
+  // surviving run-entries are in state.clips; anything not referenced there is dead.
+  function trimParkedSettles() {
+    for (const name of [...clips.keys()]) {
+      if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
+    }
+  }
 
   function restAll() {
     for (const { binding, nodes } of groups.values()) {
@@ -456,7 +467,135 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return g ? g.nodes.length : 0;
     },
     clipActive(name) { return state.clips.has(name); },
+    activeClipNames() { return [...state.clips.keys()]; },
+    // Bus-side stale-state probe: a hold-ended clip keeps its group claimed, so 'any clip
+    // touching these groups' is the truth for whether a rig is still posed (a rebuilt
+    // entity's flag must not outlive the clips it tracked).
+    hasActiveClipsIn(groupIds = []) {
+      const wanted = new Set(groupIds);
+      for (const name of state.clips.keys()) {
+        const clip = clips.get(name);
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) return true;
+      }
+      return false;
+    },
+    clipElapsed(name, timeS) {
+      const run = state.clips.get(name);
+      if (!run) return null;
+      return (Number.isFinite(timeS) ? timeS : 0) - run.startS;
+    },
+    clipDuration(name) {
+      const clip = clips.get(name);
+      return clip ? clip.durationS : null;
+    },
     groups,
+
+    /**
+     * Blend every currently-posed group back to rest over durationS — the early-disengage
+     * path: a clip interrupted mid-flight must not teleport to another clip's first key.
+     * Synthesizes a rest-targeted clip from the live merged pose (identity rotation /
+     * zero translation at rest); 'rest' endMode parks the rig when the blend lands.
+     */
+    settle(durationS = 1.0, timeS = 0) {
+      if (disposed || !state.clips.size) return false;
+      const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
+      const merged = new Map();
+      for (const [name, run] of state.clips) {
+        const clip = clips.get(name);
+        if (!clip) continue;
+        const t = (timeS - run.startS) * run.rateScale;
+        const deltas = evaluateMotionClip(
+          checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
+        );
+        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+      }
+      const channels = [];
+      for (const [groupId, delta] of merged) {
+        if (Array.isArray(delta.translation)) {
+          channels.push({
+            group: groupId, path: 'translation', times: [0, duration],
+            values: [...delta.translation, 0, 0, 0],
+          });
+        }
+        if (Array.isArray(delta.rotation)) {
+          channels.push({
+            group: groupId, path: 'rotation', times: [0, duration],
+            values: [...delta.rotation, 0, 0, 0, 1],
+          });
+        }
+      }
+      const settleName = `__settle__${++settleSerial}`;
+      const settleClip = {
+        name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
+      };
+      clips.set(settleName, settleClip);
+      state.clips.clear();
+      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      trimParkedSettles();
+      state.latest = settleName;
+      state.parked = false;
+      return true;
+    },
+
+    /**
+     * settle() scoped to a subset of channel groups — the interrupt path for one rig on a
+     * shared bank: an aborted repair must fold its service arm home without parking the
+     * scanner or iris mid-sweep. Clips owning any settled group are dropped so they cannot
+     * re-claim it once the blend parks; clips on other groups keep running. Callers must
+     * choose group sets that do not bisect a clip — a clip touching both settled and
+     * unsettled groups is dropped whole.
+     */
+    settleGroups(durationS = 1.0, timeS = 0, groupIds = []) {
+      if (disposed || !state.clips.size) return false;
+      const wanted = new Set(groupIds || []);
+      if (!wanted.size) return false;
+      const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
+      const merged = new Map();
+      for (const [name, run] of state.clips) {
+        const clip = clips.get(name);
+        if (!clip) continue;
+        const t = (timeS - run.startS) * run.rateScale;
+        const deltas = evaluateMotionClip(
+          checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
+        );
+        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+      }
+      const channels = [];
+      for (const groupId of wanted) {
+        const delta = merged.get(groupId);
+        if (!delta) continue;
+        if (Array.isArray(delta.translation)) {
+          channels.push({
+            group: groupId, path: 'translation', times: [0, duration],
+            values: [...delta.translation, 0, 0, 0],
+          });
+        }
+        if (Array.isArray(delta.rotation)) {
+          channels.push({
+            group: groupId, path: 'rotation', times: [0, duration],
+            values: [...delta.rotation, 0, 0, 0, 1],
+          });
+        }
+      }
+      if (!channels.length) return false;
+      const settleName = `__settle__${++settleSerial}`;
+      const settleClip = {
+        name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
+      };
+      clips.set(settleName, settleClip);
+      for (const name of [...state.clips.keys()]) {
+        const clip = clips.get(name);
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) {
+          state.clips.delete(name);
+        }
+      }
+      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      // Runs after settleName joins state.clips so the fresh clip is never collected as dead.
+      trimParkedSettles();
+      state.latest = settleName;
+      state.parked = false;
+      return true;
+    },
 
     /**
      * Start a clip (or restart it if it is already active). `generation` orders duplicate events —
@@ -471,6 +610,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       if (clipName === 'rest' || clipName === 'idle' || clipName == null) {
         if (generation != null) state.generation = generation;
         state.clips.clear();
+        trimParkedSettles();
         state.latest = null;
         state.parked = true;
         restAll();
@@ -479,6 +619,24 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const clip = clips.get(clipName);
       if (!clip) {
         throw new Error(`motion bank ${checked.rigId} has no clip "${clipName}".`);
+      }
+      // A started clip permanently supersedes older clips on every group it channels.
+      // Latest-started-wins must outlive the younger clip's own rest-park — otherwise a held
+      // earlier clip (endMode 'hold', never evicted) re-applies its delta the frame the newer
+      // clip deletes, snapping the rig back to the superseded pose (breach↔seal, index↔reset,
+      // deploy↔stow).
+      const claimed = new Set(clip.channels.map((channel) => channel.group));
+      for (const [otherName, otherRun] of [...state.clips]) {
+        if (otherName === clipName) continue;
+        const other = clips.get(otherName);
+        if (!other) continue;
+        const remaining = other.channels.some((channel) => !claimed.has(channel.group));
+        if (!remaining) {
+          state.clips.delete(otherName);
+          continue;
+        }
+        const superseded = otherRun.superseded || (otherRun.superseded = new Set());
+        for (const group of claimed) superseded.add(group);
       }
       if (generation != null) state.generation = generation;
       state.clips.delete(clipName);
@@ -497,6 +655,15 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const merged = new Map();
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
+        if (!clip) {
+          // A run-entry outliving its clip must not throw inside the frame loop — drop it
+          // like a parked clip rather than failing the whole entity pass.
+          state.clips.delete(name);
+          if (state.latest === name) {
+            state.latest = state.clips.size ? [...state.clips.keys()].pop() : null;
+          }
+          continue;
+        }
         const t = (timeS - run.startS) * run.rateScale;
         if (!clip.loop && t >= clip.durationS && (clip.endMode || 'rest') === 'rest') {
           // Rest-ended clips park this frame — their final pose is excluded from the merge so
@@ -511,7 +678,11 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
         // Later map entries override earlier ones per group — newest clip wins a shared group.
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        // Groups a newer clip permanently claimed stay suppressed even after that clip parks.
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       for (const [id, { binding, nodes }] of groups) {
         const delta = merged.get(id) || {};
@@ -553,7 +724,10 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       if (clip === undefined) return false;
       return this.setState({
         state: clip,
-        startTimeS: Number.isFinite(payload && payload.simTime) ? payload.simTime : simNow,
+        // simNow is the effective anchor: the bus has already translated any payload.simTime
+        // onto the eval clock's domain. Re-reading it here would anchor into raw sim time,
+        // which diverges from the eval clock across any dock freeze.
+        startTimeS: simNow,
         generation: payload && payload.seq,
       });
     },
@@ -562,7 +736,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     dispose() {
       if (disposed) return;
       disposed = true;
-      state.clip = null;
+      state.clips.clear();
       restAll();
     },
   };

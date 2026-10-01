@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        49
+        53
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        50
+        54
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        51
+        55
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        52
+        56
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        53
+        57
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        54
+        58
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        55
+        59
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        56
+        60
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        57
+        61
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        58
+        62
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        59
+        63
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        60
+        64
       ],
       "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "72b4a1d7343bbbafd9db671140e506ae7f159797f05a998f5ecc72b6ed543a01",
+  "contentHash": "1deeab2f2e6769c86f745865553f6c7b5a6645b6d9efd61491a5869c1e9e11b0",
   "dynamicGroups": [
     {
       "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
@@ -667,77 +667,77 @@
     {
       "bounds": {
         "max": [
-          10.745879173278809,
-          0.9001890420913696,
-          3.449939250946045
+          5.299876689910889,
+          0.9002947211265564,
+          2.296980381011963
         ],
         "min": [
           -9.65000057220459,
-          -1.4501891136169434,
-          -3.449939250946045
+          -1.450294852256775,
+          -2.296980381011963
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fb838d4d5491a02103e9204ee8fce82010a984a54a635ebaf3f153488879da1",
+      "geometryHash": "3d7c14d573f4c6cab7ca5ec0b2917f2226a0410985c26b5c0ad535af9d316970",
       "id": "sf.render.salvage-cutter.node.lod0-armor.primitive.0",
-      "indexCount": 8208,
+      "indexCount": 4848,
       "indexed": true,
       "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.salvage-cutter.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2218
+      "vertexCount": 1225
     },
     {
       "bounds": {
         "max": [
-          10.75,
-          3.36096453666687,
-          1.52968168258667
+          -3.9699997901916504,
+          3.36100435256958,
+          0.13000011444091797
         ],
         "min": [
           -4.230000019073486,
-          -0.12996459007263184,
-          -1.52968168258667
+          3.1789956092834473,
+          -0.13000011444091797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c396cd54d5b06b2f880a8990b245bbf28e0e189487264c7adf0ac8757e309696",
+      "geometryHash": "eee5538a4d454d19a0a331107389af7529a0c20b6fcd36acd3a46f4a67d7482b",
       "id": "sf.render.salvage-cutter.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 1740,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.salvage-cutter.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 536
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          10.75,
-          2.6581554412841797,
-          3.1447629928588867
+          6.369999885559082,
+          2.658118963241577,
+          1.5504950284957886
         ],
         "min": [
           -7.238033771514893,
-          -0.5895392894744873,
-          -3.1447629928588867
+          -0.5895029306411743,
+          -0.9097237586975098
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d28ac1d690ac7b020f166298cb5f8b911c36e4173c93b929fa4157574e7e3bb",
+      "geometryHash": "89f9c93cc39686e2a577c29cb938791c61548453f3f60cbdf3e86cc47cf4f039",
       "id": "sf.render.salvage-cutter.node.lod0-brushedmetal.primitive.0",
-      "indexCount": 4500,
+      "indexCount": 1212,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.salvage-cutter.node.lod0-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 1530
+      "vertexCount": 486
     },
     {
       "bounds": {
@@ -967,27 +967,27 @@
     {
       "bounds": {
         "max": [
-          6.650000095367432,
-          3.189389228820801,
-          3.199917793273926
+          5.5,
+          3.190263032913208,
+          2.9924252033233643
         ],
         "min": [
           -10.369999885559082,
-          -0.9493893980979919,
-          -3.199917793273926
+          -0.950263261795044,
+          -2.9924252033233643
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83ee4734d9da5ad511b1598f6b24b7f7bb40ed79adaf897580873a67435c2eb4",
+      "geometryHash": "f1afdc4d2a2976c9a6d5b920fc92d9ae251f24c0727f4c3b1395af0971b2e7e0",
       "id": "sf.render.salvage-cutter.node.lod0-mechanical.primitive.0",
-      "indexCount": 14586,
+      "indexCount": 13458,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.salvage-cutter.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 4584
+      "vertexCount": 4232
     },
     {
       "bounds": {
@@ -1017,27 +1017,327 @@
     {
       "bounds": {
         "max": [
-          8.733701705932617,
-          3.2197177410125732,
-          3.179595947265625
+          10.745879173278809,
+          0.44988271594047546,
+          -0.9574270844459534
         ],
         "min": [
-          -8.350142478942871,
-          -1.3793176412582397,
-          -3.179595947265625
+          3.7060956954956055,
+          -0.44988271594047546,
+          -3.449828863143921
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cef34b2d52ffb679171112f17dd61f97c4f779495602e008118afa1511856102",
+      "geometryHash": "5ba0302420e92f7a3d34c94922cc15eee3b3b498483dc04c5175f238b5f8b4a3",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-armor.primitive.0",
+      "indexCount": 1680,
+      "indexed": true,
+      "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 497
+    },
+    {
+      "bounds": {
+        "max": [
+          10.75,
+          0.12997221946716309,
+          -0.5088870525360107
+        ],
+        "min": [
+          4.900000095367432,
+          -0.12997221946716309,
+          -1.5300974398851395
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb036db6f6bd03799ce4c79c9c49293bf9b9bfcad841fb6e245031469821a9bf",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-beacon-amber.primitive.0",
+      "indexCount": 852,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 256
+    },
+    {
+      "bounds": {
+        "max": [
+          10.75,
+          0.09997863322496414,
+          -0.5621853470802307
+        ],
+        "min": [
+          4.900000095367432,
+          -0.09997863322496414,
+          -2.0698989033699036
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7cc8b892043e74a88aa5bfa13c8b8bb33c24dba598de46d7f905de85be23ca35",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-brushedmetal.primitive.0",
+      "indexCount": 984,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 296
+    },
+    {
+      "bounds": {
+        "max": [
+          6.650000095367432,
+          0.6499999761581421,
+          -2.799989342689514
+        ],
+        "min": [
+          6.150000095367432,
+          0.14999999105930328,
+          -3.200010657310486
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1849f3f8fec6a76750aa8e009d1e578edd8277bde73b275e866e913cfc5f9549",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-mechanical.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          8.733701705932617,
+          0.4499574601650238,
+          -1.8633116483688354
+        ],
+        "min": [
+          6.434974670410156,
+          0.4432227313518524,
+          -3.1798163652420044
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "084c9eb61fc11f0e89111221f221b0d5be7335a05a71cececf481ee59f68a4ca",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-warning.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_PORT_Warning",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          10.745879173278809,
+          0.44988271594047546,
+          3.449828863143921
+        ],
+        "min": [
+          3.7060956954956055,
+          -0.44988271594047546,
+          0.9574271142482758
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8f9c88c3e5b8f908ce1c2a3a05ddb616573b679ac275044909b3e4b6596665d",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-armor.primitive.0",
+      "indexCount": 1680,
+      "indexed": true,
+      "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 496
+    },
+    {
+      "bounds": {
+        "max": [
+          10.75,
+          0.12997221946716309,
+          1.5300974398851395
+        ],
+        "min": [
+          4.900000095367432,
+          -0.12997221946716309,
+          0.5088870525360107
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0e7d103bf61d9fb46ee05b8404a3b943a03003a988d5c1994ee41561ef3d036",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-beacon-amber.primitive.0",
+      "indexCount": 852,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 256
+    },
+    {
+      "bounds": {
+        "max": [
+          10.75,
+          0.09997863322496414,
+          2.0698989033699036
+        ],
+        "min": [
+          4.900000095367432,
+          -0.09997863322496414,
+          0.5621853470802307
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54717b83808aa3a4fff25decf6d00dfaf7d2ffaa54bf0c7f0af4b13cd0b032f1",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-brushedmetal.primitive.0",
+      "indexCount": 984,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 296
+    },
+    {
+      "bounds": {
+        "max": [
+          6.650000095367432,
+          0.6499999761581421,
+          3.200010657310486
+        ],
+        "min": [
+          6.150000095367432,
+          0.14999999105930328,
+          2.799989342689514
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbad38ec5409e26c5329a6c72e57cc06631709728da4a8787ad2c8b51a074da6",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-mechanical.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          8.733701705932617,
+          0.4499574601650238,
+          3.1798163652420044
+        ],
+        "min": [
+          6.434974670410156,
+          0.4432227313518524,
+          1.8633115887641907
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "745bcc8ae568d96ca9f9a2bc542d0abab042fdc383ce72ef5997fb383e4c85e1",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-warning.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_JAW_STAR_Warning",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          6.325933456420898,
+          0.6947350203990936,
+          -2.534897267818451
+        ],
+        "min": [
+          4.474066734313965,
+          0.2552649676799774,
+          -3.145102798938751
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6658de171fa7cd0a9a6e623a78d16f1e202e22938661dde3fda41f4ac4465161",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-port-brushedmetal.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-port-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 226
+    },
+    {
+      "bounds": {
+        "max": [
+          6.325933456420898,
+          0.6947350203990936,
+          3.145102798938751
+        ],
+        "min": [
+          4.474066734313965,
+          0.2552649676799774,
+          2.534897267818451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80e313abe9ae986fb8588ebf0a695cddcaf19d93fa6c6c939c875843e5255911",
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-star-brushedmetal.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-star-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 226
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4700000286102295,
+          3.22000789642334,
+          2.2940359115600586
+        ],
+        "min": [
+          -8.350142478942871,
+          -1.3796077966690063,
+          -2.2940359115600586
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb781d566fc772518d4ebda94fb365b6b7cd48c6775fc23c6811e487fb3ba19e",
       "id": "sf.render.salvage-cutter.node.lod0-warning.primitive.0",
-      "indexCount": 8331,
+      "indexCount": 8211,
       "indexed": true,
       "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.salvage-cutter.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2474
+      "vertexCount": 2410
     },
     {
       "bounds": {
@@ -1053,91 +1353,91 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12a7ac3eacb09af143fe41595603916332bb8cb638a68c4776b6d1f7ecad9a2e",
+      "geometryHash": "846c6af72069479794d0254a326ecb7be0b8d69390a54151b2df5d91f27627e8",
       "id": "sf.render.salvage-cutter.node.lod1-armor-olive.primitive.0",
-      "indexCount": 864,
+      "indexCount": 912,
       "indexed": true,
       "materialHash": "ff7a90d921cc8c559f393dce634200a6e8783772998fa7d8ba63393dafc37d02",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor_olive",
       "nodeId": "sf.render.salvage-cutter.node.lod1-armor-olive",
       "primitiveIndex": 0,
-      "vertexCount": 292
+      "vertexCount": 308
     },
     {
       "bounds": {
         "max": [
-          10.746306419372559,
-          0.9001960754394531,
-          3.4500114917755127
+          5.300039768218994,
+          0.9002899527549744,
+          2.2967779636383057
         ],
         "min": [
           -9.65000057220459,
-          -1.4502313137054443,
-          -3.4500114917755127
+          -1.4503252506256104,
+          -2.295408248901367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1054edfd0219bed30b53e2a6674f4b6394b7f5aab3d831570ce9450c78510be8",
+      "geometryHash": "3a6d7a1bf840d2512582376af75106fb245943fa1fbed2e5b86257dd7caca9ab",
       "id": "sf.render.salvage-cutter.node.lod1-armor.primitive.0",
-      "indexCount": 2286,
+      "indexCount": 1194,
       "indexed": true,
       "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.salvage-cutter.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 645
+      "vertexCount": 346
     },
     {
       "bounds": {
         "max": [
-          10.749200820922852,
-          3.3608715534210205,
-          1.5296000242233276
+          -3.9699997901916504,
+          3.36100435256958,
+          0.13000011444091797
         ],
         "min": [
           -4.230000019073486,
-          -0.1298714578151703,
-          -1.5296000242233276
+          3.1789956092834473,
+          -0.13000011444091797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "695a9032f4579ea380ebfab3ed5b75580daa630780fff6dcd7ae464b434ff588",
+      "geometryHash": "cab30ae658459818004acfd27bb010c9f532674b99e3809df59f90a30844af3a",
       "id": "sf.render.salvage-cutter.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 1218,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.salvage-cutter.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 391
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          10.75,
-          2.6580119132995605,
-          3.144883871078491
+          6.369999885559082,
+          2.6579840183258057,
+          1.5507525205612183
         ],
         "min": [
           -7.238328456878662,
-          -0.5897358655929565,
-          -3.144745111465454
+          -0.5897080302238464,
+          -0.9095195531845093
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7778b815a0f27b1d0e76759bc7390904acd26bb9f2a1c0087c71da9a459ee8c8",
+      "geometryHash": "94f0330c4db563a02b61251a08c37c09d9077aeef4edd91c6a8cd297091077e5",
       "id": "sf.render.salvage-cutter.node.lod1-brushedmetal.primitive.0",
-      "indexCount": 2850,
+      "indexCount": 924,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.salvage-cutter.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 983
+      "vertexCount": 378
     },
     {
       "bounds": {
@@ -1153,16 +1453,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23b7d80c5ad6324b644418d32ed82f39e621ebd1dad7fc5ecb72e3cd94d7191b",
+      "geometryHash": "0155ac542c09f60bb309bc7df3b13e90b64965218695e3b31e0ffe188c0ad9b9",
       "id": "sf.render.salvage-cutter.node.lod1-canopy.primitive.0",
-      "indexCount": 552,
+      "indexCount": 579,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_CANOPY",
       "nodeId": "sf.render.salvage-cutter.node.lod1-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 163
+      "vertexCount": 174
     },
     {
       "bounds": {
@@ -1253,16 +1553,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8289a4c9b9f1489095698d97edcbd119c5420dc9907c42bb559de8913ccc098a",
+      "geometryHash": "40f2de8bf93753076df9f1bb31d881aa6729b764088b496af0afc4faffef446f",
       "id": "sf.render.salvage-cutter.node.lod1-hull-patch.primitive.0",
-      "indexCount": 792,
+      "indexCount": 840,
       "indexed": true,
       "materialHash": "287f8415c6100ad8e7c7cb4d93a1c0161e60435461bb7a7567b727c1ff8b7322",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_patch",
       "nodeId": "sf.render.salvage-cutter.node.lod1-hull-patch",
       "primitiveIndex": 0,
-      "vertexCount": 275
+      "vertexCount": 285
     },
     {
       "bounds": {
@@ -1278,16 +1578,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4a55cef2477f1b57ec42c569f8d328362a7055b9b417ea7e998bce273163ec8f",
+      "geometryHash": "86c0cf560a348d9b7a38076198dd29b7fa9521594ef596d6bc33d563ed9ae23e",
       "id": "sf.render.salvage-cutter.node.lod1-hull-primer.primitive.0",
-      "indexCount": 1038,
+      "indexCount": 1092,
       "indexed": true,
       "materialHash": "93ed9cd98e2c06c119688c3bd7330c941336449abf4c0566d19ce9d66660b40d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_primer",
       "nodeId": "sf.render.salvage-cutter.node.lod1-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 389
+      "vertexCount": 401
     },
     {
       "bounds": {
@@ -1303,16 +1603,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a373e629eb796f72199058d4c845bbd33d7c383a283f5eac0932d9bdc2c6e72",
+      "geometryHash": "fff1896507d0883a053f76a5f281ce06824b6c81185e7784f239c97cd60bf9e8",
       "id": "sf.render.salvage-cutter.node.lod1-hull.primitive.0",
-      "indexCount": 3300,
+      "indexCount": 3477,
       "indexed": true,
       "materialHash": "90c3b4dcf87a9c869c0f66a5b2e579a44cc7df98fd0de84782dbfa36665b2576",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.salvage-cutter.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 929
+      "vertexCount": 984
     },
     {
       "bounds": {
@@ -1328,16 +1628,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38be99b298aadd079ccc72eeca5c9d2b39e825cc8bea3d0cc690ea3848518321",
+      "geometryHash": "fa6f759f34feb403f37e2c95050c44b39010c0b944a54ccc5a78f196644ca744",
       "id": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust.primitive.0",
-      "indexCount": 99,
+      "indexCount": 105,
       "indexed": true,
       "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan_rust",
       "nodeId": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
       "primitiveIndex": 0,
-      "vertexCount": 45
+      "vertexCount": 46
     },
     {
       "bounds": {
@@ -1367,27 +1667,27 @@
     {
       "bounds": {
         "max": [
-          6.6489577293396,
-          3.1892354488372803,
-          3.198683261871338
+          5.5,
+          3.18926739692688,
+          2.9923672676086426
         ],
         "min": [
           -10.369999885559082,
-          -0.9492897391319275,
-          -3.198683261871338
+          -0.9493216872215271,
+          -2.992483139038086
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ec7183391bb760a9751acfd607a718d2d45916784400f59cfe304cffb2d4830",
+      "geometryHash": "efca7c2a700b12535419431b949b5e6232213043349b5b58945cf077719f7b61",
       "id": "sf.render.salvage-cutter.node.lod1-mechanical.primitive.0",
-      "indexCount": 7866,
+      "indexCount": 7524,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.salvage-cutter.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2661
+      "vertexCount": 2483
     },
     {
       "bounds": {
@@ -1417,27 +1717,277 @@
     {
       "bounds": {
         "max": [
-          -0.47103625535964966,
-          3.2192230224609375,
-          2.2941880226135254
+          10.746306419372559,
+          0.44948384165763855,
+          -0.9572702944278717
         ],
         "min": [
-          -8.350049018859863,
-          -1.3797333240509033,
-          -2.2941882610321045
+          3.7061290740966797,
+          -0.4494725167751312,
+          -3.4498116970062256
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0ec3944c6dd6e891c2af36e88e738fb24d850284f22c7b7a98b89f1cfa4cb67",
+      "geometryHash": "3e7a48d9892c9669619ace424a5d107cd2761907510f38d743a547354acf9e7b",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-armor.primitive.0",
+      "indexCount": 474,
+      "indexed": true,
+      "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 130
+    },
+    {
+      "bounds": {
+        "max": [
+          10.749200820922852,
+          0.12886153161525726,
+          -0.5085593461990356
+        ],
+        "min": [
+          4.9009928703308105,
+          -0.12886154651641846,
+          -1.528742954134941
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a25a1990ac70ceeed5fa81a42aa9612c2129d9fa52464e360012f5d47ad1bb6e",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-beacon-amber.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 125
+    },
+    {
+      "bounds": {
+        "max": [
+          10.748997688293457,
+          0.09993951767683029,
+          -0.5616438984870911
+        ],
+        "min": [
+          4.901286602020264,
+          -0.09993951767683029,
+          -2.070195198059082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6302bb20f59ec3647a63d65b2277e2760ac0fc4baac8eaa45cafd66dfce7ae66",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-brushedmetal.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 156
+    },
+    {
+      "bounds": {
+        "max": [
+          6.6489577293396,
+          0.6489721536636353,
+          -2.8009313344955444
+        ],
+        "min": [
+          6.150932312011719,
+          0.1510075479745865,
+          -3.1990689039230347
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fcaeefecf894b58a09fc872299def9c7a45b9cd1bdc0ca6dde346552cbf40ee6",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-mechanical.primitive.0",
+      "indexCount": 282,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 106
+    },
+    {
+      "bounds": {
+        "max": [
+          10.746289253234863,
+          0.4494849145412445,
+          3.4498214721679688
+        ],
+        "min": [
+          3.706088066101074,
+          -0.4494745135307312,
+          0.9572717249393463
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e6e8b5e8664ba0f4fc2224dc6b11a6e09744f1e28681cb47507aa28c1b2c505",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-armor.primitive.0",
+      "indexCount": 474,
+      "indexed": true,
+      "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 130
+    },
+    {
+      "bounds": {
+        "max": [
+          10.749200820922852,
+          0.12886154651641846,
+          1.5287526994943619
+        ],
+        "min": [
+          4.9009928703308105,
+          -0.12886154651641846,
+          0.5085691213607788
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c17e49c6359eece7f6c65e52aa98f41d3a9ef45f4c159d1500981824f79385df",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-beacon-amber.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 125
+    },
+    {
+      "bounds": {
+        "max": [
+          10.749029159545898,
+          0.09994005411863327,
+          2.0701029896736145
+        ],
+        "min": [
+          4.901286602020264,
+          -0.09994005411863327,
+          0.5615435242652893
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e74c7ebf83896a45ca6d20894608af1afdc124cc61880b34671a4ced27539e88",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-brushedmetal.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 154
+    },
+    {
+      "bounds": {
+        "max": [
+          6.648874759674072,
+          0.648957371711731,
+          3.1990827322006226
+        ],
+        "min": [
+          6.151042938232422,
+          0.15112552046775818,
+          2.8009175062179565
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41756d589d16a2e839ee73e38866965be98bd1e825653d33b0927ae3afc4a7dc",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-mechanical.primitive.0",
+      "indexCount": 282,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 118
+    },
+    {
+      "bounds": {
+        "max": [
+          6.324504852294922,
+          0.6942883282899857,
+          -2.5360675156116486
+        ],
+        "min": [
+          4.475630760192871,
+          0.25620555877685547,
+          -3.1439327895641327
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95ca7f90a4d3f8557447f57b6d01b677d90f196d5f0156481345ed16fe93d62d",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-port-brushedmetal.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-port-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          6.326057434082031,
+          0.6942086219787598,
+          3.145212024450302
+        ],
+        "min": [
+          4.473946571350098,
+          0.2555849850177765,
+          2.5349260717630386
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9b3b82a29a25cf1a7f7ed25ca464164c0a84af9b45a79c1a6a3a0c7a8afc1d6b",
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-star-brushedmetal.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-star-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4700000286102295,
+          3.219991445541382,
+          2.294008731842041
+        ],
+        "min": [
+          -8.350049018859863,
+          -1.37956964969635,
+          -2.29400897026062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15b3fb5bfd57e304b17ed1069aafdfd29261e9128d57201fa3a614f8359d015c",
       "id": "sf.render.salvage-cutter.node.lod1-warning.primitive.0",
-      "indexCount": 2523,
+      "indexCount": 2865,
       "indexed": true,
       "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.salvage-cutter.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 887
+      "vertexCount": 961
     },
     {
       "bounds": {
@@ -1467,77 +2017,77 @@
     {
       "bounds": {
         "max": [
-          10.745348930358887,
-          0.8946142196655273,
-          3.450228214263916
+          5.300090312957764,
+          0.8944122195243835,
+          2.2969112396240234
         ],
         "min": [
           -9.644879341125488,
-          -1.450134515762329,
-          -3.450228214263916
+          -1.4499324560165405,
+          -2.295541524887085
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ded4508ff58868296515dc46742721f0e8a3ccc72a5651f8698e9b6c45ae695d",
+      "geometryHash": "09803cc12867ef25da146be2186c184ce42aed28774ece509d6afda97c0352cc",
       "id": "sf.render.salvage-cutter.node.lod2-armor.primitive.0",
-      "indexCount": 1122,
+      "indexCount": 660,
       "indexed": true,
       "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.salvage-cutter.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 361
+      "vertexCount": 208
     },
     {
       "bounds": {
         "max": [
-          10.74561595916748,
-          3.360814094543457,
-          1.5246636867523193
+          -3.9699997901916504,
+          3.36100435256958,
+          0.13000011444091797
         ],
         "min": [
           -4.230000019073486,
-          -0.12726542353630066,
-          -1.5246635675430298
+          3.1789956092834473,
+          -0.13000011444091797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a54648a8ca0ae8b7b4ddb57787d5a4a7ee3c1030426d8a6872189d38f912a4cd",
+      "geometryHash": "cab30ae658459818004acfd27bb010c9f532674b99e3809df59f90a30844af3a",
       "id": "sf.render.salvage-cutter.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 348,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.salvage-cutter.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 148
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          10.745894432067871,
-          0.6923245787620544,
-          3.1437127590179443
+          6.370034217834473,
+          0.5897073745727539,
+          0.9100000262260437
         ],
         "min": [
-          4.47515869140625,
-          -0.589492917060852,
-          -3.143908739089966
+          5.129965782165527,
+          -0.5897073745727539,
+          -0.9100000262260437
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a203305c6d45ab442121c1ca63ea95e5bc4af4d37c243493bc513a2d4e8b7534",
+      "geometryHash": "ede0a442f50ea2f230ef95342ae9f5733364897bdedd85b8dde22694b96501c5",
       "id": "sf.render.salvage-cutter.node.lod2-brushedmetal.primitive.0",
-      "indexCount": 1344,
+      "indexCount": 648,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.salvage-cutter.node.lod2-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 555
+      "vertexCount": 288
     },
     {
       "bounds": {
@@ -1553,16 +2103,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fb8b896a655da7aa44d821a85c8ee35d116ee2f65d31b018717e8cd1e7248ca",
+      "geometryHash": "2918e9bf025e339aeaa81985c5e7123377e835fe1a9adbd9c53d1931bf8e36aa",
       "id": "sf.render.salvage-cutter.node.lod2-canopy.primitive.0",
-      "indexCount": 192,
+      "indexCount": 189,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_CANOPY",
       "nodeId": "sf.render.salvage-cutter.node.lod2-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 71
     },
     {
       "bounds": {
@@ -1578,7 +2128,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dccdb3c4fb77d39d48356542e2f128d981b4d03c04b9826da99d3b26e210a87",
+      "geometryHash": "ebf44e20177e600e1dbce84919a904a57a34a34af6f33a26f4b1c5942b21d417",
       "id": "sf.render.salvage-cutter.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1703,16 +2253,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "388d07eb33aa48f522a34187688a6a9d3a9ae861170544247f0ff24140bfaef9",
+      "geometryHash": "3fcadbfff0466d660de0e7d1890fc75a71d3098feba73d34a391606efd3f4026",
       "id": "sf.render.salvage-cutter.node.lod2-hull.primitive.0",
-      "indexCount": 1884,
+      "indexCount": 1875,
       "indexed": true,
       "materialHash": "90c3b4dcf87a9c869c0f66a5b2e579a44cc7df98fd0de84782dbfa36665b2576",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.salvage-cutter.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 526
+      "vertexCount": 524
     },
     {
       "bounds": {
@@ -1767,27 +2317,27 @@
     {
       "bounds": {
         "max": [
-          6.644381046295166,
-          3.1870737075805664,
-          3.197946310043335
+          5.494730472564697,
+          3.1870510578155518,
+          2.991487503051758
         ],
         "min": [
           -10.37065601348877,
-          -0.948421061038971,
-          -3.197946310043335
+          -0.9483982920646667,
+          -2.9916226863861084
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c4d8b35a5e7727c9ad2d0a482c7e3aa97165b26f4d2b77a7cdf5807b4a33a9e",
+      "geometryHash": "b26deb5b255ec4c07ae0feb4fee2c8b8e28858783f0872d792c61883425603ea",
       "id": "sf.render.salvage-cutter.node.lod2-mechanical.primitive.0",
-      "indexCount": 2052,
+      "indexCount": 1902,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.salvage-cutter.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 860
+      "vertexCount": 796
     },
     {
       "bounds": {
@@ -1803,7 +2353,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "104430cd408d7be5b3e02941a01c962f1a1643502f1f57d7c7739858ea9b7d9a",
+      "geometryHash": "9bc47d63b59f2b0f5444c0207c43da8ade89daf90849e1ef9c883ce05ea85fc3",
       "id": "sf.render.salvage-cutter.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1500,
       "indexed": true,
@@ -1817,27 +2367,277 @@
     {
       "bounds": {
         "max": [
-          -0.4756653606891632,
-          3.21779465675354,
-          2.2938013076782227
+          10.745348930358887,
+          0.4491531550884247,
+          -0.9570215344429016
         ],
         "min": [
-          -8.350049018859863,
-          -1.3794208765029907,
-          -2.2938015460968018
+          3.7043933868408203,
+          -0.4473240375518799,
+          -3.449838399887085
         ]
       },
       "drawMode": 4,
-      "geometryHash": "145ff58bb4e26715eec685b8ecdaa32700882fedbb70479d4d49b719e1582f19",
+      "geometryHash": "dbac81452bd97239a30c72845fefcb9614088b6505b7cb1e1ecaabe2cd2adc50",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-armor.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          10.747956275939941,
+          0.12737151980400085,
+          -0.5104321241378784
+        ],
+        "min": [
+          4.902602672576904,
+          -0.12737151980400085,
+          -1.5251229256391525
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5b55ba9a2830884cde7f1e07bfc848cf95b33fac5e8b660679fa9a4b6b72cf63",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-beacon-amber.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 74
+    },
+    {
+      "bounds": {
+        "max": [
+          10.746761322021484,
+          0.0976647436618805,
+          -0.5604763627052307
+        ],
+        "min": [
+          4.903378009796143,
+          -0.09707309305667877,
+          -2.0700513124465942
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8813ce4db70905568d501b7b02388e358da92a4a75a19dbad4abc0af9859cb1c",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-brushedmetal.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          6.645082712173462,
+          0.6465433835983276,
+          -2.802046298980713
+        ],
+        "min": [
+          6.152061820030212,
+          0.15304063260555267,
+          -3.197953939437866
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "96b81ddfa4a3d3191ab974d84cc4d44359846dcefd37c1833340b9b937c6d94a",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-mechanical.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 37
+    },
+    {
+      "bounds": {
+        "max": [
+          10.745348930358887,
+          0.44910380244255066,
+          3.449838399887085
+        ],
+        "min": [
+          3.7043933868408203,
+          -0.4490923285484314,
+          0.9570215046405792
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4787afd3cc2cf32d07c7ca8ec6c044fd736055970c9fe27ee866fad9966ac8fc",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-armor.primitive.0",
+      "indexCount": 246,
+      "indexed": true,
+      "materialHash": "f73c4b5d125b19463d0080e553585f09122e4ca6c109c6f684d6d6d0f16e0500",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 79
+    },
+    {
+      "bounds": {
+        "max": [
+          10.747956275939941,
+          0.12738394737243652,
+          1.525164932012558
+        ],
+        "min": [
+          4.9020304679870605,
+          -0.1273840218782425,
+          0.5103748440742493
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7cd46c0287b9aa87c351573948bbf2603c91bca3ec8d2339991c6f6754e852de",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-beacon-amber.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 74
+    },
+    {
+      "bounds": {
+        "max": [
+          10.746880531311035,
+          0.09766622632741928,
+          2.0700572729110718
+        ],
+        "min": [
+          4.903450965881348,
+          -0.09707315266132355,
+          0.5604704022407532
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88dd5168a046f3cb10fa44682c77661020730127b460c1d98f50819cdf65bf7a",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-brushedmetal.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          6.646949291229248,
+          0.6465318202972412,
+          3.1979693174362183
+        ],
+        "min": [
+          6.153708457946777,
+          0.15347158908843994,
+          2.802030920982361
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a574d5cc19f227fd7df37989de0c49426ae5ef5a3d6a39278448e79d406fa6e6",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-mechanical.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 37
+    },
+    {
+      "bounds": {
+        "max": [
+          6.32528829574585,
+          0.6924015134572983,
+          -2.5368587523698807
+        ],
+        "min": [
+          4.475630760192871,
+          0.25684264302253723,
+          -3.1427235901355743
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de43dd5f485e99e5533f1666ef5d49727d5ed2d79dbeb26e43ec3b3c59a45ad4",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-port-brushedmetal.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-port-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 50
+    },
+    {
+      "bounds": {
+        "max": [
+          6.32513427734375,
+          0.6924580186605453,
+          3.143672376871109
+        ],
+        "min": [
+          4.4752020835876465,
+          0.2572861313819885,
+          2.537265866994858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ea43bc2e5408292e98ff3bbe05b68b19fdd4703dc4d509e344f207702602b437",
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-star-brushedmetal.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-star-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 50
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.47633692622184753,
+          3.2134618759155273,
+          2.294086217880249
+        ],
+        "min": [
+          -8.350049018859863,
+          -1.3795170783996582,
+          -2.294086456298828
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2826ce97b309ad4bf64cd67f0aa82acceccdca643d2ac7b6d9c9bb76101f6867",
       "id": "sf.render.salvage-cutter.node.lod2-warning.primitive.0",
-      "indexCount": 1092,
+      "indexCount": 996,
       "indexed": true,
       "materialHash": "0fbd37abec8514a87da71fa5645814308f0d95a0dd1e0962e224915647cda69d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.salvage-cutter.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 405
+      "vertexCount": 374
     }
   ],
   "hlods": [],
@@ -2968,6 +3768,606 @@
       ]
     },
     {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodePath": [
+        0,
+        49,
+        0
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodePath": [
+        0,
+        49,
+        1
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodePath": [
+        0,
+        49,
+        2
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodePath": [
+        0,
+        49,
+        3
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_PORT_Warning",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_PORT_Warning",
+      "nodePath": [
+        0,
+        49,
+        4
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodePath": [
+        0,
+        50,
+        0
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodePath": [
+        0,
+        50,
+        1
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodePath": [
+        0,
+        50,
+        2
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodePath": [
+        0,
+        50,
+        3
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_JAW_STAR_Warning",
+      "nodeName": "LOD0_MOTION_SALVAGE_JAW_STAR_Warning",
+      "nodePath": [
+        0,
+        50,
+        4
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-port-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodeName": "LOD0_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodePath": [
+        0,
+        51,
+        0
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-ram-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        -2.680000066757202,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-star-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodeName": "LOD0_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodePath": [
+        0,
+        52,
+        0
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-ram-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        2.680000066757202,
+        1
+      ]
+    },
+    {
       "id": "sf.render.salvage-cutter.node.lod0-warning",
       "localTransform": [
         1,
@@ -3748,6 +5148,506 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodePath": [
+        0,
+        49,
+        5
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodePath": [
+        0,
+        49,
+        6
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodePath": [
+        0,
+        49,
+        7
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodePath": [
+        0,
+        49,
+        8
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodePath": [
+        0,
+        50,
+        5
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodePath": [
+        0,
+        50,
+        6
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodePath": [
+        0,
+        50,
+        7
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodeName": "LOD1_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodePath": [
+        0,
+        50,
+        8
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-port-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodeName": "LOD1_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodePath": [
+        0,
+        51,
+        1
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-ram-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        -2.680000066757202,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-star-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodeName": "LOD1_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodePath": [
+        0,
+        52,
+        1
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-ram-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        2.680000066757202,
         1
       ]
     },
@@ -4536,6 +6436,506 @@
       ]
     },
     {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_PORT_Armor",
+      "nodePath": [
+        0,
+        49,
+        9
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+      "nodePath": [
+        0,
+        49,
+        10
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+      "nodePath": [
+        0,
+        49,
+        11
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_PORT_Mechanical",
+      "nodePath": [
+        0,
+        49,
+        12
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_STAR_Armor",
+      "nodePath": [
+        0,
+        50,
+        9
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+      "nodePath": [
+        0,
+        50,
+        10
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+      "nodePath": [
+        0,
+        50,
+        11
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodeName": "LOD2_MOTION_SALVAGE_JAW_STAR_Mechanical",
+      "nodePath": [
+        0,
+        50,
+        12
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-port-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodeName": "LOD2_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+      "nodePath": [
+        0,
+        51,
+        2
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-ram-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        -2.680000066757202,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-star-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodeName": "LOD2_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+      "nodePath": [
+        0,
+        52,
+        2
+      ],
+      "parentId": "sf.render.salvage-cutter.node.motion-salvage-ram-star",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        2.680000066757202,
+        1
+      ]
+    },
+    {
       "id": "sf.render.salvage-cutter.node.lod2-warning",
       "localTransform": [
         1,
@@ -4581,6 +6981,202 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_SALVAGE_JAW_PORT",
+      "nodeName": "MOTION_SALVAGE_JAW_PORT",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        -1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_SALVAGE_JAW_STAR",
+      "nodeName": "MOTION_SALVAGE_JAW_STAR",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        0,
+        1.2999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.motion-salvage-ram-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        -2.680000066757202,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_SALVAGE_RAM_PORT",
+      "nodeName": "MOTION_SALVAGE_RAM_PORT",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        -2.680000066757202,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.motion-salvage-ram-star",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        2.680000066757202,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_SALVAGE_RAM_STAR",
+      "nodeName": "MOTION_SALVAGE_RAM_STAR",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.5,
+        0.550000011920929,
+        2.680000066757202,
         1
       ]
     },
@@ -4657,7 +7253,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        49
+        53
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4706,7 +7302,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        50
+        54
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4755,7 +7351,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        51
+        55
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4804,7 +7400,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        52
+        56
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4853,7 +7449,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        53
+        57
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4902,7 +7498,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        54
+        58
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -4951,7 +7547,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        55
+        59
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -5000,7 +7596,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        56
+        60
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -5049,7 +7645,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        57
+        61
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -5098,7 +7694,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        58
+        62
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -5147,7 +7743,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        59
+        63
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -5196,7 +7792,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        60
+        64
       ],
       "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
@@ -5223,29 +7819,29 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "56da44b8cc6c46210001ad7da188cdc4633dafb09064c7208aad801d529f9817"
+      "sha256": "8122103be2e221c1094d538f63e3ceff968c8a18d76fbdd542989ab71631bb8e"
     },
     "sourceGlb": {
-      "bytes": 921672,
-      "sha256": "10204c681620a59e40bb48ccfe42d6251d25d605a3c1a96337779040a1d97474",
+      "bytes": 983096,
+      "sha256": "dae478197eda03c9b5d07c5ec9fc25a05945ef87c7f6420ee12f4b1086f86335",
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 212795,
-      "sha256": "6ad96f51a2017a9ec303285ca2a0a577796a2672af36ea4087d156c0985da48d",
+      "bytes": 198942,
+      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1604580,
-    "sha256": "eb62b805d4cf4b6e2519a8c5481fa65d324afa0083ce3279373d2caca49d1f2a",
+    "bytes": 1677104,
+    "sha256": "9c69aa6e03f68928098927d679713f8a308d95fc3fd0888afab717ddef103116",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.18967199325561523,
-        0.9567968845367432,
+        0.9567499160766602,
         0
       ],
       "max": [
@@ -5255,12 +7851,12 @@
       ],
       "min": [
         -10.37065601348877,
-        -1.4502313137054443,
+        -1.4503252506256104,
         -3.569999933242798
       ],
       "size": [
         21.12065601348877,
-        4.814056396484375,
+        4.814150333404541,
         7.139999866485596
       ]
     },
@@ -5283,13 +7879,273 @@
           0,
           1,
           0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "MOTION_SALVAGE_JAW_PORT",
+        "planIndex": 51,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "salvage_jaw_port",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4.599999904632568
+            ],
+            [
+              0,
+              1,
+              0,
+              1.2999999523162842
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_SALVAGE_JAW_PORT",
+          "spaceface": {
+            "motionGroup": "salvage_jaw_port"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_SALVAGE_JAW_PORT",
+            "recordIds": [
+              "sf.render.salvage-cutter.node.motion-salvage-jaw-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "MOTION_SALVAGE_JAW_STAR",
+        "planIndex": 65,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "salvage_jaw_star",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4.599999904632568
+            ],
+            [
+              0,
+              1,
+              0,
+              -1.2999999523162842
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_SALVAGE_JAW_STAR",
+          "spaceface": {
+            "motionGroup": "salvage_jaw_star"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_SALVAGE_JAW_STAR",
+            "recordIds": [
+              "sf.render.salvage-cutter.node.motion-salvage-jaw-star"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          -2.680000066757202,
+          1
+        ],
+        "name": "MOTION_SALVAGE_RAM_PORT",
+        "planIndex": 79,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "salvage_ram_port",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4.5
+            ],
+            [
+              0,
+              1,
+              0,
+              2.680000066757202
+            ],
+            [
+              0,
+              0,
+              1,
+              0.550000011920929
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_SALVAGE_RAM_PORT",
+          "spaceface": {
+            "motionGroup": "salvage_ram_port"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_SALVAGE_RAM_PORT",
+            "recordIds": [
+              "sf.render.salvage-cutter.node.motion-salvage-ram-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          2.680000066757202,
+          1
+        ],
+        "name": "MOTION_SALVAGE_RAM_STAR",
+        "planIndex": 83,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "salvage_ram_star",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4.5
+            ],
+            [
+              0,
+              1,
+              0,
+              -2.680000066757202
+            ],
+            [
+              0,
+              0,
+              1,
+              0.550000011920929
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_SALVAGE_RAM_STAR",
+          "spaceface": {
+            "motionGroup": "salvage_ram_star"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_SALVAGE_RAM_STAR",
+            "recordIds": [
+              "sf.render.salvage-cutter.node.motion-salvage-ram-star"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           1.8796000480651855,
           0.9555000066757202,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 51,
+        "planIndex": 87,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5341,7 +8197,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 52,
+        "planIndex": 88,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5393,7 +8249,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 53,
+        "planIndex": 89,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5445,7 +8301,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 54,
+        "planIndex": 90,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5497,7 +8353,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 55,
+        "planIndex": 91,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5549,7 +8405,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 56,
+        "planIndex": 92,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5601,7 +8457,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 57,
+        "planIndex": 93,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5653,7 +8509,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 58,
+        "planIndex": 94,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5705,7 +8561,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 59,
+        "planIndex": 95,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5757,7 +8613,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 60,
+        "planIndex": 96,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5809,7 +8665,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 61,
+        "planIndex": 97,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5861,7 +8717,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 62,
+        "planIndex": 98,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5897,10 +8753,10 @@
     "materialProfileRoles": {
       "drive": 3,
       "glass": 3,
-      "hull": 16,
-      "mechanical": 9,
-      "signal": 15,
-      "warning": 3
+      "hull": 22,
+      "mechanical": 27,
+      "signal": 21,
+      "warning": 5
     },
     "materialProfiles": [
       {
@@ -6147,9 +9003,175 @@
         "allowTextures": true,
         "planIndex": 50,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 77,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 80,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 81,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 82,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 84,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 85,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 86,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 63,
+    "motionBank": {
+      "bytes": 199814,
+      "rigId": "salvage_cutter_jaw",
+      "sha256": "aa1c57fd620458ef69ba5d1c846c2a293df5391cf0f58db5d99962762df15608",
+      "uri": "assets/ships/motions/salvage-cutter.motion.json"
+    },
+    "nodeCount": 99,
     "primitives": [
       {
         "canopy": false,
@@ -7509,13 +10531,909 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_PORT_Armor",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_PORT_Mechanical",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_PORT_Warning",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_PORT_Armor",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_PORT_Mechanical",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_PORT_Armor",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_PORT_Beacon_Amber",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_PORT_BrushedMetal",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          -1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_PORT_Mechanical",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_STAR_Armor",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_STAR_Mechanical",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_JAW_STAR_Warning",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_STAR_Armor",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+        "planIndex": 73,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_JAW_STAR_Mechanical",
+        "planIndex": 74,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_STAR_Armor",
+        "planIndex": 75,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_STAR_Beacon_Amber",
+        "planIndex": 76,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_STAR_BrushedMetal",
+        "planIndex": 77,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          0,
+          1.2999999523162842,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_JAW_STAR_Mechanical",
+        "planIndex": 78,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          -2.680000066757202,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+        "planIndex": 80,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          -2.680000066757202,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+        "planIndex": 81,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          -2.680000066757202,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_RAM_PORT_BrushedMetal",
+        "planIndex": 82,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          2.680000066757202,
+          1
+        ],
+        "name": "LOD0_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+        "planIndex": 84,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          2.680000066757202,
+          1
+        ],
+        "name": "LOD1_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+        "planIndex": 85,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.5,
+          0.550000011920929,
+          2.680000066757202,
+          1
+        ],
+        "name": "LOD2_MOTION_SALVAGE_RAM_STAR_BrushedMetal",
+        "planIndex": 86,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "5d16fa09a98436ada6d9dda1196d28efa580b6e951cebd48f7c2cb6a26d386f0",
+  "runtimeHash": "c5492bb9bc3cccb1cc13f38ea8d222f98de497c02a6cc62c4f5acab26cc9cb04",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -7527,7 +11445,7 @@
         ],
         "min": [
           -10.37065601348877,
-          -1.4502313137054443,
+          -1.4503252506256104,
           -3.569999933242798
         ]
       },
@@ -7549,6 +11467,18 @@
         "sf.render.salvage-cutter.node.lod0-lights-warm",
         "sf.render.salvage-cutter.node.lod0-mechanical",
         "sf.render.salvage-cutter.node.lod0-mechanicaldark",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-armor",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-beacon-amber",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-brushedmetal",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-mechanical",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-port-warning",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-armor",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-beacon-amber",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-brushedmetal",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-mechanical",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-jaw-star-warning",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-port-brushedmetal",
+        "sf.render.salvage-cutter.node.lod0-motion-salvage-ram-star-brushedmetal",
         "sf.render.salvage-cutter.node.lod0-warning",
         "sf.render.salvage-cutter.node.lod1-armor",
         "sf.render.salvage-cutter.node.lod1-armor-olive",
@@ -7565,6 +11495,16 @@
         "sf.render.salvage-cutter.node.lod1-lights-warm",
         "sf.render.salvage-cutter.node.lod1-mechanical",
         "sf.render.salvage-cutter.node.lod1-mechanicaldark",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-armor",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-beacon-amber",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-brushedmetal",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-port-mechanical",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-armor",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-beacon-amber",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-brushedmetal",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-jaw-star-mechanical",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-port-brushedmetal",
+        "sf.render.salvage-cutter.node.lod1-motion-salvage-ram-star-brushedmetal",
         "sf.render.salvage-cutter.node.lod1-warning",
         "sf.render.salvage-cutter.node.lod2-armor",
         "sf.render.salvage-cutter.node.lod2-armor-olive",
@@ -7581,7 +11521,21 @@
         "sf.render.salvage-cutter.node.lod2-lights-warm",
         "sf.render.salvage-cutter.node.lod2-mechanical",
         "sf.render.salvage-cutter.node.lod2-mechanicaldark",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-armor",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-beacon-amber",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-brushedmetal",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-port-mechanical",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-armor",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-beacon-amber",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-brushedmetal",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-jaw-star-mechanical",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-port-brushedmetal",
+        "sf.render.salvage-cutter.node.lod2-motion-salvage-ram-star-brushedmetal",
         "sf.render.salvage-cutter.node.lod2-warning",
+        "sf.render.salvage-cutter.node.motion-salvage-jaw-port",
+        "sf.render.salvage-cutter.node.motion-salvage-jaw-star",
+        "sf.render.salvage-cutter.node.motion-salvage-ram-port",
+        "sf.render.salvage-cutter.node.motion-salvage-ram-star",
         "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
         "sf.render.salvage-cutter.node.socket-camera-focus",
         "sf.render.salvage-cutter.node.socket-cargo-ventral",

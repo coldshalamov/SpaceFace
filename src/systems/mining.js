@@ -62,6 +62,7 @@ import {
   SALVAGE_RIGHTS_KIND,
 } from '../data/killRewards.js';
 import { consumeLethalBlow, consumePendingSlam, consumePendingSlamIfFresh, overkillNoteForKill, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
+import { victimVisualFor } from './aftermathWrecks.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
 
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
@@ -444,7 +445,7 @@ export const mining = {
         salvagePool: pool,
         payloadType: action ? action.id : 'cut_panel'
       }, this.helpers);
-      this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
+      this.bus.emit('salvage:cutComplete', { minerId: player.id, targetId: target.id, payloadId: payload.id });
     }
   },
 
@@ -1450,6 +1451,11 @@ export const mining = {
         || this._lootToPool();
       const fractured = spawnFracturePieces(this, note, {
         markerId: aftermathPlan && aftermathPlan.markerId,
+        // ANI-08: both spawned fragments render as the victim's own hull pieces — the seam
+        // offcut resolves its fragment GLB off this stamp; the remainder also receives
+        // hulkVisual through bindImmediateWreck below.
+        victimVisual: victimVisualFor(victim && victim.data),
+        victimRadius: victim && Number.isFinite(victim.radius) ? victim.radius : null,
         salvagePool,
         bindAftermath: aftermathPlan && aftermathOwner
           && typeof aftermathOwner.bindImmediateWreck === 'function'
