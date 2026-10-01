@@ -30,6 +30,11 @@ const IMPORT_RE = /(?:from\s+|import\s+)['"]([^'"]+)['"]/g;
 // Repo-root markers a preloadable module lives under — mirrors the importmap targets.
 const ROOT_MARKERS = ['/src/', '/vendor/', '/node_modules/'];
 
+// modulepreload compiles the fetched file as a JS module — a `with { type: 'json' }` (or
+// any non-module) import resolved to an href must not be hinted as one (the browser then
+// MIME-rejects it). Keep those hrefs in `visited` so their absence doesn't widen the wave.
+const MODULE_EXT_RE = /\.(m?js|cjs|ts|jsx|tsx|mts|cts)$/i;
+
 // Browser-ordered bare-specifier resolution through the document's own importmap:
 // exact key first, then longest trailing-slash prefix match.
 function resolveBareSpecifier(spec, importmap) {
@@ -119,6 +124,7 @@ while (queue.length) {
   const href = queue.shift();
   if (visited.has(href)) continue;
   visited.add(href);
+  if (!MODULE_EXT_RE.test(href)) continue;
   const abs = join(root, href.slice(1));
   let next;
   try {

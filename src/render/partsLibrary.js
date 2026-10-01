@@ -3963,7 +3963,7 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
     };
     // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
     // marker union swells the stamp, so stand-in sizing claims the authored basis.
-    const committedX = Number(stampedSize[0]) * scale;
+    const committedX = Number(stampedBounds.size[0]) * scale;
     if (Number.isFinite(committedX) && committedX > 0) {
       boundary.userData.boundaryResolvingCommittedX = committedX;
     }
