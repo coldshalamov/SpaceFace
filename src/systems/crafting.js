@@ -137,9 +137,18 @@ export const crafting = {
   update(dt, state) {
     const queues = (state.crafting && state.crafting.queues) || {};
     const completedIds = [];
+    const simNow = Number(state && state.simTime) || 0;
     for (const stationId in queues) {
       const job = queues[stationId];
       if (!job || job.done) continue;
+      // Re-announce in-flight work so a rig that bound after the original receipt — station
+      // unload/reload, deserialize, entity rebuild — still hears the queue. The receipt
+      // handler is idempotent on a running loop (clipActive('workLoop') guard), so a
+      // throttled re-emit is safe.
+      if (simNow - (job._announcedAt || -3) >= 2) {
+        job._announcedAt = simNow;
+        this.bus.emit('craft:queueChanged', { stationId, active: true });
+      }
       job.elapsed += dt;
       if (job.elapsed >= job.total) {
         if (!this._grantProduct(job)) {
