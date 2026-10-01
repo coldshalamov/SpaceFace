@@ -412,6 +412,26 @@ export function createAlerts(ctx) {
     announce({ key: `sink:${p.id}`, sev: 'info', text: `${kind} −${amount} CR${cause}`, ttl: 4 });
   });
 
+  // WORLD-25 — hazard-zone membership uses the persistent pill the HUD already owns: entry
+  // raises the named field line, exit clears it. world.js emits hazard:enter/hazard:exit with
+  // the player entity id; other entities' zone crossings never reach this surface.
+  const HAZARD_SEV = { radiation: 'warn', nebula: 'info' };
+  bus.on('hazard:enter', (p) => {
+    if (!p || p.entityId !== (ctx.state && ctx.state.playerId)) return;
+    const type = typeof p.zoneType === 'string' ? p.zoneType : '';
+    if (!type) return;
+    raise({
+      key: `hazard:${type}`,
+      sev: HAZARD_SEV[type] || 'info',
+      text: `${type.replace(/_/g, ' ').toUpperCase()} FIELD`,
+      ttl: Infinity,
+    });
+  });
+  bus.on('hazard:exit', (p) => {
+    if (!p || p.entityId !== (ctx.state && ctx.state.playerId)) return;
+    if (typeof p.zoneType === 'string' && p.zoneType) clear(`hazard:${p.zoneType}`);
+  });
+
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
   // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.
   bus.on('combat:damage', (p) => {
