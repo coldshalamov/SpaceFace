@@ -24,6 +24,7 @@ import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { combatVerbRecipe } from '../audio/combatVerbCues.js';
 
 // Tuning (kept conservative so we never blow the ship/entity budget — brief: ≤2 salvage per zone).
 const MAX_SALVAGE_PER_ZONE = 2;     // hard cap on entities placed per derelict zone
@@ -85,6 +86,8 @@ export const salvage = {
       state.salvage.points = [];
       state.salvage.plannedSectorId = null;
     });
+    // The haul stays quiet. This fires only once the reactor is clear of the blast.
+    this.bus.on('salvage:reactorTowedClear', () => this._onReactorTowedClear());
     // BP-01.1 receipt: an NPC vulture crew claims the field (e1EncounterRuntime H6 settle) —
     // a fixed acknowledgment on the existing toast/comms seams so the claim is legible to the
     // player instead of a silent event. Pure receipt; no gameplay outcome is applied here.
@@ -556,6 +559,14 @@ export const salvage = {
       const dx = s.pos.x - player.pos.x, dz = s.pos.z - player.pos.z;
       if (dx * dx + dz * dz <= r2) this._offerFromPoint(s);
     }
+  },
+
+  // Relief, not a second strain tone: the wanted-clear fall is the "pressure is gone"
+  // voice. One play, and only on the clear — never while the line is still hauling.
+  _onReactorTowedClear() {
+    const id = combatVerbRecipe('salvage:reactorTowedClear');
+    if (!id || !this.bus) return;
+    this.bus.emit('audio:cue', { id, gain: 0.7 });
   },
 
   _onScan(p) {

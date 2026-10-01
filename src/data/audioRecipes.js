@@ -2253,7 +2253,9 @@ export const RECIPES = [
     id: 'sfx_travel_arrival',
     category: 'engine',
     type: 'layered',
-    layers: ['sfx_jump_arrive', 'sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
+    // The jump whoosh stays its own recipe. Nesting it here never attaches the
+    // jump_arrive sample, so the decompression body was stranded inside the chord.
+    layers: ['sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
     gainMult: 0.75,
   },
   {

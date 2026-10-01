@@ -1964,6 +1964,10 @@ export const audio = {
     bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
     // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
     // to their raw events here: doing so stacks a direct voice with the semantic journey voice.
+    // INST-17 arms a flag only. The arrival chord plays sfx_jump_arrive once underneath;
+    // the raw jump:arrive row stays SILENT.
+    bus.on('jump:start', () => { if (this.rt) this.rt._jumpArrivalWhoosh = true; });
+    bus.on('jump:chargeAbort', () => { if (this.rt) this.rt._jumpArrivalWhoosh = false; });
     // Mining rewards and seam reads are normalized by presentation. The beam loop remains here,
     // but raw one-shot subscriptions would double the semantic reward floor.
     bus.on('weapons:vent', (p) => {
@@ -5122,10 +5126,31 @@ export const audio = {
       rate: opts.rate || 1,
       critical: isCritical,
     });
+    if (rid === 'sfx_travel_arrival') this._playJumpArrivalLayer(opts, isCritical);
+    else if (rid === 'sfx_travel_settle' || rid === 'sfx_travel_interdiction') {
+      // Arrived without the chord (suppressed or no sector enter). Drop a stale arm
+      // so the next corridor crossing does not wear the jump whoosh.
+      if (this.rt && this.rt._jumpArrivalWhoosh) this.rt._jumpArrivalWhoosh = false;
+    }
     if (voice && signature && signature.cooldownS > 0) {
       this.rt._signatureLastAt[id] = nowS;
     }
     return voice;
+  },
+
+  // Under the arrival chord, once per committed jump. Quiet enough to sit beneath
+  // the tone and the bass; its own play is what attaches the jump_arrive sample.
+  _playJumpArrivalLayer(opts, critical) {
+    const rt = this.rt;
+    if (!rt || !rt._jumpArrivalWhoosh) return;
+    rt._jumpArrivalWhoosh = false;
+    const gain = opts && Number.isFinite(opts.gain) ? opts.gain : 0.8;
+    this.play('sfx_jump_arrive', {
+      gain: gain * 0.7,
+      position: opts && opts.position || null,
+      rate: opts && opts.rate || 1,
+      critical: !!critical,
+    });
   },
 
   _duckMusic(seconds) {

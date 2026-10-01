@@ -97,7 +97,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'fields:hitchLatched': 'sfx_tether_latch_lock',
   'fields:hitchCut': 'sfx_tether_twang',
 
-  'cruise:engaged': 'sfx_engine_boost',
+  'cruise:engaged': SILENT('Cruise engage is owned by the lane-lock voice (presentation.travel.lane_lock); a boost row would double it.'),
   'cruise:dropped': SILENT('Dropping cruise is the thrust voice falling back.'),
   'cruise:charging': SILENT('Cruise charge is the thrust voice, not a new sting.'),
   'cruise:snared': 'sfx_hull_scrape',
@@ -127,7 +127,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'salvage:npcUnload': SILENT('NPC unload is bookkeeping.'),
   'salvage:placed': SILENT('Placement is the same cut, already heard when it completes.'),
   'salvage:reactorBurst': 'sfx_hull_decompress',
-  'salvage:reactorTowedClear': SILENT('The clear is bookkeeping after the tow.'),
+  'salvage:reactorTowedClear': 'sfx_wanted_clear',
   'salvage:reactorVented': 'sfx_hull_stress_groan',
   'salvage:changed': SILENT('Salvage bay fill is a meter, not a sting.'),
   'salvage:bayCashedIn': SILENT('The cash-in already plays sfx_loot_collect.'),
