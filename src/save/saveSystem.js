@@ -4856,6 +4856,10 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_TARGET_ASSIST_STRENGTHS.has(s.gameplay.targetAssistStrength)) {
     s.gameplay.targetAssistStrength = DEFAULT_TARGET_ASSIST_STRENGTH;
   }
+  // Absent from the shipped defaults, so absent means "on" — floatingText suppresses damage
+  // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
+  // old save pin Off forever.
+  if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
@@ -4910,6 +4914,7 @@ function profileSettingsSnapshot(settings) {
       // here would only duplicate the rule and risk disagreeing with it.
       orbitAssistStrength: s.gameplay && s.gameplay.orbitAssistStrength,
       targetAssistStrength: s.gameplay && s.gameplay.targetAssistStrength,
+      damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
     },

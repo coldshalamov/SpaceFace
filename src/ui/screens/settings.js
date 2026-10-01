@@ -113,6 +113,71 @@ function nav(ctx, method, arg) {
 }
 
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
+export { TABS as SETTINGS_TABS };
+
+/**
+ * PRO-15: one settings key, ONE editable row.
+ *
+ * Motion effects and UI scale each had an independent editor on BOTH the Video and the Access
+ * tab, writing the same key from two places, so a pilot who set one had no way to know a second
+ * control existed. Access is the home — its own accessibility statement says "reduced motion,
+ * text scale ... are listed below", CHECKLIST_ITEMS names Access, and the Ceres five-minute
+ * acceptance actor drives the Access row. Video keeps a read-only labelled mirror.
+ *
+ * Both rows come from the shared factories below, so the two homes cannot drift again, and the
+ * mirror is `build.shortcut`: no label/for, no control, no write path — the shape the ORRERY
+ * preview already reads.
+ */
+export const SETTINGS_ROW_OWNERS = Object.freeze({
+  'accessibility.motionPreference': Object.freeze({ home: 'Access', mirror: 'Video', label: 'Motion effects' }),
+  uiScale: Object.freeze({ home: 'Access', mirror: 'Video', label: 'UI scale' }),
+});
+export const MIRROR_NOTE = 'Set in Access';
+
+const MOTION_WORDS = Object.freeze({ system: 'Follow system', reduce: 'Reduced', full: 'Full' });
+const MOTION_CHOICES = Object.freeze([
+  ['system', MOTION_WORDS.system], ['reduce', MOTION_WORDS.reduce], ['full', MOTION_WORDS.full],
+]);
+
+/** A corrupt profile must render a usable number, not 'NaNx' or a '0.00x' from a null. */
+export function fmtUiScale(value) {
+  if (value == null || value === '') return '1.00x';
+  const n = Number(value);
+  return (Number.isFinite(n) ? n : 1).toFixed(2) + 'x';
+}
+
+function motionPreferenceOf(settings) {
+  const chosen = (settings.accessibility || {}).motionPreference;
+  if (chosen && MOTION_WORDS[chosen]) return chosen;
+  return (settings.video || {}).motionReduce ? 'reduce' : 'full';
+}
+
+/** The Access home for motion effects, or the Video mirror. `editable` picks which. */
+export function motionEffectsRow(build, settings, editable) {
+  if (!editable) {
+    return build.shortcut('Motion effects', MOTION_WORDS[motionPreferenceOf(settings)], MIRROR_NOTE);
+  }
+  return build.select('Motion effects', () => motionPreferenceOf(settings),
+    MOTION_CHOICES.map(pair => pair.slice()),
+    (value) => {
+      recordMotionChoice(settings, value);
+      settingsScreen._set(currentCtx, 'accessibility', 'motionPreference', value);
+    });
+}
+
+/** The Access home for UI scale, or the Video mirror. */
+export function uiScaleRow(build, settings, editable, setValue) {
+  if (!editable) return build.shortcut('UI scale', fmtUiScale(settings.uiScale), MIRROR_NOTE);
+  return build.slider('UI scale', () => settings.uiScale, 0.75, 2, 0.05, fmtUiScale, (value, persist) => {
+    setValue(null, 'uiScale', value, persist);
+    const root = document.getElementById('ui-root');
+    if (root) root.style.setProperty('--ui-scale', value);
+  });
+}
+
+// The row builders above need the live screen to reach `_set`, but they are also pure data helpers
+// the focused test drives directly. One indirection point instead of threading ctx through.
+let currentCtx = null;
 
 /** Controls-tab Deck/trackpad sentence. */
 export const STEAM_DECK_HEADER = 'Steam Deck';
@@ -386,6 +451,7 @@ export const settingsScreen = {
     pane.innerHTML = '';
     const s = ctx.state.settings;
     const build = paneBuilder(pane);
+    currentCtx = ctx;
 
     const rowSlider = (label, get, min, max, step, fmt, onInput) => build.slider(label, get, min, max, step, fmt, onInput);
     const rowToggle = (label, get, onChange) => build.toggle(label, get, onChange);
@@ -454,17 +520,11 @@ export const settingsScreen = {
       // Accessibility (V2 §9/§12): vestibular-sensitive players get hit feedback (numbers, audio,
       // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
       // feel module reads settings.video.motionReduce every trigger, so the preference takes effect now.
-      rowSelect('Motion effects', () => (s.accessibility && s.accessibility.motionPreference) || (vd.motionReduce ? 'reduce' : 'full'),
-        [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
-        (v) => {
-          recordMotionChoice(s, v);
-          this._set(ctx, 'accessibility', 'motionPreference', v);
-        });
+      // PRO-15: this used to be a SECOND editor for accessibility.motionPreference, duplicating the
+      // Access row below. It is now a read-only mirror pointing at the home.
+      motionEffectsRow(build, s, false);
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
-      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => {
-        this._set(ctx, null, 'uiScale', v, persist);
-        const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
-      });
+      uiScaleRow(build, s, false);
     } else if (refs.active === 'Gameplay') {
       const g = s.gameplay;
       if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
@@ -499,7 +559,11 @@ export const settingsScreen = {
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
-      rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
+      // `!== false`, not `!!`: gameplay.damageNumbers is ABSENT from the shipped defaults (gameState.js
+      // carries root showDamageNumbers, which nothing reads), and floatingText suppresses numbers
+      // only on `=== false`. So the old `!!` read showed Off on a fresh profile while damage
+      // numbers were on — the toggle contradicted the game.
+      rowToggle('Damage numbers', () => g.damageNumbers !== false, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
       // Installed content packs (PQ-172.00): JSON the loader validated at boot. Content is
       // read-only here — mods are installed by dropping files into the content directory.
       const mods = listUserMods();
@@ -590,12 +654,7 @@ export const settingsScreen = {
       rowToggle('High contrast', () => !!ac.highContrast, (v) => this._set(ctx, 'accessibility', 'highContrast', v));
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
-      rowSelect('Motion effects', () => ac.motionPreference || (s.video.motionReduce ? 'reduce' : 'full'),
-        [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
-        (v) => {
-          recordMotionChoice(s, v);
-          this._set(ctx, 'accessibility', 'motionPreference', v);
-        });
+      motionEffectsRow(build, s, true);
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
       const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
@@ -610,10 +669,7 @@ export const settingsScreen = {
         [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],
         (v) => this._set(ctx, 'accessibility', 'captionSize', v));
       rowToggle('Solid caption backing', () => ac.captionBackground !== false, (v) => this._set(ctx, 'accessibility', 'captionBackground', v));
-      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => {
-        this._set(ctx, null, 'uiScale', v, persist);
-        const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
-      });
+      uiScaleRow(build, s, true, (section, key, value, persist) => this._set(ctx, section, key, value, persist));
       build.note('Colorblind mode also recolors radar blips and adds redundant shapes.');
     } else if (refs.active === 'Controls') {
       rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
