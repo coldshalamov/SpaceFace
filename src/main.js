@@ -543,6 +543,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
       resetRunState(state, opts || {});
+      // The run reset clears every time-effects request, including the veil the loading shell
+      // raised above — re-assert it or a frame landing on the paints below steps the sim while
+      // state.combat is still the fresh, pre-newGame shape.
+      createTimeEffects(state).set('runtime:loading', { scale: 0 });
       resetCombatInputMode(state, registry);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Let the loading shell paint the "preparing" stage between the synchronous chunks —
