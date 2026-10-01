@@ -344,6 +344,12 @@ export const asteroidSites = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each site clone and each manifest normalize is record-atomic, so yields sit
+  // only at record and section boundaries — order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const next = makeDefaultSites();
     if (data && typeof data === 'object') {
       next.nextSiteNum = Math.max(1, Math.trunc(Number(data.nextSiteNum) || 1));
@@ -354,14 +360,17 @@ export const asteroidSites = {
         if (!site || typeof site !== 'object' || next.byId[id]) continue;
         next.byId[id] = JSON.parse(JSON.stringify(site));
         next.order.push(id);
+        yield 'sites-record';
       }
       for (const manifest of WORLD_SITE_MANIFESTS) {
         const prior = data.worldById && data.worldById[manifest.id];
         next.worldById[manifest.id] = normalizeWorldSiteRecord(manifest, prior);
         next.worldOrder.push(manifest.id);
+        yield 'sites-world-record';
       }
     }
     this.state.sites = next;
+    yield 'sites-assigned';
     this._normalize(next);
     this._ensureWorldSiteRecords();
     this._rt = new Map();

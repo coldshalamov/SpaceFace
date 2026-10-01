@@ -4,6 +4,8 @@
 // render pools consume the compact category arrays instead of rescanning state.entityList. Records and
 // arrays are retained across frames; no simulation state or Three.js objects are owned here.
 
+import { occluderDuckCandidate } from './cameraOccluders.js';
+
 export function createRenderEntityFrame() {
   return {
     frameId: 0,
@@ -15,6 +17,7 @@ export function createRenderEntityFrame() {
     shipAux: [],
     authored: [],
     asteroids: [],
+    occluderCandidates: [],
   };
 }
 
@@ -29,6 +32,7 @@ export function beginRenderEntityFrame(frame) {
   frame.shipAux.length = 0;
   frame.authored.length = 0;
   frame.asteroids.length = 0;
+  frame.occluderCandidates.length = 0;
   return frame;
 }
 
@@ -84,6 +88,7 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
     || typeof userData.requestAuthoredUpgrade === 'function'
   );
   record.asteroidInstance = entity.type === 'asteroid' && !!userData.asteroidInstanceBody;
+  record.occluderCandidate = visible && !nextViewCulled && occluderDuckCandidate(entity);
 
   frame.entitiesVisited++;
   frame.records.push(record);
@@ -91,6 +96,7 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
   if (record.shipAuxiliary) frame.shipAux.push(record);
   if (record.authored) frame.authored.push(record);
   if (record.asteroidInstance) frame.asteroids.push(record);
+  if (record.occluderCandidate) frame.occluderCandidates.push(record);
   return record;
 }
 
@@ -164,6 +170,7 @@ function createRecord(id) {
     shipAuxiliary: false,
     authored: false,
     asteroidInstance: false,
+    occluderCandidate: false,
     x: 0, y: 0, z: 0,
     rx: 0, ry: 0, rz: 0,
     sx: 1, sy: 1, sz: 1,

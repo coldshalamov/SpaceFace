@@ -10883,6 +10883,12 @@ export const traffic = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each section (release pass, incident normalizes, id compacts) is atomic —
+  // yields sit only at those boundaries so order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const previousTraffic = this.state && this.state.traffic;
     this._releaseCeresMinerHaulerHandoffControls(previousTraffic && previousTraffic.ceresMinerHaulerHandoff);
     this._releaseCeresTenderServiceControls(previousTraffic && previousTraffic.ceresTenderServiceIncident);
@@ -10892,6 +10898,7 @@ export const traffic = {
     this._ensureState();
     this._nextDepotDispatchAt = 0;
     this._depotWatchRequested = new Set();
+    yield 'traffic-releases';
     const depotServices = normalizeDepotServices(data?.depotServices);
     if (depotServices.length) this.state.traffic.depotServices = depotServices;
     else delete this.state.traffic.depotServices;
@@ -10919,6 +10926,7 @@ export const traffic = {
       ? normalizeCeresDisabledHaulerIncident(data.ceresDisabledHaulerIncident)
       : null;
     const validTrafficSave = !!(data && !Array.isArray(data) && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA);
+    yield 'traffic-incidents';
     this.state.traffic.passengerReceiptIds = compactStableIds(
       validTrafficSave ? data.passengerReceiptIds : [],
       PASSENGER_LINER_RECEIPT_CAP,

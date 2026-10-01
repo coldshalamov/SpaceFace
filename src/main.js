@@ -1197,16 +1197,38 @@ function loadingDetailForStage(stageOrId) {
 // its rAF with a timer fallback — when frames present normally the timer is a no-op, and under
 // starvation the waits resolve at the fallback cadence so their callers' own wall-clock bounds
 // still apply instead of the load hanging open.
+// Starvation latch shared by the frame waits: when the timer wins twice running the compositor
+// is demonstrably starved, so remaining boundaries downgrade to setTimeout(0) — they still
+// flush the task queue (worker posts, bus emits) instead of burning the full 48/250ms floor a
+// frame wait cannot deliver anyway. A pending probe rAF re-arms the race on real delivery.
+let frameWaitStarved = 0;
+let frameWaitProbePending = false;
+
+function armFrameWaitProbe() {
+  if (frameWaitProbePending || typeof requestAnimationFrame !== 'function') return;
+  frameWaitProbePending = true;
+  requestAnimationFrame(() => {
+    frameWaitProbePending = false;
+    frameWaitStarved = 0;
+  });
+}
+
 function nextFrame() {
   return new Promise((resolve) => {
     let done = false;
-    const finish = () => {
+    const finish = (viaTimer) => {
       if (done) return;
       done = true;
+      frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
       resolve();
     };
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
-    setTimeout(finish, 48);
+    if (frameWaitStarved >= 2) {
+      armFrameWaitProbe();
+      setTimeout(() => finish(true), 0);
+      return;
+    }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => finish(false));
+    setTimeout(() => finish(true), 48);
   });
 }
 
@@ -1216,16 +1238,22 @@ function nextPaint() {
   if (typeof requestAnimationFrame !== 'function') return delay(0);
   return new Promise((resolve) => {
     let done = false;
-    const finish = () => {
+    const finish = (viaTimer) => {
       if (done) return;
       done = true;
+      frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
       lastPaintAt = nowMs();
       resolve();
     };
-    requestAnimationFrame(() => requestAnimationFrame(finish));
+    if (frameWaitStarved >= 2) {
+      armFrameWaitProbe();
+      setTimeout(() => finish(true), 0);
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => finish(false)));
     // 250 ms ≈ 4 fps: a merely slow compositor still wins the race and gets its real paint;
     // only a starved one gives the boundary up to the timer.
-    setTimeout(finish, 250);
+    setTimeout(() => finish(true), 250);
   });
 }
 

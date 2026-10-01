@@ -2030,6 +2030,12 @@ export const aftermathWrecks = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each sector's marker sort/cause join is record-atomic — yields sit only at
+  // sector boundaries so order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const own = ensureAftermathState(this.state);
     own.seed = data && typeof data.seed === 'number' ? data.seed >>> 0 : seedOf(this.state);
     own.bySector = {};
@@ -2048,6 +2054,7 @@ export const aftermathWrecks = {
         }
       }
       if (markers.length) own.bySector[sectorId] = markers;
+      yield 'wrecks-sector';
     }
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();

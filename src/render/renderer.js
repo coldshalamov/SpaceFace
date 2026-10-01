@@ -1538,7 +1538,37 @@ function reattachAuthoredReadmission(owner, entity, mesh, state) {
  * Full scans remain the event-driven safety net; queued boundaries keep the established two-build
  * cadence between scans.
  */
+// Kill-burst corpses ride a bounded drain: bookkeeping settled synchronously in the
+// entity:destroyed handler, so only the traverse + GL-free tail remains — the classic
+// mass-despawn hitch — and it spreads across frames instead of landing in one sim step.
+const DESPAWN_DISPOSE_DRAIN_MAX = 8;
+const DESPAWN_DISPOSE_BUDGET_MS = 2;
+
+function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
+  const queue = owner && owner._despawnDisposeQueue;
+  if (!queue || owner._despawnDisposeHead >= queue.length) return 0;
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const deadline = now() + Math.max(0, Number(budgetMs) || 0);
+  let drained = 0;
+  while (owner._despawnDisposeHead < queue.length) {
+    const m = queue[owner._despawnDisposeHead];
+    owner._despawnDisposeHead += 1;
+    // The corpse must still be detached: a boundary re-mounted between the destroyed event and
+    // this drain belongs to a new owner — disposing its tree would strip live prepared work.
+    if (m && m.parent == null) disposeObject(m);
+    drained += 1;
+    if (drained >= DESPAWN_DISPOSE_DRAIN_MAX || now() > deadline) break;
+  }
+  if (owner._despawnDisposeHead >= queue.length) {
+    queue.length = 0;
+    owner._despawnDisposeHead = 0;
+  }
+  return drained;
+}
+
 export function serviceRenderMeshResidency(owner, frameDt) {
+  drainDespawnDisposeQueue(owner);
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     reattachResidentGpuMeshes(owner);
     // Restore reissues entity ids (spawnEntity ignores saved ids) and a mesh can also be missing
@@ -1949,7 +1979,7 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
  * the pending gauge's liveScreen test: a route transition carries a stale camera focus and
  * legitimately evicts off-screen roots, so only the live flight screen counts.
  */
-const _cameraOccluderOpts = { playerId: 0 };
+const _cameraOccluderOpts = { playerId: 0, recordById: null, recordFrameId: 0 };
 
 function noteOnGlassResidencyEviction(state, entity) {
   if (state.mode !== 'flight'
@@ -6811,6 +6841,10 @@ export const render = {
     // Bumped on every _meshes set/delete so cameraClearanceFloorAt can rebuild its structural
     // sublist only when the map actually mutates instead of scanning it every frame.
     this._meshesVersion = 0;
+    // Despawn GL-teardown tail: corpse meshes whose bookkeeping already settled, waiting for
+    // the bounded per-frame drain in serviceRenderMeshResidency.
+    this._despawnDisposeQueue = [];
+    this._despawnDisposeHead = 0;
     this._clearanceMeshes = null;
     this._clearanceMeshesVersion = -1;
     // Chase-camera structural clearance floor: camera.js calls this once per frame with its
@@ -10728,7 +10762,11 @@ export const render = {
       const m = this._meshes.get(id);
       if (m) {
         this._unbindPresentationMesh(id, m);
-        scene.remove(m); disposeObject(m); this._meshes.delete(id); this._meshesVersion += 1;
+        scene.remove(m); this._meshes.delete(id); this._meshesVersion += 1;
+        // Kill bursts land the per-corpse traverse+dispose flush inside one sim step. The GL
+        // tail is presentation-only — the corpse is already off-scene — so it queues for the
+        // bounded per-frame drain instead of hitching the whole despawn into one task.
+        this._despawnDisposeQueue.push(m);
         this._noteShadowMeshRemoved(m);
         this._queueAssetResidencyDiagnosticsPublish();
       }
@@ -11861,6 +11899,12 @@ export const render = {
     if (!lifecycle) return false;
     const destroyed = lifecycle.destroy();
     if (!destroyed && this._rendererResourcesDisposed === true) return false;
+    for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
+      const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
+      if (queued && queued.parent == null) disposeObject(queued);
+    }
+    this._despawnDisposeQueue.length = 0;
+    this._despawnDisposeHead = 0;
     disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     globalShipMicroMotion.unbindEvents();
     globalAsteroidMotion.unbindEvents();
@@ -13832,6 +13876,13 @@ export const render = {
 
   clearAllMeshes(keepPlayer) {
     this._sectorBoundaryPreparations?.abortAll('render-mesh-clear');
+    // Whole-tree teardown stays synchronous — flush the deferred corpse tail with it.
+    for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
+      const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
+      if (queued && queued.parent == null) disposeObject(queued);
+    }
+    this._despawnDisposeQueue.length = 0;
+    this._despawnDisposeHead = 0;
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
       this._unbindPresentationMesh(id, m);
@@ -15404,9 +15455,12 @@ export const render = {
     if (!camPos || !focusPos) return;
     const opts = _cameraOccluderOpts;
     opts.playerId = this.state.playerId;
+    const entityFrame = this._entityFrame;
+    opts.recordById = entityFrame && entityFrame.byId || null;
+    opts.recordFrameId = entityFrame ? entityFrame.frameId : 0;
     const moved = updateCameraOccluders(
       occluders,
-      this._entityFrame && this._entityFrame.records,
+      entityFrame && entityFrame.occluderCandidates,
       camPos,
       focusPos,
       Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0,

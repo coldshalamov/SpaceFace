@@ -130,7 +130,15 @@ export function predictNextSector(state, options = {}) {
   const pvx = (player.vel && Number(player.vel.x)) || 0;
   const pvz = (player.vel && Number(player.vel.z)) || 0;
   let best = null;
-  for (const entity of entities.values ? entities.values() : []) {
+  // Gates are spawned stations carrying data.isGate, so the entity index's gates bucket is
+  // the exact membership domain — ~50-100× smaller than the whole-map walk every poll, with
+  // splice-order removal preserving entities.values() insertion order for the min-ttc pick.
+  const _gateIndex = state.entityIndex;
+  const gateScan = _gateIndex && _gateIndex.__spacefaceEntityIndexV1 && _gateIndex.ready === true
+    && Array.isArray(_gateIndex.gates)
+    ? _gateIndex.gates
+    : (entities.values ? entities.values() : []);
+  for (const entity of gateScan) {
     const to = gateDestination(entity);
     if (!to || to === currentSectorId) continue;
     if (entitySectorIdOf(entity) !== currentSectorId) continue;

@@ -53,6 +53,7 @@ import { encodeSavePayload, SAVE_WORKER_SOURCE } from './saveWorker.js';
 import {
   applySharedStoreKeys,
   collectLocalSharedStoreKeys,
+  collectLocalSharedStoreKeysChunked,
   fetchSharedPlayerStore,
   mergeSharedStoreKeys,
   pushSharedPlayerStore,
@@ -151,6 +152,12 @@ const AUTOSAVE_HARD_SLICE_MS = 12;
 const PLAYER_CAPTURE_MAX_ITEMS_PER_SLICE = 256;
 const PLAYER_OWNED_SHIPS_ENCODE_CHUNK = 64;
 const PLAYER_MODULE_INVENTORY_ENCODE_CHUNK = 512;
+// Generic chunked-bag lane: any top-level collection this big gets begin+parts posts instead
+// of one unbounded structured clone (a multi-MB subtree is a single >12ms task the slice
+// machinery cannot cut inside). The worker assembles session.data[key] to the identical
+// graph a single encode_part post would set — save bytes are unchanged.
+const AUTOSAVE_BAG_CHUNK_MIN = 64;
+const AUTOSAVE_BAG_CHUNK_ITEMS = 64;
 const PLAYER_INCREMENTAL_CAPTURE_THRESHOLD = 256;
 const PLAYER_CAPTURE_MAX_RESTARTS = 3;
 const SAVE_VALIDATION_CHUNK_CHARS = 8_192;
@@ -349,6 +356,21 @@ export const save = {
     this._syncSharedPlayerStore();
   }, 
 
+  // Chunked variant of collectLocalSharedStoreKeys: the getItem materialization yields the task
+  // queue between batches, so a write can interleave mid-collect. Generation-bracket the pass and
+  // redo it on a tear; a write that lands on every pass falls back to the atomic sync collect.
+  async _collectSharedStoreKeysChunked() {
+    const yieldQueue = () => this._restoreFrameYield();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const genBefore = _saveStoreGeneration;
+      const keys = await collectLocalSharedStoreKeysChunked(
+        globalThis.localStorage, { yieldQueue },
+      );
+      if (_saveStoreGeneration === genBefore) return keys;
+    }
+    return collectLocalSharedStoreKeys();
+  },
+
   isSharedStoreSyncPending() {
     return this._sharedStoreReady === false;
   },
@@ -375,12 +397,13 @@ export const save = {
       installSaveStoreWriteTracking();
       const remotePromise = fetchSharedPlayerStore();
       await this._restoreFrameYield();
-      const local = collectLocalSharedStoreKeys();
+      const local = await this._collectSharedStoreKeysChunked();
       const genAtCollect = _saveStoreGeneration;
       const remote = await remotePromise;
       // A local write landing inside the fetch await is invisible to `local` — re-collect or the
       // apply clobbers it and the delta push ships the stale value.
-      const localNow = genAtCollect === _saveStoreGeneration ? local : collectLocalSharedStoreKeys();
+      const localNow = genAtCollect === _saveStoreGeneration
+        ? local : await this._collectSharedStoreKeysChunked();
       const merged = mergeSharedStoreKeys(localNow, remote || {});
       applySharedStoreKeys(merged);
       // Post-apply storage == merged for every shared key (skipped writes were identical by
@@ -1363,7 +1386,8 @@ export const save = {
     const indexed = normalizeSlotIndex(this._readIndex());
     // The signature walk already enumerated every save key and read every blob this tick —
     // hand the raws forward so the two scans never touch localStorage again.
-    const scanned = this._scanStoredSlots(indexed, raws);
+    const scanHashes = new Map();
+    const scanned = this._scanStoredSlots(indexed, raws, scanHashes);
     const recovered = this._scanRecoverySlots(scanned, raws);
     const merged = mergeSlotIndexes(indexed, scanned);
     for (const slot in recovered) {
@@ -1385,14 +1409,14 @@ export const save = {
       }
     }
     this._slotIndexCache = { sig, merged };
-    this._maybeSpeculateContinuePrepare(sig, merged, raws);
+    this._maybeSpeculateContinuePrepare(sig, merged, raws, scanHashes);
     return { ...merged };
   },
 
   // The newest occupied slot is almost certainly what Continue resolves on the next click —
   // start its worker prepare during the menu beat so the click doesn't pay the parse+checksum
   // roundtrip cold. Once per index signature; loadAsync consumes only a slot+bytes match.
-  _maybeSpeculateContinuePrepare(sig, merged, raws) {
+  _maybeSpeculateContinuePrepare(sig, merged, raws, scanHashes = null) {
     try {
       if (!raws || typeof Worker !== 'function') return;
       const slot = selectLatestOccupiedSlot(merged);
@@ -1404,7 +1428,7 @@ export const save = {
       this._speculativeContinuePrepare = {
         sig,
         slot,
-        blobHash: fnv1a(raw),
+        blobHash: (scanHashes && scanHashes.get(slot)) || fnv1a(raw),
         promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
       };
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
@@ -1435,7 +1459,7 @@ export const save = {
     }
   },
 
-  _scanStoredSlots(indexed = {}, raws = null) {
+  _scanStoredSlots(indexed = {}, raws = null, scanHashes = null) {
     const out = {};
     if (raws == null && typeof localStorage === 'undefined') return out;
     try {
@@ -1456,12 +1480,17 @@ export const save = {
         // foreign write, flipped byte) still pays the full validation so an unplayable slot
         // is never advertised — the Continue resolver depends on that hiding contract.
         const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
-        if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
-          && fnv1a(raw) === indexCard._blobHash) {
-          const trusted = Object.assign({}, indexCard);
-          delete trusted._blobHash;
-          out[slot] = trusted;
-          continue;
+        if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string') {
+          const rawHash = fnv1a(raw);
+          // Hash computed anyway for the trust check — hand it to the Continue speculation so
+          // the same blob is not rehashed a second time in the same menu beat.
+          if (scanHashes) scanHashes.set(slot, rawHash);
+          if (rawHash === indexCard._blobHash) {
+            const trusted = Object.assign({}, indexCard);
+            delete trusted._blobHash;
+            out[slot] = trusted;
+            continue;
+          }
         }
         const env = this._prepareEnvelopeMeta(raw);
         if (!env) continue;
@@ -1647,9 +1676,9 @@ export const save = {
       primaryRaw = localStorage.getItem(LS_PREFIX + best);
       backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
     } catch (err) { return null; }
-    const primary = await this._prepareEnvelopeStringAsync(primaryRaw);
+    const primary = await this._prepareEnvelopeMetaAsync(primaryRaw);
     if (primary.ok) return null;
-    const backup = await this._prepareEnvelopeStringAsync(backupRaw);
+    const backup = await this._prepareEnvelopeMetaAsync(backupRaw);
     if (backup.ok) return null;
     return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
   },
@@ -2118,7 +2147,9 @@ export const save = {
     const entries = [];
     for (const [key, value] of Object.entries(data || {})) {
       if (key !== 'player' || !this._shouldCapturePlayerIncrementally(value)) {
-        entries.push([key, value]);
+        const bag = autosaveBagEntriesFor(key, value);
+        if (bag) entries.push(...bag);
+        else entries.push([key, value]);
         continue;
       }
       const base = {};
@@ -2252,6 +2283,24 @@ export const save = {
             id: encoder.id,
             type: entry.type,
             payload: entry.payload,
+          });
+        } else if (entry.type === 'encode_bag_begin') {
+          postedPlayerPart = true;
+          encoder.worker.postMessage({
+            id: encoder.id,
+            type: 'encode_bag_begin',
+            payload: { key: entry.key, kind: entry.kind, length: entry.length },
+          });
+        } else if (entry.type === 'encode_bag_part') {
+          postedPlayerPart = true;
+          encoder.worker.postMessage({
+            id: encoder.id,
+            type: 'encode_bag_part',
+            payload: {
+              key: entry.key,
+              start: entry.start,
+              items: entry.source.slice(entry.start, entry.end),
+            },
           });
         } else {
           postedPlayerPart = true;
@@ -3160,6 +3209,44 @@ export const save = {
    * worker's copy. Falls back to the synchronous prepare when no worker exists or the round
    * trip fails, preserving the exact failure vocabulary of the sync path.
    */
+  // Verdict-only prepare for the newer-unplayable skip path: the worker runs the identical
+  // gate set (parse/format/version/bounds/checksum/preflight/player) but returns no envelope —
+  // the doomed slot's multi-MB clone never crosses postMessage, and the main thread never
+  // yields for migrations/normalize on a verdict it will not restore.
+  _prepareEnvelopeMetaAsync(raw) {
+    if (!raw) return Promise.resolve({ ok: false, reason: 'no_save' });
+    if (typeof raw !== 'string') return Promise.resolve({ ok: false, reason: 'parse_failed' });
+    const bytes = saveImportByteLength(raw);
+    if (bytes > SAVE_IMPORT_MAX_BYTES) {
+      return Promise.resolve(importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes));
+    }
+    if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
+      const meta = this._prepareEnvelopeMeta(raw);
+      return Promise.resolve(meta ? { ok: true } : { ok: false, reason: 'load_failed' });
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const accepted = this._requestSaveWorker('restore_prepare_meta',
+        { raw, currentVersion: CURRENT_VERSION },
+        (message) => settle(message && message.result ? message.result : null),
+        () => settle(null),
+        { timeoutMs: 2500 });
+      if (!accepted) settle(null);
+    }).then((prepared) => {
+      if (!prepared) {
+        const meta = this._prepareEnvelopeMeta(raw);
+        return meta ? { ok: true } : { ok: false, reason: 'load_failed' };
+      }
+      if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
+      return { ok: true };
+    });
+  },
+
   _prepareEnvelopeStringAsync(raw) {
     if (!raw) return Promise.resolve({ ok: false, reason: 'no_save' });
     if (typeof raw !== 'string') return Promise.resolve({ ok: false, reason: 'parse_failed' });
@@ -3667,15 +3754,31 @@ export const save = {
     }
     return new Promise((resolve) => {
       let done = false;
-      const finish = () => {
+      const finish = (viaTimer) => {
         if (done) return;
         done = true;
+        this._restoreYieldStarved = viaTimer ? (this._restoreYieldStarved || 0) + 1 : 0;
         resolve();
       };
-      requestAnimationFrame(finish);
+      // After the timer wins twice running, the compositor is demonstrably starved and every
+      // further gated boundary would burn its full 48ms — downgrade to setTimeout(0), which
+      // still yields the task queue for worker posts and bus flushes. A pending probe rAF
+      // re-arms the frame path once a real paint lands again.
+      if ((this._restoreYieldStarved || 0) >= 2) {
+        if (this._restoreYieldProbePending !== true) {
+          this._restoreYieldProbePending = true;
+          requestAnimationFrame(() => {
+            this._restoreYieldProbePending = false;
+            this._restoreYieldStarved = 0;
+          });
+        }
+        setTimeout(() => finish(true), 0);
+        return;
+      }
+      requestAnimationFrame(() => finish(false));
       // A starved compositor still yields the boundary to the timer so a restore can never
       // deadlock behind a paused rAF (background tab, throttled shell).
-      setTimeout(finish, 48);
+      setTimeout(() => finish(true), 48);
     });
   },
 
@@ -3873,7 +3976,9 @@ export const save = {
       this._restoreScenario(data.scenario);
       yield 'missions-restored';
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
-      if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
+      if (missionsSys && sectorId && typeof missionsSys.spawnTargetsForSectorChunked === 'function') {
+        yield* missionsSys.spawnTargetsForSectorChunked(sectorId);
+      } else if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
         missionsSys.spawnTargetsForSector(sectorId);
       }
       yield 'mission-targets-spawned';
@@ -3887,26 +3992,26 @@ export const save = {
       // PQ-014 live NPC jobs. All hulls were cleared above, so every restored job comes back VIRTUAL
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
-      this._callDeserialize('npcJobsRuntime', data.npcJobs);
+      yield* this._callDeserializeChunked('npcJobsRuntime', data.npcJobs);
       yield 'jobs-restored';
       // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
       // clears the compact record instead of retaining a same-process handoff.
-      this._callDeserialize('traffic', data.traffic);
+      yield* this._callDeserializeChunked('traffic', data.traffic);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
-      this._callDeserialize('claims', data.claims);
+      yield* this._callDeserializeChunked('claims', data.claims);
       yield 'claims-restored';
-      this._callDeserialize('asteroidSites', data.sites);
-      this._callDeserialize('asteroidFormations', data.formations);
+      yield* this._callDeserializeChunked('asteroidSites', data.sites);
+      yield* this._callDeserializeChunked('asteroidFormations', data.formations);
       this._reportRestoreProgress(0.22, 'Restoring world memory');
       yield 'deserialized-tail';
       this._callDeserialize('aceMemory', data.aceMemory);
-      this._callDeserialize('lossLedger', data.lossLedger);
-      this._callDeserialize('provenanceLedger', data.provenance);
-      this._callDeserialize('aftermathWrecks', data.aftermathWrecks);
+      yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
+      yield* this._callDeserializeChunked('provenanceLedger', data.provenance);
+      yield* this._callDeserializeChunked('aftermathWrecks', data.aftermathWrecks);
       // Pending kill cases + priced incidents must land before any post-load wreck resolution;
       // absent key (pre-docket saves) clears both ledgers — an honest empty case file.
       this._callDeserialize('lawSecurity', data.lawSecurity);
-      this._callDeserialize('fieldDepletion', data.fieldDepletion);
+      yield* this._callDeserializeChunked('fieldDepletion', data.fieldDepletion);
       // Interleave frame releases between independent deserializes: each group above owns a
       // disjoint ledger, so a yield here can't reorder anything the sim observes — it only keeps
       // the restore progress ring painting instead of freezing inside a long await window.
@@ -3955,7 +4060,7 @@ export const save = {
       // per fight through the durable role keys and the overlay rebinds (new runtime ids cancel
       // stale world-space geometry and grant the resume warmup). Absent slice (old saves) is a
       // no-op; a present slice without its owner is a hard error rather than silent loss.
-      this._restoreCapitalBossFights(data.capitalBoss);
+      yield* this._restoreCapitalBossFightsChunked(data.capitalBoss);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -4242,6 +4347,12 @@ export const save = {
    * suspended (absence is not a kill); rebind is only called when a COMPLETE binding exists.
    */
   _restoreCapitalBossFights(snapshot) {
+    for (const _ of this._restoreCapitalBossFightsChunked(snapshot)) { /* sync lane: inline */ }
+  },
+
+  // Generator twin: each fight record's reconcile/rebind is atomic, so yields sit only between
+  // records — order and RNG consumption stay identical in both restore lanes.
+  *_restoreCapitalBossFightsChunked(snapshot) {
     if (snapshot == null) return;
     const sys = this.registry && this.registry.get && this.registry.get('capitalBossEncounters');
     if (!sys || typeof sys.restore !== 'function') {
@@ -4261,13 +4372,15 @@ export const save = {
           console.error('[save] capital boss mission reconcile', record && record.fightId, error);
         }
       }
-      if (record.terminal) continue;
-      const binding = resolveCapitalBossRoleBinding({
-        record,
-        targetId: state.playerId,
-        entities: state.entityList || [],
-      });
-      if (binding && typeof sys.rebind === 'function') sys.rebind(record.fightId, binding);
+      if (!record.terminal) {
+        const binding = resolveCapitalBossRoleBinding({
+          record,
+          targetId: state.playerId,
+          entities: state.entityList || [],
+        });
+        if (binding && typeof sys.rebind === 'function') sys.rebind(record.fightId, binding);
+      }
+      yield 'capital-boss-fight';
     }
   },
 
@@ -5141,6 +5254,37 @@ function serializePlayerRecord(state, capturedCollections = null) {
   return out;
 }
 
+// A top-level collection big enough that one structured clone outlives the slice target rides
+// the chunked bag lane: begin stamps the container, parts fill it in bounded posts. `source`
+// snapshots the items at entry-build time, so live-aliased subsystems can't shift mid-post.
+function autosaveBagEntriesFor(key, value) {
+  if (Array.isArray(value)) {
+    if (value.length < AUTOSAVE_BAG_CHUNK_MIN) return null;
+    const items = value.slice();
+    const out = [{ type: 'encode_bag_begin', key, kind: 'array', length: items.length }];
+    for (let start = 0; start < items.length; start += AUTOSAVE_BAG_CHUNK_ITEMS) {
+      out.push({
+        type: 'encode_bag_part', key, source: items,
+        start, end: Math.min(items.length, start + AUTOSAVE_BAG_CHUNK_ITEMS),
+      });
+    }
+    return out;
+  }
+  if (value && typeof value === 'object') {
+    const pairs = Object.entries(value);
+    if (pairs.length < AUTOSAVE_BAG_CHUNK_MIN) return null;
+    const out = [{ type: 'encode_bag_begin', key, kind: 'object', length: pairs.length }];
+    for (let start = 0; start < pairs.length; start += AUTOSAVE_BAG_CHUNK_ITEMS) {
+      out.push({
+        type: 'encode_bag_part', key, source: pairs,
+        start, end: Math.min(pairs.length, start + AUTOSAVE_BAG_CHUNK_ITEMS),
+      });
+    }
+    return out;
+  }
+  return null;
+}
+
 function buildPlayerChunkedSaveWorkerSource(source) {
   const encodePartNeedle = "    if (request.type === 'encode_part') {";
   const playerProtocol = String.raw`    if (request.type === 'encode_player_begin') {
@@ -5169,6 +5313,38 @@ function buildPlayerChunkedSaveWorkerSource(source) {
       const items = Array.isArray(payload.items) ? payload.items : [];
       for (let index = 0; index < items.length && start + index < target.length; index++) {
         target[start + index] = items[index];
+      }
+      return;
+    }
+    if (request.type === 'encode_bag_begin') {
+      const session = self.__saveEncodeSessions.get(request.id);
+      if (!session) throw new Error('missing_encode_session');
+      const payload = request.payload || {};
+      const length = Number.isSafeInteger(payload.length) ? Math.max(0, payload.length) : 0;
+      session.data[payload.key] = payload.kind === 'object' ? {} : new Array(length);
+      return;
+    }
+    if (request.type === 'encode_bag_part') {
+      const session = self.__saveEncodeSessions.get(request.id);
+      if (!session) throw new Error('missing_encode_session');
+      const payload = request.payload || {};
+      const target = session.data[payload.key];
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      if (Array.isArray(target)) {
+        const start = Number.isSafeInteger(payload.start) ? Math.max(0, payload.start) : 0;
+        for (let index = 0; index < items.length && start + index < target.length; index++) {
+          target[start + index] = items[index];
+        }
+      } else if (target && typeof target === 'object') {
+        for (let index = 0; index < items.length; index++) {
+          const pair = items[index];
+          // Serialized payloads are JSON-safe by contract, but a dropped unsafe key on a
+          // corrupted capture must not become a prototype write on the bag object.
+          if (Array.isArray(pair)
+              && pair[0] !== '__proto__' && pair[0] !== 'constructor' && pair[0] !== 'prototype') {
+            target[pair[0]] = pair[1];
+          }
+        }
       }
       return;
     }

@@ -767,6 +767,11 @@ export const provenanceLedger = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each chain sanitize is record-atomic — yields sit only at record boundaries.
+  *deserializeChunked(data) {
     if (!this.state) return;
     const own = ensureState(this.state);
     const incoming = isObject(data) ? data : freshState();
@@ -778,9 +783,11 @@ export const provenanceLedger = {
       const chain = sanitizeChain(row);
       if (chain) own.chains.push(chain);
       if (own.chains.length >= PROVENANCE_CHAIN_CAP) break;
+      yield 'provenance-chain';
     }
     const validIds = new Set(own.chains.map((chain) => chain.id).filter(Boolean));
     own.openIncidents = sanitizeOpenIncidents(incoming.openIncidents, validIds);
+    yield 'provenance-incidents';
     recomputeAllOpen(own, this.state);
   },
 
