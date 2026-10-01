@@ -272,22 +272,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-ion-twin",
-    "expectedContentHash": "bb1286413c6095f57d53c38703d6f6cd0f9209bb281943623d0bfb9b4a2ad6d0",
+    "expectedContentHash": "5227998bdcdcab298ccc348838e446107cf6276e1e4b30a6af77600ff6bae79d",
     "key": "engine-ion-twin",
     "metadataUrl": "assets/ships/release/render-packages/engine-ion-twin/render-package.json",
     "runtimeAssetId": "SF_ENGINE_ION_TWIN",
     "slot": "engine",
-    "sourceSha256": "f37cd5456c5b93b999499001621a4e6ef50d24b9a02a4e486e2a129f41eec06e",
+    "sourceSha256": "3ff388f2768e396d799cad3be259db76c0a9b6d0a868958f56f7ea4885fc2d5b",
     "sourceUrl": "assets/ships/release/parts/engines/engine_ion_twin.glb"
   },
   {
     "assetId": "sf.render.engine-plasma-ring",
-    "expectedContentHash": "317de9db5fb0a09cace74f3e290ff226a8a0ec7e2a536dbffbe09de8c07765ca",
+    "expectedContentHash": "15bb744fabc67b18f5d7826a15564776e5f8a494e772acb9307672fcea10cb18",
     "key": "engine-plasma-ring",
     "metadataUrl": "assets/ships/release/render-packages/engine-plasma-ring/render-package.json",
     "runtimeAssetId": "SF_ENGINE_PLASMA_RING",
     "slot": "engine",
-    "sourceSha256": "d95e8d93c4a80fe05d01aed7787f38c1870058d7bc6fedc0f120462656cd8633",
+    "sourceSha256": "86e66c709f501d3196fd5f28d7e21a3f187fb00c4a0c6d3bc327d3e8bf17bf7e",
     "sourceUrl": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
   {
@@ -302,12 +302,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-vector",
-    "expectedContentHash": "403460c3bf458e0ecbf88ee97b02498387dc2c73e14b987792060f7c07c12747",
+    "expectedContentHash": "0f50fc2aaaf61e5d5faf66bf1f2e942a7c6d9d02a6d5ad31e40c4815a5a4e7c7",
     "key": "engine-vector",
     "metadataUrl": "assets/ships/release/render-packages/engine-vector/render-package.json",
     "runtimeAssetId": "SF_ENGINE_VECTOR",
     "slot": "engine",
-    "sourceSha256": "305395c2ecbe679697f1b6c58534bce75a2b12333e1c663b92c36db3575a3d68",
+    "sourceSha256": "fff6ae0128875941a0251f9485d79089ecc6348c7b7ed44d1713cad30d33794c",
     "sourceUrl": "assets/ships/release/parts/engines/engine_vector.glb"
   },
   {
@@ -382,12 +382,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.freight-platform",
-    "expectedContentHash": "e98b61f047b530eb4de2f5d6843a76cc8344939680d64f580f3d0de746bc2a03",
+    "expectedContentHash": "20c0a02592a85f50c94a7af34c95e9dff173cba67c4e5a67f5ed261158a355be",
     "key": "freight-platform",
     "metadataUrl": "assets/ships/release/render-packages/freight-platform/render-package.json",
     "runtimeAssetId": "place_freight_platform",
     "slot": "place",
-    "sourceSha256": "9f25143ba5bce06c0b50bbc1d155fd228e10fdc99fad0401dd012e887cf85d61",
+    "sourceSha256": "8857b8adfa02ffd43b8d0b0bff4b8945b60cf8a53e11fec84658cab585c3e3ab",
     "sourceUrl": "assets/ships/release/parts/places/place_freight_platform.glb"
   },
   {
@@ -664,12 +664,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.inspection-cutter",
-    "expectedContentHash": "f4463893d7b3e3cbf835001de27a63911049a499bf12d02c20a649f265f5ae91",
+    "expectedContentHash": "287aea2ea6b7b26d7e51680bdcb919bdf147f9160a9ccbc3845ce28740f4d9d6",
     "key": "inspection-cutter",
     "metadataUrl": "assets/ships/release/render-packages/inspection-cutter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_INSPECTION_CUTTER",
     "slot": "hull",
-    "sourceSha256": "79e340929fd39848e6911d3f10a14ac876baf40fdad34f9cd6aa4e4da12ff4c1",
+    "sourceSha256": "c3fc97253608289b959f6e1892bf6a2f4e2cf4e5c4479e7ff6fdc2f8a0842f54",
     "sourceUrl": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
   {
@@ -844,12 +844,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-barge",
-    "expectedContentHash": "c5c0d2527fd05cafb248046ba1f8b2af386c1d0c9b1fe2b327a14453bc53cb9f",
+    "expectedContentHash": "bcf95f6e49fe6fa523f58d37dab37d7927a1a82d132dda59894af71eb3586704",
     "key": "ore-barge",
     "metadataUrl": "assets/ships/release/render-packages/ore-barge/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ORE_BARGE",
     "slot": "hull",
-    "sourceSha256": "50d089be5c16c83eb0b572e7019a0fc2bfcf803ba3069f4b5a1904f2024480f4",
+    "sourceSha256": "0228fc1f3361058c348a81fd7ad0392c400a4b745e942845ae08cfb9f864f5ee",
     "sourceUrl": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
   {

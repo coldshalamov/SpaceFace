@@ -246,6 +246,19 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   const onBoostStop = (payload) => {
     dispatch('ship:boostStop', payload.shipId, payload, irisOpen);
   };
+  // ANI-35: engine nozzle gimbals answer the throttle on every part-mounted rig the ship
+  // carries. ship:thrust re-fires every frame, so it is gated on the gimbal clip itself —
+  // unguarded, each frame would restart it and the nozzle would pin at t=0.
+  const nozzleFree = (c) => !c.clipActive?.('nozzle_gimbal_pitch');
+  const onShipThrust = (payload) => {
+    dispatch('ship:thrust', payload.shipId, payload, nozzleFree);
+  };
+  const onShipDash = (payload) => {
+    dispatch('ship:dash', payload.shipId, payload, () => true);
+  };
+  const onShipSwingDash = (payload) => {
+    dispatch('ship:swingDash', payload.shipId, payload, () => true);
+  };
   // ANI-06: the repair-pod service arm only unfolds for repair jobs — a refuel never cracks
   // the hatch, and the stow is gated on a deployed arm so a stray completion can't replay it.
   // Service payloads carry no entity id (yard jobs are always the player's) — the renderer
@@ -423,9 +436,10 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   // platform the player can see is the one the session is happening at, so the drill
   // lifecycle fans out to every live drill_platform rig. start also arms the feed creep
   // on a side-band event (one bus event -> one clip).
-  const fanoutRig = (rigId, type, payload) => {
+  const fanoutRig = (rigId, type, payload, accept = () => true) => {
     const anchor = anchorS(payload);
     for (const controller of authoredMotionControllersForRig(rigId)) {
+      if (!accept(controller)) continue;
       try {
         controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
@@ -449,6 +463,42 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   };
   const onPredationEngaged = (payload) => {
     dispatch('encounter:predationEngaged', payload && payload.raiderId, payload, () => true);
+  };
+  // ANI-30: the customs boarding arm reaches for you. customs:submit/breakScan and the
+  // scan verdict carry the patrol entity id; lawfulInspection:choose only carries a case
+  // id, so it fans out to the live cutter rigs (the patrol on screen is the one that
+  // served you). While the arm is extended, breakScan stows it.
+  const cutterArmOut = (c) => c.clipActive?.('arm_extend');
+  const onLawfulChoose = (payload) => fanoutRig('inspection_cutter', 'lawfulInspection:choose', payload);
+  const onCustomsSubmit = (payload) => {
+    dispatch('customs:submit', payload && payload.patrolId, payload, () => true);
+  };
+  const onCustomsBreak = (payload) => {
+    dispatch('customs:breakScan', payload && payload.patrolId, payload, (c) => cutterArmOut(c));
+  };
+  const onScannedByPatrol = (payload) => {
+    dispatch('player:scannedByPatrol', payload && payload.patrolId, payload, () => true);
+  };
+  // ANI-28/29: freight muscle. oreCollected/minerRelocated name the barge entity itself;
+  // custodyChanged names the carrier ship. The apron crane is set-dressing with no
+  // stationId, so sector freight traffic fans out to every freight-platform rig in view.
+  const clawBusy = (c) => c.clipActive?.('claw_cycle');
+  const pickBusy = (c) => c.clipActive?.('gantry_pick');
+  const onOreCollected = (payload) => {
+    dispatch('traffic:oreCollected', payload && payload.carrierId, payload, () => true);
+  };
+  const onMinerRelocated = (payload) => {
+    dispatch('npcjobs:minerRelocated', payload && payload.minerId, payload, () => true);
+  };
+  const onCustodyChanged = (payload) => {
+    dispatch('freight:custodyChanged', payload && payload.carrierId, payload, (c) => !clawBusy(c));
+    fanoutRig('freight_platform', 'freight:custodyChanged', payload, (c) => !pickBusy(c));
+  };
+  const onFreightArrival = (payload) => {
+    fanoutRig('freight_platform', 'freight:arrival', payload, (c) => !pickBusy(c));
+  };
+  const onStationThroughput = (payload) => {
+    fanoutRig('freight_platform', 'station:throughput', payload, () => true);
   };
   // ANI-25: the berth answers the same dock verbs the hull does — resolve the station's
   // dock-interior entity so the clamps/boom play their half of the handshake.
@@ -638,6 +688,9 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('ship:boostPreKick', onBoostPreKick),
     bus.on('ship:boostStart', onBoostStart),
     bus.on('ship:boostStop', onBoostStop),
+    bus.on('ship:thrust', onShipThrust),
+    bus.on('ship:dash', onShipDash),
+    bus.on('ship:swingDash', onShipSwingDash),
     bus.on('service:started', onServiceStarted),
     bus.on('service:completed', onServiceDone),
     bus.on('service:aborted', onServiceAborted),
@@ -667,6 +720,15 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('ai:telegraph', onAiTelegraph),
     bus.on('ai:flee', onAiFlee),
     bus.on('encounter:predationEngaged', onPredationEngaged),
+    bus.on('lawfulInspection:choose', onLawfulChoose),
+    bus.on('customs:submit', onCustomsSubmit),
+    bus.on('customs:breakScan', onCustomsBreak),
+    bus.on('player:scannedByPatrol', onScannedByPatrol),
+    bus.on('traffic:oreCollected', onOreCollected),
+    bus.on('npcjobs:minerRelocated', onMinerRelocated),
+    bus.on('freight:custodyChanged', onCustodyChanged),
+    bus.on('freight:arrival', onFreightArrival),
+    bus.on('station:throughput', onStationThroughput),
     bus.on('dock:range', onDockRange),
     bus.on('dock:docked', onDocked),
     bus.on('dock:undocked', onUndocked),

@@ -12,6 +12,9 @@ import bmesh
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_28  # noqa: E402
 
 SHIP_ID = 'ore_barge'
 COLORS = {
@@ -126,8 +129,18 @@ def build():
     F.box(s, 'GantryLeg', (1.5, 3.2, 2.5), (0.55, 0.55, 2.3), material='paint', bevel=0.05, mirror=True)
     F.box(s, 'GantryBeam', (1.5, 0.0, 3.8), (0.7, 7.2, 0.5), material='paint', bevel=0.06)
     F.band(s, 'GantryBeam', (1.5, 0.0, 0), (0, 1, 0), 1.2, 'hazard', facing=(0, 0, 1), min_facing=0.6)
-    F.box(s, 'GantryTrolley', (1.5, 1.6, 3.5), (1.0, 1.1, 0.6), material='gunmetal', bevel=0.04)
+    trolley = F.box(s, 'GantryTrolley', (1.5, 1.6, 3.5), (1.0, 1.1, 0.6), material='gunmetal', bevel=0.04)
     F.box(s, 'GantryFoot', (1.5, 3.2, 1.42), (1.0, 0.9, 0.2), material='gunmetal', bevel=0.03, mirror=True)
+    # ANI-28: grab carriage hung under the trolley — cable, head, and two jaw blades that
+    # bite over the hoppers.
+    cable = F.cylinder(s, 'ClawCable', (1.5, 1.6, 3.35), (1.5, 1.6, 2.85), 0.06,
+                       material='dark', segments=8)
+    head = F.box(s, 'ClawHead', (1.5, 1.6, 2.68), (0.5, 0.95, 0.34), material='gunmetal',
+                 bevel=0.04)
+    jaw_l = F.box(s, 'ClawJawL', (1.5, 1.32, 2.5), (0.42, 0.16, 0.55), material='hazard',
+                  bevel=0.02, taper=0.7)
+    jaw_r = F.box(s, 'ClawJawR', (1.5, 1.88, 2.5), (0.42, 0.16, 0.55), material='hazard',
+                  bevel=0.02, taper=0.7)
 
     # Bridge tower aft: a narrow base and a wider lit bridge on top.
     F.loft(s, 'TowerBase', [
@@ -182,10 +195,17 @@ def build():
     F.light(s, 'FoscleFlood', (19.52, 1.0, 1.62), 'glow_warm', size=0.24, mirror=True)
     F.light(s, 'NavPort', (-19.8, 4.6, 1.0), 'glow_red', size=0.3)
     F.light(s, 'NavStarboard', (-19.8, -4.6, 1.0), 'glow_green', size=0.3)
+    s.ani28_bank = ANI_28.build(s, {
+        'trolley': trolley, 'carriage': [cable, head], 'jawL': jaw_l, 'jawR': jaw_r,
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani28_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_28.motion_bank.MOTIONS_DIR,
+                                                   'ore-barge.motion.json'))

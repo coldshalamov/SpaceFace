@@ -92,34 +92,6 @@
       "contractNodeCount": 4
     },
     {
-      "id": "engine_ion_twin",
-      "kind": "part:engines",
-      "source": "assets/ships/parts/engines/engine_ion_twin.glb",
-      "release": "assets/ships/release/parts/engines/engine_ion_twin.glb",
-      "sourceSha256": "7d9e34f308c8f7b2df7d421c8c1684057a8e12ba9f4b0ef89d218f4645a009ca",
-      "releaseSha256": "f37cd5456c5b93b999499001621a4e6ef50d24b9a02a4e486e2a129f41eec06e",
-      "sourceBytes": 412680,
-      "releaseBytes": 152512,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 63,
-      "contractNodeCount": 8
-    },
-    {
-      "id": "engine_plasma_ring",
-      "kind": "part:engines",
-      "source": "assets/ships/parts/engines/engine_plasma_ring.glb",
-      "release": "assets/ships/release/parts/engines/engine_plasma_ring.glb",
-      "sourceSha256": "5d8b5b4ceb0d2cfc476488c591596e2c9a02ad680a3261764cadacd2d0d04d3b",
-      "releaseSha256": "d95e8d93c4a80fe05d01aed7787f38c1870058d7bc6fedc0f120462656cd8633",
-      "sourceBytes": 197380,
-      "releaseBytes": 59752,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 35,
-      "contractNodeCount": 4
-    },
-    {
       "id": "engine_resonator",
       "kind": "part:engines",
       "source": "assets/ships/parts/engines/engine_resonator.glb",
@@ -131,20 +103,6 @@
       "textures": 3,
       "ktx2Textures": 3,
       "meshoptBufferViews": 58,
-      "contractNodeCount": 4
-    },
-    {
-      "id": "engine_vector",
-      "kind": "part:engines",
-      "source": "assets/ships/parts/engines/engine_vector.glb",
-      "release": "assets/ships/release/parts/engines/engine_vector.glb",
-      "sourceSha256": "09a3b7bdca0091bd4d84186f4d2177647d37a81cee14a8aa2df7f6ae442ac839",
-      "releaseSha256": "305395c2ecbe679697f1b6c58534bce75a2b12333e1c663b92c36db3575a3d68",
-      "sourceBytes": 393368,
-      "releaseBytes": 139048,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 19,
       "contractNodeCount": 4
     },
     {
@@ -2987,14 +2945,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_freight_platform.glb",
       "release": "assets/ships/release/parts/places/place_freight_platform.glb",
-      "sourceSha256": "9073dc4f510ff64feafc4c8dd5bef977edd3e79a5f7eca40bfb08224882ca6cf",
-      "releaseSha256": "9f25143ba5bce06c0b50bbc1d155fd228e10fdc99fad0401dd012e887cf85d61",
-      "sourceBytes": 1278988,
-      "releaseBytes": 631396,
+      "sourceSha256": "3998d50aa1fd15c56f04642e8ff5452930b1aa4e1e684323a6944f100b5edea8",
+      "releaseSha256": "8857b8adfa02ffd43b8d0b0bff4b8945b60cf8a53e11fec84658cab585c3e3ab",
+      "sourceBytes": 1442236,
+      "releaseBytes": 530228,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 105,
-      "contractNodeCount": 32
+      "meshoptBufferViews": 165,
+      "contractNodeCount": 47,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_gate_jump_ring",
@@ -4368,34 +4331,6 @@
       "contractNodeCount": 66
     },
     {
-      "id": "wholeship_inspection_cutter",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/inspection_cutter.glb",
-      "release": "assets/ships/release/parts/wholeships/inspection_cutter.glb",
-      "sourceSha256": "da9c230fcb0f944df769f86d3658f60e2056e88472c104729e344b27fc7f232e",
-      "releaseSha256": "79e340929fd39848e6911d3f10a14ac876baf40fdad34f9cd6aa4e4da12ff4c1",
-      "sourceBytes": 2560296,
-      "releaseBytes": 952300,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 127,
-      "contractNodeCount": 51
-    },
-    {
-      "id": "wholeship_ore_barge",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/ore_barge.glb",
-      "release": "assets/ships/release/parts/wholeships/ore_barge.glb",
-      "sourceSha256": "2b10c83d1b3f595fa29446373508e3d9cfbe120556b9bb18ed1c3502f6f8a56c",
-      "releaseSha256": "50d089be5c16c83eb0b572e7019a0fc2bfcf803ba3069f4b5a1904f2024480f4",
-      "sourceBytes": 3795824,
-      "releaseBytes": 1254300,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 153,
-      "contractNodeCount": 62
-    },
-    {
       "id": "wholeship_repair_tender",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/repair_tender.glb",
@@ -4600,6 +4535,76 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 73,
       "contractNodeCount": 31
+    },
+    {
+      "id": "engine_ion_twin",
+      "kind": "part:engines",
+      "source": "assets/ships/parts/engines/engine_ion_twin.glb",
+      "release": "assets/ships/release/parts/engines/engine_ion_twin.glb",
+      "sourceSha256": "ecae93fff231f9b156640b6b50f83d8fe331583f2c1ca634f3e2c4207c12f8c9",
+      "releaseSha256": "3ff388f2768e396d799cad3be259db76c0a9b6d0a868958f56f7ea4885fc2d5b",
+      "sourceBytes": 320340,
+      "releaseBytes": 134804,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 46,
+      "contractNodeCount": 8
+    },
+    {
+      "id": "engine_plasma_ring",
+      "kind": "part:engines",
+      "source": "assets/ships/parts/engines/engine_plasma_ring.glb",
+      "release": "assets/ships/release/parts/engines/engine_plasma_ring.glb",
+      "sourceSha256": "81ea020568a447766b33905a674563268e0b0db3f75feb03de9274fab1ff99be",
+      "releaseSha256": "86e66c709f501d3196fd5f28d7e21a3f187fb00c4a0c6d3bc327d3e8bf17bf7e",
+      "sourceBytes": 151308,
+      "releaseBytes": 50760,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 26,
+      "contractNodeCount": 4
+    },
+    {
+      "id": "engine_vector",
+      "kind": "part:engines",
+      "source": "assets/ships/parts/engines/engine_vector.glb",
+      "release": "assets/ships/release/parts/engines/engine_vector.glb",
+      "sourceSha256": "0f969b93da2e5318c0ae88936fc2187a6f591327064b66fe9ae34bb989cbca51",
+      "releaseSha256": "fff6ae0128875941a0251f9485d79089ecc6348c7b7ed44d1713cad30d33794c",
+      "sourceBytes": 403968,
+      "releaseBytes": 147240,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 4
+    },
+    {
+      "id": "wholeship_inspection_cutter",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/inspection_cutter.glb",
+      "release": "assets/ships/release/parts/wholeships/inspection_cutter.glb",
+      "sourceSha256": "ffe6b6e6343ce87ccc39ec07c69bbaa4ad0a55cfe827501e66381b44e950b241",
+      "releaseSha256": "c3fc97253608289b959f6e1892bf6a2f4e2cf4e5c4479e7ff6fdc2f8a0842f54",
+      "sourceBytes": 2584000,
+      "releaseBytes": 992708,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 198,
+      "contractNodeCount": 69
+    },
+    {
+      "id": "wholeship_ore_barge",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ore_barge.glb",
+      "release": "assets/ships/release/parts/wholeships/ore_barge.glb",
+      "sourceSha256": "5222f52734be796748a91bfe8b77f55fccde6f9d8b544286c9dffc05b997a226",
+      "releaseSha256": "0228fc1f3361058c348a81fd7ad0392c400a4b745e942845ae08cfb9f864f5ee",
+      "sourceBytes": 3893248,
+      "releaseBytes": 1307892,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 212,
+      "contractNodeCount": 77
     }
   ]
 }
