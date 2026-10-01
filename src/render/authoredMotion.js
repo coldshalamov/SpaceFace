@@ -46,6 +46,37 @@ export function authoredMotionRegistrySize() {
 }
 
 /**
+ * The authored-motion clock. It tracks sim time while the sim advances — clips paired with
+ * sim quantities (payout, damage windows) stay locked to it — and falls back to wall-clock
+ * delta while the sim is frozen. Docked work lives on the keepalive's wall dt (the yard's
+ * jobs tick while ui.docked pins simTime at zero), so their clips must follow the same clock
+ * or a docked deploy renders its rest key for the whole job.
+ */
+export function createAuthoredClock({ simNow, wallNow } = {}) {
+  const readSim = typeof simNow === 'function' ? simNow : () => 0;
+  const readWall = typeof wallNow === 'function' ? wallNow : () => 0;
+  let clockS = null;
+  let lastSim = 0;
+  let lastWall = 0;
+  return function authoredClock() {
+    const sim = Number(readSim()) || 0;
+    const wall = Number(readWall()) || 0;
+    if (clockS == null) {
+      clockS = sim;
+    } else {
+      const simDelta = sim - lastSim;
+      const wallDelta = wall - lastWall;
+      // Monotonic forward: a sim reset (new game/sector) never runs clips backwards — the
+      // frozen branch also covers backwards jumps by taking the wall delta instead.
+      clockS += simDelta > 0 ? simDelta : Math.min(Math.max(wallDelta, 0), 0.5);
+    }
+    lastSim = sim;
+    lastWall = wall;
+    return clockS;
+  };
+}
+
+/**
  * Bind one bank per bound pivot root and attach the composite driver to the ship root.
  *
  * Returns a detach callback for the render-package dispose path (a package generation swap or a
@@ -92,18 +123,34 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
 
 /**
  * Wire gameplay events to bound controllers. Called once with the session bus, next to the other
- * motion-system bindEvents calls. `clock` supplies the current sim second for event payloads that
- * carry no simTime of their own (mining events don't). Returns an unbind function.
+ * motion-system bindEvents calls. `clock` supplies the authored-motion clock second for event
+ * payloads that carry no simTime of their own (mining events don't); `simClock` supplies raw
+ * simTime so simTime-carrying payloads can be translated onto the authored clock — the two run
+ * in the same units while the sim advances but diverge whenever the dock freeze pins simTime.
+ * Returns an unbind function.
  */
-export function installAuthoredMotionBus(bus, { clock } = {}) {
+export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId } = {}) {
   if (!bus || typeof bus.on !== 'function') return null;
+  const playerId = () => (typeof playerEntityId === 'function' ? playerEntityId() : null);
   const simNow = () => (typeof clock === 'function' ? Number(clock()) || 0 : 0);
+  const rawSimNow = () => (typeof simClock === 'function' ? Number(simClock()) : null);
+  // Clip anchors live on the clock the evaluators run. While the dock freeze pins simTime the
+  // authored clock keeps advancing on wall dt, so a payload's simTime is translated onto that
+  // domain — anchoring on raw simTime would leave the anchor permanently behind the eval clock
+  // after any freeze and every later sim-anchored clip would evaluate past its end and park.
+  const anchorS = (payload) => {
+    const raw = rawSimNow();
+    return payload && Number.isFinite(payload.simTime) && raw != null
+      ? simNow() + (payload.simTime - raw)
+      : simNow();
+  };
   const dispatch = (type, entityId, payload, accept) => {
     if (entityId == null) return;
+    const anchor = anchorS(payload);
     for (const controller of authoredMotionControllersFor(entityId)) {
       if (!accept(controller)) continue;
       try {
-        controller.handleEvent?.(type, payload, payload?.simTime ?? simNow());
+        controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
         console.warn(`[authoredMotion] ${type} rejected by controller`, error);
       }
@@ -145,6 +192,114 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
   const onBoostStop = (payload) => {
     dispatch('ship:boostStop', payload.shipId, payload, irisOpen);
   };
+  // ANI-06: the repair-pod service arm only unfolds for repair jobs — a refuel never cracks
+  // the hatch, and the stow is gated on a deployed arm so a stray completion can't replay it.
+  // Service payloads carry no entity id (yard jobs are always the player's) — the renderer
+  // supplies the player id via playerEntityId.
+  // Arm/cap logical state is tracked in these sets, never on controller.state: both rigs share
+  // one bank whose hold-ended clips never leave state.clips, so 'latest' cannot tell arm truth
+  // from cap truth and dispatch order on service:completed would make the two gates mutually
+  // exclusive. A flag flips on dispatch and clears only when that rig's own stow/settle runs.
+  // Flag records carry the job id + the dispatch clock-second the deploy started: a
+  // completion/abort for another job must not consume the flag, and a completion landing
+  // before the deploy finishes must blend home rather than snap to serviceStow's deployed
+  // first key (repairs complete by missing HP — short jobs finish inside the deploy).
+  const armJobs = new Map(); // entityId -> { jobId, at }
+  const capPeeledAt = new Map(); // entityId -> sim second the peel started
+  const SERVICE_GROUPS = ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow'];
+  const CAP_GROUPS = ['kestrel_armor_cap'];
+  const PEEL_S = 2.6; // armorPeel clip duration — a fix landing mid-peel settles instead.
+  const DEPLOY_S = 3.6; // serviceArm clip duration — a completion inside it settles instead.
+  const anyActiveClips = (id, groupIds) => authoredMotionControllersFor(id)
+    .some((c) => typeof c.hasActiveClipsIn === 'function' && c.hasActiveClipsIn(groupIds));
+  const pruneStaleFlags = () => {
+    // A flag whose rig runs no clip in its groups is dead — an entity rebuild replaced the
+    // controllers under it, and a late completion must not dispatch a stow whose first keys
+    // assume a pose that isn't there. A held clip keeps its flag at any age: a peel left
+    // unrepaired is still physically up, so pruning by age would re-dispatch it and snap the
+    // plate to its rest first key.
+    for (const id of [...armJobs.keys()]) if (!anyActiveClips(id, SERVICE_GROUPS)) armJobs.delete(id);
+    for (const id of [...capPeeledAt.keys()]) if (!anyActiveClips(id, CAP_GROUPS)) capPeeledAt.delete(id);
+  };
+  const isRepairJob = (payload) => payload && payload.type === 'repair';
+  // Only a completion/abort for the job that started the deploy may consume its flag: the
+  // yard emits jobId on all three service events, so a foreign repair-typed emit (instant
+  // repairs have no jobId) can no longer fold a live deploy.
+  const matchesJob = (rec, payload) => rec.jobId == null
+    || (payload != null && payload.jobId === rec.jobId);
+  const settleServiceRig = (id, durationS) => {
+    // An interrupted deploy mid-flight must not snap to serviceStow's first keys — they
+    // assume full extension. Blend the service rig home from its live pose instead.
+    for (const controller of authoredMotionControllersFor(id)) {
+      try {
+        controller.settleGroups?.(durationS, simNow(), SERVICE_GROUPS);
+      } catch (error) {
+        console.warn('[authoredMotion] service-rig settle rejected', error);
+      }
+    }
+  };
+  const onServiceStarted = (payload) => {
+    if (!isRepairJob(payload)) return;
+    pruneStaleFlags();
+    const id = playerId();
+    if (id == null || armJobs.has(id)) return;
+    armJobs.set(id, { jobId: payload.jobId ?? null, at: simNow() });
+    dispatch('kestrel:serviceArm', id, payload, () => true);
+  };
+  const onServiceDone = (payload) => {
+    if (!isRepairJob(payload)) return;
+    pruneStaleFlags();
+    const id = playerId();
+    const rec = id != null ? armJobs.get(id) : null;
+    if (!rec || !matchesJob(rec, payload)) return;
+    armJobs.delete(id);
+    if (simNow() - rec.at < DEPLOY_S) {
+      settleServiceRig(id, 0.9);
+      return;
+    }
+    dispatch('kestrel:serviceDone', id, payload, () => true);
+  };
+  const onServiceAborted = (payload) => {
+    if (payload && payload.type && payload.type !== 'repair') return;
+    pruneStaleFlags();
+    const id = playerId();
+    const rec = id != null ? armJobs.get(id) : null;
+    if (!rec || !matchesJob(rec, payload)) return;
+    armJobs.delete(id);
+    settleServiceRig(id, 0.9);
+  };
+  // ANI-07: the port shoulder cap peels on the first hull hit that reaches it and stays up as
+  // the damage state; a finished repair re-seats it. Re-peeling needs the plate seated again
+  // (a fresh hull hit while the plate is already loose does nothing new).
+  const onCombatDamage = (payload) => {
+    if (!payload || payload.hullHit !== true) return;
+    pruneStaleFlags();
+    const id = payload.targetId;
+    if (id == null || capPeeledAt.has(id) || !authoredMotionControllersFor(id).length) return;
+    capPeeledAt.set(id, simNow());
+    dispatch('kestrel:armorPeel', id, payload, () => true);
+  };
+  const onRepairCompleted = (payload) => {
+    if (!payload || payload.type !== 'repair') return;
+    pruneStaleFlags();
+    const id = playerId();
+    const peelStart = capPeeledAt.get(id);
+    if (peelStart === undefined) return;
+    capPeeledAt.delete(id);
+    if (simNow() - peelStart < PEEL_S) {
+      // The peel is still animating — armorStow's first key assumes the settled angle and
+      // would snap the cap; blend it home from its live pose instead.
+      for (const controller of authoredMotionControllersFor(id)) {
+        try {
+          controller.settleGroups?.(0.7, simNow(), CAP_GROUPS);
+        } catch (error) {
+          console.warn('[authoredMotion] armorFix settle rejected', error);
+        }
+      }
+      return;
+    }
+    dispatch('kestrel:armorFix', id, payload, () => true);
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
@@ -154,6 +309,11 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     bus.on('ship:boostPreKick', onBoostPreKick),
     bus.on('ship:boostStart', onBoostStart),
     bus.on('ship:boostStop', onBoostStop),
+    bus.on('service:started', onServiceStarted),
+    bus.on('service:completed', onServiceDone),
+    bus.on('service:aborted', onServiceAborted),
+    bus.on('combat:damage', onCombatDamage),
+    bus.on('service:completed', onRepairCompleted),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

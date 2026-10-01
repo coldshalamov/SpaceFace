@@ -228,7 +228,7 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
-import { installAuthoredMotionBus } from './authoredMotion.js';
+import { installAuthoredMotionBus, createAuthoredClock } from './authoredMotion.js';
 import { globalForgeCrown } from './forgeRegentCrown.js';
 import { globalLawArenaDressing } from './lawArenaDressing.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
@@ -10643,8 +10643,19 @@ export const render = {
     // ANI-00: gameplay events reach entity-keyed motion controllers only through the accepted
     // source gate — a scan pulse drives the dish rig it was emitted for and nothing else.
     if (typeof this._authoredMotionUnbind === 'function') this._authoredMotionUnbind();
+    // Docked yard jobs tick on the keepalive's wall clock while ui.docked freezes simTime —
+    // the authored-motion clock must follow the same convention or a docked service deploy
+    // renders its rest key for the whole job. Sim time still governs while it advances.
+    this._authoredClockAdvance = createAuthoredClock({
+      simNow: () => Number(state.simTime) || 0,
+      wallNow: () => (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001,
+    });
     this._authoredMotionUnbind = installAuthoredMotionBus(bus, {
-      clock: () => Number(state.simTime) || 0,
+      clock: () => this._authoredClockAdvance(),
+      // Raw simTime lets the bus translate simTime-carrying payloads onto the authored clock.
+      simClock: () => Number(state.simTime) || 0,
+      // Station-service payloads carry no entity id — the jobs only ever belong to the player.
+      playerEntityId: () => state.playerId,
     });
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
@@ -14502,6 +14513,10 @@ export const render = {
     // and damage flicker freeze with the world instead of the wall clock. presFrameDt is the
     // time-effects-scaled frame delta prepareFrame derives — 0 under a hard freeze.
     const simNow = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
+    // Authored-motion clips evaluate on the same clock the bus dispatches with — sim while it
+    // advances, wall while the dock freeze holds simTime. Distinct from simNow on purpose:
+    // fan/plume/damage flicker stay frozen with the world, yard work does not.
+    const authoredNow = this._authoredClockAdvance ? this._authoredClockAdvance() : simNow;
     const presFrameDt = Math.max(0, this._presentationFrameDt || 0);
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
@@ -14838,7 +14853,7 @@ export const render = {
         }
       }
       if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
-      if (entity && runClosures && userData.updateAuthoredMotion) userData.updateAuthoredMotion(entity, simNow);
+      if (entity && runClosures && userData.updateAuthoredMotion) userData.updateAuthoredMotion(entity, authoredNow);
 
       // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
       // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
