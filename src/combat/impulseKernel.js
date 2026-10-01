@@ -394,7 +394,7 @@ export function resolveCollisionConsequence(input = {}) {
     }
   }
   const surface = collisionSurface(other);
-  const provenance = normalizeProvenance(input.provenance, input.tick);
+  const provenance = collisionProvenance(input);
   let control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
     ? 'tumble'
     : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
@@ -541,6 +541,28 @@ function physicalBodySurface(entity) {
   if (material === 'station') return 'structure';
   if (material === 'ship') return 'craft';
   return body.dynamic === false ? 'structure' : 'debris';
+}
+
+// Environment is the absence of a responsible actor. A nearest-player id on
+// that tag is not a throw. A matching recent impulse record is a real cause
+// and keeps the actor. Damage does not read this id.
+function collisionProvenance(input) {
+  const raw = normalizeProvenance(input.provenance, input.tick);
+  if (raw.tag !== 'environment' || raw.actorId == null) return raw;
+  if (recentImpulseMatches(input.target, input.other, raw.actorId, input.tick)) return raw;
+  return Object.freeze({
+    actorId: null,
+    weaponId: null,
+    tag: 'environment',
+    appliedTick: raw.appliedTick,
+  });
+}
+
+function recentImpulseMatches(target, other, actorId, tick) {
+  const onTarget = readRecentImpulseProvenance(target, tick);
+  if (onTarget && onTarget.actorId === actorId && onTarget.tag && onTarget.tag !== 'environment') return true;
+  const onOther = readRecentImpulseProvenance(other, tick);
+  return !!(onOther && onOther.actorId === actorId && onOther.tag && onOther.tag !== 'environment');
 }
 
 function normalizeProvenance(value, tick) {
