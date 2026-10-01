@@ -360,7 +360,16 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   const markerX = Number.isFinite(markerTargetX) && markerTargetX > 0 ? markerTargetX : r * 3.4;
   // The octahedron draws 2x its scale per axis, so each half extent is exactly the scale
   // term — the Y term carries no extra 0.5 (the drawn Y half is markerX·0.3/3.4 itself).
-  const half = [markerX * 0.5, markerX * (0.3 / 3.4), markerX * 0.25];
+  // The resident same-identity stand-in instead draws the record's real axes — for
+  // Z/Y-dominant records (spindle worst) the octahedron proportions under-cover its
+  // silhouette, so union per axis with the record's scaled bounds where census covers
+  // the armed file.
+  const recordHalf = boundaryStandInScaledHalf(data, entity);
+  const half = [
+    Math.max(markerX * 0.5, recordHalf ? recordHalf[0] : 0),
+    Math.max(markerX * (0.3 / 3.4), recordHalf ? recordHalf[1] : 0),
+    Math.max(markerX * 0.25, recordHalf ? recordHalf[2] : 0),
+  ];
   const existing = data.visualBounds;
   if (existing && Array.isArray(existing.size)) {
     const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
@@ -462,6 +471,36 @@ function boundaryStandInDrawnX(data, target) {
   const committed = data && Number(data.boundaryResolvingCommittedX);
   if (Number.isFinite(committed) && committed > 0) return committed;
   return boundaryStandInMarkerLength(target);
+}
+
+/**
+ * Half-extents the resident same-identity stand-in actually draws for this arm: the
+ * census row's authored bounds scaled by the same factor lodStandInFor applies
+ * (entityScale / sourceLength). Returns null when the armed file sits outside the
+ * census or the target carries no scaleable basis — callers then keep the octahedron
+ * proportions per axis, as before.
+ */
+function boundaryStandInScaledHalf(data, entity) {
+  const file = data && data.boundaryResolvingStandInFile;
+  if (typeof file !== 'string' || !file) return null;
+  const row = modelTruthRow(file.replace(/^.*\//, '').replace(/\.glb$/i, ''));
+  const size = row && row.bounds && row.bounds.size;
+  const sourceLength = size && Number(size[0]);
+  if (!size || !(sourceLength > 0)) return null;
+  const target = boundaryStandInTarget(data, entity);
+  let entityScale = null;
+  if (Number.isFinite(target.fit)) {
+    const sourceMax = Math.max(1e-6, Number(size[0]) || 0, Number(size[1]) || 0, Number(size[2]) || 0);
+    entityScale = sourceLength * (target.fit / sourceMax);
+  } else if (Number.isFinite(target.scale)) entityScale = sourceLength * target.scale;
+  else if (Number.isFinite(target.x)) entityScale = target.x;
+  if (!Number.isFinite(entityScale) || !(entityScale > 0)) return null;
+  const factor = entityScale / sourceLength;
+  return [
+    (Number(size[0]) || 0) * factor * 0.5,
+    (Number(size[1]) || 0) * factor * 0.5,
+    (Number(size[2]) || 0) * factor * 0.5,
+  ];
 }
 
 /**

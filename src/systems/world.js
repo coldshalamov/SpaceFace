@@ -1375,6 +1375,7 @@ export const world = {
         this.helpers.requestPresentationRebuild?.('sector-full-dressing');
       }
       this._ensureOpticStructures(sector, active);
+      active.fullExtrasBuilt = true;
       return;
     }
     const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
@@ -1391,6 +1392,7 @@ export const world = {
     }
     this._ensureOpticStructures(sector, active);
     this.helpers.requestPresentationRebuild?.('sector-full');
+    active.fullExtrasBuilt = true;
   },
 
   /**

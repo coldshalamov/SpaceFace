@@ -453,15 +453,15 @@ export function saveEnvelopeSectorStubs(data) {
       break;
     }
   }
-  // An open recovery record in the restored sector respawns a bare 'wreck' derelict on
-  // entry (recoveryEncounter _materialize) — its parentType picks from the same residue
-  // table mission wrecks use. "Open" = a record with no filed outcome.
+  // A recovery record in the restored sector respawns a bare 'wreck' derelict on entry:
+  // recoveryEncounter._rebindSector rematerializes every in-sector record, open or
+  // closed (closed records still mount the recovered/burned derelict body), and its
+  // parentType picks from the same residue table mission wrecks use.
   const recState = data.recoveryEncounters;
   if (recState && recState.records && typeof recState.records === 'object') {
-    const outcomes = recState.outcomes && typeof recState.outcomes === 'object' ? recState.outcomes : {};
     for (const id of Object.keys(recState.records)) {
       const rec = recState.records[id];
-      if (!rec || rec.sectorId !== sector.id || outcomes[id]) continue;
+      if (!rec || rec.sectorId !== sector.id) continue;
       coverBareMissionWrecks();
       break;
     }
