@@ -56,9 +56,9 @@ def author(bank):
     deploy = bank.clip('deploy', 1.7, loop=False, end_mode='hold')
     deploy_keys = [
         (0.00, 0.0), (0.14, 0.05), (0.42, 0.26), (0.62, TRAVEL_M + 0.012),
-        (0.78, TRAVEL_M - 0.006), (0.92, TRAVEL_M),              # extend + settle
-        (1.16, TRAVEL_M + PRESS_M), (1.36, TRAVEL_M),            # first engagement press
-        (1.52, TRAVEL_M + PRESS_M * 0.55), (1.70, TRAVEL_M),     # second, softer
+        (0.74, TRAVEL_M - 0.004), (0.80, TRAVEL_M + PRESS_M),    # extend + seat press
+        (0.98, TRAVEL_M), (1.16, TRAVEL_M + PRESS_M * 0.55),     # second, softer
+        (1.32, TRAVEL_M), (1.70, TRAVEL_M),                      # hold extended
     ]
     for t, dx in deploy_keys:
         deploy.key('kestrel_mining', t, loc=at(dx))
