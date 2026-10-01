@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "verb-04-first-well-hint",
-      "date": "2026-09-23",
-      "wf": "WF-03",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "first player well deployment emits one-shot contextual hint",
-      "fingerprint": "verb=deploy,subject=well,sector=any,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "5b19fa765",
-      "verification": "focused_green"
-    },
-    {
       "id": "world-08-dmc-contact-grammar",
       "date": "2026-09-23",
       "wf": "WF-01",
@@ -97,6 +84,19 @@
       "references": [],
       "integration": "live",
       "commit": "44d500c8b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-04-first-well-hint",
+      "date": "2026-09-23",
+      "wf": "WF-03",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "first player well deployment emits one-shot contextual hint",
+      "fingerprint": "verb=deploy,subject=well,sector=any,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "5b19fa765",
       "verification": "focused_green"
     },
     {
@@ -1646,6 +1646,19 @@
       "references": [],
       "integration": "live",
       "commit": "4ad3aac7a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-28-route-brake-feedback",
+      "date": "2026-10-01",
+      "wf": "WF-05",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "nav:routeBrake emitted once per leg handoff with zero consumers; actionVfx recipe paints vent/flipBurn variant on player hull, audio bite deduped against autopilot input edge via _brakeWasHeld",
+      "fingerprint": "verb=brake,subject=route_follower_handoff,sector=nav,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "7ec626e98",
       "verification": "focused_green"
     }
   ],
