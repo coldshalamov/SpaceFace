@@ -25,7 +25,15 @@ export const stationContactLoadBoundary = {
       if (!bag || typeof bag !== 'object' || Array.isArray(bag)) state.player.stationContacts = {};
       else for (const id of Object.keys(bag)) bag[id] = normalizeStationContactRecord(bag[id]);
       state.player.stationContactCounters = normalizeStationContactCounters(state.player.stationContactCounters);
-      state.stationLife = { traffic: [] };
+      // Rescue notices are durable across Continue — a wipe here used to drop every unclaimed
+      // notice the moment a save loaded. stationContacts' own save:loaded handler validates
+      // them; this boundary only guarantees the bag exists.
+      const prior = state.stationLife && typeof state.stationLife === 'object' && !Array.isArray(state.stationLife)
+        ? state.stationLife.rescueNotices : null;
+      state.stationLife = {
+        traffic: [],
+        rescueNotices: prior && typeof prior === 'object' && !Array.isArray(prior) ? prior : {},
+      };
     };
     bus.on('save:restoring', before);
     bus.on('save:loaded', after);

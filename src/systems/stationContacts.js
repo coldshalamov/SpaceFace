@@ -204,6 +204,9 @@ export const stationContacts = {
     on('freight:custodyReceipt', (payload = {}) => this._recordVonnFreightCustody(payload));
     on('aftermathWreck:completed', (payload = {}) => this._recordVonnWreckCompletion(payload));
     on('recovery:completed', (payload = {}) => this._noteRescueNotice(payload));
+    on('survivorPod:promoted', (payload = {}) => this._notePodReceipt(payload, 'promoted'));
+    on('survivorPod:delivered', (payload = {}) => this._notePodReceipt(payload, 'delivered'));
+    on('survivorPod:rescued', (payload = {}) => this._notePodReceipt(payload, 'rescued'));
     on('save:restoring', () => this._clearVonnFreightReceipts());
     on('vestaOreCache:resolved', (payload = {}) => {
       if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
@@ -398,6 +401,52 @@ export const stationContacts = {
       sectorId: sectorId.slice(0, 96),
       simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
     };
+  },
+
+  /**
+   * WORLD-23: the rescue verb ends at a medical berth the station then forgot. A pod coming
+   * up on the board, a rescue hull signing one in, and the pilot's own station delivery each
+   * land one line on the receiving station's traffic rail (the berth-arrival view already
+   * reads it). Handoff pickups (rescue_hull / player_handoff_rescue_hull) write nothing —
+   * the hull's later delivered receipt is the line that counts, so a pod is never logged
+   * twice. Record-only: no rep, credits, or cargo move on this path.
+   */
+  _notePodReceipt(payload, kind) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    let stationId = null;
+    let intentId = null;
+    let text = null;
+    if (kind === 'promoted') {
+      stationId = payload.destStationId || null;
+      intentId = payload.salvagePointId ? `survivorPod:promoted:${payload.salvagePointId}` : null;
+      text = 'Rescue control logged a survivor pod inbound — medical berth standing by.';
+    } else if (kind === 'delivered') {
+      const station = payload.stationId != null && state.entities && state.entities.get
+        ? state.entities.get(payload.stationId) : null;
+      stationId = (station && station.data && station.data.stationId) || payload.stationId || null;
+      intentId = `survivorPod:delivered:${payload.rescueHullId}:${Math.round(payload.simTime || 0)}`;
+      text = 'A rescue hull signed a survivor pod into the medical berth.';
+    } else if (kind === 'rescued') {
+      if (payload.reason !== 'station_delivery') return false;
+      stationId = payload.stationId || null;
+      intentId = payload.id ? `survivorPod:rescued:${payload.id}` : null;
+      text = 'Your survivor pod was signed into the medical berth.';
+    }
+    if (!stationId) return false;
+    const model = ensureLifeState(state);
+    const rec = {
+      kind: 'survivor_pod',
+      stationId,
+      text,
+      simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+      intentId,
+    };
+    if (rec.intentId && model.traffic.some((entry) => entry.intentId === rec.intentId)) return false;
+    model.traffic.unshift(rec);
+    if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
+    this.bus.emit('stationLife:trafficChanged', { ...rec });
+    return true;
   },
 
   _normalizeRescueNotices() {
