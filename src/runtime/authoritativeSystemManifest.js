@@ -167,6 +167,23 @@ export function isPresentationPlatformId(id) {
   return PRESENTATION_SET.has(id);
 }
 
+/**
+ * Modules with live game-world behavior that are NOT registered systems (MACH-01). Each entry
+ * names the manifest system id that owns its clock — an undeclared ticker is a manifest
+ * violation. `owned` means the module exports no init/update and the owning system drives its
+ * entry points from its own registered tick and event handlers.
+ */
+export const OWNED_RUNTIME_MODULES = Object.freeze({
+  // createMemorialThief(uniqueWrecks) returns { sync, killed, clear }; uniqueWrecks — an
+  // event-driven registered system — drives sync() from its 'economy:tick' listener and
+  // killed() from 'entity:killed'. The thief has no independent tick.
+  memorialThief: Object.freeze({
+    owner: 'uniqueWrecks',
+    tick: 'owned',
+    driven: Object.freeze(['economy:tick', 'entity:killed']),
+  }),
+});
+
 export function isNodeSafeSystemId(id) {
   if (PRESENTATION_SET.has(id)) return false;
   const cap = SYSTEM_CAPABILITIES[id];
