@@ -372,6 +372,10 @@ test('service:aborted blends the service rig home instead of snapping to the sto
   assert.ok(anySettleActive(controller), 'abort settles the service rig');
   assert.ok(!controller.clipActive('serviceStow'), 'abort never runs the deploy-assuming stow');
   assert.ok(controller.clipActive('sweep'), 'scoped settle leaves other rigs running');
+  // the settle clip must still exist in the bank map — a trim that collects it would throw
+  // TypeError on this update (the r4 bug: trim ran before settleName joined state.clips)
+  controller.update(10.5);
+  assert.ok(anySettleActive(controller), 'settle evaluates mid-blend without throwing');
   // arm still counts as deployed until the settle lands? no — flag cleared at abort, so a
   // following completion is inert.
   emit('service:completed', { type: 'repair' });
@@ -393,6 +397,8 @@ test('a repair completing mid-peel settles the cap from its live pose', () => {
   emit('service:completed', { type: 'repair' });
   assert.ok(anySettleActive(controller), 'mid-peel fix blends the cap home');
   assert.ok(!controller.clipActive('armorStow'), 'designed stow never runs mid-peel');
+  controller.update(31.4); // the blend must evaluate, not throw on a trimmed clip
+  assert.ok(anySettleActive(controller), 'cap blend still running');
   // and the next hull hit can peel again — the flag cleared with the fix
   now = 40;
   controller.setState({ state: 'rest', startTimeS: 40 });
@@ -417,6 +423,8 @@ test('a repair completing inside the deploy window settles instead of snapping t
   emit('service:completed', { type: 'repair', jobId: 'job-1' });
   assert.ok(anySettleActive(controller), 'early completion blends the arm home');
   assert.ok(!controller.clipActive('serviceStow'), 'deploy-assuming stow never fires mid-deploy');
+  controller.update(11.4);
+  assert.ok(anySettleActive(controller), 'blend evaluates mid-flight without throwing');
   unbind();
 });
 

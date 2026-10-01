@@ -140,16 +140,17 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
   // after any freeze and every later sim-anchored clip would evaluate past its end and park.
   const anchorS = (payload) => {
     const raw = rawSimNow();
-    return payload && payload.simTime != null && raw != null
-      ? simNow() + (Number(payload.simTime) - raw)
+    return payload && Number.isFinite(payload.simTime) && raw != null
+      ? simNow() + (payload.simTime - raw)
       : simNow();
   };
   const dispatch = (type, entityId, payload, accept) => {
     if (entityId == null) return;
+    const anchor = anchorS(payload);
     for (const controller of authoredMotionControllersFor(entityId)) {
       if (!accept(controller)) continue;
       try {
-        controller.handleEvent?.(type, payload, anchorS(payload));
+        controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
         console.warn(`[authoredMotion] ${type} rejected by controller`, error);
       }

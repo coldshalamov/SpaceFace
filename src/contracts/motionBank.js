@@ -577,11 +577,12 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           state.clips.delete(name);
         }
       }
-      // Same parked-settle trim — clips dropped above may include prior settles.
+      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      // Same parked-settle trim — clips dropped above may include prior settles. Runs after
+      // settleName joins state.clips so the fresh clip is never collected as dead.
       for (const name of [...clips.keys()]) {
         if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
       }
-      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
       state.latest = settleName;
       state.parked = false;
       return true;
@@ -626,6 +627,15 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const merged = new Map();
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
+        if (!clip) {
+          // A run-entry outliving its clip must not throw inside the frame loop — drop it
+          // like a parked clip rather than failing the whole entity pass.
+          state.clips.delete(name);
+          if (state.latest === name) {
+            state.latest = state.clips.size ? [...state.clips.keys()].pop() : null;
+          }
+          continue;
+        }
         const t = (timeS - run.startS) * run.rateScale;
         if (!clip.loop && t >= clip.durationS && (clip.endMode || 'rest') === 'rest') {
           // Rest-ended clips park this frame — their final pose is excluded from the merge so
