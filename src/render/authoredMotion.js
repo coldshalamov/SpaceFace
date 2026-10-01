@@ -46,6 +46,37 @@ export function authoredMotionRegistrySize() {
 }
 
 /**
+ * The authored-motion clock. It tracks sim time while the sim advances — clips paired with
+ * sim quantities (payout, damage windows) stay locked to it — and falls back to wall-clock
+ * delta while the sim is frozen. Docked work lives on the keepalive's wall dt (the yard's
+ * jobs tick while ui.docked pins simTime at zero), so their clips must follow the same clock
+ * or a docked deploy renders its rest key for the whole job.
+ */
+export function createAuthoredClock({ simNow, wallNow } = {}) {
+  const readSim = typeof simNow === 'function' ? simNow : () => 0;
+  const readWall = typeof wallNow === 'function' ? wallNow : () => 0;
+  let clockS = null;
+  let lastSim = 0;
+  let lastWall = 0;
+  return function authoredClock() {
+    const sim = Number(readSim()) || 0;
+    const wall = Number(readWall()) || 0;
+    if (clockS == null) {
+      clockS = sim;
+    } else {
+      const simDelta = sim - lastSim;
+      const wallDelta = wall - lastWall;
+      // Monotonic forward: a sim reset (new game/sector) never runs clips backwards — the
+      // frozen branch also covers backwards jumps by taking the wall delta instead.
+      clockS += simDelta > 0 ? simDelta : Math.min(Math.max(wallDelta, 0), 0.5);
+    }
+    lastSim = sim;
+    lastWall = wall;
+    return clockS;
+  };
+}
+
+/**
  * Bind one bank per bound pivot root and attach the composite driver to the ship root.
  *
  * Returns a detach callback for the render-package dispose path (a package generation swap or a
@@ -154,40 +185,69 @@ export function installAuthoredMotionBus(bus, { clock, playerEntityId } = {}) {
   // one bank whose hold-ended clips never leave state.clips, so 'latest' cannot tell arm truth
   // from cap truth and dispatch order on service:completed would make the two gates mutually
   // exclusive. A flag flips on dispatch and clears only when that rig's own stow/settle runs.
-  const armDeployedIds = new Set();
+  // Flag records carry the job id + the dispatch clock-second the deploy started: a
+  // completion/abort for another job must not consume the flag, and a completion landing
+  // before the deploy finishes must blend home rather than snap to serviceStow's deployed
+  // first key (repairs complete by missing HP — short jobs finish inside the deploy).
+  const armJobs = new Map(); // entityId -> { jobId, at }
   const capPeeledAt = new Map(); // entityId -> sim second the peel started
   const SERVICE_GROUPS = ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow'];
   const PEEL_S = 2.6; // armorPeel clip duration — a fix landing mid-peel settles instead.
+  const DEPLOY_S = 3.6; // serviceArm clip duration — a completion inside it settles instead.
+  const STALE_S = 600; // entries older than this are dropped — rebuilds must not skew gates.
+  const pruneStaleFlags = () => {
+    const now = simNow();
+    for (const [id, rec] of armJobs) if (now - rec.at > STALE_S) armJobs.delete(id);
+    for (const [id, at] of capPeeledAt) if (now - at > STALE_S) capPeeledAt.delete(id);
+  };
+  const isRepairJob = (payload) => payload && payload.type === 'repair';
+  const matchesJob = (rec, payload) => rec.jobId == null || payload.jobId == null
+    || rec.jobId === payload.jobId;
+  const settleServiceRig = (id, durationS) => {
+    // An interrupted deploy mid-flight must not snap to serviceStow's first keys — they
+    // assume full extension. Blend the service rig home from its live pose instead.
+    for (const controller of authoredMotionControllersFor(id)) {
+      try {
+        controller.settleGroups?.(durationS, simNow(), SERVICE_GROUPS);
+      } catch (error) {
+        console.warn('[authoredMotion] service-rig settle rejected', error);
+      }
+    }
+  };
   const onServiceStarted = (payload) => {
-    if (!payload || payload.type !== 'repair') return;
+    if (!isRepairJob(payload)) return;
+    pruneStaleFlags();
     const id = playerId();
-    if (id == null || armDeployedIds.has(id)) return;
-    armDeployedIds.add(id);
+    if (id == null || armJobs.has(id)) return;
+    armJobs.set(id, { jobId: payload.jobId ?? null, at: simNow() });
     dispatch('kestrel:serviceArm', id, payload, () => true);
   };
   const onServiceDone = (payload) => {
+    if (!isRepairJob(payload)) return;
     const id = playerId();
-    if (!armDeployedIds.delete(id)) return;
+    const rec = id != null ? armJobs.get(id) : null;
+    if (!rec || !matchesJob(rec, payload)) return;
+    armJobs.delete(id);
+    if (simNow() - rec.at < DEPLOY_S) {
+      settleServiceRig(id, 0.9);
+      return;
+    }
     dispatch('kestrel:serviceDone', id, payload, () => true);
   };
   const onServiceAborted = (payload) => {
+    if (payload && payload.type && payload.type !== 'repair') return;
     const id = playerId();
-    if (!armDeployedIds.delete(id)) return;
-    // An aborted job interrupts the deploy mid-flight — the designed stow's first keys assume
-    // full extension and would pop. Blend the service rig home from its live pose instead.
-    for (const controller of authoredMotionControllersFor(id)) {
-      try {
-        controller.settleGroups?.(0.9, simNow(), SERVICE_GROUPS);
-      } catch (error) {
-        console.warn('[authoredMotion] service:aborted settle rejected', error);
-      }
-    }
+    const rec = id != null ? armJobs.get(id) : null;
+    if (!rec || !matchesJob(rec, payload)) return;
+    armJobs.delete(id);
+    settleServiceRig(id, 0.9);
   };
   // ANI-07: the port shoulder cap peels on the first hull hit that reaches it and stays up as
   // the damage state; a finished repair re-seats it. Re-peeling needs the plate seated again
   // (a fresh hull hit while the plate is already loose does nothing new).
   const onCombatDamage = (payload) => {
     if (!payload || payload.hullHit !== true) return;
+    pruneStaleFlags();
     const id = payload.targetId;
     if (id == null || capPeeledAt.has(id) || !authoredMotionControllersFor(id).length) return;
     capPeeledAt.set(id, simNow());

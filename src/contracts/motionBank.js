@@ -436,6 +436,9 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     parked: true,
   };
   let disposed = false;
+  // Each settle gets its own clip name — two settles in one tick (scoped blends on
+  // different rigs sharing this bank) would otherwise clobber one another by name.
+  let settleSerial = 0;
 
   function restAll() {
     for (const { binding, nodes } of groups.values()) {
@@ -456,6 +459,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return g ? g.nodes.length : 0;
     },
     clipActive(name) { return state.clips.has(name); },
+    activeClipNames() { return [...state.clips.keys()]; },
     groups,
 
     /**
@@ -492,13 +496,14 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           });
         }
       }
+      const settleName = `__settle__${++settleSerial}`;
       const settleClip = {
-        name: '__settle__', durationS: duration, loop: false, endMode: 'rest', channels,
+        name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
       };
-      clips.set('__settle__', settleClip);
+      clips.set(settleName, settleClip);
       state.clips.clear();
-      state.clips.set('__settle__', { startS: timeS, rateScale: 1 });
-      state.latest = '__settle__';
+      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      state.latest = settleName;
       state.parked = false;
       return true;
     },
@@ -544,18 +549,19 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         }
       }
       if (!channels.length) return false;
+      const settleName = `__settle__${++settleSerial}`;
       const settleClip = {
-        name: '__settle__', durationS: duration, loop: false, endMode: 'rest', channels,
+        name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
       };
-      clips.set('__settle__', settleClip);
+      clips.set(settleName, settleClip);
       for (const name of [...state.clips.keys()]) {
         const clip = clips.get(name);
         if (clip && clip.channels.some((ch) => wanted.has(ch.group))) {
           state.clips.delete(name);
         }
       }
-      state.clips.set('__settle__', { startS: timeS, rateScale: 1 });
-      state.latest = '__settle__';
+      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      state.latest = settleName;
       state.parked = false;
       return true;
     },

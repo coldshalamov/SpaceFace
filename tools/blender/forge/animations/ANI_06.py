@@ -14,9 +14,11 @@ SvcTip (forearm and tool head). At rest the Z-fold sits fully inside the pod's s
 the pod reads unchanged until the hatch swings.
 
 Groups:
-  kestrel_pod_hatch          hinge pivot on the hatch's outboard (y=3.75) edge — opens over the sponson
+  kestrel_pod_hatch          hinge pivot on the hatch's +X fore edge (x=-1.5, y=4.35) — the lid
+                             stands open at the pod's fore edge, clear of the arm's aft deploy plane
   kestrel_pod_arm_shoulder   pivot under the hatch opening — pitches the folded links up
-  kestrel_pod_arm_elbow      nested inside the shoulder — unfolds the forearm + head
+  kestrel_pod_arm_elbow      nested inside the shoulder — unfolds the forearm + head flat aft
+                             past the pod's rear edge (low reach, tip ~1.4m aft of the pod)
 
 Clips:
   serviceArm   hatch opens, arm unfolds and holds its tip just outside (endMode 'hold' —

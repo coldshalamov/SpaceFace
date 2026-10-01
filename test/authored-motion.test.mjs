@@ -293,6 +293,9 @@ function makeServiceBus() {
   return { emit, bus };
 }
 
+const anySettleActive = (controller) => (controller.activeClipNames?.() || [])
+  .some((name) => name.startsWith('__settle__'));
+
 function makeServiceRig() {
   const root = new THREE.Object3D();
   for (const name of ['MOTION_KESTREL_POD_HATCH', 'MOTION_KESTREL_POD_ARM_SHOULDER',
@@ -365,7 +368,7 @@ test('service:aborted blends the service rig home instead of snapping to the sto
   emit('service:started', { type: 'repair' });
   emit('scan:pulse', { source: 'player-scanner', scannerId: 'player-1', seq: 1 });
   emit('service:aborted', { type: 'repair' });
-  assert.ok(controller.clipActive('__settle__'), 'abort settles the service rig');
+  assert.ok(anySettleActive(controller), 'abort settles the service rig');
   assert.ok(!controller.clipActive('serviceStow'), 'abort never runs the deploy-assuming stow');
   assert.ok(controller.clipActive('sweep'), 'scoped settle leaves other rigs running');
   // arm still counts as deployed until the settle lands? no — flag cleared at abort, so a
@@ -387,7 +390,7 @@ test('a repair completing mid-peel settles the cap from its live pose', () => {
   emit('combat:damage', { targetId: 'player-1', hullHit: true });
   now = 31; // peel age 1s < 2.6s clip — still animating, stow's first key would snap it
   emit('service:completed', { type: 'repair' });
-  assert.ok(controller.clipActive('__settle__'), 'mid-peel fix blends the cap home');
+  assert.ok(anySettleActive(controller), 'mid-peel fix blends the cap home');
   assert.ok(!controller.clipActive('armorStow'), 'designed stow never runs mid-peel');
   // and the next hull hit can peel again — the flag cleared with the fix
   now = 40;
@@ -395,4 +398,67 @@ test('a repair completing mid-peel settles the cap from its live pose', () => {
   emit('combat:damage', { targetId: 'player-1', hullHit: true });
   assert.ok(controller.clipActive('armorPeel'), 'cap can peel again after a fix');
   unbind();
+});
+
+test('a repair completing inside the deploy window settles instead of snapping to stow', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 10;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  emit('service:started', { type: 'repair', jobId: 'job-1' });
+  assert.ok(controller.clipActive('serviceArm'), 'arm unfolding');
+  now = 11; // 1s into the 3.6s deploy — short repairs land here on the live wall clock
+  emit('service:completed', { type: 'repair', jobId: 'job-1' });
+  assert.ok(anySettleActive(controller), 'early completion blends the arm home');
+  assert.ok(!controller.clipActive('serviceStow'), 'deploy-assuming stow never fires mid-deploy');
+  unbind();
+});
+
+test('completions for other job types or job ids never consume the arm flag', () => {
+  const bank = JSON.parse(JSON.stringify(SERVICE_BANK));
+  const root = makeServiceRig();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  attachAuthoredMotionDriver(ship, { id: 'player-1' }, [controller]);
+  let now = 10;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, { clock: () => now, playerEntityId: () => 'player-1' });
+
+  emit('service:started', { type: 'repair', jobId: 'job-1' });
+  emit('service:completed', { type: 'refuel', jobId: 'job-9' });
+  emit('service:completed', { type: 'repair', jobId: 'job-2' });
+  emit('service:aborted', { type: 'refuel', jobId: 'job-9' });
+  assert.ok(controller.clipActive('serviceArm'), 'arm still deployed — foreign completions/aborts are inert');
+  now = 14.5; // past the deploy window
+  emit('service:completed', { type: 'repair', jobId: 'job-1' });
+  assert.ok(controller.clipActive('serviceStow'), 'the real repair completion still stows');
+  unbind();
+});
+
+test('createAuthoredClock follows sim while it advances and wall time while frozen', async () => {
+  const { createAuthoredClock } = await import('../src/render/authoredMotion.js');
+  let sim = 100;
+  let wall = 50;
+  const clock = createAuthoredClock({ simNow: () => sim, wallNow: () => wall });
+
+  assert.equal(clock(), 100, 'seeds from sim time');
+  sim += 2;
+  wall += 5;
+  assert.equal(clock(), 102, 'tracks sim while it advances — wall delta ignored');
+  wall += 0.3; // sim frozen (docked): the yard keepalive convention drives the clock
+  assert.equal(clock(), 102.3, 'advances on wall dt while the sim is frozen');
+  wall += 3; // a hidden-tab hitch is capped so clips cannot teleport through their timeline
+  assert.equal(clock(), 102.8, 'wall deltas beyond the 0.5s cap are absorbed');
+  sim += 10;
+  wall += 1;
+  assert.equal(clock(), 112.8, 're-locks to sim the moment it advances again');
+  sim = 4; // sector reset — clock must stay monotonic forward
+  wall += 0.25;
+  const after = clock();
+  assert.ok(after >= 112.8 && after <= 113.3, 'a sim reset never runs clips backwards');
 });
