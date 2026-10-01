@@ -405,6 +405,49 @@ export function createAlerts(ctx) {
     else raise(command);
   });
 
+  // ECON-05: sink charge posts a receipt line naming the kind (SESSION_SINK_KINDS word).
+  bus.on('economy:sinkCharged', (payload) => {
+    const text = sinkChargeAlertText(payload);
+    if (!text) return;
+    raise({
+      key: `sink:${payload && payload.id != null ? payload.id : (payload && payload.kind || 'charge')}`,
+      sev: 'info',
+      text,
+      ttl: 3,
+    });
+  });
+
+  // ECON-04: salvage intake that the market absorbed posts a one-line receipt.
+  bus.on('economy:salvageIntakeApplied', (payload) => {
+    const text = salvageIntakeAlertText(payload);
+    if (!text) return;
+    raise({
+      key: `salvage:${payload && (payload.intakeId || payload.lotId) || 'intake'}`,
+      sev: 'info',
+      text,
+      ttl: 3,
+    });
+  });
+
   // low-shield/hull driven from the HUD per-frame check via these helpers (status pills):
   return { raise, clear, tick };
+}
+
+/** ECON-05: Flight-HUD alert text for session sink charges. */
+export function sinkChargeAlertText(payload) {
+  if (!payload) return null;
+  const amount = Math.floor(Number(payload.amount) || 0);
+  if (amount <= 0) return null;
+  const kind = String(payload.kind || '').toLowerCase();
+  const word = kind ? kind.toUpperCase() : 'CHARGE';
+  return `${word} · ${amount} CR`;
+}
+
+/** ECON-04: Flight-HUD alert text for absorbed salvage intake. */
+export function salvageIntakeAlertText(payload) {
+  if (!payload) return null;
+  const qty = Math.floor(Number(payload.qty) || 0);
+  const val = payload.value != null ? `${payload.value} CR` : (qty > 0 ? `${qty} U` : null);
+  if (!val) return null;
+  return `SALVAGE INTAKE · ${val}`;
 }
