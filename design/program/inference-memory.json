@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "dock-spill-line",
-      "date": "2026-09-25",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The dock names the cargo you spilled on the way in",
-      "fingerprint": "verb=hear,subject=dock-spill,sector=any,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "1cdd92543",
-      "verification": "focused_green"
-    },
-    {
       "id": "helios-candle-cache",
       "date": "2026-09-25",
       "wf": "WF-10",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "c3e72a980",
+      "verification": "focused_green"
+    },
+    {
+      "id": "INST-22",
+      "date": "2026-10-01",
+      "wf": "WF-01",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "cruise:engaged owns one lane-lock play; raw boost row SILENT with reason",
+      "fingerprint": "verb=hear,subject=cruise_engage,sector=any,domain=inst",
+      "references": [],
+      "integration": "live",
+      "commit": "f317b5dc3",
       "verification": "focused_green"
     }
   ],
