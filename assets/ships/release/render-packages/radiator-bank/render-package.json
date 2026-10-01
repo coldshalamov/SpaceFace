@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2fd749ef4b8fa2f3c0bdba64feff73dc68bf583efb55a55158ca874a73969c87",
+  "contentHash": "1dd837a1553ee0c2ebf93273674d571dcce99e079521f0c37f6a858727624a54",
   "dynamicGroups": [
     {
       "id": "sf.render.radiator-bank.mesh.lod0-hook-nav-port.dynamic",
@@ -1693,7 +1693,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "db6e53e6c0233030808cb3ad99b0b3264ce1b410320cdb3ece2c0cf2e0349559",
+      "sha256": "6ad96f51a2017a9ec303285ca2a0a577796a2672af36ea4087d156c0985da48d",
       "uri": "pilots.json"
     }
   },
@@ -2371,7 +2371,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_radiator_bank.glb"
   },
-  "runtimeHash": "6cf3682ca3cb9fe0746fccce7b11b570e1828e69ebfc41274e4c7fffe9a77833",
+  "runtimeHash": "6588adfdfbd2257b35a8f988069ac1df05bef38cfd9440d07a3930b85b54963d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

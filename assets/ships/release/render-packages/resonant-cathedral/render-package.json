@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "56e4bb0a557f94b856a758c3a3ec45d98133471c7920638d139ff987b860df12",
+  "contentHash": "131be3e3c1a02d5d02b8203a01ad3b4172dba4aa5d93d7766b9ad6ca40bec03c",
   "dynamicGroups": [
     {
       "id": "sf.render.resonant-cathedral.node.lod0-hook-nav-port.dynamic",
@@ -3710,7 +3710,7 @@
     },
     "sourceManifest": {
       "bytes": 212795,
-      "sha256": "db6e53e6c0233030808cb3ad99b0b3264ce1b410320cdb3ece2c0cf2e0349559",
+      "sha256": "6ad96f51a2017a9ec303285ca2a0a577796a2672af36ea4087d156c0985da48d",
       "uri": "pilots.json"
     }
   },
@@ -5192,7 +5192,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb"
   },
-  "runtimeHash": "2aba87dfe3fca2d87115b434aae42e8e15df88cd9bd31f9f30b3a235c01bde3f",
+  "runtimeHash": "3753200afc6d6f484969b7118b3645138532ae3fb53f1a3ece4441ba30772813",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
