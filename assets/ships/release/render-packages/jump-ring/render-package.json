@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3a6dcbb85cdcc61aeeff88fb4a301482edd0a9a69a9bd81e98da97bc2f584fc4",
+  "contentHash": "707719a84328ff1ca21751b1d63adee842014cd7b4d7ecc4518c12b6086b311d",
   "dynamicGroups": [
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.dynamic",
@@ -3561,7 +3561,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "5029553ba1b6af774d2e5fc84d3a63552ec10ffeb8fb6fb6e133e087ecb0b973",
+      "sha256": "fa137d52c8c37130744591511a09d606ba668dde0583aef13a41f75c9422135f",
       "uri": "pilots.json"
     }
   },
@@ -4967,7 +4967,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "5181d2e1bbeb08d8ad355664130e2f6b7a669ed18e402e48538bb3e0eaf46cac",
+  "runtimeHash": "c1c4e6282841079c89023c399d8896d062dd5e3076daa2e0fabbcee34488c083",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
