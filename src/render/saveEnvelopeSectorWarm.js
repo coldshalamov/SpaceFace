@@ -7,7 +7,7 @@
 // resolvers read, so the renderer can post the same decodes the spawned bodies will request
 // — overlapping menu dwell instead of the restore's authored-visuals gate.
 
-import { SECTORS, SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex } from '../data/sectors.js';
 import { ASTEROIDS } from '../data/mining.js';
 import {
   EVERYDAY_SPACE_KIT_SALT,
@@ -23,7 +23,8 @@ import { getDressingRow } from '../world/dressingTable.js';
 import { machineSitesForSector } from '../data/precursorMachines.js';
 import { alienSitesForSector, planInfestationModules } from '../data/alienEcology.js';
 import { markArchetypePoolFor } from '../data/bountyMarks.js';
-import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
+import { HELIOS_ROPE_CACHE, WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
+import { KETTLE_LINE } from '../data/kettleLine.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { authoredSetPieceById, megaHeistById } from '../data/missions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
@@ -492,9 +493,14 @@ export function saveEnvelopeSectorStubs(data) {
   // (world.js CERES_ACTIVITY_DRONE_SLOT_PRESENTATION); the palette literal set covers dead_hulk
   // and conveyor_barge but never these two.
   if (sector.id === 'sector_ceres_belt') {
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_dead_hulk', worldDressing: true } });
     out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_bait_wreck', worldDressing: true } });
     out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_grave_shard', worldDressing: true } });
   }
+  // Live payload pods (helios rope cache + kettle payoff) mount place_cargo_pod_standard —
+  // absent from the one-off table. A restored bag always lacks the prior pod.
+  pushRopeCachePodStub(out.placeStubs, sector.id,
+    data.world && data.world.discovery && data.world.discovery[sector.id], false);
 
   for (const rec of sectorRecords) {
     if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
@@ -686,6 +692,41 @@ function poiPromotesToLiveActor(poi, activityObjectSlotId) {
     || poi.requiresActiveScan === true || poi.landmark === true || !!poi.discoveryPlate
     || poi.survivorPod === true || poi.recoveryEncounter === true || poi.claimable === true
     || poi.hidden === true;
+}
+
+// Mirror of sectorSim.js effectiveSectorFor's density projection (the real _enemyPool call
+// site reads catalog security — only enemyDensity drifts live): a sector drifted 0→positive
+// after the stub's catalog read would skip the ambient roster warm entirely while
+// _spawnEnemies sizes off the drifted value.
+function effectiveSectorDensityFor(simState, sectorId, base) {
+  const node = simState && simState.sectorSim && simState.sectorSim.field
+    && simState.sectorSim.field.nodes && simState.sectorSim.field.nodes[sectorId];
+  if (node) {
+    const desiredDanger = Math.min(1, Math.max(0, Number(node.danger) || dangerIndex(base)));
+    const delta = desiredDanger - dangerIndex(base);
+    return Math.min(0.80, Math.max(0,
+      (base.enemyDensity || 0) + delta * 0.82 + Math.max(0, node.pricePressure || 0) * 0.05));
+  }
+  const rec = simState && simState.sectorSim && simState.sectorSim.sectors
+    && simState.sectorSim.sectors[sectorId];
+  return rec && rec.drift && Number.isFinite(rec.drift.enemyDensity)
+    ? rec.drift.enemyDensity
+    : (base.enemyDensity || 0);
+}
+
+// Live payload pods mount place_cargo_pod_standard on their home sectors: the helios rope
+// cache respawns whenever the bag lacks a live prior pod; the kettle payoff needs the stern
+// scan tell investigated (discovery ledger in both lanes).
+function pushRopeCachePodStub(placeStubs, sectorId, discovery, hasLivePrior) {
+  if (sectorId === HELIOS_ROPE_CACHE.sectorId && !hasLivePrior) {
+    placeStubs.push({ type: 'fx', data: { placeId: HELIOS_ROPE_CACHE.placeId, worldOneOff: true } });
+  }
+  if (sectorId === KETTLE_LINE.sectorId) {
+    const stern = discovery && discovery.pois && discovery.pois[KETTLE_LINE.terminalPoiId];
+    if (stern && stern.investigated) {
+      placeStubs.push({ type: 'fx', data: { placeId: KETTLE_LINE.payoff.placeId, worldOneOff: true } });
+    }
+  }
 }
 
 // Mirror of world.js _enemyPool — ambient rolls draw one of three static pools on the
@@ -930,7 +971,9 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
   if (hostileFree) {
     const hadCombatHistory = sectorRecords.concat(intentRecords).some((rec) => rec
       && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
-    if (!hadCombatHistory && (sector.enemyDensity || 0) > 0) {
+    // _spawnEnemies sizes off the DRIFTED density — the gate must read the same effective
+    // value or a 0→positive drift skips the ambient warm while ambient rolls still spawn.
+    if (!hadCombatHistory && effectiveSectorDensityFor(state, sector.id, sector) > 0) {
       for (const zone of zonesForSector(sector.id)) {
         const presence = zone && zone.presence;
         if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;
@@ -961,6 +1004,18 @@ export function liveSectorFullExtrasStubs(state, sectorId) {
       }
     }
   }
+
+  // Ceres dressing mounts place_dead_hulk off any wreck anchor plus the throughline slot
+  // presentations — the palette literals only reach dead_hulk through the kit stream.
+  if (sector.id === 'sector_ceres_belt') {
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_dead_hulk', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_bait_wreck', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_grave_shard', worldDressing: true } });
+  }
+  const ropePrior = active.heliosRopeCacheId != null && state.entities
+    && typeof state.entities.get === 'function' && state.entities.get(active.heliosRopeCacheId);
+  pushRopeCachePodStub(out.placeStubs, sector.id,
+    world.discovery && world.discovery[sector.id], !!ropePrior);
 
   return out;
 }
@@ -1020,7 +1075,7 @@ export function saveEnvelopeFullExtrasStubs(data) {
   }
   if (hasRematerializingWrecks) pushBareWreckResidues(out.placeStubs);
 
-  if (!hadCombatHistory && (sector.enemyDensity || 0) > 0) {
+  if (!hadCombatHistory && effectiveSectorDensityFor(data, sector.id, sector) > 0) {
     for (const zone of zonesForSector(sector.id)) {
       const presence = zone && zone.presence;
       if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;

@@ -11,7 +11,7 @@
 //   node scripts/sync-modulepreload.mjs          — rewrite the generated registry-wave block
 //   node scripts/sync-modulepreload.mjs --check  — diff only; exit 1 on any drift
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, normalize } from 'node:path';
 
@@ -139,6 +139,34 @@ while (queue.length) {
   queue.push(...next);
 }
 
+const beginIdx = html.indexOf(BEGIN);
+const endIdx = html.indexOf(END);
+const hasBlock = beginIdx !== -1 && endIdx !== -1 && endIdx > beginIdx;
+// Compare href-semantic content only — surrounding indentation is free (the block may sit
+// under any nesting level), so strip line edges and drop blank lines before comparing.
+const normLines = (s) => s.split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+const beginLine = hasBlock ? html.lastIndexOf('\n', beginIdx) + 1 : 0;
+const current = hasBlock ? html.slice(beginLine, endIdx + END.length) : '';
+
+// A deps-absent machine cannot resolve /node_modules/ targets — every committed node_modules
+// href would read as 'stale' and a rewrite would silently drop the hints. Preserve the
+// committed set verbatim (rewrites keep it, --check exempts it from drift); the walk still
+// covers the /src/ + /vendor/ closure, and the warning flags the run as non-authoritative.
+if (!existsSync(join(root, 'node_modules'))) {
+  if (hasBlock) {
+    const preserved = [...current.matchAll(/href="([^"]+)"/g)]
+      .map((m) => m[1])
+      .filter((href) => href.includes('/node_modules/'));
+    for (const href of preserved) {
+      if (!seen.has(href)) {
+        seen.add(href);
+        wanted.push(href);
+      }
+    }
+  }
+  console.warn('[modulepreload] node_modules absent — /node_modules/ hrefs unverifiable; preserving committed entries. Re-run with dependencies installed for an authoritative sync.');
+}
+
 // Emit the block sorted: its content becomes a pure function of the covered set, so a
 // regeneration on an identical set (e.g. a PR merge ref whose src tree only reorders
 // discovery) cannot produce order-only drift.
@@ -154,15 +182,6 @@ const block = [
   ...wanted.map((href) => `  <link rel="modulepreload" href="${href}" />`),
   `  ${END}`,
 ].join('\n');
-
-const beginIdx = html.indexOf(BEGIN);
-const endIdx = html.indexOf(END);
-const hasBlock = beginIdx !== -1 && endIdx !== -1 && endIdx > beginIdx;
-// Compare href-semantic content only — surrounding indentation is free (the block may sit
-// under any nesting level), so strip line edges and drop blank lines before comparing.
-const normLines = (s) => s.split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
-const beginLine = hasBlock ? html.lastIndexOf('\n', beginIdx) + 1 : 0;
-const current = hasBlock ? html.slice(beginLine, endIdx + END.length) : '';
 
 const drift = normLines(current) !== normLines(block);
 const check = process.argv.includes('--check');

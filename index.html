@@ -113,6 +113,10 @@
   <!-- bootEntry's fire-and-forget title remix is a 2-hop lazy chain — the decoration still
        lands late on cold cache without these fetch-only hints. -->
   <link rel="modulepreload" href="./src/ui/introSignalRemixBoot.js" />
+  <!-- uiRoot's capital-boss overlay is a guarded dynamic import on the first-flight path —
+       its 2-hop mount (overlayMount → capitalBossPresentation) used to fetch at boss frame. -->
+  <link rel="modulepreload" href="./src/ui/capitalBossOverlayMount.js" />
+  <link rel="modulepreload" href="./src/presentation/capitalBossPresentation.js" />
   <link rel="modulepreload" href="./src/ui/introSignalRemix.js" />
   <link rel="modulepreload" href="./src/ui/loadingSignalTableaux.js" />
   <!-- The loading shell's own typefaces: without a preload the first painted frame pays a
