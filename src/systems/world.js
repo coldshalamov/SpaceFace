@@ -4854,7 +4854,12 @@ export const world = {
     jump._fuelCost = fuelCost;
     jump._unfiled = false;
     jump._unfiledConfirmed = false;
-    this.bus.emit('jump:chargeStart', { targetSectorId, via, chargeNeeded, playerId: this.state.playerId });
+    // Drive interdiction rolls on arrival against this sector's fixed hostile pool — publish
+    // it with the charge so the squad's hulls decode during the charge window.
+    this.bus.emit('jump:chargeStart', {
+      targetSectorId, via, chargeNeeded, playerId: this.state.playerId,
+      interdictionPool: via === 'drive' && target ? this._enemyPool(target) : null,
+    });
   },
 
   /**
@@ -4901,6 +4906,7 @@ export const world = {
       chargeNeeded: jump.chargeNeeded,
       unfiled: true,
       playerId: state.playerId,
+      interdictionPool: target ? this._enemyPool(target) : null,
     });
     return true;
   },
