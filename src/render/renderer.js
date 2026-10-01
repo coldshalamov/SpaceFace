@@ -11819,7 +11819,8 @@ export const render = {
             for (const [id, mesh] of this._meshes) {
               const entity = state.entities.get(id);
               if (canRequestAuthoredUpgrade(entity, state, null)) {
-                requestAuthoredUpgrade(mesh, renderer, scene);
+                requestAuthoredUpgrade(mesh, renderer, scene,
+                  entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
               }
             }
           }
@@ -15662,8 +15663,11 @@ export const render = {
       // request suppression, so its mere presence does not mean work is still live once the
       // authored state has settled. LOD replacement has its own identity-cleared in-flight promise.
       if (!settled) {
-        if (!completion && typeof userData.requestAuthoredUpgrade === 'function') {
-          completion = requestAuthoredUpgrade(root, this.renderer, this.scene);
+        if (typeof userData.requestAuthoredUpgrade === 'function') {
+          // Census roots intersect the first presented frame — visible class, not ambient.
+          // A live job re-grades through the monotonic-true merge; the deadline-class sector
+          // census can no longer starve the bodies the first frame actually draws.
+          completion = requestAuthoredUpgrade(root, this.renderer, this.scene, { admissionVisible: true });
         }
         if (completion && typeof completion.then === 'function') pending.add(completion);
       }
