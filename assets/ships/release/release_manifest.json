@@ -3188,14 +3188,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_fab.glb",
       "release": "assets/ships/release/parts/places/place_station_fab.glb",
-      "sourceSha256": "a292ecdf90dd0416f2ce1cf3cc3fdac1ec1fa88030bc436b328662ac8a19c2d7",
-      "releaseSha256": "5bde9ea225ededa8bad1d7edf94b8bbca3970e738f682c33c87a4220570cb063",
-      "sourceBytes": 5804968,
-      "releaseBytes": 1799376,
+      "sourceSha256": "3d948080e7d8853a1e0716e0365606ce80cc99ae024d265d3a3077bd2d42b15b",
+      "releaseSha256": "33f8a86daac49a699fdc02991d4cc4f2c323d748bd89834fc97edc631e7c258b",
+      "sourceBytes": 5853952,
+      "releaseBytes": 1692100,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 175,
-      "contractNodeCount": 48
+      "meshoptBufferViews": 298,
+      "contractNodeCount": 84,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_station_military",

@@ -456,7 +456,61 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return g ? g.nodes.length : 0;
     },
     clipActive(name) { return state.clips.has(name); },
+    clipElapsed(name, timeS) {
+      const run = state.clips.get(name);
+      if (!run) return null;
+      return (Number.isFinite(timeS) ? timeS : 0) - run.startS;
+    },
+    clipDuration(name) {
+      const clip = clips.get(name);
+      return clip ? clip.durationS : null;
+    },
     groups,
+
+    /**
+     * Blend every currently-posed group back to rest over durationS — the early-disengage
+     * path: a clip interrupted mid-flight must not teleport to another clip's first key.
+     * Synthesizes a rest-targeted clip from the live merged pose (identity rotation /
+     * zero translation at rest); 'rest' endMode parks the rig when the blend lands.
+     */
+    settle(durationS = 1.0, timeS = 0) {
+      if (disposed || !state.clips.size) return false;
+      const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
+      const merged = new Map();
+      for (const [name, run] of state.clips) {
+        const clip = clips.get(name);
+        if (!clip) continue;
+        const t = (timeS - run.startS) * run.rateScale;
+        const deltas = evaluateMotionClip(
+          checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
+        );
+        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+      }
+      const channels = [];
+      for (const [groupId, delta] of merged) {
+        if (Array.isArray(delta.translation)) {
+          channels.push({
+            group: groupId, path: 'translation', times: [0, duration],
+            values: [...delta.translation, 0, 0, 0],
+          });
+        }
+        if (Array.isArray(delta.rotation)) {
+          channels.push({
+            group: groupId, path: 'rotation', times: [0, duration],
+            values: [...delta.rotation, 0, 0, 0, 1],
+          });
+        }
+      }
+      const settleClip = {
+        name: '__settle__', durationS: duration, loop: false, endMode: 'rest', channels,
+      };
+      clips.set('__settle__', settleClip);
+      state.clips.clear();
+      state.clips.set('__settle__', { startS: timeS, rateScale: 1 });
+      state.latest = '__settle__';
+      state.parked = false;
+      return true;
+    },
 
     /**
      * Start a clip (or restart it if it is already active). `generation` orders duplicate events —
@@ -479,6 +533,23 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const clip = clips.get(clipName);
       if (!clip) {
         throw new Error(`motion bank ${checked.rigId} has no clip "${clipName}".`);
+      }
+      // A started clip permanently supersedes older clips on every group it channels.
+      // Latest-started-wins must outlive the younger clip's own rest-park — otherwise a held
+      // earlier clip (endMode 'hold', never evicted) re-applies its delta the frame the newer
+      // clip deletes, snapping the rig back to the superseded pose (index↔reset, deploy↔stow).
+      const claimed = new Set(clip.channels.map((channel) => channel.group));
+      for (const [otherName, otherRun] of [...state.clips]) {
+        if (otherName === clipName) continue;
+        const other = clips.get(otherName);
+        if (!other) continue;
+        const remaining = other.channels.some((channel) => !claimed.has(channel.group));
+        if (!remaining) {
+          state.clips.delete(otherName);
+          continue;
+        }
+        const superseded = otherRun.superseded || (otherRun.superseded = new Set());
+        for (const group of claimed) superseded.add(group);
       }
       if (generation != null) state.generation = generation;
       state.clips.delete(clipName);
@@ -511,7 +582,11 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
         // Later map entries override earlier ones per group — newest clip wins a shared group.
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        // Groups a newer clip permanently claimed stay suppressed even after that clip parks.
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       for (const [id, { binding, nodes }] of groups) {
         const delta = merged.get(id) || {};

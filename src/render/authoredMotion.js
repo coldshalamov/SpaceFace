@@ -95,7 +95,7 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
  * motion-system bindEvents calls. `clock` supplies the current sim second for event payloads that
  * carry no simTime of their own (mining events don't). Returns an unbind function.
  */
-export function installAuthoredMotionBus(bus, { clock } = {}) {
+export function installAuthoredMotionBus(bus, { clock, entityForStationId } = {}) {
   if (!bus || typeof bus.on !== 'function') return null;
   const simNow = () => (typeof clock === 'function' ? Number(clock()) || 0 : 0);
   const dispatch = (type, entityId, payload, accept) => {
@@ -132,12 +132,35 @@ export function installAuthoredMotionBus(bus, { clock } = {}) {
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
+  // ANI-13/14: fab-yard work loops ride the craft queue — active jobs run the welder arms
+  // and the crane cycle; a queue that empties settles the rig home from its live pose so a
+  // mid-phase completion never teleports the yard to a park clip's first key.
+  const onCraftQueue = (payload) => {
+    if (!payload || typeof payload.stationId !== 'string' || payload.stationId === '__any__') return;
+    const entityId = typeof entityForStationId === 'function'
+      ? entityForStationId(payload.stationId)
+      : null;
+    if (entityId == null) return;
+    const now = payload.simTime ?? simNow();
+    for (const controller of authoredMotionControllersFor(entityId)) {
+      try {
+        if (payload.active === false) {
+          controller.settle?.(1.2, now);
+        } else if (payload.active) {
+          controller.handleEvent?.('fab:workStart', payload, now);
+        }
+      } catch (error) {
+        console.warn('[authoredMotion] fab queue receipt rejected by controller', error);
+      }
+    }
+  };
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
+    bus.on('craft:queueChanged', onCraftQueue),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

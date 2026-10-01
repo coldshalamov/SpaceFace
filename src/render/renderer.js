@@ -10645,6 +10645,16 @@ export const render = {
     if (typeof this._authoredMotionUnbind === 'function') this._authoredMotionUnbind();
     this._authoredMotionUnbind = installAuthoredMotionBus(bus, {
       clock: () => Number(state.simTime) || 0,
+      // Craft-queue receipts key on the world-catalog station id; the live entity carries it
+      // on data.stationId (world.js), so resolve through the entity map here where state is in
+      // scope rather than teaching the bus about the world catalog.
+      entityForStationId: (stationId) => {
+        if (stationId == null || !state.entities) return null;
+        for (const ent of state.entities.values()) {
+          if (ent && ent.data && ent.data.stationId === stationId) return ent.id;
+        }
+        return null;
+      },
     });
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that

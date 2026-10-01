@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        45
+        48
       ],
       "parentNodeId": "sf.render.fab.node.sf-place-station-fab-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        46
+        49
       ],
       "parentNodeId": "sf.render.fab.node.sf-place-station-fab-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        47
+        50
       ],
       "parentNodeId": "sf.render.fab.node.sf-place-station-fab-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        48
+        51
       ],
       "parentNodeId": "sf.render.fab.node.sf-place-station-fab-root",
       "worldTransform": [
@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "960214ad12120c94b6d766dd95e08d47f5d6a20f87d82844a6fd40d97ce9e65e",
+  "contentHash": "c480b8866ab9d2b198d0720e83be6f3db95faeeea05cc67b0df7d36a7549ff2e",
   "dynamicGroups": [
     {
       "id": "sf.render.fab.node.lod0-hook-drive-core.dynamic",
@@ -245,17 +245,17 @@
       "bounds": {
         "max": [
           44.29334259033203,
-          20.800554275512695,
+          22.202129364013672,
           25.200923919677734
         ],
         "min": [
           -60.20000076293945,
-          -10.250554084777832,
+          -10.252130508422852,
           -25.200923919677734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d37ee0bfec7f3b2cfb0937d4dd922110519e6757d85d86ffa8cad8dd4f1fad0d",
+      "geometryHash": "3e09aadf1e8c2ea19af6a687c26edb82c6de5e1b24cdd0bbea48330237b59b75",
       "id": "sf.render.fab.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -264,7 +264,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.fab.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 758
+      "vertexCount": 760
     },
     {
       "bounds": {
@@ -280,16 +280,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7911ef5cd8910e6150fce21dc606713bfd6882fea85168d0d9bf48429c8f8fda",
+      "geometryHash": "7d9e9ba869ce986169562a2b1fca92ef038c525fe5cbb706abac84b2cfe33d68",
       "id": "sf.render.fab.node.lod0-armor.primitive.0",
-      "indexCount": 27018,
+      "indexCount": 26874,
       "indexed": true,
-      "materialHash": "303c712a9c4e6dd5a079439587b66e38c1b42ce4a23478beb7c1d5a517ca3e90",
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.fab.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 9516
+      "vertexCount": 9420
     },
     {
       "bounds": {
@@ -330,9 +330,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b94379a1c1b4782874d2274f2f89f64615a3f38f8a4eed4c50fa15501debfe7b",
+      "geometryHash": "1b5c4b536cf7184b18cfe4c5a6dfa7a112c66e81ca509daa40a6eb8e54441d23",
       "id": "sf.render.fab.node.lod0-canopy.primitive.0",
-      "indexCount": 1074,
+      "indexCount": 1068,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
@@ -430,41 +430,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70668ea669cb3bcb2e8e07fa764e39c0a5ba27aa32714a56979ecac090c0c8f3",
+      "geometryHash": "47905e793742e577e9aea50294dbba1f66dea553a85f30c068a718817ac1a73e",
       "id": "sf.render.fab.node.lod0-hull-graphite.primitive.0",
-      "indexCount": 18870,
+      "indexCount": 18234,
       "indexed": true,
-      "materialHash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_graphite",
       "nodeId": "sf.render.fab.node.lod0-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 8060
+      "vertexCount": 7840
     },
     {
       "bounds": {
         "max": [
           15,
-          11.135384559631348,
-          24.900510787963867
+          5.885735511779785,
+          24.898693084716797
         ],
         "min": [
-          -43,
-          -6.198945999145508,
-          -24.900510787963867
+          -38,
+          -6.200082302093506,
+          -24.898693084716797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "969361a9bef8a15b1d94629a5987a9a03563937714ef401b719fee99b916f575",
+      "geometryHash": "5f70541caa4d1c3af272b9c5b521045b6d4b62a7c1666fd42d916630095f5dcb",
       "id": "sf.render.fab.node.lod0-hull-primer.primitive.0",
-      "indexCount": 10668,
+      "indexCount": 10140,
       "indexed": true,
-      "materialHash": "f464788704c95720b8a93dd5172a8c39b0ff7c7d4cc3eb3bc58310fb651b9f9d",
+      "materialHash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_primer",
       "nodeId": "sf.render.fab.node.lod0-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 3215
+      "vertexCount": 3059
     },
     {
       "bounds": {
@@ -480,16 +480,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f777ae4d33131038699bb2499aa03a7fbac93cafeaed156b02bc8920d838d666",
+      "geometryHash": "304cd3b55604413fdae695f438b58385d88108cd55dea7bd21c647e93a44ff43",
       "id": "sf.render.fab.node.lod0-hull.primitive.0",
-      "indexCount": 18672,
+      "indexCount": 18114,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.fab.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 5458
+      "vertexCount": 5292
     },
     {
       "bounds": {
@@ -559,7 +559,7 @@
       "id": "sf.render.fab.node.lod0-livery.primitive.0",
       "indexCount": 5520,
       "indexed": true,
-      "materialHash": "6060c04f3a7765124917d48b90a5f803ad1b758773ab14797832fb7889384e2c",
+      "materialHash": "a28867815146b7b96413eab43aeaf42178173840574714f2e1f8b00b450d9584",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.fab.node.lod0-livery",
@@ -580,16 +580,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93826bc172066ae83cdc0644f695d7e983c3c94a0d4fc79cc1fe046f3e0405c8",
+      "geometryHash": "bb021636e66a3bdb6631e8700a237e682b3059a2fca371f8c4fb04b4ce96ef89",
       "id": "sf.render.fab.node.lod0-mechanical.primitive.0",
-      "indexCount": 21804,
+      "indexCount": 21612,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.fab.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8992
+      "vertexCount": 8872
     },
     {
       "bounds": {
@@ -609,12 +609,312 @@
       "id": "sf.render.fab.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 18312,
       "indexed": true,
-      "materialHash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
+      "materialHash": "a2edd2c6dd4227b8e54aa0470f6c1a0ec2cea04edc77f1b6e3064a1441b05a6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.fab.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
       "vertexCount": 5925
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.650130808353424,
+          2.4583922028541565,
+          -9.563831329345703
+        ],
+        "min": [
+          -18.349869191646576,
+          -1.258392095565796,
+          -13.536168098449707
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c464a3fcc37be4b0c28aa7408006e6a39ae49617ef95a5094ba9ddb1c11b732b",
+      "id": "sf.render.fab.node.lod0-motion-arm1-elbow-armor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM1_ELBOW_Armor",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm1-elbow-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.399999618530273,
+          2.8000004291534424,
+          -12.69999885559082
+        ],
+        "min": [
+          -18.600000381469727,
+          1.5999996662139893,
+          -13.899999618530273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cd291957b749fbfe15336763a507b3ab31106b7dfae7d44cc7b0e027e0a3d826",
+      "id": "sf.render.fab.node.lod0-motion-arm1-elbow-hull-graphite.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm1-elbow-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.550069391727448,
+          2.6256519556045532,
+          -13.154053688049316
+        ],
+        "min": [
+          -18.449930608272552,
+          0.574347972869873,
+          -16.945945739746094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f6f3f46045b7cbce6751833803a4dd4b7f0e2618d3af91fa7fac00e632ae9880",
+      "id": "sf.render.fab.node.lod0-motion-arm1-shoulder-armor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM1_SHOULDER_Armor",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm1-shoulder-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.299999237060547,
+          -0.49997806549072266,
+          -9.199978172779083
+        ],
+        "min": [
+          -18.700000762939453,
+          -1.5000219345092773,
+          -10.400022208690643
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eae63d864d3bf6aa0e0bcb1663404682d1c9a9c1388153326095cc918fa6c6bf",
+      "id": "sf.render.fab.node.lod0-motion-arm1-wrist-mechanical.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM1_WRIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm1-wrist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.650130808353424,
+          6.958391964435577,
+          13.536168098449707
+        ],
+        "min": [
+          -26.349869191646576,
+          3.241607666015625,
+          9.563831329345703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b72f90059f6a72600be9a1aa6a1eca314dd3bf14e639ad318dac8c755856b80d",
+      "id": "sf.render.fab.node.lod0-motion-arm4-elbow-armor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM4_ELBOW_Armor",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm4-elbow-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.399999618530273,
+          7.300000190734863,
+          13.899999618530273
+        ],
+        "min": [
+          -26.600000381469727,
+          6.09999942779541,
+          12.69999885559082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "82e3a3d8933c7ed2aa68b2c8f0f7da6d198a63829daafc4788668f8397883c47",
+      "id": "sf.render.fab.node.lod0-motion-arm4-elbow-hull-graphite.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm4-elbow-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.550069391727448,
+          7.125651955604553,
+          16.945945739746094
+        ],
+        "min": [
+          -26.449930608272552,
+          5.074347883462906,
+          13.154053688049316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2c762f6b8f6adeec9c5883cf06b6469d209f5a5519451fe0fab59f77c386112d",
+      "id": "sf.render.fab.node.lod0-motion-arm4-shoulder-armor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM4_SHOULDER_Armor",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm4-shoulder-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.299999237060547,
+          4.000021934509277,
+          10.400022208690643
+        ],
+        "min": [
+          -26.700000762939453,
+          2.9999780654907227,
+          9.199978172779083
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9a7f6f9eaeac01627c23ba49b741ce9a4be5230281db9ea87a89848738dbec2b",
+      "id": "sf.render.fab.node.lod0-motion-arm4-wrist-mechanical.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_ARM4_WRIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod0-motion-arm4-wrist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -37,
+          11.136399269104004,
+          -3.778683662414551
+        ],
+        "min": [
+          -43,
+          8.709628105163574,
+          -7.732783555984497
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6d7740652696731b913facef3f4d5b1b6f0c694c662b18711e982f35a842ea3",
+      "id": "sf.render.fab.node.lod0-motion-crane0-hoist-hull-primer.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodeId": "sf.render.fab.node.lod0-motion-crane0-hoist-hull-primer",
+      "primitiveIndex": 0,
+      "vertexCount": 156
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.29482460021973,
+          21.90750503540039,
+          -4.579892843961716
+        ],
+        "min": [
+          -41.70517158508301,
+          11.192495346069336,
+          -5.120106965303421
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6199425f031e1d9a6255da07f1fecf9a81aa895128e912328f4e3176490ea364",
+      "id": "sf.render.fab.node.lod0-motion-crane0-hoist-mechanical.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CRANE0_HOIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod0-motion-crane0-hoist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.20000076293945,
+          22.200063228607178,
+          -3.2999792098999023
+        ],
+        "min": [
+          -41.79999923706055,
+          19.19993633031845,
+          -6.7000205516815186
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "78fc9a0bffe5db4409d081aea3f63b5943c1076b0e5ca730daeaccf67f7a6174",
+      "id": "sf.render.fab.node.lod0-motion-crane0-trolley-hull-graphite.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod0-motion-crane0-trolley-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 344
+    },
+    {
+      "bounds": {
+        "max": [
+          -36.99994349479675,
+          18.100033164024353,
+          -4
+        ],
+        "min": [
+          -38.200053453445435,
+          16.699965953826904,
+          -6
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "10b1a24abf54e1eee0fd09e064ed03e2c861e6d988b6ce46c71df8b0119c541c",
+      "id": "sf.render.fab.node.lod0-motion-crane0-trolley-hull.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_CRANE0_TROLLEY_Hull",
+      "nodeId": "sf.render.fab.node.lod0-motion-crane0-trolley-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -634,7 +934,7 @@
       "id": "sf.render.fab.node.lod0-warning.primitive.0",
       "indexCount": 5220,
       "indexed": true,
-      "materialHash": "3208620a6fa02f079ccffb6066971dbff502f450a8cb0cfef34e3a3ea968a306",
+      "materialHash": "8de04af3345bf024f542a8ba6b8434121b211e75df9e1a284a0283e74c79daa2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.fab.node.lod0-warning",
@@ -655,16 +955,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d0881497d72aab34b3df2368be43cc1d8920c520474b403e5e38b314d2cec71",
+      "geometryHash": "b48236044064b169ef333648854c854dd4a26204d1e529b361d36afe15035b44",
       "id": "sf.render.fab.node.lod1-armor.primitive.0",
-      "indexCount": 10995,
+      "indexCount": 10836,
       "indexed": true,
-      "materialHash": "303c712a9c4e6dd5a079439587b66e38c1b42ce4a23478beb7c1d5a517ca3e90",
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.fab.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4635
+      "vertexCount": 4534
     },
     {
       "bounds": {
@@ -705,7 +1005,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6453fcf3cc167fe21fac8ef19bfea3d475dd9c634cd962f38f0ec8ebacbe1f45",
+      "geometryHash": "589b4679266c95554cbe72204ee9bb97c6f55d3099221c7e642191fcd1fb2d28",
       "id": "sf.render.fab.node.lod1-canopy.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -805,41 +1105,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e1e83678fc341c873cf7a69fcc84e5f6c6503077e2fe4247b99f3e158b22de1",
+      "geometryHash": "431c95967d3cd70ff2280987e50003dccb8968e9b83f9a40f72d47662c4f9f74",
       "id": "sf.render.fab.node.lod1-hull-graphite.primitive.0",
-      "indexCount": 7368,
+      "indexCount": 7191,
       "indexed": true,
-      "materialHash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_graphite",
       "nodeId": "sf.render.fab.node.lod1-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 4604
+      "vertexCount": 4512
     },
     {
       "bounds": {
         "max": [
           14.990495681762695,
-          11.135282516479492,
-          24.88934898376465
+          5.863103866577148,
+          24.890995025634766
         ],
         "min": [
-          -43,
-          -6.189128398895264,
-          -24.88934898376465
+          -38,
+          -6.18820333480835,
+          -24.890995025634766
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac80a40e123779818d0edca424ea7984840e10290bb4b8480c33d10aca59447f",
+      "geometryHash": "2d9116ea82c1071df7963404a2b23d0bbd4c2ee5b8d8836c4f771f03a2df6568",
       "id": "sf.render.fab.node.lod1-hull-primer.primitive.0",
-      "indexCount": 2688,
+      "indexCount": 2514,
       "indexed": true,
-      "materialHash": "f464788704c95720b8a93dd5172a8c39b0ff7c7d4cc3eb3bc58310fb651b9f9d",
+      "materialHash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_primer",
       "nodeId": "sf.render.fab.node.lod1-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 1041
+      "vertexCount": 967
     },
     {
       "bounds": {
@@ -855,16 +1155,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "adda59e6a0dc4f183e8f0b86c265c3e05f90f161b9da590d61be675e191ffc3e",
+      "geometryHash": "aeea2a68fd866d440b3b31870f47afddc55c347de429136e9653f2a86c2964a0",
       "id": "sf.render.fab.node.lod1-hull.primitive.0",
-      "indexCount": 3600,
+      "indexCount": 3537,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.fab.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1274
+      "vertexCount": 1241
     },
     {
       "bounds": {
@@ -905,16 +1205,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dce580154a623326c11b8d0708e3e23239a36f71de7a4ff9de4a403c762c6922",
+      "geometryHash": "a0e903bdb63626ad7d2ee0401ae5218204e63f89bc15c938c7e5af2affb53567",
       "id": "sf.render.fab.node.lod1-lights-warm.primitive.0",
-      "indexCount": 17946,
+      "indexCount": 17934,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.fab.node.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 10825
+      "vertexCount": 10823
     },
     {
       "bounds": {
@@ -934,7 +1234,7 @@
       "id": "sf.render.fab.node.lod1-livery.primitive.0",
       "indexCount": 1443,
       "indexed": true,
-      "materialHash": "6060c04f3a7765124917d48b90a5f803ad1b758773ab14797832fb7889384e2c",
+      "materialHash": "a28867815146b7b96413eab43aeaf42178173840574714f2e1f8b00b450d9584",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.fab.node.lod1-livery",
@@ -955,16 +1255,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "209e18a392ebd502f845d24fdb4c6f498302ea3454b85d1827f9b3310819c71a",
+      "geometryHash": "2e33d1e93a0990fa500199e9ed41fd835227bc7a3301c08a292cda3b07255a04",
       "id": "sf.render.fab.node.lod1-mechanical.primitive.0",
-      "indexCount": 9966,
+      "indexCount": 9738,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.fab.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 4854
+      "vertexCount": 4729
     },
     {
       "bounds": {
@@ -980,16 +1280,316 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02b70882ce40a5bdab33b867ab6f668d896eb8b9af29edc5cb72a435d905966c",
+      "geometryHash": "80c8ad0b474c2ab7c4f56a9376f79af577c5f87ddc58642eec82360ed6eb4462",
       "id": "sf.render.fab.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 2742,
+      "indexCount": 2730,
       "indexed": true,
-      "materialHash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
+      "materialHash": "a2edd2c6dd4227b8e54aa0470f6c1a0ec2cea04edc77f1b6e3064a1441b05a6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.fab.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1489
+      "vertexCount": 1485
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.824916824698448,
+          2.4582328498363495,
+          -9.563831329345703
+        ],
+        "min": [
+          -18.350084334611893,
+          -1.1290779113769531,
+          -13.536168098449707
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d2efdbb3f8aee003c9d38a583825d128a3f9443f76f896e780b84e1534f6cfa9",
+      "id": "sf.render.fab.node.lod1-motion-arm1-elbow-armor.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM1_ELBOW_Armor",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm1-elbow-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 10
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.399998664855957,
+          2.800001382827759,
+          -13.100023210048676
+        ],
+        "min": [
+          -18.600001335144043,
+          1.5999987125396729,
+          -13.499975264072418
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e9ad9ade871b3a06e5092e5748ac116bb56ac1f13a19da95358333f8cc2e9e7",
+      "id": "sf.render.fab.node.lod1-motion-arm1-elbow-hull-graphite.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm1-elbow-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.550049602985382,
+          2.3419764041900635,
+          -13.251350402832031
+        ],
+        "min": [
+          -18.449950397014618,
+          0.8580238670110703,
+          -16.848648071289062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f663f6c1363e38f589d0270398d68711f3b7154876e0eafbcd30563e33e363fc",
+      "id": "sf.render.fab.node.lod1-motion-arm1-shoulder-armor.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM1_SHOULDER_Armor",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm1-shoulder-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.299999237060547,
+          -0.8333687484264374,
+          -9.199978172779083
+        ],
+        "min": [
+          -18.700000762939453,
+          -1.1666312515735626,
+          -10.400022208690643
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0476f0e9e305aeda43c43b438c62571ce5eb8b792912ba26c12e69fb8ca1cd12",
+      "id": "sf.render.fab.node.lod1-motion-arm1-wrist-mechanical.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM1_WRIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm1-wrist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.649916619062424,
+          6.958232790231705,
+          13.536168098449707
+        ],
+        "min": [
+          -26.17508412897587,
+          3.3709218502044678,
+          9.563831329345703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e042fbe3e68d1f3d4eab3af40802e15aab6071893774fce92483fb14eb55373",
+      "id": "sf.render.fab.node.lod1-motion-arm4-elbow-armor.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM4_ELBOW_Armor",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm4-elbow-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 10
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.399998664855957,
+          7.30000114440918,
+          13.499975264072418
+        ],
+        "min": [
+          -26.600001335144043,
+          6.099998474121094,
+          13.100023210048676
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29dbd8f3e3977830636bbed696a069457e5a3d24d169c8afad78ecc7c40f9ce6",
+      "id": "sf.render.fab.node.lod1-motion-arm4-elbow-hull-graphite.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm4-elbow-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.5500505566597,
+          6.8419764041900635,
+          16.848648071289062
+        ],
+        "min": [
+          -26.449951350688934,
+          5.358023896813393,
+          13.251350402832031
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1cca996d06a503625f4d507ea074bdbc3d38c0416ff7170b354af38eed0936bc",
+      "id": "sf.render.fab.node.lod1-motion-arm4-shoulder-armor.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM4_SHOULDER_Armor",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm4-shoulder-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.29999828338623,
+          3.6666314750909805,
+          10.40002304315567
+        ],
+        "min": [
+          -26.70000171661377,
+          3.3333685249090195,
+          9.199977338314056
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1ff6154d84f7cea16e5f5455858dde5c7a8595d9dbd52bb980f41c67e4caad70",
+      "id": "sf.render.fab.node.lod1-motion-arm4-wrist-mechanical.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_ARM4_WRIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod1-motion-arm4-wrist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -37,
+          11.142831802368164,
+          -3.77868390083313
+        ],
+        "min": [
+          -43,
+          8.70946979522705,
+          -7.732784032821655
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a6014e884a7e1f384dc5e65120b38ac70e40fcad0c74f881e6986cb1f0d0517f",
+      "id": "sf.render.fab.node.lod1-motion-crane0-hoist-hull-primer.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodeId": "sf.render.fab.node.lod1-motion-crane0-hoist-hull-primer",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.29482460021973,
+          21.90750503540039,
+          -4.580050081014633
+        ],
+        "min": [
+          -41.70517158508301,
+          11.192495346069336,
+          -5.1045679077506065
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c079f3ee71714c9098ce4198ee287ff53336d78f2ae1dde428c2fd83f62c9e9",
+      "id": "sf.render.fab.node.lod1-motion-crane0-hoist-mechanical.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CRANE0_HOIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod1-motion-crane0-hoist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.20417404174805,
+          22.195939302444458,
+          -3.304563879966736
+        ],
+        "min": [
+          -41.79585647583008,
+          19.203619599342346,
+          -6.695435643196106
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ead51a0e218944da742f33067c58fbfda558c1cede6884d47d662e0ffaf58ad",
+      "id": "sf.render.fab.node.lod1-motion-crane0-trolley-hull-graphite.primitive.0",
+      "indexCount": 510,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod1-motion-crane0-trolley-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 185
+    },
+    {
+      "bounds": {
+        "max": [
+          -37.00511932373047,
+          18.097698211669922,
+          -4.002569198608398
+        ],
+        "min": [
+          -38.19743728637695,
+          16.702302932739258,
+          -5.9948530197143555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9591873e3377e184fe240e226b37aef93cbfefc3fc0e7c13796d583e63c6128",
+      "id": "sf.render.fab.node.lod1-motion-crane0-trolley-hull.primitive.0",
+      "indexCount": 162,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_CRANE0_TROLLEY_Hull",
+      "nodeId": "sf.render.fab.node.lod1-motion-crane0-trolley-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 60
     },
     {
       "bounds": {
@@ -1005,16 +1605,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe9b2c38883b66358e3a71c7e95aa8c61486193dfaba8fba006f0683ec5a81b0",
+      "geometryHash": "bed02c0ff8036c49ffbffbd0485e787fb88dd5518c2ebb7f6f4689701892ed90",
       "id": "sf.render.fab.node.lod1-warning.primitive.0",
-      "indexCount": 510,
+      "indexCount": 513,
       "indexed": true,
-      "materialHash": "3208620a6fa02f079ccffb6066971dbff502f450a8cb0cfef34e3a3ea968a306",
+      "materialHash": "8de04af3345bf024f542a8ba6b8434121b211e75df9e1a284a0283e74c79daa2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.fab.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 284
+      "vertexCount": 285
     },
     {
       "bounds": {
@@ -1030,16 +1630,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b53b70faba9f23d0fc8059a5df2e8238029812c7c8d8e7ccd6ae367bdd02d209",
+      "geometryHash": "75af3e63ba479f9b5ca286f79ca444a89086134e2d6b0c3bf03ffe48758cc6ae",
       "id": "sf.render.fab.node.lod2-armor.primitive.0",
-      "indexCount": 6756,
+      "indexCount": 6612,
       "indexed": true,
-      "materialHash": "303c712a9c4e6dd5a079439587b66e38c1b42ce4a23478beb7c1d5a517ca3e90",
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.fab.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3206
+      "vertexCount": 3110
     },
     {
       "bounds": {
@@ -1080,7 +1680,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "daef519a8077fe62a6fc2df56e3fa53f2de79c4279b0f4ef990c5dde2383f324",
+      "geometryHash": "fff604688f9143fc5da88428ff104c9547bf79d3bd7406e998efee767cd34941",
       "id": "sf.render.fab.node.lod2-canopy.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -1155,41 +1755,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "976f12774135431623e2d11cd4e8d56a4d290feab0b5d7e512c66ebf2b234910",
+      "geometryHash": "b0462a85f8708c40a3f71b412126e626c17c429c59b4e02b9fcd119e6a2db005",
       "id": "sf.render.fab.node.lod2-hull-graphite.primitive.0",
-      "indexCount": 4290,
+      "indexCount": 4182,
       "indexed": true,
-      "materialHash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_graphite",
       "nodeId": "sf.render.fab.node.lod2-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 3142
+      "vertexCount": 3070
     },
     {
       "bounds": {
         "max": [
           14.990495681762695,
-          11.135282516479492,
-          24.88934898376465
+          5.849005699157715,
+          24.890995025634766
         ],
         "min": [
-          -43,
-          -6.189128398895264,
-          -24.88934898376465
+          -38,
+          -6.189363956451416,
+          -24.890995025634766
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62015a153177aba5351de10be1fc0a7c8e4a7d0df88f348ce78c7434370a7c00",
+      "geometryHash": "114ad293e56786801fa0c7555487572bd39dd7a5af813b427ab0358ddf0f2b8e",
       "id": "sf.render.fab.node.lod2-hull-primer.primitive.0",
-      "indexCount": 1233,
+      "indexCount": 1149,
       "indexed": true,
-      "materialHash": "f464788704c95720b8a93dd5172a8c39b0ff7c7d4cc3eb3bc58310fb651b9f9d",
+      "materialHash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_primer",
       "nodeId": "sf.render.fab.node.lod2-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 574
+      "vertexCount": 530
     },
     {
       "bounds": {
@@ -1205,16 +1805,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e81551070dd39721e4691f1ff4e81f94a6659a29be3adb5152ce9dfe01ae2e9",
+      "geometryHash": "2ddb134d6a3f7e92a0f050a6374595e865db7af946fd05692aaf7e9c1f7af61f",
       "id": "sf.render.fab.node.lod2-hull.primitive.0",
-      "indexCount": 1860,
+      "indexCount": 1824,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.fab.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 787
+      "vertexCount": 763
     },
     {
       "bounds": {
@@ -1284,7 +1884,7 @@
       "id": "sf.render.fab.node.lod2-livery.primitive.0",
       "indexCount": 450,
       "indexed": true,
-      "materialHash": "6060c04f3a7765124917d48b90a5f803ad1b758773ab14797832fb7889384e2c",
+      "materialHash": "a28867815146b7b96413eab43aeaf42178173840574714f2e1f8b00b450d9584",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.fab.node.lod2-livery",
@@ -1305,41 +1905,341 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ce663a46ad3def4c514f549ef190aef7580264a65f78c89dc7ca7dae5867f9d",
+      "geometryHash": "ba047cdbdbdb0888c8ad10b960c48d676e4dc397d004d6503dd0362d7bced139",
       "id": "sf.render.fab.node.lod2-mechanical.primitive.0",
-      "indexCount": 5211,
+      "indexCount": 5268,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.fab.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2951
+      "vertexCount": 2969
     },
     {
       "bounds": {
         "max": [
           44.099998474121094,
-          8.4660005569458,
-          24.941917419433594
+          8.466057777404785,
+          24.942108154296875
         ],
         "min": [
-          -44.82088088989258,
-          -6.242430686950684,
-          -24.941917419433594
+          -44.821563720703125,
+          -6.242486953735352,
+          -24.942108154296875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "543ae79a7b7eb65de05df74cc2dd3c09e1a05b3cf852faf744a2035858f4d897",
+      "geometryHash": "fd057d63aca370c5279c8686f0474e6851767365ab73f904d9c084eaead0cf85",
       "id": "sf.render.fab.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 927,
+      "indexCount": 921,
       "indexed": true,
-      "materialHash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
+      "materialHash": "a2edd2c6dd4227b8e54aa0470f6c1a0ec2cea04edc77f1b6e3064a1441b05a6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.fab.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 481
+      "vertexCount": 483
+    },
+    {
+      "bounds": {
+        "max": [
+          -18,
+          2.458359658718109,
+          -9.800000190734863
+        ],
+        "min": [
+          -18,
+          -1.0000500679016113,
+          -13.536168098449707
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f15686dfb7b37a5024871454a95575ac8f93b5fc9650baaabadf9303c6d6ad4b",
+      "id": "sf.render.fab.node.lod2-motion-arm1-elbow-armor.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM1_ELBOW_Armor",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm1-elbow-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.399998664855957,
+          2.800001382827759,
+          -13.100023210048676
+        ],
+        "min": [
+          -18.600001335144043,
+          1.5999987125396729,
+          -13.499975264072418
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d695358a93aaae53fa8fdd79f74fcfcb9d8b6c06fbe0df04a7f0511020cd1d70",
+      "id": "sf.render.fab.node.lod2-motion-arm1-elbow-hull-graphite.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm1-elbow-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.55006980895996,
+          2.1999151706695557,
+          -13.299999237060547
+        ],
+        "min": [
+          -18.44993019104004,
+          0.8581930547952652,
+          -16.848648071289062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c263e8946f93a6e5356c107b26f700693d97445c8bf51f583f5b085fc4dce346",
+      "id": "sf.render.fab.node.lod2-motion-arm1-shoulder-armor.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM1_SHOULDER_Armor",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm1-shoulder-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.299999237060547,
+          -0.8333687484264374,
+          -9.199978172779083
+        ],
+        "min": [
+          -18.700000762939453,
+          -1.1666312515735626,
+          -10.400022208690643
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a7c4063d11834bee0caf9525ba3be76272e64e6bf1f973c41e8877b22c73a69d",
+      "id": "sf.render.fab.node.lod2-motion-arm1-wrist-mechanical.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM1_WRIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm1-wrist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.650021016597748,
+          6.7000910556307645,
+          13.300000190734863
+        ],
+        "min": [
+          -26.174979731440544,
+          3.370753765106201,
+          9.563831329345703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c5099f8c1a80a15e7620722e1806d7f18dd9a3451166b7bca285a91c309d6af",
+      "id": "sf.render.fab.node.lod2-motion-arm4-elbow-armor.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM4_ELBOW_Armor",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm4-elbow-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.399998664855957,
+          7.30000114440918,
+          13.499975264072418
+        ],
+        "min": [
+          -26.600001335144043,
+          6.099998474121094,
+          13.100023210048676
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29c4cac7e42cfd7c39f0a23168edd3fe767d46046ea220c07f558a069f88296d",
+      "id": "sf.render.fab.node.lod2-motion-arm4-elbow-hull-graphite.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm4-elbow-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.550070762634277,
+          6.699915528297424,
+          16.848648071289062
+        ],
+        "min": [
+          -26.449931144714355,
+          5.358193323016167,
+          13.299999237060547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b26e31c2ef4a771d85ca5af393de4446c209276ba291fda7e92c86a808c9d1f",
+      "id": "sf.render.fab.node.lod2-motion-arm4-shoulder-armor.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM4_SHOULDER_Armor",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm4-shoulder-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.29999828338623,
+          3.6666314750909805,
+          10.40002304315567
+        ],
+        "min": [
+          -26.70000171661377,
+          3.3333685249090195,
+          9.199977338314056
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb5efbe935d017285c719ad07fea5b811f2c0e5bbea51f6c407d30cc1f9b0f2e",
+      "id": "sf.render.fab.node.lod2-motion-arm4-wrist-mechanical.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_ARM4_WRIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod2-motion-arm4-wrist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -37,
+          11.142831802368164,
+          -3.778738260269165
+        ],
+        "min": [
+          -43,
+          8.70946979522705,
+          -7.747487306594849
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d9170454c9ccfb35188e8ee689f4509ad52c6edc8788a5cc11d2b59afcfe203",
+      "id": "sf.render.fab.node.lod2-motion-crane0-hoist-hull-primer.primitive.0",
+      "indexCount": 90,
+      "indexed": true,
+      "materialHash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodeId": "sf.render.fab.node.lod2-motion-crane0-hoist-hull-primer",
+      "primitiveIndex": 0,
+      "vertexCount": 46
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.35088133811951,
+          21.903955459594727,
+          -4.608667880296707
+        ],
+        "min": [
+          -41.70517945289612,
+          11.192496299743652,
+          -5.119935974478722
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5e9c0ac47a4426e682e0ffc9890ba93f793179f671fd951a6b66dbd248209a8",
+      "id": "sf.render.fab.node.lod2-motion-crane0-hoist-mechanical.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CRANE0_HOIST_Mechanical",
+      "nodeId": "sf.render.fab.node.lod2-motion-crane0-hoist-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.20873260498047,
+          22.192853212356567,
+          -3.307097315788269
+        ],
+        "min": [
+          -41.791805267333984,
+          19.20814400911331,
+          -6.691152930259705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9bbda98c14d637c20709dbe0e5c3d5648e496f08eb3b14711468463afdb0980",
+      "id": "sf.render.fab.node.lod2-motion-crane0-trolley-hull-graphite.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodeId": "sf.render.fab.node.lod2-motion-crane0-trolley-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 103
+    },
+    {
+      "bounds": {
+        "max": [
+          -37.01378297805786,
+          18.08745265007019,
+          -4.007577419281006
+        ],
+        "min": [
+          -38.18414652347565,
+          16.707547426223755,
+          -5.987407207489014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "23316e836dbae4295e9793a3a28c50dafaeff5026b0371c5f6d68f26ff73b099",
+      "id": "sf.render.fab.node.lod2-motion-crane0-trolley-hull.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_CRANE0_TROLLEY_Hull",
+      "nodeId": "sf.render.fab.node.lod2-motion-crane0-trolley-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 28
     },
     {
       "bounds": {
@@ -1359,7 +2259,7 @@
       "id": "sf.render.fab.node.lod2-warning.primitive.0",
       "indexCount": 321,
       "indexed": true,
-      "materialHash": "3208620a6fa02f079ccffb6066971dbff502f450a8cb0cfef34e3a3ea968a306",
+      "materialHash": "8de04af3345bf024f542a8ba6b8434121b211e75df9e1a284a0283e74c79daa2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.fab.node.lod2-warning",
@@ -1379,41 +2279,9 @@
       "textures": []
     },
     {
-      "hash": "303c712a9c4e6dd5a079439587b66e38c1b42ce4a23478beb7c1d5a517ca3e90",
-      "id": "material:303c712a9c4e6dd5a0794395",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3208620a6fa02f079ccffb6066971dbff502f450a8cb0cfef34e3a3ea968a306",
-      "id": "material:3208620a6fa02f079ccffb60",
-      "name": "Material_Warning",
+      "hash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "id": "material:3421ac12207caab1d711c856",
+      "name": "Material_Hull_graphite",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1450,9 +2318,9 @@
       "textures": []
     },
     {
-      "hash": "6060c04f3a7765124917d48b90a5f803ad1b758773ab14797832fb7889384e2c",
-      "id": "material:6060c04f3a7765124917d48b",
-      "name": "Material_Accent",
+      "hash": "44c6a0589217a95e6f8b9f8ebfec74b231fa54d062712908cc940acba674e0a8",
+      "id": "material:44c6a0589217a95e6f8b9f8e",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1482,9 +2350,9 @@
       ]
     },
     {
-      "hash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
-      "id": "material:674f214b9b571ec60dc6b3ef",
-      "name": "Material_Hull",
+      "hash": "4c375f57fd148193043d2f8f5677a614558b09fec62a717c46d21864e31e5532",
+      "id": "material:4c375f57fd148193043d2f8f",
+      "name": "Material_Hull_primer",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1521,38 +2389,6 @@
       "textures": []
     },
     {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "id": "material:85add90c89b799ae69ad3e2f",
       "name": "Material_Emissive_Cyan",
@@ -1560,23 +2396,9 @@
       "textures": []
     },
     {
-      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
-      "id": "material:935effa788e2e47cba8a2bfc",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
-      "id": "material:d3c43bb5d52a69e57c5774bf",
-      "name": "Material_Hull_graphite",
+      "hash": "8de04af3345bf024f542a8ba6b8434121b211e75df9e1a284a0283e74c79daa2",
+      "id": "material:8de04af3345bf024f542a8ba",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1606,8 +2428,79 @@
       ]
     },
     {
-      "hash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
-      "id": "material:eea413a4e49451ee18e76267",
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a28867815146b7b96413eab43aeaf42178173840574714f2e1f8b00b450d9584",
+      "id": "material:a28867815146b7b96413eab4",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a2edd2c6dd4227b8e54aa0470f6c1a0ec2cea04edc77f1b6e3064a1441b05a6d",
+      "id": "material:a2edd2c6dd4227b8e54aa047",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1638,32 +2531,39 @@
       ]
     },
     {
-      "hash": "f464788704c95720b8a93dd5172a8c39b0ff7c7d4cc3eb3bc58310fb651b9f9d",
-      "id": "material:f464788704c95720b8a93dd5",
-      "name": "Material_Hull_primer",
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -2414,6 +3314,616 @@
       ]
     },
     {
+      "id": "sf.render.fab.node.lod0-motion-arm1-elbow-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM1_ELBOW_Armor",
+      "nodeName": "LOD0_MOTION_ARM1_ELBOW_Armor",
+      "nodePath": [
+        0,
+        45,
+        3,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm1-elbow-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodeName": "LOD0_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodePath": [
+        0,
+        45,
+        3,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm1-shoulder-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM1_SHOULDER_Armor",
+      "nodeName": "LOD0_MOTION_ARM1_SHOULDER_Armor",
+      "nodePath": [
+        0,
+        45,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        1,
+        -16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm1-wrist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM1_WRIST_Mechanical",
+      "nodeName": "LOD0_MOTION_ARM1_WRIST_Mechanical",
+      "nodePath": [
+        0,
+        45,
+        3,
+        6,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-wrist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        -1,
+        -9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm4-elbow-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM4_ELBOW_Armor",
+      "nodeName": "LOD0_MOTION_ARM4_ELBOW_Armor",
+      "nodePath": [
+        0,
+        46,
+        3,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm4-elbow-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodeName": "LOD0_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodePath": [
+        0,
+        46,
+        3,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm4-shoulder-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM4_SHOULDER_Armor",
+      "nodeName": "LOD0_MOTION_ARM4_SHOULDER_Armor",
+      "nodePath": [
+        0,
+        46,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        5.5,
+        16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-arm4-wrist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_ARM4_WRIST_Mechanical",
+      "nodeName": "LOD0_MOTION_ARM4_WRIST_Mechanical",
+      "nodePath": [
+        0,
+        46,
+        3,
+        6,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-wrist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        3.5,
+        9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-crane0-hoist-hull-primer",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodeName": "LOD0_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodePath": [
+        0,
+        47,
+        6,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-hoist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-crane0-hoist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CRANE0_HOIST_Mechanical",
+      "nodeName": "LOD0_MOTION_CRANE0_HOIST_Mechanical",
+      "nodePath": [
+        0,
+        47,
+        6,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-hoist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-crane0-trolley-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CRANE0_TROLLEY_Hull",
+      "nodeName": "LOD0_MOTION_CRANE0_TROLLEY_Hull",
+      "nodePath": [
+        0,
+        47,
+        0
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod0-motion-crane0-trolley-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodeName": "LOD0_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodePath": [
+        0,
+        47,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.fab.node.lod0-warning",
       "localTransform": [
         1,
@@ -3149,6 +4659,616 @@
       ]
     },
     {
+      "id": "sf.render.fab.node.lod1-motion-arm1-elbow-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM1_ELBOW_Armor",
+      "nodeName": "LOD1_MOTION_ARM1_ELBOW_Armor",
+      "nodePath": [
+        0,
+        45,
+        3,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm1-elbow-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodeName": "LOD1_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodePath": [
+        0,
+        45,
+        3,
+        3
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm1-shoulder-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM1_SHOULDER_Armor",
+      "nodeName": "LOD1_MOTION_ARM1_SHOULDER_Armor",
+      "nodePath": [
+        0,
+        45,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        1,
+        -16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm1-wrist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM1_WRIST_Mechanical",
+      "nodeName": "LOD1_MOTION_ARM1_WRIST_Mechanical",
+      "nodePath": [
+        0,
+        45,
+        3,
+        6,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-wrist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        -1,
+        -9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm4-elbow-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM4_ELBOW_Armor",
+      "nodeName": "LOD1_MOTION_ARM4_ELBOW_Armor",
+      "nodePath": [
+        0,
+        46,
+        3,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm4-elbow-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodeName": "LOD1_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodePath": [
+        0,
+        46,
+        3,
+        3
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm4-shoulder-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM4_SHOULDER_Armor",
+      "nodeName": "LOD1_MOTION_ARM4_SHOULDER_Armor",
+      "nodePath": [
+        0,
+        46,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        5.5,
+        16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-arm4-wrist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_ARM4_WRIST_Mechanical",
+      "nodeName": "LOD1_MOTION_ARM4_WRIST_Mechanical",
+      "nodePath": [
+        0,
+        46,
+        3,
+        6,
+        1
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-wrist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        3.5,
+        9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-crane0-hoist-hull-primer",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodeName": "LOD1_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodePath": [
+        0,
+        47,
+        6,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-hoist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-crane0-hoist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CRANE0_HOIST_Mechanical",
+      "nodeName": "LOD1_MOTION_CRANE0_HOIST_Mechanical",
+      "nodePath": [
+        0,
+        47,
+        6,
+        3
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-hoist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-crane0-trolley-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CRANE0_TROLLEY_Hull",
+      "nodeName": "LOD1_MOTION_CRANE0_TROLLEY_Hull",
+      "nodePath": [
+        0,
+        47,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod1-motion-crane0-trolley-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodeName": "LOD1_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodePath": [
+        0,
+        47,
+        3
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.fab.node.lod1-warning",
       "localTransform": [
         1,
@@ -3835,6 +5955,616 @@
       ]
     },
     {
+      "id": "sf.render.fab.node.lod2-motion-arm1-elbow-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM1_ELBOW_Armor",
+      "nodeName": "LOD2_MOTION_ARM1_ELBOW_Armor",
+      "nodePath": [
+        0,
+        45,
+        3,
+        4
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm1-elbow-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodeName": "LOD2_MOTION_ARM1_ELBOW_Hull_graphite",
+      "nodePath": [
+        0,
+        45,
+        3,
+        5
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm1-shoulder-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM1_SHOULDER_Armor",
+      "nodeName": "LOD2_MOTION_ARM1_SHOULDER_Armor",
+      "nodePath": [
+        0,
+        45,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        1,
+        -16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm1-wrist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM1_WRIST_Mechanical",
+      "nodeName": "LOD2_MOTION_ARM1_WRIST_Mechanical",
+      "nodePath": [
+        0,
+        45,
+        3,
+        6,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-wrist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        -1,
+        -9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm4-elbow-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM4_ELBOW_Armor",
+      "nodeName": "LOD2_MOTION_ARM4_ELBOW_Armor",
+      "nodePath": [
+        0,
+        46,
+        3,
+        4
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm4-elbow-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodeName": "LOD2_MOTION_ARM4_ELBOW_Hull_graphite",
+      "nodePath": [
+        0,
+        46,
+        3,
+        5
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm4-shoulder-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM4_SHOULDER_Armor",
+      "nodeName": "LOD2_MOTION_ARM4_SHOULDER_Armor",
+      "nodePath": [
+        0,
+        46,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        5.5,
+        16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-arm4-wrist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_ARM4_WRIST_Mechanical",
+      "nodeName": "LOD2_MOTION_ARM4_WRIST_Mechanical",
+      "nodePath": [
+        0,
+        46,
+        3,
+        6,
+        2
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-wrist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        3.5,
+        9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-crane0-hoist-hull-primer",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodeName": "LOD2_MOTION_CRANE0_HOIST_Hull_primer",
+      "nodePath": [
+        0,
+        47,
+        6,
+        4
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-hoist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-crane0-hoist-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CRANE0_HOIST_Mechanical",
+      "nodeName": "LOD2_MOTION_CRANE0_HOIST_Mechanical",
+      "nodePath": [
+        0,
+        47,
+        6,
+        5
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-hoist",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-crane0-trolley-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CRANE0_TROLLEY_Hull",
+      "nodeName": "LOD2_MOTION_CRANE0_TROLLEY_Hull",
+      "nodePath": [
+        0,
+        47,
+        4
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.lod2-motion-crane0-trolley-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodeName": "LOD2_MOTION_CRANE0_TROLLEY_Hull_graphite",
+      "nodePath": [
+        0,
+        47,
+        5
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.fab.node.lod2-warning",
       "localTransform": [
         1,
@@ -3880,6 +6610,405 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-arm1-elbow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.2000000476837158,
+        3.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_ARM1_ELBOW",
+      "nodeName": "MOTION_ARM1_ELBOW",
+      "nodePath": [
+        0,
+        45,
+        3
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        2.200000047683716,
+        -13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-arm1-shoulder",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        1,
+        -16.799999237060547,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_ARM1_SHOULDER",
+      "nodeName": "MOTION_ARM1_SHOULDER",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.fab.node.sf-place-station-fab-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        1,
+        -16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-arm1-wrist",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -3.200000047683716,
+        3.4999990463256836,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_ARM1_WRIST",
+      "nodeName": "MOTION_ARM1_WRIST",
+      "nodePath": [
+        0,
+        45,
+        3,
+        6
+      ],
+      "parentId": "sf.render.fab.node.motion-arm1-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -18,
+        -1,
+        -9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-arm4-elbow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.1999998092651367,
+        -3.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_ARM4_ELBOW",
+      "nodeName": "MOTION_ARM4_ELBOW",
+      "nodePath": [
+        0,
+        46,
+        3
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        6.699999809265137,
+        13.299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-arm4-shoulder",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        5.5,
+        16.799999237060547,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_ARM4_SHOULDER",
+      "nodeName": "MOTION_ARM4_SHOULDER",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.fab.node.sf-place-station-fab-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        5.5,
+        16.799999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-arm4-wrist",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -3.1999998092651367,
+        -3.4999990463256836,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_ARM4_WRIST",
+      "nodeName": "MOTION_ARM4_WRIST",
+      "nodePath": [
+        0,
+        46,
+        3,
+        6
+      ],
+      "parentId": "sf.render.fab.node.motion-arm4-elbow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -26,
+        3.5,
+        9.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-crane0-hoist",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.7999992370605469,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_CRANE0_HOIST",
+      "nodeName": "MOTION_CRANE0_HOIST",
+      "nodePath": [
+        0,
+        47,
+        6
+      ],
+      "parentId": "sf.render.fab.node.motion-crane0-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        19.200000762939453,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.node.motion-crane0-trolley",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_CRANE0_TROLLEY",
+      "nodeName": "MOTION_CRANE0_TROLLEY",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.fab.node.sf-place-station-fab-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -40,
+        20,
+        -5,
         1
       ]
     },
@@ -3956,7 +7085,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        45
+        48
       ],
       "parentId": "sf.render.fab.node.sf-place-station-fab-root",
       "role": "immutable",
@@ -4005,7 +7134,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        46
+        49
       ],
       "parentId": "sf.render.fab.node.sf-place-station-fab-root",
       "role": "immutable",
@@ -4054,7 +7183,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        47
+        50
       ],
       "parentId": "sf.render.fab.node.sf-place-station-fab-root",
       "role": "immutable",
@@ -4103,7 +7232,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        48
+        51
       ],
       "parentId": "sf.render.fab.node.sf-place-station-fab-root",
       "role": "immutable",
@@ -4130,44 +7259,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "0313a98ee9e02691688a1ec2252bff9977f4ee70c4b0a6ec218bdded37685ff5"
+      "sha256": "128903bc017e39da0074716eea69f6c2a69bbcfe36e5e74bd26a7e0f7d6ae2a5"
     },
     "sourceGlb": {
-      "bytes": 1799376,
-      "sha256": "5bde9ea225ededa8bad1d7edf94b8bbca3970e738f682c33c87a4220570cb063",
+      "bytes": 1692100,
+      "sha256": "33f8a86daac49a699fdc02991d4cc4f2c323d748bd89834fc97edc631e7c258b",
       "uri": "place_station_fab.glb"
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
+      "sha256": "8e2aab0eb7221fd24c47fe78bf0be81f1412f888fafb86d3052bb58684a8712e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3170308,
-    "sha256": "b32d7adbf958d732687a57acaf0e033d74899f13ab6d153915340a0532f10f7e",
+    "bytes": 3091520,
+    "sha256": "3adb4b2977d14fe1a079217552fbab9f4bed9de5736fc24abf3df2b534574a08",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -7.94999885559082,
-        5.275000095367432,
+        5.97499942779541,
         0
       ],
       "max": [
         44.30000305175781,
-        20.800554275512695,
+        22.202129364013672,
         25.200923919677734
       ],
       "min": [
         -60.20000076293945,
-        -10.250554084777832,
+        -10.252130508422852,
         -25.200923919677734
       ],
       "size": [
         104.50000381469727,
-        31.051108360290527,
+        32.45425987243652,
         50.40184783935547
       ]
     },
@@ -4190,13 +7319,533 @@
           0,
           1,
           0,
+          -18,
+          1,
+          -16.799999237060547,
+          1
+        ],
+        "name": "MOTION_ARM1_SHOULDER",
+        "planIndex": 47,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "arm1_shoulder",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -18
+            ],
+            [
+              0,
+              1,
+              0,
+              16.799999237060547
+            ],
+            [
+              0,
+              0,
+              1,
+              1
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_ARM1_SHOULDER",
+          "spaceface": {
+            "motionGroup": "arm1_shoulder"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_ARM1_SHOULDER",
+            "recordIds": [
+              "sf.render.fab.node.motion-arm1-shoulder"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "MOTION_ARM1_ELBOW",
+        "planIndex": 51,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "arm1_elbow",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              -3.5
+            ],
+            [
+              0,
+              0,
+              1,
+              1.2000000476837158
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_ARM1_ELBOW",
+          "spaceface": {
+            "motionGroup": "arm1_elbow"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_ARM1_ELBOW",
+            "recordIds": [
+              "sf.render.fab.node.motion-arm1-elbow"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          -1,
+          -9.800000190734863,
+          1
+        ],
+        "name": "MOTION_ARM1_WRIST",
+        "planIndex": 58,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "arm1_wrist",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              -3.4999990463256836
+            ],
+            [
+              0,
+              0,
+              1,
+              -3.200000047683716
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_ARM1_WRIST",
+          "spaceface": {
+            "motionGroup": "arm1_wrist"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_ARM1_WRIST",
+            "recordIds": [
+              "sf.render.fab.node.motion-arm1-wrist"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          5.5,
+          16.799999237060547,
+          1
+        ],
+        "name": "MOTION_ARM4_SHOULDER",
+        "planIndex": 62,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "arm4_shoulder",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -26
+            ],
+            [
+              0,
+              1,
+              0,
+              -16.799999237060547
+            ],
+            [
+              0,
+              0,
+              1,
+              5.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_ARM4_SHOULDER",
+          "spaceface": {
+            "motionGroup": "arm4_shoulder"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_ARM4_SHOULDER",
+            "recordIds": [
+              "sf.render.fab.node.motion-arm4-shoulder"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "MOTION_ARM4_ELBOW",
+        "planIndex": 66,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "arm4_elbow",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              3.5
+            ],
+            [
+              0,
+              0,
+              1,
+              1.1999998092651367
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_ARM4_ELBOW",
+          "spaceface": {
+            "motionGroup": "arm4_elbow"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_ARM4_ELBOW",
+            "recordIds": [
+              "sf.render.fab.node.motion-arm4-elbow"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          3.5,
+          9.800000190734863,
+          1
+        ],
+        "name": "MOTION_ARM4_WRIST",
+        "planIndex": 73,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "arm4_wrist",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              3.4999990463256836
+            ],
+            [
+              0,
+              0,
+              1,
+              -3.1999998092651367
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_ARM4_WRIST",
+          "spaceface": {
+            "motionGroup": "arm4_wrist"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_ARM4_WRIST",
+            "recordIds": [
+              "sf.render.fab.node.motion-arm4-wrist"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "MOTION_CRANE0_TROLLEY",
+        "planIndex": 77,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "crane0_trolley",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -40
+            ],
+            [
+              0,
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              0,
+              1,
+              20
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_CRANE0_TROLLEY",
+          "spaceface": {
+            "motionGroup": "crane0_trolley"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_CRANE0_TROLLEY",
+            "recordIds": [
+              "sf.render.fab.node.motion-crane0-trolley"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "MOTION_CRANE0_HOIST",
+        "planIndex": 84,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "crane0_hoist",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.7999992370605469
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_CRANE0_HOIST",
+          "spaceface": {
+            "motionGroup": "crane0_hoist"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_CRANE0_HOIST",
+            "recordIds": [
+              "sf.render.fab.node.motion-crane0-hoist"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -6.110001087188721,
           0,
           -3.870836019515991,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 47,
+        "planIndex": 91,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -4233,7 +7882,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 48,
+        "planIndex": 92,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4271,7 +7920,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 49,
+        "planIndex": 93,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4309,7 +7958,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 50,
+        "planIndex": 94,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4332,8 +7981,8 @@
       "accent": 3,
       "drive": 3,
       "glass": 3,
-      "hull": 13,
-      "mechanical": 6,
+      "hull": 40,
+      "mechanical": 15,
       "signal": 14,
       "warning": 3
     },
@@ -4562,9 +8211,195 @@
         "allowTextures": true,
         "planIndex": 46,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 79,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 80,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 81,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 82,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 83,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 85,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 86,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 87,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 88,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 89,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 90,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 51,
+    "motionBank": {
+      "bytes": 659163,
+      "rigId": "fab_yard_work",
+      "sha256": "062dd72af0adfbd1d0ec46ad8628e5315b741e52a3c5938d72f730312b149f59",
+      "uri": "assets/ships/motions/fab.motion.json"
+    },
+    "nodeCount": 95,
     "primitives": [
       {
         "canopy": false,
@@ -5815,25 +9650,1033 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          1,
+          -16.799999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM1_SHOULDER_Armor",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          1,
+          -16.799999237060547,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM1_SHOULDER_Armor",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          1,
+          -16.799999237060547,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM1_SHOULDER_Armor",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM1_ELBOW_Armor",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM1_ELBOW_Hull_graphite",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM1_ELBOW_Armor",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM1_ELBOW_Hull_graphite",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM1_ELBOW_Armor",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          2.200000047683716,
+          -13.299999237060547,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM1_ELBOW_Hull_graphite",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          -1,
+          -9.800000190734863,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM1_WRIST_Mechanical",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          -1,
+          -9.800000190734863,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM1_WRIST_Mechanical",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -18,
+          -1,
+          -9.800000190734863,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM1_WRIST_Mechanical",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          5.5,
+          16.799999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM4_SHOULDER_Armor",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          5.5,
+          16.799999237060547,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM4_SHOULDER_Armor",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          5.5,
+          16.799999237060547,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM4_SHOULDER_Armor",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM4_ELBOW_Armor",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM4_ELBOW_Hull_graphite",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM4_ELBOW_Armor",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM4_ELBOW_Hull_graphite",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM4_ELBOW_Armor",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          6.699999809265137,
+          13.299999237060547,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM4_ELBOW_Hull_graphite",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          3.5,
+          9.800000190734863,
+          1
+        ],
+        "name": "LOD0_MOTION_ARM4_WRIST_Mechanical",
+        "planIndex": 74,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          3.5,
+          9.800000190734863,
+          1
+        ],
+        "name": "LOD1_MOTION_ARM4_WRIST_Mechanical",
+        "planIndex": 75,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -26,
+          3.5,
+          9.800000190734863,
+          1
+        ],
+        "name": "LOD2_MOTION_ARM4_WRIST_Mechanical",
+        "planIndex": 76,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "LOD0_MOTION_CRANE0_TROLLEY_Hull",
+        "planIndex": 78,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "LOD0_MOTION_CRANE0_TROLLEY_Hull_graphite",
+        "planIndex": 79,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "LOD1_MOTION_CRANE0_TROLLEY_Hull",
+        "planIndex": 80,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "LOD1_MOTION_CRANE0_TROLLEY_Hull_graphite",
+        "planIndex": 81,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "LOD2_MOTION_CRANE0_TROLLEY_Hull",
+        "planIndex": 82,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          20,
+          -5,
+          1
+        ],
+        "name": "LOD2_MOTION_CRANE0_TROLLEY_Hull_graphite",
+        "planIndex": 83,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "LOD0_MOTION_CRANE0_HOIST_Hull_primer",
+        "planIndex": 85,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "LOD0_MOTION_CRANE0_HOIST_Mechanical",
+        "planIndex": 86,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "LOD1_MOTION_CRANE0_HOIST_Hull_primer",
+        "planIndex": 87,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "LOD1_MOTION_CRANE0_HOIST_Mechanical",
+        "planIndex": 88,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "LOD2_MOTION_CRANE0_HOIST_Hull_primer",
+        "planIndex": 89,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -40,
+          19.200000762939453,
+          -5,
+          1
+        ],
+        "name": "LOD2_MOTION_CRANE0_HOIST_Mechanical",
+        "planIndex": 90,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_fab.glb"
   },
-  "runtimeHash": "3225895c6ecf13d94fa5fb943e67085a6aecbdeea0ccd22dab06983a09688043",
+  "runtimeHash": "b06cef2299639a59a188ca1df92bb198a7aad81cc3a7f6f0ef9ca87d9a4bc94c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           44.30000305175781,
-          20.800554275512695,
+          22.202129364013672,
           25.200923919677734
         ],
         "min": [
           -60.20000076293945,
-          -10.250554084777832,
+          -10.252130508422852,
           -25.200923919677734
         ]
       },
@@ -5854,6 +10697,18 @@
         "sf.render.fab.node.lod0-livery",
         "sf.render.fab.node.lod0-mechanical",
         "sf.render.fab.node.lod0-mechanicaldark",
+        "sf.render.fab.node.lod0-motion-arm1-elbow-armor",
+        "sf.render.fab.node.lod0-motion-arm1-elbow-hull-graphite",
+        "sf.render.fab.node.lod0-motion-arm1-shoulder-armor",
+        "sf.render.fab.node.lod0-motion-arm1-wrist-mechanical",
+        "sf.render.fab.node.lod0-motion-arm4-elbow-armor",
+        "sf.render.fab.node.lod0-motion-arm4-elbow-hull-graphite",
+        "sf.render.fab.node.lod0-motion-arm4-shoulder-armor",
+        "sf.render.fab.node.lod0-motion-arm4-wrist-mechanical",
+        "sf.render.fab.node.lod0-motion-crane0-hoist-hull-primer",
+        "sf.render.fab.node.lod0-motion-crane0-hoist-mechanical",
+        "sf.render.fab.node.lod0-motion-crane0-trolley-hull",
+        "sf.render.fab.node.lod0-motion-crane0-trolley-hull-graphite",
         "sf.render.fab.node.lod0-warning",
         "sf.render.fab.node.lod1-armor",
         "sf.render.fab.node.lod1-beacon-amber",
@@ -5869,6 +10724,18 @@
         "sf.render.fab.node.lod1-livery",
         "sf.render.fab.node.lod1-mechanical",
         "sf.render.fab.node.lod1-mechanicaldark",
+        "sf.render.fab.node.lod1-motion-arm1-elbow-armor",
+        "sf.render.fab.node.lod1-motion-arm1-elbow-hull-graphite",
+        "sf.render.fab.node.lod1-motion-arm1-shoulder-armor",
+        "sf.render.fab.node.lod1-motion-arm1-wrist-mechanical",
+        "sf.render.fab.node.lod1-motion-arm4-elbow-armor",
+        "sf.render.fab.node.lod1-motion-arm4-elbow-hull-graphite",
+        "sf.render.fab.node.lod1-motion-arm4-shoulder-armor",
+        "sf.render.fab.node.lod1-motion-arm4-wrist-mechanical",
+        "sf.render.fab.node.lod1-motion-crane0-hoist-hull-primer",
+        "sf.render.fab.node.lod1-motion-crane0-hoist-mechanical",
+        "sf.render.fab.node.lod1-motion-crane0-trolley-hull",
+        "sf.render.fab.node.lod1-motion-crane0-trolley-hull-graphite",
         "sf.render.fab.node.lod1-warning",
         "sf.render.fab.node.lod2-armor",
         "sf.render.fab.node.lod2-beacon-amber",
@@ -5883,7 +10750,27 @@
         "sf.render.fab.node.lod2-livery",
         "sf.render.fab.node.lod2-mechanical",
         "sf.render.fab.node.lod2-mechanicaldark",
+        "sf.render.fab.node.lod2-motion-arm1-elbow-armor",
+        "sf.render.fab.node.lod2-motion-arm1-elbow-hull-graphite",
+        "sf.render.fab.node.lod2-motion-arm1-shoulder-armor",
+        "sf.render.fab.node.lod2-motion-arm1-wrist-mechanical",
+        "sf.render.fab.node.lod2-motion-arm4-elbow-armor",
+        "sf.render.fab.node.lod2-motion-arm4-elbow-hull-graphite",
+        "sf.render.fab.node.lod2-motion-arm4-shoulder-armor",
+        "sf.render.fab.node.lod2-motion-arm4-wrist-mechanical",
+        "sf.render.fab.node.lod2-motion-crane0-hoist-hull-primer",
+        "sf.render.fab.node.lod2-motion-crane0-hoist-mechanical",
+        "sf.render.fab.node.lod2-motion-crane0-trolley-hull",
+        "sf.render.fab.node.lod2-motion-crane0-trolley-hull-graphite",
         "sf.render.fab.node.lod2-warning",
+        "sf.render.fab.node.motion-arm1-elbow",
+        "sf.render.fab.node.motion-arm1-shoulder",
+        "sf.render.fab.node.motion-arm1-wrist",
+        "sf.render.fab.node.motion-arm4-elbow",
+        "sf.render.fab.node.motion-arm4-shoulder",
+        "sf.render.fab.node.motion-arm4-wrist",
+        "sf.render.fab.node.motion-crane0-hoist",
+        "sf.render.fab.node.motion-crane0-trolley",
         "sf.render.fab.node.sf-place-station-fab-root",
         "sf.render.fab.node.socket-camera-focus",
         "sf.render.fab.node.socket-dock-approach",

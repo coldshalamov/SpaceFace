@@ -136,7 +136,7 @@ export const crafting = {
   // timeScale/pause, so a paused game doesn't progress production and a save-load catch-up works).
   update(dt, state) {
     const queues = (state.crafting && state.crafting.queues) || {};
-    let changed = false;
+    const completedIds = [];
     for (const stationId in queues) {
       const job = queues[stationId];
       if (!job || job.done) continue;
@@ -156,10 +156,14 @@ export const crafting = {
         }
         job.done = true;
         queues[stationId] = null;
-        changed = true;
+        completedIds.push(stationId);
       }
     }
-    if (changed) this.bus.emit('craft:queueChanged', {});
+    // Per-station receipts so consumers (UI refresh, authored-motion rigs) can key on
+    // stationId without diffing the queue map themselves.
+    for (const stationId of completedIds) {
+      this.bus.emit('craft:queueChanged', { stationId, active: false });
+    }
   },
 
   /** All blueprints buildable at a given station type, with availability precomputed for the UI. */
@@ -274,7 +278,7 @@ export const crafting = {
     // Store bpId only (NOT the bp object) so the queue is plain serializable data with no live refs.
     const queues = this.state.crafting.queues;
     queues[sid] = { bpId, elapsed: 0, total, done: false, stationId: sid };
-    this.bus.emit('craft:queueChanged', {});
+    this.bus.emit('craft:queueChanged', { stationId: sid, active: true });
     this.bus.emit('audio:cue', { id: 'confirm' });
     this.bus.emit('toast', { text: 'Fabrication started: ' + bp.name + ' (' + Math.round(total) + 's)', kind: 'info', ttl: 3 });
     return true;
@@ -309,7 +313,8 @@ export const crafting = {
       // completed-queue path: emit the full feedback suite so the UI/toasts react
       this.bus.emit('craft:complete', { bpId: bp.id, productId: out.id, kind: out.kind, qty: out.qty });
       this.bus.emit('toast', { text: '✓ Fabrication complete: ' + bp.name, kind: 'good', ttl: 3.5 });
-      this.bus.emit('craft:queueChanged', {});
+      this.bus.emit('craft:queueChanged',
+        { stationId: job.stationId, active: this.isBusy(job.stationId) });
     }
     return true;
   },

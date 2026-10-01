@@ -2876,6 +2876,7 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   canonicalizeMaplessHullMaterials(root, palette);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
   root.position.set(
@@ -3682,6 +3683,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   specializeClaimRelayOpaqueMaterials(root, placeId);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
   root.userData.authoredSourceEnvelope = authoredEnvelope;
   root.userData.authoredWorldScale = scale;
   root.userData.placeTargetRadius = Number.isFinite(targetRadius) && targetRadius > 0 ? targetRadius : null;

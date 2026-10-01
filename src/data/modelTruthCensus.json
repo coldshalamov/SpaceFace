@@ -56580,33 +56580,33 @@
       "bounds": {
         "center": [
           -7.949999,
-          5.275,
+          5.974999,
           0
         ],
         "max": [
           44.300003,
-          20.800554,
+          22.20213,
           25.200923
         ],
         "min": [
           -60.200001,
-          -10.250554,
+          -10.252131,
           -25.200923
         ],
         "size": [
           104.500004,
-          31.051108,
+          32.45426,
           50.401846
         ]
       },
-      "bytes": 1799376,
+      "bytes": 1692100,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_fab",
         "kind": "proxy",
         "outline": [
-          64.203603,
+          64.198699,
           95.189587,
           75.472005,
           52.852658,
@@ -56629,7 +56629,7 @@
           52.852658,
           75.472005,
           95.189587,
-          64.203603
+          64.198699
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -56812,13 +56812,13 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 45,
-      "nodes": 50,
+      "meshes": 81,
+      "nodes": 94,
       "note": null,
       "opening": "dock-mouth",
       "pivot": [
         -7.949999,
-        5.275,
+        5.974999,
         0
       ],
       "proposedSkin": {
@@ -56839,8 +56839,8 @@
           {
             "ax": -0.193966,
             "az": -0.025536,
-            "bx": -0.705067,
-            "bz": -0.092824,
+            "bx": -0.705013,
+            "bz": -0.092817,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.005
@@ -57019,8 +57019,8 @@
           {
             "ax": -0.193966,
             "az": 0.025536,
-            "bx": -0.705067,
-            "bz": 0.092824,
+            "bx": -0.705013,
+            "bz": 0.092817,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.005
@@ -57033,8 +57033,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 6048,
-        "inwardFaceFraction": 0.33725,
+        "boundaryEdges": 6021,
+        "inwardFaceFraction": 0.33825,
         "silhouetteRadius": 95.189587,
         "sliceY": 0
       },
@@ -57076,12 +57076,12 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 79708,
+      "triangles": 80003,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_fab.glb",
       "worldSize": [
         180,
-        53.48516,
+        55.902073,
         86.816574
       ]
     },

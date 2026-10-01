@@ -403,6 +403,7 @@ def build_ship(s):
 
 
 def build_cranes(s):
+    trolley0 = cab0 = None
     for c, x in enumerate(CRANES):
         F.box(s, f'Crane{c}', (x, 0, Z_TOP + 3.3), (2.6, 2 * WALL_Y + 3.4, 2.4), material='stripe', bevel=0.12)
         F.band(s, f'Crane{c}', (x, 0, 0), (0, 1, 0), 3.0, 'paint.graphite', facing=(0, 0, 1))
@@ -410,17 +411,30 @@ def build_cranes(s):
             F.box(s, f'CraneEnd{c}{side}', (x, side * WALL_Y, Z_TOP + 2.2), (4.6, 3.0, 2.0), material='paint.graphite',
                   bevel=0.08)
         ty = (5.0, -4.0, 2.5)[c]
-        F.box(s, f'CraneTrolley{c}', (x, ty, Z_TOP + 5.0), (3.6, 3.4, 1.6), material='paint.graphite', bevel=0.08)
-        F.box(s, f'CraneCab{c}', (x + 2.4, ty, Z_TOP + 2.4), (1.2, 2.0, 1.4), material='paint', bevel=0.05)
+        trolley = F.box(s, f'CraneTrolley{c}', (x, ty, Z_TOP + 5.0), (3.6, 3.4, 1.6),
+                        material='paint.graphite', bevel=0.08)
+        cab = F.box(s, f'CraneCab{c}', (x + 2.4, ty, Z_TOP + 2.4), (1.2, 2.0, 1.4), material='paint', bevel=0.05)
+        if c == 0:
+            trolley0, cab0 = trolley, cab
     # crane 0 is lowering a curved plate onto the ribs; crane 1 holds an engine part above the stern
     x0, ty0 = CRANES[0], 5.0
     plate = skin_patch(s, 'HangingPlate', x0 - 3.0, x0 + 3.0, 0.5, 1.2, material='paint.primer')
     for obj in (plate,):
         for v in obj.data.vertices:
             v.co.z += 5.5
+    # ANI-14: the trolley and its hanging load are authored rigid — the hoist lines run 2.5 m
+    # up into a winch housing on the trolley so a paid-out stroke keeps the cable tops buried
+    # inside the housing while the bottoms stay pinned to the plate.
+    housing = F.box(s, 'WinchHousing0', (x0, ty0, Z_TOP + 6.4), (3.0, 3.0, 1.6),
+                    material='paint.graphite', bevel=0.08)
+    hoists = []
     for dy in (-1.0, 1.0):
-        F.cylinder(s, f'Hoist0{dy:+.0f}', (x0 + dy, ty0, Z_TOP + 4.2), (x0 + dy * 1.6, ty0 - 0.3, 11.2), 0.12,
-                   material='gunmetal', segments=6, bevel=0.0)
+        hoists.append(F.cylinder(s, f'Hoist0{dy:+.0f}', (x0 + dy, ty0, Z_TOP + 6.9),
+                                 (x0 + dy * 1.6, ty0 - 0.3, 11.2), 0.12,
+                                 material='gunmetal', segments=6, bevel=0.0))
+    s.motion_group('crane0_trolley', (x0, ty0, Z_TOP + 5.0), objects=[trolley0, cab0, housing])
+    s.motion_group('crane0_hoist', (x0, ty0, Z_TOP + 4.2), objects=hoists + [plate],
+                   parent='crane0_trolley')
     x1, ty1 = CRANES[1], -4.0
     F.cylinder(s, 'Hoist1', (x1, ty1, Z_TOP + 4.2), (x1, ty1, 10.2), 0.14, material='gunmetal', segments=6, bevel=0.0)
     F.box(s, 'Spreader1', (x1, ty1, 9.8), (3.0, 3.0, 0.6), material='paint.graphite', bevel=0.0)
@@ -442,10 +456,18 @@ def build_arms(s):
         tip = Vector((x, side * (w + 1.4), z))
         elbow = base + (tip - base) * 0.5 + Vector((0, 0, 2.2))
         F.box(s, f'ArmBase{k}', tuple(base), (2.4, 1.2, 2.4), material='paint.graphite', bevel=0.05)
-        beam(s, f'ArmA{k}', tuple(base), tuple(elbow), 0.9, material='paint2')
-        beam(s, f'ArmB{k}', tuple(elbow), tuple(tip), 0.7, material='paint2')
-        F.box(s, f'ArmJoint{k}', tuple(elbow), (1.2, 1.2, 1.2), material='paint.graphite', bevel=0.0)
-        F.box(s, f'ArmHead{k}', tuple(tip), (1.4, 1.2, 1.0), material='gunmetal', bevel=0.0)
+        arm_a = beam(s, f'ArmA{k}', tuple(base), tuple(elbow), 0.9, material='paint2')
+        arm_b = beam(s, f'ArmB{k}', tuple(elbow), tuple(tip), 0.7, material='paint2')
+        joint = F.box(s, f'ArmJoint{k}', tuple(elbow), (1.2, 1.2, 1.2), material='paint.graphite', bevel=0.0)
+        head = F.box(s, f'ArmHead{k}', tuple(tip), (1.4, 1.2, 1.0), material='gunmetal', bevel=0.0)
+        # ANI-13: arms 1 and 4 (opposite walls, both midships) are the working welders —
+        # shoulder/elbow/wrist pivots nest so each hinge rigidly carries the links below it.
+        if k in (1, 4):
+            s.motion_group(f'arm{k}_shoulder', base, objects=[arm_a])
+            s.motion_group(f'arm{k}_elbow', elbow, objects=[joint, arm_b],
+                           parent=f'arm{k}_shoulder')
+            s.motion_group(f'arm{k}_wrist', tip, objects=[head],
+                           parent=f'arm{k}_elbow')
         heads.append((tip, side))
     return heads
 
@@ -520,5 +542,19 @@ def build():
 
 if __name__ == '__main__':
     import forge_export as E
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  '..', 'animations'))
+    import ANI_13
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    spec = E.fleet_spec(SHIP_ID)
+    # Author the clips onto the builder's motion groups before export so the MOTION_* pivot
+    # empties and the bank come from one registration pass.
+    ship.fab_bank = ANI_13.build(ship, {}, spec['asset_id'])
+    written = E.export_ship(ship, spec, preview=not live)
+    if live:
+        # Seal the bank against the exported release GLB; preview runs leave the rig in
+        # place but skip the bank (the runtime only reads it from packages).
+        ship.fab_bank.bake([path for path, _tris in written],
+                           out_path=os.path.join(ANI_13.motion_bank.MOTIONS_DIR,
+                                                 'fab.motion.json'))
