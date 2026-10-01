@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d782f67af703b01fc2ad04f232f8f1174de9749c482d6d0a94827356a61d1edc",
+  "contentHash": "3e29d9f161bb6c1d245cfdbf38576d95b3a77ec5654952b3c4f16953f7f43da7",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -991,8 +991,8 @@
       "uri": "place_repair_scaffold_bent.glb"
     },
     "sourceManifest": {
-      "bytes": 212794,
-      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
+      "bytes": 197727,
+      "sha256": "b3f459990ba74570e0625b80e047e88f11dd65ae7b722f7c83cde26cbd9b1444",
       "uri": "pilots.json"
     }
   },
@@ -1424,7 +1424,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold_bent.glb"
   },
-  "runtimeHash": "6920d1fc02c799b44cc6d58309bce256130672972ac7573c573f320688d06519",
+  "runtimeHash": "f9f36f36b8779e98d58b545e3c025e94c91db1952c66d41e31b7a899e030abb3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

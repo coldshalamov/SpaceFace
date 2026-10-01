@@ -11,6 +11,11 @@
 # a PR, so the PR can only carry a baseline that judges green in the same environment class the
 # check matrix runs in. If the mint or the judge fails, nothing is opened.
 #
+# The mint takes hours. Master routinely moves during it, which would make the minted digest
+# stale on arrival — so before opening the PR the workflow re-platforms the fresh baseline onto
+# the CURRENT master tip and re-judges it there. If master's UI source moved in ways the new
+# source digest refuses, the verify fails, nothing is opened, and the workflow is re-dispatched.
+#
 # Run it from the Actions tab (workflow_dispatch) on the branch that needs the re-mint, then
 # merge the PR it opens.
 
@@ -30,6 +35,7 @@ concurrency:
 jobs:
   remint:
     runs-on: ubuntu-latest
+    timeout-minutes: 420
     steps:
       - uses: actions/checkout@v4
 
@@ -56,16 +62,20 @@ jobs:
       - name: Verify the fresh baseline judges green
         run: SPACEFACE_PLAYER_STORE_DIR='' node scripts/check-ui-budgets.mjs
 
-      - name: Open the re-mint PR
+      - name: Open the re-mint PR on the current master tip
         run: |
           BRANCH=ci/ui-budgets-remint
+          cp test/ui-frame-references/budgets.json "$RUNNER_TEMP/minted-budgets.json"
+          git fetch origin master
+          git checkout -B "$BRANCH" origin/master
+          cp "$RUNNER_TEMP/minted-budgets.json" test/ui-frame-references/budgets.json
+          SPACEFACE_PLAYER_STORE_DIR='' node scripts/check-ui-budgets.mjs
           git config user.name "ui-budgets-remint bot"
           git config user.email "actions@users.noreply.github.com"
-          git checkout -b "$BRANCH"
           git add -- test/ui-frame-references/budgets.json
-          git commit -m "ci: re-mint UI budget baseline on $(git rev-parse --short HEAD~1)" -- test/ui-frame-references/budgets.json
+          git commit -m "ci: re-mint UI budget baseline (minted at ${{ github.sha }})" -- test/ui-frame-references/budgets.json
           git push origin "$BRANCH"
           gh pr create --head "$BRANCH" --base master --title "ci: re-mint UI budget baseline" \
-            --body "Baseline minted by the ui-budgets-remint workflow (headed Chromium under xvfb on the runner) and verified green by check:ui:budgets in the same run. Clears the \`baseline:stale\` red on master."
+            --body "Baseline minted by the ui-budgets-remint workflow (headed Chromium under xvfb on the runner), re-platformed onto the current master tip and verified green by check:ui:budgets there in the same run. Clears the \`baseline:stale\` red on master."
         env:
           GH_TOKEN: ${{ github.token }}

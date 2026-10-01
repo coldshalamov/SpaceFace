@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3f11cba5ed585e3caaac9536bef6bae4bdc05fcc68dc6cedf1e6a9ac17547dd8",
+  "contentHash": "1563a74165a81857b3bb69f178e32e3471056e239bb571a9e53914f447605636",
   "dynamicGroups": [
     {
       "id": "sf.render.interdiction-buoy.mesh.lod0-hook-nav-port.dynamic",
@@ -2101,8 +2101,8 @@
       "uri": "place_interdiction_buoy.glb"
     },
     "sourceManifest": {
-      "bytes": 212794,
-      "sha256": "0c2c580f3e097f462502749947a5254640cfe0882df7217e2782f68ec2c9dd17",
+      "bytes": 197727,
+      "sha256": "b3f459990ba74570e0625b80e047e88f11dd65ae7b722f7c83cde26cbd9b1444",
       "uri": "pilots.json"
     }
   },
@@ -2940,7 +2940,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_interdiction_buoy.glb"
   },
-  "runtimeHash": "921e8e34438292e71ef1f5ecbd6919e06feeeba05dd599466f69b50754a25d7a",
+  "runtimeHash": "47c5cf00b3f542c105c49bdc8fbc40551fa1be4f92b21200ea33ca6b6ba84cdd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

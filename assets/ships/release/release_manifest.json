@@ -3207,14 +3207,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_military.glb",
       "release": "assets/ships/release/parts/places/place_station_military.glb",
-      "sourceSha256": "828d3aa78b8e62a0141e95f265989954a46011b52ea7ba3b97cd9309968c9ccc",
-      "releaseSha256": "9d5abf5b3a3df0eab4d709dfc929ef73f8a5d28273c129ae484f80014608c783",
-      "sourceBytes": 5617508,
-      "releaseBytes": 1766712,
+      "sourceSha256": "8dfb80a2bc39719c615310f0ffc209b210a273795f74a4d3f82ec7a0543d5a95",
+      "releaseSha256": "558c181bc03e3348b43c7810324e71dfae43363d0a9693c42caa1e2ef2f5074c",
+      "sourceBytes": 5684044,
+      "releaseBytes": 1616236,
       "textures": 6,
       "ktx2Textures": 6,
-      "meshoptBufferViews": 149,
-      "contractNodeCount": 42
+      "meshoptBufferViews": 161,
+      "contractNodeCount": 45,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_station_mining",
