@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "92084b54f662d69bf23a8dbb2fb9d05804ec07e16b2283e5014a551fe8635908",
+  "contentHash": "cbf2451608632748cbed04d7b2a293aecb9eea8dfe9d0aa2fd9cb230acf6f121",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -927,7 +927,7 @@
     },
     "sourceManifest": {
       "bytes": 212794,
-      "sha256": "edf790dc8dc34d51abfcde3d67988ed0c7dad7e8de0de104694773134a24af68",
+      "sha256": "02f5fab7eb1ecf1412cf8ba2964587cd184484a3d9f59c20a197f14e935a9a9e",
       "uri": "pilots.json"
     }
   },
@@ -1295,7 +1295,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb"
   },
-  "runtimeHash": "c2c0bcfd7ed06504f4fd6469070e01026da660fea2de9bb1dbb23467258985ba",
+  "runtimeHash": "d63aed82cacce4afe3bcd7dbefb4bc6cc8eae74d870b2c436c0740cf3aa7a434",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
