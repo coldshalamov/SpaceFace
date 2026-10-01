@@ -922,6 +922,7 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 /* ================================ NEW GAME r4: weight + the yard ================================= */
 /* the hero dims as the yard turns between hulls and comes back as it settles */
 #screens .orr-newgame > .k-stage > .k-stage__poster { opacity:calc(1 - var(--ng-spin-mix, 0) * .8) !important; transition:opacity 90ms linear !important; }
+#screens .orr-newgame > .k-stage.orr-ng--models > .k-stage__poster { opacity:0 !important; visibility:hidden !important; }
 /* the run's scale with weight: a 3px line of light, 10px beads, the first one lit */
 #screens .orr-newgame .sf-ng-route .sf-ng-route__steps::before { height:3px !important; top:3px !important; background:rgb(232 226 212 / .3) !important; border-radius:2px !important;
   box-shadow:0 0 8px rgb(236 230 216 / .12) !important; }

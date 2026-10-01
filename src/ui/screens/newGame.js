@@ -719,7 +719,8 @@ export const newGameScreen = {
       for (const s of NEW_GAME_STARTERS) mass['starter:' + s.id] = starterAirCard(s).massT;
       const starterOfLi = () => [...starterWords.children].filter((li) => li.querySelector && li.querySelector('button'))
         .map((li) => NEW_GAME_STARTERS.find((s) => 'starter:' + s.id === li.querySelector('button').dataset.action));
-      this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass,
+      this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass, modelRing: true,
+        onModelsReady: (ok) => { stage.classList.toggle('orr-ng--models', !!ok); },
         onTurn: (i0, i1, f) => {
           const list = starterOfLi();
           if (this._hullRing && list[i0]) this._hullRing.paint(ringStatsMix(list[i0], list[i1], f));
@@ -790,6 +791,7 @@ export const newGameScreen = {
       if (lampWord) lampWord.textContent = launchWord;
       else launch.textContent = launchWord;
       launch.disabled = launching;
+      if (this._starterDial) this._starterDial.setActive(!launching);
       syncKeys(rootEl);
     };
     // Launch stops the stage hull at once (_launch) and frees its WebGL context once the loading
@@ -917,15 +919,18 @@ export const newGameScreen = {
       this.hull.activate(ctx);
       this.hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
     }
+    if (this._starterDial) this._starterDial.setActive(true);
     try { refs.name.focus(); refs.name.select(); } catch (e) {}
   },
   onHide() {
     cue('close');
+    if (this._starterDial) this._starterDial.setActive(false);
     if (this.hull) this.hull.deactivate();
   },
   refresh() {},
   dispose() {
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
+    if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._hullRing) { this._hullRing.dispose(); this._hullRing = null; }
     if (refs && refs.unsubStartFailed) { try { refs.unsubStartFailed(); } catch (e) {} }
