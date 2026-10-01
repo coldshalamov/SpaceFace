@@ -1666,6 +1666,8 @@ export const world = {
       this._reconcileEmbodimentRecords(sectorId, bag);
     }
     const list = recordsForSector(bag, sectorId);
+    const liveByRecordId = liveRecordEntityIndex(state);
+    const farRecordIds = farActorRecordIdSet(state);
     let spawned = 0;
     let hadCombatHistory = false;
     let spawnedBoss = false;
@@ -1680,7 +1682,7 @@ export const world = {
       if (rec.kind === RECORD_KIND.AFTERMATH && aftermathOwnsMarker(state, rec.markerId)) continue;
       if (!recordShouldRematerialize(rec, tier)) continue;
       // Exactly-once: never double-spawn a live entity for the same record.
-      const existing = findLiveRecordEntity(state, rec.recordId);
+      const existing = liveByRecordId.get(rec.recordId) || null;
       if (existing) {
         if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
           if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
@@ -1691,7 +1693,7 @@ export const world = {
       }
       // A shelved far-actor row already carries this record's live state — respawning here would
       // double the actor (it promotes back to a live entity on approach via tickFarActors).
-      if (farActorHoldsWorldRecord(state, rec.recordId)) continue;
+      if (farRecordIds.has(rec.recordId)) continue;
       const ent = this._spawnFromDurableRecord(rec, sectorId);
       if (!ent) continue;
       spawned++;
@@ -1730,10 +1732,11 @@ export const world = {
 
     // Delete only stale, still-active generated recipes with no live body. Player-authored
     // outcomes (destroyed/defeated) are history and remain as bounded tombstones.
+    const liveByRecordId = liveRecordEntityIndex(this.state);
     for (const rec of recordsForSector(bag, sectorId)) {
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
-      if (findLiveRecordEntity(this.state, rec.recordId)) continue;
+      if (liveByRecordId.has(rec.recordId)) continue;
       delete bag.byId[rec.recordId];
     }
 
@@ -6669,6 +6672,40 @@ function findLiveRecordEntity(state, recordId) {
       || findLiveEntityForRecord(index.payloads, recordId);
   }
   return findLiveEntityForRecord(state.entityList, recordId);
+}
+
+// Batch record->entity lookup for rematerialize/reconcile passes: per-record scans of up to
+// four index lanes (then a far-actor row walk) cost O(records x entities) inside a single
+// chunked-enter section. One entity walk fixes first-match lane order exactly (shipLike,
+// wrecks, stations, payloads — entityList only when the index is cold).
+function liveRecordEntityIndex(state) {
+  const map = new Map();
+  const index = state && state.entityIndex;
+  const lanes = (index && index.__spacefaceEntityIndexV1 && index.ready === true)
+    ? [index.shipLike, index.wrecks, index.stations, index.payloads]
+    : [state && state.entityList];
+  for (const lane of lanes) {
+    if (!lane) continue;
+    for (const e of lane) {
+      if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+      if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+    }
+  }
+  return map;
+}
+
+// Far-actor shelved rows carrying a worldRecordId — the same batch surface as the live index.
+function farActorRecordIdSet(state) {
+  const set = new Set();
+  const rows = state && state.world && state.world.farActors && state.world.farActors.rows;
+  if (!rows) return set;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.alive !== false && row.data && row.data.worldRecordId != null) {
+      set.add(row.data.worldRecordId);
+    }
+  }
+  return set;
 }
 
 function finitePositive(value) {

@@ -21,6 +21,9 @@ import { RECORD_KIND, recordShouldRematerialize, stableRecordId } from '../world
 import { markArchetypePoolFor } from '../data/bountyMarks.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { authoredSetPieceById, megaHeistById } from '../data/missions.js';
+import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
+import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
@@ -30,6 +33,43 @@ const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
 const PALETTE_CLASS_BY_REF = new Map(
   Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]),
 );
+
+// Mirror of combat.js makeEnemySpawnSpec's faction pick: caller override > archetype's own
+// faction > lawful/hostile fallback. A record that left factionId unset would otherwise warm
+// the un-kitted file while the respawn loads the faction kit.
+function enemyFactionIdFor(def, explicit) {
+  return explicit || (def && def.factionId)
+    || (def && def.factionLawful ? 'faction_scn' : 'faction_reach');
+}
+
+// Mirror of visualFactory's hashId (stable fnv-1a over the entity id) — bare mission wrecks
+// pick their packaged body by id hash across the aftermath table, so covering residue classes
+// needs the same hash the mount reads.
+function hashId(id) {
+  let h = 2166136261;
+  const s = String(id);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0);
+}
+
+// missions.js contractClaimSiteMission — the filed-wreck-with-crew contract shape. Mirrored
+// locally so the render lane never imports the world/missions system modules.
+function contractClaimSiteMissionStub(m) {
+  if (!m || m.type !== 'salvage_retrieval') return false;
+  if (m.storyTag || m.storyContractId || m.wreckId) return false;
+  const tag = m.mutationTag;
+  if (tag === 'salvage' || tag === 'recovery' || tag === 'cooked') return false;
+  const p = m.params;
+  if (!p || !p.cmdtyId) return false;
+  if (p.setPieceObjective || p.salvagePointId || p.survivorPodId || p.wreckMissionId
+    || p.wreckPos || p.poiSignalFollowup) return false;
+  return true;
+}
+
+function mutationRecoveryStub(m) {
+  const tag = m && m.mutationTag;
+  return tag === 'salvage' || tag === 'recovery' || tag === 'cooked';
+}
 
 // Mirror of world.js paletteClassForSector — the sector recipe's dressing palette. Duplicated
 // here so the render lane never imports the world system module.
@@ -75,7 +115,6 @@ function sectorDressingRows(sector, palette, seed) {
     .map((poi) => ({
       id: poi.id,
       poiId: poi.id,
-      name: poi.name || null,
       pos: poi.pos || poi.anchor || { x: 0, z: 0 },
     }));
   const stations = (sector.stations || []).map((st) => (st && st.pos) || { x: 0, z: 0 });
@@ -223,6 +262,78 @@ export function saveEnvelopeSectorStubs(data) {
     }
   }
 
+  // Aftermath wreck markers serialize the victim's full visual identity (defId + the same
+  // visual fields its own admission read, faction kit, fracture piece) and _spawnForSector
+  // rematerializes them at save:loaded — the stub resolves through the same wreckPackagedFile
+  // pick the spawned body takes, so defId hulls and fragment files warm with everything else.
+  const aftermathMarkers = data.aftermathWrecks && data.aftermathWrecks.bySector
+    && data.aftermathWrecks.bySector[sector.id];
+  if (Array.isArray(aftermathMarkers)) {
+    for (const marker of aftermathMarkers) {
+      if (!marker) continue;
+      const stubData = {
+        wreckClass: marker.wreckClass || 'battlefield',
+        parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
+        hulkOfDefId: marker.victimDefId || null,
+        hulkVisual: marker.victimVisual || null,
+        hulkFactionId: marker.victimFactionId || null,
+      };
+      if (marker.fracturePiece) {
+        stubData.fracturePiece = marker.fracturePiece;
+        stubData.fractureSeamId = marker.fractureSeamId || null;
+        stubData.fractureVisual = marker.fractureVisual || null;
+      }
+      out.placeStubs.push({ type: 'wreck', data: stubData });
+    }
+  }
+
+  // Claim-owned bodies, automation outposts, and asteroid-site beacons materialize as runtime
+  // dressing rows (never envelope sector dressing): their place ids resolve through
+  // placeFileForEntity exactly as the spawned rows do.
+  const claimBodies = (data.claims && Array.isArray(data.claims.bodies)) ? data.claims.bodies : [];
+  for (const body of claimBodies) {
+    if (!body || body.sectorId !== sector.id || body.owned !== true) continue;
+    out.placeStubs.push({
+      type: 'fx',
+      data: { claimOwned: true, claimSpecId: (body.spec && body.spec.id) || null },
+    });
+  }
+  const outposts = (data.automation && Array.isArray(data.automation.outposts))
+    ? data.automation.outposts
+    : [];
+  // automation.js OUTPOST_VISUAL_BY_DEF — unknown defs mount the base outpost body.
+  const OUTPOST_STUB_VISUAL = {
+    outpost_refinery: { placeId: 'place_claim_outpost_refinery', claimSpecId: 'spec_refinery' },
+    outpost_fuelsynth: { placeId: 'place_claim_outpost_refinery', claimSpecId: 'spec_refinery' },
+    outpost_habhub: { placeId: 'place_claim_outpost_relay', claimSpecId: 'spec_relay' },
+  };
+  for (const o of outposts) {
+    if (!o || o.sectorId !== sector.id) continue;
+    const visual = OUTPOST_STUB_VISUAL[o.defId] || { placeId: 'place_claim_outpost_base', claimSpecId: null };
+    out.placeStubs.push({
+      type: 'fx',
+      data: { placeId: visual.placeId, claimSpecId: visual.claimSpecId, claimOwned: true },
+    });
+  }
+  const siteRecords = data.sites && data.sites.worldById;
+  if (siteRecords) {
+    for (const id of Object.keys(siteRecords)) {
+      const record = siteRecords[id];
+      if (record && record.sectorId === sector.id) {
+        out.placeStubs.push({ type: 'fx', data: { placeId: 'place_claim_outpost_relay', worldDressing: true } });
+        break;
+      }
+    }
+  }
+
+  // sector_ceres_belt re-points three ambient drone props onto the throughline activity bodies
+  // (world.js CERES_ACTIVITY_DRONE_SLOT_PRESENTATION); the palette literal set covers dead_hulk
+  // and conveyor_barge but never these two.
+  if (sector.id === 'sector_ceres_belt') {
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_bait_wreck', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_grave_shard', worldDressing: true } });
+  }
+
   for (const rec of sectorRecords) {
     if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
       // spawnSpecFromRecord stamps no hulk identity on rematerialized wrecks — every one
@@ -240,6 +351,7 @@ export function saveEnvelopeSectorStubs(data) {
         || rec.kind === RECORD_KIND.MISSION_TARGET
         || rec.isBoss === true);
     const stubData = { durable: true };
+    let stubFactionId = rec.factionId || null;
     if (isEnemySpec) {
       const def = ENEMY_BY_ID.get(rec.enemyTypeId) || ENEMY_TYPES[0];
       stubData.lootTableId = def.id;
@@ -247,6 +359,7 @@ export function saveEnvelopeSectorStubs(data) {
       stubData.enemyTypeId = rec.enemyTypeId;
       if (def.silhouette) stubData.silhouette = def.silhouette;
       if (rec.trafficRole) stubData.trafficRole = rec.trafficRole;
+      stubFactionId = enemyFactionIdFor(def, rec.factionId);
     } else {
       stubData.lootTableId = rec.enemyTypeId || null;
       stubData.defId = rec.shipDefId || 'ship_kestrel';
@@ -256,7 +369,7 @@ export function saveEnvelopeSectorStubs(data) {
     out.shipStubs.push({
       id: rec.recordId,
       type: 'ship',
-      factionId: rec.factionId || null,
+      factionId: stubFactionId,
       data: stubData,
     });
   }
@@ -264,21 +377,107 @@ export function saveEnvelopeSectorStubs(data) {
   // Owed mission targets in the saved sector (_spawnTargetsFor): named marks carry their hull
   // on the row; ghost packs are a fixed anchor+cutter cast; anonymous bounties draw from the
   // shared risk pool. Adopted hosts are already covered by the sector-records pass above.
+  // The non-bounty needsTargets families (escort convoys, claim sites, salvage pockets, signal
+  // derelicts, physical set pieces, authored casts) respawn through the same pass — bare wreck
+  // props warm the aftermath table by residue class, ship actors warm their archetype hulls.
+  let bareMissionWrecksCovered = false;
+  const coverBareMissionWrecks = () => {
+    if (bareMissionWrecksCovered) return;
+    bareMissionWrecksCovered = true;
+    const covered = new Set();
+    for (let i = 0; covered.size < 6 && i < 64; i += 1) {
+      const id = `envelope-warm:mission-wreck:${i}`;
+      const variant = hashId(id) % 6;
+      if (covered.has(variant)) continue;
+      covered.add(variant);
+      out.placeStubs.push({
+        id,
+        type: 'wreck',
+        data: { wreckClass: 'battlefield', parentType: 'ship' },
+      });
+    }
+  };
   const missions = (data.missions && Array.isArray(data.missions.active)) ? data.missions.active : [];
   for (const m of missions) {
-    if (!m || !m.needsTargets) continue;
-    if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
+    if (!m || !m.needsTargets || m.status !== 'active') continue;
     if (m.destSectorId !== sector.id) continue;
+    const params = m.params || {};
+    const follow = params.poiSignalFollowup;
+    if (follow) {
+      // recon_scan follow-ups materialize a wreck or anomaly at the signal — the anomaly is
+      // procedural; the derelict resolves a bare aftermath pick.
+      if (follow.targetType === 'wreck') coverBareMissionWrecks();
+      continue;
+    }
+    if (m.type === 'escort') {
+      out.roster.push({
+        archetype: 'mule_trader',
+        factionId: enemyFactionIdFor(ENEMY_BY_ID.get('mule_trader'), m.factionId),
+      });
+      // The ambush wing spawns only after the convoy lands — a still-owed escort may owe it too.
+      if ((params.ambushSize || 0) > 0) {
+        for (const archetype of new Set(markArchetypePoolFor(m.riskTier))) {
+          out.roster.push({ archetype });
+        }
+      }
+      continue;
+    }
+    if (m.type === 'salvage_retrieval') {
+      if (mutationRecoveryStub(m)) {
+        coverBareMissionWrecks(); // the convoy-wreck pocket's drifting hulk
+      } else if (contractClaimSiteMissionStub(m)) {
+        coverBareMissionWrecks(); // the filed wreck itself
+        out.roster.push(
+          { archetype: 'mule_trader', factionId: enemyFactionIdFor(ENEMY_BY_ID.get('mule_trader'), null) },
+          { archetype: 'wasp_swarmer', factionId: enemyFactionIdFor(ENEMY_BY_ID.get('wasp_swarmer'), null) },
+        );
+      }
+      continue;
+    }
+    if (m.type === 'demolition') {
+      coverBareMissionWrecks(); // the dead tower
+      continue;
+    }
+    if (m.type === 'rescue_under_fire') {
+      coverBareMissionWrecks(); // life pods are bare wreck props
+      out.roster.push({
+        archetype: 'wasp_swarmer',
+        factionId: enemyFactionIdFor(ENEMY_BY_ID.get('wasp_swarmer'), null),
+      });
+      continue;
+    }
+    if (m.type === 'tow_recovery') continue; // slag core is a plain asteroid — procedural
+    if (m.type === 'authored_set_piece' || m.type === 'capital_boss') {
+      const definition = authoredSetPieceById(params.authoredSetPieceId)
+        || megaHeistById(params.authoredSetPieceId);
+      const encounter = definition
+        && (AUTHORED_SET_PIECE_ENCOUNTERS[definition.id] || MEGA_HEIST_ENCOUNTERS[definition.id]);
+      const fallback = m.type === 'capital_boss' ? 'bruiser_brawler' : 'wasp_swarmer';
+      for (const actor of (encounter && encounter.actors) || []) {
+        if (!actor) continue;
+        if (actor.kind === 'ship') {
+          const archetype = actor.archetype || fallback;
+          out.roster.push({
+            archetype,
+            factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+          });
+        } else if (actor.kind !== 'asteroid') {
+          coverBareMissionWrecks(); // wreck-kind set pieces (towers, pods, hulks)
+        }
+      }
+      continue;
+    }
+    if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
     const remaining = Math.max(0, (m.objectiveTarget || 1) - (m.objectiveProgress || 0));
     const adopted = (m.targetEntityIds || []).length;
-    const ghostPack = !!(m.params && m.params.ghostConvoy);
+    const ghostPack = !!params.ghostConvoy;
     const want = (m.type === 'patrol_clear' || ghostPack) ? remaining : Math.min(1, remaining);
     if (want - adopted <= 0) continue;
     const storyTarget = m.storyTarget && m.storyTarget.archetype ? m.storyTarget : null;
     if (storyTarget) {
       out.roster.push({
         archetype: storyTarget.archetype,
-        factionId: storyTarget.factionId || null,
+        factionId: enemyFactionIdFor(ENEMY_BY_ID.get(storyTarget.archetype), storyTarget.factionId),
       });
       continue;
     }

@@ -68,6 +68,15 @@
   <link rel="preload" as="worker" href="./vendor/addons/libs/basis/basis_transcoder.worker.js" />
   <link rel="preload" as="script" href="./vendor/addons/libs/basis/basis_transcoder.js" />
   <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/basis/basis_transcoder.wasm" />
+  <!-- Decode-path file workers spawn lazily per pool slot — the first runway decode otherwise
+       pays each worker script's fetch + eval inside the budget window. -->
+  <link rel="modulepreload" href="./src/render/glbPrepassWorker.js" />
+  <link rel="preload" as="worker" href="./src/render/renderPackageDigestWorker.js" />
+  <!-- uiRoot's menu-gating screens are dynamic imports by design; the menu push waits for
+       these three registrations, so their fetch stays off the title→menu critical path. -->
+  <link rel="modulepreload" href="./src/ui/screens/mainMenu.js" />
+  <link rel="modulepreload" href="./src/ui/screens/motionAsk.js" />
+  <link rel="modulepreload" href="./src/ui/screens/newGame.js" />
   <!-- The loading shell's own typefaces: without a preload the first painted frame pays a
        font-display:swap FOUT on the wordmark and readouts (~330KB, self-hosted). -->
   <link rel="preload" as="font" type="font/woff2" crossorigin href="./styles/fonts/bricolage-grotesque-var.woff2" />

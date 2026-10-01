@@ -978,7 +978,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
       }
       if (sliceBus && typeof sliceBus.drainPresentationTail === 'function') {
-        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET);
+        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(remainMs, 4));
       }
       _stepCapArgs.frameDt = 0;
       _stepCapArgs.fixedDt = LOOP_FIXED_DT;

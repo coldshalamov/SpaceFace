@@ -98,6 +98,7 @@ import {
   residentAuthoredRecordForFile,
   residentWholeShipStandInRecord,
   wholeShipVisualForEntity,
+  tradeHubOverlayFileForEntity,
   resolve19305CensusAEntityPackagedFile,
   resolvePlaceFileForEntity,
   authoredPayloadFileForEntity,
@@ -2724,7 +2725,36 @@ function warmPackagedEntityDecode(owner, entity, resolvedOverride = null, admiss
   if (!state || !renderer || !entity) return Promise.resolve();
   const files = owner._decodeRunwayPackagedFiles || (owner._decodeRunwayPackagedFiles = new Set());
   const resolved = resolvedOverride || packagedDecodeFileForEntity(entity);
+  // A trade hub's authored gate loads TWO place files — the hub base and its faction overlay
+  // (authoredUpgradeAssetRequests already decodes both at queue time). Without the overlay
+  // here the envelope/census warms cover only the base and the gate still waits on it.
+  let overlayResolved = null;
+  try {
+    const overlayFile = entity && tradeHubOverlayFileForEntity(entity);
+    if (overlayFile && (!resolved || resolved.file !== overlayFile)) {
+      overlayResolved = { file: overlayFile, slot: 'place' };
+    }
+  } catch (_) { overlayResolved = null; }
   if (!resolved || !resolved.file) return Promise.resolve();
+  if (overlayResolved) {
+    const overlayKey = `${overlayResolved.slot}::${overlayResolved.file}`;
+    if (!files.has(overlayKey)) {
+      files.add(overlayKey);
+      const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+        || 'assets/ships/release/parts/';
+      const overlaySectorId = (state.world && state.world.currentSectorId) || null;
+      Promise.resolve(loadAuthoredPart(`${releaseRoot}${overlayResolved.file}`, {
+        renderer,
+        slot: overlayResolved.slot,
+        optional: true,
+        residencyRole: 'packaged-decode-runway',
+        sectorId: overlaySectorId,
+        admissionVisible,
+      })).catch(() => {}).finally(() => {
+        files.delete(overlayKey);
+      });
+    }
+  }
   const key = `${resolved.slot}::${resolved.file}`;
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
@@ -7852,9 +7882,10 @@ export const render = {
         const bounds = this._entityViewCullBounds();
         const data = root.userData || {};
         const hlodRadius = data.hlod && Number(data.hlod.visualRadius);
+        const cull = entityVisualCullRadius(entity, root);
         const radius = Number.isFinite(hlodRadius) && hlodRadius > 0
-          ? hlodRadius
-          : entityVisualCullRadius(entity, root);
+          ? Math.max(hlodRadius, cull)
+          : cull;
         const liveCam = this.cam && this.cam.obj;
         let frustum = null;
         if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
@@ -15166,9 +15197,13 @@ export const render = {
       // Projected size must measure the drawn envelope, not the presence proxy: a station's
       // authored hull outgrows entityPresenceRadius and would resolve a coarser LOD while its
       // visible footprint is still large on screen.
+      // The attach-time hlod stamp is a declared class, not the drawn envelope: a hull that
+      // outgrows it (stations whose authored body exceeds dockRadius) would resolve a coarser
+      // LOD while its visible footprint is still large — union it with the measured cull radius.
+      const cullRadius = (entity && entityVisualCullRadius(entity, mesh)) || world.radii[slot] || 0;
       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
-        ? hlodVisualRadius
-        : (entity && entityVisualCullRadius(entity, mesh)) || world.radii[slot] || 0;
+        ? Math.max(hlodVisualRadius, cullRadius)
+        : cullRadius;
       const projectedPx = projectedWidthPx(
         mesh.position,
         lodRadius,

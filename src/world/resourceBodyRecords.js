@@ -419,13 +419,20 @@ export function upsertResourceBody(bag, record, opts = {}) {
     : record;
   const rec = normalizeResourceBodyRecord(merged);
   if (!rec) return null;
+  // Only a NEW key changes the sorted set — overwriting an existing recordId leaves both the
+  // key order and the find index valid (its entries resolve rec through byId at read time).
+  if (!Object.prototype.hasOwnProperty.call(b.byId, rec.recordId)) {
+    sortedBodyIdKeysCache.delete(b.byId);
+  }
   b.byId[rec.recordId] = rec;
-  sortedBodyIdKeysCache.delete(b.byId);
   enforceBound(b, opts);
   return rec;
 }
 
 function enforceBound(bag, opts = {}) {
+  // Cached key list: count is an upper bound on live records (falsy slots can't exist past
+  // normalize), so an under-bound early-out costs nothing when the bag is unchanged.
+  if (sortedBodyIdKeys(bag.byId).length <= MAX_RESOURCE_BODIES) return;
   let liveCount = 0;
   for (const id of Object.keys(bag.byId)) if (bag.byId[id]) liveCount++;
   if (liveCount <= MAX_RESOURCE_BODIES) return;
@@ -646,15 +653,47 @@ export function compactResourceBodyRecords(bag, opts = {}) {
 
 // Sorted-id iteration order in findResourceBodyForEntity is load-bearing (sorted-first match
 // wins), but the bag only changes through upsert/retire below, so the sorted key array is cached
-// per byId object and invalidated at those two mutation points.
+// per byId object and invalidated at those two mutation points. The same cache entry carries the
+// entity-lookup index — field entry rematerializes O(rocks) times against an unchanged bag, and
+// the per-rock linear scan is the largest brick in a mature save's chunked enter.
 const sortedBodyIdKeysCache = new WeakMap();
 function sortedBodyIdKeys(byId) {
-  let keys = sortedBodyIdKeysCache.get(byId);
-  if (!keys) {
-    keys = Object.keys(byId).sort();
-    sortedBodyIdKeysCache.set(byId, keys);
+  let entry = sortedBodyIdKeysCache.get(byId);
+  if (!entry || !entry.keys) {
+    entry = entry || {};
+    entry.keys = Object.keys(byId).sort();
+    sortedBodyIdKeysCache.set(byId, entry);
   }
-  return keys;
+  return entry.keys;
+}
+
+function resourceBodyFindIndex(byId) {
+  let entry = sortedBodyIdKeysCache.get(byId);
+  if (!entry || !entry.find) {
+    entry = entry || {};
+    const byIdentity = new Map();
+    const byTriple = new Map();
+    const ids = sortedBodyIdKeys(byId);
+    for (let order = 0; order < ids.length; order++) {
+      const rec = byId[ids[order]];
+      if (!rec) continue;
+      // Entries store the sorted position only — rec resolution reads byId[id] live so a
+      // same-recordId overwrite (which does not invalidate this cache) never returns a stale
+      // record object.
+      if (rec.identityKey != null && !byIdentity.has(rec.identityKey)) {
+        byIdentity.set(rec.identityKey, { id: ids[order], order });
+      }
+      // The scan's triple match is strict `===` against String(entityField) — a non-string rec
+      // field can never match, so it must not enter the index.
+      if (typeof rec.sectorId === 'string' && typeof rec.fieldId === 'string' && typeof rec.slotId === 'string') {
+        const triple = `${rec.sectorId}|${rec.fieldId}|${rec.slotId}`;
+        if (!byTriple.has(triple)) byTriple.set(triple, { id: ids[order], order });
+      }
+    }
+    entry.find = { byIdentity, byTriple };
+    sortedBodyIdKeysCache.set(byId, entry);
+  }
+  return entry.find;
 }
 
 export function findResourceBodyForEntity(bag, entity) {
@@ -664,16 +703,16 @@ export function findResourceBodyForEntity(bag, entity) {
   const slotId = d.activityObjectSlotId || d.asteroidSlotId || d.slotId;
   if (!bag || !bag.byId || !sectorId || !fieldId || slotId == null || slotId === '') return null;
   const key = resourceBodyIdentityKey(sectorId, fieldId, slotId, d.sourceSeed);
-  const ids = sortedBodyIdKeys(bag.byId);
-  for (const id of ids) {
-    const rec = bag.byId[id];
-    if (!rec) continue;
-    if (rec.identityKey === key) return rec;
-    if (rec.sectorId === String(sectorId) && rec.fieldId === String(fieldId) && rec.slotId === String(slotId)) {
-      return rec;
-    }
+  const index = resourceBodyFindIndex(bag.byId);
+  const identityHit = index.byIdentity.get(key);
+  const tripleHit = index.byTriple.get(`${String(sectorId)}|${String(fieldId)}|${String(slotId)}`);
+  // The linear scan returns the first sorted-id record matching EITHER predicate — when both
+  // kinds exist the earlier sorted position wins.
+  if (identityHit && tripleHit) {
+    return bag.byId[(identityHit.order <= tripleHit.order ? identityHit : tripleHit).id] || null;
   }
-  return null;
+  const hit = identityHit || tripleHit;
+  return hit ? bag.byId[hit.id] || null : null;
 }
 
 export function applyResourceBodyToEntity(entity, record) {

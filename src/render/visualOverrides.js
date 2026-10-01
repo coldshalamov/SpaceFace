@@ -324,6 +324,9 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   if (typeof options.standInFile === 'string' && options.standInFile) {
     data.boundaryResolvingStandInFile = options.standInFile;
   }
+  if (Number.isFinite(options.standInTargetLength) && options.standInTargetLength > 0) {
+    data.boundaryResolvingStandInLength = options.standInTargetLength;
+  }
   // Cover the marker's drawn extent for glass/cull classification: union it into an existing
   // stamp (the place envelope covers most stations) or seed one for un-stamped boundaries —
   // a payload capsule otherwise culls at collider presence while drawing a ~1.9x wider marker.
@@ -386,10 +389,13 @@ export function materializeBoundaryResolvingMarker(boundary) {
   return marker;
 }
 
-// Drawn length the seat's stand-in claims: the stamped pending envelope when present (stations
-// and place roots carry the authored envelope from the wrap census), else the marker's own
-// X extent the boundary already advertises.
+// Drawn length the seat's stand-in claims: the armed fit length when the caller knows it
+// (packaged props commit via fitPackagedGroup — the marker/zone radius is unrelated), else the
+// stamped pending envelope (stations and place roots carry the authored envelope from the wrap
+// census), else the marker's own X extent the boundary already advertises.
 function boundaryStandInTargetLength(data, entity) {
+  const armed = data && Number(data.boundaryResolvingStandInLength);
+  if (Number.isFinite(armed) && armed > 0) return armed;
   const stamped = data && data.visualBounds && Number(data.visualBounds.size && data.visualBounds.size[0]);
   if (Number.isFinite(stamped) && stamped > 0) return stamped;
   const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
@@ -729,7 +735,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // these props (distress payloads, rescue-exit beacons, the 47-A story props) are
     // disproportionately navigation targets, so arm the same resolving marker stations and
     // capsules carry: no substitute identity, detaches at commit.
-    installBoundaryResolvingMarker(root, entity, { standInFile: spec.file });
+    installBoundaryResolvingMarker(root, entity, {
+      standInFile: spec.file,
+      standInTargetLength: 2 * packagedFitRadius(entity, spec),
+    });
   } else {
     root.userData.authoredPendingFallbackDrawn = true;
   }

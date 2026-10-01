@@ -203,12 +203,19 @@ export function createBus() {
     presentationDrainClaimed = true;
   }
 
-  function drainPresentationTail(budget = PRESENTATION_LISTENER_DRAIN_BUDGET) {
+  function drainPresentationTail(budget = PRESENTATION_LISTENER_DRAIN_BUDGET, maxMs = Infinity) {
     const base = Math.max(1, Math.floor(Number(budget) || PRESENTATION_LISTENER_DRAIN_BUDGET));
     // Depth-scaled floor: a fixed 8/frame budget makes a kill clump or sector re-entry lag
     // linearly (~200ms at ~100 pending). Scaling with queued invocations caps per-emit lag at
     // ~4 frames while still spending only what the caller's frame-ms gate allows.
     const limit = Math.max(base, Math.ceil(pendingPresentationCount() / 4));
+    // Wall-clock bound alongside the count: a backlog scales the count limit into hundreds of
+    // listener invocations on one monotask, which is exactly the frame it must not run in.
+    // Checked after each listener so at least one always drains (order unchanged either way);
+    // undrained slices stay queued for the next frame's drain.
+    const deadline = Number.isFinite(maxMs) && maxMs > 0
+      ? performance.now() + maxMs
+      : Infinity;
     let ran = 0;
     while (ran < limit && presentationQueue.length) {
       const head = presentationQueue[0];
@@ -218,6 +225,7 @@ export function createBus() {
       try { fn(head.payload, head.event); }
       catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
       if (head.index >= head.fns.length) recyclePresentationSlice(presentationQueue.shift());
+      if (performance.now() >= deadline) break;
     }
     return ran;
   }
