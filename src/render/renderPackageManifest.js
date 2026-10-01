@@ -944,7 +944,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.salvage-cutter",
-    "expectedContentHash": "ddf8f730bfc415c0cfda56ae515add92ef48c84b6a29fbe8c131948dc6ebdc07",
+    "expectedContentHash": "d0ed7507b0d48c478d88562dead438eca67b6614f78455c589ed6b4522058720",
     "key": "salvage-cutter",
     "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
