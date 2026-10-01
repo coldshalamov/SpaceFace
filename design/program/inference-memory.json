@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "inf-wf01-rescue-craft",
-      "date": "2026-09-23",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "ambient rescue craft tracks distress and survivor pods, performs proximity claim and station delivery with receipts",
-      "fingerprint": "verb=rescue,subject=rescue_craft,sector=ambient,layer=simulation,tempo=tactical,domain=traffic",
-      "references": [],
-      "integration": "live",
-      "commit": "918a19f1d",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-wf05-concussion-s",
       "date": "2026-09-23",
       "wf": "WF-05",
@@ -1633,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "353cd9185",
+      "verification": "focused_green"
+    },
+    {
+      "id": "story-01-pull-headline-names-hole",
+      "date": "2026-10-01",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "endgame pull headline now names the victim faction even without an authored line",
+      "fingerprint": "verb=publish,subject=endgame-headline,sector=any,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "5d5473bec",
       "verification": "focused_green"
     }
   ],
