@@ -322,12 +322,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fab",
-    "expectedContentHash": "c480b8866ab9d2b198d0720e83be6f3db95faeeea05cc67b0df7d36a7549ff2e",
+    "expectedContentHash": "0c0700a12512ea675999293225e1a33b8caa182e7537c26ad49775d0ecda584b",
     "key": "fab",
     "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_FAB",
     "slot": "place",
-    "sourceSha256": "33f8a86daac49a699fdc02991d4cc4f2c323d748bd89834fc97edc631e7c258b",
+    "sourceSha256": "e572fe1074600bb94644d3f843ce4bf810b0d475e4d238a41f3bb384ba9bbfad",
     "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb"
   },
   {

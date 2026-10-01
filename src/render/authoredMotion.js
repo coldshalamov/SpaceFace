@@ -146,7 +146,9 @@ export function installAuthoredMotionBus(bus, { clock, entityForStationId } = {}
       try {
         if (payload.active === false) {
           controller.settle?.(1.2, now);
-        } else if (payload.active) {
+        } else if (payload.active && !controller.clipActive?.('workLoop')) {
+          // handleEvent restarts the loop at t=0 — a repeated active receipt while the
+          // loop is already running would teleport every pivot to the first key.
           controller.handleEvent?.('fab:workStart', payload, now);
         }
       } catch (error) {

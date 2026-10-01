@@ -629,8 +629,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_fab",
       "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb",
-      "releaseSha256": "33f8a86daac49a699fdc02991d4cc4f2c323d748bd89834fc97edc631e7c258b",
-      "releaseBytes": 1692100,
+      "releaseSha256": "e572fe1074600bb94644d3f843ce4bf810b0d475e4d238a41f3bb384ba9bbfad",
+      "releaseBytes": 1679584,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

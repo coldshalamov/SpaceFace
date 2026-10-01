@@ -460,21 +460,28 @@ def build_arms(s):
         arm_b = beam(s, f'ArmB{k}', tuple(elbow), tuple(tip), 0.7, material='paint2')
         joint = F.box(s, f'ArmJoint{k}', tuple(elbow), (1.2, 1.2, 1.2), material='paint.graphite', bevel=0.0)
         head = F.box(s, f'ArmHead{k}', tuple(tip), (1.4, 1.2, 1.0), material='gunmetal', bevel=0.0)
-        # ANI-13: arms 1 and 4 (opposite walls, both midships) are the working welders —
-        # shoulder/elbow/wrist pivots nest so each hinge rigidly carries the links below it.
-        if k in (1, 4):
+        # ANI-13: arm1 is the working welder — shoulder/elbow/wrist pivots nest so each
+        # hinge rigidly carries the links below it. Its weld point rides the wrist so the
+        # spark tracks the tool head through every pass.
+        if k == 1:
+            weld = F.box(s, 'WeldPoint1', (tip.x, tip.y - side * 0.55, tip.z),
+                         (0.55, 0.5, 0.55), material='glow_cyan', bevel=0.0)
             s.motion_group(f'arm{k}_shoulder', base, objects=[arm_a])
             s.motion_group(f'arm{k}_elbow', elbow, objects=[joint, arm_b],
                            parent=f'arm{k}_shoulder')
-            s.motion_group(f'arm{k}_wrist', tip, objects=[head],
+            s.motion_group(f'arm{k}_wrist', tip, objects=[head, weld],
                            parent=f'arm{k}_elbow')
-        heads.append((tip, side))
+        heads.append((tip, side, k))
     return heads
 
 
 def build_sparks(s, heads):
     sparks = []
-    for tip, side in heads:
+    for tip, side, k in heads:
+        if k == 1:
+            # arm1's weld point is a real part on the wrist rig (WeldPoint1) — static
+            # cluster sparks would stay behind when the head moves.
+            continue
         for j, (dx, dz) in enumerate(((0.0, 0.0), (0.5, 0.4), (-0.4, 0.5), (0.3, -0.5), (-0.6, -0.2))):
             sz = 0.8 if j == 0 else 0.35
             sparks.append(((tip.x + dx, tip.y - side * 0.95, tip.z + dz), (sz, sz, sz), 0.0))

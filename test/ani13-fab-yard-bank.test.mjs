@@ -44,13 +44,14 @@ test('ANI-13 fab bank validates and is sealed into the runtime table', () => {
   }
 });
 
-test('ANI-13 workLoop traces seam passes on both welder arms and returns to rest', () => {
+test('ANI-13 workLoop presses arm1 onto the seam and returns to rest', () => {
   const clip = bank.clips.find((c) => c.name === 'workLoop');
   assert.ok(clip, 'bank must declare a workLoop clip');
   assert.equal(clip.loop, true);
 
   const atRest = evaluateMotionClip(bank, clip, 0);
-  for (const group of ['arm1_shoulder', 'crane0_trolley', 'crane0_hoist']) {
+  for (const group of ['arm1_shoulder', 'arm1_elbow', 'arm1_wrist',
+                       'crane0_trolley', 'crane0_hoist']) {
     const delta = atRest.get(group) || {};
     const tilt = delta.rotation
       ? Math.abs(delta.rotation[0]) + Math.abs(delta.rotation[1]) + Math.abs(delta.rotation[2])
@@ -60,14 +61,32 @@ test('ANI-13 workLoop traces seam passes on both welder arms and returns to rest
       : 0;
     assert.ok(tilt < 1e-3 && slide < 1e-3, `${group} starts at rest`);
   }
+  // Spec: ONE welder works — arm4's channels must not exist in this bank.
+  assert.ok(!clip.channels.some((c) => c.group.startsWith('arm4_')),
+    'only arm1 animates (the yard\'s other arms stay parked)');
 
   // Mid-pass (t≈1.5): arm1's shoulder swings the tool head along the seam (blender rotZ →
   // stored glTF rotY quaternion delta, so the swing shows up in rotation[1]).
   const mid = evaluateMotionClip(bank, clip, 1.5).get('arm1_shoulder');
   assert.ok(Math.abs(mid.rotation[1]) > 0.02, 'arm1 shoulder swings mid-pass');
-  // arm4 is staggered half a cycle — at t=0 it is already mid-pass on its own timeline.
-  const arm4 = evaluateMotionClip(bank, clip, 4.5).get('arm4_shoulder');
-  assert.ok(Math.abs(arm4.rotation[1]) > 0.01, 'arm4 welds in its own phase');
+  // The elbow straightens ~-18deg local X to press the weld point onto the plate —
+  // glTF X rotation about that axis shows in rotation[0] (half-angle, |q| component).
+  const elbow = evaluateMotionClip(bank, clip, 1.5).get('arm1_elbow');
+  assert.ok(Math.abs(elbow.rotation[0]) > 0.1, 'arm1 elbow presses the tip to the hull');
+
+  // Loop-seam continuity: a looping clip must end where it begins — no pop at the wrap.
+  const seam0 = evaluateMotionClip(bank, clip, 0.001);
+  const seam9 = evaluateMotionClip(bank, clip, clip.durationS - 0.001);
+  for (const group of ['arm1_shoulder', 'arm1_elbow', 'arm1_wrist',
+                       'crane0_trolley', 'crane0_hoist']) {
+    const a = seam0.get(group) || {};
+    const b = seam9.get(group) || {};
+    const dr = ['rotation'].reduce((acc, k) => acc
+      + (a[k] && b[k] ? Math.max(...a[k].map((v, i) => Math.abs(v - b[k][i]))) : 0), 0);
+    const dt = a.translation && b.translation
+      ? Math.max(...a.translation.map((v, i) => Math.abs(v - b.translation[i]))) : 0;
+    assert.ok(dr < 1e-3 && dt < 1e-3, `${group} loop seam pops (rot ${dr}, trans ${dt})`);
+  }
 });
 
 test('ANI-14 crane0 traverses, pays the hoist ~2 m, holds, and returns', () => {
