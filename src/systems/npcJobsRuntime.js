@@ -73,7 +73,7 @@ import {
   berthServiceTier,
 } from '../data/heistFacilities.js';
 import { berthWorkerRecordId } from './heistFacilities.js';
-import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor, indexedWorldRecordEntity, isLivingWorldActor } from '../world/livingWorldViews.js';
+import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor, indexedWorldRecordEntity, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
 import {
@@ -2376,6 +2376,9 @@ export const npcJobsRuntime = {
           RECORD_KIND.CONVOY,
           `ceres:occupation:scavenger:${Math.round(entity.pos.x)}:${Math.round(entity.pos.z)}`,
         );
+        // Post-append stamp on a live indexed entity — register it like every other stamp
+        // site so the map/count answer O(1) and the miss-memos see the carrier.
+        registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
       }
       if (data.sectorId == null) data.sectorId = CERES_ACTIVITY_SECTOR_ID;
       if (data.homeSectorId == null) data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;

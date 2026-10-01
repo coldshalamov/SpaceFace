@@ -808,9 +808,17 @@ function fitPackagedGroup(group, targetRadius) {
   box.getCenter(PACKAGED_FIT_CENTER);
   box.getSize(PACKAGED_FIT_SIZE);
   const envelope = Math.max(PACKAGED_FIT_SIZE.x, PACKAGED_FIT_SIZE.y, PACKAGED_FIT_SIZE.z, 1e-6);
-  group.position.sub(PACKAGED_FIT_CENTER);
   const radius = Number(targetRadius);
-  if (Number.isFinite(radius) && radius > 0) group.scale.setScalar((radius * 2) / envelope);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  // The recenter must compose with the scale: a child at authored point v lands at
+  // position + s·v, so the measured center reaches origin only at position = -s·c.
+  // Subtracting the unscaled center seats the body (s-1)·c off its collision/nav seat.
+  group.position.set(
+    -PACKAGED_FIT_CENTER.x * fitScale,
+    -PACKAGED_FIT_CENTER.y * fitScale,
+    -PACKAGED_FIT_CENTER.z * fitScale,
+  );
 }
 
 function isPackagedBodyDescendant(object, root) {
@@ -892,7 +900,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       // Commit fits the record's longest axis to 2*packagedFitRadius — arm the same max-axis
       // basis or an X-slim record draws its stand-in oversized on the axis nobody measures.
       standInFitLength: fitLength,
-      // fitPackagedGroup recenters the measured box onto origin on all three axes — preview
+      // fitPackagedGroup recenters the measured box onto origin on all three axes (scaled) — preview
       // the same committed frame or the silhouette teleports at commit.
       standInRecenter: 'xyz',
     });

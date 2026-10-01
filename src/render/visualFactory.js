@@ -3669,9 +3669,12 @@ export function fitPackagedGroup(group, targetRadius) {
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const envelope = Math.max(size.x, size.y, size.z, 1e-6);
-  group.position.sub(center);
   const radius = Number(targetRadius);
-  if (Number.isFinite(radius) && radius > 0) group.scale.setScalar((radius * 2) / envelope);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  // The recenter composes with the scale: a child at authored point v lands at
+  // position + s·v, so the measured center reaches origin only at position = -s·c.
+  group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
 }
 
 function hideProceduralChildren(root) {

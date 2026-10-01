@@ -194,7 +194,10 @@ export function indexedWorldRecordEntity(state, worldRecordId) {
     for (const entity of entities.values()) {
       if (entity && entity.alive !== false && entity.data
         && entity.data.worldRecordId === worldRecordId) {
-        if (map) map.set(worldRecordId, entity);
+        // A bare map.set would diverge the bookkeeping — the reseed registers instead so the
+        // count, marker, and lane all advance as if append had stamped it (an unregistered
+        // carrier's marker is unset, so this is a real registration, not a no-op).
+        if (map) registerEntityWorldRecordId(index, entity);
         return entity;
       }
     }
@@ -205,7 +208,7 @@ export function indexedWorldRecordEntity(state, worldRecordId) {
     const entity = list[i];
     if (entity && entity.alive !== false && entity.data
       && entity.data.worldRecordId === worldRecordId) {
-      if (map) map.set(worldRecordId, entity);
+      if (map) registerEntityWorldRecordId(index, entity);
       return entity;
     }
   }

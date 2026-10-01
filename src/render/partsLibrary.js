@@ -3138,7 +3138,9 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   root.userData.authoredWorldScale = scale;
   root.userData.collisionEnvelopeRadius = targetRadius;
   root.userData.visualBounds = {
-    center: center.map((value) => (Number(value) || 0) * scale),
+    // Committed frame: the recenter above lands authored bounds-center at origin — stamping
+    // the authored center would mis-describe the drawn body to every cull/stamp consumer.
+    center: [0, 0, 0],
     size: boundsSize.map((value) => (Number(value) || 0) * scale),
   };
   // PQ-195.00: the slot follows the entity's authored body — `place` for the spindle, `pod`
@@ -3620,10 +3622,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       const union = placeVisualUnionWithOverlay(entity, size, center);
       const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
       if (stampedBounds) {
-        boundary.userData.visualBounds = {
-          center: stampedBounds.center.map((value) => (Number(value) || 0) * pendingScale),
-          size: stampedBounds.size.map((value) => (Number(value) || 0) * pendingScale),
-        };
+        stampPendingCommittedVisualBounds(boundary, stampedBounds, center, pendingScale);
       }
     }
   }
@@ -3970,27 +3969,31 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
   if (Array.isArray(size) && Number.isFinite(scale) && scale > 0) {
     const union = placeVisualUnionWithOverlay(entity, size, row.bounds && row.bounds.center);
     const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
-    // centerAuthoredPlaceRoot recenters the record's authored bounds-center onto X,Z origin
-    // at commit (the measured stamp above then re-verifies in committed frame) — the pending
-    // stamp must describe that same frame or the classified envelope sits s·b_c off the
-    // silhouette it covers and shifts again at commit.
-    const recenterCenter = row.bounds && row.bounds.center;
-    boundary.userData.visualBounds = {
-      center: [
-        (Number(stampedBounds.center && stampedBounds.center[0]) || 0) * scale
-          - (Number(recenterCenter && recenterCenter[0]) || 0) * scale,
-        (Number(stampedBounds.center && stampedBounds.center[1]) || 0) * scale,
-        (Number(stampedBounds.center && stampedBounds.center[2]) || 0) * scale
-          - (Number(recenterCenter && recenterCenter[2]) || 0) * scale,
-      ],
-      size: stampedBounds.size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
-    };
-    // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
-    // marker union swells the stamp, so stand-in sizing claims the authored basis.
-    const committedX = Number(stampedBounds.size[0]) * scale;
-    if (Number.isFinite(committedX) && committedX > 0) {
-      boundary.userData.boundaryResolvingCommittedX = committedX;
-    }
+    stampPendingCommittedVisualBounds(boundary, stampedBounds, row.bounds && row.bounds.center, scale);
+  }
+}
+
+// Pending-place envelope stamp, committed frame. centerAuthoredPlaceRoot recenters the
+// record's authored bounds-center onto X,Z origin at commit (the measured compose stamp then
+// re-verifies) — every pending stamp must describe that same frame or the classified envelope
+// sits s·b_c off the silhouette it covers and shifts again at commit.
+function stampPendingCommittedVisualBounds(boundary, stampedBounds, authoredCenter, scale) {
+  const recenterCenter = authoredCenter;
+  boundary.userData.visualBounds = {
+    center: [
+      (Number(stampedBounds.center && stampedBounds.center[0]) || 0) * scale
+        - (Number(recenterCenter && recenterCenter[0]) || 0) * scale,
+      (Number(stampedBounds.center && stampedBounds.center[1]) || 0) * scale,
+      (Number(stampedBounds.center && stampedBounds.center[2]) || 0) * scale
+        - (Number(recenterCenter && recenterCenter[2]) || 0) * scale,
+    ],
+    size: stampedBounds.size.map((value) => Math.max(0, (Number(value) || 0) * scale)),
+  };
+  // The scaled stamp's X extent IS the committed drawn X — record it before the resolving
+  // marker union swells the stamp, so stand-in sizing claims the authored basis.
+  const committedX = Number(stampedBounds.size[0]) * scale;
+  if (Number.isFinite(committedX) && committedX > 0) {
+    boundary.userData.boundaryResolvingCommittedX = committedX;
   }
 }
 

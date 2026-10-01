@@ -162,7 +162,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
@@ -1670,7 +1670,12 @@ export const world = {
       if (!captured) return;
       if (captured.kind === RECORD_KIND.CONVOY && !bag.byId[captured.recordId]) {
         if (countAliveConvoyRecords() >= MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR) {
-          if (e.data && e.data.worldRecordId === captured.recordId) delete e.data.worldRecordId;
+          if (e.data && e.data.worldRecordId === captured.recordId) {
+            delete e.data.worldRecordId;
+            // Unregistered clear — decrement the counted lane now so the refused record id
+            // can't leave a stale positive entry (or a stale miss-memo negative) behind.
+            registerEntityWorldRecordId(state && state.entityIndex, e);
+          }
           // The hull's job is keyed on that record id and re-enters the world ONLY through a
           // persisted record — npcJobsRuntime restores every job VIRTUAL and re-links it by
           // worldRecordId — so a refused record leaves a job nothing will ever bind. Release it
@@ -1884,6 +1889,10 @@ export const world = {
     const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
+    // bindEntityToRecord stamps data.worldRecordId post-append — register it so the index's
+    // byWorldRecordId/count answer O(1) for this rematerialized durable immediately instead
+    // of waiting on a fallback-walk reseed (which can't bump the lane or the count).
+    registerEntityWorldRecordId(state && state.entityIndex, ent);
     this._decorateOrrinWitnessRecorder(ent, advanced);
     this._stampHomeSector(ent, advanced.homeSectorId || sectorId);
     // Restore pose after stamp (global — never re-add sector origin). Catch-up is simTime-closed-form.

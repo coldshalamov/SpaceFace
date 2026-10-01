@@ -4,7 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
-import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -634,6 +634,9 @@ export const factionPresence = {
       // World-record rematerialization intentionally builds a generic shell. Restore the canonical
       // Ironback presentation/loadout/AI fields, while never touching its saved pose or vitals.
       rehydrateCeresTender(entity, canonicalSpec, context);
+      // stampCeresTenderIdentity stamps data.worldRecordId post-append on this live indexed
+      // entity — register it or the new id stays a miss-memo'd negative / walk-only carrier.
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
     } else if (typeof this.helpers.spawnEntity === 'function') {
       entity = this.helpers.spawnEntity(canonicalSpec);
       spawned = !!entity;
