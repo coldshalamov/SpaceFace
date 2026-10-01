@@ -164,7 +164,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
   // tools, and salvage-pickup yields must never jab a parked head.
   const CUTTER_VERBS = new Set(['extract', 'cut']);
   const isCutterVerb = (payload) => CUTTER_VERBS.has(payload && payload.verb);
-  const deployed = (controller) => controller.clipActive?.('deploy') || controller.clipActive?.('bite');
+  const deployed = (controller) => controller.clipActive?.('deploy') || controller.clipActive?.('bite')
+    || controllerJawOpen(controller);
   const onMiningStart = (payload) => {
     if (!isCutterVerb(payload)) return;
     dispatch('mining:start', payload.minerId, payload, (c) => !deployed(c));
@@ -179,7 +180,6 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     if (!isCutterVerb(payload)) return;
     dispatch('beam:denied', payload.minerId, payload, deployed);
   };
-<<<<<<< HEAD
   // ANI-03: the massline winch pays out when its owner attaches a tether or deploys a snare,
   // reacts on snap catch, winds on reel pumps, and slack-releases on release/denial. Events
   // that name the winch owner route by actorId/sourceId; player-side telemetry events carry
@@ -339,13 +339,25 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
       dispatch('wreck:rupture', pieceId, payload, () => true);
     }
   };
+  // ANI-09: the salvor's jaw works the wrecks it visits — npcExtraction carries the cutter's own
+  // entity id. One cycle plays to completion (repeated extraction ticks must not restart it).
+  const jawBusy = (controller) => controller.clipActive?.('jawCycle')
+    || controller.clipActive?.('jawOpen') || controller.clipActive?.('jawBite');
+  const onNpcExtraction = (payload) => {
+    dispatch('salvage:npcExtraction', payload.salvorId, payload, (c) => !jawBusy(c));
+  };
+  // A player-flown cutter gets the same jaw verbs through the shared mining events; cutComplete
+  // resolves on the cutting ship only while a jaw is actually open.
+  const onCutComplete = (payload) => {
+    dispatch('salvage:cutComplete', payload && payload.minerId, payload, (c) => controllerJawOpen(c));
+  };
+  const controllerJawOpen = (c) => c.clipActive?.('jawOpen') || c.clipActive?.('jawBite');
   const unsubs = [
     bus.on('scan:pulse', onScanPulse),
     bus.on('mining:start', onMiningStart),
     bus.on('mining:yield', onMiningYield),
     bus.on('mining:stop', onMiningStop),
     bus.on('beam:denied', onBeamDenied),
-<<<<<<< HEAD
     bus.on('tether:attached', onTetherAttached),
     bus.on('massline:snareDeployed', onSnareDeployed),
     bus.on('tether:snapCatch', onSnapCatch),
@@ -362,6 +374,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId 
     bus.on('combat:damage', onCombatDamage),
     bus.on('service:completed', onRepairCompleted),
     bus.on('hull:fractured', onHullFractured),
+    bus.on('salvage:npcExtraction', onNpcExtraction),
+    bus.on('salvage:cutComplete', onCutComplete),
   ];
   return function uninstallAuthoredMotionBus() {
     for (const unsub of unsubs) {

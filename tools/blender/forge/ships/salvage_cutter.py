@@ -10,6 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_09  # noqa: E402
 
 SHIP_ID = 'salvage_cutter'
 COLORS = {
@@ -153,10 +156,25 @@ def build():
     F.light(s, 'NavStarboard', (6.8, -3.47, 0.1), 'glow_green', size=0.2)
     F.light(s, 'Beacon', (-4.1, 0.0, 3.27), 'glow_amber', size=0.26)
     F.box(s, 'BeaconBar', (-4.1, 0.0, 3.12), (0.3, 2 * CY, 0.14), material='gunmetal', bevel=0.01)
+
+    # ANI-09: jaws+blades+cutter edges+ram lugs ride each shoulder pin; rods alone ride the ram
+    # pivots (JawPivot pins stay welded — the hinge itself never moves).
+    _o = {o.name: o for o in s.objects}
+    s.ani09_bank = ANI_09.build(s, {
+        'jaw_port': [_o['Jaw'], _o['Blade'], _o['CutterEdge'], _o['JawRamLug']],
+        'jaw_star': [_o['Jaw_M'], _o['Blade_M'], _o['CutterEdge_M'], _o['JawRamLug_M']],
+        'ram_port': [_o['JawRamRod']],
+        'ram_star': [_o['JawRamRod_M']],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
     import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani09_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_09.motion_bank.MOTIONS_DIR,
+                                                   'salvage-cutter.motion.json'))

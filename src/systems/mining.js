@@ -445,7 +445,7 @@ export const mining = {
         salvagePool: pool,
         payloadType: action ? action.id : 'cut_panel'
       }, this.helpers);
-      this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
+      this.bus.emit('salvage:cutComplete', { minerId: player.id, targetId: target.id, payloadId: payload.id });
     }
   },
 
