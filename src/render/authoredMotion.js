@@ -878,12 +878,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('service:started', onServiceStarted),
     bus.on('service:completed', onServiceDone),
     bus.on('service:aborted', onServiceAborted),
-<<<<<<< HEAD
     bus.on('combat:damage', onCombatDamage, { presentation: true }),
-=======
-    bus.on('combat:damage', onCombatDamage),
     bus.on('hullBurst:hit', onHullBurstHit),
->>>>>>> origin/master
     bus.on('service:completed', onRepairCompleted),
     bus.on('hull:fractured', onHullFractured),
     bus.on('salvage:npcExtraction', onNpcExtraction),
