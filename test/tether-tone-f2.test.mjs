@@ -71,6 +71,63 @@ test('the tone ducks under weapons and quiets — never silences — under reduc
     `${VISION}: reduced motion quiets the tone — it is information, not ornament`);
 });
 
+test('mute/unmute during a taut line keeps the one voice and never replays the latch', () => {
+  // NXI-206 — muting clears audible gain at the master bus (pinned by
+  // audio-parameter-churn's snap-to-0 / re-arm contract); it must NOT destroy the desired
+  // loop state, and unmuting must resume the ongoing tone WITHOUT replaying the
+  // tether:attached latch — the taut edge cue fires once for the whole cycle.
+  const gainWrites = [];
+  let tautCues = 0;
+  const osc = { frequency: { setTargetAtTime() {} } };
+  const hum = { gain: { setTargetAtTime: (g) => gainWrites.push(g) }, gainValue: 0 };
+  const host = Object.create(audio);
+  host.state = {
+    player: { tether: { active: true, phase: 'slack', load: 0.02, strain: 0 } },
+    settings: { audio: { muted: false }, video: { motionReduce: false } },
+  };
+  host.rt = {
+    _paused: false,
+    ctx: { currentTime: 0 },
+    sidechainDuck: 1,
+    tetherOsc: osc,
+    tetherHum: hum,
+    tetherOverloadOsc: { frequency: { setTargetAtTime() {} } },
+    tetherOverloadGain: { gain: { setTargetAtTime() {} }, gainValue: 0 },
+    _tetherSpoolOsc: { frequency: { setTargetAtTime() {} } },
+    _tetherSpoolGain: { gain: { setTargetAtTime() {} }, gainValue: 0 },
+    _tetherWasTaut: false,
+  };
+  host._playAccessibilityCue = (id) => { if (id === 'taut') tautCues += 1; };
+
+  // Slack line: attached but not yet taut — no latch edge yet.
+  host._updateTetherHum();
+  assert.equal(tautCues, 0, 'a slack line does not fire the taut edge');
+
+  // The line loads: the one-and-only taut latch edge.
+  host.state.player.tether = { active: true, phase: 'loaded', load: 0.6, strain: 0.4 };
+  host._updateTetherHum();
+  assert.equal(tautCues, 1, 'engaging the line fires the latch edge exactly once');
+  const openGain = gainWrites.at(-1);
+  assert.ok(openGain > TETHER_TONE_SILENCE, 'the taut line is audible while unmuted');
+
+  // Mute: the hum keeps tracking the live tether — the loop's desired state survives.
+  host.state.settings.audio.muted = true;
+  host.state.player.tether.strain = 0.9;
+  host._updateTetherHum();
+  assert.equal(host.rt.tetherOsc, osc, 'mute must not tear down the ongoing voice');
+  const mutedTracked = gainWrites.at(-1);
+  const mutedTone = resolveTetherTone({ tether: host.state.player.tether, motionReduce: false, duck: 1 });
+  assert.equal(mutedTracked, mutedTone.gain,
+    'the voice still follows strain while muted — gain clears at the bus, not in loop state');
+
+  // Unmute: the same voice keeps driving; no second taut edge, no latch replay.
+  host.state.settings.audio.muted = false;
+  host._updateTetherHum();
+  assert.equal(host.rt.tetherOsc, osc, 'unmute must not restart the voice');
+  assert.equal(host.rt.tetherHum, hum, 'unmute resumes the same ongoing tone');
+  assert.equal(tautCues, 1, 'the taut latch edge is state-driven — mute/unmute never replays it');
+});
+
 test('_updateTetherHum drives the resolver onto the live voice', () => {
   // Wiring proof: the hum writes the resolver's gain and frequency, and a release writes the
   // silence floor on the one-tick ramp — not the old three-tick decay.
