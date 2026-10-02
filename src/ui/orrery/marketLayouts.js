@@ -136,6 +136,11 @@ ${M} .sx-mkt-search { ${PLAIN} position:static !important; display:block !import
   font-size:13px !important; color:rgb(248 244 234) !important; caret-color:var(--dp-hand, #f2b950); }
 ${M} .sx-mkt-search::placeholder { color:rgb(${BONE} / .48); }
 ${M} .sx-mkt-search:focus { outline:none !important; }
+/* The register column IS the scroller (the frame marks it .dp-frame__scroll), but the legacy
+   observatory sheet still reaches in through the shared .sx-observatory class and re-declares it
+   overflow:hidden, so a market with more goods than the column fits silently destroyed its bottom
+   rows — nothing could scroll to them. Take the scroll back. */
+${M} .sx-mkt__list { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain; }
 ${M} .sx-mkt-browser__rail { ${PLAIN} }
 ${M} .sx-mkt-table { ${PLAIN} border-collapse:separate !important; border-spacing:0 !important; table-layout:fixed !important; width:100% !important; }
 ${M} .sx-mkt-table thead th:nth-child(2), ${M} .sx-mkt-row td:nth-child(2) { width:86px; }
