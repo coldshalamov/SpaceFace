@@ -33,6 +33,11 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+// TEACH-06: FIELD_ESCAPES is the authored "you are never trapped without a verb" table, and until
+// now nothing in src/ read it. The player had a named escape for every power and no way to learn it.
+import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
+import { fieldContainsPoint } from '../core/fields/fieldKernel.js';
+import { activeFieldSnapshot } from './fields.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
@@ -1211,6 +1216,7 @@ export const onboarding = {
       if (this._accum < 0.2) return;
       this._accum = 0;
       this._noteMissingThreeUses();
+      this._teachFieldEscape();
       if (!ob.active || ob.finished) return;
             this._tryAdvanceBeat();
       this._resolveProximityDone();
@@ -2724,6 +2730,33 @@ export const onboarding = {
     const stroking = missingThreeStrokeActive(this.state.input);
     if (stroking && !three.lastStroke) this._noteVerbUse('stroke');
     three.lastStroke = stroking;
+  },
+
+  // TEACH-06 — a hostile field that owns the player's hull earns ONE named-escape lesson per
+  // power: the authored FIELD_ESCAPES sentence, through the same once-only hint path as the
+  // combat/dock/gate teachings. Player-owned fields never teach — your own well is not a trap —
+  // and one field teaches at a time, so overlapping powers queue nothing. Runs outside the
+  // staged rail so post-tutorial pilots learn it too; _showHint holds while the rail owns voice.
+  _teachFieldEscape() {
+    const st = this.state;
+    const player = st && st.entities && typeof st.entities.get === 'function'
+      ? st.entities.get(st.playerId) : null;
+    if (!player || !player.pos) return;
+    const snapshot = activeFieldSnapshot(st);
+    for (let i = 0; i < snapshot.length; i++) {
+      const field = snapshot[i];
+      if (!field || field.isPlayer === true || field.tag === 'player') continue;
+      if (field.ownerId === st.playerId || field.sourceId === st.playerId) continue;
+      // The kernel records a skim sheet by its volume kind; the escape table keys the power.
+      const key = field.kind === FIELD_KINDS.SHEET ? 'skim' : (field.kind || field.defKey);
+      const escape = fieldEscapeOf(key);
+      if (!escape) continue;
+      if (!fieldContainsPoint(field, player.pos.x, player.pos.z)) continue;
+      this._showHint(`fieldEscape:${escape.id}`, escape.sentence, {
+        entityId: field.sourceId != null ? field.sourceId : field.ownerId,
+      });
+      break;
+    }
   },
 
   _noteVerbUse(verb) {
