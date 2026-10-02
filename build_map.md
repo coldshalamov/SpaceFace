@@ -393,10 +393,10 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
 | picture | free | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
-| camera | free | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
+| camera | devin-demo5 | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
 | boot | free | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
-| audio | free | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
-| save | free | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
+| audio | devin-demo5 | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
+| save | devin-demo5 | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
@@ -411,9 +411,9 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
 | world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
 | story | grok-15 | story | 192, 215, 216, 253 |
-| input | free | gamepad, input, settings behavior | 196, 237, 260, 262 |
+| input | devin-demo5 | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
-| physics | free | physics clocks, manifest | 258 |
+| physics | glm-machine-258 | physics clocks, manifest | 258 |
 | accept | free | judge work that is already built | 60, 63, 64 |
 | imports | free | doc imports only, after code seams | 30 |
 | art | free | one visible asset defect; skip if the graphics lane is live | 223 |
