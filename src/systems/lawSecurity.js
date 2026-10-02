@@ -95,6 +95,25 @@ function publishSanctuaryQuiet(state, latched) {
   rt.sanctuaryQuietLatched = !!latched;
 }
 
+/** Bench A/B: production default ON. Quiet latch skips job-interactable cone census
+ * when no customs scanners and no jettisoned cargo pods remain. Soft-GPU fps not claimed. */
+let CUSTOMS_CONES_EMPTY_QUIET_LATCH = true;
+export function setCustomsConesEmptyQuietLatchForBench(enabled) {
+  CUSTOMS_CONES_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getCustomsConesEmptyQuietLatchForBench() {
+  return CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishCustomsConesQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
+  rt.customsConesQuietLatched = !!latched;
+}
+
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 
 /** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
@@ -198,6 +217,7 @@ export const lawSecurity = {
     this._coneScratchScanners = [];
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
+    this._customsConesQuiet = null;
     this._nextInspectionTick = 0;
     this._inspectionRebindPasses = 0;
     ensureState(this.state);
@@ -2923,13 +2943,59 @@ export const lawSecurity = {
   _updateCustomsScanCones(dt, state) {
     const step = Number(dt);
     if (!(step > 0) || !state) return;
+    // Quiet Ceres / open flight: no customs scanners and no jettisoned pods still paid a
+    // full forEachJobInteractable census (shipLike+stations+wrecks+payloads+pickups) calling
+    // customsScanConeOf every tick. Latch when both bags stay empty; wake on membership,
+    // a live scanner/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Different angle from
+    // held env-machinery far / hazards far / sampleProjectileEvidence surface-cadence.
+    if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const quiet = this._customsConesQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishCustomsConesQuiet(state, true);
+        return;
+      }
+    } else if (this._customsConesQuiet) {
+      this._customsConesQuiet = null;
+    }
     // Empty-payloads early-out: pods are only ever `type === 'payload'` entities, so a live
     // index with an empty payloads bucket proves pods.length would end 0 and the join below
     // returns without writes. Same gate as _catchPodsInNets; fixtures without the index keep
     // the full job-interactable census.
     const index = state.entityIndex;
     if (index && index.__spacefaceEntityIndexV1 && index.ready === true
-      && Array.isArray(index.payloads) && index.payloads.length === 0) return;
+      && Array.isArray(index.payloads) && index.payloads.length === 0) {
+      // Empty payloads proves pods.length would end 0 — the quiet outcome then hangs on
+      // whether any shipLike carries a scan cone (same test the census applies). Arm or
+      // clear the latch here so the early-skip above keeps meaning over empty worlds.
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        let scannerFound = false;
+        const ships = index.shipLike;
+        if (Array.isArray(ships)) {
+          for (let i = 0; i < ships.length; i += 1) {
+            if (customsScanConeOf(ships[i])) { scannerFound = true; break; }
+          }
+        }
+        if (!scannerFound) {
+          const membership = entityIndexVersion(state);
+          if (membership != null) {
+            this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+            publishCustomsConesQuiet(state, true);
+          } else {
+            this._customsConesQuiet = null;
+            publishCustomsConesQuiet(state, false);
+          }
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
+      return;
+    }
     const pods = this._coneScratchPods;
     const occluders = this._coneScratchOccluders;
     const scanners = this._coneScratchScanners;
@@ -2942,7 +3008,21 @@ export const lawSecurity = {
       if (customsScanConeOf(entity)) scanners.push(entity);
       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
     });
-    if (scanners.length === 0 || pods.length === 0) return;
+    if (scanners.length === 0 || pods.length === 0) {
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        if (membership != null && scanners.length === 0 && pods.length === 0) {
+          this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+          publishCustomsConesQuiet(state, true);
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
+      return;
+    }
+    this._customsConesQuiet = null;
+    publishCustomsConesQuiet(state, false);
 
     const dwell = this._podConeDwell || (this._podConeDwell = new Map());
     for (let s = 0; s < scanners.length; s++) {
