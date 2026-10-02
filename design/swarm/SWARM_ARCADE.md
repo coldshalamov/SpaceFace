@@ -5,6 +5,10 @@
 shop, hulls for sale, arena events — shipped). This document is the next layer: the meta-game, the
 juice, the curated ladder, the front door, and the crossover into Adventure.
 
+**Content expansion: [`SWARM_EXPANSION.md`](./SWARM_EXPANSION.md)** — new enemy families, bosses,
+biomes, the run as a journey, a tower-defense build layer, an arcade arsenal, pilots, the show's
+fiction, modes, co-op, and what all of it gives Adventure.
+
 ## 1. Owner direction (2026-10-02)
 
 Condensed from the owner's words:
@@ -31,6 +35,7 @@ These were law in code, docs and tests. For Swarm they are superseded by §1. Ad
 | The purse "dies with the run"; the armory reads "RUN CREDITS · NOT CAMPAIGN CREDITS" | `src/data/swarmStakes.js` header, `src/ui/screens/crucibleDraft.js` | Run earnings bank into a persistent Swarm currency (§3). |
 | "No Adventure-wallet leakage" | `design/planbank/.../domains/05-swarm.md` domain contract | Unlocks (hulls, blueprints, cosmetics) cross into Adventure. Credits still do not (§11 decision 3). |
 | Feedback restraint: 5 voice lines per wave, at most 3 callouts, "a line per kill would be noise", chain toasts only at 10/25/50/100/200 | `survivalAnnounce.js` `MAX_LINES_PER_WAVE`, `stuntCallout.js` `MAX_CALLOUT_LINES`, `swarmChain.js` `SWARM_CHAIN_MILESTONES` | Swarm gets its own arcade feedback layer (§5) with its own, much larger budget. The one-voice arbiter keeps owning *danger* lines, so warnings still cut through the celebration. |
+| "Refuse: permanent stat grind that makes later runs numerically superior"; "Swarm purchases never grant free Adventure gear, research or currency" | `design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md` §3.1 and the 2026-09-10 arcade revision | Superseded for Swarm by §1. Run purchases still stay in the run; *earned* Swarm unlocks may cross (§8). |
 | Pressure is concurrency, never hit points | `src/data/swarmMode.js` rule 1 | Still the default curve. But a player with permanent upgrades needs a deeper ceiling, so Threat tiers and elite affixes (§6.4) may change enemy toughness and behaviour. |
 
 Kept without change: determinism (same seed → same waves), single-writer ownership, one game path,
