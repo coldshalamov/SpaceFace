@@ -49,7 +49,10 @@ import {
 } from '../../src/world/presentationSources.js';
 import { farLedgerScanRadius, tableLookAtOrigin } from '../../src/render/tabletopPolicy.js';
 import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
-import { digestIds } from './simReadModel.mjs';
+import {
+  createDomainDiffer,
+  digestIds,
+} from './simReadModel.mjs';
 import {
   finite,
   hashSnapshot,
@@ -275,6 +278,83 @@ function collectProbeBlock(state) {
   return probe;
 }
 
+// ---------------------------------------------------------------------------
+// Stage 4 — domain-mirror channel (read model v2).
+//
+// The worker diffs mirrored state at leaf-path granularity (createDomainDiffer):
+// hot leaf paths re-sign every pass, cold leaf paths (>8 KB last signature)
+// every 30 passes, and digest drift ships the canonical clone as
+// {segs, value} in domainUpdates. domainProbe carries the sha256 digest set of
+// every leaf path on completed ticks so the runner can prove facade parity
+// without the multi-MB signature bodies crossing the wire.
+// ---------------------------------------------------------------------------
+
+function diffDomains(state, seq) {
+  const r = host.domainDiffer.diff(state, seq);
+  host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
+  if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;
+  host.domainUpdatesTotal += r.updates.length;
+  host.domainShipBytesTotal += r.shipBytes;
+  host.domainSignedBytesTotal += r.signedBytes;
+  if (r.shipBytes > host.domainShipBytesMax) host.domainShipBytesMax = r.shipBytes;
+  for (const o of r.oversize) {
+    if (host.domainOversize.length < 32) host.domainOversize.push(o);
+  }
+  for (const u of r.updates) {
+    const p = u.segs.join('.');
+    const rec = host.domainShipPerPath.get(p) || { ships: 0, bytes: 0 };
+    rec.ships++;
+    rec.bytes += u.del ? 0 : canonicalShipBytes(u);
+    host.domainShipPerPath.set(p, rec);
+  }
+  return r;
+}
+
+// Canonical byte size of a shipped update — the signature length of the clone's
+// source, recorded on the update by the differ.
+function canonicalShipBytes(u) {
+  return u.bytes || 0;
+}
+
+// Domain-mirror probe (stage-4 gate exercise): scripted mid-run mutations of
+// mirrored domains — new-key creation, nested add, delete, scalar flip —
+// driven by --probe domains. Mutates sim state so gate-A hash parity is not
+// expected; the signature diff is what it exists to exercise.
+function runDomainProbeMutations(state, msgTick) {
+  if (msgTick === 60) {
+    state.cursor = { col: 3, row: 5, active: true };
+    if (state.missions && typeof state.missions === 'object') {
+      state.missions.spikeDomainProbe = { marker: 'domain-probe', tick: 60 };
+    }
+  } else if (msgTick === 120) {
+    const world = state.world || (state.world = {});
+    const pings = world.scanPings || (world.scanPings = {});
+    const list = pings.sector_probe || (pings.sector_probe = []);
+    list.push({ id: 'domain_probe_ping', x: 7, z: -3, t: 120 });
+  } else if (msgTick === 180) {
+    host.domainProbeSavedMode = state.mode;
+    state.mode = 'paused';
+  } else if (msgTick === 181 && host.domainProbeSavedMode != null) {
+    state.mode = host.domainProbeSavedMode;
+    host.domainProbeSavedMode = null;
+  } else if (msgTick === 300) {
+    if (state.missions && typeof state.missions === 'object') {
+      delete state.missions.spikeDomainProbe;
+    }
+    if (state.meta && typeof state.meta === 'object') {
+      state.meta.domainProbeNote = 'mutated-at-300';
+    }
+  } else if (msgTick === 650) {
+    // Post save/reload (tick 600): fresh-loaded state must still ship updates.
+    if (state.meta && typeof state.meta === 'object') {
+      state.meta.domainProbePostReload = state.tick;
+    }
+    if (state.run && typeof state.run === 'object') {
+      state.run.domainProbeFlag = 'post-reload';
+    }
+  }
+}
+
 const BRIDGE_EVENTS = [
   'entity:spawned', 'entity:killed', 'combat:fire', 'combat:damage', 'projectile:hit',
   'economy:tick', 'tether:attached', 'tether:reel', 'tether:broken',
@@ -319,6 +399,17 @@ const host = {
   auxSeen: new Set(),
   auxUpsertsTotal: 0,
   auxRemovalsTotal: 0,
+  // stage-4 domain-mirror channel
+  domainDiffer: createDomainDiffer(),
+  domainDiffSeq: 0,              // monotone diff-pass counter (cold cadence)
+  domainUpdatesTotal: 0,
+  domainShipBytesTotal: 0,       // canonical-signature bytes shipped (per-tick sum)
+  domainSignedBytesTotal: 0,     // canonical bytes walked per pass (diff cost)
+  domainShipBytesMax: 0,
+  domainDiffNsTotal: 0n,
+  domainDiffMsMax: 0,
+  domainShipPerPath: new Map(),  // leaf path -> {ships, bytes} (report)
+  domainOversize: [],            // keys whose canonical value crossed the ship cap
   // stage-1 command channel: per-directive attribution + input tape recording
   lastInputSeq: 0,
   lastInputWallMs: 0,
@@ -536,6 +627,7 @@ async function handleInit(msg) {
   host.committedJournalSequence = journal.getWriteSequence();
   const initAux = diffAuxTables(state);
   const initCollectProbe = collectProbeBlock(state);
+  const initDomains = diffDomains(state, host.domainDiffSeq++);
   host.ready = true;
   return {
     journalSequence: host.committedJournalSequence,
@@ -543,6 +635,10 @@ async function handleInit(msg) {
     auxUpserts: initAux.upserts,
     auxRemovals: initAux.removals,
     collectProbe: initCollectProbe,
+    domainUpdates: initDomains.updates,
+    domainProbe: initDomains.probe,
+    domainShipBytes: initDomains.shipBytes,
+    domainDiffMs: initDomains.diffMs,
     scenarioContractSha256: scenarioContract.sha256,
   };
 }
@@ -631,6 +727,9 @@ async function handleTick(msg) {
       host.auxProbeDressing = null;
     }
   }
+  if (msg.domains) {
+    runDomainProbeMutations(state, msg.tick);
+  }
   if (msg.churn && Number.isSafeInteger(msg.churn.spawn) && msg.churn.spawn > 0) {
     if (!host.churnEntities) host.churnEntities = [];
     for (const prev of host.churnEntities) {
@@ -694,6 +793,7 @@ async function handleTick(msg) {
   const aux = diffAuxTables(state);
   host.auxUpsertsTotal += aux.upserts.length;
   host.auxRemovalsTotal += aux.removals.length;
+  const domains = diffDomains(state, host.domainDiffSeq++);
   return {
     tick: msg.tick,
     arrivalNs,
@@ -701,6 +801,10 @@ async function handleTick(msg) {
     auxUpserts: aux.upserts,
     auxRemovals: aux.removals,
     collectProbe: completedTick ? collectProbeBlock(state) : null,
+    domainUpdates: domains.updates,
+    domainProbe: completedTick ? domains.probe : null,
+    domainShipBytes: domains.shipBytes,
+    domainDiffMs: domains.diffMs,
     journalStart,
     journalEnd,
     journalFullRebuild: fullRebuild !== null,
@@ -753,6 +857,17 @@ async function handleFinalize() {
     auxRowsShipped: host.auxShipped.size,
     auxUpsertsTotal: host.auxUpsertsTotal,
     auxRemovalsTotal: host.auxRemovalsTotal,
+    domainLeafPaths: [...host.domainDiffer.paths.values()].filter((n) => n.leaf).length,
+    domainUpdatesTotal: host.domainUpdatesTotal,
+    domainShipBytesTotal: host.domainShipBytesTotal,
+    domainSignedBytesTotal: host.domainSignedBytesTotal,
+    domainShipBytesMax: host.domainShipBytesMax,
+    domainOversize: host.domainOversize,
+    domainShipPerPath: [...host.domainShipPerPath.entries()]
+      .sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 40)
+      .map(([path, s]) => ({ path, ships: s.ships, bytes: s.bytes })),
+    avgDomainDiffMs: host.tickCount > 0 ? Number(host.domainDiffNsTotal) / 1e6 / host.tickCount : 0,
+    maxDomainDiffMs: host.domainDiffMsMax,
     avgWorkMs: host.tickCount > 0 ? Number(host.totalWorkNs) / 1e6 / host.tickCount : 0,
     avgPackMs: host.tickCount > 0 ? Number(host.totalPackNs) / 1e6 / host.tickCount : 0,
     workerRssBytes: mem.rss,

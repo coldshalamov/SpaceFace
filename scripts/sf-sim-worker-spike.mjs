@@ -19,8 +19,8 @@
 // Usage:
 //   node scripts/sf-sim-worker-spike.mjs [--ticks 720] [--seed 47]
 //     [--inputs test/47a.inputs.json] [--reload-at 600] [--repeat 1]
-//     [--pipeline N] [--journal-capacity N] [--ack-stall] [--probe pause]
-//     [--expected-hash <sha256>] [--json]
+//     [--pipeline N] [--journal-capacity N] [--ack-stall]
+//     [--probe pause|aux|churn|domains] [--expected-hash <sha256>] [--json]
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -37,10 +37,14 @@ import {
   applyAuxRemovals,
   applyAuxUpserts,
   applyDestroyIds,
+  applyDomainPathUpdate,
   applySpawnInfos,
+  createDomainProbeChecker,
   createReadModel,
   digestIds,
+  DOMAIN_MIRROR_KEYS,
   readModelCollectIds,
+  sameDomainContainerKind,
 } from './lib/simReadModel.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -287,6 +291,7 @@ async function runBody(client, frames) {
   const timing = {
     packMs: [], wireMs: [], consumeMs: [], transportMs: [],
     workMs: [], directiveWireMs: [], rttMs: [], transportTicks: [],
+    domainDiffMs: [], domainShipBytes: [],
   };
   let eventsReceived = 0;
   // Stage-2 bridge parity: per-type receipts vs the worker's emitted counts.
@@ -302,6 +307,58 @@ async function runBody(client, frames) {
   let collectMismatches = 0;
   let collectProbes = 0;
   const collectMismatchSamples = [];
+  // Stage-4 domain mirrors: per-tick signature parity + mutate-in-place
+  // identity accounting. domainProbe = worker's canonical signature of every
+  // mirrored key; the runner re-signs its facades and compares the full set.
+  const domainMissingKeys = [];
+  const domainMissingPaths = [];
+  const domainExtraPaths = [];
+  const domainMismatchSamples = [];
+  const domainProbeChecker = createDomainProbeChecker(readModel.domains);
+  let domainProbes = 0;
+  let domainSweeps = 0;
+  let domainPathChecks = 0;
+  let domainMismatches = 0;
+  let domainIdentityChecks = 0;
+  let domainIdentityBreaks = 0;
+
+  const domainTouched = new Set();
+  function applyDomainUpdatesTracked(updates) {
+    if (!Array.isArray(updates)) return;
+    for (const u of updates) {
+      if (!u || !Array.isArray(u.segs) || u.segs.length === 0) continue;
+      const root = u.segs[0];
+      const prevRoot = readModel.domains.get(root);
+      domainTouched.clear();
+      applyDomainPathUpdate(readModel.domains, u, domainTouched);
+      // Root facade identity: multi-segment updates always mutate the root in
+      // place; single-segment updates must keep identity whenever prev and
+      // shipped value are the same container kind.
+      const mustKeep = prevRoot !== null && typeof prevRoot === 'object'
+        && (u.segs.length > 1
+          || (u.v !== null && typeof u.v === 'object' && sameDomainContainerKind(prevRoot, u.v)));
+      if (mustKeep) {
+        domainIdentityChecks++;
+        if (readModel.domains.get(root) !== prevRoot) domainIdentityBreaks++;
+      }
+    }
+  }
+
+  function compareDomainProbe(probe, tickLabel) {
+    if (!probe) return;
+    domainProbes++;
+    const res = domainProbeChecker.consume(probe);
+    if (res.sweep) domainSweeps++;
+    domainPathChecks += res.checks;
+    for (const ev of res.events) {
+      domainMismatches++;
+      if (ev.kind === 'missing-facade-path') domainMissingPaths.push(ev.path);
+      if (ev.kind === 'extra-facade-path') domainExtraPaths.push(ev.path);
+      if (domainMismatchSamples.length < 12) {
+        domainMismatchSamples.push({ tick: tickLabel, ...ev });
+      }
+    }
+  }
 
   const init = await client.send({
     kind: 'init',
@@ -331,6 +388,14 @@ async function runBody(client, frames) {
     assert.equal(r.fallback, false, `init rebuild consume fell back: ${r.error}`);
     ackedJournalEnd = init.initRebuild.end;
   }
+
+  // Stage-4 init coverage: every mirrored key must land a facade from the
+  // init batch, then the init probe signs the full set like a completed tick.
+  applyDomainUpdatesTracked(init.domainUpdates);
+  for (const key of DOMAIN_MIRROR_KEYS) {
+    if (!readModel.domains.has(key)) domainMissingKeys.push(key);
+  }
+  compareDomainProbe(init.domainProbe, 'init');
 
   let frameIndex = 0;
   let currentInput = frames[0] ? frames[0].input : {};
@@ -368,6 +433,7 @@ async function runBody(client, frames) {
       ackJournalEnd: OPT.ackStall ? 0 : ackedJournalEnd,
       churn: OPT.probe === 'churn' && tick >= 10 && tick < 210 ? { spawn: 6 } : null,
       aux: OPT.probe === 'aux',
+      domains: OPT.probe === 'domains',
     });
     tickMeta.set(p, { sendNs, tick });
     pendingTicks.push(p);
@@ -394,6 +460,9 @@ async function runBody(client, frames) {
           }
         }
       }
+      // Stage-4: domain updates apply on every reply — a steps:0 directive can
+      // still carry command-driven domain mutations the mirror must not lose.
+      applyDomainUpdatesTracked(item.domainUpdates);
       if (item.completedTick == null) {
         // steps:0 directive — commands delivered, no completedTick published.
         continue;
@@ -459,6 +528,10 @@ async function runBody(client, frames) {
         }
       }
 
+      // Gate F2 — domain-mirror parity: every mirrored key present in
+      // readModel.domains, facade signatures equal to the worker's live set.
+      compareDomainProbe(frame.domainProbe, meta.tick);
+
       const wireNs = recvNs - BigInt(frame.sendNs);
       const directiveWireNs = BigInt(frame.arrivalNs) - BigInt(meta.sendNs);
       const transportNs = wireNs + BigInt(Math.round(frame.packMs * 1e6)) + consumeNs;
@@ -470,6 +543,8 @@ async function runBody(client, frames) {
       timing.directiveWireMs.push(Number(directiveWireNs) / 1e6);
       timing.rttMs.push((Number(recvNs) - meta.sendNs) / 1e6);
       timing.transportTicks.push({ tick: meta.tick, ms: Number(transportNs) / 1e6 });
+      timing.domainDiffMs.push(frame.domainDiffMs || 0);
+      timing.domainShipBytes.push(frame.domainShipBytes || 0);
     }
   }
 
@@ -508,6 +583,7 @@ async function runBody(client, frames) {
       assert.equal(paused.kind, 'tickDone');
       assert.equal(paused.completedTick, null, 'steps:0 must not publish a completedTick');
       assert.equal(paused.stateTick, tick, 'steps:0 must not advance state.tick');
+      applyDomainUpdatesTracked(paused.domainUpdates);
       if (Array.isArray(paused.rpcAcks)) observedRpcAcks.push(...paused.rpcAcks);
       if (Array.isArray(paused.settingsAcks)) observedSettingsAcks.push(...paused.settingsAcks);
       postTick(tick, 1);
@@ -553,6 +629,25 @@ async function runBody(client, frames) {
     auxRowsShipped: fin.auxRowsShipped,
     auxUpsertsTotal: fin.auxUpsertsTotal,
     auxRemovalsTotal: fin.auxRemovalsTotal,
+    domainProbes,
+    domainSweeps,
+    domainPathChecks,
+    domainMismatches,
+    domainMismatchSamples,
+    domainMissingKeys,
+    domainMissingPaths,
+    domainExtraPaths,
+    domainIdentityChecks,
+    domainIdentityBreaks,
+    domainLeafPaths: fin.domainLeafPaths,
+    domainUpdatesTotal: fin.domainUpdatesTotal,
+    domainShipBytesTotal: fin.domainShipBytesTotal,
+    domainSignedBytesTotal: fin.domainSignedBytesTotal,
+    domainShipBytesMax: fin.domainShipBytesMax,
+    domainShipPerPath: fin.domainShipPerPath,
+    domainOversize: fin.domainOversize,
+    avgDomainDiffMs: fin.avgDomainDiffMs,
+    maxDomainDiffMs: fin.maxDomainDiffMs,
     avgWorkMs: fin.avgWorkMs,
     avgPackMs: fin.avgPackMs,
     workerHeapUsedBytes: fin.workerHeapUsedBytes,
@@ -598,7 +693,7 @@ async function main() {
 
   // Gate (a): hash parity — mutating probes (aux) still must be deterministic
   // across repeats but are not expected to match the golden hash.
-  const mutatingProbe = OPT.probe === 'aux' || OPT.probe === 'churn';
+  const mutatingProbe = OPT.probe === 'aux' || OPT.probe === 'churn' || OPT.probe === 'domains';
   const gateA = {
     pass: allHashEqual && (mutatingProbe || hashMatch) && results[0].stateTick === OPT.ticks,
     sha256: results[0].sha256,
@@ -703,12 +798,52 @@ async function main() {
     auxRemovalsTotal: run.auxRemovalsTotal,
   };
 
+  // GATE F2 — stage-4 domain mirrors (read model v2): every mirrored key
+  // present in readModel.domains, facade canonical signatures equal to the
+  // worker's live set on every completed tick, facade identity preserved
+  // across same-kind updates (mutate-in-place contract).
+  const domainDiffStats = stats(results.flatMap((r) => r.timing.domainDiffMs));
+  const domainShipStats = stats(results.flatMap((r) => r.timing.domainShipBytes));
+  const gateF2 = {
+    pass: run.domainMismatches === 0 && run.domainProbes > 0
+      && run.domainMissingKeys.length === 0 && run.domainIdentityBreaks === 0,
+    probes: run.domainProbes,
+    sweeps: run.domainSweeps,
+    pathChecks: run.domainPathChecks,
+    mismatches: run.domainMismatches,
+    samples: run.domainMismatchSamples,
+    keysMirrored: DOMAIN_MIRROR_KEYS.length,
+    leafPaths: run.domainLeafPaths,
+    missingKeys: run.domainMissingKeys,
+    missingPaths: run.domainMissingPaths,
+    extraPaths: run.domainExtraPaths,
+    identityChecks: run.domainIdentityChecks,
+    identityBreaks: run.domainIdentityBreaks,
+    updatesTotal: run.domainUpdatesTotal,
+    shipPerPath: run.domainShipPerPath,
+    shipBytes: {
+      total: run.domainShipBytesTotal,
+      signedTotal: run.domainSignedBytesTotal,
+      meanPerTick: round(domainShipStats.mean, 1),
+      p95PerTick: round(domainShipStats.p95, 1),
+      maxPerTick: round(domainShipStats.max, 1),
+    },
+    oversizeKeys: run.domainOversize,
+    domainDiffMs: {
+      mean: round(domainDiffStats.mean),
+      p95: round(domainDiffStats.p95),
+      max: round(domainDiffStats.max),
+      workerAvg: round(run.avgDomainDiffMs),
+      workerMax: round(run.maxDomainDiffMs),
+    },
+  };
+
   const summary = {
     schema: 'spaceface.s1WorkerSpike.v1',
     mode: 'whole-sim-in-worker',
     options: OPT,
-    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF },
-    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass ? 'ALL PASS' : 'GATE FAILURE',
+    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF, f2_domainMirrors: gateF2 },
+    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass && gateF2.pass ? 'ALL PASS' : 'GATE FAILURE',
     run: {
       entityCount: run.entityCount,
       droppedEventCount: run.droppedEventCount,
@@ -743,6 +878,14 @@ async function main() {
     console.log(`GATE F read model  : ${gateF.pass ? 'PASS' : 'FAIL'}  probes=${gateF.probes} mismatches=${gateF.mismatches} auxRows=${gateF.auxRowsShipped} upserts=${gateF.auxUpsertsTotal} removals=${gateF.auxRemovalsTotal}`);
     if (gateF.samples && gateF.samples.length) {
       console.log(`                     samples=${JSON.stringify(gateF.samples.slice(0, 4))}`);
+    }
+    console.log(`GATE F2 domains    : ${gateF2.pass ? 'PASS' : 'FAIL'}  probes=${gateF2.probes} sweeps=${gateF2.sweeps} pathChecks=${gateF2.pathChecks} mismatches=${gateF2.mismatches} roots=${gateF2.keysMirrored} leafPaths=${gateF2.leafPaths} missing=${gateF2.missingKeys.length}+${gateF2.missingPaths.length} extra=${gateF2.extraPaths.length}`);
+    console.log(`                     identity checks=${gateF2.identityChecks} breaks=${gateF2.identityBreaks} updates=${gateF2.updatesTotal} ship mean=${gateF2.shipBytes.meanPerTick}B p95=${gateF2.shipBytes.p95PerTick}B max=${gateF2.shipBytes.maxPerTick}B diff mean=${gateF2.domainDiffMs.mean}ms p95=${gateF2.domainDiffMs.p95}ms max=${gateF2.domainDiffMs.max}ms`);
+    if (gateF2.samples && gateF2.samples.length) {
+      console.log(`                     samples=${JSON.stringify(gateF2.samples.slice(0, 4))}`);
+    }
+    if (gateF2.oversizeKeys && gateF2.oversizeKeys.length) {
+      console.log(`                     oversize(>${256}KB)=${JSON.stringify(gateF2.oversizeKeys.slice(0, 8))}`);
     }
     console.log(`run: entities=${run.entityCount} events=${run.eventsReceived} dropped=${run.droppedEventCount} avgWorkMs=${round(run.avgWorkMs)} workerHeap=${round((run.workerHeapUsedBytes || 0) / 1e6, 1)}MB`);
     console.log(`rebuild reasons: ${JSON.stringify(run.rebuildReasons)}`);
