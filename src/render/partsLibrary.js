@@ -7736,7 +7736,11 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
     }
     plan = currentPlan;
   }
-  throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
+  const missing = missingAuthoredPreloadEntries(library, plan);
+  throw new Error(
+    `Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}`
+    + (missing.length ? `: missing ${missing.join(', ')}` : '.'),
+  );
 }
 
 function admitEntityPlan(renderer, options, library, plan) {
@@ -8011,9 +8015,36 @@ function libraryCacheKey(partRoot, options = {}, bootstrapPlan = bootstrapPlanFo
   return `${partRoot}#${scope}#${planKey}`;
 }
 
+// Diagnostic for the AUTHORED_LIBRARY_UNAVAILABLE gate: name which plan entries never became
+// usable instead of failing closed with a bare "incomplete". A record whose URL is in the slot
+// but whose residency is not 'resident' was decoded then dropped (owner cancellation, residency
+// churn); a slot/URL with no record at all never arrived (decode failure or a plan/map drift).
+export function missingAuthoredPreloadEntries(library, plan, limit = 12) {
+  const missing = [];
+  for (const [slot, files] of Object.entries(plan || {})) {
+    const records = library instanceof Map ? library.get(slot) : null;
+    for (const file of files || []) {
+      if (Array.isArray(records) && records.some((record) => recordUrlEndsWith(record, file))) continue;
+      const arrived = Array.isArray(records) && records.some(
+        (record) => record && typeof record.url === 'string' && normalizePartUrl(record.url).endsWith(file),
+      );
+      missing.push(`${slot}:${file}${arrived ? ' (not resident)' : ''}`);
+      if (missing.length >= limit) {
+        missing.push('…');
+        return missing;
+      }
+    }
+  }
+  return missing;
+}
+
 function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
-  if (!libraryHasPreloadPlan(library, plan)) {
-    throw new Error(`Authored ${scope || 'canonical'} library is incomplete for its required preload plan.`);
+  const missing = missingAuthoredPreloadEntries(library, plan);
+  if (missing.length) {
+    throw new Error(
+      `Authored ${scope || 'canonical'} library is incomplete for its required preload plan: `
+      + `missing ${missing.join(', ')}`,
+    );
   }
   return library;
 }
