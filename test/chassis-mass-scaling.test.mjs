@@ -4,7 +4,7 @@
 // (REF_LENGTH 22 m, time ~ length^0.5, angle ~ length^-0.35); this test pins it against the shipped
 // banks and the hull sizes in the model census, so a re-bake that drops it fails here.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -77,4 +77,21 @@ test('the heaviest hull is slower and gentler than the lightest, and a reference
   assert.ok(maxAngleDeg(heavy.idle) < maxAngleDeg(light.idle) * 0.7, 'and breathes through clearly smaller angles');
   const medium = hulls.find((h) => Math.abs(h.length - REF_LENGTH) < 1.2);
   if (medium) assert.ok(Math.abs(medium.idle.durationS - 8) < 0.4, `a ${medium.length.toFixed(1)} m hull keeps the reference 8 s cycle`);
+});
+
+test('every shipped bank clip sits on the 60 fps grid and closes inside its own duration', () => {
+  // A mass-scaled duration (7.409 s) once shipped a last key at 7.4167 s; the runtime validator
+  // rejected the whole bank at bind, so 32 hulls silently lost every authored motion.
+  const dir = resolve(ROOT, 'assets/ships/motions');
+  for (const file of readdirSync(dir).filter((f) => f.endsWith('.motion.json'))) {
+    const bank = JSON.parse(readFileSync(resolve(dir, file), 'utf8'));
+    for (const clip of bank.clips) {
+      const frames = clip.durationS * 60;
+      assert.ok(Math.abs(frames - Math.round(frames)) < 1e-6, `${file} ${clip.name}: ${clip.durationS}s is off the 60 fps grid`);
+      for (const ch of clip.channels) {
+        const last = Math.max(...ch.times);
+        assert.ok(last <= clip.durationS + 1e-6, `${file} ${clip.name}: key at ${last}s past the ${clip.durationS}s clip`);
+      }
+    }
+  }
 });

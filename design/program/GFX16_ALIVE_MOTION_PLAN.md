@@ -186,7 +186,23 @@ PROCESS LESSON: never make full git worktrees (assets make each ~6 GB; the disk 
   (p50 65 ms) are software-render numbers, not meaningful against the GPU baseline. The first headless attempt had aborted with "authored ship asset library did not preload"
   (transient). Run it again on the owner's GPU for real timings.
 - ARTIFACT HYGIENE: the Blender GUI connector now works when Blender is open and responsive; headless remains the production path. Disk: never full worktrees (see memory).
-OPEN / NEXT: Kestrel + Bastion-style detail layers (Kestrel needs its 5 motion rigs honoured and `check:kestrel:wholeship` re-pinned: master is already outside its range);
-`hull_flinch`/`line_quiver`/kestrel `deploy` judge snaps and 17 no-settle clips; trade-hub life (needs the flight-static carve-out); gate spin-up for NPC traffic would need
-traffic to use gates (a sim change); debris variety (the four code-authored fragment families already read at 6 px/WU; only more shape variants would help); RCS plume;
-a real-GPU look at plume ramps, nav-lamp blink and station motion (all verified by numbers and tests, not yet by eye in flight).
+### 6c. Evening of 2026-10-02 (all on origin/master)
+- DIE LAUGHING IS BACK ON THE HITCH. The Forge rebuild had dropped the hero marking (a blank ivory plaque stood in for it). `tools/blender/forge/stencil.py` builds hand-cut
+  lettering as real geometry in an existing finish (node `LOD0_Armor_ivory`, no new draw, no texture): bridged counters, chipped corners/edges, overspray, seeded,
+  conformal by ray-cast; ~620 tris, LOD0 only. It sits on the aft PORT armour course and is turned to read upright at the spawn heading: the in-game chase camera sits north
+  of the ship looking south, so at heading 0 the nose points screen-LEFT with port at the bottom (verified in the real renderer with `fleet-look`; the Blender top view alone had
+  it upside down). `test/kestrel-hero-marking.test.mjs` pins recipe, orientation and the shipped body so a rebuild cannot drop it again.
+- KESTREL DETAIL LAYER (LOD0 36.4k -> 39.2k tris, 39 draws, `check-kestrel-wholeship-runtime` re-pinned): armour bolts on the starboard courses and hull bands, access hatches with
+  coamings, cable trays along both sponson roots, seam lines (`tools/blender/forge/skin.py` seats everything on the real skin by ray-cast); canopy frame arches and coamings ride the
+  ANI-17 canopy hinge group so the lid carries its frame when a repair job opens it; the dorsal beacon is the lamp bus slow-flash channel (draw-neutral).
+- BUG FOUND AND FIXED (mine, from the chassis mass-scaling slice): mass-scaled clip durations were off the 60 fps grid (7.409 s) while the bake closed channels on the grid
+  (7.4167 s), so `validateMotionBank` threw at bind and 32 hull banks silently had NO authored motion. `Clip.duration_s` is now quantized in the bake, the shipped banks patched,
+  and `test/chassis-mass-scaling.test.mjs` pins every clip to the grid. Lesson: after any bank/bake change run the whole motion test family, not just the new test.
+- JUDGE CORRECTED: settle is END-vs-REST (channels are rest-relative), overlay clips are exempt: no-settle 17 -> 0. Kestrel `deploy` presses retimed (kink 0.69 -> 0.28) and the hit
+  flinch thinned to under the runtime's 15 keys/s line (snaps 3 -> 1). Judge now: 4 flags, all intentional: whips scanring_sweep / grindCycle / yard-tug release (fast spins), snap line_quiver (a rattle).
+- RCS JETS (helper, `23ca7fa6f`): attitude jets are born from a stub with a short press ramp and spent from the root instead of popping (thruster-continuity covers all 7 families).
+  NOT changed: the NPC RCS flash sprites (`vfx._onShipRcsPulse`): the sprite pool has no attack channel and a valve-opening puff of 0.1-0.18 s is a pulse by nature.
+- DOCK RANGE (helper, `3a0e0442c`): a `dock:range` retrigger mid-sweep no longer snaps the station dish back toward rest (busy gate on the clip, real-bank tests).
+STILL OPEN (decided, not forgotten): trade-hub life stays baked flat: it is the biggest body, ~1350 WU from spawn, and `flight-static-v3` exists to keep the opening frame sacred; a carve-out
+needs an on-GPU frame measurement first. Animated-station draw cost (+9-14 draws each) and a real-GPU look at plume ramps, nav-lamp blink and station motion still want one owner flight;
+gate spin-up for NPC traffic needs traffic that uses gates (sim); debris variety (only more shape variants would help); more faction hulls only when a sector needs them.

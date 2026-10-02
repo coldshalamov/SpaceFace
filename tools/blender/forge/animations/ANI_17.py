@@ -28,8 +28,11 @@ OPEN_RAD = 0.66   # ~38deg up
 
 
 def register(ship, parts):
-    """parts: {'canopy': obj} — the glass loft. Hinge sits on its aft edge, sill height."""
-    ship.motion_group(RIG_ID, pivot=(2.6, 0.0, 1.62), objects=[parts['canopy']])
+    """parts: {'canopy': obj | [obj, ...]} — the glass loft plus any frame hardware that rides it.
+    Hinge sits on its aft edge, sill height."""
+    riders = parts['canopy']
+    ship.motion_group(RIG_ID, pivot=(2.6, 0.0, 1.62),
+                      objects=list(riders) if isinstance(riders, (list, tuple)) else [riders])
 
 
 def author(bank):

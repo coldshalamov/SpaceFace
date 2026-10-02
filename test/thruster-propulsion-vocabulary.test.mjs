@@ -358,33 +358,45 @@ test('an RCS pulse throws a packet: the head leaves while the collar shuts', () 
   }
 });
 
-test('an RCS jet holds its reach and does not retract into its nozzle', () => {
+test('an RCS jet holds its front and does not retract into its nozzle', () => {
   for (const pack of PACKS) {
     const rcs = new RcsImpulseSystem(THREE, pack.rcs);
     rcs.fire([0, 0, 0], [1, 0, 0], 1);
-    let peakLength = 0;
-    let lengthAtLowEnvelope = 0;
+    let peakTip = 0;
+    let tipAtLowEnvelope = 0;
     let lowEnvelope = 1;
     let sawPulseAdvance = false;
+    let rootLeft = 0;
     let lastPulse = -1;
+    let pressed = false;
     for (let f = 0; f < 60; f++) {
       const result = rcs.update(1 / 60, A11Y_OFF);
       if (result.activeSlotCount === 0) break;
       const slot = rcs.pool.slots[0];
-      if (slot.length > peakLength) peakLength = slot.length;
-      if (slot.envelope < lowEnvelope && slot.envelope > 0.05) {
+      // The jet's FRONT is where the gas got to: body length plus however far the ROOT has left the
+      // nozzle (slice 1b: a released jet is spent from the root side, so its length falls while the
+      // front holds; the old assertion read the body length and so pinned the retire-at-full-length cut).
+      const root = -(slot.offset[0] * slot.axis[0] + slot.offset[1] * slot.axis[1] + slot.offset[2] * slot.axis[2]);
+      const tip = slot.length + root;
+      if (tip > peakTip) peakTip = tip;
+      if (root > rootLeft) rootLeft = root;
+      // Only the release counts: the press now rises through low envelopes too (smooth attack).
+      if (slot.envelope >= 0.999) pressed = true;
+      if (pressed && slot.envelope < lowEnvelope && slot.envelope > 0.05) {
         lowEnvelope = slot.envelope;
-        lengthAtLowEnvelope = slot.length;
+        tipAtLowEnvelope = tip;
       }
       if (slot.pulse > lastPulse) sawPulseAdvance = true;
       lastPulse = slot.pulse;
       assert.ok(slot.pulse >= 0 && slot.pulse <= 1, 'the pulse clock stays normalized');
     }
     assert.ok(sawPulseAdvance, `${pack.profileId}: the pulse clock must advance`);
-    assert.ok(peakLength > 0, `${pack.profileId}: the impulse must reach`);
-    assert.ok(lengthAtLowEnvelope >= peakLength * 0.98,
+    assert.ok(peakTip > 0, `${pack.profileId}: the impulse must reach`);
+    assert.ok(tipAtLowEnvelope >= peakTip * 0.98,
       `${pack.profileId}: reach must be HELD as pressure drops, not pulled back in `
-      + `(${lengthAtLowEnvelope} vs peak ${peakLength})`);
+      + `(${tipAtLowEnvelope} vs peak ${peakTip})`);
+    assert.ok(rootLeft > peakTip * 0.3,
+      `${pack.profileId}: the spent jet is shed from the root side (root left ${rootLeft} of ${peakTip})`);
     rcs.dispose();
   }
 });

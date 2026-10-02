@@ -3,7 +3,11 @@
  * Preallocated slots; fire/update never allocate after init.
  */
 
-import { sampleImpulseEnvelope } from './throttleResponse.js';
+import {
+  resolveImpulseTiming,
+  sampleImpulseBody,
+  sampleImpulseEnvelope,
+} from './throttleResponse.js';
 import {
   compileAccessibilityTables,
   createPresentationScratch,
@@ -35,6 +39,8 @@ import {
 } from '../../dynamicBufferRanges.js';
 
 const RCS_QUALITY_TIERS = ['high', 'medium', 'low'];
+/** A control jet shorter than this (WU, under a pixel at the chase camera) is spent: it is not drawn. */
+const RCS_NIL_LENGTH_WU = 0.004;
 const RCS_DYNAMIC_ATTRIBUTE_KEYS = ['instOffset', 'instAxis', 'instParams', 'instDynamics', 'instColor'];
 
 function hexToRgb(hex, out) {
@@ -68,13 +74,11 @@ export class RcsImpulsePool {
       lowQuality: false,
       qualityTier: 'high',
     };
-    this._timing = {
-      attack: recipe.timing.attack,
-      sustain: recipe.timing.sustain,
-      release: recipe.timing.release,
-    };
-    this._totalLife =
-      (recipe.timing.attack || 0) + (recipe.timing.sustain || 0) + (recipe.timing.release || 0);
+    // ONE timing record (recipe timing + the press ramp) for life, envelope, body and event light, so
+    // nothing can retire an impulse while another reader is still drawing it.
+    this._timing = resolveImpulseTiming(recipe.timing, { attack: 0, sustain: 0, release: 0, total: 0 });
+    this._totalLife = this._timing.total;
+    this._body = { born: 0, taper: 1 };
 
     // Compiled layers
     this._layerRole = new Array(this.maxLayers);
@@ -246,43 +250,61 @@ export class RcsImpulsePool {
     for (let i = 0; i < this.maxImpulses; i++) {
       const imp = this.impulses[i];
       if (!imp.alive) continue;
+      const body = sampleImpulseBody(imp.age, this._timing, this._body);
       let env = sampleImpulseEnvelope(imp.age, this._timing);
       if (flags.reducedMotion && this.recipe.accessibility?.reducedMotion?.holdMs) {
         const hold = this.recipe.accessibility.reducedMotion.holdMs / 1000;
-        if (imp.age < hold) env = Math.max(env, 0.64);
+        // The readability hold still arrives with the body (born), it does not switch on at 0.64.
+        if (imp.age < hold) env = Math.max(env, 0.64 * body.born);
       }
       env *= imp.strength;
-      if (env <= 0.001) continue;
+      // Retire on the BODY, not on the envelope: the envelope reaches ~0 while the card is still a long
+      // jet (and strength scales it away earlier still, so a weak trim puff was cut sooner than a strong
+      // one). A jet is hidden only when its length is already nil.
+      if (!(imp.strength > 0.001)) continue;
 
       for (let r = 0; r < this._presentation.roleCount; r++) {
         const role = this._presentation.roles[r];
         const li = this._findLayerIndex(role);
         if (li < 0 || !this._layerEnabled[li]) continue;
         if (this.activeSlotCount >= this.capacity) break;
+        const motionProfile = this.recipe.accessibility?.reducedMotion;
+        const reducedLength = flags.reducedMotion ? (motionProfile?.roleLengthScale?.[role] ?? 1) : 1;
+        const reducedWidth = flags.reducedMotion ? (motionProfile?.roleWidthScale?.[role] ?? 1) : 1;
+        // THE PACKET, born and spent. A control jet throws a packet of gas and the packet keeps going;
+        // the valve shuts behind it. So:
+        //   press    the FRONT runs out of the nozzle (reach * born, born = the envelope's own attack) —
+        //            the first tick is a stub, never the 105%-of-reach jet it used to be;
+        //   hold     reach is reached and held (the launch term below only shapes the arrival);
+        //   release  the FRONT stays where the gas got to and the ROOT leaves the nozzle down the jet
+        //            (taper), exactly as plumeSlug does for the main drive. The jet is spent from the
+        //            root side and is hidden only when its length is nil. It never retracts into its
+        //            nozzle, which is the shape of a short trail of where the ship had been, not a shove.
+        // Length is the lifecycle channel because it is the only one that reaches nothing: the fragment
+        // stage draws 0.55 + 0.9 * envelope, so the envelope alone leaves ~26% brightness at zero.
+        const launch = Math.min(1, imp.age / Math.max(1e-4, this._timing.attack));
+        const reach = geo.baseLength * this._layerLengthScale[li]
+          * (0.58 + 0.62 * launch) * reducedLength * body.born;
+        const length = reach * body.taper;
+        if (!(length > RCS_NIL_LENGTH_WU)) continue;
+        const rootShift = reach - length;
         const slot = this.slots[this.activeSlotCount++];
         slot.alive = true;
         slot.impulseIndex = i;
         slot.layerIndex = li;
         slot.layerRole = role;
-        slot.offset[0] = imp.origin[0];
-        slot.offset[1] = imp.origin[1];
-        slot.offset[2] = imp.origin[2];
         slot.axis[0] = imp.axis[0];
         slot.axis[1] = imp.axis[1];
         slot.axis[2] = imp.axis[2];
-        const motionProfile = this.recipe.accessibility?.reducedMotion;
-        const reducedLength = flags.reducedMotion ? (motionProfile?.roleLengthScale?.[role] ?? 1) : 1;
-        const reducedWidth = flags.reducedMotion ? (motionProfile?.roleWidthScale?.[role] ?? 1) : 1;
-        // LENGTH IS REACHED AND THEN HELD. It used to track the envelope both ways, so the jet
-        // grew out of the nozzle and then retracted back into it — which is the shape of a short
-        // trail of where the ship had been, not of a shove. A control jet throws a packet of gas
-        // and the packet keeps going; the valve shuts behind it. So length ramps in over the
-        // attack and stays, the width narrows as chamber pressure drops, and the shader's
-        // overpressure head carries the gas out while the collar at the mouth goes dark.
-        const launch = Math.min(1, imp.age / Math.max(1e-4, this._timing.attack));
-        slot.length = geo.baseLength * this._layerLengthScale[li]
-          * (0.58 + 0.62 * launch) * reducedLength;
-        slot.width = geo.baseWidth * this._layerWidthScale[li] * (0.7 + env * 0.45) * reducedWidth;
+        // The detached root: the card's origin moves down the jet (the plume extends along -axis from it).
+        slot.offset[0] = imp.origin[0] - imp.axis[0] * rootShift;
+        slot.offset[1] = imp.origin[1] - imp.axis[1] * rootShift;
+        slot.offset[2] = imp.origin[2] - imp.axis[2] * rootShift;
+        slot.length = length;
+        // Width is born and spent with the body (a thread on the first tick, narrowing as the root leaves)
+        // and narrows with chamber pressure in between.
+        slot.width = geo.baseWidth * this._layerWidthScale[li] * (0.7 + env * 0.45) * reducedWidth
+          * body.born * (0.45 + 0.55 * body.taper);
         slot.pulse = this._totalLife > 0
           ? Math.max(0, Math.min(1, imp.age / this._totalLife))
           : 1;

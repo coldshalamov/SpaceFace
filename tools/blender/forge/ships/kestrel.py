@@ -12,8 +12,12 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import bpy  # noqa: E402
+from mathutils import Vector  # noqa: E402
 import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
+import skin  # noqa: E402
+import stencil  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_01  # noqa: E402
 import ANI_02  # noqa: E402
@@ -96,6 +100,26 @@ def build():
 
     # --- canopy under the dorsal spine -------------------------------------------------------
     canopy = F.canopy(s, 'Canopy', x0=2.6, x1=7.2, w=0.78, h=0.52, z=1.62, peak=0.55, frame=False)
+    # Canopy hardware rides the canopy: four dark frame arches over the glass and a coaming along each
+    # lower edge, seated on the real glass skin. Built here so ANI-17 hangs them on the canopy's hinge:
+    # when the lid opens on a repair job its frame goes with it.
+    bpy.context.view_layer.update()
+    canopy_kit = [canopy]
+    s.detail = 2
+    for x in (3.5, 4.6, 5.7, 6.6):
+        path = [p for p in skin.run('Canopy', [(x, y / 10.0) for y in range(-8, 9)], 0.025) if p[2] > 1.7]
+        if len(path) > 2:
+            canopy_kit.append(F.sweep(s, f'CanopyArch{x}', path, 0.13, 0.08, material='gunmetal', bevel=0.0))
+    for side in (1, -1):
+        path = []
+        for x in (2.9, 3.4, 4.0, 4.6, 5.2, 5.8, 6.4, 6.9):
+            ok, loc, _n, _i = bpy.data.objects['Canopy'].ray_cast(Vector((x, side * 3.0, 1.67)),
+                                                                  Vector((0.0, -side, 0.0)))
+            if ok:
+                path.append((x, loc.y, 1.64))
+        if len(path) > 2:
+            canopy_kit.append(F.sweep(s, f'CanopyComing{side}', path, 0.09, 0.08, material='gunmetal', bevel=0.0))
+    s.detail = 0
     F.plate(s, 'Spine', [(4.8, 0.28), (-10.2, 0.34), (-10.2, -0.34), (4.8, -0.28)], z0=2.05, thickness=0.26,
             material='paint2', chamfer=0.08)
     for i, x in enumerate((-9.0, -6.6, -4.2, -1.8, 0.6, 3.0)):
@@ -114,6 +138,16 @@ def build():
     # Replaceable armour courses: three raised teal plates with dark gaps between them.
     F.panel(s, 'Sponson', (-5.6, 4.55), (3.6, 2.3), 'paint', inset=0.06, depth=0.06, mirror=True)
     F.panel(s, 'Sponson', (3.1, 4.4), (2.4, 1.9), 'paint', inset=0.06, depth=0.06, mirror=True)
+    # The hero marking: DIE LAUGHING, hand-cut through a stencil in warm-ivory lacquer across the aft
+    # port armour course (the raised teal plate above). Two lines, bridges in the counters, chipped
+    # edges, a little overspray; conformal to the plate, LOD0 only (design: TOP_FIVE_MATERIAL_TRUTH
+    # §1 — not a label, not a raised plaque). Turned half a revolution so it reads upright at the spawn
+    # heading under the chase camera (nose to screen-left, port at the bottom): toward the tail, tops to
+    # starboard.
+    s.detail = 2
+    stencil.stamp(s, 'HeroMark_DieLaughing', [('DIE', 0.86, 0.30), ('LAUGHING', 0.72, 0.12)], (-5.6, 4.55),
+                  'Sponson', finish='paint2.ivory', angle=math.pi)
+    s.detail = 0
     # Load braces between hull and sponsons.
     for x in (3.0, -1.5, -6.5):
         F.box(s, f'Brace{x}', (x, 2.9, 0.1), (0.9, 1.4, 0.55), material='gunmetal', mirror=True, bevel=0.03)
@@ -201,7 +235,7 @@ def build():
     ANI_07.build(s, {'cap': cap}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     # ANI-18 authors into the shared bank too — the flinch claims cap + dish groups only.
     ANI_18.build(s, {}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
-    ANI_17.build(s, {'canopy': canopy}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    ANI_17.build(s, {'canopy': canopy_kit}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
 
     # --- detail ------------------------------------------------------------------------------
     s.detail = 1
@@ -212,11 +246,63 @@ def build():
     F.windows(s, 'Ports', 1.2, 4.8, 1.92, 0.75, 4, size=(0.4, 0.2), finish='glow_warm', mirror=True)
     F.box(s, 'Skid', (-4.0, 1.6, -2.15), (4.0, 0.25, 0.25), material='dark', mirror=True, bevel=0.03)
     F.box(s, 'NoseSkid', (4.6, 0.0, -1.9), (1.4, 0.28, 0.24), material='dark', bevel=0.03)
-    F.box(s, 'NameBoard', (-7.0, 0.0, 2.33), (1.6, 0.5, 0.04), material='paint2.ivory', bevel=0.0)
     s.detail = 0
+
+    # --- close-zoom hero detail layer (LOD0 only; gunmetal and dark, finishes this hull already draws) ----
+    # Every fixture is seated on the real skin of the part it rides (tools/blender/forge/skin.py), so
+    # nothing floats and nothing clips. Static parts only: whatever moves (canopy, dish, pod, cap, iris,
+    # mining head, skids) either carries its own detail inside its MOTION_ group or none.
+    bpy.context.view_layer.update()
+    s.detail = 2
+    studs = []
+    # Rear teal courses are bolted at their corners and edges. The port one wears the DIE LAUGHING
+    # stencil instead (paint over its bolts), so only the starboard course carries fasteners.
+    pts = [(x, -y) for x in (-7.2, -6.4, -5.6, -4.8, -4.0) for y in (3.55, 5.55)]
+    pts += [(x, -y) for x in (-7.2, -4.0) for y in (4.2, 4.9)]
+    studs += skin.studs('Sponson_M', pts)
+    # front course: starboard only (the port one lives under the shoulder cap)
+    studs += skin.studs('Sponson_M', [(x, y) for x in (2.1, 3.1, 4.1) for y in (-3.65, -5.15)]
+                        + [(2.1, -4.4), (4.1, -4.4)])
+    studs += skin.studs('PressureHull', [(x, y) for x in (-9.6, -4.6, 0.6) for y in (-2.1, -1.7, -0.7, 0.7, 1.7, 2.1)])
+    studs += skin.studs('DriveCollar', [(x, y) for x in (-12.7, -11.6) for y in (-2.5, -1.8, -0.9, 0.9, 1.8, 2.5)],
+                        nz=0.4)
+    studs += skin.studs('GunReceiver', [(7.8 + dx, dy) for dx in (-0.5, 0.5) for dy in (-0.4, 0.4)])
+    for x in (7.2, 8.2, 9.2, 10.2):
+        ye = 1.2 + (x - 6.6) * 0.15 / 1.6 if x <= 8.2 else 1.35 - 0.19 * (x - 8.2)
+        studs += skin.studs('Brow', [(x, ye - 0.4), (x, -(ye - 0.4))])
+    studs += skin.studs('DriveClamp0', [(-12.2 + dx, dy) for dx in (-0.8, 0.8) for dy in (-0.18, 0.18)])
+
+    # hatches: a thin dark coaming and a gunmetal handle on each (dorsal hull, sponson roofs)
+    frames, handles = [], []
+    for part, cx, cy, sx, sy in (('PressureHull', -6.3, 1.7, 0.9, 0.6), ('PressureHull', -6.3, -1.7, 0.9, 0.6),
+                                 ('PressureHull', -0.5, 1.55, 0.9, 0.6), ('PressureHull', -0.5, -1.55, 0.9, 0.6),
+                                 ('Sponson', -9.0, 4.4, 1.4, 0.9), ('Sponson_M', -9.0, -4.4, 1.4, 0.9),
+                                 ('Sponson_M', -2.2, -4.6, 1.3, 0.9)):
+        fr, grip = skin.hatch(part, cx, cy, sx, sy)
+        frames += fr
+        if part == 'PressureHull' and grip:
+            handles.append(grip)
+    F.beams(s, 'ArmourStuds', studs, 0.12, material='gunmetal')
+    F.beams(s, 'HatchComing', frames, 0.06, material='dark')
+    F.beams(s, 'HatchHandle', handles, 0.05, material='gunmetal')
+
+    # cable tray along each sponson root: a gunmetal pipe, a dark cable and cross brackets
+    for side, part in ((1, 'Sponson'), (-1, 'Sponson_M')):
+        xs = [-8.0 + 1.1 * i for i in range(9)]
+        F.beams(s, f'TrayPipe{side}', skin.segments(skin.run(part, [(x, side * 3.27) for x in xs], 0.045)), 0.09,
+                material='gunmetal')
+        F.beams(s, f'TrayCable{side}', skin.segments(skin.run(part, [(x, side * 3.46) for x in xs], 0.04)), 0.06,
+                material='dark')
+        F.boxes(s, f'TrayBracket{side}', [((x, side * 3.37, skin.hit(part, x, side * 3.37)[0].z + 0.02),
+                                           (0.22, 0.45, 0.04)) for x in xs[::2]], material='dark')
+    for x in (-7.1, -2.1, 3.3):
+        F.band(s, 'PressureHull', (x, 0, 0), (1, 0, 0), 0.05, 'dark', facing=(0, 0, 1), min_facing=0.3,
+               region=(('z', 0.3, 9.0),))
+    s.detail = 0
+
     F.light(s, 'NavPort', (-9.2, 6.3, 0.75), 'glow_red', size=0.16)
     F.light(s, 'NavStarboard', (-9.2, -6.3, 0.75), 'glow_green', size=0.16)
-    F.light(s, 'Beacon', (-10.4, 0.0, 2.25), 'glow_amber', size=0.16)
+    F.light(s, 'Beacon', (-10.4, 0.0, 2.25), 'glow_amber.beacon', size=0.16)  # lamp bus: slow flash
 
     # ANI-16: belly gear — the two aft rails plus the nose skid just created above.
     _o = {o.name: o for o in s.objects}

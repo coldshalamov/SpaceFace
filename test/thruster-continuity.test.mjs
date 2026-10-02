@@ -32,7 +32,8 @@ import {
   integrateModeWeights,
   sampleThrottleInto,
 } from '../src/render/thruster/systems/throttleResponse.js';
-import { resolveThrusterRecipes } from '../src/render/thruster/recipes/registry.js';
+import { listThrusterRecipePacks, resolveThrusterRecipes } from '../src/render/thruster/recipes/registry.js';
+import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
 import {
   createDriveEnvelope,
   integrateDriveEnvelope,
@@ -345,4 +346,159 @@ test('the energy idle-sleep gate stays awake while a released jet is still dying
   assert.ok(awake >= 20, `retro tail keeps the gate awake (${awake} ticks)`);
   assert.equal(ctx.jets.isFading(), false);
   ctx.jets.dispose();
+});
+
+// ── RCS control jets ────────────────────────────────────────────────────────────────────────────
+//
+// The attitude jets (one RcsImpulseSystem per engine family) were the last thing that still popped.
+// Simulated at 60 fps on the shipped build, kestrel recipe (attack 22 ms):
+//
+//   press    first drawn tick: length 105% of its held reach, envelope 0.76, collar flash on  (a full jet)
+//   release  the slot was retired with length still 100% of reach: only the envelope fell, and the
+//            fragment stage draws 0.55 + 0.9 * envelope, so the card vanished at ~26% brightness
+//   weak puff the retire gate was on the ENVELOPE (envelope * strength), so a trim puff vanished
+//            earlier still, while it was still a long body
+//
+// What the renderer is handed is per-instance length, width and nozzle offset, so that is what these
+// tests read (batch.axisScale[w*4+3], batch.params[w*4], batch.offset). The envelope is not a proxy for
+// "dark": only length reaches nothing (the vertex stage collapses a zero-length card).
+
+const RCS_PACKS = listThrusterRecipePacks();
+const RCS_ORIGIN = [0, 0, 0];
+const RCS_AXIS = [1, 0, 0];
+const RCS_REDUCED = { reducedMotion: true, reducedFlash: true };
+
+/** One tick -> what the GPU is handed for this system: longest card, widest card, furthest front, biggest card area. */
+function rcsDrawn(rcs) {
+  let length = 0;
+  let width = 0;
+  let tip = 0;
+  let area = 0;
+  let instances = 0;
+  for (const batch of rcs.layerBatches) {
+    for (let w = 0; w < batch.writeCount; w++) {
+      const a = w * 4;
+      const len = batch.axisScale[a + 3];
+      // The root leaves the nozzle by moving the card origin down the jet: shift = (nozzle - offset) . axis.
+      const shift = (RCS_ORIGIN[0] - batch.offset[w * 3]) * batch.axisScale[a]
+        + (RCS_ORIGIN[1] - batch.offset[w * 3 + 1]) * batch.axisScale[a + 1]
+        + (RCS_ORIGIN[2] - batch.offset[w * 3 + 2]) * batch.axisScale[a + 2];
+      length = Math.max(length, len);
+      width = Math.max(width, batch.params[a]);
+      tip = Math.max(tip, len + shift);
+      area = Math.max(area, len * batch.params[a]);
+      instances++;
+    }
+  }
+  return { visible: !!rcs.group.visible && instances > 0, length, width, tip, area, instances };
+}
+
+function rcsBurst(pack, strength, ticks = 50, fireAt = [0], a11y = A11Y) {
+  const rcs = new RcsImpulseSystem(THREE, pack.rcs);
+  const rows = [];
+  for (let i = 0; i < ticks; i++) {
+    if (fireAt.includes(i)) rcs.fire(RCS_ORIGIN, RCS_AXIS, strength);
+    rcs.update(DT, a11y);
+    rows.push(rcsDrawn(rcs));
+  }
+  rcs.dispose();
+  return rows;
+}
+
+test('RCS press: every family control jet is born from a stub and runs out of the nozzle', () => {
+  assert.ok(RCS_PACKS.length >= 6, 'all engine families are covered');
+  for (const pack of RCS_PACKS) {
+    for (const strength of [1, 0.12]) {
+      for (const a11y of [A11Y, RCS_REDUCED]) {
+        const rows = rcsBurst(pack, strength, 40, [0], a11y);
+        const tag = `${pack.profileId} strength ${strength}${a11y.reducedMotion ? ' reduced' : ''}`;
+        const peak = Math.max(...rows.map((r) => r.length));
+        const peakWidth = Math.max(...rows.map((r) => r.width));
+        assert.ok(peak > 1, `${tag}: the jet reaches ${peak.toFixed(2)} WU`);
+        assert.ok(rows[0].visible, `${tag}: drawn on the first tick`);
+        // Shipped build: first drawn tick was 105% of reach (a full jet).
+        assert.ok(rows[0].length <= peak * 0.20,
+          `${tag}: first tick is a stub (${(rows[0].length / peak).toFixed(2)} of reach)`);
+        assert.ok(rows[0].width <= peakWidth * 0.30,
+          `${tag}: and a thread (${(rows[0].width / peakWidth).toFixed(2)} of width)`);
+        const peakAt = rows.findIndex((r) => r.length >= peak - 1e-9);
+        assert.ok(peakAt >= 2, `${tag}: the jet takes more than one tick to arrive (${peakAt})`);
+        // An RCS valve is a fast thing: it arrives in about five ticks, so a tick may carry up to a third.
+        assert.ok(maxStep(rows, 'length', 0, peakAt + 1) <= peak * 0.35,
+          `${tag}: no press tick moves the jet by more than 35% of reach`);
+        assert.ok(maxStep(rows, 'tip', 0, peakAt + 1) <= peak * 0.35, `${tag}: the front runs out, it does not jump`);
+        assert.ok(maxStep(rows, 'width', 0, peakAt + 1) <= peakWidth * 0.35, `${tag}: and it fattens, it does not step`);
+      }
+    }
+  }
+});
+
+test('RCS release: the packet leaves the nozzle and is spent over several ticks, never cut', () => {
+  for (const pack of RCS_PACKS) {
+    for (const strength of [1, 0.12, 0.07]) {
+      const rows = rcsBurst(pack, strength, 50);
+      const tag = `${pack.profileId} strength ${strength}`;
+      const peak = Math.max(...rows.map((r) => r.length));
+      const peakArea = Math.max(...rows.map((r) => r.area));
+      const peakTip = Math.max(...rows.map((r) => r.tip));
+      const holdEnd = rows.map((r) => r.length >= peak * 0.999).lastIndexOf(true);
+      const rel = rows.slice(holdEnd);
+
+      const lastVisible = rel.map((r) => r.visible).lastIndexOf(true);
+      assert.ok(lastVisible >= 0 && lastVisible < rel.length - 1, `${tag}: the jet does go out`);
+      // Shipped build: retired at 100% of reach.
+      assert.ok(rel[lastVisible].length <= peak * 0.05,
+        `${tag}: last drawn length ${(rel[lastVisible].length / peak).toFixed(3)} of reach`);
+      for (let i = 1; i < rel.length; i++) {
+        if (rel[i - 1].visible && !rel[i].visible) {
+          assert.ok(rel[i - 1].length <= peak * 0.05, `${tag}: hidden only when spent`);
+        }
+      }
+      const gradual = rel.filter((r) => r.length > peak * 0.05 && r.length < peak * 0.95).length;
+      assert.ok(gradual >= 4, `${tag}: spent over ${gradual} ticks, not a cut`);
+      assert.ok(maxStep(rows, 'length', Math.max(1, holdEnd), rows.length) <= peak * 0.25,
+        `${tag}: no release tick moves the jet by more than 25% of reach`);
+      assert.ok(maxStep(rows, 'area', Math.max(1, holdEnd), rows.length) <= peakArea * 0.25,
+        `${tag}: nor does the card area (what the eye reads as size)`);
+      // Reach is held: the FRONT stays where the gas got to while the ROOT leaves the nozzle. A jet that
+      // retracted into its nozzle (length and front falling together) read as a trail of where the ship had
+      // been, not as a shove.
+      for (const r of rel) {
+        if (r.visible && r.length > peak * 0.10) {
+          assert.ok(r.tip >= peakTip * 0.97, `${tag}: the front holds at ${(r.tip / peakTip).toFixed(3)} of reach`);
+        }
+      }
+      for (let i = 1; i < rel.length; i++) {
+        assert.ok(rel[i].length <= rel[i - 1].length + 1e-6, `${tag}: a release never lengthens the jet`);
+      }
+    }
+  }
+});
+
+test('RCS chatter: a one-tick command still gets a whole puff, and chatter never flashes a full jet', () => {
+  for (const pack of RCS_PACKS) {
+    const single = rcsBurst(pack, 1, 50);
+    const peak = Math.max(...single.map((r) => r.length));
+    // A one-frame command is not a one-frame flicker: the valve opens, holds and shuts.
+    const onTicks = single.filter((r) => r.visible).length;
+    assert.ok(onTicks * DT >= 0.2, `${pack.profileId}: a single command is on for ${(onTicks * DT).toFixed(3)} s`);
+
+    // Tapped every other tick (7 taps, inside the pool 16 slots).
+    const rows = rcsBurst(pack, 1, 60, [0, 2, 4, 6, 8, 10, 12]);
+    assert.ok(rows[0].length <= peak * 0.20, `${pack.profileId}: the first tap of a chatter is a stub`);
+    assert.ok(maxStep(rows, 'length') <= peak * 0.35, `${pack.profileId}: chatter has no length step`);
+    // (the front of a spent jet is not drawn, so a hidden tick has no front to compare)
+    const lit = rows.filter((r) => r.visible);
+    assert.ok(maxStep(lit, 'tip') <= peak * 0.35, `${pack.profileId}: chatter has no front step`);
+    for (let i = 1; i < rows.length - 1; i++) {
+      const flash = rows[i].length > peak * 0.5
+        && rows[i - 1].length < peak * 0.25 && rows[i + 1].length < peak * 0.25;
+      assert.ok(!flash, `${pack.profileId}: a one-tick full-size flash at tick ${i}`);
+    }
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i - 1].visible && !rows[i].visible) {
+        assert.ok(rows[i - 1].length <= peak * 0.05, `${pack.profileId}: chatter is hidden only when spent`);
+      }
+    }
+  }
 });
