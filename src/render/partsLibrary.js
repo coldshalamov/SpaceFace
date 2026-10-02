@@ -3981,12 +3981,11 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
     } else {
       boundary.userData.boundaryResolvingStandInFit = diameter;
     }
-    if (measuredSize) {
-      const vb = boundary.userData.visualBounds;
-      if (vb && Array.isArray(vb.size)) {
-        vb.size = vb.size.map((value, i) => Math.max(Number(value) || 0, measuredSize[i] || 0));
-      }
-    }
+    unionMeasuredVisualBounds(
+      boundary.userData.visualBounds,
+      resolvedStem && measuredPlaceAuthoredBounds.get(resolvedStem),
+      committedScaleGuess,
+    );
     return;
   }
   // Boundaries that declare no authored target radius (every archetype station, every non-POI
@@ -4014,14 +4013,15 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
   }
   const measuredSize = measuredCommittedSize(resolvedStem, scale);
   if (measuredSize) {
-    const vb = boundary.userData.visualBounds;
-    if (vb && Array.isArray(vb.size)) {
-      vb.size = vb.size.map((value, i) => Math.max(Number(value) || 0, measuredSize[i] || 0));
-    }
     if (measuredSize[0] > (Number(boundary.userData.boundaryResolvingCommittedX) || 0)) {
       boundary.userData.boundaryResolvingCommittedX = measuredSize[0];
     }
   }
+  unionMeasuredVisualBounds(
+    boundary.userData.visualBounds,
+    resolvedStem && measuredPlaceAuthoredBounds.get(resolvedStem),
+    scale,
+  );
 }
 
 // Pending-place envelope stamp, committed frame. centerAuthoredPlaceRoot recenters the
@@ -4082,12 +4082,39 @@ const _composedPlaceBoundsVec = new THREE.Vector3();
 // stored in authored units so a sibling at a different draw scale still arms correctly, and
 // unioned componentwise with the estimate because per-instance yaw varies the extents.
 const measuredPlaceAuthoredBounds = new Map();
-const MEASURED_PLACE_AUTHORED_BOUNDS_LIMIT = 64;
+// Sized to the bounded stem universe (~141 census stems, ~6 numbers each): a FIFO
+// smaller than the universe re-opens the census under-cover class on sector re-entry.
+const MEASURED_PLACE_AUTHORED_BOUNDS_LIMIT = 256;
 
 function measuredCommittedSize(stem, scale) {
   const measured = stem && measuredPlaceAuthoredBounds.get(stem);
   if (!measured || !Array.isArray(measured.size) || !(scale > 0)) return null;
   return measured.size.map((value) => (Number(value) || 0) * scale);
+}
+
+// The stored center is committed-frame too — a size-only union can under-cover a
+// compose whose measured box sits off the stamped center, so the union runs on
+// corners (min/max per axis) and derives both fields.
+function unionMeasuredVisualBounds(vb, measured, scale) {
+  if (!vb || !Array.isArray(vb.size) || !measured || !Array.isArray(measured.size)) return;
+  const mc = Array.isArray(measured.center) ? measured.center : [0, 0, 0];
+  const vc = Array.isArray(vb.center) ? vb.center : [0, 0, 0];
+  const outSize = [0, 0, 0];
+  const outCenter = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    const ms = (Number(measured.size[i]) || 0) * scale;
+    const mlo = (Number(mc[i]) || 0) * scale - ms * 0.5;
+    const mhi = (Number(mc[i]) || 0) * scale + ms * 0.5;
+    const vs = Number(vb.size[i]) || 0;
+    const vlo = (Number(vc[i]) || 0) - vs * 0.5;
+    const vhi = (Number(vc[i]) || 0) + vs * 0.5;
+    const lo = Math.min(vlo, mlo);
+    const hi = Math.max(vhi, mhi);
+    outCenter[i] = (lo + hi) * 0.5;
+    outSize[i] = Math.max(0, hi - lo);
+  }
+  vb.center = outCenter;
+  vb.size = outSize;
 }
 
 function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) {
