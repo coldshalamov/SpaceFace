@@ -1747,9 +1747,11 @@ export const world = {
       // Orrin witness recorder) carry no aftermath marker and still rematerialize.
       if (rec.kind === RECORD_KIND.AFTERMATH && aftermathOwnsMarker(state, rec.markerId)) continue;
       if (!recordShouldRematerialize(rec, tier)) continue;
-      // Exactly-once: never double-spawn a live entity for the same record.
+      // Exactly-once: never double-spawn a live entity for the same record. A corpse still
+      // in the index (alive=false written, lifetimeSweep not yet run) is not a live holder —
+      // treating it as one defers rematerialize a pass and can pin a dead id into enemies.
       const existing = liveByRecordId.get(rec.recordId) || null;
-      if (existing) {
+      if (existing && existing.alive !== false) {
         if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
           if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
             active.enemies.push(existing.id);
@@ -1808,7 +1810,8 @@ export const world = {
       if ((++processed & 7) === 0) yield 'reconcile:stale-batch';
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
-      if (liveByRecordId.has(rec.recordId)) continue;
+      const holder = liveByRecordId.get(rec.recordId) || null;
+      if (holder && holder.alive !== false) continue;
       delete bag.byId[rec.recordId];
     }
 

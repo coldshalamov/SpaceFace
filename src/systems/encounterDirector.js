@@ -128,7 +128,7 @@ const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
 );
 
 // ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
-const PURSUIT_RESOLVE_S = 60;        // a hostile sitting on a non-fighting player resolves
+export const PURSUIT_RESOLVE_S = 60; // a hostile sitting on a non-fighting player resolves
 const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
 const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
 

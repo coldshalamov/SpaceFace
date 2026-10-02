@@ -174,11 +174,13 @@ test('mesh-build drain hoists a body that reached the glass behind FIFO backlog'
     _meshBuildQueue: ['a1', g1, 'a2', g2, 'a3'],
     _meshBuildQueueHead: 0,
   };
-  assert.equal(hoistDeadlineGlassMeshBuilds(owner), true);
+  // The return is the deadline-glass work count in the tail (callers gate a refused
+  // late-present drain on "does glass work exist", not "did the partition permute").
+  assert.equal(hoistDeadlineGlassMeshBuilds(owner), 2);
   assert.deepEqual(owner._meshBuildQueue, [g1, g2, 'a1', 'a2', 'a3'],
     'on-glass ids drain ahead of the whole off-glass backlog');
-  assert.equal(hoistDeadlineGlassMeshBuilds(owner), false,
-    'an already-partitioned tail reports nothing to hoist');
+  assert.equal(hoistDeadlineGlassMeshBuilds(owner), 2,
+    'an already-partitioned tail still reports its queued glass work');
 
   // Entries before the queue head are never touched.
   const done = mk('done', R3);
@@ -189,7 +191,7 @@ test('mesh-build drain hoists a body that reached the glass behind FIFO backlog'
     _meshBuildQueue: [done, 'a4', g3],
     _meshBuildQueueHead: 1,
   };
-  assert.equal(hoistDeadlineGlassMeshBuilds(owner2), true);
+  assert.equal(hoistDeadlineGlassMeshBuilds(owner2), 1);
   assert.deepEqual(owner2._meshBuildQueue, [done, g3, 'a4'],
     'consumed history stays ahead of the drain head');
 });

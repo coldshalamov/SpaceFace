@@ -417,6 +417,8 @@ import {
 } from './tabletopPolicy.js';
 import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
+import { effectiveLawSecurity } from '../systems/lawSecurity.js';
+import { PURSUIT_RESOLVE_S } from '../systems/encounterDirector.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -3172,6 +3174,45 @@ function warmPendingReinforcementsDecode(owner) {
 }
 
 /**
+ * Hostile-pursuit resolution watches a pest for PURSUIT_RESOLVE_S, then spawns the fixed
+ * patrol roster (patrol_lawman @ faction_scn) 420 WU from the player with zero warm arm —
+ * the only scripted patrol spawn that bypasses dir.pending, so it decodes on the bare
+ * entity:spawned kick right at the intervention moment the player is watching. Poll the
+ * watch rows once per residency pass and warm the roster while the row sits inside the
+ * decode runway, mirroring _resolveHostilePursuit's gates (security >= 0.25, not resolved,
+ * not already intervened). A row that settles through grabbing_range or dies to pruning
+ * just lets the lease expire; the WeakMap dedupes per firstAt.
+ */
+function warmPursuitInterventionDecode(owner) {
+  const state = owner && owner.state;
+  const dir = state && state.encounterDirector;
+  const watch = dir && dir.pursuitWatch;
+  if (!watch || typeof watch !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const sec = effectiveLawSecurity(state);
+  if (!(sec >= 0.25)) return;
+  const intervened = dir.patrolIntervened || null;
+  const warmedAt = owner._pursuitWarmAt || (owner._pursuitWarmAt = new WeakMap());
+  let due = false;
+  for (const hostileId in watch) {
+    const row = watch[hostileId];
+    if (!row || row.resolved === true || !Number.isFinite(row.firstAt)) continue;
+    if (intervened && intervened[hostileId] != null) continue;
+    const remaining = PURSUIT_RESOLVE_S - (now - row.firstAt);
+    if (remaining > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    if (warmedAt.get(row) === row.firstAt) continue;
+    warmedAt.set(row, row.firstAt);
+    due = true;
+  }
+  if (due) {
+    warmEnemyRosterDecode(owner, [
+      { archetype: 'patrol_lawman', factionId: 'faction_scn' },
+    ], 'pursuit-intervention-decode-runway',
+      state.world && state.world.currentSectorId);
+  }
+}
+
+/**
  * A promoted ace's scheduled return (rec.returnAt) spawns its styled crew ~900 WU out with
  * only the spawn-kick warm — the hulls decode cold right at the arrival edge the player is
  * watching. Poll aceMemory once per residency pass and warm the exact crew returnCrewForAce
@@ -3544,6 +3585,29 @@ function warmQueuedSpawnRequestDecodes(owner, state, sectorId) {
   warmEnemyRosterDecode(owner, roster, 'spawn-request-decode-runway', sectorId);
 }
 
+// Cross-sector asset losses log pendingInterventions rows that materialize on sector:enter
+// (_materializePendings) — a wreck picked by id-hash off the six-file aftermath table plus
+// modular-kit site ships whose hull selection is id-seeded (not enumerable pre-spawn). The
+// approach arm covers the enumerable body: the whole bounded wreck cohort via the exemplar
+// specs, so the recovery site's centerpiece arrives decoded; the id-seeded modular picks
+// keep the ordinary entity:spawned kick.
+function warmPendingInterventionDecodes(owner, state, sectorId) {
+  if (!sectorId) return;
+  const pendings = state && state.pendingInterventions;
+  if (!Array.isArray(pendings) || !pendings.length) return;
+  let pending = false;
+  for (const rec of pendings) {
+    if (rec && rec.sectorId === sectorId) { pending = true; break; }
+  }
+  if (!pending) return;
+  const seen = owner._interventionWarmSeen || (owner._interventionWarmSeen = new Set());
+  if (seen.has(sectorId)) return;
+  seen.add(sectorId);
+  for (const stub of wreckVisualExemplarSpecs(`intervention-warm:${sectorId}:`)) {
+    Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, sectorId)).catch(() => {});
+  }
+}
+
 export function updatePredictedSectorPrewarm(owner) {
   const state = owner && owner.state;
   if (!state || state.mode !== 'flight') return;
@@ -3561,6 +3625,8 @@ export function updatePredictedSectorPrewarm(owner) {
   });
   warmQueuedSpawnRequestDecodes(owner, state, prediction && prediction.sectorId);
   warmQueuedSpawnRequestDecodes(owner, state, predictedSecondHopSectorId(state));
+  warmPendingInterventionDecodes(owner, state, prediction && prediction.sectorId);
+  warmPendingInterventionDecodes(owner, state, predictedSecondHopSectorId(state));
   const syncCorridor = () => {
     if (typeof residency.setEvictionCorridor !== 'function') return;
     // Rank by the prediction itself, not the warm arms — bytes resident under ANY owner
@@ -14949,6 +15015,7 @@ export const render = {
     warmClaimDefenseDecode(this);
     warmAceReturnDecode(this);
     warmCultureIntroDecode(this);
+    warmPursuitInterventionDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
