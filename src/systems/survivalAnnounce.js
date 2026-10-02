@@ -216,15 +216,19 @@ export function waveOpeningLine(wave, plan) {
     const wall = typeof swarm.wallLine === 'string' && swarm.wallLine
       ? ` ${swarm.wallLine}`
       : '';
+    // NXB-017: an act round names its question — the physical decision, not the answer.
+    const actLine = swarm.act && typeof swarm.act.question === 'string'
+      ? ` ${swarm.act.question}`
+      : '';
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall} Break the pack.`;
+      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall}${actLine} Break the pack.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall} Break the pack.`;
+    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall}${actLine} Break the pack.`;
   }
 
   let bodies = 0;

@@ -43,7 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| swarm seam — §1C rows 97–101 PB-SWARM packets next | devin-swarm | IN PROGRESS | `src/systems/{survivalRun,swarmMode,survivalArena,survivalResults}.js`, `src/data/survivalDraft.js`, `test/` new focused tests, `build_map.md` §1C, `design/program/NOW.md` | fight seam drained (96/221/231/234 landed, rest SHIPPED); land each swarm row by pathspec |
+| swarm seam — §1C open rows after 97–101 + 180 | devin-swarm | IN PROGRESS | `src/data/swarmMode.js`, `src/systems/{survivalWavePlanner,survivalWave,survivalAnnounce}.js`, `test/` focused tests, `build_map.md` §1C, `design/program/NOW.md` | rows 97–101 + 180 landed (mooring_line act on waves 25–27); remaining open: 203, 232, 233, 235 — land each by pathspec |
 
 ## Remaster machine
 

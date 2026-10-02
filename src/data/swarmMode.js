@@ -623,6 +623,184 @@ export function swarmWallPickFor(wave, excludeId) {
   return null;
 }
 
+// ── NXB-017 — the three-round act, waves 25–27 ───────────────────────────────────────────────
+// The bank specifies individual good rounds; the act composes three adjacent slots into one
+// legible escalation: exploit a body, protect the opportunity, then apply the learned
+// interaction under combined pressure. Waves 25–27 are the first quiet window past the roster
+// clock — every archetype is legal, and no debut, mass-gap or boss flag fires — and the phase
+// cycle happens to hand each round the room its question asks for. So the act authors there
+// instead of adding a mode: the same pure planner, the same quota/concurrency budgets, the
+// same finite cohort. An act round only rewrites the opening recipe and the stream's bias;
+// gates, timing, quota, draft and clear law all stay the wave's own.
+//
+//   r1 loose_plate    — LOOSE MASS VS AN EXPOSED HULL. Throw-class fodder on three bearings
+//                       and loose-plate rock drifting on the sag are ammunition; the bruiser
+//                       that commits alone a beat later is the exposed target. Guns cannot
+//                       shove a terrain-class hull — the room's mass is the lever.
+//   r2 furnace_active — THE SPECIALIST CONTESTS THE USE. A tether raider stages alone on its
+//                       own bearing (the same readable beat a debut uses) and fights the
+//                       player for the line r1 taught, while the lit furnace shoves the
+//                       centre off the stand-and-throw spot.
+//   r3 shutter_slow   — THE LEARNED INTERACTION UNDER COMBINED PRESSURE. The anchor (mass
+//                       420) and the specialist return on one bearing while the whole room
+//                       leans. The anchor's snare well bites only across its telegraphed
+//                       commit; its recovery leg is the counter-window, and the lean drags
+//                       the hull exactly then.
+function freezeDeep(value) {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    for (const item of value) freezeDeep(item);
+  } else {
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+  }
+  return Object.freeze(value);
+}
+
+export const SWARM_ACT_ID = 'mooring_line';
+export const SWARM_ACT_ROUNDS = 3;
+/** Staged act bodies land on the same readable beat a debut uses — alone, a little far out. */
+export const SWARM_ACT_STAGED_TICKS = SWARM_DEBUT_TICKS;
+export const SWARM_ACT_STAGED_DISTANCE = SWARM_DEBUT_DISTANCE;
+
+/**
+ * Authored opening recipes by wave. `gateIndex` walks this wave's gate ring; 'free' takes the
+ * first bearing no earlier package uses; 'same' shares the previous package's gate — the r3
+ * pair arrives as one event. `staged` marks a body the wave owes like a debut: refused seats
+ * are re-queued, never dropped.
+ */
+export const SWARM_ACT = freezeDeep({
+  25: {
+    id: SWARM_ACT_ID,
+    round: 1,
+    arenaPhase: 'loose_plate',
+    question: 'One hull commits alone through the loose rock — the room is full of mass that is not yours yet.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 7, gateIndex: 0, atTick: 0 },
+      { enemyId: 'choir_zealot', count: 6, gateIndex: 2, atTick: 12 },
+      { enemyId: 'reaver_pirate', count: 5, gateIndex: 4, atTick: 24 },
+      { enemyId: 'bruiser_brawler', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+    ]),
+  },
+  26: {
+    id: SWARM_ACT_ID,
+    round: 2,
+    arenaPhase: 'furnace_active',
+    question: 'Something else wants the other end of the line — and the middle of the room is lit.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 6, gateIndex: 0, atTick: 0 },
+      { enemyId: 'detonator_dart', count: 5, gateIndex: 1, atTick: 12 },
+      { enemyId: 'reaver_pirate', count: 4, gateIndex: 2, atTick: 24 },
+      { enemyId: 'choir_zealot', count: 3, gateIndex: 3, atTick: 36 },
+      { enemyId: 'tether_control_raider', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+    ]),
+  },
+  27: {
+    id: SWARM_ACT_ID,
+    round: 3,
+    arenaPhase: 'shutter_slow',
+    question: 'The anchor bites only when it means it — its own cycle is the opening.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 6, gateIndex: 0, atTick: 0 },
+      { enemyId: 'reaver_pirate', count: 5, gateIndex: 2, atTick: 12 },
+      { enemyId: 'choir_zealot', count: 5, gateIndex: 4, atTick: 24 },
+      { enemyId: 'field_anchor_controller', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      // The r2 specialist rides the anchor's bearing — the contest and the anchor arrive as
+      // one event instead of two lectures.
+      { enemyId: 'tether_control_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+    ]),
+  },
+});
+
+/** The authored act round for this wave, or null on an ordinary generated wave. */
+export function swarmActFor(wave) {
+  const w = swarmWaveOf(wave);
+  return SWARM_ACT[w] || null;
+}
+
+/**
+ * NXI-066 — does an authored act round stay inside the wave's own contract? Issues, empty when
+ * honest. An act may only field bodies the wave's roster has already unlocked (no early
+ * debuts stealing a later wave's tell), must hold its burst inside the shared spawn budget,
+ * and must keep the opening lane useful: distinct bearings for its groups, never every gate.
+ */
+export function swarmActIssues(wave, act = SWARM_ACT[swarmWaveOf(wave)]) {
+  const w = swarmWaveOf(wave);
+  if (!act) return [];
+  const issues = [];
+  if (!Array.isArray(act.packages) || act.packages.length === 0) {
+    issues.push({ path: 'packages', message: `act wave ${w} authors no packages` });
+    return issues;
+  }
+  let total = 0;
+  const used = [];
+  for (const spec of act.packages) {
+    const entry = SWARM_ROSTER.find((r) => r.enemyId === (spec && spec.enemyId));
+    if (!entry) {
+      issues.push({ path: 'packages', message: `act wave ${w} fields unknown enemy '${spec && spec.enemyId}'` });
+      continue;
+    }
+    if (entry.fromWave > w) {
+      issues.push({ path: 'packages', message: `act wave ${w} fields '${entry.enemyId}' before its wave-${entry.fromWave} unlock` });
+    }
+    const count = Number(spec && spec.count);
+    if (!Number.isInteger(count) || count < 1) {
+      issues.push({ path: 'packages', message: `act wave ${w} package '${entry.enemyId}' has no legal count` });
+    } else {
+      total += count;
+    }
+    // NXI-065 — resolve the gate the way the planner will, then check the lane survives.
+    const gate = spec.gate === 'free'
+      ? swarmFreeGateFor(w, used)
+      : spec.gate === 'same'
+        ? (used.length ? used[used.length - 1] : swarmGateFor(w, 0))
+        : swarmGateFor(w, Number.isInteger(spec.gateIndex) ? spec.gateIndex : used.length);
+    used.push(gate);
+  }
+  if (total > SPAWN_BUDGET_DEFAULT_MAX) {
+    issues.push({ path: 'packages', message: `act wave ${w} scheduled population ${total} exceeds budget ${SPAWN_BUDGET_DEFAULT_MAX}` });
+  }
+  if (new Set(used).size >= GATES.length) {
+    issues.push({ path: 'packages', message: `act wave ${w} blocks every gate — no opening lane survives` });
+  }
+  return issues;
+}
+
+/**
+ * Resolve an authored act round into plan `packages` — the same shape `swarmOpeningPackages`
+ * returns, so every downstream consumer (schedule, dispatch, owed-body law) sees one contract.
+ * Roles come from the canonical roster, never the act table.
+ */
+export function swarmActPackages(wave) {
+  const w = swarmWaveOf(wave);
+  const act = SWARM_ACT[w];
+  if (!act) return [];
+  const used = [];
+  return act.packages.map((spec, index) => {
+    const entry = SWARM_ROSTER.find((r) => r.enemyId === spec.enemyId);
+    const gateGroup = spec.gate === 'free'
+      ? swarmFreeGateFor(w, used)
+      : spec.gate === 'same'
+        ? (used.length ? used[used.length - 1] : swarmGateFor(w, 0))
+        : swarmGateFor(w, Number.isInteger(spec.gateIndex) ? spec.gateIndex : index);
+    used.push(gateGroup);
+    const count = Math.max(1, spec.count | 0);
+    return {
+      atTick: Number.isInteger(spec.atTick) ? spec.atTick : 0,
+      gateGroup,
+      role: entry ? entry.role : 'pressure',
+      enemyId: spec.enemyId,
+      count,
+      batchSize: count,
+      batchGapTicks: 0,
+      ...(spec.staged === true ? { staged: true } : {}),
+      ...(Number.isFinite(spec.distance) ? { distance: spec.distance } : {}),
+    };
+  });
+}
+
 /**
  * The room for this wave. Boss waves get the arc's loudest room; everything else walks the cycle.
  */

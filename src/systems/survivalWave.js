@@ -420,8 +420,9 @@ export const survivalWave = {
         if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
       }
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
-      // The same is true of a staged debut or a wall's heavies: a staged body must land, not vanish.
-      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true)
+      // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
+      // staged body must land, not vanish.
+      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true)
         && receipt.admitted < count) {
         this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted } };
       }
