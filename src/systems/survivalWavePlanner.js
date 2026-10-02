@@ -361,9 +361,12 @@ export function resolvePlanMode(input) {
  * results screen) keeps working without a swarm-shaped branch of its own. The one addition is
  * `plan.swarm`, the block that describes the reinforcement stream.
  *
- * Completion here is a SIXTY-SECOND CLOCK, not "every scheduled package materialized and every
- * blocking role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty
- * on purpose: a swarm wave must never be able to stall on one straggler flying home.
+ * Completion here is a FINITE COHORT — the wave owes `swarm.killTarget` bodies and closes when
+ * every admitted body has resolved, so a fast clear earns the shop early instead of waiting out
+ * a timer, and a living champion holds its round open rather than being abandoned by a clock.
+ * `blockingRoles` stays empty on purpose: no single straggler class gates the wave, the cohort
+ * itself does. `durationTicks` rides the plan only as the fallback envelope for legacy timed
+ * saves replayed through old plans.
  *
  * SF-072 — the room reads the run's build and leans on the roles that TEST it, never the ones
  * that forbid it. A massline build meets more anchors (hulls too heavy to sling carelessly) and
