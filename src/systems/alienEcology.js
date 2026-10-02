@@ -40,7 +40,7 @@ import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
-import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
@@ -454,7 +454,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       if (fittedFlag(state, 'resonantMassline')) break;
       const sectorId = payload.sectorId;
       if (!sectorId) break;
-      for (const e of state.entityList || []) {
+      for (const e of indexedTypeScan(state, 'fauna')) {
         const eco = e && e.data && e.data.ecology;
         if (!eco || e.homeSectorId !== sectorId) continue;
         const species = faunaSpeciesById(eco.speciesId);
@@ -677,7 +677,7 @@ export function refreshAlienLabels(world) {
   const state = world && world.state;
   if (!state || !state.entityList) return;
   const ae = ensureAlienEcologyState(state);
-  for (const e of state.entityList) {
+  for (const e of indexedTypeScan(state, 'fauna')) {
     if (!e || !e.data || !e.data.ecology) continue;
     const species = faunaSpeciesById(e.data.ecology.speciesId);
     if (!species) continue;
@@ -745,7 +745,7 @@ export function tickAlienEcology(world, dt) {
     faunaCache.sectorId = sectorId;
     faunaCache.fauna.length = 0;
     faunaCache.shepherds.length = 0;
-    for (const e of state.entityList) {
+    for (const e of indexedTypeScan(state, 'fauna')) {
       if (!e || e.alive === false || e.type !== 'fauna' || !e.data || !e.data.ecology) continue;
       if (e.homeSectorId !== sectorId) continue;
       faunaCache.fauna.push(e);
@@ -1338,7 +1338,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
           // order, so the rescan walks it instead of the full list.
           leader = null;
           let bestD = Infinity;
-          for (const f of (siteFauna || state.entityList)) {
+          for (const f of (siteFauna || indexedTypeScan(state, 'fauna'))) {
             if (!f || f === e || f.alive === false || !f.data || !f.data.ecology) continue;
             if (f.data.ecology.speciesId !== species.id || f.data.ecology.siteId !== site.siteId) continue;
             const d = dist2(e.pos.x, e.pos.z, f.pos.x, f.pos.z);

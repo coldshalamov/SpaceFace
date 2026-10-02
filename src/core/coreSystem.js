@@ -509,6 +509,7 @@ function ensureEntityIndex(state) {
     asteroids: [],
     mineables: [],
     wrecks: [],
+    fauna: [],
     fx: [],
     mines: [],
     vectorMines: [],
@@ -576,6 +577,7 @@ function repairEntityIndex(index) {
     index.ready = false;
   }
   if (!Array.isArray(index.snares)) index.snares = [];
+  if (!Array.isArray(index.fauna)) index.fauna = [];
   if (!Array.isArray(index.charges)) {
     index.charges = [];
     index.ready = false;
@@ -644,6 +646,7 @@ function clearEntityIndex(index) {
   index.asteroids.length = 0;
   index.mineables.length = 0;
   index.wrecks.length = 0;
+  index.fauna.length = 0;
   index.fx.length = 0;
   index.mines.length = 0;
   index.vectorMines.length = 0;
@@ -709,9 +712,8 @@ function appendEntityIndex(index, e) {
   // Freighters carry no dedicated bucket (radarContacts only) — a counter-only lane lets
   // remote-engine-type readers latch shipLike+freighters instead of the whole version.
   if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
-  // Same counter-only shape for the ecology/machine censuses — fauna and machines have no
-  // index bucket, but their member sets are type/data predicates readers latch on.
-  if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
+  // Machines stay counter-only — their member sets are data predicates readers latch on
+  // (fauna graduated to a member lane in appendTypedLaneMembership).
   if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
   // Band-landmark carriers stamp flavor refs in their spawn-time data literal — append-time
   // decidable, so a counter-only lane lets the proximity sampler ignore projectile churn.
@@ -820,6 +822,10 @@ function appendTypedLaneMembership(index, e) {
       index.wrecks.push(e);
       bumpLaneVersion(index, 'wrecks');
       index.mineables.push(e);
+      break;
+    case 'fauna':
+      index.fauna.push(e);
+      bumpLaneVersion(index, 'fauna');
       break;
     case 'fx':
       index.fx.push(e);
@@ -983,8 +989,8 @@ function removeTypedLaneMembership(index, e) {
   removeFromIndexArray(index.dockStations, e);
   removeFromIndexArray(index.gates, e);
   if (removeFromIndexArray(index.asteroids, e)) bumpLaneVersion(index, 'asteroids');
+  if (removeFromIndexArray(index.fauna, e)) bumpLaneVersion(index, 'fauna');
   if (stamped === 'freighter') bumpLaneVersion(index, 'freighters');
-  if (stamped === 'fauna') bumpLaneVersion(index, 'fauna');
   removeFromIndexArray(index.mineables, e);
   if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
   removeFromIndexArray(index.fx, e);
@@ -1043,7 +1049,6 @@ export function syncEntityTypeLaneMembership(index, e) {
   appendTypedLaneMembership(index, e);
   // Counter-only lanes sit outside the switch — mirror the append-time bumps for the new type.
   if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
-  if (e.type === 'fauna') bumpLaneVersion(index, 'fauna');
   if (wasMovable !== isMovable) {
     if (isMovable) index.movables.push(e);
     else removeFromIndexArray(index.movables, e);
@@ -1208,15 +1213,14 @@ function removeEntitiesFromIndex(index, corpses) {
   removeCorpsesFromIndexArray(index.gates, removed);
   index.laneVersions.asteroids = (index.laneVersions.asteroids || 0)
     + removeCorpsesFromIndexArray(index.asteroids, removed);
+  index.laneVersions.fauna = (index.laneVersions.fauna || 0)
+    + removeCorpsesFromIndexArray(index.fauna, removed);
   for (const e of removed) {
     // Counter/remap lanes key on the stamped type the entity was indexed under — the live
     // type can have flipped (syncEntityTypeLaneMembership leaves the stamp as truth).
     const stampedType = e && e._indexType !== undefined ? e._indexType : (e && e.type);
     if (stampedType === 'freighter') {
       index.laneVersions.freighters = (index.laneVersions.freighters || 0) + 1;
-    }
-    if (stampedType === 'fauna') {
-      index.laneVersions.fauna = (index.laneVersions.fauna || 0) + 1;
     }
     if (e && e.data && e.data.machine) {
       index.laneVersions.machines = (index.laneVersions.machines || 0) + 1;

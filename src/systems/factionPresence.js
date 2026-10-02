@@ -644,6 +644,7 @@ export const factionPresence = {
       spawned = !!entity;
       if (entity) {
         stampCeresTenderIdentity(entity, context);
+        registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
         syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
       }
     }

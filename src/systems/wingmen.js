@@ -466,7 +466,12 @@ export const wingmen = {
       if (wingmanMineableRock(held) && this._rockInLeash(held, player)) return held;
     }
     const claimed = this._mineClaimedRocks(fs, state);
-    const list = state.entityList || [];
+    const index = state.entityIndex;
+    const indexed = index && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index._indexedIds instanceof Set
+      && state.entities.size === index._indexedIds.size;
+    const list = (indexed && index.asteroids) || state.entityList || [];
     let best = null;
     let bestD2 = Infinity;
     let bestId = '';
