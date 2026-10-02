@@ -219,7 +219,9 @@ export const contractClausesSystem = {
     // active-missions array itself changes (identity or membership).
     this._clauseIndexActive = null;
     this._clauseIndexCount = -1;
+    this._clauseIndexMissions = null;
     this._clauseRowsByEvent = new Map();
+    this._invalidateIndex = () => { this._clauseIndexCount = -1; };
     // ONE generic observer over N events. The subscription list is DERIVED from the two catalogs
     // rather than written out here, so authoring a condition on a new (already-emitted) event needs
     // no system edit — which is the whole point of the generalisation (grammar §9.9.1).
@@ -231,6 +233,11 @@ export const contractClausesSystem = {
         this._bus.on(eventName, handler);
       }
       this._bus.on('mission:accepted', this._onAccept);
+      this._bus.on('mission:accepted', this._invalidateIndex);
+      this._bus.on('mission:completed', this._invalidateIndex);
+      this._bus.on('mission:failed', this._invalidateIndex);
+      this._bus.on('mission:expired', this._invalidateIndex);
+      this._bus.on('mission:abandoned', this._invalidateIndex);
       // Compatibility only for the isolated clause checker. Canonical missions includes rewardCr
       // after settling clauses and removes the active instance before this event, so live play can
       // never enter the fallback or emit a second honor.
@@ -253,6 +260,16 @@ export const contractClausesSystem = {
     }
   },
 
+  _isClauseIndexStale(active) {
+    if (active !== this._clauseIndexActive || active.length !== this._clauseIndexCount) return true;
+    const cached = this._clauseIndexMissions;
+    if (!cached || cached.length !== active.length) return true;
+    for (let i = 0; i < active.length; i++) {
+      if (active[i] !== cached[i]) return true;
+    }
+    return false;
+  },
+
   _rebuildClauseIndex(active) {
     this._clauseRowsByEvent.clear();
     for (const m of active) {
@@ -271,6 +288,7 @@ export const contractClausesSystem = {
     }
     this._clauseIndexActive = active;
     this._clauseIndexCount = active.length;
+    this._clauseIndexMissions = active.slice();
   },
 
   _emitKilledSettlement(mission, payload) {
@@ -289,7 +307,7 @@ export const contractClausesSystem = {
     const state = this._state;
     if (!state) return;
     const active = (state.missions && state.missions.active) || [];
-    if (active !== this._clauseIndexActive || active.length !== this._clauseIndexCount) {
+    if (this._isClauseIndexStale(active)) {
       this._rebuildClauseIndex(active);
     }
     const rows = this._clauseRowsByEvent.get(eventName);
@@ -459,12 +477,22 @@ export const contractClausesSystem = {
         for (const [eventName, handler] of this._termHandlers) this._bus.off(eventName, handler);
       }
       if (this._onAccept) this._bus.off('mission:accepted', this._onAccept);
+      if (this._invalidateIndex) {
+        this._bus.off('mission:accepted', this._invalidateIndex);
+        this._bus.off('mission:completed', this._invalidateIndex);
+        this._bus.off('mission:failed', this._invalidateIndex);
+        this._bus.off('mission:expired', this._invalidateIndex);
+        this._bus.off('mission:abandoned', this._invalidateIndex);
+      }
       if (this._onLegacyComplete) this._bus.off('mission:completed', this._onLegacyComplete);
     }
     if (this._termHandlers) this._termHandlers.clear();
     this._termHandlers = null;
     this._onAccept = null;
+    this._invalidateIndex = null;
     this._onLegacyComplete = null;
+    this._clauseIndexMissions = null;
+    this._clauseIndexActive = null;
   },
 };
 
