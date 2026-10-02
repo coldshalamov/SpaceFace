@@ -69,6 +69,12 @@ export function createAssetResidencyRegistry(options = {}) {
   let currentSectorId = null;
   let warmSectorId = null;
   let warmOwner = null;
+  // Eviction corridor: current sector then predicted legs in approach order, fed by
+  // updatePredictedSectorPrewarm. Soft candidates whose owners carry no corridor sector
+  // are the least valuable residency — under byte pressure they should die before a
+  // warm a nearer leg still needs, regardless of registration (LRU) order.
+  let evictionCorridorKey = '';
+  let evictionCorridorRanks = null;
   let disposedResources = 0;
   let abandonedResources = 0;
   let evictedAssets = 0;
@@ -490,9 +496,43 @@ export function createAssetResidencyRegistry(options = {}) {
     return 0;
   }
 
+  function setEvictionCorridor(sectorIds) {
+    const ids = Array.isArray(sectorIds) ? sectorIds : [];
+    let key = '';
+    const ranks = new Map();
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      if (id == null || id === '') continue;
+      const sid = String(id);
+      if (ranks.has(sid)) continue;
+      key += (key ? '|' : '') + sid;
+      ranks.set(sid, ids.length - i);
+    }
+    if (key === evictionCorridorKey) return false;
+    evictionCorridorKey = key;
+    evictionCorridorRanks = ranks.size ? ranks : null;
+    return true;
+  }
+
+  // Best corridor rank across an entry's owners; -1 = outside the corridor (evicts
+  // first within its lease-weight class), 0 = no corridor armed (identical to the
+  // pre-corridor ordering).
+  function entryCorridorRank(entry) {
+    if (!evictionCorridorRanks) return 0;
+    let best = -1;
+    for (const metadata of entry.owners.values()) {
+      const sectorId = metadata && metadata.sectorId;
+      if (sectorId == null) continue;
+      const rank = evictionCorridorRanks.get(String(sectorId));
+      if (rank != null && rank > best) best = rank;
+    }
+    return best;
+  }
+
   function sortSoftEvictionCandidates(candidates) {
     candidates.sort((a, b) => (
       softEvictionLeaseWeight(a) - softEvictionLeaseWeight(b)
+        || entryCorridorRank(a) - entryCorridorRank(b)
         || a.lastReleaseAtMs - b.lastReleaseAtMs
     ));
   }
@@ -1104,6 +1144,7 @@ export function createAssetResidencyRegistry(options = {}) {
     isOwnerReleased,
     rotateSector,
     prepareSectorExit,
+    setEvictionCorridor,
     handleContextLost,
     handleContextRestored,
     // Cache-held entries (decoded package templates, warm-sector holds) are not reachable from

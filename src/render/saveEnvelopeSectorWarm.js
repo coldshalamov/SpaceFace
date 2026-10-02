@@ -740,6 +740,33 @@ function liveEnemyPoolFor(sector) {
   return LIVE_PIRATE_ENEMIES;
 }
 
+/**
+ * Queued world:spawnRequest cohorts for a sector (world.pendingSpawns rows flush inside the
+ * enter sequence). Their forced enemyTypeId hulls get no roster arm from any other warm
+ * lane; a non-forced request still draws from the sector's ambient pool whether or not the
+ * ambient gate is open — under byte pressure the pool warm is the whole-window decode.
+ * @returns {Array<{archetype: string, factionId: string|null}>}
+ */
+export function queuedSpawnRequestRoster(world, sectorId) {
+  const queue = world && world.pendingSpawns ? world.pendingSpawns[sectorId] : null;
+  if (!Array.isArray(queue) || !queue.length) return [];
+  const sector = (world.sectors && world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+  const out = [];
+  for (const req of queue) {
+    if (req && typeof req.enemyTypeId === 'string' && req.enemyTypeId) {
+      out.push({
+        archetype: req.enemyTypeId,
+        factionId: enemyFactionIdFor(ENEMY_BY_ID.get(req.enemyTypeId), null),
+      });
+    } else if (sector) {
+      for (const archetype of liveEnemyPoolFor(sector)) {
+        out.push({ archetype, factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null) });
+      }
+    }
+  }
+  return out;
+}
+
 // Bare wreck bodies (mission wrecks, aftermath residue, durable wreck records) pick their
 // packaged file by allocated-id hash across the six-class residue table — covering means
 // one stub per class so whatever the mount hashes to is already decoded. Callers keep a
@@ -861,8 +888,17 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   // shape the envelope lane builds (enemy-spec records resolve through the def table).
   let bossRecordRematerializes = false;
   let hasRematerializingWrecks = false;
+  // _promoteSectorToFull reads active.enemies AFTER rematerialize pushes every spawned ship
+  // into it (world.js:1376) — a REDUCED bag whose records rematerialize to ships suppresses
+  // the ambient re-roll and the boss spawn outright, so warming either roster would decode
+  // bodies the promote never mounts. Only the spawn leg is counted: a live-held record's
+  // carrier-type check isn't reproduced here, and missing it just keeps the ambient warm.
+  let rematerializePushesEnemies = false;
   for (const rec of sectorRecords.concat(intentRecords)) {
     if (!rec || rec.alive === false) continue;
+    // world.js:1743 — a marker-owned AFTERMATH respawns as the marker's hulk, never the
+    // thin record shell; it rematerializes nothing and must not count for wreck stubs.
+    if (rec.kind === RECORD_KIND.AFTERMATH && liveAftermathOwnsMarker(state, rec.markerId)) continue;
     if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
       if (recordShouldRematerialize(rec, 'FULL') && !heldRecordIds.has(rec.recordId)) {
         hasRematerializingWrecks = true;
@@ -871,6 +907,10 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
     }
     if (!recordShouldRematerialize(rec, 'FULL')) continue;
     if (heldRecordIds.has(rec.recordId)) continue;
+    if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY
+      || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss === true) {
+      rematerializePushesEnemies = true;
+    }
     if (rec.isBoss === true) bossRecordRematerializes = true;
     if (rec.recordSource === 'sector_embodiment' && world.records
         && world.records.byId && world.records.byId[rec.recordId]) continue; // record pass covers it
@@ -976,9 +1016,14 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   // not conditioned on combat history at all — only on an unclaimed, undefeated claim.
   const hadCombatHistory = sectorRecords.concat(intentRecords).some((rec) => rec
     && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
+  // The promote's :1376 gate — enemies-or-dressing populated post-rematerialize suppresses
+  // ambient and boss wholesale (only dressing still mounts when the bag lacks it).
+  const promoteKeepsAnchors = rematerializePushesEnemies
+    || (active.enemies && active.enemies.length > 0)
+    || (active.dressing && active.dressing.length > 0);
   // _spawnEnemies sizes off the DRIFTED density — the gate must read the same effective
   // value or a 0→positive drift skips the ambient warm while ambient rolls still spawn.
-  if (!hadCombatHistory && effectiveSectorDensityFor(state, sector.id, sector) > 0) {
+  if (!promoteKeepsAnchors && !hadCombatHistory && effectiveSectorDensityFor(state, sector.id, sector) > 0) {
     for (const zone of zonesForSector(sector.id)) {
       const presence = zone && zone.presence;
       if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;
@@ -1006,7 +1051,8 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
     // enumeration already covers it with a shipStub. A merely-held record (live carrier
     // elsewhere or a farActor row) is no coverage at all: _spawnBossIfDue ignores records,
     // so gating on it starved the fresh spawn's decode.
-    if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !bossRecordRematerializes) {
+    if (!promoteKeepsAnchors && !bossDefeated && !(liveBoss && liveBoss.alive !== false)
+      && !bossRecordRematerializes) {
       out.roster.push({ archetype: 'dreadnought_boss' });
     }
   }
@@ -1022,6 +1068,10 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
     && typeof state.entities.get === 'function' && state.entities.get(active.heliosRopeCacheId);
   pushRopeCachePodStub(out.placeStubs, sector.id,
     world.discovery && world.discovery[sector.id], !!ropePrior);
+
+  // Queued spawnRequests flush inside the enter sequence independent of the ambient gate —
+  // cover their cohorts unconditionally.
+  out.roster.push(...queuedSpawnRequestRoster(world, sector.id));
 
   return out;
 }
@@ -1138,5 +1188,8 @@ export function saveEnvelopeFullExtrasStubs(data) {
       out.placeStubs.push({ type: 'fx', data: { placeId: ring.propId, machineSite: site.siteId } });
     }
   }
+  // Queued spawnRequests ride the save packet and flush on the restored sector's enter —
+  // same coverage duty as the live enumerator.
+  out.roster.push(...queuedSpawnRequestRoster(data.world, sector.id));
   return out;
 }

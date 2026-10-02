@@ -937,6 +937,16 @@ function manifestText(state, target, manifestOverride = undefined) {
 
 function liveEntityForWorldRecord(state, worldRecordId) {
   if (!state || typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const index = state.entityIndex;
+  // A proven-unique live carrier resolves O(1) — the count gate reproduces the fail-closed
+  // ambiguity rule below: any second carrier keeps the walk (which then returns null).
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) return holder;
+  }
   const entities = state.entities && typeof state.entities.values === 'function'
     ? state.entities.values()
     : state.entityList || [];

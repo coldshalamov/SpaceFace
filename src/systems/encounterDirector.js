@@ -3341,6 +3341,16 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     // cargo-pod spills, authored props. Declared on the encounter body, carried on the
     // pending item so the decode runway warms them before telegraph resolves.
     warmAssets: Array.isArray(enc.warmAssets) && enc.warmAssets.length ? enc.warmAssets.slice() : null,
+    // Hull archetypes the fire path mounts outside plan.ships — the ambush claim victim
+    // spawns beside the fight and a player_in_range trigger can land engagement while it
+    // is still on-glass. Warm-only: never feeds the spawn list (spawnClaimVictim owns it).
+    warmShips: enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
+      ? [{
+        archetype: enc.claimVictim.archetype,
+        factionId: enc.claimVictim.factionId || 'faction_dmc',
+        role: 'claim',
+      }]
+      : null,
     // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
     // rock near their anchor (applied at spawnShips time, once per encounter).
     terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,

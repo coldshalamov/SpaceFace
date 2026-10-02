@@ -110,7 +110,7 @@ import {
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
+import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
@@ -2934,6 +2934,7 @@ function warmEncounterPendingDecode(owner) {
   for (const item of pending) {
     if (!item || !Number.isFinite(item.dueAt) || item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
     if ((!Array.isArray(item.ships) || !item.ships.length)
+      && (!Array.isArray(item.warmShips) || !item.warmShips.length)
       && (!Array.isArray(item.warmAssets) || !item.warmAssets.length)) continue;
     if (warmedAt.get(item) === item.dueAt) continue;
     // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
@@ -2941,6 +2942,12 @@ function warmEncounterPendingDecode(owner) {
     // the 'place'-slot hulk the roster's warm must resolve.
     const archetypes = [];
     for (const ship of item.ships || []) {
+      const archetype = ship && ship.archetype;
+      if (typeof archetype === 'string' && archetype) archetypes.push(ship);
+    }
+    // Warm-only hulls mounted outside plan.ships at fire (the ambush claim victim) — same
+    // record shape as roster ships, never part of the spawn list.
+    for (const ship of item.warmShips || []) {
       const archetype = ship && ship.archetype;
       if (typeof archetype === 'string' && archetype) archetypes.push(ship);
     }
@@ -3332,6 +3339,22 @@ function updateRouteDeepSectorWarm(owner, state, census, releaseOwner) {
     .catch(() => {});
 }
 
+// Queued world:spawnRequest rows flush inside a sector's enter sequence — their forced
+// enemyTypeId cohorts get no roster arm anywhere else, so the approach/deep warm polls the
+// corridor legs' queues and warms the hulls through the decode runway. Set-keyed dedupe:
+// a new row added to an already-seen queue re-warms the widened roster; file dedupe caps
+// the repeats the rest of the way.
+function warmQueuedSpawnRequestDecodes(owner, state, sectorId) {
+  if (!sectorId) return;
+  const roster = queuedSpawnRequestRoster(state.world, sectorId);
+  if (!roster.length) return;
+  const seen = owner._spawnRequestWarmSeen || (owner._spawnRequestWarmSeen = new Set());
+  const key = `${sectorId}:${roster.map((row) => row.archetype).join(',')}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  warmEnemyRosterDecode(owner, roster, 'spawn-request-decode-runway', sectorId);
+}
+
 export function updatePredictedSectorPrewarm(owner) {
   const state = owner && owner.state;
   if (!state || state.mode !== 'flight') return;
@@ -3347,6 +3370,18 @@ export function updatePredictedSectorPrewarm(owner) {
   const prediction = predictNextSector(state, {
     heldSectorId: warm ? warm.sectorId : null,
   });
+  warmQueuedSpawnRequestDecodes(owner, state, prediction && prediction.sectorId);
+  warmQueuedSpawnRequestDecodes(owner, state, predictedSecondHopSectorId(state));
+  const syncCorridor = () => {
+    if (typeof residency.setEvictionCorridor !== 'function') return;
+    // Rank by the prediction itself, not the warm arms — bytes resident under ANY owner
+    // for a corridor leg deserve protection; a retracted arm just narrows the corridor.
+    residency.setEvictionCorridor([
+      state.world && state.world.currentSectorId,
+      prediction ? prediction.sectorId : null,
+      predictedSecondHopSectorId(state),
+    ]);
+  };
   if (warm) {
     // An authored record covering the same sector makes the speculative warm redundant — its
     // decoded files stay resident under the record's owner and the soft package cache.
@@ -3361,10 +3396,10 @@ export function updatePredictedSectorPrewarm(owner) {
       return;
     }
   }
-  if (!prediction || recordOwns(prediction.sectorId)) return;
+  if (!prediction || recordOwns(prediction.sectorId)) { syncCorridor(); return; }
   const sectorId = prediction.sectorId;
   const requests = census(sectorId);
-  if (!requests || !requests.length) return;
+  if (!requests || !requests.length) { syncCorridor(); return; }
   const warmOwner = { type: 'predicted-sector-warm', sectorId };
   const nextWarm = {
     sectorId,
@@ -3386,6 +3421,7 @@ export function updatePredictedSectorPrewarm(owner) {
   })), owner.renderer)
     .then((settled) => { nextWarm.settled = settled; })
     .catch(() => {});
+  syncCorridor();
 }
 
 function captureObjectHome(object) {

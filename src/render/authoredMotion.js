@@ -101,6 +101,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
       delete root.userData.authoredMotionControllers;
       delete root.userData.updateAuthoredMotion;
       delete root.userData.authoredMotionEvent;
+      delete root.userData.authoredMotionPadSpec;
+      delete root.userData.__authoredMotionPad;
     }
     if (root.userData.detachAuthoredMotion === detach) {
       delete root.userData.detachAuthoredMotion;
@@ -108,6 +110,17 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   };
 
   root.userData.authoredMotionControllers = live;
+  // Max authored travel each bound pivot can impart, per binding — the cull envelope folds
+  // this in lazily (world-space subtree radius at first query, post-fit) so an animated arm
+  // can't draw beyond the committed bounds it was measured at rest.
+  const motionPadSpec = [];
+  for (const controller of live) {
+    const spec = controller.motionPadSpec;
+    if (Array.isArray(spec)) motionPadSpec.push(...spec);
+  }
+  if (motionPadSpec.length) root.userData.authoredMotionPadSpec = motionPadSpec;
+  else delete root.userData.authoredMotionPadSpec;
+  delete root.userData.__authoredMotionPad;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow) {
     for (const controller of live) controller.update(simNow);
   };
