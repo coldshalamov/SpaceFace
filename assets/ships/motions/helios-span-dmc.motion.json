@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_HELIOS_SPAN_DMC",
- "sourceGlbSha256": "7cb7a5c1896a0b3f97e6a25e5d576caf92ed4e7c91b79bf9c7e8ab9439c77c98",
+ "sourceGlbSha256": "32bc2c3d9718fb21c85c6f9ef699924f3497fbefa07526033a022e8c1fd3aafd",
  "fps": 60,
  "bindings": [
   {
