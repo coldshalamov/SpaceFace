@@ -461,7 +461,9 @@ export class SpatialHash {
         const idx = b.indexOf(e);
         if (idx < 0) continue;
         const last = b.length - 1;
-        if (idx !== last) b[idx] = b[last];
+        // Order-preserving removal: a bucket's emission order must equal full-rebuild
+        // order so pair resolution never diverges across removal histories.
+        for (let i = idx; i < last; i++) b[i] = b[i + 1];
         b.pop();
         // Continuous-world travel must not leave an ever-growing map of empty cell arrays.
         // Active-array references are compacted once per sync after all removals complete.

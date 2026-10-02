@@ -2605,6 +2605,10 @@ export const audio = {
     if (rt._samples) {
       rt._samples.setContext(ctx);
       rt._samples.prefetchTier(0);
+      // Action tier too — menu dwell is the warm window; the first combat cue otherwise
+      // falls back to full-synth while its designed layer fetches. The LRU budget keeps
+      // the whole library resident anyway, so this only moves the decode earlier.
+      rt._samples.prefetchTier(1);
       for (const id of Object.values(AUTHORED_STEM_SAMPLES)) rt._samples.acquire(id);
     }
 

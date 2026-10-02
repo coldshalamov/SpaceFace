@@ -6809,16 +6809,27 @@ function findLiveRecordEntity(state, recordId) {
 // Batch record->entity lookup for rematerialize/reconcile passes: per-record scans of up to
 // four index lanes (then a far-actor row walk) cost O(records x entities) inside a single
 // chunked-enter section. One entity walk fixes first-match lane order exactly (shipLike,
-// wrecks, stations, payloads — entityList only when the index is cold).
+// wrecks, stations, payloads — entityList only when the index is cold, then a full-map pass
+// covers holders no lane indexes).
 function liveRecordEntityIndex(state) {
   const map = new Map();
   const index = state && state.entityIndex;
-  const lanes = (index && index.__spacefaceEntityIndexV1 && index.ready === true)
+  const indexReady = index && index.__spacefaceEntityIndexV1 && index.ready === true;
+  const lanes = indexReady
     ? [index.shipLike, index.wrecks, index.stations, index.payloads]
     : [state && state.entityList];
   for (const lane of lanes) {
     if (!lane) continue;
     for (const e of lane) {
+      if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+      if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+    }
+  }
+  // Lane order keeps first-match priority for duplicate record ids; the entities map then
+  // covers holders no lane indexes (poiSignal-rebadged husks keep data.worldRecordId, plus
+  // bare-map carriers) — otherwise a held record rematerializes a second live body.
+  if (indexReady && state.entities && typeof state.entities.values === 'function') {
+    for (const e of state.entities.values()) {
       if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
       if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
     }

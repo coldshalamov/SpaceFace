@@ -803,11 +803,16 @@ function embodimentStubsRecords(embodiment, sectorId, seed, sector) {
 }
 
 // Mirror of world.js liveRecordEntityIndex/farActorRecordIdSet — entities (or shelved far-actor
-// rows) already carrying a record id make its rematerialize an exactly-once skip.
+// rows) already carrying a record id make its rematerialize an exactly-once skip. The entities
+// map is the full holder domain (every type lane plus unindexed carriers); dead members are
+// skipped so an uncompacted corpse never suppresses a warm the live gate would have run.
 function liveSectorRecordHolderIds(state) {
   const held = new Set();
-  for (const e of (state && state.entityList) || []) {
-    if (e && e.data && e.data.worldRecordId != null) held.add(e.data.worldRecordId);
+  const source = state && state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : (state && state.entityList) || [];
+  for (const e of source) {
+    if (e && e.alive && e.data && e.data.worldRecordId != null) held.add(e.data.worldRecordId);
   }
   const farRows = state && state.world && state.world.farActors && state.world.farActors.rows;
   for (const row of farRows || []) {
