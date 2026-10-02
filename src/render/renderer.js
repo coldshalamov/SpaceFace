@@ -3801,7 +3801,12 @@ function warmLaneAmbushDecode(owner, payload) {
   const state = owner && owner.state;
   if (!state || !payload || typeof payload !== 'object') return;
   const currentSectorId = state.world && state.world.currentSectorId;
-  if (payload.sectorId !== currentSectorId) return;
+  // No sectorId equality: the arm emits at ≤2400 WU approach with the payload's sectorId taken
+  // from the segment MIDPOINT's Voronoi cell — mid-chord the player can sit one cell over, so an
+  // equality gate dropped arms that fire seconds later on the bisector cross (and the 20 s
+  // re-arm latch suppressed the retry). Proximity is already the arm's gate; a warm for the
+  // cell over is cheap speculation whose lease simply expires if the ambush never fires.
+  if (typeof payload.sectorId !== 'string' || !payload.sectorId) return;
   warmAuthoredEncounterArm(owner, {
     shapeId: payload.shapeId,
     encounterId: payload.encounterId,

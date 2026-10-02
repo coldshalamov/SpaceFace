@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { activeDecodeClass, deadlineDecodeActive, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { activeDecodeClass, deadlineDecodeActive, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import { loadMotionBank } from './authoredMotion.js';
 import {
@@ -90,9 +90,11 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 });
 
 const warned = new Set();
-// Ambient tasks a deadline caller joined — their remaining decode posts and their compile
-// tail re-grade to deadline, matching the budget.promote + flag window the join raises.
-const deadlineJoinedAssetTasks = new WeakSet();
+// Ambient tasks a deadline-or-visible caller joined — their remaining decode posts and their
+// compile tail re-grade to the joiner's class, matching the budget.promote + flag window the
+// join raises. The map carries the class (not just membership) so a visible joiner's tail
+// claims 'visible' rather than capping at 'deadline'.
+const joinedAssetTaskClasses = new WeakMap();
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
 // Warm-purpose decode roles (sector prewarm, decode runway, roster warm, predicts): decodes
 // that speculate on a spawn that has not arrived yet. Shared by the decode-cache retain below
@@ -618,7 +620,7 @@ export async function loadAuthoredPart(url, options = {}) {
         // tail claims the caller's class; a deadline join on an ambient task promotes it.
         const compileClass = options.admissionVisible === true
           ? 'visible'
-          : ((deadlineClass || deadlineJoinedAssetTasks.has(task)) ? 'deadline' : 'ambient');
+          : (joinedAssetTaskClasses.get(task) || (deadlineClass ? 'deadline' : 'ambient'));
         return scheduleGltfCompile(() => {
           // Owner departed while the tail queued: compile is the expensive stage — skip it
           // and let the settled-null path cancel the request below.
@@ -632,7 +634,7 @@ export async function loadAuthoredPart(url, options = {}) {
               runtime.failures.delete(cacheKey);
             },
           });
-        }, compileClass);
+        }, compileClass, task);
       })
       .catch((error) => {
         if (!runtime.retiring) {
@@ -658,10 +660,15 @@ export async function loadAuthoredPart(url, options = {}) {
     const budget = sharedDecodeTaskBudget();
     // Promote to the caller's own class: an admissionVisible joiner's tail must
     // outrank even deadline waiters, not just ambient.
+    const joinClass = options.admissionVisible === true ? 'visible' : 'deadline';
     if (budget && typeof budget.promote === 'function') {
-      budget.promote(options.admissionVisible === true ? 'visible' : 'deadline');
+      budget.promote(joinClass);
     }
-    deadlineJoinedAssetTasks.add(task);
+    joinedAssetTaskClasses.set(task, joinClass);
+    // The tail may already sit queued in a lower lane — a join lands while the task is still
+    // pending (unsettled until the compile resolves), so re-grade the queued entry too. A tail
+    // not yet enqueued reads this join's class when it schedules.
+    regradeGltfCompile(task, joinClass);
     (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   }
   const blueprint = await task;

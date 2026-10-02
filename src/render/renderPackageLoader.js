@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { activeDecodeClass, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -195,7 +195,15 @@ export function createRenderPackageLoader(options = {}) {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
         return decodeGlb(renderUrl, metadata);
       })
-      .then(async (decoded) => {
+      // Package decodes resolve in clusters exactly like source-GLB parses, and this path is the
+      // dominant decode route — an unpaced tail stacks K plan+bind continuations (traverse,
+      // per-vertex layout rebake, canonicalize) inside one microtask drain. Pace it through the
+      // same class lanes; the class travels by the caller's decode-class flag window, which a
+      // joiner's wrap holds through settle — so joined tasks classify at the joiner's class too.
+      .then((decoded) => scheduleGltfCompile(() => preparePackageTail(decoded), activeDecodeClass()));
+
+  function preparePackageTail(decoded) {
+    return (async () => {
         // The instance plan is compiled BEFORE prepareDecoded so the preparation step can be handed
         // the plan: it is the seam through which package-carried semantics eventually replace
         // source recompilation (render-package v2). Compiling it first also means a structurally
@@ -264,7 +272,8 @@ export function createRenderPackageLoader(options = {}) {
           if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
-      });
+      })();
+  }
     cache.set(contentHash, entry);
     entry.promise.catch(() => {
       if (entry.request) entry.request.cancel('render-package-decode-failed');

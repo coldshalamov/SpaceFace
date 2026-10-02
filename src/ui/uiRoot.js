@@ -1439,8 +1439,17 @@ export const ui = {
               await yieldPresentationFrame();
               if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
             }
+            const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
             try { this.screenManager.paintWarm(id); }
             catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
+            // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
+            // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
+            // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
+            const paintMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - tp : 0;
+            if (paintMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
           }
           catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
           await yieldPresentationFrame();

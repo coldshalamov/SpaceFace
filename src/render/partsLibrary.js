@@ -6429,6 +6429,18 @@ function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
   const stallBypassShipPass = state.stallBypassShipPass === true;
   state.stallBypassShipPass = false;
+  // Per-pick verdict memo: the comparator calls the camera/frustum predicates
+  // (authoredUpgradePriority → entityIsOnAuthoredGlassBand/entityIsOnscreen) per pair, turning a
+  // sector-arrival burst into O(n·log n) heavy verdicts inside one admit frame. Verdicts are
+  // frozen for the duration of a pick, so memoize per job — the deferred staging callback below
+  // still reads live values because it must see the post-landing glass state.
+  const pickVerdicts = new Map();
+  const pickVerdict = (job, key, compute) => {
+    let memo = pickVerdicts.get(job);
+    if (!memo) { memo = Object.create(null); pickVerdicts.set(job, memo); }
+    if (!(key in memo)) memo[key] = compute(job);
+    return memo[key];
+  };
   const live = authoredRuntimeState();
   if (live && live.mode === 'flight') {
     const gate = shouldStartHeavyAdmissionEventually(
@@ -6442,7 +6454,7 @@ function admitNextUpgradeJob(state) {
       // keep background admissions off a struggling frame, and a body the
       // player is already looking at is exactly the trade the hole-filling law
       // makes. Let the pick proceed — the R0 rung puts it first.
-      if (!state.jobs.some((job) => entityIsOnReadableGlass(job && job.entity))) {
+      if (!state.jobs.some((job) => pickVerdict(job, 'glass', (j) => entityIsOnReadableGlass(j && j.entity)))) {
         scheduleNextUpgradeFrame(state);
         return null;
       }
@@ -6453,33 +6465,36 @@ function admitNextUpgradeJob(state) {
     // on-glass job must take the freed slot ahead of ordinary dressing or the hog's own kind
     // could keep re-winning the escape.
     if (stallBypassShipPass) {
-      const stallDelta = Number(queuedGlassLawJobStillNeeded(state, b))
-        - Number(queuedGlassLawJobStillNeeded(state, a));
+      const stallDelta = Number(pickVerdict(b, 'stall', (j) => queuedGlassLawJobStillNeeded(state, j)))
+        - Number(pickVerdict(a, 'stall', (j) => queuedGlassLawJobStillNeeded(state, j)));
       if (stallDelta) return stallDelta;
     }
     if (state.firstFlightHandoffHold === true) {
       // On-glass first — a parked non-ship still drawn as void beats an off-glass runway
       // ship. Within the same glass status ships keep priority.
-      const glassDelta = Number(firstFlightReadableGlassJob(b)) - Number(firstFlightReadableGlassJob(a));
+      const glassDelta = Number(pickVerdict(b, 'glassJob', firstFlightReadableGlassJob))
+        - Number(pickVerdict(a, 'glassJob', firstFlightReadableGlassJob));
       if (glassDelta) return glassDelta;
-      const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
+      const urgentDelta = Number(pickVerdict(b, 'shipJob', firstFlightReadableShipJob))
+        - Number(pickVerdict(a, 'shipJob', firstFlightReadableShipJob));
       if (urgentDelta) return urgentDelta;
     }
-    const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
+    const priorityDelta = pickVerdict(a, 'priority', authoredUpgradePriority)
+      - pickVerdict(b, 'priority', authoredUpgradePriority);
     if (priorityDelta) return priorityDelta;
     if (state.firstFlightHandoffHold === true
-        && firstFlightReadableShipJob(a) && firstFlightReadableShipJob(b)) {
-      const live = authoredRuntimeState();
+        && pickVerdict(a, 'shipJob', firstFlightReadableShipJob)
+        && pickVerdict(b, 'shipJob', firstFlightReadableShipJob)) {
       const player = live?.entities?.get?.(live.playerId);
-      const nearA = planarRangeWU(a.entity, player);
-      const nearB = planarRangeWU(b.entity, player);
+      const nearA = pickVerdict(a, 'near', (j) => planarRangeWU(j.entity, player));
+      const nearB = pickVerdict(b, 'near', (j) => planarRangeWU(j.entity, player));
       if (nearA !== null && nearB !== null && nearA !== nearB) return nearA - nearB;
     }
     return a.sequence - b.sequence;
   });
   if (state.firstFlightHandoffHold === true
-      && !firstFlightReadableShipJob(state.jobs[0])
-      && !firstFlightReadableGlassJob(state.jobs[0])) {
+      && !(state.jobs[0] && pickVerdict(state.jobs[0], 'shipJob', firstFlightReadableShipJob))
+      && !(state.jobs[0] && pickVerdict(state.jobs[0], 'glassJob', firstFlightReadableGlassJob))) {
     scheduleHeldShipWake(state);
     armStalledHogWake(state);
     return null;
@@ -6490,7 +6505,7 @@ function admitNextUpgradeJob(state) {
     // hull cohort instead of being buried behind it (ZERO_TO_HERO 5.12).
     const live = authoredRuntimeState();
     const hullIndex = state.jobs.findIndex((job) => isLoadingHullUpgradeJob(job)
-      || entityIsOnReadableGlass(job && job.entity)
+      || pickVerdict(job, 'glass', (j) => entityIsOnReadableGlass(j && j.entity))
       || openingFrameAdmissionPriority(job && job.entity, live) !== null);
     if (hullIndex < 0) {
       state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
@@ -7099,7 +7114,10 @@ export function requestOpeningCompositionUpgrades(state, renderer, scene, meshes
     const status = (root.userData && root.userData.authoredAssetState) || authoredAssetState(entity);
     if (authoredOpeningFailedClosed(status) || isFlightReadyStatus(status)) continue;
     if (authoredAdmissionStarted(status) && root.userData.authoredUpgradePromise) continue;
-    request(renderer, scene);
+    // The opening set IS the first frame — arm admissionVisible so its decodes and compile
+    // tails jump every speculative warm queued in front of the ready latch (the hook re-grades
+    // an already-in-flight job on each repeat call).
+    request(renderer, scene, { admissionVisible: true });
     ids.push(entity.id);
   }
   return { requested: ids.length, ids };

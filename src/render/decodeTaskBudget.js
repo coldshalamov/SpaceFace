@@ -173,18 +173,39 @@ export function scheduleGltfParse(fn) {
 // FIFO lanes (visible > deadline > ambient, mirroring the decode budget) capped per frame;
 // the caller's promise stays open until its compile drains. Cached blueprints never reach
 // this path (the admit layer resolves before createTask), so the fast path is untouched.
-const GLTF_COMPILE_FRAME_LIMIT = 2;
+//
+// The cap is a time box, not a count: compiles range sub-ms greebles to multi-ms hulls, so a
+// count floor starved small-part bursts ~2-5x below the frame budget while two heavy compiles
+// could still share a frame. Tasks run synchronously inside the drain so the measured cost is
+// the compile itself — one heavy task may exceed the budget exactly as it did before, the
+// minimum is one task per frame, and the per-frame worst case stays budget + one compile.
+const GLTF_COMPILE_FRAME_MS = 4;
 const gltfCompilePending = { visible: [], deadline: [], ambient: [] };
+// token -> { entry, lane } for entries still queued — a joiner re-grades a task whose tail
+// already enqueued at a lower class (mirrors budget.promote's queued-waiter re-grade).
+const gltfCompileEntries = new WeakMap();
 let gltfCompileDrainScheduled = false;
 
+function gltfCompileLaneFor(decodeClass) {
+  return decodeClass === 'visible' ? gltfCompilePending.visible
+    : decodeClass === 'deadline' ? gltfCompilePending.deadline
+      : gltfCompilePending.ambient;
+}
+
 function drainGltfCompileQueue() {
-  const batch = [];
-  for (const lane of [gltfCompilePending.visible, gltfCompilePending.deadline, gltfCompilePending.ambient]) {
-    while (batch.length < GLTF_COMPILE_FRAME_LIMIT && lane.length) batch.push(lane.shift());
-    if (batch.length >= GLTF_COMPILE_FRAME_LIMIT) break;
-  }
-  for (const task of batch) {
-    Promise.resolve().then(task.fn).then(task.resolve, task.reject);
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? () => performance.now()
+    : () => Date.now();
+  const start = now();
+  let ran = 0;
+  while (ran === 0 || now() - start < GLTF_COMPILE_FRAME_MS) {
+    let task = null;
+    for (const lane of [gltfCompilePending.visible, gltfCompilePending.deadline, gltfCompilePending.ambient]) {
+      if (lane.length) { task = lane.shift(); break; }
+    }
+    if (!task) break;
+    ran += 1;
+    try { task.resolve(task.fn()); } catch (error) { task.reject(error); }
   }
   const pending = gltfCompilePending.visible.length
     || gltfCompilePending.deadline.length
@@ -194,17 +215,39 @@ function drainGltfCompileQueue() {
   else gltfCompileDrainScheduled = false;
 }
 
-export function scheduleGltfCompile(fn, decodeClass) {
+export function scheduleGltfCompile(fn, decodeClass, token) {
   if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
   return new Promise((resolve, reject) => {
-    const lane = decodeClass === 'visible' ? gltfCompilePending.visible
-      : decodeClass === 'deadline' ? gltfCompilePending.deadline
-        : gltfCompilePending.ambient;
-    lane.push({ fn, resolve, reject });
+    const lane = gltfCompileLaneFor(decodeClass);
+    const entry = { fn, resolve, reject };
+    lane.push(entry);
+    if (token) gltfCompileEntries.set(token, { entry, lane });
     if (gltfCompileDrainScheduled) return;
     gltfCompileDrainScheduled = true;
     requestAnimationFrame(drainGltfCompileQueue);
   });
+}
+
+/**
+ * Re-grade a queued compile tail to `decodeClass` when a live joiner outranks the class the
+ * tail enqueued under. The entry moves to the HEAD of the target lane: its owner is already
+ * on the player's deadline, strictly ahead of earlier same-class speculative work. A drained
+ * entry returns false — the caller's class map still covers any tail not yet enqueued.
+ */
+export function regradeGltfCompile(token, decodeClass) {
+  const rec = gltfCompileEntries.get(token);
+  if (!rec) return false;
+  const target = gltfCompileLaneFor(decodeClass);
+  if (rec.lane === target) return true;
+  const idx = rec.lane.indexOf(rec.entry);
+  if (idx === -1) {
+    gltfCompileEntries.delete(token);
+    return false;
+  }
+  rec.lane.splice(idx, 1);
+  target.unshift(rec.entry);
+  rec.lane = target;
+  return true;
 }
 
 let shared = null;

@@ -1590,6 +1590,12 @@ export const crucibleScreen = {
         const practiceRow = el('div', 'k-row sf-crd-practice');
         const practiceWord = word('Practice room', 'k-word--emph');
         practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Spawn, latch, throw, and slow time stay on screen. Relaunch to reset.');
+        // Hover/focus dwell on the door is real warm lead — the preset's sector + hull are
+        // fixed, so arm the same embark speculation the click re-arms at request time (the
+        // renderer latches by signature, repeat arms are near-free).
+        const armPracticeSpec = () => emitSandboxEmbarkSpeculation(ctx.bus, practicePreset.config);
+        practiceWord.addEventListener('pointerenter', armPracticeSpec);
+        practiceWord.addEventListener('focus', armPracticeSpec);
         practiceWord.addEventListener('click', () => {
           cue('confirm');
           notePracticeLaunch(ctx);
@@ -2946,6 +2952,9 @@ export const crucibleResultsScreen = {
     // teardown Main menu runs, then a fresh adventure through the ordinary game:new route.
     if (IS_DEMO) {
       const belt = addWord(word('Take it to the belt', 'k-word--emph'));
+      // The belt door boots a fresh NEW_GAME run — results-plate dwell is warm lead for the
+      // default embark target, exactly the speculation requestSandboxGame posts at request time.
+      emitSandboxEmbarkSpeculation(ctx.bus, {});
       belt.addEventListener('click', () => {
         ctx.bus.emit('game:over:dismissed', {});
         ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
