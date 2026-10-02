@@ -436,12 +436,16 @@ export function shouldOfferNewGameShortcut(meta, saveAllowed) {
   return !isOccupied(meta) && !saveAllowed;
 }
 
-/** The save's hull id (the index stores the def id under shipName); the starter when a save has none. */
+/** The save's hull id (the index stores the def id under shipName); the starter when a save has
+ * none — or names a hull this build no longer ships: saves outlive the catalog, and the stage can
+ * only draw a def it can resolve (the readable label stays the save's own via shipLabel). */
 function slotShipId(meta, player) {
   const fromPlayer = activeOwnedShip(player) && activeOwnedShip(player).defId;
-  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer)) return fromPlayer;
+  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer) && SHIP_NAME_BY_ID.has(fromPlayer)) {
+    return fromPlayer;
+  }
   const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
-  return id || NEW_GAME.shipId;
+  return (id && SHIP_NAME_BY_ID.has(id)) ? id : NEW_GAME.shipId;
 }
 
 function unwrapSaveData(input) {
