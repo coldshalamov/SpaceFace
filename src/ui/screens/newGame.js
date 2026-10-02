@@ -844,9 +844,9 @@ export const newGameScreen = {
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
       // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
       // a candidate here so the salted dressing rows it warms are the ones the launch rolls.
-      // Cosmetic randomness — the run's seed contract is unchanged (resetRunState treats a
-      // forwarded opts.seed identically to its internal roll).
-      specSeedRoll: 1 + Math.floor(Math.random() * 0xfffffffe),
+      // Drawn through the same rng seam as randomSeedText — the run's seed contract is
+      // unchanged (resetRunState treats a forwarded opts.seed identically to its internal roll).
+      specSeedRoll: parseUniverseSeed(randomSeedText(ctx)),
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });

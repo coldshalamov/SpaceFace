@@ -226,6 +226,9 @@ export function createScreenManager(ctx) {
         return rec;
       }
       rec.mounted = true;
+      // Some screens stamp aria-modal='true' as static markup in mount(); the manager owns that
+      // attribute (syncVisibility) — a warmed mount that is not stack top must not keep it.
+      if (stack[stack.length - 1] !== id) el.removeAttribute('aria-modal');
     }
     return rec;
   }
@@ -269,20 +272,20 @@ export function createScreenManager(ctx) {
       screensRoot.style.display = 'flex';
       screensRoot.style.visibility = 'hidden';
     }
-    requestAnimationFrame(() => {
-      // visibility+position always restore — a racing real open leaves this
-      // screen stack-top, and inline visibility:hidden is permanent otherwise.
-      el.style.visibility = '';
-      el.style.position = '';
-      if (stack[stack.length - 1] !== id) hideImportant(el.style);
-      if (rootHidden && screensRoot) {
-        screensRoot.style.visibility = '';
-        const stillOpen = stack.length > 0
-          || (typeof screensRoot.querySelector === 'function'
-            && !!screensRoot.querySelector('.sf-find--host'));
-        if (!stillOpen) screensRoot.style.display = 'none';
-      }
-    });
+    // Force the style+layout pass synchronously, then restore in the same task — an rAF-spanned
+    // warm leaves display:flex/grid on the element for a full frame, and a computed-style probe
+    // (check-new-game-layout modal semantics) can land inside that window.
+    void el.offsetHeight;
+    el.style.visibility = '';
+    el.style.position = '';
+    if (stack[stack.length - 1] !== id) hideImportant(el.style);
+    if (rootHidden && screensRoot) {
+      screensRoot.style.visibility = '';
+      const stillOpen = stack.length > 0
+        || (typeof screensRoot.querySelector === 'function'
+          && !!screensRoot.querySelector('.sf-find--host'));
+      if (!stillOpen) screensRoot.style.display = 'none';
+    }
   }
 
   function syncVisibility() {

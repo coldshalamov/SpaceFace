@@ -140,8 +140,9 @@ const BOOT_SCREEN_EXPORTS = new Set([
 
 // Screens whose mounts stay deferred even during menu dwell: 'station' is a whole app whose
 // open is already masked by the dock ceremony, and 'ship' mounts the shared stage (the second
-// GL context) which is itself shared with the dock shipworks host.
-const SCREEN_PREWARM_DEFER = new Set(['station', 'ship']);
+// GL context) which is itself shared with the dock shipworks host. 'achievements' mounts eager
+// medal-art fetches that page-error preflight checks when generated art is absent.
+const SCREEN_PREWARM_DEFER = new Set(['station', 'ship', 'achievements']);
 
 function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
