@@ -6829,6 +6829,22 @@ function findLiveRecordEntity(state, recordId) {
   if (!recordId || !state) return null;
   const index = state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    // Same covered+unambiguous gate liveRecordEntityIndex applies to the whole batch: a
+    // provably-unique row on a total-coverage index answers O(1); anything else keeps the
+    // lane-order walk (first-match priority is part of the contract).
+    const byRecord = index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    if (byRecord) {
+      const entities = state.entities;
+      const indexedIds = index._indexedIds;
+      const covered = entities && typeof entities.values === 'function'
+        && indexedIds instanceof Set && indexedIds.size === entities.size;
+      const count = index.byWorldRecordIdCount instanceof Map
+        ? (index.byWorldRecordIdCount.get(recordId) || 0) : 1;
+      if (covered && count <= 1) {
+        const e = byRecord.get(recordId);
+        return e && e.alive !== false ? e : null;
+      }
+    }
     return findLiveEntityForRecord(index.shipLike, recordId)
       || findLiveEntityForRecord(index.wrecks, recordId)
       || findLiveEntityForRecord(index.stations, recordId)

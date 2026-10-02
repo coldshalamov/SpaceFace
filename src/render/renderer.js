@@ -418,7 +418,7 @@ import {
 import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
 import { effectiveLawSecurity } from '../systems/lawSecurity.js';
-import { PURSUIT_RESOLVE_S } from '../systems/encounterDirector.js';
+import { PURSUIT_RESOLVE_S, sectorSecurityOf } from '../systems/encounterDirector.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -3221,7 +3221,10 @@ function warmPursuitInterventionDecode(owner) {
   const watch = dir && dir.pursuitWatch;
   if (!watch || typeof watch !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const sec = effectiveLawSecurity(state);
+  // Gate on the resolver's own baseline (static SECTORS def + regional fold): a sector
+  // whose live record drifted across 0.25 must still warm the roster its intervention
+  // will actually spawn.
+  const sec = sectorSecurityOf(state);
   if (!(sec >= 0.25)) return;
   const intervened = dir.patrolIntervened || null;
   const warmedAt = owner._pursuitWarmAt || (owner._pursuitWarmAt = new WeakMap());

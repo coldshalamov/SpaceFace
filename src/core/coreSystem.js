@@ -690,6 +690,7 @@ function appendEntityIndex(index, e) {
   const movable = isMovableEntity(e);
   if (e.collides) {
     index.collidables.push(e);
+    bumpLaneVersion(index, 'collidables');
     if (movable) {
       index.spatialDynamics.push(e);
       index.spatialDynamicsVersion++;
@@ -879,7 +880,7 @@ function removeEntityIndex(index, e) {
   repairEntityIndex(index);
   if (e.id != null && !index._indexedIds.has(e.id)) return;
   if (e.id != null) index._indexedIds.delete(e.id);
-  removeFromIndexArray(index.collidables, e);
+  if (removeFromIndexArray(index.collidables, e)) bumpLaneVersion(index, 'collidables');
   const removedSpatialStatic = removeFromIndexArray(index.spatialStatics, e);
   if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   removeFromIndexArray(index.physicsBodies, e);
@@ -1158,6 +1159,7 @@ export function syncEntityCollisionIndexMembership(index, e) {
   const present = index.collidables.indexOf(e) !== -1;
   const want = !!e.collides;
   if (want === present) return;
+  bumpLaneVersion(index, 'collidables');
   if (want) {
     index.collidables.push(e);
     if (isMovableEntity(e)) {
@@ -1194,7 +1196,8 @@ function removeEntitiesFromIndex(index, corpses) {
     indexed++;
   }
   if (indexed === 0) return;
-  removeCorpsesFromIndexArray(index.collidables, removed);
+  index.laneVersions.collidables = (index.laneVersions.collidables || 0)
+    + removeCorpsesFromIndexArray(index.collidables, removed);
   index.spatialStaticVersion += removeCorpsesFromIndexArray(index.spatialStatics, removed);
   index.spatialDynamicsVersion += removeCorpsesFromIndexArray(index.spatialDynamics, removed);
   removeCorpsesFromIndexArray(index.physicsBodies, removed);

@@ -38,6 +38,13 @@ export function createBus() {
   // self-healed. Whole-event promotion keeps in-event FIFO; only cross-event order moves.
   const PRESENTATION_PRIORITY_EVENTS = new Set(['entity:destroyed']);
   const presentationPriorityQueue = [];
+  // Once-only cosmetic events (spawn tails carry materializeT0/spiralDone stamps whose loss
+  // is a permanent pop-in) get their own overflow floor above the generic cosmetic one — a
+  // sustained destroyed burst sheds lifecycle slices long before it can evict the last
+  // once-only stamps. Tracked as a count so the trim scan stays O(1) on the common path.
+  const PRESENTATION_ONCE_ONLY_EVENTS = new Set(['entity:spawned']);
+  const PRESENTATION_PRIORITY_INTERLEAVE = 8;
+  let presentationOnceOnlyCount = 0;
   const presentationSlicePool = [];
   // Pooled-payload events (physics:impact, combat:damage refill one record per emit) register
   // an emit-time snapshotter: a queued presentation tail must read the fields a synchronous
@@ -115,26 +122,57 @@ export function createBus() {
     slice.payload = snapshot ? snapshot(payload) : payload;
     slice.fns = fns;
     slice.index = 0;
-    (PRESENTATION_PRIORITY_EVENTS.has(event) ? presentationPriorityQueue : presentationQueue).push(slice);
+    const priority = PRESENTATION_PRIORITY_EVENTS.has(event);
+    (priority ? presentationPriorityQueue : presentationQueue).push(slice);
+    if (!priority && PRESENTATION_ONCE_ONLY_EVENTS.has(event)) presentationOnceOnlyCount += 1;
     // A claimed-but-unpumped drain (hidden tab, suspended shell) must not accumulate
     // unboundedly: drop the oldest slices past the cap — losing a mid-burst visual tail is
     // cheaper than minutes of deferred drain when the pump resumes. Cosmetic slices drop
     // first, but only down to a floor: spawn tails carry once-only stamps (materializeT0,
     // spiralDone) whose loss is a permanent pop-in, while a dropped lifecycle slice leaves a
-    // dead hull the residency poll self-heals. Below the floor the priority lane sheds its
-    // own oldest instead of evicting the last cosmetics.
+    // dead hull the residency poll self-heals. Once-only cosmetics get their own deeper
+    // floor — while it holds, the priority lane sheds its own oldest instead of evicting
+    // the last spawn stamps.
     const COSMETIC_OVERFLOW_FLOOR = 16;
+    const ONCE_ONLY_OVERFLOW_FLOOR = 32;
     let overflow = presentationQueue.length + presentationPriorityQueue.length - 64;
     while (overflow-- > 0) {
       const dropCosmetic = presentationPriorityQueue.length === 0
         || presentationQueue.length > COSMETIC_OVERFLOW_FLOOR;
-      recyclePresentationSlice(
-        (dropCosmetic ? presentationQueue : presentationPriorityQueue).shift());
+      if (dropCosmetic) {
+        let dropIndex = -1;
+        if (presentationPriorityQueue.length === 0) {
+          dropIndex = 0;
+        } else {
+          for (let i = 0; i < presentationQueue.length; i++) {
+            if (!PRESENTATION_ONCE_ONLY_EVENTS.has(presentationQueue[i].event)) {
+              dropIndex = i;
+              break;
+            }
+          }
+          // Every retained cosmetic is once-only: shed its oldest only past the deeper
+          // floor; below it the priority lane pays instead (self-healing hull residue
+          // before permanent spawn-stamp loss).
+          if (dropIndex === -1 && presentationOnceOnlyCount > ONCE_ONLY_OVERFLOW_FLOOR) {
+            dropIndex = 0;
+          }
+        }
+        if (dropIndex !== -1) {
+          const dropped = presentationQueue.splice(dropIndex, 1)[0];
+          recyclePresentationSlice(dropped);
+          continue;
+        }
+      }
+      recyclePresentationSlice(presentationPriorityQueue.shift());
     }
   }
 
   function recyclePresentationSlice(slice) {
     if (!slice) return;
+    if (!PRESENTATION_PRIORITY_EVENTS.has(slice.event)
+        && PRESENTATION_ONCE_ONLY_EVENTS.has(slice.event)) {
+      presentationOnceOnlyCount -= 1;
+    }
     slice.event = null;
     slice.payload = null;
     slice.fns = null;
@@ -234,11 +272,21 @@ export function createBus() {
       ? performance.now() + maxMs
       : Infinity;
     let ran = 0;
+    // Bounded interleave: strict priority let a sustained destroyed burst starve the
+    // cosmetic lane for the burst's whole duration. After PRIORITY_INTERLEAVE consecutive
+    // priority invocations the cosmetic head drains once (per-lane FIFO kept, priority
+    // stays the major share), bounding cosmetic latency at K invocations while the burst
+    // still drains ~8x faster than cosmetics.
+    let priorityRun = 0;
     while (ran < limit) {
-      const queue = presentationPriorityQueue.length ? presentationPriorityQueue
+      const takePriority = presentationPriorityQueue.length > 0
+        && (priorityRun < PRESENTATION_PRIORITY_INTERLEAVE || presentationQueue.length === 0);
+      const queue = takePriority ? presentationPriorityQueue
         : presentationQueue.length ? presentationQueue
         : null;
       if (!queue) break;
+      if (queue === presentationPriorityQueue) priorityRun += 1;
+      else priorityRun = 0;
       const head = queue[0];
       const fn = head.fns[head.index];
       head.index += 1;
@@ -287,6 +335,7 @@ export function createBus() {
     presentationSnaps.clear();
     presentationQueue.length = 0;
     presentationPriorityQueue.length = 0;
+    presentationOnceOnlyCount = 0;
     presentationSlicePool.length = 0;
     payloadSnapshots.clear();
     deferred = [];

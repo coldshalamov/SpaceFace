@@ -4423,7 +4423,9 @@ function isWanted(state) {
   return typeof h === 'number' ? h >= 0.15 : false;    // mirrors heat.WANTED_THRESHOLD (read-only)
 }
 
-function sectorSecurityOf(state) {
+// Exported so presentation-side warm gates can consult the exact baseline the resolver
+// applies — the static SECTORS def, not the drifted live sector record.
+export function sectorSecurityOf(state) {
   const sid = state.world && state.world.currentSectorId;
   if (!sid) return 0.5;
   const def = SECTORS.find((s) => s.id === sid);
