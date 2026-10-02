@@ -3110,6 +3110,15 @@ export function isAttachable(entity, playerId, state) {
   const explicitlyTetherable = entity.data?.masslineTetherable === true
     || entity.flags?.masslineTetherable === true;
   if (!explicitlyTetherable && TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return false;
+  // NXI-022 — the offer follows the physics. An entity whose pose is authored `physicsBody: false`
+  // has no body in the SG-02 index, so the line has nothing to pull on: scripted machine proxies,
+  // fauna and closed-form route actors move by their owner's script and are never advertised as
+  // throwable cargo. Site machinery keeps that exclusion even when solid — its kinematic body
+  // (material 'station', mass 1e9) is terrain whose cycle the site runtime owns, never tow load.
+  // Loose payloads released beside it carry dynamic bodies and stay offered (NXB-006).
+  if (entity.physicsBody === false) return false;
+  const siteRole = entity.data?.role;
+  if (siteRole === 'world_site_component' || siteRole === 'world_site_collision') return false;
   // A Mass Seed is ineligible before frame lock (travelling/locking/collapsing): it publishes
   // its own eligibility so a premature latch can never attach to a still-moving deployable.
   if (entity.type === 'massSeed') return isMassSeedTetherEligible(entity);
