@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SHIP_SILHOUETTES } from '../src/data/shipSilhouettes.js';
 import { createIntegrityState, stepIntegrity, integrityPercent, integrityHullId,
-  shipConditionMarkup, updateShipCondition, INTEGRITY_LAMINAE, INTEGRITY_TRAIL_SECONDS } from '../src/ui/views/hullIntegrity.js';
+  shipConditionMarkup, updateShipCondition, INTEGRITY_LAMINAE, INTEGRITY_TRAIL_SECONDS,
+  setHullIntegrityQuietLatchForBench } from '../src/ui/views/hullIntegrity.js';
 import { HULL_INTEGRITY_CSS, mountHullIntegrityStyles } from '../src/ui/views/hullIntegrityStyles.js';
 const sample = (h=100,s=100,id='ship_kestrel') => ({id:'player', hull:h,hullMax:100,shield:s,shieldMax:100,data:{defId:id}});
 const step = (m,p,n=1,dt=1/60,reduce=false,flash=false) => {for(let i=0;i<n;i++) stepIntegrity(m,p,dt,reduce,flash);return m;};
@@ -118,6 +119,57 @@ test('10,000 steady-state updates cause zero DOM mutations, selectors or subtree
   Object.assign(i.stats,{writes:0,queries:0,rebuilds:0});
   for(let n=0;n<10000;n++) updateShipCondition(i.host,p,1/60);
   assert.deepEqual(i.stats,{writes:0,queries:0,rebuilds:0});
+});
+// #164 hull-integrity quiet latch: a settled instrument skips its DOM compare pass entirely.
+function recordingInstrument(id='ship_kestrel') {
+  const stats={reads:0,writes:0};const all=[];
+  const node=(name)=>{const attrs=new Map();let content='',html='';const n={name,attrs,
+    getAttribute:k=>{stats.reads++;return attrs.get(k)??null;},setAttribute(k,v){attrs.set(k,String(v));stats.writes++;},
+    removeAttribute(k){attrs.delete(k);stats.writes++;},
+    get textContent(){stats.reads++;return content;},set textContent(v){content=String(v);stats.writes++;},
+    get innerHTML(){return html;},set innerHTML(v){html=String(v);stats.writes++;},
+    snap:()=>JSON.stringify([name,[...attrs].sort(),content,html.length])};all.push(n);return n;};
+  const host=node('host'),nodes={},groups={};host.classList={add(){}};
+  for (const k of ['art','geometry','identity','hull-readout','shield-readout','hull-state','shield-state','shield-value','rail-fill','impact','repair']) nodes['.sf-integrity__'+k]=node(k);
+  for(const [k,n]of[['lamina',16],['loss',16],['envelope',2],['envelope-echo',2],['figures path',3]]) groups['.sf-integrity__'+k]=Array.from({length:n},(_, j)=>node(k+j));
+  const art=nodes['.sf-integrity__art'];art.attrs.set('data-integrity-prefix','mock');art.attrs.set('data-integrity-hull',id);
+  host.querySelector=k=>nodes[k]??null;host.querySelectorAll=k=>groups[k]||[];
+  return {host,stats,snapshot:()=>all.map(n=>n.snap()).join('\n')};
+}
+test('quiet latch: a settled instrument reads no DOM at all across 10,000 frames',()=>{
+  setHullIntegrityQuietLatchForBench(true);
+  const i=recordingInstrument(),p=sample(86,78);
+  for(let n=0;n<120;n++) updateShipCondition(i.host,p,1/60);
+  Object.assign(i.stats,{reads:0,writes:0});
+  for(let n=0;n<10000;n++) updateShipCondition(i.host,p,1/60);
+  assert.deepEqual(i.stats,{reads:0,writes:0});
+  // a real change still paints on the very next frame
+  p.hull=40;updateShipCondition(i.host,p,1/60);
+  assert.ok(i.stats.writes>0,'damage must repaint immediately');
+});
+test('quiet latch is picture-identical to the full compare pass on every frame of a mixed run',()=>{
+  const on=recordingInstrument(),off=recordingInstrument();
+  let seed=7;const rnd=()=>((seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff);
+  const p={id:'player',hull:100,hullMax:100,shield:100,shieldMax:100,data:{defId:'ship_kestrel'}};
+  const ids=Object.keys(SHIP_SILHOUETTES);
+  try {
+    for(let f=0;f<6000;f++){
+      const r=rnd();
+      if(r<.02) p.hull=Math.max(0,p.hull-rnd()*30);
+      else if(r<.04) p.shield=Math.max(0,p.shield-rnd()*40);
+      else if(r<.06) p.hull=Math.min(100,p.hull+rnd()*20);
+      else if(r<.08) p.shield=Math.min(100,p.shield+rnd()*25);
+      else if(r<.085) p.data={defId:ids[Math.floor(rnd()*ids.length)]};
+      else if(r<.087) p.shieldMax=p.shieldMax?0:100;
+      else if(r<.089) p.hull=NaN;
+      else if(r<.091) p.hull=50;
+      const ent=r>.995?null:p;
+      const dt=r<.1?0:(r>.99?0.5:1/60);const reduce=rnd()<.02,flash=rnd()<.02;
+      setHullIntegrityQuietLatchForBench(true);updateShipCondition(on.host,ent,dt,reduce,flash);
+      setHullIntegrityQuietLatchForBench(false);updateShipCondition(off.host,ent,dt,reduce,flash);
+      assert.equal(on.snapshot(),off.snapshot(),`frame ${f}`);
+    }
+  } finally { setHullIntegrityQuietLatchForBench(true); }
 });
 test('health mutation keeps every live node; the two accessible meters report actual values',()=>{
   const i=instrument(),p=sample();updateShipCondition(i.host,p,1/60);
