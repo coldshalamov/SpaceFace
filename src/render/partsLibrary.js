@@ -22,6 +22,7 @@ import { invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRe
 import { packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
+import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import {
@@ -12719,7 +12720,7 @@ function sharedMaterialFor(base, tags, palette) {
   // Instance key still includes tint so faction colors remain distinct material.color uniforms.
   // Program-family identity (name + spacefaceProgramFamily) deliberately omits tint: color is a
   // per-instance uniform, not a distinct compiled program.
-  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}`;
+  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}${lampShareToken(base)}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
     material = applyAppearanceFinish(
@@ -13466,6 +13467,15 @@ function hashString(value) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+/** Test seams: the two ways an authored primitive's material resolves (shared cache / ship-local clone). */
+export function sharedMaterialForProbe(base, tags, palette) {
+  return sharedMaterialFor(base, tags, palette);
+}
+
+export function dedicatedMaterialForProbe(base, tags, palette, cache, instanceKey) {
+  return dedicatedMaterialFor(base, tags, palette, cache, instanceKey);
 }
 
 /** Contract/CI probe: immutable hull share keys must canonicalize negligible emissive deltas. */

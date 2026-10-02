@@ -3,6 +3,8 @@ import { applyIllustratedMaterialResponse } from './industrialMaterialFamilies.j
 import { resolveLookEmissiveGain } from '../data/lookMoods.js';
 import { illustratedPigmentForMaterial } from './illustratedLivery.js';
 import { hullLayoutForAsset } from './illustratedHullLayout.js';
+import { resolveLampChannel } from '../data/lampChannels.js';
+import { installLampBus } from './lampBus.js';
 
 const ROLE_RULES = Object.freeze([
   ['glass', /canopy|cockpit.?glass|material_glass|window|viewport|visor/i],
@@ -119,7 +121,7 @@ export function isForgeMaterial(material) {
   return !!material && material.userData && material.userData.spacefaceFinish === FORGE_FINISH;
 }
 
-function applyForgeFinish(material, role) {
+function applyForgeFinish(material, role, options = {}) {
   material.userData = {
     ...(material.userData || {}), spacefaceMaterialRole: role,
     spacefaceAuthoredMaterialName: material.userData?.spacefaceAuthoredMaterialName || material.name,
@@ -144,6 +146,13 @@ function applyForgeFinish(material, role) {
   }
   if (role !== 'glass' && role !== 'drive' && role !== 'signal'
     && globalThis.__SF_FORGE_ILLUSTRATED__ !== false) installIllustratedSurface(material);
+  // The Lamp Bus (src/render/lampBus.js): a lamp that belongs to a channel blinks. Which lamps those are is
+  // decided in data (resolveLampChannel), by exact material name and package slot — never by base finish.
+  if (role === 'signal') {
+    const channel = resolveLampChannel(material.userData.spacefaceAuthoredMaterialName || material.name,
+      { slot: options.slot });
+    if (channel) installLampBus(material, channel);
+  }
   material.needsUpdate = true;
   return true;
 }
@@ -153,7 +162,7 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
   let role = explicitRole || authoredMaterialRole(material.name);
   if (isForgeMaterial(material)) {
     const authored = String(material.userData.spacefaceMaterialRole || '').trim().toLowerCase();
-    return applyForgeFinish(material, authored || role || 'hull');
+    return applyForgeFinish(material, authored || role || 'hull', options);
   }
   // The liner's release table predates these descriptive material names. Ceramic *paint* is a
   // coating, not a heat shield; its safety glazing and forged frame are separate substances.
@@ -311,7 +320,9 @@ export function inspectAuthoredPbrCoverage(material) {
  * and ship them as data, letting the shipping loader apply profiles by declaration instead of
  * re-running the two scene traversals and the name-based role inference below.
  */
-export function configureAuthoredMaterialProfiles(root, { assetId = null, bounds = null, record = null } = {}) {
+export function configureAuthoredMaterialProfiles(root, {
+  assetId = null, bounds = null, record = null, slot = null,
+} = {}) {
   const configured = new Set();
   const uvMaterials = new Set();
   const roles = {};
@@ -345,6 +356,7 @@ export function configureAuthoredMaterialProfiles(root, { assetId = null, bounds
       if (!role || !applyAuthoredMaterialProfile(material, role, {
         assetId,
         bounds,
+        slot,
         allowTextures: uvMaterials.has(material),
       })) continue;
       configured.add(material);
