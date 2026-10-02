@@ -183,7 +183,7 @@ import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
-import { addCargo, releasableContractUnits, removeCargo } from './cargo.js';
+import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -1256,6 +1256,17 @@ export const missions = {
     bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
     // mining_quota: aggregate mined units of the target commodity.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
+    // Deep-core ore is already accepted into the player's hold. Its event uses tile coordinates;
+    // use the live rock's world position so sample/recon contracts retain their source checks.
+    bus.on('drill:yield', (p) => {
+      const rock = state.drill && state.entities && state.entities.get(state.drill.asteroidId);
+      if (!p || !rock || !rock.pos) return;
+      this._onMiningYield({
+        ...p,
+        minerId: state.playerId,
+        pos: { x: rock.pos.x, z: rock.pos.z },
+      });
+    });
     // The Investigation Chain's black-box stage consumes the native mining-owned wreck salvage
     // receipt. It has no synthetic cargo or destination dock: the physical wreck recovery is the
     // objective, and missions remains the settlement authority.
@@ -4166,6 +4177,9 @@ export const missions = {
 
   _onMiningYield(p) {
     if (!p || !p.commodityId) return;
+    // Ambient cutters publish the same yield facts. Only the player earns their contracts;
+    // omitted identity remains compatible with legacy/headless player receipts.
+    if (p.minerId === null || (p.minerId != null && p.minerId !== this.state.playerId)) return;
     const b0 = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B0_TAG);
     let b0SampleRecovered = false;
     if (b0 && !(b0.params && b0.params.sampleRecovered) && p.minerId !== null
@@ -6351,8 +6365,9 @@ export const missions = {
         // and every other type keep the legacy all-or-nothing path below.
         if (t === 'salvage_retrieval' && isMutationRecovery(m) && m.params && m.params.cmdtyId) {
           const need = Math.max(1, m.params.qty || 1);
-          const cargo = this.state.player && this.state.player.cargo;
-          const have = Number((cargo && cargo.items && cargo.items[m.params.cmdtyId]) || 0);
+          const have = m.preloadedCargo === true
+            ? releasableContractUnits(this.state, m)
+            : sellableCargoQuantity(this.state, m.params.cmdtyId);
           if (have > 0 && have < need) {
             const deal = mutationPartialSettlement(have, need, m.reward_cr);
             if (deal && deal.partial) {
@@ -6473,6 +6488,10 @@ export const missions = {
     const have = (cargo && cargo.items && cargo.items[p.cmdtyId]) || 0;
     if (have < need) return false;
     if (tracked && releasableContractUnits(this.state, m) < need) return false;
+    // An ordinary haul may consume only loose goods, just like a market sale. B0 owns its
+    // persistent assay sample and unlocks that specific story lot for its authorized turn-in.
+    if (!tracked && m.storyTag !== CONTRACT_47A_B0_TAG
+      && sellableCargoQuantity(this.state, p.cmdtyId) < need) return false;
     if (m.storyTag === CONTRACT_47A_B0_TAG && Array.isArray(this.state.story && this.state.story.persistentCargo)) {
       this.state.story.persistentCargo = this.state.story.persistentCargo.filter((id) => id !== CONTRACT_47A_SAMPLE_ID);
     }

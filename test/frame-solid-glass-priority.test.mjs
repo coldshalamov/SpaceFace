@@ -262,6 +262,56 @@ test('mesh-build drain admits a hoisted on-glass body inside a refused late-pres
   );
 });
 
+test('live mesh builds send on-glass pipelines to the urgent lane and discard stale render callbacks', async () => {
+  const frames = [];
+  const priorRaf = globalThis.requestAnimationFrame;
+  const priorScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+  globalThis.scheduler = { postTask: (callback) => Promise.resolve().then(callback) };
+  try {
+    const calls = [];
+    const state = {
+      mode: 'flight', simTime: 10, entities: new Map(), entityList: [],
+      render: {
+        firstPlayableFrameAt: 1, lastPresentDtMs: 0,
+        compileObjectPipelines: (root, options) => { calls.push({ root, options }); },
+      },
+    };
+    const makeOwner = (id) => {
+      const entity = { id, type: 'wreck', alive: true, pos: { x: 5000, z: 5000 }, rot: 0,
+        radius: 20, data: {}, activity: { presentationTier: R0 } };
+      state.entities.set(id, entity);
+      return {
+        state, scene: new THREE.Scene(), _initialMeshReconcileComplete: true,
+        _meshBuildLateSkips: 0, _meshBuildQueue: [id], _meshBuildQueueHead: 0,
+        _meshBuildQueuedIds: new Set([id]), _meshes: new Map(), _meshesVersion: 0,
+        vf: { build: () => new THREE.Group() }, _bindPresentationMesh() {},
+        _frameMembrane: { toLocal: (pos, out) => Object.assign(out, pos) },
+      };
+    };
+    const owner = makeOwner('glass');
+    assert.equal(render._drainMeshBuildQueue.call(owner, 1), 1);
+    assert.equal(calls.length, 0, 'pipeline work waits until after the displayed frame');
+    frames.shift()(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].options?.urgent, true,
+      'a body already on camera must not wait behind ambient pipeline admissions');
+
+    const staleOwner = makeOwner('stale');
+    assert.equal(render._drainMeshBuildQueue.call(staleOwner, 1), 1);
+    state.render = { ...state.render, compileObjectPipelines: () => assert.fail('stale build reached a replacement renderer') };
+    frames.shift()(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+  } finally {
+    if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRaf;
+    if (priorScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = priorScheduler;
+  }
+});
+
 test('authored upgrade queue: an R0_GLASS owner is admitted ahead of target, hostile and ambient work', async () => {
   const scheduledFrames = [];
   const previousRaf = globalThis.requestAnimationFrame;

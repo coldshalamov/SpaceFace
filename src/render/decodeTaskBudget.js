@@ -23,8 +23,8 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
  * FIFO semaphore with deadline classes. `acquire(decodeClass)` resolves a `release` function;
  * release returns the token to the next waiter — 'visible' waiters before 'deadline' waiters
  * before 'ambient' ones, FIFO within each class — or to `available`. Releasing is
- * idempotent-free — callers must invoke a release exactly once, so wrap tasks so settle paths
- * release exactly one token.
+ * idempotent per lease, so a stale completion cannot return another task's token.
+ * `acquire({ decodeClass, signal })` also lets a retired queued owner leave the gate.
  *
  * Three classes: a 'visible' decode (spawn already at the glass — tGlass below the urgent
  * threshold) never waits behind runway work that still has seconds of slack; a 'deadline'
@@ -60,23 +60,56 @@ export function pacedFrameSpend() {
 }
 
 export function createDecodeTaskBudget(limit) {
+  if (!Number.isFinite(limit) || limit <= 0) throw new RangeError('Decode budget limit must be finite and positive');
   const size = Math.max(1, Math.floor(limit));
   let available = size;
   const waiters = [];
-  const release = () => {
+  const returnToken = () => {
     let idx = waiters.findIndex((w) => w.decodeClass === 'visible');
     if (idx < 0) idx = waiters.findIndex((w) => w.decodeClass === 'deadline');
     if (idx < 0) idx = waiters.length ? 0 : -1;
     const next = idx >= 0 ? waiters.splice(idx, 1)[0] : null;
-    if (next) next.resolve(release);
+    if (next) {
+      next.detach();
+      next.resolve(newLease());
+    }
     else available += 1;
   };
-  const acquire = (decodeClass) => {
+  const newLease = () => {
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      returnToken();
+    };
+  };
+  const abortError = (signal) => {
+    const reason = signal.reason;
+    if (reason instanceof Error && reason.name === 'AbortError') return reason;
+    const error = new Error(reason == null ? 'Decode owner became inactive' : String(reason));
+    error.name = 'AbortError';
+    return error;
+  };
+  const acquire = (options) => {
+    const signal = options && typeof options === 'object' ? options.signal : null;
+    const decodeClass = typeof options === 'string' ? options : options && options.decodeClass;
+    if (signal && signal.aborted) return Promise.reject(abortError(signal));
     if (available > 0) {
       available -= 1;
-      return Promise.resolve(release);
+      return Promise.resolve(newLease());
     }
-    return new Promise((resolve) => { waiters.push({ decodeClass, resolve }); });
+    return new Promise((resolve, reject) => {
+      const onAbort = () => {
+        const index = waiters.indexOf(waiter);
+        if (index < 0) return;
+        waiters.splice(index, 1);
+        waiter.detach();
+        reject(abortError(signal));
+      };
+      const waiter = { decodeClass, resolve, detach: () => signal && signal.removeEventListener('abort', onAbort) };
+      waiters.push(waiter);
+      if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    });
   };
   const CLASS_RANK = DECODE_CLASS_RANK;
   /**

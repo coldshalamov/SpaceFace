@@ -174,6 +174,7 @@ export function resolveWatchPin(state, pin) {
     const ace = aceById(id);
     const mem = state.aceMemory && state.aceMemory[id];
     if (!ace) return { ...base, detail: 'off the books' };
+    if (mem && mem.defeated === true) return { ...base, detail: 'defeated', tone: 'calm' };
     if (mem && mem.status) return { ...base, detail: String(mem.status).replace(/_/g, ' '), tone: 'foe' };
     if (mem && Number(mem.kills) > 0) return { ...base, detail: `downed you ×${Number(mem.kills)}`, tone: 'foe' };
     if (mem && Number(mem.defeats) > 0) return { ...base, detail: `downed ×${Number(mem.defeats)}`, tone: 'you' };

@@ -187,6 +187,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const onBlockingSlice = typeof options.onBlockingSlice === 'function'
     ? options.onBlockingSlice
     : null;
+  const onRejected = typeof options.onRejected === 'function'
+    ? options.onRejected
+    : (error) => console.warn('[render] pipeline admission failed', error);
   const now = typeof options.now === 'function'
     ? options.now
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -221,8 +224,8 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       return;
     }
     if (quietTimer != null) clearTimeout(quietTimer);
-    quietTimer = setTimeout(() => { void flushQueued(); }, quietMs);
-    if (maxTimer == null) maxTimer = setTimeout(() => { void flushQueued(); }, maxWaitMs);
+    quietTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, quietMs);
+    if (maxTimer == null) maxTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, maxWaitMs);
   }
 
   /** Time only the synchronous compileBatch call (until it returns a value/promise). */
@@ -314,6 +317,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     queued = remaining;
     const subjects = batch.map((entry) => entry.subject);
     const run = compileTail.then(() => invokeCompileBatch(subjects, path, batchCompileOptions(batch)));
+    observePipelineAdmission(run, onRejected);
     // Render-target selection is global renderer state. Keep batches serialized even if a second
     // runway fills while the first one is still waiting on the graphics driver.
     compileTail = run.catch(() => null);
@@ -361,7 +365,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         return;
       }
       skippedResumeForLatePresent = false;
-      void flushResumedBatch();
+      observePipelineAdmission(flushResumedBatch());
     });
     ranSynchronously = false;
   }
@@ -452,6 +456,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
           'urgent',
           { ...compileOptions, skipSharedBatch: true },
         ));
+        observePipelineAdmission(run, onRejected);
         compileTail = run.catch(() => null);
         urgentRuns.set(subject, run);
         run.then(
@@ -479,6 +484,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         pending.delete(entry);
         settledAdmissions += 1;
       });
+      // A queued consumer may retire before its scheduled batch runs. Observe the cleanup child
+      // now without replacing it: an awaited owner must still receive the original rejection.
+      observePipelineAdmission(entry.completion);
       pending.add(entry);
       queued.push(entry);
       scheduleFlush();
@@ -506,6 +514,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         ...batchCompileOptions([explicitEntry, ...ambient]),
       };
       const run = compileTail.then(() => invokeCompileBatch(merged, 'explicit', mergedOptions));
+      observePipelineAdmission(run, onRejected);
       compileTail = run.catch(() => null);
       run.then(
         (result) => {
@@ -516,10 +525,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         },
         (error) => { for (const entry of ambient) entry.reject(error); },
       );
-      return run.then((result) => {
+      return observePipelineAdmission(run.then((result) => {
         if (entryInactive(explicitEntry)) throw inactiveOwnerError();
         return result;
-      });
+      }));
     },
 
     resumeAutoFlush() {
@@ -531,12 +540,13 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         scheduleResumedBatch();
         return compileTail;
       }
-      return flushResumedBatch();
+      return observePipelineAdmission(flushResumedBatch());
     },
     waitForPending,
     flushOneAfterPresent() {
+      // The empty lane reuses its already-observed tail without allocating on every present.
       if (queued.length === 0) return compileTail;
-      return flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true);
+      return observePipelineAdmission(flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true));
     },
     get pendingCount() { return pending.size; },
     /** Admissions not yet handed to compileBatch (the rest of pendingCount is linking). */

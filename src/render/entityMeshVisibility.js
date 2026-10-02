@@ -1,10 +1,9 @@
 // Submit-side visibility for presentation roots.
 //
-// The query "hidden" set is already outside the glass plus a short approach
-// runway (fast-ship travel, not a 900 WU fake-visible box). Those roots cannot
-// change a readable pixel. Anything still in the query — including the middle
-// sync band and small-but-authored ships — stays submitted. The inner/middle
-// split only changes how often closures run.
+// The query retains a short approach runway for pose sync and preparation. Only
+// the live camera's glass (including visual envelopes and the frame skirt)
+// owns submission; the wider deterministic sim frame is a fallback for callers
+// without a live camera verdict.
 
 export function isAuthoredPendingStatus(status) {
   return status === 'loading'
@@ -35,6 +34,10 @@ export function shouldSubmitEntityMesh(options = {}) {
   // 1x1 residency pass has registered those geometries.
   if (options.geometryPending === true && !protectedRoot) return false;
   if (options.hidden === true) return false;
+  // The sim glass uses a conservative aspect and can lag camera zoom/glide. Letting its
+  // membership override a measured miss submits off-screen roots; letting a stale tier
+  // override a measured hit makes a ready body pop out until the next sim publication.
+  if (typeof options.onLiveGlass === 'boolean') return options.onLiveGlass;
   const frame = options.activityFrame;
   const entityId = options.entityId;
   if (frame && entityId != null) {
@@ -44,11 +47,6 @@ export function shouldSubmitEntityMesh(options = {}) {
       ? collection.has(entityId)
       : Array.isArray(collection) && collection.includes(entityId);
     if (has(glass)) return true;
-    // The live frustum outranks the sim-side activity frame for submission: the frame's glass is
-    // computed at the requested zoom with a fixed aspect, so a dynamically zoomed-out camera can
-    // put a runway-classed hull on the real screen. Denying it there hides a hull the player can
-    // see while its HUD markers still draw.
-    if (options.onLiveGlass === true) return true;
     // Runway roots remain resident for approach-time warmup but are not submitted
     // until the activity frame promotes them onto the readable glass.
     if (has(runway)) return false;

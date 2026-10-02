@@ -97,3 +97,60 @@ test('uncapped vsync-off presents every rAF', () => {
     loop.close();
   }
 });
+
+function startCapableLoop(state) {
+  const queued = [];
+  let now = 0;
+  const simulation = stubSimulationRunner();
+  const runner = createPresentationRunner(
+    state,
+    { renderUpdate() {}, get() { return null; } },
+    simulation,
+    {
+      requestFrame(callback) { queued.push(callback); return queued.length; },
+      cancelFrame() { queued.length = 0; },
+      nowMs: () => now,
+      visibilityTarget: null,
+      lifecyclePort: null,
+      inputResumeTarget: null,
+    },
+  );
+  return {
+    pump(dtMs) { now += dtMs; const cb = queued.shift(); if (cb) cb(now); },
+    close: () => runner.close(),
+  };
+}
+
+test('a jittery callback interval is not learned as the display rate', () => {
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0,
+    input: { actions: {} },
+    render: { displayHz: 60 },
+    settings: { video: { vsync: true, frameCap: 0 } },
+  };
+  const loop = startCapableLoop(state);
+  try {
+    // Saturated machine: intervals swing 24–70 ms with a ~33 ms mean — the loop's own
+    // throughput, not a vsync beat. The lock counter must never reach a learned write.
+    for (let i = 0; i < 120; i += 1) loop.pump(i % 3 === 0 ? 70 : 24);
+    assert.equal(state.render.displayHz, 60, 'starved-loop intervals must not rewrite displayHz');
+  } finally {
+    loop.close();
+  }
+});
+
+test('a steady vsync cadence still learns the display rate', () => {
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0,
+    input: { actions: {} },
+    render: { displayHz: 60 },
+    settings: { video: { vsync: true, frameCap: 0 } },
+  };
+  const loop = startCapableLoop(state);
+  try {
+    for (let i = 0; i < 120; i += 1) loop.pump(1000 / 75);
+    assert.equal(state.render.displayHz, 75, 'a stable 75 Hz cadence is learned');
+  } finally {
+    loop.close();
+  }
+});

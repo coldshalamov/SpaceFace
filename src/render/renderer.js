@@ -8977,6 +8977,9 @@ export const render = {
         (error) => console.warn('[render] background pipeline admission failed', error));
       return admission;
     };
+    // Class methods outside this closure (the mesh-build drain) reach the counted hold
+    // through state.render — a direct const reference is out of scope there.
+    state.render.markSubjectPipelinesPending = markSubjectPipelinesPending;
     // Pre-release lanes narrow the caller's options: isActive keeps its stale-subject guard,
     // joinOutstanding stays usable during loading, unSliced keeps its urgent-residency route;
     // urgent/explicit ambient demotion while loading is authored intent and stays dropped.
@@ -16160,7 +16163,6 @@ export const render = {
       }
       const linkOnGlass = this.state.mode === 'flight'
         && entityIsOnReadableGlassScan(e, this.state, drainScan);
-      const compileAsteroid = e.type === 'asteroid';
       // Do not compile or 1x1-upload held first-flight rocks during the live
       // frame. That was the leftover Intel context-loss: several residency
       // prepares stacked on the first present. Cooked roots are stamped behind
@@ -16176,17 +16178,43 @@ export const render = {
           // Counted hold, not a raw flag: the rAF-gap early-hide is real (an unlinked
           // mesh must not reach a presented frame), and routing it through
           // markSubjectPipelinesPending keeps pending ⇒ counted — the tag also
-          // survives attribution until the real compile re-marks it.
-          markSubjectPipelinesPending(subject, true, 'mesh-build-compile');
+          // survives attribution until the real compile re-marks it. state.render
+          // is the scope-safe accessor: the helper lives inside the admission setup
+          // closure, not this class method.
+          const markPending = this.state.render
+            && this.state.render.markSubjectPipelinesPending;
+          if (typeof markPending === 'function') {
+            markPending(subject, true, 'mesh-build-compile');
+          } else {
+            const ud = subject.userData || (subject.userData = {});
+            ud.pipelinesPending = true;
+            ud.pipelinesPendingBy = 'mesh-build-compile';
+          }
+          const capturedState = this.state;
+          const capturedRender = capturedState.render;
+          const capturedRenderer = capturedRender.renderer;
+          const capturedGeneration = capturedRender.admissionRunGeneration;
+          const isActive = () => this.state === capturedState
+            && capturedState.render === capturedRender
+            && capturedRender.renderer === capturedRenderer
+            && capturedRender.admissionRunGeneration === capturedGeneration
+            && capturedRender.compileObjectPipelines === compileFn
+            && e.alive !== false && e.mesh === subject && !!subject.parent;
           void yieldAfterPresent().then(() => {
-            const compile = this.state && this.state.render
-              && this.state.render.compileObjectPipelines;
-            if (typeof compile === 'function' && subject && subject.parent) {
-              return compile(subject, { debugBy: 'mesh-build-compile' });
-            }
-            return null;
+            if (!isActive()) return null;
+            // A freshly built on-camera body has the same deadline as an authored
+            // upgrade. Ambient FIFO priority here left its root hidden for seconds.
+            return compileFn(subject, {
+              debugBy: 'mesh-build-compile',
+              urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
+            });
           }).finally(() => {
-            markSubjectPipelinesPending(subject, false);
+            if (typeof markPending === 'function') {
+              markPending(subject, false);
+            } else if (subject && subject.userData) {
+              subject.userData.pipelinesPending = false;
+              subject.userData.pipelinesPendingBy = null;
+            }
           }).catch(() => null);
         } else {
           void compileFn(m);

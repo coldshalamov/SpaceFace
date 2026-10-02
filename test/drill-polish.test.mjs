@@ -59,6 +59,7 @@ test('drill grind lifecycle holds exactly one voice and releases it on contact l
   const harness = {
     state: { drill: drillState({ heat: 45, energy: 70, hardness: 1.4 }) },
     rt: { ctx: { state: 'running', currentTime: 12 }, loops: {} },
+    _setParam: audio._setParam,
     _startLoopVoice(id) {
       starts++;
       assert.equal(id, DRILL_GRIND_LOOP_ID);

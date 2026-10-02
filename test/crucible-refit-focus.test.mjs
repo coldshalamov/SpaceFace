@@ -66,3 +66,12 @@ test('scroll-to-focused and the keyboard row walk are wired on the refit', () =>
   assert.match(source, /savedFocus = focusedControlId\(rootEl\)/, 'the draft captures focus across its card rebuild');
   assert.match(source, /restoreFocusedControl\(rootEl, savedFocus\)/, 'both surfaces restore, not just the refit');
 });
+
+test('the refit hull watch ignores fitCount child mutations and preserves raw count (D129)', () => {
+  const source = readFileSync(new URL('../src/ui/screens/crucibleDraft.js', import.meta.url), 'utf8');
+  assert.match(source, /m\.target === this\._fitCount \|\| m\.target\?\.parentElement === this\._fitCount/,
+    'hullWatch observer ignores mutations from _fitCount to prevent infinite feedback loops');
+  assert.match(source, /this\._fitCount\.dataset\.raw !== text/,
+    'dressHull checks dataset.raw before updating fitCount textContent');
+});
+

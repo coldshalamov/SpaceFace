@@ -22,6 +22,10 @@ const CONTRACTS_SRC = readFileSync(
   fileURLToPath(new URL('../src/ui/station/screens/contracts.js', import.meta.url)),
   'utf8',
 );
+const SETTINGS_SRC = readFileSync(
+  fileURLToPath(new URL('../src/ui/screens/settings.js', import.meta.url)),
+  'utf8',
+);
 
 function entity(id, extras = {}) {
   return {
@@ -173,6 +177,15 @@ test('gamepad A/B own an open confirm instead of falling through to the screen',
   assert.equal(isConfirmOpen(), false);
   assert.equal(confirmGamepadAccept(), false);
   assert.equal(confirmGamepadCancel(), false);
+});
+
+// NXI-218: canceling a rebind capture consumes the Escape (it cannot leak into flight or close the
+// screen) and restores routing — the capture listeners are removed and the pad capture handler
+// cleared so ordinary navigation works again.
+test('a canceled rebind capture eats its Escape and restores routing', () => {
+  assert.match(SETTINGS_SRC, /const onKey = \(ev\) => \{\s*ev\.preventDefault\(\); ev\.stopPropagation\(\);[\s\S]{0,160}ev\.code === 'Escape'\) \{ done\(false\); return; \}/);
+  assert.match(SETTINGS_SRC, /window\.removeEventListener\('keydown', onKey, true\)/);
+  assert.match(SETTINGS_SRC, /setGamepadCaptureHandler\(null\)/);
 });
 
 test('market and contract UIs gate double-submit of buy/sell/accept', () => {

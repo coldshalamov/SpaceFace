@@ -1,14 +1,17 @@
 // src/data/audioRecipes.js – audio synthesis recipes and music stem definitions.
 // RECIPES: SFX synthesis parameter sets for runtime AudioContext nodes.
 // MUSIC_STEMS: adaptive music stem layer definitions.
-// Pure data, no imports, no three/DOM deps.
+// Pure data, no three/DOM deps.
 //
 // Distortion: a recipe that sets distortionAmount must also set distortionCurve.
 //   'softclip' — pre-QoL cheap clip (amounts authored against that formula)
 //   'tanh'     — analog saturation (amounts authored against the QoL curve)
 // Amounts are not interchangeable across curves.
 
+import { MORROW_AUDIO_RECIPES } from './morrow.js';
+
 export const RECIPES = [
+  ...MORROW_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',

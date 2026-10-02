@@ -794,6 +794,13 @@ export class Sg02DynamicBodyOwner {
       }
     }
     for (const rec of this.dynamicRecords) {
+      // The post-step sleep verdict is authoritative for the rest of the step: world.step is
+      // the only sleeper (a body Rapier reports asleep here cannot wake until the next step
+      // except via an explicit wake path, and _wakeSleepingBody clears this flag). A sleeping
+      // island's kinematics did not move, so neither the WASM readback nor the give pass — which
+      // would only compare that frozen pose against a stale prediction — has anything to do.
+      rec._postStepSleepSkip = this._sleepingRecordSkipsCpu(rec, true);
+      if (rec._postStepSleepSkip) continue;
       this._readPostStepKinematics(rec);
       this._applyStructuralGive(rec);
     }
@@ -824,12 +831,16 @@ export class Sg02DynamicBodyOwner {
     }
 
     for (const rec of this.dynamicRecords) {
-      if (this._sleepingRecordSkipsCpu(rec, true)) {
+      if (rec._postStepSleepSkip === true) {
         rec._skippedSleepKinematics = true;
         this._stampIslandSleep(rec, true);
         continue;
       }
       rec._skippedSleepKinematics = false;
+      // A body woken after the verdict was cached (a receipt endpoint roused by
+      // _wakeSleepingBody) skipped the post-step read; its scratch must be fresh before
+      // _enforcePlane/_clampSpeed consult it, not residue from an earlier step.
+      if (rec._postStepReadTick !== this.tick) this._readPostStepKinematics(rec);
       const kinematics = this._enforcePlane(rec);
       this._clampSpeed(rec, kinematics);
       if (this._sleepReeled.has(rec)) this._canonicalizeManualSpringBody(rec, kinematics);
@@ -850,6 +861,8 @@ export class Sg02DynamicBodyOwner {
 
   _wakeSleepingBody(rec) {
     if (!rec || !rec.body) return;
+    // Explicit wakes between the post-step passes invalidate the cached skip verdict.
+    rec._postStepSleepSkip = false;
     if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
     if (typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(false);
     if (rec.entity) rec.entity.physicsSleeping = false;
@@ -1010,6 +1023,7 @@ export class Sg02DynamicBodyOwner {
   // per-record object absorbs the per-tick allocation; dirty flags mark components a give pass
   // rewrote so _enforcePlane re-reads the authoritative WASM value.
   _readPostStepKinematics(rec) {
+    rec._postStepReadTick = this.tick;
     const post = rec.postStep || (rec.postStep = {
       v: { x: 0, y: 0, z: 0 },
       w: { x: 0, y: 0, z: 0 },
@@ -1508,6 +1522,8 @@ export class Sg02DynamicBodyOwner {
       // collider-local offsets and axes never change on a live record.
       coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
+      _postStepSleepSkip: false,
+      _postStepReadTick: -1,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
       appliedForce: zero3(),

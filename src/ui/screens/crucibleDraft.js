@@ -1496,7 +1496,10 @@ export const crucibleRefitScreen = {
     this._hullWatch = null;
     if (typeof MutationObserver === 'function' && this._stageEl
       && typeof this._stageEl.querySelectorAll === 'function') {
-      this._hullWatch = new MutationObserver(() => this._dressHull());
+      this._hullWatch = new MutationObserver((mutations) => {
+        if (mutations && mutations.every((m) => m.target === this._fitCount || m.target?.parentElement === this._fitCount)) return;
+        this._dressHull();
+      });
       this._hullWatch.observe(this._stageEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     }
     this._dressHull();
@@ -1824,7 +1827,10 @@ export const crucibleRefitScreen = {
     if (this._fitCount) {
       const fitted = states.filter((s) => s === 'fitted').length;
       const text = `${fitted} of ${n} fitted`;
-      if (this._fitCount.textContent !== text) this._fitCount.textContent = text;
+      if (this._fitCount.dataset.raw !== text) {
+        this._fitCount.dataset.raw = text;
+        this._fitCount.textContent = text;
+      }
       this._fitCount.hidden = stage.querySelectorAll('.orr-hull__fitted').length !== 0;
     }
   },

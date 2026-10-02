@@ -9,8 +9,8 @@
   "fontTools (variable-font instancing for real type)",
   "image_gen (Codex built-in; P15 arena/mode/difficulty mood imagery)",
   "Python Pillow 12.2.0 + numpy 2.4.4 (P15 Lanczos downsamples, vignette alpha, contact sheets); kit contrast.py luminance formula",
-  "Codex built-in image_gen (gpt-6-astra) — P15 keyart tiles",
-  "Blender 5.1.2 Cycles via bl_scenes.py — S2 world/backdrop plates"
+  "Codex built-in image_gen (gpt-6-astra) â€” P15 keyart tiles",
+  "Blender 5.1.2 Cycles via bl_scenes.py â€” S2 world/backdrop plates"
  ],
  "generator-note": "No native image-generation tool exists in this harness. Third-party diffusion connectors were present and were deliberately NOT used, per _COMMON/00_READ_ME_FIRST.md. Every raster here is a Cycles render of real modelled geometry, reproducible from the committed scripts.",
  "license": "All original work; OFL fonts named in kit-notes.md",

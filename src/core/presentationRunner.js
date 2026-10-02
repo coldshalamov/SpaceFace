@@ -937,7 +937,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         const ema = prev * 0.9 + dtMs * 0.1;
         if (!state.render) state.render = {};
         state.render.displayHzEmaMs = ema;
-        if (diagnostics.executedFrames > 45) {
+        // Learn the panel's refresh only from a cadence the loop is not itself producing:
+        // a saturated machine reports its own throughput — a starved 60 Hz display reading
+        // ~31 Hz then clamps a user frameCap (60/45) to the ghost rate. Count a streak of
+        // intervals hugging the EMA; any hitch or saturation jitter resets it, so only a
+        // genuinely vsync-locked stretch writes displayHz.
+        const jitter = Math.abs(dtMs - ema);
+        const locked = jitter <= Math.max(0.9, ema * 0.05);
+        state.render.displayHzLockedFrames = locked
+          ? (state.render.displayHzLockedFrames | 0) + 1
+          : 0;
+        if (diagnostics.executedFrames > 45 && state.render.displayHzLockedFrames >= 30) {
           const hz = Math.round(1000 / ema);
           if (hz >= 30 && hz <= 360) state.render.displayHz = hz;
         }

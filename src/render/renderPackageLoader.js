@@ -63,8 +63,8 @@ export function createRenderPackageLoader(options = {}) {
   // superseded generation's token aborts so a late decode fails its assertActive instead of
   // resurrecting private resources into a replaced package; dispose aborts every live token.
   const activeAdmissions = new Set();
-  const newAdmission = (label) => {
-    const admission = createAsyncAdmission({ label });
+  const newAdmission = (label, signal = null) => {
+    const admission = createAsyncAdmission({ label, ...options.admissionTimers, signal });
     activeAdmissions.add(admission);
     return admission;
   };
@@ -78,21 +78,28 @@ export function createRenderPackageLoader(options = {}) {
 
   async function load(metadataOrUrl, loadOptions = {}) {
     if (disposed) throw new Error('Render package loader has been disposed.');
+    const admission = newAdmission('render-package-request', loadOptions.signal || loadOptions.asyncAdmission?.signal);
     const expectedContentHash = loadOptions.expectedContentHash ?? options.expectedContentHash ?? null;
     const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
-    const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache');
     try {
-      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, metadataOrUrl);
-    } catch (error) {
-      // Desktop Electron keeps a stable origin so saves persist. A previous immutable cache
-      // entry for this same URL can still win once; bypass it and load the on-disk package.
-      if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
-      const reloaded = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload');
-      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, metadataOrUrl);
+      const resolved = await admission.wait(resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache'));
+      try {
+        return await admission.wait(loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission, metadataOrUrl));
+      } catch (error) {
+        // A stale immutable cache may win once at Electron's persistent origin.
+        if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
+        admission.assertActive();
+        const reloaded = await admission.wait(resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload'));
+        return await admission.wait(loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission, metadataOrUrl));
+      }
+    } finally {
+      admission.finish();
+      activeAdmissions.delete(admission);
     }
   }
 
-  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}, metadataUrl = null) {
+  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}, requestAdmission, metadataUrl = null) {
+    requestAdmission.assertActive();
     if (disposed) throw new Error('Render package loader has been disposed.');
     assertValidRenderPackage(metadataValue);
     const expectedHash = normalizeExpectedContentHash(expectedContentHash);
@@ -101,7 +108,7 @@ export function createRenderPackageLoader(options = {}) {
     const computedHash = await computeRenderPackageContentHash(metadata, {
       ...(contentDigest ? { digest: contentDigest } : {}),
     });
-    if (disposed) throw new Error('Render package loader has been disposed.');
+    requestAdmission.assertActive();
     if (computedHash !== metadata.contentHash) {
       throw new Error(
         `Render package content hash mismatch for ${metadata.assetId}: ${computedHash} != ${metadata.contentHash}.`,
@@ -119,6 +126,7 @@ export function createRenderPackageLoader(options = {}) {
       const computedRuntimeHash = await computeRenderPackageRuntimeHash(metadata, {
         ...(contentDigest ? { digest: contentDigest } : {}),
       });
+      requestAdmission.assertActive();
       if (computedRuntimeHash !== metadata.runtimeHash) {
         throw new Error(
           `Render package runtime hash mismatch for ${metadata.assetId}: `
@@ -150,7 +158,9 @@ export function createRenderPackageLoader(options = {}) {
     // sort last instead of first. Without a consumer owner the load is ambient, not served.
     const decodeServed = !decodeWarm && !!consumerOwner;
     const retainConsumer = (key) => {
-      if (!consumerOwner) return;
+      if (!consumerOwner || requestAdmission.signal.aborted
+        || (typeof loadOptions.isResidencyOwnerActive === 'function'
+          && loadOptions.isResidencyOwnerActive() !== true)) return;
       residency.retain(key, consumerOwner, {
         role: loadOptions.residencyRole || 'live-boundary',
         sectorId: loadOptions.residencySectorId || null,
@@ -167,9 +177,10 @@ export function createRenderPackageLoader(options = {}) {
         throw new Error(`Render package content hash collision for ${contentHash}.`);
       }
       const loaded = await existing.promise;
+      requestAdmission.assertActive();
       if (existing.evicted) {
         if (cache.get(contentHash) === existing) cache.delete(contentHash);
-        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, metadataUrl);
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
       }
       retainConsumer(existing.key);
       // retainPackageOwner owns both cases: an entry still held bumps its lease count, an
@@ -201,7 +212,7 @@ export function createRenderPackageLoader(options = {}) {
       decodeWarm,
       decodeServed,
     });
-    entry.promise = Promise.resolve()
+    const decodeWork = Promise.resolve()
       .then(() => {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
         return decodeGlb(renderUrl, metadata);
@@ -231,6 +242,10 @@ export function createRenderPackageLoader(options = {}) {
 
   function preparePackageTail(decoded) {
     return (async () => {
+        try { entry.admission.assertActive(); } catch (error) {
+          disposeDecodedResources(decoded);
+          throw error;
+        }
         // The instance plan is compiled BEFORE prepareDecoded so the preparation step can be handed
         // the plan: it is the seam through which package-carried semantics eventually replace
         // source recompilation (render-package v2). Compiling it first also means a structurally
@@ -249,21 +264,18 @@ export function createRenderPackageLoader(options = {}) {
             ? await prepareDecoded(decoded, metadata, renderUrl, plan)
             : null;
         } catch (error) {
-          disposeUnregisteredResources(plan.resources);
-          disposeDecodedResources(decoded);
+          disposeDecodedResources(decoded, plan.resources);
           throw error;
         }
         try {
           entry.admission.assertActive();
         } catch (error) {
-          disposeUnregisteredResources(plan.resources);
-          disposeDecodedResources(decoded);
+          disposeDecodedResources(decoded, plan.resources);
           throw error;
         }
         // NXI-230: Superseded old-generation check releases only this decode's private resources
         if (cache.get(contentHash) !== entry || entry.evicted) {
-          disposeUnregisteredResources(plan.resources);
-          disposeDecodedResources(decoded);
+          disposeDecodedResources(decoded, plan.resources);
           if (entry.request) entry.request.cancel('superseded-old-generation');
           entry.request = null;
           entry.admission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
@@ -295,8 +307,7 @@ export function createRenderPackageLoader(options = {}) {
             },
           });
         } catch (error) {
-          disposeUnregisteredResources(loaded.resources);
-          disposeDecodedResources(decoded);
+          disposeDecodedResources(decoded, loaded.resources);
           throw error;
         }
         retainConsumer(entry.key);
@@ -320,6 +331,7 @@ export function createRenderPackageLoader(options = {}) {
         return loaded;
       })();
   }
+    entry.promise = entry.admission.wait(decodeWork);
     cache.set(contentHash, entry);
     const admissionSettled = () => {
       entry.admission.finish();
@@ -380,6 +392,7 @@ export function createRenderPackageLoader(options = {}) {
         packageError: null,
       });
     } catch (packageError) {
+      if (disposed || packageError?.name === 'AbortError') throw packageError;
       const fallback = typeof loadOptions.loadSourceFallback === 'function'
         ? loadOptions.loadSourceFallback
         : sourceFallback;
@@ -1099,7 +1112,7 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
 // the pool is empty — so a failed spawn (or a Worker-less host such as node --test) keeps the
 // old behaviour with no caller changes.
 let meshoptWorkerPoolStarted = false;
-export function startMeshoptWorkerPool(MeshoptDecoder) {
+export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
   if (meshoptWorkerPoolStarted) return;
   try {
     if (typeof Worker !== 'function' || typeof Blob !== 'function'
@@ -1115,19 +1128,19 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
     // pool's only intake — the sync decoders and the no-worker fallback stay main-thread.
     const decodeGltfBufferAsync = MeshoptDecoder.decodeGltfBufferAsync;
     if (typeof decodeGltfBufferAsync === 'function' && decodeGltfBufferAsync.spacefaceDecodeBudgetGated !== true) {
-      const gated = function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
-        return sharedDecodeTaskBudget().acquire(
-          activeDecodeClass(),
-        ).then((release) => {
-          let result;
-          try {
-            result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);
-          } catch (error) {
-            release();
-            throw error;
-          }
-          return Promise.resolve(result).finally(release);
-        });
+      const gated = async function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
+        const admission = createAsyncAdmission({ label: 'meshopt-decode', ...options.admissionTimers });
+        let release = null;
+        try {
+          release = await sharedDecodeTaskBudget().acquire({
+            decodeClass: activeDecodeClass(), signal: admission.signal,
+          });
+          admission.assertActive();
+          return await admission.wait(decodeGltfBufferAsync.call(this, count, size, source, mode, filter));
+        } finally {
+          release?.();
+          admission.finish();
+        }
       };
       gated.spacefaceDecodeBudgetGated = true;
       MeshoptDecoder.decodeGltfBufferAsync = gated;
@@ -1231,10 +1244,12 @@ function disposeUnregisteredResources(resources) {
   }
 }
 
-function disposeDecodedResources(decoded) {
+export function disposeDecodedResources(decoded, extraResources = null) {
   const template = decoded?.scene || decoded;
   if (!template || typeof template.traverse !== 'function') return;
-  disposeUnregisteredResources(collectImmutableResources(template));
+  const resources = collectImmutableResources(template);
+  if (extraResources) for (const resource of extraResources) resources.add(resource);
+  disposeUnregisteredResources(resources);
 }
 
 function resolveRenderUrl(uri, baseUrl) {
