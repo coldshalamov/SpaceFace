@@ -71,7 +71,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           video.src = media.clip;
           video.poster = media.poster;
           let settled = false;
-          video.addEventListener('error', () => { if (!settled) { settled = true; fallback(); } }, { once: true });
+          video.addEventListener('error', () => { if (!settled) { settled = true; if (lastArt === artId) fallback(); } }, { once: true });
           item.appendChild(video);
           label.textContent = 'In action';
         } else item.appendChild(equipmentSvg(offer, doc));

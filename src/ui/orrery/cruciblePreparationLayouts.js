@@ -116,13 +116,15 @@ ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !importa
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
+/* bottom fade on the scrollable pane — the cue that dossier words continue below the fold */
+${A} .orr-armory-reading { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); }
 ${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:16px; }
 ${A} .orr-armory-item { position:relative; display:grid; place-items:center; min-height:210px; height:250px; flex:none; }
 ${A} .orr-armory-item::before { content:''; position:absolute; inset:16px; border-radius:50%; border:1px solid var(--dp-line); pointer-events:none; }
 ${A} .orr-armory-item > .orr-equipment-glyph { width:180px; height:180px; color:var(--dp-ink); }
 ${A} .orr-armory-item > img { width:100%; height:100%; object-fit:contain; }
 /* the showcase clip: the fitting firing in the sim — the schematic's upgrade. */
-${A} .orr-armory-item > video.orr-armory-clip { width:100%; height:100%; object-fit:cover; border-radius:8px;
+${A} .orr-armory-item > video.orr-armory-clip { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:8px;
   filter:saturate(1.05) contrast(1.04); }
 ${A} .orr-armory-object-label { text-align:center; margin:0; font:500 12px/1.5 var(--dp-face-label); color:var(--dp-ink-dim); letter-spacing:.1em; text-transform:uppercase; }
 ${A} .orr-armory-reading__jig { width:100% !important; height:230px !important; aspect-ratio:auto !important; min-height:180px; }
