@@ -1100,6 +1100,18 @@ export function createUnreadyDrawableGuard(renderer) {
   const unreadyCheckedMaterials = new Set();
   const unreadyHiddenMaterials = new Set();
 
+  function scanPresentedDrawables(root) {
+    // Three skips an invisible object's whole subtree. The readiness walk
+    // should do the same instead of examining every resident off-camera hull.
+    // A mounted root can also sit beneath an invisible scene ancestor.
+    for (let node = root; node; node = node.parent) {
+      if (node.visible === false) return;
+    }
+    const traverse = typeof root.traverseVisible === 'function'
+      ? root.traverseVisible : root.traverse;
+    traverse.call(root, hideOneUnreadySceneDrawable);
+  }
+
   function hideUnreadySceneDrawables(scene) {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
     unreadySceneCount = 0;
@@ -1132,7 +1144,7 @@ export function createUnreadyDrawableGuard(renderer) {
     if (!Array.isArray(programs)) {
       admissionScene = scene;
       admissionPendingSubjects = pendingSubjects;
-      scene.traverse(hideOneUnreadySceneDrawable);
+      scanPresentedDrawables(scene);
       admissionScene = null;
       admissionPendingSubjects = null;
       admissionGl = null;
@@ -1187,11 +1199,11 @@ export function createUnreadyDrawableGuard(renderer) {
         || (sceneSetChanged && drainRoots === null) || !drainRoots) {
       // Program-level trigger, pending-subject trigger, or the uninstrumented-mutation
       // failsafe: any existing drawable could hold the unready program — full traverse.
-      scene.traverse(hideOneUnreadySceneDrawable);
+      scanPresentedDrawables(scene);
     } else {
       for (let i = 0; i < drainRoots.length; i++) {
         if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
-          drainRoots[i].traverse(hideOneUnreadySceneDrawable);
+          scanPresentedDrawables(drainRoots[i]);
         }
       }
     }
