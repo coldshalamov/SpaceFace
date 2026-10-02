@@ -120,6 +120,38 @@ function copyPoint(value, fallback) {
   };
 }
 
+/**
+ * The deterministic plan a wreck complication's fire resolves: pseudo-zone from the def,
+ * rng stream keyed on (programSeed, wreck, encounter), day bucket off simTime. Shared by
+ * _activateEncounter and the renderer's decode warm so the warm replays the same shape.
+ */
+export function planUniqueWreckEncounter({ programSeed, def, bearing, complication, sectorId, simTime, shape }) {
+  const center = globalToSectorLocalForSector(copyPoint(complication.anchor || bearing.exactPos), sectorId);
+  const rng = mulberry32(hash32(
+    programSeed,
+    def.id,
+    complication.encounterId,
+    'unique-wreck-direct-encounter:v1',
+  ) || 1);
+  const zone = {
+    id: `unique-wreck-zone:${def.id}`,
+    name: def.name,
+    type: 'unique_wreck',
+    center,
+    radius: 520,
+    threat: def.programSlot === 'D6' ? 4 : 3,
+    factionId: def.factionId,
+  };
+  return planEncounterShape(
+    shape,
+    zone,
+    sectorId,
+    Math.floor(Math.max(0, finite(simTime, 0)) / 600),
+    0,
+    rng,
+  );
+}
+
 export function createUniqueWreckState(metaSeed) {
   return {
     schemaVersion: UNIQUE_WRECK_STATE_SCHEMA_VERSION,
@@ -987,30 +1019,15 @@ export const uniqueWrecks = {
       return true;
     }
     const own = this._ensureState();
-    const center = globalToSectorLocalForSector(anchor, sectorId);
-    const rng = mulberry32(hash32(
-      own.programSeed,
-      def.id,
-      complication.encounterId,
-      'unique-wreck-direct-encounter:v1',
-    ) || 1);
-    const zone = {
-      id: `unique-wreck-zone:${def.id}`,
-      name: def.name,
-      type: 'unique_wreck',
-      center,
-      radius: 520,
-      threat: def.programSlot === 'D6' ? 4 : 3,
-      factionId: def.factionId,
-    };
-    const item = planEncounterShape(
-      shape,
-      zone,
+    const item = planUniqueWreckEncounter({
+      programSeed: own.programSeed,
+      def,
+      bearing,
+      complication,
       sectorId,
-      Math.floor(Math.max(0, finite(this.state.simTime, 0)) / 600),
-      0,
-      rng,
-    );
+      simTime: this.state.simTime,
+      shape,
+    });
     if (!item || !Array.isArray(item.ships) || !item.ships.length) return false;
     item.encounterId = encounterId;
     item.squadId = encounterId;

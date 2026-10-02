@@ -956,41 +956,13 @@ export const encounterDirector = {
     }
     if (!payload.force && !this._gatesPass(shape, state)) return { ok: false, reason: 'gated' };
 
-    const requestedZone = payload.zoneId
-      ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
-      : null;
-    const anchor = payload.anchor
-      || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
-      || (this.player() && this.player().pos)
-      || { x: 0, z: 0 };
-    const local = globalToSectorLocalForSector(anchor, payload.sectorId);
-    const zone = {
-      ...(requestedZone || {}),
-      id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
-      name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
-      type: payload.zoneType || (requestedZone && requestedZone.type)
-        || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
-      center: { x: local.x, z: local.z },
-      radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
-      threat: Number.isFinite(payload.threat)
-        ? payload.threat
-        : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
-    };
-    const rng = mulberry32(hash32(
-      (state.meta && state.meta.seed) || 0,
-      payload.encounterId,
-      shape.id,
-      'authored-encounter',
-    ));
-    const item = resolveEncounter(
-      shape,
-      zone,
-      payload.sectorId,
-      Math.floor((state.simTime || 0) / DAY_SECONDS),
-      0,
-      rng,
-    );
-    if (!item) return { ok: false, reason: 'empty_plan' };
+    const planned = planAuthoredEncounterItem({
+      state,
+      payload,
+      playerPos: this.player() && this.player().pos,
+    });
+    if (!planned || !planned.item) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, anchor } = planned;
     item.encounterId = payload.encounterId;
     item.squadId = payload.encounterId;
     item.sectorId = payload.sectorId;
@@ -3283,6 +3255,54 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
  *  tests can force-fire a specific shape without re-implementing squad resolution. */
 export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
   return resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng);
+}
+
+/**
+ * The deterministic plan requestAuthoredEncounter fires: authored-zone lookup, anchor
+ * fallback chain, zone assembly, and the 'authored-encounter' rng stream — all keyed on the
+ * payload fields plus (meta.seed, simTime). Exported so the renderer's decode warm can replay
+ * the exact roster an announced request will spawn instead of re-implementing the assembly.
+ * Pure: reads state.meta/state.simTime only; returns {item, zone, anchor} or null.
+ */
+export function planAuthoredEncounterItem({ state, payload, playerPos }) {
+  const shape = ENCOUNTERS[payload && payload.shapeId];
+  if (!shape) return null;
+  const requestedZone = payload.zoneId
+    ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
+    : null;
+  const anchor = payload.anchor
+    || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
+    || playerPos
+    || { x: 0, z: 0 };
+  const local = globalToSectorLocalForSector(anchor, payload.sectorId);
+  const zone = {
+    ...(requestedZone || {}),
+    id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
+    name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
+    type: payload.zoneType || (requestedZone && requestedZone.type)
+      || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
+    center: { x: local.x, z: local.z },
+    radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
+    threat: Number.isFinite(payload.threat)
+      ? payload.threat
+      : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
+  };
+  const rng = mulberry32(hash32(
+    (state.meta && state.meta.seed) || 0,
+    payload.encounterId,
+    shape.id,
+    'authored-encounter',
+  ));
+  const item = resolveEncounter(
+    shape,
+    zone,
+    payload.sectorId,
+    Math.floor((state.simTime || 0) / DAY_SECONDS),
+    0,
+    rng,
+  );
+  if (!item) return null;
+  return { item, zone, anchor };
 }
 
 // Resolve one encounter shape on a chosen zone into a schedule item (composition + anchor).

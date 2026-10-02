@@ -167,6 +167,46 @@ export function scheduleGltfParse(fn) {
   });
 }
 
+// The symmetric hazard sits one stage later: worker/parse replies resolve in clusters, so a
+// burst's blueprint compiles — synchronous scene traverse + geometry prep + material policy —
+// ran back-to-back inside a single microtask drain. Pace compile tails through per-class
+// FIFO lanes (visible > deadline > ambient, mirroring the decode budget) capped per frame;
+// the caller's promise stays open until its compile drains. Cached blueprints never reach
+// this path (the admit layer resolves before createTask), so the fast path is untouched.
+const GLTF_COMPILE_FRAME_LIMIT = 2;
+const gltfCompilePending = { visible: [], deadline: [], ambient: [] };
+let gltfCompileDrainScheduled = false;
+
+function drainGltfCompileQueue() {
+  const batch = [];
+  for (const lane of [gltfCompilePending.visible, gltfCompilePending.deadline, gltfCompilePending.ambient]) {
+    while (batch.length < GLTF_COMPILE_FRAME_LIMIT && lane.length) batch.push(lane.shift());
+    if (batch.length >= GLTF_COMPILE_FRAME_LIMIT) break;
+  }
+  for (const task of batch) {
+    Promise.resolve().then(task.fn).then(task.resolve, task.reject);
+  }
+  const pending = gltfCompilePending.visible.length
+    || gltfCompilePending.deadline.length
+    || gltfCompilePending.ambient.length;
+  // Same re-arm contract as the parse drain: the tail must keep draining without a new push.
+  if (pending) requestAnimationFrame(drainGltfCompileQueue);
+  else gltfCompileDrainScheduled = false;
+}
+
+export function scheduleGltfCompile(fn, decodeClass) {
+  if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
+  return new Promise((resolve, reject) => {
+    const lane = decodeClass === 'visible' ? gltfCompilePending.visible
+      : decodeClass === 'deadline' ? gltfCompilePending.deadline
+        : gltfCompilePending.ambient;
+    lane.push({ fn, resolve, reject });
+    if (gltfCompileDrainScheduled) return;
+    gltfCompileDrainScheduled = true;
+    requestAnimationFrame(drainGltfCompileQueue);
+  });
+}
+
 let shared = null;
 
 /** Process-wide budget shared by every decoder pool intake. */

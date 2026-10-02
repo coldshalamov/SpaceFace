@@ -422,7 +422,16 @@ import { getActivityFrame } from '../core/worldActivityManager.js';
 import { effectiveLawSecurity } from '../systems/lawSecurity.js';
 import { heatLevelFor, isPlayerWanted } from '../systems/heat.js';
 import { planGateScene } from '../data/gateControl.js';
-import { PURSUIT_RESOLVE_S, sectorSecurityOf } from '../systems/encounterDirector.js';
+import { PURSUIT_RESOLVE_S, planAuthoredEncounterItem, sectorSecurityOf } from '../systems/encounterDirector.js';
+import { planUniqueWreckEncounter } from '../systems/uniqueWrecks.js';
+import {
+  DEPOT_PATROL_ANCHOR_FRAC,
+  DEPOT_PATROL_ID_PREFIX,
+  DEPOT_PATROL_SHAPE_ID,
+  DEPOT_PATROL_ZONE_RADIUS_WU,
+} from '../systems/claims.js';
+import { uniqueWreckById } from '../data/uniqueWrecks.js';
+import { ENCOUNTERS } from '../data/encounters/index.generated.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -3325,18 +3334,46 @@ function warmWantedTierDecode(owner) {
   const sectorKey = sectorId || '';
   if (warmed.has(sectorKey)) return;
   warmed.add(sectorKey);
+  // Speculative by contract (heat can dip / the bounty can be paid): post at ambient-warm
+  // class — a genuine deadline join on the cached task re-grades the queued tail via
+  // deadlineJoin + promote, so speculation never sits ahead of real deadline demand.
   warmEnemyRosterDecode(owner, [
     { archetype: 'patrol_lawman', factionId: 'faction_scn' },
     { archetype: 'customs_cutter', factionId: 'faction_scn' },
-  ], 'wanted-tier-decode-runway', sectorId);
+  ], 'wanted-tier-warm-pool', sectorId);
+  warmSeededModularPool(owner, sectorId, 'wanted-tier-warm-pool');
+}
+
+/**
+ * The seeded modular pick — hull + cockpit + fin + greeble keyed off the future entity id —
+ * cannot be enumerated pre-spawn, but the contract pool is closed: 10 class hulls,
+ * 3 cockpits, 6 fins, 7 greebles. Any arm that announces a modular-kit spawn (intervention
+ * guard/jumper, an ecology scavenger's ship_corsair pick, a wanted-tier post) can decode the
+ * whole bounded set so whichever parts the seed selects arrive resident. The slot argument
+ * rides with each file: the authored cache keys url::slot, so a mismatched slot decodes a
+ * second blueprint the production attach never reuses. Deduped once per sector across arms.
+ */
+function warmSeededModularPool(owner, sectorId, residencyRole) {
+  const renderer = owner && owner.renderer;
+  if (!renderer || !renderer.domElement) return;
+  const warmed = owner._modularPoolWarmSectors || (owner._modularPoolWarmSectors = new Set());
+  const key = sectorId || '';
+  if (warmed.has(key)) return;
+  warmed.add(key);
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
-  for (const file of REGULAR_HULL_FILES) {
+  const slots = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.slots) || {};
+  const files = [];
+  for (const file of REGULAR_HULL_FILES) files.push([file, 'hull']);
+  for (const file of slots.cockpit || []) files.push([file, 'cockpit']);
+  for (const file of slots.fin || []) files.push([file, 'fin']);
+  for (const file of slots.greeble || []) files.push([file, 'greeble']);
+  for (const [file, slot] of files) {
     Promise.resolve(loadAuthoredPart(`${releaseRoot}${file}`, {
       renderer,
-      slot: 'hull',
+      slot,
       optional: true,
-      residencyRole: 'wanted-tier-decode-runway',
+      residencyRole,
       sectorId,
     })).catch(() => {});
   }
@@ -3386,7 +3423,10 @@ function warmGateWingDecode(owner) {
     const dx = gpos.x - ppos.x;
     const dz = gpos.z - ppos.z;
     if (dx * dx + dz * dz > GATE_WING_WARM_DIST_SQ) continue;
-    const dedupe = `${sectorId}|${to}|${day}`;
+    // The ctx triple feeds planGateScene's verdict, so it belongs in the dedupe key — a
+    // wanted flip or a sector ctx recompute under the same (sector, gate, day) must
+    // re-evaluate the scene rather than replay a verdict keyed on stale inputs.
+    const dedupe = `${sectorId}|${to}|${day}|${factionId}|${security}|${wanted ? 1 : 0}`;
     if (warmed.has(dedupe)) continue;
     const scene = planGateScene(seed, sectorId, to, day, { factionId, security, wanted });
     if ((scene.scanWing | 0) <= 0) continue;
@@ -3397,7 +3437,8 @@ function warmGateWingDecode(owner) {
     });
   }
   if (roster.length) {
-    warmEnemyRosterDecode(owner, roster, 'gate-wing-decode-runway', sectorId);
+    // The verdict can still flip — ambient-warm class; a chargeStart join promotes.
+    warmEnemyRosterDecode(owner, roster, 'gate-wing-warm', sectorId);
   }
 }
 
@@ -3519,6 +3560,284 @@ function warmCultureIntroDecode(owner) {
   }
   if (records.length) {
     warmEnemyRosterDecode(owner, records, 'culture-intro-decode-runway', currentSectorId);
+  }
+}
+
+/**
+ * Reach-scrawl planet challenges schedule the same named_hunter fire cultureIntros use —
+ * `memory.planetChallenges[aceId]` with a seeded dueAt, an immediate requestAuthoredEncounter
+ * that bypasses dir.pending, and the identical aceId → escalated style → boss+escort
+ * resolution. Poll the queue once per residency pass with the culture-intro shape.
+ */
+function warmPlanetChallengeDecode(owner) {
+  const state = owner && owner.state;
+  const memory = state && state.aceMemory;
+  const challenges = memory && memory.planetChallenges;
+  if (!challenges || typeof challenges !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const warmedAt = owner._planetChallengeWarmAt || (owner._planetChallengeWarmAt = new WeakMap());
+  const records = [];
+  for (const [aceId, challenge] of Object.entries(challenges)) {
+    if (!challenge || typeof challenge !== 'object') continue;
+    if (challenge.status !== 'pending') continue;
+    if (challenge.sectorId !== currentSectorId) continue;
+    if (!Number.isFinite(challenge.dueAt)
+        || challenge.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    const ace = aceById(aceId);
+    if (!ace) continue;
+    if (warmedAt.get(challenge) === challenge.dueAt) continue;
+    warmedAt.set(challenge, challenge.dueAt);
+    const style = escalatedStyleFromMemory(memory, ace);
+    const loadout = styleLoadoutForAce(ace, style);
+    for (const archetype of [loadout.bossArchetype, loadout.escortArchetype]) {
+      if (typeof archetype === 'string' && archetype) {
+        records.push({ archetype, factionId: ace.factionId || 'faction_reach' });
+      }
+    }
+  }
+  if (records.length) {
+    warmEnemyRosterDecode(owner, records, 'planet-challenge-decode-runway', currentSectorId);
+  }
+}
+
+/**
+ * Unique-wreck complications are seeded timers: the record is published the moment the timer
+ * schedules (rumor/pump events announce it), but the squad's hulls only decode when the fire
+ * replays the deterministic plan at dueAt — cold inside the reveal. Poll scheduled records
+ * once per residency pass and replay the same planUniqueWreckEncounter the fire calls
+ * (shared zone/rng/day construction, so the warm cannot drift from what fires). Records the
+ * fire will skip — no bearing recorded, foreign sector, dead shape — are skipped identically.
+ */
+function warmUniqueWreckComplicationDecode(owner) {
+  const state = owner && owner.state;
+  const own = state && state.uniqueWrecks;
+  const complications = own && own.complications;
+  if (!complications || typeof complications !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const warmedAt = owner._uniqueWreckComplicationWarmAt
+    || (owner._uniqueWreckComplicationWarmAt = new WeakMap());
+  const records = [];
+  for (const record of Object.values(complications)) {
+    if (!record || typeof record !== 'object') continue;
+    if (record.status !== 'scheduled') continue;
+    if (typeof record.encounterId !== 'string' || !record.encounterId) continue;
+    if (!Number.isFinite(record.dueAt)
+        || record.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    const def = uniqueWreckById(record.wreckId);
+    const bearing = def && own.bearings && own.bearings[def.id];
+    // _pumpComplications only fires when def && bearing resolve — same gate.
+    if (!def || !bearing) continue;
+    const sectorId = record.sectorId || bearing.sectorId || def.sectorId;
+    if (sectorId !== currentSectorId) continue;
+    const shape = ENCOUNTERS[record.encounterId];
+    if (!shape) continue;
+    if (warmedAt.get(record) === record.dueAt) continue;
+    warmedAt.set(record, record.dueAt);
+    const item = planUniqueWreckEncounter({
+      programSeed: own.programSeed,
+      def,
+      bearing,
+      // _requestEncounter mints the fire record as {anchor: bearing.exactPos, encounterId}.
+      complication: { anchor: bearing.exactPos, encounterId: record.encounterId },
+      sectorId,
+      simTime: state.simTime,
+      shape,
+    });
+    for (const ship of (item && item.ships) || []) {
+      if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
+    }
+  }
+  if (records.length) {
+    warmEnemyRosterDecode(owner, records, 'unique-wreck-complication-decode-runway', currentSectorId);
+  }
+}
+
+// Mirrors claims._stationEntity: the depot arms resolve stations through the same index and
+// fallback walk — a miss there is a miss here, which just means the fire's {x+200,z} anchor.
+function _stationEntityForId(state, stationId) {
+  if (!stationId || !state) return null;
+  const entityIndex = state.entityIndex;
+  const byStationId = entityIndex && entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get(stationId);
+  if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  const stations = (entityIndex && entityIndex.stations) || state.entityList || [];
+  for (const entity of stations) {
+    if (entity && entity.alive !== false && entity.type === 'station'
+      && entity.data && entity.data.stationId === stationId) return entity;
+  }
+  return null;
+}
+
+/**
+ * Replay an announced requestAuthoredEncounter payload through the shared plan helper and
+ * warm the planned roster — the same rng stream and zone assembly the fire consumes, so the
+ * decoded hull set is exactly what the fire will spawn. Returns the warmed roster size.
+ */
+function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
+  const state = owner && owner.state;
+  if (!state || !payload || typeof payload !== 'object') return 0;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId) : null;
+  const planned = planAuthoredEncounterItem({
+    state,
+    payload,
+    playerPos: player && player.pos,
+  });
+  const ships = planned && planned.item && planned.item.ships;
+  if (!Array.isArray(ships) || !ships.length) return 0;
+  const records = [];
+  for (const ship of ships) {
+    if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
+  }
+  if (records.length) warmEnemyRosterDecode(owner, records, residencyRole, sectorId);
+  return records.length;
+}
+
+/**
+ * The claim-depot supply leg arms its 'ambush_snare' depot-watch ~12 s after the service
+ * posts (watchAt on the service row), but the squad's only decode arm otherwise is the
+ * synchronous request inside the traffic maintenance pass — hulls cold inside the reveal.
+ * Poll the service table once per residency pass and warm at watchAt − runway. The roster
+ * is anchor-independent, so a station still resolving only shifts squad positions, never
+ * which hulls the fire plans.
+ */
+function warmDepotWatchDecode(owner) {
+  const state = owner && owner.state;
+  const services = state && state.traffic && state.traffic.depotServices;
+  if (!Array.isArray(services) || !services.length) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const bodies = (state.claims && state.claims.bodies) || [];
+  const warmedAt = owner._depotWatchWarmAt || (owner._depotWatchWarmAt = new WeakMap());
+  for (const service of services) {
+    if (!service || service.watchResolved) continue;
+    if (!Number.isFinite(service.watchAt)
+        || service.watchAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    const body = bodies.find((entry) => entry && entry.id === service.bodyId);
+    // The maintenance pass only arms watches while the body is in-sector — same gate.
+    if (!body || body.sectorId !== currentSectorId) continue;
+    if (warmedAt.get(service) === service.watchAt) continue;
+    warmedAt.set(service, service.watchAt);
+    const station = _stationEntityForId(state, service.stationId);
+    const anchor = station && station.pos
+      ? {
+        x: station.pos.x + (body.x - station.pos.x) * 0.75,
+        z: station.pos.z + (body.z - station.pos.z) * 0.75,
+      }
+      : { x: body.x, z: body.z };
+    warmAuthoredEncounterArm(owner, {
+      shapeId: 'ambush_snare',
+      encounterId: `depot-watch:${body.id}`,
+      sectorId: currentSectorId,
+      anchor,
+      zoneId: `depot-route:${body.id}`,
+      zoneName: `${body.name} supply route`,
+      zoneType: 'ambush_lane',
+      zoneRadius: 240,
+      force: true,
+      data: { claimDepotId: body.id },
+    }, 'depot-watch-decode-runway', currentSectorId);
+  }
+}
+
+/**
+ * A supported claim depot requests its next lawful patrol_beat rotation the tick
+ * ds.patrol.nextAt passes — the squad's hulls decode inside the same maintenance call,
+ * cold for the reveal. nextAt is a published countdown, so the warm replays the request's
+ * plan at nextAt − runway; a denied fire just retries next tick under the same window.
+ */
+function warmDepotPatrolDecode(owner) {
+  const state = owner && owner.state;
+  const bodies = (state && state.claims && state.claims.bodies) || [];
+  if (!bodies.length) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const warmedAt = owner._depotPatrolWarmAt || (owner._depotPatrolWarmAt = new WeakMap());
+  for (const body of bodies) {
+    const ds = body && body.depotSupport;
+    const patrol = ds && ds.supported === true ? ds.patrol : null;
+    if (!patrol || body.sectorId !== currentSectorId) continue;
+    const nextAt = Number.isFinite(patrol.nextAt) ? patrol.nextAt : 0;
+    if (nextAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    // _maintainDepotPatrol's rotation/encounterId derivation — a live rotation reuses its
+    // id, the next one takes rotations + 1.
+    const rotation = patrol.encounterId ? ds.rotations : ds.rotations + 1;
+    const encounterId = patrol.encounterId || `${DEPOT_PATROL_ID_PREFIX}${body.id}:${rotation}`;
+    const stationId = body.linkedStationId || (body.spec && body.spec.destStationId) || null;
+    const station = _stationEntityForId(state, stationId);
+    const anchor = station && station.pos
+      ? {
+        x: body.x + (station.pos.x - body.x) * DEPOT_PATROL_ANCHOR_FRAC,
+        z: body.z + (station.pos.z - body.z) * DEPOT_PATROL_ANCHOR_FRAC,
+      }
+      : { x: body.x + 200, z: body.z };
+    const armKey = `${encounterId}:${nextAt}`;
+    if (warmedAt.get(patrol) === armKey) continue;
+    warmedAt.set(patrol, armKey);
+    warmAuthoredEncounterArm(owner, {
+      shapeId: DEPOT_PATROL_SHAPE_ID,
+      encounterId,
+      sectorId: body.sectorId,
+      anchor,
+      zoneId: `depot-lane:${body.id}`,
+      zoneName: `${body.name} depot lane`,
+      zoneType: 'patrol_corridor',
+      zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
+      force: true,
+      data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId },
+    }, 'depot-patrol-decode-runway', currentSectorId);
+  }
+}
+
+/**
+ * Travel-lane ambushes fire the tick the player ENTERS the dead segment — a positional
+ * trigger with no countdown, so the lane publishes 'lane:ambushArmed' as the player closes
+ * on a disrupted segment inside the corridor. The payload mirrors _requestAmbush's request;
+ * replaying it through the shared plan helper decodes the squad before the segment boundary.
+ */
+function warmLaneAmbushDecode(owner, payload) {
+  const state = owner && owner.state;
+  if (!state || !payload || typeof payload !== 'object') return;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  if (payload.sectorId !== currentSectorId) return;
+  warmAuthoredEncounterArm(owner, {
+    shapeId: payload.shapeId,
+    encounterId: payload.encounterId,
+    sectorId: payload.sectorId,
+    anchor: payload.anchor,
+    zoneId: payload.zoneId,
+    zoneName: payload.zoneName,
+    zoneType: payload.zoneType,
+    zoneRadius: payload.zoneRadius,
+    force: true,
+    data: payload.data,
+  }, 'lane-ambush-decode-runway', currentSectorId);
+}
+
+/**
+ * Aftermath wreck fields seed a scavenger slot on contest dispatch — its ship is a seeded
+ * pick (ship_corsair takes the modular path; ship_wasp is a required whole ship) that
+ * materializes as the player reaches the field, so the slot going live on sector entry is
+ * its only decode lead. Poll the ecology table once per residency pass and warm the closed
+ * modular pool; a scavenger that already despawned only leaves a lease to expire.
+ */
+function warmEcologyScavengerDecode(owner) {
+  const state = owner && owner.state;
+  const ecology = state && state.aftermathWrecks && state.aftermathWrecks.ecology;
+  if (!ecology || typeof ecology !== 'object') return;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  for (const fieldId in ecology) {
+    const field = ecology[fieldId];
+    if (!field || field.sectorId !== currentSectorId) continue;
+    const roster = field.roster || [];
+    for (const slot of roster) {
+      if (slot && slot.role === 'scavenger' && slot.status === 'live') {
+        warmSeededModularPool(owner, currentSectorId, 'ecology-scavenger-warm-pool');
+        return;
+      }
+    }
   }
 }
 
@@ -3838,6 +4157,9 @@ function warmPendingInterventionDecodes(owner, state, sectorId) {
   for (const stub of wreckVisualExemplarSpecs(`intervention-warm:${sectorId}:`)) {
     Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, sectorId)).catch(() => {});
   }
+  // The site's two ships — 'pirate' guard and 'fleeing_trader' jumper — carry no defId, so
+  // they resolve the seeded modular pick. The pool is closed: decode the whole bounded set.
+  warmSeededModularPool(owner, sectorId, 'intervention-warm:modular');
 }
 
 export function updatePredictedSectorPrewarm(owner) {
@@ -12356,10 +12678,23 @@ export const render = {
     // no-ops on its null targetSectorId, leaving the whole post-confirm charge window
     // (~3.5-8s; chargeT is frozen until _unfiledConfirmed) unused while the destination
     // census + FULL-extras cohort would decode inside enterSector.
-    onBus('jump:unfiledConfirmed', ({ returnSectorId } = {}) => {
+    onBus('jump:unfiledConfirmed', ({ returnSectorId, interdictionPool } = {}) => {
       beginIncomingSectorPrewarm(returnSectorId);
       warmLiveSectorFullExtras(this, returnSectorId);
+      // The chargeStart arm warmed this pool under the ORIGIN sector's lease (null target) —
+      // it demotes on the return entry. Re-warm under the return sector so the ambush
+      // squad's hulls survive to the reveal.
+      if (Array.isArray(interdictionPool) && interdictionPool.length) {
+        warmEnemyRosterDecode(this, interdictionPool, 'interdiction-decode-runway', returnSectorId);
+      }
     });
+    // A disrupted lane segment only publishes while the player closes on it inside the
+    // corridor — the fire's own trigger is crossing the boundary, so this approach arm is
+    // the only decode lead its squad gets. Presentation tier: the plan replay and decode
+    // posts belong in the drain lane, not inside travelLanes' update tick.
+    onBus('lane:ambushArmed', (payload) => {
+      warmLaneAmbushDecode(this, payload);
+    }, { presentation: true });
     // Free-flight membership latches a candidate MEMBERSHIP_DWELL_S before the continuous
     // enterSector — arm the promote cohort's decode during the dwell (the bag must already
     // be materialized REDUCED; liveSectorFullExtrasStubs no-ops otherwise). Presentation
@@ -15314,6 +15649,11 @@ export const render = {
     warmClaimDefenseDecode(this);
     warmAceReturnDecode(this);
     warmCultureIntroDecode(this);
+    warmPlanetChallengeDecode(this);
+    warmUniqueWreckComplicationDecode(this);
+    warmDepotWatchDecode(this);
+    warmDepotPatrolDecode(this);
+    warmEcologyScavengerDecode(this);
     warmPursuitInterventionDecode(this);
     warmLawIncidentDispatchDecode(this);
     warmWantedTierDecode(this);

@@ -5121,7 +5121,11 @@ export const world = {
       return false;
     }
     jump._unfiledConfirmed = true;
-    this.bus.emit('jump:unfiledConfirmed', { returnSectorId: UNFILED_JUMP_RETURN });
+    const returnSector = this.state.world.sectors[UNFILED_JUMP_RETURN] || SECTOR_BY_ID.get(UNFILED_JUMP_RETURN);
+    this.bus.emit('jump:unfiledConfirmed', {
+      returnSectorId: UNFILED_JUMP_RETURN,
+      interdictionPool: returnSector ? this._enemyPool(returnSector) : null,
+    });
     return true;
   },
 

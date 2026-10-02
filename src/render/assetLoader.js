@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { activeDecodeClass, deadlineDecodeActive, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { activeDecodeClass, deadlineDecodeActive, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import { loadMotionBank } from './authoredMotion.js';
 import {
@@ -90,6 +90,9 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 });
 
 const warned = new Set();
+// Ambient tasks a deadline caller joined — their remaining decode posts and their compile
+// tail re-grade to deadline, matching the budget.promote + flag window the join raises.
+const deadlineJoinedAssetTasks = new WeakSet();
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
 // Warm-purpose decode roles (sector prewarm, decode runway, roster warm, predicts): decodes
 // that speculate on a spawn that has not arrived yet. Shared by the decode-cache retain below
@@ -610,14 +613,26 @@ export async function loadAuthoredPart(url, options = {}) {
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
         const tier1 = tier1CountersForRenderer(renderer);
         if (tier1) tier1.countRuntimeSemanticCompile('source-blueprint-compile', 0);
-        return compileBlueprint(url, gltf, slot, {
-          cacheKey,
-          residency,
-          onEvict() {
-            runtime.assets.delete(cacheKey);
-            runtime.failures.delete(cacheKey);
-          },
-        });
+        // Parse replies resolve in clusters — pace the synchronous compile tail through the
+        // class lanes so a burst can't stack N blueprint builds in one microtask drain. The
+        // tail claims the caller's class; a deadline join on an ambient task promotes it.
+        const compileClass = options.admissionVisible === true
+          ? 'visible'
+          : ((deadlineClass || deadlineJoinedAssetTasks.has(task)) ? 'deadline' : 'ambient');
+        return scheduleGltfCompile(() => {
+          // Owner departed while the tail queued: compile is the expensive stage — skip it
+          // and let the settled-null path cancel the request below.
+          if (typeof options.isResidencyOwnerActive === 'function'
+            && !options.isResidencyOwnerActive()) return null;
+          return compileBlueprint(url, gltf, slot, {
+            cacheKey,
+            residency,
+            onEvict() {
+              runtime.assets.delete(cacheKey);
+              runtime.failures.delete(cacheKey);
+            },
+          });
+        }, compileClass);
       })
       .catch((error) => {
         if (!runtime.retiring) {
@@ -646,6 +661,7 @@ export async function loadAuthoredPart(url, options = {}) {
     if (budget && typeof budget.promote === 'function') {
       budget.promote(options.admissionVisible === true ? 'visible' : 'deadline');
     }
+    deadlineJoinedAssetTasks.add(task);
     (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   }
   const blueprint = await task;
