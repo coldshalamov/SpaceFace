@@ -132,16 +132,17 @@ export function createComms(ctx) {
     return !!trackedId || !!document.querySelector('.sf-firstrun-splash');
   }
   function tickHeldComms() {
-    if (!held.length || attentionGateActive()) return;
+    if (!held.length) return;
     const now = performance.now();
     if (now < nextDripAt) return;
-    while (held.length) {
-      const q = held.shift();
-      if ((performance.now() - q._heldAt) > 60000 && (q.category || 'ambient') === 'ambient') continue;
-      nextDripAt = now + 3500;
-      pushComms(q, true);
-      break;
-    }
+    const attentionHeld = attentionGateActive();
+    const openingHeld = openingInstructionSolo(state);
+    const index = held.findIndex((q) => !attentionHeld || (q.bypassAttentionGate && !openingHeld));
+    if (index < 0) return;
+    const q = held.splice(index, 1)[0];
+    if ((now - q.heldAt) > 60000 && (q.payload.category || 'ambient') === 'ambient') return;
+    nextDripAt = now + 3500;
+    pushComms(q.payload, true);
   }
 
   function pushComms(p, delivery = null) {
@@ -164,8 +165,10 @@ export function createComms(ctx) {
       return;
     }
     if (!fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
-      p._heldAt = performance.now();
-      held.push(p);
+      // Keep the authored delivery permission while the opening instruction owns
+      // attention. A continuously tracked job must not silence this story line forever.
+      held.push({ payload: p, heldAt: performance.now(),
+        bypassAttentionGate: !!(delivery && delivery.bypassAttentionGate) });
       return;
     }
     const cat = CATEGORY_STYLE[p.category] || CATEGORY_STYLE.ambient;
