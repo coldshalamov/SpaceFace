@@ -307,3 +307,31 @@ test('NPC tells stay on their owning ship and formation failure never borrows th
   state.simTime+=.3;owner.update(state);assert.ok(owner.batch.count>0);
   state.simTime+=2;owner.update(state);assert.equal(owner.live,0);owner.dispose();
 });
+
+// NXI-201: a world-space hit normal is converted to a body-relative offset exactly once.
+// After the hull rotates, the mark's normal must differ from its emitted angle by exactly the
+// hull's delta rotation — a mirrored or double-applied rotation would land on a different angle.
+test('a receipted hit normal follows a rotated hull exactly once',()=>{
+  const s=fixture(),out=new ActionVfx(new THREE.Scene()),target=s.entities.get(2);
+  target.rot=0;target.prevRot=0;
+  try{
+    // World normal +z (angle π/2) receipted onto an attached surface mark.
+    assert.ok(out.emit('hull:fractured',{victimId:2,pos:{x:20,z:34},normal:{x:0,z:1}},s));
+    s.simTime+=.05;out.update(s);
+    const slot=out.slots[0];
+    assert.equal(slot.attached,true,'a surfaceWork fracture mark welds to the hull');
+    assert.ok(Math.abs(slot.angle-Math.PI/2)<1e-8,`emitted normal must land at π/2, got ${slot.angle}`);
+    // Rotate the hull by −π/4: the mark's world normal must move by exactly −π/4.
+    target.rot=-Math.PI/4;target.prevRot=-Math.PI/4;s.simTime+=.05;out.update(s);
+    assert.ok(Math.abs(slot.angle-Math.PI/4)<1e-8,
+      `rotated hull must carry the mark normal once (expected π/4, got ${slot.angle})`);
+    // The welded position moves with the same single rotation — mirror it off-axis to check.
+    const rx=slot.x-target.pos.x,rz=slot.z-target.pos.z;
+    assert.ok(rx>0&&rz>0,'a −45° rotation must swing the +z contact toward +x');
+    // Neighboring success: a fresh receipt on the unrotated hull still lands on its own normal.
+    out.clear();target.rot=0;
+    assert.ok(out.emit('hull:fractured',{victimId:2,pos:{x:20,z:34},normal:{x:1,z:0}},s));
+    s.simTime+=.05;out.update(s);
+    assert.ok(Math.abs(out.slots[0].angle)<1e-8,'a +x world normal keeps its own 0 heading');
+  }finally{out.dispose();}
+});
