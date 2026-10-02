@@ -914,10 +914,19 @@ export const save = {
     slot = slot || 'quick';
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
+    // SFQ-B223: a write inside the restore window would serialize half-restored live state over
+    // the very slot being loaded. requestAutosave already refuses while _restoring; the direct
+    // path must refuse too, before it can supersede a queued autosave or touch a journal.
+    if (this._restoring) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
+      this._recordSaveTiming(timing);
+      this.bus.emit('save:error', timing);
+      return false;
+    }
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
     // the old token and becomes a no-op, so the player never pays two back-to-back full writes.
     if (!autosave && this._autosavePending) this._autosavePending = null;
-    const started = nowMs();
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
       this._recordSaveTiming(timing);
@@ -2901,6 +2910,23 @@ export const save = {
   _restorePreparedEnvelope(prepared, slot, options = {}) {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
+
+    // SFQ-B223: a load arriving inside the restore window defers whole — the deferred call
+    // re-runs this full path, so its rollback snapshot reads the now-restored world instead
+    // of being captured half-restored here and discarded. Rollback restores are internal and
+    // must never defer.
+    if (this._restoring && !rollbackAttempt) {
+      this.deferRunTransition(() => {
+        try {
+          return this._restorePreparedEnvelope(prepared, slot, options);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return true;
+    }
 
     let rollbackSnapshot = null;
     if (!rollbackAttempt && this._hasPlayerEntity()) {
