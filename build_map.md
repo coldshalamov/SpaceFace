@@ -396,24 +396,24 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | camera | free | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
 | boot | free | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
 | audio | free | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
-| save | free | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
+| save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | free | fields | 94, 162 |
-| law | free | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
+| law | devin-oct2-batch | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
 | industry | free | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
 | people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
-| ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
+| ship | devin-oct2-batch | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
 | hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
 | missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
 | world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
-| story | free | story | 192, 215, 216, 253 |
-| input | free | gamepad, input, settings behavior | 196, 237, 260, 262 |
+| story | devin-oct2-batch | story | 192, 215, 216, 253 |
+| input | devin-oct2-batch | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
-| physics | free | physics clocks, manifest | 258 |
+| physics | devin-oct2-batch | physics clocks, manifest | 258 |
 | accept | free | judge work that is already built | 60, 63, 64 |
 | imports | free | doc imports only, after code seams | 30 |
 | art | free | one visible asset defect; skip if the graphics lane is live | 223 |
