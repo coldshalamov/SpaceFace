@@ -45087,7 +45087,7 @@
           13.260697
         ]
       },
-      "bytes": 848200,
+      "bytes": 919264,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -45302,9 +45302,9 @@
         "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "5fd34afe044f2cb7986f5f8e971ed4a89e1884619dac53495199c24e5ece1bd6",
-      "meshes": 39,
-      "nodes": 67,
+      "meshHash": "096e921bb71c49d2945ce7786c7d9bc030b5cce241d485b282ac95a065a841e3",
+      "meshes": 40,
+      "nodes": 68,
       "note": null,
       "opening": null,
       "pivot": [
@@ -45545,7 +45545,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1676,
+        "boundaryEdges": 2380,
         "inwardFaceFraction": 0.17275,
         "silhouetteRadius": 12.517587,
         "sliceY": 0
@@ -45628,7 +45628,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 36060,
+      "triangles": 39518,
       "unmeasuredHitVolumes": [
         "subsystem_tether_spool",
         "subsystem_transport_clamp"

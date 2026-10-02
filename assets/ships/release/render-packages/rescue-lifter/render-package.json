@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0dd4542a0cce3685d352935b84d1af17cfa58b082faa4df16d611d49a56e7d1a",
+  "contentHash": "057cbd1bbd75460dba9c0aba79843b0791535fd20a378a331f676f100f162fb6",
   "dynamicGroups": [
     {
       "id": "sf.render.rescue-lifter.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4972,7 +4972,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
+      "sha256": "5742b7e3a8a705a6a2ab003226dbe407c7c4e50ccb018bd9e3dcb4099c641866",
       "uri": "pilots.json"
     }
   },
@@ -5935,9 +5935,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7144,
+      "bytes": 7105,
       "rigId": "hull",
-      "sha256": "4a4176c1e7919503b1d098bf5733bbe185d2877678c8d27448af5963170740eb",
+      "sha256": "f2a2e7c17939221dccf4bd334689ae6763c4a921f57e97630507ae7a26267710",
       "uri": "assets/ships/motions/rescue-lifter.motion.json"
     },
     "nodeCount": 60,
@@ -7242,7 +7242,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/rescue_lifter.glb"
   },
-  "runtimeHash": "674e1b5d8d6ca54ee79b067eab0bf18b0a6e46462b113164fa9156d6786357e4",
+  "runtimeHash": "25bab8e6c9eb4baf502986cdda4176efb1daf646f7c4db6544d1aea57f024536",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

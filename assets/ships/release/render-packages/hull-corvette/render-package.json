@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "248ffe1d9da27ed6aae281369a6c85564f73daaa0bbede6bea395f7fc23d8ee6",
+  "contentHash": "5b1d64419df4d83ca40b2fb54a7d2f0385196f2805b517570f4dfb5cbe5ec582",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1079,7 +1079,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
+      "sha256": "5742b7e3a8a705a6a2ab003226dbe407c7c4e50ccb018bd9e3dcb4099c641866",
       "uri": "pilots.json"
     }
   },
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_corvette.glb"
   },
-  "runtimeHash": "1ece2b7b9828e0e4bb475059ed50aec03846e890baf9aab6aa04a01a6c494425",
+  "runtimeHash": "5fd8bf5ad822d64adafa9eff17161dfb227cd2e31cd16a750431cddc2a2738f1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
