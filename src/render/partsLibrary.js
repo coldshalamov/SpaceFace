@@ -2234,6 +2234,14 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
   boundary.userData.authoredVisualRoot = 'none-pending-admission';
   boundary.userData.authoredReadmissionReason = reason || 'owner-inactive';
   delete boundary.userData.authoredUpgradePromise;
+  // A lifecycle re-arm is a new admission episode: restore the retry budget the last one may
+  // have spent, or a boundary that once exhausted its retries would strand 'unavailable' the
+  // moment a post-restore admission failed. Only the poll's own re-arm keeps counting, so the
+  // per-episode cap still bounds churn on a genuinely missing asset.
+  if (reason !== 'transient-admission-retry') {
+    delete boundary.userData.authoredAdmissionRetryCount;
+    delete boundary.userData.authoredAdmissionNextRetryAt;
+  }
   return true;
 }
 
