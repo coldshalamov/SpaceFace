@@ -260,10 +260,17 @@ function appendNearbyLedgerRows(state, out) {
     }
     const relVx = finite(rec.vel && rec.vel.x) - pvx;
     const relVz = finite(rec.vel && rec.vel.z) - pvz;
-    const tEnter = timeToEnterRadiusSeconds(
-      relX, relZ, relVx, relVz,
-      glassR + finite(rec.radius),
-      TABLE_COLLECT_HORIZON_SECONDS,
+    const tEnter = Math.min(
+      timeToEnterRadiusSeconds(
+        relX, relZ, relVx, relVz,
+        glassR + finite(rec.radius),
+        TABLE_COLLECT_HORIZON_SECONDS,
+      ),
+      timeToEnterRadiusSeconds(
+        relPx, relPz, relVx, relVz,
+        glassR + finite(rec.radius),
+        TABLE_COLLECT_HORIZON_SECONDS,
+      ),
     );
     if (tEnter <= TABLE_COLLECT_HORIZON_SECONDS) out.push(rec);
   }
@@ -287,11 +294,20 @@ function appendNearbyLedgerRows(state, out) {
     // Ship-like rows ride the decode runway: their authored GLB decode is the long
     // pole, so the collect must surface them early enough for the prefetch kick to
     // finish before contact. Boundary builds still gate on the tighter promote
-    // horizon inside isEntityRenderRelevant.
-    const tEnter = timeToEnterRadiusSeconds(
-      relX, relZ, relVx, relVz,
-      glassR + finite(rec.radius, 8),
-      TABLE_DECODE_RUNWAY_SECONDS,
+    // horizon inside isEntityRenderRelevant. The player leg mirrors the static disc:
+    // an inbound hull closing on the player during a focus lag would otherwise read
+    // as receding from the stale corner and stay off the runway.
+    const tEnter = Math.min(
+      timeToEnterRadiusSeconds(
+        relX, relZ, relVx, relVz,
+        glassR + finite(rec.radius, 8),
+        TABLE_DECODE_RUNWAY_SECONDS,
+      ),
+      timeToEnterRadiusSeconds(
+        relPx, relPz, relVx, relVz,
+        glassR + finite(rec.radius, 8),
+        TABLE_DECODE_RUNWAY_SECONDS,
+      ),
     );
     if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) out.push(rec);
   }
