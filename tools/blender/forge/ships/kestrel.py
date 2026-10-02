@@ -141,10 +141,12 @@ def build():
     # The hero marking: DIE LAUGHING, hand-cut through a stencil in warm-ivory lacquer across the aft
     # port armour course (the raised teal plate above). Two lines, bridges in the counters, chipped
     # edges, a little overspray; conformal to the plate, LOD0 only (design: TOP_FIVE_MATERIAL_TRUTH
-    # §1 — not a label, not a raised plaque). Reads toward the nose, tops to port.
+    # §1 — not a label, not a raised plaque). Turned half a revolution so it reads upright at the spawn
+    # heading under the chase camera (nose to screen-left, port at the bottom): toward the tail, tops to
+    # starboard.
     s.detail = 2
     stencil.stamp(s, 'HeroMark_DieLaughing', [('DIE', 0.86, 0.30), ('LAUGHING', 0.72, 0.12)], (-5.6, 4.55),
-                  'Sponson', finish='paint2.ivory')
+                  'Sponson', finish='paint2.ivory', angle=math.pi)
     s.detail = 0
     # Load braces between hull and sponsons.
     for x in (3.0, -1.5, -6.5):
@@ -300,7 +302,7 @@ def build():
 
     F.light(s, 'NavPort', (-9.2, 6.3, 0.75), 'glow_red', size=0.16)
     F.light(s, 'NavStarboard', (-9.2, -6.3, 0.75), 'glow_green', size=0.16)
-    F.light(s, 'Beacon', (-10.4, 0.0, 2.25), 'glow_amber', size=0.16)
+    F.light(s, 'Beacon', (-10.4, 0.0, 2.25), 'glow_amber.beacon', size=0.16)  # lamp bus: slow flash
 
     # ANI-16: belly gear — the two aft rails plus the nose skid just created above.
     _o = {o.name: o for o in s.objects}

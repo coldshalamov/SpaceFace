@@ -14,9 +14,11 @@ Everything is seeded: the same marking is byte-identical on every build. Letters
 each vertex is ray-cast down onto the surface part, so the marking follows a curved or stepped
 plate instead of floating over it.
 
-Orientation (Blender hull axes: +X nose, +Y port, +Z dorsal): the text reads toward the nose with
-the tops of the letters toward port, so a hull flying left-to-right with its port side up reads
-upright. Lines are listed top (port-most) to bottom.
+Orientation (Blender hull axes: +X nose, +Y port, +Z dorsal): with `angle=0` the text reads toward
+the nose with the tops of the letters toward port. `angle` turns the whole marking about its centre
+(radians, counter-clockwise from above). Lines are listed top to bottom in the marking's own frame.
+The game's chase camera puts screen-right at the hull's tail at the spawn heading, so a hull whose
+marking should read upright on first sight takes `angle=math.pi`.
 """
 from __future__ import annotations
 
@@ -127,7 +129,7 @@ def _line_layout(text, height, tracking):
 
 
 def stamp(ship, name, lines, center, surface, finish='paint2.ivory', thickness=0.022, seed=None,
-          line_gap=0.22, z_default=None, specks=10, chip=0.16, bite=0.09):
+          line_gap=0.22, z_default=None, specks=10, chip=0.16, bite=0.09, angle=0.0):
     """Lay a hand-cut stencil on `surface` (a part name) around plan point `center`.
 
     lines: top-to-bottom list of (text, cap_height_m, tracking_units). Each line is centred on
@@ -158,6 +160,11 @@ def stamp(ship, name, lines, center, surface, finish='paint2.ivory', thickness=0
                 pts = [(x0 + (off + u) * height, base_y + v * height) for (u, v) in _ccw(poly)]
                 islands.append(_ccw(_wear(pts, rng, chip=chip, bite=bite)))
         y_cursor = base_y - line_gap
+
+    if angle:
+        ca, sa = math.cos(angle), math.sin(angle)
+        islands = [[(cx + (x - cx) * ca - (y - cy) * sa, cy + (x - cx) * sa + (y - cy) * ca) for (x, y) in poly]
+                   for poly in islands]
 
     bm = bmesh.new()
     top_faces = []

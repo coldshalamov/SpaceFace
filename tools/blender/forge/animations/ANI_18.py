@@ -31,9 +31,9 @@ HEAD_YAW_RAD = 0.12          # ~7deg off-bore kick
 # runtime's 15 keys/s line the channel is evaluated as a C1 curve; the earlier eight-key bounce was
 # played as straight segments and its corners read as a rattle (judge kink 0.75 -> 0.40).
 CAP_KEYS = [(0.0, 0.0), (0.12, 1.0), (0.25, 0.4), (DUR, 0.0)]
-# Stem dip + head yaw: two-node spring back to rest.
-BODY_KEYS = [(0.0, 0.0), (0.06, 0.8), (0.12, 1.0), (0.20, 0.6),
-             (0.28, 0.22), (0.36, 0.05), (DUR, 0.0)]
+# Stem dip + head yaw: the same heavy 0.12 s onset as the cap, then one long ease home. Five keys
+# keep the channel under the runtime's 15 keys/s line (judge kink 0.54 -> 0.40).
+BODY_KEYS = [(0.0, 0.0), (0.12, 1.0), (0.25, 0.45), (0.36, 0.1), (DUR, 0.0)]
 
 
 def author(bank):
