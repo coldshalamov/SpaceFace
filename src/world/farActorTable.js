@@ -349,6 +349,12 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   // In-place advance: the per-tick sweep only needs the record's fields to land —
   // advanceWorldRecordInto skips the {...record} spread + pos/vel/drift literals the
   // allocating variant pays per row per tick. Field values are identical.
+  // The presentation collect memoizes its walk on table.version, which only a re-key
+  // bumps — a row advanced within one cell across the walked disc's rim would stay
+  // absent from the memoized scratch until its own next cell-cross. Capture the pre-step
+  // position so the disc-rim crossing below can stamp the bump the re-key path gives.
+  const prevX = rec.pos ? finite(rec.pos.x) : NaN;
+  const prevZ = rec.pos ? finite(rec.pos.z) : NaN;
   const advanced = advanceWorldRecordInto(rec, fromT, toT);
   if (!advanced) {
     rec.lastExactT = toT;
@@ -366,6 +372,18 @@ export function catchUpFarRecord(rec, simTime, table = null) {
       // The presentation collect memoizes its grid walk on table.version — a silent
       // re-key would let a memoized disc keep returning a row at its old cell.
       table.version++;
+    } else {
+      // Same cell: no re-key, so the memoized collect keeps its scratch — unless the
+      // advance just carried the row across the recorded disc's rim (outside → in).
+      const disc = table.collectDisc;
+      if (disc && disc.r > 0 && Number.isFinite(prevX)) {
+        const nx = finite(rec.pos.x) - disc.x;
+        const nz = finite(rec.pos.z) - disc.z;
+        if (nx * nx + nz * nz <= disc.r * disc.r
+          && (prevX - disc.x) * (prevX - disc.x) + (prevZ - disc.z) * (prevZ - disc.z) > disc.r * disc.r) {
+          table.version++;
+        }
+      }
     }
   }
   return rec;

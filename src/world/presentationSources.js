@@ -180,6 +180,15 @@ function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
   _meshSpatialKey.radius = walkRadius;
   _meshSpatialKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
+  // The collect disc the scratch set answers for. catchUpFarRecord reads it to stamp a
+  // version bump when a within-cell advance moves a row across its rim — the only motion
+  // class that can silently enter the memoized scratch's coverage.
+  if (far && typeof far === 'object') {
+    const disc = far.collectDisc || (far.collectDisc = { x: 0, z: 0, r: 0 });
+    disc.x = walkX;
+    disc.z = walkZ;
+    disc.r = walkRadius;
+  }
 }
 
 const _meshWalkOrigin = { x: 0, z: 0 };

@@ -2000,18 +2000,26 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   const queue = owner && owner._meshBuildQueue;
   if (!queue) return false;
   const head = owner._meshBuildQueueHead | 0;
-  let moved = 0;
+  // Stable partition, same ordering contract as the old splice-per-move scan: glass ids
+  // hoist in scan order, non-glass keep theirs. reordered mirrors the old contract —
+  // true only when a non-glass id sat ahead of a glass one (an actual permutation).
+  const tail = queue.slice(head);
+  const hoisted = [];
+  const remainder = [];
   let reordered = false;
-  for (let i = head; i < queue.length; i++) {
-    const entity = resolveWorldPresentationEntity(owner.state, queue[i]);
-    if (!entityIsOnDeadlineGlass(entity, owner.state)) continue;
-    const slot = head + moved;
-    if (i !== slot) {
-      const [id] = queue.splice(i, 1);
-      queue.splice(slot, 0, id);
-      reordered = true;
+  for (let i = 0; i < tail.length; i++) {
+    const id = tail[i];
+    if (entityIsOnDeadlineGlass(resolveWorldPresentationEntity(owner.state, id), owner.state)) {
+      if (remainder.length) reordered = true;
+      hoisted.push(id);
+    } else {
+      remainder.push(id);
     }
-    moved += 1;
+  }
+  if (reordered) {
+    queue.length = head;
+    for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
+    for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
   }
   return reordered;
 }
@@ -14932,28 +14940,30 @@ export const render = {
    */
   _drainProtectedFirstFlightBuilds() {
     const queue = this._meshBuildQueue;
-    if (!queue || this._meshBuildQueueHead >= queue.length) return 0;
+    const head = this._meshBuildQueueHead | 0;
+    if (!queue || head >= queue.length) return 0;
     const frame = this._activityFrame;
     const glassIds = frame && frame.renderGlassIds;
     const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
-    let moved = 0;
-    for (let i = this._meshBuildQueueHead; i < queue.length; i++) {
-      const entity = resolveWorldPresentationEntity(this.state, queue[i]);
-      if (!exempt(entity)) continue;
-      const slot = this._meshBuildQueueHead + moved;
-      if (i !== slot) {
-        const [id] = queue.splice(i, 1);
-        queue.splice(slot, 0, id);
-      }
-      moved += 1;
+    // Stable partition of the pending tail in one pass — exempt ids keep scan order ahead
+    // of the rest. splice-per-move paid O(tail) shifts per hoisted id for ~50 consecutive
+    // first-flight frames; slice+push pays the same ordering once.
+    const tail = queue.slice(head);
+    const hoisted = [];
+    const remainder = [];
+    for (let i = 0; i < tail.length; i++) {
+      const id = tail[i];
+      (exempt(resolveWorldPresentationEntity(this.state, id)) ? hoisted : remainder).push(id);
     }
+    if (!hoisted.length) return 0;
+    queue.length = head;
+    for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
+    for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
     // Cap to the ordinary runtime budget. Draining `moved` unbounded turned every
     // on-glass / approach rock cohort into a single-frame dump (+11 s / +20 s clusters
     // on soft-GPU crucible). Exempt ids stay hoisted at the head, so the next hold
     // frames finish the rest without letting non-exempt work slip through.
-    return moved > 0
-      ? this._drainMeshBuildQueue(Math.min(moved, RUNTIME_MESH_BUILD_BUDGET))
-      : 0;
+    return this._drainMeshBuildQueue(Math.min(hoisted.length, RUNTIME_MESH_BUILD_BUDGET));
   },
 
   _drainMeshBuildQueue(buildBudget) {

@@ -610,6 +610,10 @@ export function createScreenManager(ctx) {
     rec.mounted = false;
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     rec.el = null;
+    // The warm stamp answered for the dropped element's layout pass — a released screen
+    // that stays prewarm-queued (newGame/saveLoad ride BOOT_SCREEN_EXPORTS) would hit
+    // `painted === true` on every later wave and pay a cold mount+layout at its next open.
+    rec.painted = false;
     if (stacked >= 0) syncVisibility();
   }
 

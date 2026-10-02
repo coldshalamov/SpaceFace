@@ -841,6 +841,7 @@ function mountBaseLattice(rootEl) {
       }
     };
     repaint();
+    rootEl._orrBaseRepaint = repaint;
     try {
       if (rootEl._orrBaseRO) rootEl._orrBaseRO.disconnect();
     } catch (_) {
@@ -1119,6 +1120,10 @@ export const baseScreen = {
         }
       });
     }
+    // The lattice is decor — data-independent, so it mounts once here (under the hidden
+    // warm, not the open frame) and _render() preserves it across its rebuild clears.
+    // Its ResizeObserver repaints when the screen first lays out.
+    mountBaseLattice(rootEl);
   },
 
   // Arm one survey tick without rebuilding the glass (keys, pointer, walk all land here).
@@ -1184,8 +1189,19 @@ export const baseScreen = {
 
     rootEl.classList.remove('is-claimed');
     rootEl.classList.add('is-empty');
-    rootEl.innerHTML = '';
-    mountBaseLattice(rootEl);
+    // Clear the rebuilt body but preserve the lattice canvas mounted at mount() — a full
+    // remount would re-create the canvas, repaint, and churn a ResizeObserver inside every
+    // open/commit frame for identical decor. The preserved canvas only needs a repaint at
+    // the now-laid-out size (its RO also covers later resizes).
+    const lattice = rootEl._orrBaseCanvas;
+    for (const node of Array.from(rootEl.childNodes)) {
+      if (node !== lattice) node.remove();
+    }
+    if (!lattice || lattice.parentNode !== rootEl) {
+      mountBaseLattice(rootEl);
+    } else if (typeof rootEl._orrBaseRepaint === 'function') {
+      rootEl._orrBaseRepaint();
+    }
     const wrap = document.createElement('div');
     wrap.id = 'sf-base';
 

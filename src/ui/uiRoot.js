@@ -1429,7 +1429,21 @@ export const ui = {
       try {
         while (queue.length) {
           const id = queue.shift();
-          try { this._warmScreen(id); }
+          try {
+            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.prewarm(id); }
+            catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+            // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
+            // its own frame before the hidden layout pass — the two costs never share a
+            // flight-idle frame even when the mount alone exceeds the budget.
+            const mountedMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - t0 : 0;
+            if (mountedMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
+            try { this.screenManager.paintWarm(id); }
+            catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
+          }
           catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
           await yieldPresentationFrame();
           if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
