@@ -565,7 +565,8 @@ class Ship:
 
     def mat(self, finish):
         if finish not in self._mats:
-            color = self.colors.get(finish)
+            # a variant finish ('glow_amber.beacon') takes its base finish's colour unless it names its own
+            color = self.colors.get(finish) or self.colors.get(finish.split('.')[0])
             if color is None:
                 raise KeyError(f'{self.id}: no colour for finish {finish}')
             base = finish.split('.')[0]
