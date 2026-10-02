@@ -603,8 +603,8 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 92 | PB-TAC-F | SF-058+059 lawful-motive verify + terrain-aware orbit ring | PB | DONE 2026-09-29 — label hostility verified already-satisfied and pinned (armed neutral/same-team pairs stay cold, pod strike never aggros owner, station protection ends retaliation); orbit() sweeps a bounded 9-ray tangential fan on perceived obstacles — widest clear arc + velocity continuity, side never flips, ring resumes byte-identically once clear; dodge takeovers 140→39/1800 (`receipts/PB-TAC-F-LABEL-HOSTILITY-TERRAIN-ORBIT.md`, implemented/route-unproven) |
 | 94 | PB-ORD-B | SF-034+038+039+040 field-family readability: goo edge/recovery, pinning law, bend read, mine breakout (fields.js stale-adoptable) | PB | OPEN — seam fields.js; verify claim staleness first |
 | 96 | PB-ORD-D | SF-031+032+033+045 drop-law/wake/leak verify + concussion encounter composition | PB | OPEN — CHECK pair + build |
-| 97 | PB-SWARM-A | SF-061+062 opening-wave physical promise + mass-and-gap wave composition | PB | OPEN — must-share pair |
-| 98 | PB-SWARM-B | SF-064+068 specialist introduction rehearsal + boss-round ammo placement | PB | OPEN — seam swarm planner |
+| 97 | PB-SWARM-A | SF-061+062 opening-wave physical promise + mass-and-gap wave composition | PB | DONE 2026-10-02 — opening wave loose mass promise + mass-gap wall with 2 navigable gaps + wall muscle |
+| 98 | PB-SWARM-B | SF-064+068 specialist introduction rehearsal + boss-round ammo placement | PB | DONE 2026-10-02 — specialist debut stages solo arrival beat at SWARM_DEBUT_TICKS + boss round supplies non-champion ammunition |
 | 99 | PB-SWARM-C | SF-067+071 fracture-into-usable-cover + arena throw-window modifier | PB | OPEN — must-share pair |
 | 100 | PB-SWARM-D | SF-065+072 draft distinct intentions + build pressure through buildSummary | PB | OPEN |
 | 101 | PB-SWARM-E | SF-070+073+074+075 launch-path verify, chip pending-vs-committed, cash-out surface, rematch causal compare | PB | OPEN — CHECK quartet |
@@ -692,7 +692,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 176 | BUILD | [NXB-007](design/program/next-wave-2026-09-28/build/NXB-007.md) | One physical kill has one readable legal and salvage aftermath | Existing owners; SF-030, SF-042, SF-159, SF-292 | OPEN |
 | 178 | BUILD | [NXB-012](design/program/next-wave-2026-09-28/build/NXB-012.md) | Countermeasures break a particular lock rather than erase every threat | Existing owners; SF-040, SF-050, SF-057 | SHIPPED |
 | 179 | BUILD | [NXB-013](design/program/next-wave-2026-09-28/build/NXB-013.md) | A wounded squad withdraws through a usable corridor with one covering ship | Existing owners; SF-056, SF-057, SF-059 | SHIPPED |
-| 180 | BUILD | [NXB-017](design/program/next-wave-2026-09-28/build/NXB-017.md) | Author one three-round act whose physical question changes each round | Existing owners; SF-061, SF-062, SF-064, SF-068, PQ-174 | OPEN |
+| 180 | BUILD | [NXB-017](design/program/next-wave-2026-09-28/build/NXB-017.md) | Author one three-round act whose physical question changes each round | Existing owners; SF-061, SF-062, SF-064, SF-068, PQ-174 | DONE |
 | 181 | BUILD | [NXB-018](design/program/next-wave-2026-09-28/build/NXB-018.md) | Draft offers remain useful for the actual build and transaction state | Existing owners; SF-065, SF-066, SF-072, SF-251 | SHIPPED |
 | 182 | BUILD | [NXB-021](design/program/next-wave-2026-09-28/build/NXB-021.md) | Deep-core mining makes the next commitment visible without revealing the whole rock | Existing owners; SF-095, SF-125, PQ-130 | OPEN |
 | 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | SHIPPED |
