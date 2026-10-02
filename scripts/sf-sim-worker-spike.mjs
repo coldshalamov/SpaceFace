@@ -32,7 +32,20 @@ import { createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../
 import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
 import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
 import { createPresentationWorld } from '../src/render/presentationWorld.js';
-import { createSimCommandRing } from './lib/simCommandChannel.mjs';
+import { createSimCommandRing, pushLaneCommand } from './lib/simCommandChannel.mjs';
+import {
+  installSimCommandSink,
+  uninstallSimCommandSink,
+  laneInputWrite,
+  laneSetMode,
+  laneSetNavWaypoint,
+  laneClearNavWaypoint,
+  laneWriteSetting,
+  laneSpawnEntity,
+  laneRemoveEntity,
+  lanePromote,
+} from '../src/core/simLaneCommands.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
 import {
   applyAuxRemovals,
   applyAuxUpserts,
@@ -261,18 +274,18 @@ function createWorkerClient() {
 // ---------------------------------------------------------------------------
 // One full run.
 // ---------------------------------------------------------------------------
-async function runOnce() {
+async function runOnce(options = {}) {
   const tape = readJson(OPT.inputs);
   const frames = normalizeTape(tape);
   const client = createWorkerClient();
   try {
-    return await runBody(client, frames);
+    return await runBody(client, frames, options);
   } finally {
     await client.terminate();
   }
 }
 
-async function runBody(client, frames) {
+async function runBody(client, frames, options = {}) {
   const journal = createTransportJournal();
   const readModel = createReadModel();
   const world = createPresentationWorld();
@@ -366,6 +379,7 @@ async function runBody(client, frames) {
     reloadAt: OPT.reloadAt,
     journalCapacity: OPT.journalCapacity,
     scenarioContractPath: 'src/data/scenarios/47a.scenario.json',
+    eagerMarketMint: options.eagerMarketMint === true,
   });
   assert.equal(init.kind, 'ready');
 
@@ -409,6 +423,117 @@ async function runBody(client, frames) {
   const refInputHistory = createInputCommandHistory();
   const observedRpcAcks = [];
   const observedSettingsAcks = [];
+  const observedSpawnAcks = [];
+  const observedCommandAcks = [];
+  const appliedEnvelopeKinds = new Set();
+  let observedFoldsApplied = 0;
+
+  // ---- stage-5 probes ------------------------------------------------------
+  // --probe commands: inject one of each new lane kind through the REAL
+  // production emitters (sink → descriptor → ring → worker drain). Net-neutral
+  // pairs land in a single wire batch so no tick ever observes the transient.
+  // --probe market-parity: scripted quote rpcs against unminted + lazily-minted
+  // and already-live rows; main() runs eager ON vs OFF and diffs answers+hashes.
+  const cmdProbe = {
+    spawnToken: null, spawnedId: null, farId: null,
+    promoted: false, removed: false,
+  };
+
+  const PARITY_QUOTES = new Map([
+    [40, [
+      { id: 'pq-mint-market', op: 'quote', args: { stationId: 'station_ceres', commodityId: 'cmdty_ore_iron', side: 'buy', qty: 10 } },
+      { id: 'pq-mint-listing-deferred', op: 'quote', args: { stationId: 'station_ceres', commodityId: 'cmdty_live_specimen', side: 'buy', qty: 1 } },
+      { id: 'pq-listing-defer-live', op: 'quote', args: { stationId: 'station_helios', commodityId: 'cmdty_calcified_filament', side: 'buy', qty: 1 } },
+      { id: 'pq-control', op: 'quote', args: { stationId: 'station_helios', commodityId: 'cmdty_ore_iron', side: 'buy', qty: 10 } },
+    ]],
+    [45, [
+      { id: 'pi-ceres-iron', op: 'inspectListing', args: { stationId: 'station_ceres', commodityId: 'cmdty_ore_iron' } },
+      { id: 'pi-ceres-specimen', op: 'inspectListing', args: { stationId: 'station_ceres', commodityId: 'cmdty_live_specimen' } },
+      { id: 'pi-helios-filament', op: 'inspectListing', args: { stationId: 'station_helios', commodityId: 'cmdty_calcified_filament' } },
+      { id: 'pi-control', op: 'inspectListing', args: { stationId: 'station_helios', commodityId: 'cmdty_ore_iron' } },
+    ]],
+  ]);
+
+  function injectStage5Probe(tick, ring) {
+    if (OPT.probe !== 'commands' && !options.parityQuotes) return;
+    const dummy = {}; // lane emitters under a sink never touch the state arg
+    installSimCommandSink((d) => pushLaneCommand(ring, d));
+    try {
+      if (options.parityQuotes && PARITY_QUOTES.has(tick)) {
+        for (const q of PARITY_QUOTES.get(tick)) {
+          pushLaneCommand(ring, { kind: 'rpc', id: q.id, op: q.op, args: q.args });
+        }
+      }
+      if (OPT.probe !== 'commands') return;
+      switch (tick) {
+        case 30:
+          laneInputWrite(dummy, 'player.targetId', 7);
+          laneInputWrite(dummy, 'player.targetId', null);
+          laneInputWrite(dummy, 'input.targetAssistDisabled', true);
+          laneInputWrite(dummy, 'input.targetAssistDisabled', false);
+          laneInputWrite(dummy, 'input.blocked', 'probe');
+          laneInputWrite(dummy, 'input.blocked', false);
+          laneInputWrite(dummy, 'input.worldObjectTargetId', 'wo_probe');
+          laneInputWrite(dummy, 'input.worldObjectTargetId', undefined);
+          laneInputWrite(dummy, 'ui.docked', true);
+          laneInputWrite(dummy, 'ui.docked', false);
+          laneSetMode(dummy, null, 'paused');
+          laneSetMode(dummy, null, 'flight');
+          laneSetNavWaypoint(dummy, { stationId: 'station_ceres', pos: { x: 10, z: 20 } });
+          laneClearNavWaypoint(dummy);
+          laneWriteSetting(dummy, 'settings.ui.overviewOpen', true);
+          laneWriteSetting(dummy, 'settings.ui.overviewOpen', false);
+          laneWriteSetting(dummy, 'settings.video.bloom', true);
+          laneWriteSetting(dummy, 'settings.video.bloom', false);
+          break;
+        case 40:
+          pushLaneCommand(ring, { kind: 'rpc', id: 'cmdprobe-noop', op: 'noop', args: {} });
+          break;
+        case 44:
+          // physicsPrep rpc round-trip — benign backend short-circuits before
+          // rapier init; the heavy rapier re-prep is covered by reload-at-600.
+          pushLaneCommand(ring, { kind: 'rpc', id: 'cmdprobe-phys', op: 'physicsPrep', args: { backend: 'noop-backend' } });
+          break;
+        case 200:
+          cmdProbe.spawnToken = laneSpawnEntity(makeShipEntitySpec('ship_wasp', {
+            team: 1, factionId: 'faction_reavers',
+            pos: { x: 9999, z: 9999 }, rot: 0,
+            ai: { role: 'target_dummy' },
+          }));
+          break;
+        case 230:
+          if (cmdProbe.spawnedId != null && !cmdProbe.removed) {
+            laneRemoveEntity(cmdProbe.spawnedId, { immediate: true });
+            cmdProbe.removed = true;
+          }
+          break;
+        case 310:
+          if (cmdProbe.farId != null && !cmdProbe.promoted) {
+            lanePromote({ id: cmdProbe.farId, source: 'actor', reason: 'commands-probe' });
+            cmdProbe.promoted = true;
+          }
+          break;
+        default: break;
+      }
+    } finally {
+      uninstallSimCommandSink();
+    }
+  }
+
+  function observeStage5Reply(reply) {
+    if (Array.isArray(reply.spawnAcks)) observedSpawnAcks.push(...reply.spawnAcks);
+    if (Array.isArray(reply.commandAcks)) observedCommandAcks.push(...reply.commandAcks);
+    if (Array.isArray(reply.commandProbe)) {
+      for (const a of reply.commandProbe) if (a && a.t) appliedEnvelopeKinds.add(a.t);
+    }
+    for (const a of reply.spawnAcks || []) {
+      if (a && a.token === cmdProbe.spawnToken && a.ok) cmdProbe.spawnedId = a.id;
+    }
+    if (reply.commandsProbe && reply.commandsProbe.farId != null) {
+      cmdProbe.farId = reply.commandsProbe.farId;
+    }
+    observedFoldsApplied += reply.foldsApplied || 0;
+  }
 
   function enqueueFrameEnvelopes(tick) {
     while (frameIndex < frames.length && frames[frameIndex].tick <= tick) {
@@ -417,6 +542,7 @@ async function runBody(client, frames) {
       for (const c of frame.commands) commandRing.pushBus(c);
       frameIndex++;
     }
+    injectStage5Probe(tick, commandRing);
     const seq = commandRing.pushInput(currentInput, { wallMs: Date.now() });
     refInputHistory.record(tick, currentInput, { sequence: seq });
   }
@@ -434,6 +560,8 @@ async function runBody(client, frames) {
       churn: OPT.probe === 'churn' && tick >= 10 && tick < 210 ? { spawn: 6 } : null,
       aux: OPT.probe === 'aux',
       domains: OPT.probe === 'domains',
+      commandsProbe: OPT.probe === 'commands',
+      commandProbe: OPT.probe === 'commands',
     });
     tickMeta.set(p, { sendNs, tick });
     pendingTicks.push(p);
@@ -556,6 +684,7 @@ async function runBody(client, frames) {
     reply._meta = meta;
     if (Array.isArray(reply.rpcAcks)) observedRpcAcks.push(...reply.rpcAcks);
     if (Array.isArray(reply.settingsAcks)) observedSettingsAcks.push(...reply.settingsAcks);
+    observeStage5Reply(reply);
     ringPush(reply); // tickDone envelope = completedTick + journal byte-range
     ringHighWater = Math.max(ringHighWater, completedTickRing.length);
     consumeRing(OPT.consumeBatch);
@@ -586,6 +715,7 @@ async function runBody(client, frames) {
       applyDomainUpdatesTracked(paused.domainUpdates);
       if (Array.isArray(paused.rpcAcks)) observedRpcAcks.push(...paused.rpcAcks);
       if (Array.isArray(paused.settingsAcks)) observedSettingsAcks.push(...paused.settingsAcks);
+      observeStage5Reply(paused);
       postTick(tick, 1);
       while (pendingTicks.length) await drainOne();
       continue;
@@ -605,6 +735,11 @@ async function runBody(client, frames) {
     refTape: refInputHistory.toTape(),
     observedRpcAcks,
     observedSettingsAcks,
+    observedSpawnAcks,
+    observedCommandAcks,
+    appliedEnvelopeKinds: [...appliedEnvelopeKinds],
+    observedFoldsApplied,
+    cmdProbe: { ...cmdProbe },
     commandDropped: fin.commandDropped,
     stateTick: fin.stateTick,
     entityCount: fin.entityCount,
@@ -684,8 +819,31 @@ function reportStats(s) {
 
 async function main() {
   const results = [];
-  for (let i = 0; i < OPT.repeat; i++) {
-    results.push(await runOnce());
+  // --probe market-parity: identical scripted quote/inspect rpcs against the
+  // lazy path (eager OFF) and the deferred path (eager ON). Answers AND the
+  // whole-run state hash must match — deferred mints land byte-identically.
+  const parity = { enabled: OPT.probe === 'market-parity' };
+  if (parity.enabled) {
+    const off = await runOnce({ eagerMarketMint: false, parityQuotes: true });
+    const on = await runOnce({ eagerMarketMint: true, parityQuotes: true });
+    results.push(off, on);
+    const offAcks = new Map(off.observedRpcAcks.map((a) => [a && a.id, a]));
+    const onAcks = new Map(on.observedRpcAcks.map((a) => [a && a.id, a]));
+    const parityIds = ['pq-mint-market', 'pq-mint-listing-deferred', 'pq-listing-defer-live', 'pq-control',
+      'pi-ceres-iron', 'pi-ceres-specimen', 'pi-helios-filament', 'pi-control'];
+    parity.hashEqual = on.sha256 === off.sha256;
+    parity.onHash = on.sha256;
+    parity.offHash = off.sha256;
+    parity.pairs = parityIds.map((id) => {
+      const a = offAcks.get(id);
+      const b = onAcks.get(id);
+      return { id, equal: JSON.stringify(a) === JSON.stringify(b), off: a || null, on: b || null };
+    });
+    parity.pass = parity.hashEqual && parity.pairs.every((p) => p.equal && p.off && p.on);
+  } else {
+    for (let i = 0; i < OPT.repeat; i++) {
+      results.push(await runOnce());
+    }
   }
 
   const allHashEqual = results.every((r) => r.sha256 === results[0].sha256);
@@ -693,7 +851,8 @@ async function main() {
 
   // Gate (a): hash parity — mutating probes (aux) still must be deterministic
   // across repeats but are not expected to match the golden hash.
-  const mutatingProbe = OPT.probe === 'aux' || OPT.probe === 'churn' || OPT.probe === 'domains';
+  const mutatingProbe = OPT.probe === 'aux' || OPT.probe === 'churn' || OPT.probe === 'domains'
+    || OPT.probe === 'commands' || OPT.probe === 'market-parity';
   const gateA = {
     pass: allHashEqual && (mutatingProbe || hashMatch) && results[0].stateTick === OPT.ticks,
     sha256: results[0].sha256,
@@ -804,6 +963,45 @@ async function main() {
   // across same-kind updates (mutate-in-place contract).
   const domainDiffStats = stats(results.flatMap((r) => r.timing.domainDiffMs));
   const domainShipStats = stats(results.flatMap((r) => r.timing.domainShipBytes));
+  // GATE G — stage-5 command surface (--probe commands): every new lane kind
+  // must have been injected via the production emitters, applied worker-side
+  // (commandProbe applied list), and acked ok. spawn→ack→remove and
+  // shelve→lane-promote prove the correlated id lifecycles.
+  const stage5RequiredKinds = ['mode', 'nav', 'spawn', 'remove', 'promote', 'settings', 'rpc', 'input'];
+  const commandsAcksOk = run.observedCommandAcks.every((a) => a && a.ok === true)
+    && run.observedSpawnAcks.every((a) => a && a.ok === true);
+  const cmdRpcOk = OPT.probe !== 'commands'
+    || (run.observedRpcAcks.some((a) => a && a.id === 'cmdprobe-noop' && a.ok === true)
+      && run.observedRpcAcks.some((a) => a && a.id === 'cmdprobe-phys' && a.ok === true));
+  const gateG = {
+    pass: OPT.probe !== 'commands' || (
+      stage5RequiredKinds.every((k) => run.appliedEnvelopeKinds.includes(k))
+      && run.observedFoldsApplied >= 6
+      && commandsAcksOk
+      && cmdRpcOk
+      && run.cmdProbe.spawnedId != null
+      && run.cmdProbe.removed === true
+      && run.cmdProbe.promoted === true
+      && run.observedCommandAcks.some((a) => a && a.t === 'promote' && a.ok === true)
+    ),
+    enabled: OPT.probe === 'commands',
+    appliedKinds: run.appliedEnvelopeKinds,
+    foldsApplied: run.observedFoldsApplied,
+    spawnAcks: run.observedSpawnAcks,
+    commandAcks: run.observedCommandAcks,
+    cmdProbe: run.cmdProbe,
+    cmdRpcOk,
+  };
+
+  // GATE H — stage-5 market parity (--probe market-parity): eager vs lazy mint
+  // paths produce identical quote answers AND identical whole-run state hashes.
+  const gateH = {
+    pass: !parity.enabled || parity.pass === true,
+    enabled: parity.enabled,
+    hashEqual: parity.hashEqual || null,
+    pairs: parity.pairs || [],
+  };
+
   const gateF2 = {
     pass: run.domainMismatches === 0 && run.domainProbes > 0
       && run.domainMissingKeys.length === 0 && run.domainIdentityBreaks === 0,
@@ -842,8 +1040,8 @@ async function main() {
     schema: 'spaceface.s1WorkerSpike.v1',
     mode: 'whole-sim-in-worker',
     options: OPT,
-    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF, f2_domainMirrors: gateF2 },
-    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass && gateF2.pass ? 'ALL PASS' : 'GATE FAILURE',
+    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF, f2_domainMirrors: gateF2, g_commandSurface: gateG, h_marketParity: gateH },
+    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass && gateF2.pass && gateG.pass && gateH.pass ? 'ALL PASS' : 'GATE FAILURE',
     run: {
       entityCount: run.entityCount,
       droppedEventCount: run.droppedEventCount,
@@ -886,6 +1084,15 @@ async function main() {
     }
     if (gateF2.oversizeKeys && gateF2.oversizeKeys.length) {
       console.log(`                     oversize(>${256}KB)=${JSON.stringify(gateF2.oversizeKeys.slice(0, 8))}`);
+    }
+    if (gateG.enabled) {
+      console.log(`GATE G cmd surface : ${gateG.pass ? 'PASS' : 'FAIL'}  kinds=${JSON.stringify(gateG.appliedKinds)} folds=${gateG.foldsApplied}`);
+      console.log(`                     spawnAcks=${JSON.stringify(gateG.spawnAcks)} commandAcks=${JSON.stringify(gateG.commandAcks)} rpcOk=${gateG.cmdRpcOk}`);
+    }
+    if (gateH.enabled) {
+      console.log(`GATE H market parity: ${gateH.pass ? 'PASS' : 'FAIL'}  hashEqual=${gateH.hashEqual}`);
+      console.log(`                     pairs=${JSON.stringify(gateH.pairs.map((p) => ({ id: p.id, equal: p.equal })))}`);
+      if (!gateH.pass) console.log(`                     detail=${JSON.stringify(gateH.pairs)}`);
     }
     console.log(`run: entities=${run.entityCount} events=${run.eventsReceived} dropped=${run.droppedEventCount} avgWorkMs=${round(run.avgWorkMs)} workerHeap=${round((run.workerHeapUsedBytes || 0) / 1e6, 1)}MB`);
     console.log(`rebuild reasons: ${JSON.stringify(run.rebuildReasons)}`);

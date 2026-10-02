@@ -16,6 +16,7 @@ import { massline2Flag } from '../../data/featureFlags.js';
 import { releaseAssistMode } from '../../systems/masslineThrow.js';
 import { installSandboxGameStartedHook, spawnTargetsNow } from '../sandbox/sandboxSetup.js';
 import { el } from '../kit/index.js';
+import { laneCommandSink, laneRemoveEntity, laneRpc, onLaneSpawnAck } from '../../core/simLaneCommands.js';
 
 export const CRUCIBLE_LAB_SPEED_SOURCE = 'crucible-lab:speed';
 export const LAB_BUDGET_OWNER_PREFIX = 'combat-lab:';
@@ -201,7 +202,8 @@ function applyClearEnemies(ctx) {
   let released = 0;
   for (let i = 0; i < cap; i++) {
     const id = targets[i].id;
-    helpers.removeEntity(id);
+    // Lane command under worker; direct helper call under SIM_LANE=main.
+    if (!laneRemoveEntity(id)) helpers.removeEntity(id);
     removed += 1;
     if (typeof budget.releaseEntity === 'function') {
       released += budget.releaseEntity(id) | 0;
@@ -259,7 +261,16 @@ function noteSpawned(state, ids) {
 function applySpawnBodies(ctx, count) {
   if (!physicsToySession(ctx)) return false;
   const helpers = ctx && ctx.helpers;
-  if (!helpers || typeof helpers.spawnEntity !== 'function') return false;
+  if (!laneCommandSink() && (!helpers || typeof helpers.spawnEntity !== 'function')) return false;
+  if (laneCommandSink()) {
+    // Worker lane: tokens now, ids on the ack — bookkeeping follows the acks.
+    const tokens = spawnTargetsNow(ctx, count, { budgetOwner: TOY_BUDGET_OWNER }) || [];
+    if (tokens.length === 0) return false;
+    for (const token of tokens) {
+      onLaneSpawnAck(token, (id, ok) => { if (ok && id != null) noteSpawned(ctx.state, [id]); });
+    }
+    return { kind: 'spawnBodies', spawned: tokens.length, queued: true };
+  }
   const before = new Set();
   for (const entity of listEntities(ctx.state)) {
     if (entity && entity.id != null) before.add(entity.id);
@@ -374,6 +385,12 @@ function applyThrow(ctx) {
   const registry = ctx && ctx.registry;
   const system = registry && typeof registry.get === 'function' ? registry.get('masslineThrow') : null;
   if (!system || typeof system.update !== 'function' || state.mode !== 'flight') return false;
+  // The arm/update interleave must run inside the sim lane: under a worker it is one
+  // correlated rpc, under SIM_LANE=main it stays the synchronous sequence below.
+  if (laneCommandSink()) {
+    laneRpc('crucibleThrowStep', {});
+    return { kind: 'throw', queued: true, payloadId: tether.targetId };
+  }
   const actions = ensureActions(state);
   actions.throwArm = false;
   system.update(1 / 60, state);
@@ -402,7 +419,7 @@ function removeNotedBodies(ctx) {
       known.delete(id);
       continue;
     }
-    helpers.removeEntity(id, { immediate: true });
+    if (!laneRemoveEntity(id, { immediate: true })) helpers.removeEntity(id, { immediate: true });
     known.delete(id);
     removed += 1;
   }

@@ -30,6 +30,7 @@ import { PQ019_FACILITIES, PQ019_HEIST_SECTOR_ID } from '../../data/heistFacilit
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from '../../systems/combat.js';
 import { buildSlotList, makeShipEntitySpec } from '../../systems/ships.js';
+import { laneCommandSink, laneRpc, laneSpawnEntity, onLaneSpawnAck } from '../../core/simLaneCommands.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
@@ -44,6 +45,10 @@ import {
 // don't need a shared object threaded through ctx. One pending config at a time.
 let pendingConfig = null;
 let hookInstalled = false;
+
+// Sandbox-local spawn-angle jitter: deliberately NOT state.rng — dev fixtures must never
+// consume the sim's seeded draw stream (a main-lane draw would perturb sim determinism).
+const _sandboxJitter = mulberry32(0x5a5bf1);
 
 export const RECOVERY_SCENARIO_IDS = Object.freeze([
   'massline_long_line',
@@ -549,7 +554,7 @@ function setShip(ctx, defId) {
 function spawnEnemies(ctx, specs) {
   if (!specs || !specs.length) return;
   const helpers = ctx.helpers;
-  if (!helpers || typeof helpers.spawnEntity !== 'function') return;
+  if (!laneCommandSink() && (!helpers || typeof helpers.spawnEntity !== 'function')) return;
   const player = ctx.state.entities.get(ctx.state.playerId);
   const px = (player && player.pos && player.pos.x) || 0;
   const pz = (player && player.pos && player.pos.z) || 0;
@@ -558,7 +563,7 @@ function spawnEnemies(ctx, specs) {
     const dist = Math.max(120, spec.distance || 400);
     const enemyType = spec.type || 'wasp_swarmer';
     for (let i = 0; i < count; i++) {
-      const a = (Math.PI * 2 * i) / count + (ctx.state.rng ? ctx.state.rng() * 0.5 : 0);
+      const a = (Math.PI * 2 * i) / count + _sandboxJitter() * 0.5;
       const x = px + Math.cos(a) * dist;
       const z = pz + Math.sin(a) * dist;
       const entitySpec = makeEnemySpawnSpec(enemyType, 1, { x, z });
@@ -569,7 +574,7 @@ function spawnEnemies(ctx, specs) {
         // engagement authority denies fire on anything isHostileToPlayer rejects — so every
         // "hostile swarmers inbound" sandbox card was peacefully neutered.
         entitySpec.data.ai.spawnContext = 'encounter';
-        helpers.spawnEntity(entitySpec);
+        if (!laneSpawnEntity(entitySpec)) helpers.spawnEntity(entitySpec);
       }
     }
   }
@@ -584,20 +589,30 @@ function startDrill(ctx) {
   const player = ctx.state.entities.get(ctx.state.playerId);
   const px = (player && player.pos && player.pos.x) || 0;
   const pz = (player && player.pos && player.pos.z) || 0;
-  const asteroid = helpers.spawnEntity({
+  const spec = {
     type: 'asteroid',
     pos: { x: px + 220, z: pz },
     radius: 14, mass: 600, hull: 280, hullMax: 280,
     data: { typeId: 'ast_rock', oreHP: 280, oreHPMax: 280 },
-  });
+  };
+  const finish = (asteroidId) => {
+    drillSys.begin(asteroidId);
+    // Sandbox-only shortcut: production requests a live player tether from ui/input and lets the
+    // fixed-tick tether owner settle it. This fixture has no tether, so it only drives uiRoot's
+    // presentation handoff after drill.begin() has prepared the sandbox session.
+    const attachmentId = `sandbox:drill:${asteroidId}`;
+    bus.emit('drill:approachStarted', { asteroidId, attachmentId, sandbox: true });
+    bus.emit('drill:approachCompleted', { asteroidId, attachmentId, sandbox: true });
+  };
+  // Worker lane: command the spawn, finish on the correlated ack.
+  const token = laneSpawnEntity(spec);
+  if (token) {
+    onLaneSpawnAck(token, (id, ok) => { if (ok && id != null) finish(id); });
+    return;
+  }
+  const asteroid = helpers.spawnEntity(spec);
   if (!asteroid) return;
-  drillSys.begin(asteroid.id);
-  // Sandbox-only shortcut: production requests a live player tether from ui/input and lets the
-  // fixed-tick tether owner settle it. This fixture has no tether, so it only drives uiRoot's
-  // presentation handoff after drill.begin() has prepared the sandbox session.
-  const attachmentId = `sandbox:drill:${asteroid.id}`;
-  bus.emit('drill:approachStarted', { asteroidId: asteroid.id, attachmentId, sandbox: true });
-  bus.emit('drill:approachCompleted', { asteroidId: asteroid.id, attachmentId, sandbox: true });
+  finish(asteroid.id);
 }
 
 // --------------------------------------------------------------------------------------------
@@ -677,9 +692,9 @@ function applyPhysicsLoadout(ctx, loadoutId) {
 
 /** Spawn N inert target drones (team 2, no AI) — grappleable, shootable, passive. Arranged in a
  *  ring ahead of the player. Returns the spawned entities. */
-function spawnTargetDrones(ctx, { count = 3, distance = 350, shipId = 'ship_kestrel' } = {}) {
+function spawnTargetDrones(ctx, { count = 3, distance = 350, shipId = 'ship_kestrel', budgetOwner = null } = {}) {
   const helpers = ctx.helpers;
-  if (!helpers || typeof helpers.spawnEntity !== 'function') return [];
+  if (!laneCommandSink() && (!helpers || typeof helpers.spawnEntity !== 'function')) return [];
   const player = ctx.state.entities.get(ctx.state.playerId);
   const px = (player && player.pos && player.pos.x) || 0;
   const pz = (player && player.pos && player.pos.z) || 0;
@@ -694,6 +709,8 @@ function spawnTargetDrones(ctx, { count = 3, distance = 350, shipId = 'ship_kest
       pos: { x: px + Math.cos(a) * dist, z: pz + Math.sin(a) * dist },
       // no ai → inert
     });
+    const token = laneSpawnEntity(spec, budgetOwner ? { budgetOwner } : null);
+    if (token) { spawned.push(token); continue; }
     const e = helpers.spawnEntity(spec);
     if (e) spawned.push(e);
   }
@@ -709,7 +726,7 @@ function spawnCollisionAnchors(ctx, count = 3, distance = 210) {
   for (let i = 0; i < n; i++) {
     const a = -0.72 + (i / Math.max(1, n - 1)) * 1.44;
     const radius = 18 + i * 4;
-    const e = helpers.spawnEntity({
+    const spec = {
       type: 'asteroid',
       pos: {
         x: player.pos.x + Math.cos(a) * (distance + i * 28),
@@ -720,7 +737,10 @@ function spawnCollisionAnchors(ctx, count = 3, distance = 210) {
       hull: 1200,
       hullMax: 1200,
       data: { typeId: i % 2 ? 'ast_common_rock' : 'ast_metallic', sandboxCollisionAnchor: true },
-    });
+    };
+    const token = laneSpawnEntity(spec);
+    if (token) { spawned.push(token); continue; }
+    const e = helpers.spawnEntity(spec);
     if (e) spawned.push(e);
   }
   return spawned;
@@ -829,6 +849,23 @@ function setupMasslineRange(ctx, opts = {}) {
       data: { typeId: 'ast_metallic', oreHP: 500, oreHPMax: 500, sandboxMasslineAnchor: true },
     };
   }
+  // The kernel attach is sim-side: under a worker the spawn lands via command and the attach
+  //  follows on the correlated ack as an rpc.
+  const token = laneSpawnEntity(targetSpec);
+  if (token) {
+    if (opts.preAttach === false) return;
+    onLaneSpawnAck(token, (id, ok) => {
+      if (!ok || id == null) return;
+      laneRpc('sandboxPreAttachTether', {
+        defId: TETHER_DEF_ID,
+        ownerId: ctx.state.playerId,
+        targetId: id,
+        sourceWorld: { x: px, y: 0, z: pz },
+        targetWorld: { x: targetSpec.pos.x, y: 0, z: targetSpec.pos.z },
+      });
+    });
+    return;
+  }
   const target = helpers.spawnEntity(targetSpec);
   if (!target) return;
 
@@ -926,6 +963,14 @@ export function applyCombatLabSetup(ctx, validatedSetup) {
 
 /** Spawn a Combat Lab enemy package through spawnBudget.request / bindEntity. Fail closed if the budget is missing. */
 export function spawnBudgetedLabPackage(ctx, packageSpec) {
+  // The admission loop (request → spawn → bind → release) is sim-owned end to end: under a
+  // worker it runs as one rpc and the receipt returns with the ack.
+  if (laneCommandSink()) return laneRpc('labBudgetPackage', { packageSpec });
+  return applyBudgetedLabPackage(ctx, packageSpec);
+}
+
+// Lane-neutral body: also invoked worker-side via the 'labBudgetPackage' rpc handler.
+export function applyBudgetedLabPackage(ctx, packageSpec) {
   const empty = (requested) => ({
     requested,
     admitted: 0,
@@ -1238,9 +1283,10 @@ export function spawnEnemyNow(ctx, enemyTypeId, count = 1) {
 }
 
 /** Spawn inert target drones near the player for weapon/massline practice. */
-export function spawnTargetsNow(ctx, count = 3) {
-  const spawned = spawnTargetDrones(ctx, { count, distance: 350 });
+export function spawnTargetsNow(ctx, count = 3, opts = {}) {
+  const spawned = spawnTargetDrones(ctx, { count, distance: 350, budgetOwner: opts.budgetOwner || null });
   toast(ctx, 'Spawned ' + spawned.length + ' target drone' + (spawned.length === 1 ? '' : 's'));
+  return spawned;
 }
 
 function toast(ctx, text) {

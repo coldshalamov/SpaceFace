@@ -32,6 +32,7 @@ import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { laneInputWrite } from '../core/simLaneCommands.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -1166,8 +1167,8 @@ export const ui = {
     boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
 
     this.bus.on('dock:docked', ({ stationId }) => {
-      this.state.ui.docked = true;
-      this.state.ui.dockedStationId = stationId || null;
+      laneInputWrite(this.state, 'ui.docked', true);
+      laneInputWrite(this.state, 'ui.dockedStationId', stationId || null);
       this.screenManager.syncVisibility();
 
       // Phase 1: fade to dark
@@ -1218,8 +1219,8 @@ export const ui = {
 
       setTimeout(() => {
         // Phase 2: at peak darkness, do the screen swap
-        this.state.ui.docked = false;
-        this.state.ui.dockedStationId = null;
+        laneInputWrite(this.state, 'ui.docked', false);
+        laneInputWrite(this.state, 'ui.dockedStationId', null);
         if (this.screenManager.top() === 'station') this.screenManager.popScreen();
         this.screenManager.syncVisibility();
 
@@ -1238,7 +1239,7 @@ export const ui = {
     this.bus.on('drill:approachStarted', ({ asteroidId, attachmentId }) => {
       if (asteroidId == null || attachmentId == null) return;
       activeDrillApproach = { asteroidId, attachmentId };
-      this.state.input.blocked = true;
+      laneInputWrite(this.state, 'input.blocked', true);
       showDockFade('drill');
 
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
@@ -1249,7 +1250,7 @@ export const ui = {
     this.bus.on('drill:approachCompleted', (payload) => {
       if (!sameDrillApproach(payload)) return;
       activeDrillApproach = null;
-      this.state.input.blocked = false;
+      laneInputWrite(this.state, 'input.blocked', false);
       if (!this.state.ui) this.state.ui = {};
       this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
       this._pushScreenWhenRegistered('drill', 200);
@@ -1259,7 +1260,7 @@ export const ui = {
     this.bus.on('drill:approachCancelled', (payload) => {
       if (!sameDrillApproach(payload)) return;
       activeDrillApproach = null;
-      this.state.input.blocked = false;
+      laneInputWrite(this.state, 'input.blocked', false);
       hideDockFade('drill');
     });
 
@@ -1310,8 +1311,8 @@ export const ui = {
     this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:loaded', () => {
       // clear any stale modal restored from a save; HUD returns
-      this.state.ui.docked = false;
-      this.state.ui.dockedStationId = null;
+      laneInputWrite(this.state, 'ui.docked', false);
+      laneInputWrite(this.state, 'ui.dockedStationId', null);
       this.screenManager.closeAll();
       // Same release as game:started — the Load screen's stage hull is the other Launch-path leak.
       this.screenManager.releaseScreen('newGame');
@@ -1559,7 +1560,7 @@ function cycleTarget(state, dir, bus) {
   }
   contacts.sort((a, b) => a.d - b.d || String(a.e.id).localeCompare(String(b.e.id)));
   if (!contacts.length) {
-    state.player.targetId = null;
+    laneInputWrite(state, 'player.targetId', null);
     if (bus) bus.emit('toast', { text: 'No contacts in scanner range', kind: 'info', ttl: 2 });
     return;
   }
@@ -1573,20 +1574,19 @@ function cycleTarget(state, dir, bus) {
   }
   const nextIdx = idx < 0 ? (dir < 0 ? ids.length - 1 : 0) : idx + (dir < 0 ? -1 : 1);
   const target = contacts[nextIdx].e;
-  state.player.targetId = target.id;
-  if (state.ui) state.ui.objectSelection = null;
-  if (state.input) state.input.targetAssistDisabled = false;
+  laneInputWrite(state, 'player.targetId', target.id);
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', false);
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
 }
 
 function clearCombatTarget(state, bus) {
   if (!state?.player) return;
-  state.player.targetId = null;
-  if (state.ui) state.ui.objectSelection = null;
-  if (state.input) {
-    state.input.targetAssistDisabled = true;
-    if (state.input.autoAim) state.input.autoAim = null;
-  }
+  laneInputWrite(state, 'player.targetId', null);
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', true);
+  // Unconditional lane write — end state is null either way (was a truthy guard).
+  laneInputWrite(state, 'input.autoAim', null);
   if (bus) bus.emit('toast', { text: 'Free aim · Tab to lock', kind: 'info', ttl: 2 });
 }
 
@@ -1698,10 +1698,10 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     // No lock yet — quiet refresh may acquire the nearest hostile.
   }
   // Past the quiet early-out, so a Tab/radar pick is never stomped by the 0.12s refresh.
-  if (state.ui) state.ui.objectSelection = null;
+  laneInputWrite(state, 'ui.objectSelection', null);
   const tethered = tetheredHostileLock(player, state);
   if (tethered) {
-    state.player.targetId = tethered.id;
+    laneInputWrite(state, 'player.targetId', tethered.id);
     if (bus && !quiet) {
       bus.emit('toast', { text: 'Target: ' + targetLabel(tethered) + ' (on the line)', kind: 'info', ttl: 2 });
     }
@@ -1724,11 +1724,11 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     }
   }
   if (!best) {
-    state.player.targetId = null;
+    laneInputWrite(state, 'player.targetId', null);
     if (bus && !quiet) bus.emit('toast', { text: 'No hostile in range', kind: 'info', ttl: 2 });
     return;
   }
-  state.player.targetId = best.id;
+  laneInputWrite(state, 'player.targetId', best.id);
   if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
 }
 

@@ -1,4 +1,5 @@
 // ScreenManager (ARCHITECTURE §5.1) — owns the modal screen stack.
+import { laneSetMode } from '../core/simLaneCommands.js';
 //
 //   state.ui.screenStack: string[]   (top = active modal; empty = pure flight HUD)
 //
@@ -442,7 +443,7 @@ export function createScreenManager(ctx) {
       pauseEmitted = false;
       // only resume if the sim is in flight (not at the main menu)
       if (state.mode === 'flight' || state.mode === 'paused') {
-        if (state.mode === 'paused') state.mode = 'flight';
+        if (state.mode === 'paused') laneSetMode(state, bus, 'flight');
       }
       bus.emit('sim:resume', {});
     }

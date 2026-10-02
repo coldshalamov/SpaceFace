@@ -1,6 +1,8 @@
 // Player-owned placement for movable flight HUD surfaces. This is presentation state only: it is
 // stored under settings so a normal game save carries it, without touching simulation ownership.
 
+import { laneWriteSetting } from '../core/simLaneCommands.js';
+
 const LAYOUT_KEY = 'hudLayout';
 const EDGE_GUTTER = 12;
 
@@ -133,12 +135,9 @@ export function readHudLayout(state, key) {
 
 export function writeHudLayout(state, key, placement) {
   if (!state || !key || !placement || !Number.isFinite(placement.x) || !Number.isFinite(placement.y)) return null;
-  state.settings = state.settings && typeof state.settings === 'object' ? state.settings : {};
-  state.settings.ui = state.settings.ui && typeof state.settings.ui === 'object' ? state.settings.ui : {};
-  const layout = state.settings.ui[LAYOUT_KEY] && typeof state.settings.ui[LAYOUT_KEY] === 'object'
-    ? state.settings.ui[LAYOUT_KEY] : (state.settings.ui[LAYOUT_KEY] = {});
-  layout[key] = { x: Math.round(placement.x), y: Math.round(placement.y) };
-  return layout[key];
+  const entry = { x: Math.round(placement.x), y: Math.round(placement.y) };
+  // Lane writer: direct apply (SIM_LANE=main) or settings envelope (worker mode).
+  return laneWriteSetting(state, 'settings.ui.hudLayout', { key, x: entry.x, y: entry.y }) ? entry : null;
 }
 
 function clearInlinePlacement(element) {

@@ -20,6 +20,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
 import { requestQuit } from '../quitGame.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
@@ -974,7 +975,7 @@ export const pauseScreen = {
   },
 
   _resume(ctx) {
-    if (ctx.state.mode === 'paused') ctx.state.mode = 'flight';
+    if (ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
     nav(ctx, 'popScreen');
   },
 
@@ -982,7 +983,7 @@ export const pauseScreen = {
     if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
       ctx.bus.emit('game:exitToMenu', { source: 'pause' });
     } else {
-      ctx.state.mode = 'menu';
+      laneSetMode(ctx.state, ctx.bus, 'menu');
     }
     const mgr = getManager(ctx);
     if (mgr) {
@@ -995,7 +996,7 @@ export const pauseScreen = {
   },
 
   onShow(ctx) {
-    if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
     // The only load reachable from here is F9's 'quick' — start its envelope decode during
     // the pause dwell instead of on the keypress.
     if (ctx.bus && typeof ctx.bus.emit === 'function') {

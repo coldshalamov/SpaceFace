@@ -19,6 +19,7 @@ import { NEW_GAME } from '../data/newGameDefaults.js';
 import { buildSlotList, fits } from '../systems/ships.js';
 import { isUiInteractionFenced, spatialFocusTarget } from './input.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { laneInputWrite } from '../core/simLaneCommands.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
@@ -301,7 +302,7 @@ function nearestHailAvailability(state) {
     }
   }
   if (bestId == null || !bestAvailability) return null;
-  state.player.targetId = bestId;
+  laneInputWrite(state, 'player.targetId', bestId);
   return contactHailAvailability(state);
 }
 

@@ -16,6 +16,7 @@ import { svg } from '../orrery/svg.js';
 import { createSpring, reducedMotion } from '../orrery/motion.js';
 import { createCounter, decrypt } from '../orrery/text.js';
 import { dressLampKey } from '../orrery/lampKey.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
 
 export const REPLAY_LABEL = 'Replay';
 export const REPLAY_SCREEN_ID = 'replay';
@@ -279,7 +280,7 @@ function exitTape(view) {
 /** FLY TO RECORD: close the instrument and unpause into flight (pause's own resume path). */
 function flyToRecord(ctx) {
   closeReplay();
-  if (ctx && ctx.state && ctx.state.mode === 'paused') ctx.state.mode = 'flight';
+  if (ctx && ctx.state && ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
   const mgr = ctx && (ctx.screenManager
     || (ctx.screens && ctx.screens.pushScreen ? ctx.screens : null)
     || (ctx.registry && ctx.registry.get && ctx.registry.get('ui') && ctx.registry.get('ui').screenManager));
@@ -914,7 +915,7 @@ export const replayScreen = {
   },
 
   onShow(ctx) {
-    if (ctx && ctx.state && ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    if (ctx && ctx.state && ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
     cue('open');
   },
 

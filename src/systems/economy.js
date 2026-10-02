@@ -937,6 +937,15 @@ export const economy = {
     this._nextEventId = 1;
     this._eventAccumulator = 0;
 
+    // Eager market mint (S1 Phase-B stage 5): the whole-sim worker host sets this true so
+    // UI-path quote() calls record a pending mint instead of writing markets/cycles at call
+    // time; the pending spec consumes the identical _rng draws immediately (value-identical to
+    // the lazy path) and the writes materialize at the next economy.update() boundary — never
+    // mid-tick. OFF preserves today's lazy path byte-for-byte. Runtime-only fields: they live
+    // on the system instance, never inside state.economy, so they are not hashed or saved.
+    if (this.eagerMarketMint !== true) this.eagerMarketMint = false;
+    this._pendingMints = null;
+
     // dedicated seeded RNG stream (§0.5) so scan checks + event rolls don't disturb other streams.
     this.resetRng();
 
@@ -1080,6 +1089,10 @@ export const economy = {
   // ECONOMY TICK (5s) — drift, age events, propagate, recompute cached prices, emit economy:tick.
   // -------------------------------------------------------------------------------------------
   update(dt, state) {
+    // Eager mint drain: every deferred spec recorded since the last update materializes here,
+    // before this tick's econTick — the same state position the lazy mint would have occupied
+    // when a quote triggered it during the command drain.
+    if (this.eagerMarketMint) this._drainPendingMints();
     const pendingRefresh = this._offlineSummaryRefresh;
     if (pendingRefresh) {
       this.refreshAllPersistentDemand({
@@ -1488,21 +1501,47 @@ export const economy = {
     const state = this.state;
     const markets = state.economy.markets;
     if (markets[stationId]) return markets[stationId];
+    // Eager-mint lane: a pending deferred spec materializes on first internal touch so the
+    // sim-internal paths keep their own deterministic mint order independent of quote timing.
+    if (this.eagerMarketMint) this._materializePendingMarket(stationId);
+    if (markets[stationId]) return markets[stationId];
     const info = stationInfo(state, stationId);
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
-    const allowContraband = toleratesContraband(info);
-
     const market = {};
+    this._mintMarketCommodities(stationId, info, {
+      type,
+      size: sz,
+      allowContraband: toleratesContraband(info),
+    }, market, this._marketCycleBucket(stationId));
+    markets[stationId] = market;
+    return market;
+  },
+
+  /** state.economy.cycles bucket for one station, created on demand (same shape as before). */
+  _marketCycleBucket(stationId) {
+    const state = this.state;
+    if (!state.economy.cycles) state.economy.cycles = {};
+    if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
+    return state.economy.cycles[stationId];
+  },
+
+  /** The ensureMarket commodity loop, extracted so the deferred (pending) mint runs the exact
+   *  same draws/state reads and only redirects the write sinks. `cyclesBucket` is the flat
+   *  {commodityId: cycle} map — state.economy.cycles[stationId] on the live path, the pending
+   *  spec's own bucket on the deferred path. */
+  _mintMarketCommodities(stationId, info, mint, market, cyclesBucket) {
+    const state = this.state;
+    const now = state.simTime || 0;
     for (const def of COMMODITIES) {
-      const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
-      const role = roleFor(def, type);
+      const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[mint.size] || 1);
+      const role = roleFor(def, mint.type);
       // Every legal commodity trades at every station — role only drives price/stock target, not
       // availability. A 'none'-role commodity (e.g. iron ore at a military station) still gets an
       // entry so the player can always sell what they mined/bought. Contraband/illegal goods stay
       // gated to blackmarket-tolerant stations (that is a design-correct restriction, not a filter).
       if (def.legality === 'contraband' || def.legality === 'illegal') {
-        if (!allowContraband) continue;
+        if (!mint.allowContraband) continue;
       }
       // noMarketSeed goods exist only as player-brought stock (cradled specimens, one-off
       // recoveries): the station mints a neutral listing on first quote instead of seeding one.
@@ -1518,24 +1557,104 @@ export const economy = {
         demandMult: 1, demandDrivers: [],
       };
       const frontier = info ? this.frontierPenalty(info) : 0;
-      // seed the hidden formula cycle first so the opening mid includes the wave
-      if (!state.economy.cycles) state.economy.cycles = {};
-      if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
-      const now = state.simTime || 0;
       // Every market begins with a formula already in progress. That lets the chart expose a
       // learnable current trend on the very first dock instead of faking one in the UI.
       const historyAge = HISTORY_REGIME_AGE_MIN_S
         + this._rng() * (HISTORY_REGIME_AGE_MAX_S - HISTORY_REGIME_AGE_MIN_S);
       const cycle = createCycle(() => this._rng(), def, now - historyAge);
       cycle.cmdtyId = def.id;
-      state.economy.cycles[stationId][def.id] = cycle;
+      cyclesBucket[def.id] = cycle;
       this.refreshListingDemand(entry, def, stationId);
       this.recomputePrices(entry, def, frontier, cycle, now);
       this.seedPriceHistory(entry, def, cycle, now);
       market[def.id] = entry;
     }
-    markets[stationId] = market;
     return market;
+  },
+
+  // ---- Eager-mint deferred specs (flag-gated; OFF = all of this is dead code) ----
+
+  _pendingFor(stationId) {
+    if (!this._pendingMints) this._pendingMints = new Map();
+    let p = this._pendingMints.get(stationId);
+    if (!p) {
+      p = { market: null, listings: {}, cycles: {} };
+      this._pendingMints.set(stationId, p);
+    }
+    return p;
+  },
+
+  /** Build the full station market into the pending spec — the same _mintMarketCommodities run
+   *  ensureMarket performs, so the same _rng draws are consumed at quote time. Writes are
+   *  deferred; the entry/cycle objects are what the drain later installs verbatim. */
+  _deferMarketMint(stationId) {
+    const p = this._pendingFor(stationId);
+    if (p.market) return p.market;
+    const state = this.state;
+    const info = stationInfo(state, stationId);
+    p.market = {};
+    this._mintMarketCommodities(stationId, info, {
+      type: (info && info.type) || 'trade_hub',
+      size: (info && info.size) || 'M',
+      allowContraband: toleratesContraband(info),
+    }, p.market, p.cycles);
+    return p.market;
+  },
+
+  /** Defer a noMarketSeed single-listing mint (same draws as mintUnseededListing). */
+  _deferListingMint(stationId, def) {
+    const p = this._pendingFor(stationId);
+    if (p.listings[def.id]) return p.listings[def.id];
+    const info = stationInfo(this.state, stationId);
+    return this._mintUnseededListingEntry(stationId, info, def, p.listings, p.cycles);
+  },
+
+  /** Flush one station's pending spec into live state now — used by internal callers that need
+   *  the real row immediately. Draws were consumed at record time; this is write-only. */
+  _materializePendingMarket(stationId) {
+    const p = this._pendingMints && this._pendingMints.get(stationId);
+    if (!p) return;
+    this._commitPendingStation(stationId, p);
+    this._pendingMints.delete(stationId);
+  },
+
+  _commitPendingStation(stationId, p) {
+    const state = this.state;
+    const markets = state.economy.markets;
+    if (p.market) {
+      if (!markets[stationId]) {
+        markets[stationId] = p.market;
+      } else {
+        const live = markets[stationId];
+        for (const cid of Object.keys(p.market)) {
+          if (live[cid] === undefined) live[cid] = p.market[cid];
+        }
+      }
+    }
+    if (Object.keys(p.listings).length && !markets[stationId]) markets[stationId] = {};
+    const live = markets[stationId];
+    if (live) {
+      for (const cid of Object.keys(p.listings)) {
+        if (live[cid] === undefined) live[cid] = p.listings[cid];
+      }
+    }
+    const cycles = this._marketCycleBucket(stationId);
+    for (const cid of Object.keys(p.cycles)) {
+      if (cycles[cid] === undefined) cycles[cid] = p.cycles[cid];
+    }
+  },
+
+  /** Tick-boundary drain: materialize every deferred spec in canonical order (stationId asc,
+   *  then COMMODITIES-table order inside each spec — insertion order already follows it).
+   *  Runs at the top of economy.update() so the mint lands before this tick's econTick exactly
+   *  as the lazy mint's writes would have. */
+  _drainPendingMints() {
+    if (!this._pendingMints || this._pendingMints.size === 0) return;
+    const sids = [...this._pendingMints.keys()].sort();
+    for (const sid of sids) {
+      this._commitPendingStation(sid, this._pendingMints.get(sid));
+    }
+    this._pendingMints = null;
   },
 
   /**
@@ -1544,9 +1663,18 @@ export const economy = {
    */
   mintUnseededListing(stationId, def) {
     const state = this.state;
+    // Eager-mint lane: flush any deferred spec for this station before touching the live row.
+    if (this.eagerMarketMint) this._materializePendingMarket(stationId);
     const market = state.economy.markets[stationId];
     if (!market || !def) return null;
     const info = stationInfo(state, stationId);
+    return this._mintUnseededListingEntry(stationId, info, def, market, this._marketCycleBucket(stationId));
+  },
+
+  /** The mintUnseededListing body — same draws/reads, write sinks passed in so the deferred
+   *  path builds into the pending spec instead of live state. */
+  _mintUnseededListingEntry(stationId, info, def, market, cyclesBucket) {
+    const state = this.state;
     const sz = (info && info.size) || 'M';
     const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
     const equilibrium = economyEquilibriumForListing(info, def.id, 'none', baseEqRef);
@@ -1556,12 +1684,10 @@ export const economy = {
       demandMult: 1, demandDrivers: [],
     };
     const frontier = info ? this.frontierPenalty(info) : 0;
-    if (!state.economy.cycles) state.economy.cycles = {};
-    if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
     const now = state.simTime || 0;
     const cycle = createCycle(() => this._rng(), def, now - HISTORY_REGIME_AGE_MIN_S);
     cycle.cmdtyId = def.id;
-    state.economy.cycles[stationId][def.id] = cycle;
+    cyclesBucket[def.id] = cycle;
     this.refreshListingDemand(entry, def, stationId);
     this.recomputePrices(entry, def, frontier, cycle, now);
     this.seedPriceHistory(entry, def, cycle, now);
@@ -1715,15 +1841,29 @@ export const economy = {
     if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
       return { ok: false, reason: 'black_market_locked', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
-    const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
+    let market = state.economy.markets[stationId];
+    let pending = null;
+    if (this.eagerMarketMint) {
+      // Eager-mint lane: mints this quote would have triggered are recorded into the pending
+      // spec (identical _rng draws, now) and materialize at the next update() boundary. This
+      // call answers off the pending spec — a pure projection with no live-state writes.
+      pending = this._pendingFor(stationId);
+      if (!market && pending.market) market = pending.market;
+      if (!market) market = this._deferMarketMint(stationId);
+    } else {
+      market = market || this.ensureMarket(stationId);
+    }
     let entry = market && market[commodityId];
+    if (!entry && pending) entry = pending.listings[commodityId] || null;
     const def = commodityDef(state, commodityId);
     if (!def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     if (!entry) {
       if (def.noMarketSeed !== true) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
-      entry = this.mintUnseededListing(stationId, def);
+      entry = this.eagerMarketMint
+        ? this._deferListingMint(stationId, def)
+        : this.mintUnseededListing(stationId, def);
       if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
     if (side === 'sell' && reservedCargoQty(state, commodityId) > 0) {
@@ -1781,7 +1921,8 @@ export const economy = {
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     const el = def.elasticity;
-    const cycle = getCycleCore(
+    const pendingCycle = pending && pending.cycles && pending.cycles[commodityId];
+    const cycle = pendingCycle || getCycleCore(
       state,
       stationId,
       commodityId,

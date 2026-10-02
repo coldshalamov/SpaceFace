@@ -11,6 +11,7 @@ import { stationSurchargeWaiverActive } from '../../systems/factions.js';
 import { confirm } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
 import { summarizeDemandDrivers } from '../demandDriverSummary.js';
+import { laneSetNavWaypoint } from '../../core/simLaneCommands.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
@@ -480,7 +481,7 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
     sectorId,
     sectorName,
   };
-  state.nav.waypoint = waypoint;
+  laneSetNavWaypoint(state, waypoint);
   ctx.bus.emit('nav:waypoint', waypoint);
   if (waypoint.sectorId && currentSectorId && waypoint.sectorId !== currentSectorId) {
     ctx.bus.emit('ui:setCourse', { sectorId: waypoint.sectorId, waypointKind: 'trade', stationId, commodityId: cmdtyId });

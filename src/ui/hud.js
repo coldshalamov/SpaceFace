@@ -30,6 +30,7 @@ import { swarmStakeFor } from '../data/swarmStakes.js';
 import { catalogHullFacts } from '../systems/ships.js';
 import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
@@ -4365,11 +4366,11 @@ export function createHud(ctx, alerts) {
   if (!state.settings.ui) state.settings.ui = {};
   if (state.settings.ui.overviewOpen === undefined) {
     // Default to on-demand (unpinned): the strip speaks only when scanned or when a threat arrives.
-    state.settings.ui.overviewOpen = false;
+    laneWriteSetting(state, 'settings.ui.overviewOpen', false);
   }
 
   ctx.bus.on('ui:toggleOverview', () => {
-    state.settings.ui.overviewOpen = !state.settings.ui.overviewOpen;
+    laneWriteSetting(state, 'settings.ui.overviewOpen', !state.settings.ui.overviewOpen);
     if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
     updateOverview();
     ctx.bus.emit('toast', {
@@ -4456,8 +4457,8 @@ export function createHud(ctx, alerts) {
         : null;
       if (!presentationAllowsTargetLock(contact, state)) return;
       if (!state.player) state.player = {};
-      state.player.targetId = rec.id;
-      if (state.input) state.input.targetAssistDisabled = false;
+      laneInputWrite(state, 'player.targetId', rec.id);
+      laneInputWrite(state, 'input.targetAssistDisabled', false);
       ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
       updateOverview();
     });

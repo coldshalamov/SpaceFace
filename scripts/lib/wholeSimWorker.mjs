@@ -38,6 +38,9 @@ import {
   spawn47aScenarioCast,
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
+import { applyBudgetedLabPackage } from '../../src/ui/sandbox/sandboxSetup.js';
+import { getCombatKernel } from '../../src/combat/kernel.js';
+import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
 import {
   collectJournalPresentationEntities,
@@ -63,7 +66,7 @@ import {
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
 import { projectBridgeEvent } from './simEventBridge.mjs';
-import { insertAsteroidFieldRock } from '../../src/world/asteroidField.js';
+import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
 
@@ -542,6 +545,88 @@ async function handleInit(msg) {
   host.bus = bus;
   host.registry = registry;
 
+  // Stage-5 rpc ops: the hard-sync seams promoted to correlated request/ack
+  // envelopes. quote/inspectListing are synchronous reads; physicsPrep and
+  // newGame run inside handleTick's directive window (awaited before stepping).
+  host.rpcHandlers = new Map([
+    ['quote', (args) => {
+      const e = registry.get('economy');
+      if (!e || typeof e.quote !== 'function') throw new Error('economy system unavailable');
+      return e.quote(args.stationId, args.commodityId, args.side, args.qty);
+    }],
+    // Probe/diagnostic op: returns a compact signature of one listing entry +
+    // its cycle so the market-parity gate can compare eager vs lazy mints
+    // without shipping the whole market row.
+    ['inspectListing', (args) => {
+      const e = registry.get('economy');
+      const market = (state.economy.markets || {})[args.stationId] || null;
+      const pending = e && e._pendingMints ? e._pendingMints.get(args.stationId) : null;
+      const entry = (market && market[args.commodityId]) || (pending && pending.listings[args.commodityId]) || null;
+      const cycle = ((state.economy.cycles || {})[args.stationId] || {})[args.commodityId]
+        || (pending && pending.cycles[args.commodityId]) || null;
+      return {
+        entry: entry ? {
+          stock: entry.stock, equilibrium: entry.equilibrium, baseEq: entry.baseEq,
+          role: entry.role, lastMid: entry.lastMid, lastBuy: entry.lastBuy, lastSell: entry.lastSell,
+          demandMult: entry.demandMult,
+        } : null,
+        cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
+        pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
+      };
+    }],
+    ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
+    // Sandbox/lab ops converted off the direct-call surface. Each replays the
+    // same sequence the call site ran synchronously under SIM_LANE=main.
+    ['crucibleThrowStep', () => {
+      const system = registry.get('masslineThrow');
+      if (!system || typeof system.update !== 'function') return { released: false, reason: 'unavailable' };
+      state.input = state.input || {};
+      state.input.actions = state.input.actions || {};
+      const acts = state.input.actions;
+      acts.throwArm = false;
+      system.update(1 / 60, state);
+      if (!state.player || !state.player.tether || !state.player.tether.active) {
+        return { released: false, reason: 'no-tether' };
+      }
+      acts.throwArm = true;
+      system.update(1 / 60, state);
+      acts.throwArm = false;
+      const last = state.massline2 && state.massline2.throw && state.massline2.throw.lastThrow;
+      if (last && last.tick === state.tick) {
+        return { released: true, releaseId: last.releaseId, payloadId: last.payloadId };
+      }
+      if (system._pendingSnap) return { released: false, queued: true };
+      return { released: false, reason: 'late' };
+    }],
+    ['sandboxPreAttachTether', (args) => {
+      const kernel = (registry.get('actions') || {}).kernel
+        || (registry.get('combat') || {}).kernel
+        || getCombatKernel({ state, registry });
+      const attachments = kernel && kernel.attachments;
+      if (!attachments || typeof attachments.create !== 'function') {
+        return { ok: false, reason: 'no-attachment-service' };
+      }
+      return attachments.create(args);
+    }],
+    ['labBudgetPackage', (args) => applyBudgetedLabPackage(
+      { state, helpers: sim.helpers, registry, bus: host.bus },
+      (args && args.packageSpec) || {},
+    )],
+    // New-game boot: the whole sim-side mutation sequence (entity clear, run reset,
+    // system resets, starter pick, NG+, scene bootstrap) replays inside this directive
+    // window. The ack resolves after the kicked physics-prep promise settles, so the
+    // caller's physics gate still holds.
+    ['newGameBoot', async (args) => runNewGameSimBoot({
+      state,
+      helpers: sim.helpers,
+      bus: host.bus,
+      registry,
+      opts: (args && args.opts) || {},
+      newGamePlus: (args && args.newGamePlus) || null,
+      awaitPhysicsPrep: true,
+    })],
+  ]);
+
   for (const type of BRIDGE_EVENTS) {
     bus.on(type, (payload) => {
       const projected = projectBridgeEvent(type, payload);
@@ -611,6 +696,9 @@ async function handleInit(msg) {
   spawn47aScenarioCast(sim);
 
   const econ = registry.get('economy');
+  // Stage-5 eager mint: quote-triggered market/listing mints record a pending spec
+  // (identical _rng draws, now) that materializes at the next update() boundary.
+  if (econ) econ.eagerMarketMint = msg.eagerMarketMint === true;
   if (econ && typeof econ.newGame === 'function') econ.newGame();
   bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
   await preparePhysicsBackend(registry, state, 'rapier-dynamic');
@@ -656,7 +744,22 @@ async function handleTick(msg) {
   const drain = drainSimCommandEnvelopes(msg.commands || [], {
     state,
     helpers: sim.helpers,
+    bus: host.bus,
+    sim,
+    registry: host.registry,
+    rpcHandlers: host.rpcHandlers,
+    promote: { farActor: promoteFarActor, asteroidRock: promoteAsteroidFieldRock },
   });
+  // Async rpc ops (physicsPrep, newGame) resolve inside this directive window —
+  // still before the tick steps, preserving drain-before-step ordering.
+  for (const pending of drain.pendingRpcs) {
+    try {
+      const result = await pending.promise;
+      drain.rpcAcks.push({ id: pending.id, ok: true, result });
+    } catch (e) {
+      drain.rpcAcks.push({ id: pending.id, ok: false, reason: String((e && e.message) || e), op: pending.op });
+    }
+  }
   host.lastInputSeq = drain.inputSeq || 0;
   host.lastInputWallMs = drain.inputWallMs || 0;
   host.commandDropped += drain.dropped;
@@ -729,6 +832,18 @@ async function handleTick(msg) {
   }
   if (msg.domains) {
     runDomainProbeMutations(state, msg.tick);
+  }
+  // Stage-5 commands probe: prepare a far-actor row the lane PROMOTE envelope
+  // can exercise end-to-end (spawn live → shelve → lane promote → aux removal).
+  if (msg.commandsProbe && msg.tick === 300 && host.cmdProbeFarId == null) {
+    const ship = sim.spawn(makeShipEntitySpec('ship_wasp', {
+      team: 1, factionId: 'faction_reavers',
+      pos: { x: -9999, z: -9999 }, rot: 0,
+      ai: { role: 'target_dummy' },
+    }));
+    insertFarActor(state, ship, state.simTime, sim.helpers);
+    sim.helpers.removeEntity(ship.id, { immediate: true });
+    host.cmdProbeFarId = ship.id;
   }
   if (msg.churn && Number.isSafeInteger(msg.churn.spawn) && msg.churn.spawn > 0) {
     if (!host.churnEntities) host.churnEntities = [];
@@ -813,8 +928,15 @@ async function handleTick(msg) {
     pack,
     spawnInfos,
     events,
+    commandsProbe: msg.commandsProbe ? { farId: host.cmdProbeFarId != null ? host.cmdProbeFarId : null } : undefined,
+    foldsApplied: drain.foldsApplied || 0,
     rpcAcks: drain.rpcAcks,
     settingsAcks: drain.settingsAcks,
+    spawnAcks: drain.spawnAcks,
+    commandAcks: drain.commandAcks,
+    // Applied-envelope list ships only when the directive asks for it — the
+    // commands probe's coverage evidence; zero per-tick wire cost otherwise.
+    commandProbe: msg.commandProbe ? drain.applied : undefined,
     workMs: Number(workNs) / 1e6,
     packMs: Number(packNs) / 1e6,
     sendNs: 0, // stamped just before postMessage by the dispatcher

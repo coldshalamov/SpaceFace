@@ -175,6 +175,7 @@ import { NEMESIS_KITS } from '../data/nemesisRival.js';
 import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { laneCommandSink, lanePromote } from '../core/simLaneCommands.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
@@ -8864,7 +8865,10 @@ export const render = {
         for (const rec of rockHits) {
           const key = asteroidFirstFlightCookKey(rec);
           if (seenRockKeys.has(key) || seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
-          if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+          const promoted = laneCommandSink()
+            ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
+            : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+          if (!promoted) continue;
           seenRockKeys.add(key);
         }
       }
@@ -8912,6 +8916,12 @@ export const render = {
           for (const rec of reach) {
             const key = asteroidFirstFlightCookKey(rec);
             if (coveredKeys.has(key)) continue;
+            if (laneCommandSink()) {
+              if (lanePromote({ id: rec.id, source: 'rock', reason: 'survival-roster-prewarm' })) {
+                coveredKeys.add(key);
+              }
+              continue;
+            }
             const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers,
               'survival-roster-prewarm');
             if (!promoted) continue;
@@ -10569,7 +10579,10 @@ export const render = {
           for (const rec of rockHits) {
             const key = asteroidFirstFlightCookKey(rec);
             if (seenRockKeys.has(key) || seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
-            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+            const promoted = laneCommandSink()
+              ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
+              : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+            if (!promoted) continue;
             seenRockKeys.add(key);
           }
         }

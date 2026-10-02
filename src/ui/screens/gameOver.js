@@ -32,6 +32,7 @@ import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
 import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
 
@@ -489,7 +490,7 @@ export const gameOverScreen = {
     bMenu.setAttribute('aria-label', 'Return to title screen to continue or load another save');
     bMenu.addEventListener('click', () => {
       cue('confirm');
-      if (ctx.state) ctx.state.mode = 'menu';
+      if (ctx.state) laneSetMode(ctx.state, ctx.bus, 'menu');
       ctx.bus.emit('game:over:dismissed', {});
       const mgr = getManager(ctx);
       if (mgr) {
