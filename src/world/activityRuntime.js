@@ -552,6 +552,9 @@ function rebuildPinFacts(state, player, facts, simTime) {
   facts.tracked.clear();
   facts.damagedByPlayerUntil.clear();
   facts.damagedPlayerUntil.clear();
+  // Quiet rock-visit retain keys off this revision so a real pinFacts rebuild wakes
+  // mining/tether/tracked/damage observers without scanning set contents every tick.
+  facts._revision = (facts._revision | 0) + 1;
 
   // SG-06: player-intent pins arrive only through entity-carried state (see scalar
   // block above). Scanner owns the durable tracked contact — resolve its signal record
@@ -858,6 +861,87 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
   return { mode: 'incremental', entities: out };
 }
 
+
+/** Quantize XZ to ~0.25 wu so quiet parked rocks share a stable retain key. */
+function rockPoseRetainKey(entity) {
+  const pos = entity && entity.pos;
+  const x = Math.round(finite(pos && pos.x) * 4);
+  const z = Math.round(finite(pos && pos.z) * 4);
+  return x * 73856093 + z * 19349663;
+}
+
+/**
+ * Quiet Ceres near-disc is rock-dominated. When the player is essentially parked,
+ * glass/runway extents are unchanged, pinFacts are unchanged, and a rock's quantized
+ * pose matches last visit, re-publish the prior stamp into this tick's id lists without
+ * re-running classifyActivity + applyStamp + signature. Different angle from the held
+ * rock resolvePins / visit-context cuts (~1.09×) — those still paid classify+stamp.
+ * Dirty-wake: player speed, origin/extents, pinFacts._revision, per-rock pose, scheduled
+ * wake due, first observation, missing stamp/partition.
+ */
+function rockVisitRetainGlobalsMatch(runtime, origin, glass, submit, prefetchR, facts, player) {
+  const retain = runtime._rockVisitRetain;
+  if (!retain || retain.primed !== true) return false;
+  const pvx = finite(player && player.vel && player.vel.x);
+  const pvz = finite(player && player.vel && player.vel.z);
+  // Flying / drifting player changes relative glass membership and collision threat.
+  if ((pvx * pvx + pvz * pvz) > 0.25) return false;
+  return retain.originX === origin.x
+    && retain.originZ === origin.z
+    && retain.glassHalfX === glass.halfX
+    && retain.glassHalfZ === glass.halfZ
+    && retain.runwayHalfX === submit.halfX
+    && retain.runwayHalfZ === submit.halfZ
+    && retain.prefetchR === prefetchR
+    && retain.factsRevision === (facts._revision | 0)
+    && retain.miningId === facts.miningId;
+}
+
+function armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts) {
+  let retain = runtime._rockVisitRetain;
+  if (!retain) {
+    retain = {
+      primed: false,
+      originX: 0,
+      originZ: 0,
+      glassHalfX: 0,
+      glassHalfZ: 0,
+      runwayHalfX: 0,
+      runwayHalfZ: 0,
+      prefetchR: 0,
+      factsRevision: 0,
+      miningId: null,
+      poseKeys: new Map(),
+    };
+    runtime._rockVisitRetain = retain;
+  }
+  retain.primed = true;
+  retain.originX = origin.x;
+  retain.originZ = origin.z;
+  retain.glassHalfX = glass.halfX;
+  retain.glassHalfZ = glass.halfZ;
+  retain.runwayHalfX = submit.halfX;
+  retain.runwayHalfZ = submit.halfZ;
+  retain.prefetchR = prefetchR;
+  retain.factsRevision = facts._revision | 0;
+  retain.miningId = facts.miningId;
+  return retain;
+}
+
+function publishRetainedRockVisit(runtime, entity, stamp, statics, dynamics, counts) {
+  runtime.currentEntityIds.add(entity.id);
+  runtime.seenEntityIds.add(entity.id);
+  pushActivityIds(runtime, entity, stamp);
+  countTier(counts, stamp.simTier);
+  countPresentation(counts, stamp.presentationTier);
+  let partition = entity._physicsPartition;
+  if (partition !== 0 && partition !== 1 && partition !== 2) {
+    partition = refreshPhysicsPartition(entity);
+  }
+  if (partition === 2) dynamics.push(entity);
+  else if (partition === 1) statics.push(entity);
+}
+
 function classifyWorld(state, runtime) {
   const list = state.entityList || [];
   const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
@@ -948,6 +1032,11 @@ function classifyWorld(state, runtime) {
   ctx.pinsNormalized = false;
 
   const visit = selection.entities;
+  // Hoist parked-frame retain eligibility once; rocks then only pay a pose-key map hit.
+  const rockRetainFrame = rockVisitRetainGlobalsMatch(
+    runtime, origin, glass, submit, prefetchR, facts, player,
+  );
+  const rockRetain = rockRetainFrame ? runtime._rockVisitRetain : null;
   // Perf: per-pass invariants hoisted out of the visit loop. The physics lookahead set does not
   // change during this pass (it is republished by the physics system later in the same tick), and
   // the world-record bag is the same object for every entity this pass.
@@ -957,6 +1046,33 @@ function classifyWorld(state, runtime) {
     const entity = visit[i];
     if (!entity || entity.alive === false) continue;
     runtime.classifyVisits++;
+    const data = entity.data || {};
+    const entityType = entity.type;
+    // Quiet near-disc is rock-dominated. Asteroids/payloads never need ship AI / ace / authored
+    // combat / escort / hail / dock / aggro context — fill the pin-relevant subset only.
+    const rockBody = entityType === 'asteroid' || entityType === 'payload';
+    // Quiet rock retain: parked player + stable extents/facts + stable pose → republish stamp
+    // before glass/runway math, ctx fill, classifyActivity, applyStamp, or signature work.
+    if (rockBody && rockRetain) {
+      const stamp = entity.activity;
+      const firstActivityObservation = !runtime.seenEntityIds.has(entity.id);
+      const scheduledWakeDue = liveWakeDue(entity, simTime) != null;
+      // Grace must be re-evaluated inside applyStamp (exact→far demotion). A retained
+      // stamp would freeze graceUntilT and keep a far rock on the physics list forever.
+      const gracePending = !!(stamp && stamp.graceUntilT >= 0);
+      if (
+        !firstActivityObservation
+        && stamp
+        && stamp.simTier
+        && stamp.presentationTier
+        && !scheduledWakeDue
+        && !gracePending
+        && rockRetain.poseKeys.get(entity.id) === rockPoseRetainKey(entity)
+      ) {
+        publishRetainedRockVisit(runtime, entity, stamp, statics, dynamics, counts);
+        continue;
+      }
+    }
     const px = finite(entity.pos && entity.pos.x);
     const pz = finite(entity.pos && entity.pos.z);
     const dx = px - origin.x;
@@ -967,8 +1083,7 @@ function classifyWorld(state, runtime) {
     const submitRunway = Math.abs(dx) <= submit.halfX + visual && Math.abs(dz) <= submit.halfZ + visual;
     const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
     const onRunway = submitRunway || prefetchKeep;
-    const data = entity.data || {};
-    const ai = ownerAiRecord(entity);
+    const ai = rockBody ? null : ownerAiRecord(entity);
     runtime.currentEntityIds.add(entity.id);
     const firstActivityObservation = !runtime.seenEntityIds.has(entity.id);
     runtime.seenEntityIds.add(entity.id);
@@ -1080,6 +1195,24 @@ function classifyWorld(state, runtime) {
     }
     if (partition === 2) dynamics.push(entity);
     else if (partition === 1) statics.push(entity);
+    if (rockBody) {
+      const retain = runtime._rockVisitRetain || armRockVisitRetain(
+        runtime, origin, glass, submit, prefetchR, facts,
+      );
+      retain.poseKeys.set(entity.id, rockPoseRetainKey(entity));
+    }
+  }
+
+  // Arm/refresh rock-visit retain globals after a quiet parked pass so the next tick can
+  // republish. Flying player leaves primed=false (pose keys kept for a later park).
+  {
+    const pvx = finite(player && player.vel && player.vel.x);
+    const pvz = finite(player && player.vel && player.vel.z);
+    if ((pvx * pvx + pvz * pvz) <= 0.25) {
+      armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
+    } else if (runtime._rockVisitRetain) {
+      runtime._rockVisitRetain.primed = false;
+    }
   }
 
   if (runtime.classifyMode === 'incremental') {
