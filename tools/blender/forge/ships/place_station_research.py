@@ -16,7 +16,9 @@ import bmesh
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import forge as F  # noqa: E402
+import ANI_39  # noqa: E402
 
 SHIP_ID = 'place_station_research'
 COLORS = {
@@ -131,14 +133,15 @@ def build():
         a = 2 * math.pi * (i + 0.5) / 12
         c, sn = math.cos(a), math.sin(a)
         struts.append(((CORE_R * 0.93 * c, CORE_R * 0.93 * sn, 0.0), (17.6 * c, 17.6 * sn, 0.0)))
-    # ring windows (a lit habitat torus)
+    # ring windows (a lit habitat torus). Their own part: they ride the turning wheel (ANI-39).
+    ring_win = []
     for i in range(48):
         a = 2 * math.pi * (i + 0.5) / 48
         if min(abs(((a - b + math.pi) % (2 * math.pi)) - math.pi) for b in (0, math.pi / 2, math.pi, 1.5 * math.pi)) < 0.12:
             continue
         rr = 20.5
-        win.append(((rr * math.cos(a), rr * math.sin(a), 0.0), (0.2, 0.9, 0.5), a))
-        win.append(((19.0 * math.cos(a), 19.0 * math.sin(a), 1.52), (0.9, 0.5, 0.06), a))
+        ring_win.append(((rr * math.cos(a), rr * math.sin(a), 0.0), (0.2, 0.9, 0.5), a))
+        ring_win.append(((19.0 * math.cos(a), 19.0 * math.sin(a), 1.52), (0.9, 0.5, 0.06), a))
 
     # --- vertical spine: up to the telescope, down to the deep-space dish ----------------------
     F.cylinder(s, 'SpineUp', (0, 0, CORE_R - 2.0), (0, 0, 34.0), 2.2, 1.8, material='paint', segments=24,
@@ -174,21 +177,23 @@ def build():
            sides=6)
     sx = Vector((math.cos(tilt), 0.0, math.sin(tilt)))
     sy_ = Vector((0.0, 1.0, 0.0))
+    # the telescope's Serrurier truss is its own part (not the station truss): it slews with the tube (ANI-39)
+    scope_trusses = []
     for i in range(8):
         a0 = 2 * math.pi * i / 8
         a1 = 2 * math.pi * (i + 1) / 8
         pa = mirror_c + axis * 0.6 + (sx * math.cos(a0) + sy_ * math.sin(a0)) * 5.3
         pb = top_c + (sx * math.cos(a1) + sy_ * math.sin(a1)) * 5.3
         pc = top_c + (sx * math.cos(a0 - (a1 - a0)) + sy_ * math.sin(a0 - (a1 - a0))) * 5.3
-        trusses.append((tuple(pa), tuple(pb)))
-        trusses.append((tuple(pa), tuple(pc)))
+        scope_trusses.append((tuple(pa), tuple(pb)))
+        scope_trusses.append((tuple(pa), tuple(pc)))
     # secondary mirror on a spider
     sec = top_c - axis * 0.5
     F.cylinder(s, 'Secondary', tuple(sec - axis * 0.6), tuple(sec + axis * 0.6), 1.1, material='paint2', segments=20,
                cap_material='dark')
     for i in range(4):
         a = math.pi / 4 + i * math.pi / 2
-        trusses.append((tuple(sec), tuple(sec + (sx * math.cos(a) + sy_ * math.sin(a)) * 5.3)))
+        scope_trusses.append((tuple(sec), tuple(sec + (sx * math.cos(a) + sy_ * math.sin(a)) * 5.3)))
     F.light(s, 'ScopeTip', tuple(top_c + axis * 0.9 + sx * 5.4), 'glow_red', size=0.5)
     # keel: a lab drum on the lower spine, then the deep-space dish aimed aft and down
     F.cylinder(s, 'LabDrum', (0, 0, -19.5), (0, 0, -26.5), 5.2, material='paint', segments=40,
@@ -311,8 +316,10 @@ def build():
         F.light(s, f'RingLamp{i}', (21.4 * c, 21.4 * sn, 0.0), 'glow_cyan', size=0.5)
 
     beams(s, 'Truss', trusses, 0.16, material='gunmetal')
+    beams(s, 'ScopeTruss', scope_trusses, 0.16, material='gunmetal')
     beams(s, 'Struts', struts, 0.45, material='paint2', sides=8)
     boxes(s, 'Windows', win, 'glow_warm')
+    boxes(s, 'RingWindows', ring_win, 'glow_warm')
 
     s.detail = 1
     for sy in (1, -1):
@@ -322,10 +329,23 @@ def build():
                     size=0.6)
     s.detail = 0
     F.beacon(s, 'Beacon', (-3.2, 0.0, 35.2), size=0.5)
+    # ANI-39: wheel, telescope slew and survey dish ride motion pivots (see animations/ANI_39.py)
+    ANI_39.register(s)
     return s
 
 
 if __name__ == '__main__':
     import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    spec = E.fleet_spec(SHIP_ID)
+    live = '--live' in sys.argv
+    bank = ANI_39.build(ship, spec['asset_id'])
+    written = E.export_ship(ship, spec, preview=not live)
+    # --live seals the bank against the release GLB (the lead publishes). A preview build skips it
+    # unless SF_BANK_OUT names a scratch folder: the bank is then baked against the preview GLB.
+    # Bank file name = render-package pilot key ('research'), see scripts/lib/renderPackageRuntimeTable.mjs.
+    scratch = os.environ.get('SF_BANK_OUT')
+    if live or scratch:
+        out_dir = ANI_39.motion_bank.MOTIONS_DIR if live else scratch
+        os.makedirs(out_dir, exist_ok=True)
+        bank.bake([path for path, _tris in written], out_path=os.path.join(out_dir, 'research.motion.json'))
