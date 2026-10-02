@@ -41,6 +41,10 @@ export const BINDINGS = Object.freeze({
   // sits on Delete — free in flight (the drill screen that owns it there is modal) and reads as
   // "clear this" without costing a letter key.
   dismissVoice: { key: 'Delete', code: 'Delete', label: 'DEL' },
+  // F6 is the second dismiss binding, matched from the voice arbiter's own keydown hook
+  // (voiceDismissBindingMatches/emitVoiceDismissFromBinding) rather than the UI key router —
+  // the router does not own function keys.
+  voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
 });
 
 /** True when this keydown is the floor-voice dismiss binding and not a chord. */

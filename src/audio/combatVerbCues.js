@@ -118,7 +118,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'weapons:momentumSinkReleased': 'sfx_ui_drawer_latch',
   'fields:hitchCut': 'sfx_tether_twang',
 
-  'cruise:engaged': SILENT('Cruise engage is the lane-lock voice (travel.cruise.engaged → presentation.travel.lane_lock); a raw boost sting would double it.'),
+  'cruise:engaged': SILENT('Cruise engage is owned by the lane-lock voice (presentation.travel.lane_lock); a boost row would double it.'),
   'cruise:dropped': SILENT('Dropping cruise is the thrust voice falling back.'),
   'cruise:charging': SILENT('Cruise charge is the thrust voice, not a new sting.'),
   'cruise:snared': 'sfx_hull_scrape',
@@ -248,6 +248,7 @@ export const VERB_CUE_OWNED_BY = Object.freeze({
   'drill:rockDepleted': 'audioSystem drill:rockDepleted',
   'drill:scanPulse': 'audioSystem drill:scanPulse',
   'salvage:cutComplete': 'audioSystem salvage:cutComplete',
+  'salvage:reactorTowedClear': 'salvage._onReactorTowedClear',
   'dock:docked': 'audioSystem._onDocked',
   'dock:undocked': 'audioSystem._onUndocked',
   'bombs:detonated': 'bombs detonation audio cue',

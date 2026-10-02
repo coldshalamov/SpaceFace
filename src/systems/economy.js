@@ -2021,6 +2021,11 @@ export const economy = {
       if (def.noMarketSeed !== true && marketTier <= stationTier) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
+      // Liquidation minting honors the same legality gate as seeding: a lawful port does not
+      // conjure a narcotics book because a carrier happened to bring one.
+      if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
+        return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+      }
       entry = this.mintUnseededListing(stationId, def);
       if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }

@@ -292,9 +292,11 @@ export const countermeasures = {
         const dx = p.pos.x - cx, dz = p.pos.z - cz;
         if (dx * dx + dz * dz > r2) continue; // outside the effect radius
         if (cfg.kind === 'chaff' || cfg.kind === 'decoy') {
-          // One decoy, one lineage. A second shooter's missile keeps its own solution.
+          // Chaff answers the defeated lineage: a second shooter's missile keeps its own solution.
+          // A decoy buoy is placed bait — it re-baits ANY seeker that crosses its water, lock or no.
           const rng = state.rng;
-          if (missileMatchesLineage(d, cm.effect.lineage, p) && rng && rng() < cfg.divertPct) {
+          const bites = cfg.kind === 'decoy' ? true : missileMatchesLineage(d, cm.effect.lineage, p);
+          if (bites && rng && rng() < cfg.divertPct) {
             d.targetId = cm.effect.decoyId;
             d.diverted = true;
             d.guidanceBroken = true;
