@@ -243,8 +243,9 @@ plays a Crucible replay behind the title — let it.
 - **Unlock ledger.** The Crucible profile already persists separately from Adventure saves
   (`sf.save.crucible_meta`, `survivalRecords.js`). Adventure reads "earned crossovers" from it; it
   never writes Swarm progress and Swarm never writes an Adventure save.
-- **What crosses:** hulls (the Saucer first — earned at round 30 / Zone 3 boss), paints and decals,
-  weapon blueprints "proven in the Crucible", titles.
+- **What crosses:** hulls (the Saucer first — earned at round 30 / Zone 3 boss, and earnable
+  *only* in Swarm; see §11 decision 3), paints and decals, weapon blueprints "proven in the
+  Crucible", titles.
 - **What does not:** Bounty and run credits (protects the Adventure economy — §11 decision 3).
 - **Later, the other way:** hulls you own in Adventure appear in the Swarm Hangar.
 
@@ -287,13 +288,17 @@ Each step ships something the player can feel on its own.
 5. **Depth & crossover** — Saucer unlock and the Adventure ledger, perks, Threat tiers and affixes,
    challenges and daily rewards, adaptive music.
 
-## 11. Owner decisions (defaults stand unless the owner says otherwise)
+## 11. Owner decisions (answered 2026-10-02)
 
-1. **How strong can a maxed account get?** Default: clearly stronger (~+30–40%), never
-   invincible; Threat tiers keep the top end hard.
-2. **What does dying cost?** Default: death banks 50% of the run's Bounty; cashing out after any
-   boss banks 100% and ends the run.
-3. **What does the Saucer unlock give Adventure?** Default: the Saucer becomes buyable at Adventure
-   shipyards without its tech requirement, plus an exclusive Swarm paint. Credits never cross.
-4. **How loud may Swarm look?** Default: the in-flight arcade layer (popups, slams, tier colours,
-   rarity colours) is Swarm's own louder style; menus keep ORRERY's components.
+1. **How strong can a maxed account get?** Clearly stronger (~+30–40%), never invincible; Threat
+   tiers keep the top end hard.
+2. **What does dying cost?** Death banks 50% of the run's Bounty; cashing out after any boss banks
+   100% and ends the run.
+3. **The Saucer.** Owner: "it should be unlocked in swarm only." Read as: Swarm is the *only* way to
+   earn the Saucer — Adventure's research route to it (`requiresTech: 'tech_graviton_drives'` in
+   `src/data/ships.js`) is retired, and once earned in Swarm it becomes buyable at Adventure
+   shipyards (the owner's original ask: "unlocked in the swarm mode and used in adventure mode").
+   If the owner meant the Saucer stays out of Adventure entirely, drop the Adventure half; the
+   Swarm unlock is unchanged. Credits never cross.
+4. **How loud may Swarm look?** The in-flight arcade layer (popups, slams, tier colours, rarity
+   colours) is Swarm's own louder style; menus keep ORRERY's components.
