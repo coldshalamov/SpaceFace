@@ -30,6 +30,9 @@ const FORBIDDEN_GROUP_IDS = new Set([
 ]);
 const HEX64 = /^[0-9a-f]{64}$/;
 const RIG_ID = /^[a-z][a-z0-9_]*$/;
+// Reduced-motion damping for authored clips: half amplitude on event deltas while the
+// ambient attach loop parks entirely — the same convention the ship/place systems use.
+const REDUCED_AMP = 0.5;
 
 /** 'kestrel_dish' -> 'MOTION_KESTREL_DISH' — the glTF node a binding resolves against. */
 export function motionNodeNameFor(groupId) {
@@ -153,6 +156,12 @@ export function validateMotionBank(bank) {
       throw new Error('motion bank clip requires a name.');
     }
     if (clipNames.has(clip.name)) throw new Error(`motion bank clip "${clip.name}" is declared twice.`);
+    if (clip.name.startsWith('__settle__') || clip.name === 'rest' || clip.name === 'idle') {
+      throw new Error(
+        `motion bank clip "${clip.name}" uses a reserved name — '__settle__N' is synthesized ` +
+        "at runtime and 'rest'/'idle' are the park states a bank clip could never be addressed by.",
+      );
+    }
     clipNames.add(clip.name);
     if (!Number.isFinite(clip.durationS) || clip.durationS <= 0) {
       throw new Error(`motion bank clip ${clip.name} durationS must be a positive finite number.`);
@@ -216,6 +225,11 @@ export function validateMotionBank(bank) {
       if (!INTERPOLATIONS.has(channel.interpolation || (channel.path === 'rotation' ? 'slerp' : 'linear'))) {
         throw new Error(`motion bank clip ${clip.name} group ${channel.group} interpolation is not supported.`);
       }
+      if (channel.path === 'translation' && channel.interpolation === 'slerp') {
+        // sampleChannel only ever slerps rotation; a declared-but-inert translation 'slerp'
+        // misstates the baked data.
+        throw new Error(`motion bank clip ${clip.name} group ${channel.group} translation cannot slerp.`);
+      }
     }
   }
   if (bank.events !== undefined) {
@@ -239,50 +253,79 @@ function normalizeQuat(x, y, z, w) {
   return [x / n, y / n, z / n, w / n];
 }
 
-function quatMul(ax, ay, az, aw, bx, by, bz, bw) {
-  return [
-    aw * bx + ax * bw + ay * bz - az * by,
-    aw * by - ax * bz + ay * bw + az * bx,
-    aw * bz + ax * by - ay * bx + az * bw,
-    aw * bw - ax * bx - ay * by - az * bz,
-  ];
-}
-
-function quatConj(q) {
-  return [-q[0], -q[1], -q[2], q[3]];
-}
-
 /** Quaternion spherical linear interpolation; takes the short arc. */
 export function slerp(a, b, t) {
-  let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
-  let bx = b[0]; let by = b[1]; let bz = b[2]; let bw = b[3];
+  const out = [0, 0, 0, 1];
+  slerpInto(a, 0, b, 0, t, out);
+  return out;
+}
+
+/** slerp writing into `out` — the per-frame path allocates nothing. */
+function slerpInto(a, aOff, b, bOff, t, out) {
+  let dot = a[aOff] * b[bOff] + a[aOff + 1] * b[bOff + 1] + a[aOff + 2] * b[bOff + 2] + a[aOff + 3] * b[bOff + 3];
+  let bx = b[bOff]; let by = b[bOff + 1]; let bz = b[bOff + 2]; let bw = b[bOff + 3];
   if (dot < 0) {
     dot = -dot;
     bx = -bx; by = -by; bz = -bz; bw = -bw;
   }
   if (dot > 0.9995) {
-    return normalizeQuat(
-      a[0] + t * (bx - a[0]), a[1] + t * (by - a[1]),
-      a[2] + t * (bz - a[2]), a[3] + t * (bw - a[3]),
-    );
+    const x = a[aOff] + t * (bx - a[aOff]);
+    const y = a[aOff + 1] + t * (by - a[aOff + 1]);
+    const z = a[aOff + 2] + t * (bz - a[aOff + 2]);
+    const w = a[aOff + 3] + t * (bw - a[aOff + 3]);
+    const n = Math.hypot(x, y, z, w) || 1;
+    out[0] = x / n; out[1] = y / n; out[2] = z / n; out[3] = w / n;
+    return out;
   }
   const theta = Math.acos(Math.min(1, Math.max(-1, dot)));
   const sin = Math.sin(theta);
   const wa = Math.sin((1 - t) * theta) / sin;
   const wb = Math.sin(t * theta) / sin;
-  return [
-    a[0] * wa + bx * wb, a[1] * wa + by * wb,
-    a[2] * wa + bz * wb, a[3] * wa + bw * wb,
-  ];
+  out[0] = a[aOff] * wa + bx * wb;
+  out[1] = a[aOff + 1] * wa + by * wb;
+  out[2] = a[aOff + 2] * wa + bz * wb;
+  out[3] = a[aOff + 3] * wa + bw * wb;
+  return out;
+}
+
+/** Scale a quaternion delta toward identity (reduced-motion damping) in place. */
+function dampQuat(q, amp) {
+  if (q[3] < 0) { q[0] = -q[0]; q[1] = -q[1]; q[2] = -q[2]; q[3] = -q[3]; }
+  const x = q[0] * amp; const y = q[1] * amp; const z = q[2] * amp;
+  const w = 1 + (q[3] - 1) * amp;
+  const n = Math.hypot(x, y, z, w) || 1;
+  q[0] = x / n; q[1] = y / n; q[2] = z / n; q[3] = w / n;
+  return q;
+}
+
+function quatMulInto(out, ax, ay, az, aw, bx, by, bz, bw) {
+  out[0] = aw * bx + ax * bw + ay * bz - az * by;
+  out[1] = aw * by - ax * bz + ay * bw + az * bx;
+  out[2] = aw * bz + ax * by - ay * bx + az * bw;
+  out[3] = aw * bw - ax * bx - ay * by - az * bz;
+  return out;
 }
 
 function sampleChannel(channel, t) {
+  const stride = channel.path === 'translation' ? 3 : 4;
+  const out = new Array(stride);
+  return sampleChannelInto(channel, t, out);
+}
+
+/** sampleChannel writing into `out` — the per-frame path allocates nothing. */
+function sampleChannelInto(channel, t, out) {
   const times = channel.times;
   const values = channel.values;
   const stride = channel.path === 'translation' ? 3 : 4;
-  if (t <= times[0]) return values.slice(0, stride);
   const last = times.length - 1;
-  if (t >= times[last]) return values.slice(last * stride, last * stride + stride);
+  if (t <= times[0]) {
+    for (let i = 0; i < stride; i++) out[i] = values[i];
+    return out;
+  }
+  if (t >= times[last]) {
+    for (let i = 0; i < stride; i++) out[i] = values[last * stride + i];
+    return out;
+  }
   let lo = 0; let hi = last;
   while (hi - lo > 1) {
     const mid = (lo + hi) >> 1;
@@ -290,12 +333,13 @@ function sampleChannel(channel, t) {
   }
   const span = times[hi] - times[lo];
   const f = span > 0 ? (t - times[lo]) / span : 0;
-  const a = values.slice(lo * stride, lo * stride + stride);
-  const b = values.slice(hi * stride, hi * stride + stride);
   if (channel.path === 'rotation' && (channel.interpolation || 'slerp') === 'slerp') {
-    return slerp(a, b, f);
+    return slerpInto(values, lo * stride, values, hi * stride, f, out);
   }
-  return a.map((v, i) => v + (b[i] - v) * f);
+  for (let i = 0; i < stride; i++) {
+    out[i] = values[lo * stride + i] + (values[hi * stride + i] - values[lo * stride + i]) * f;
+  }
+  return out;
 }
 
 /**
@@ -420,11 +464,31 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         );
       }
     }
-    groups.set(binding.id, { binding, nodes });
+    // `delta` is the per-frame merge slot: update() writes sampled channels straight into it
+    // (stamped once per call) instead of building a throwaway Map of fresh arrays per clip.
+    groups.set(binding.id, {
+      binding,
+      nodes,
+      delta: { t: [0, 0, 0], q: [0, 0, 0, 1], hasT: false, hasR: false, stamp: 0 },
+    });
   }
 
   const clips = new Map();
   for (const clip of checked.clips) clips.set(clip.name, clip);
+
+  // A LOOPING 'authoredMotion:attach' clip is this rig's ambient idle — it is the clip the
+  // resume block re-enters and the one reduced-motion parks.
+  const attachClipName = (checked.events || {})['authoredMotion:attach'];
+  const ambientClip = attachClipName && clips.get(attachClipName) && clips.get(attachClipName).loop
+    ? attachClipName : null;
+  // Merge scratch for update(): stamped per call, zero allocation in the frame loop.
+  let mergeStamp = 0;
+  const scratchQ = [0, 0, 0, 1];
+  function lastClipName() {
+    let last = null;
+    for (const key of state.clips.keys()) last = key;
+    return last;
+  }
 
   const state = {
     // Active clips, insertion-ordered by start time. Clips are independent — separate rig
@@ -473,16 +537,19 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     // entity's flag must not outlive the clips it tracked).
     hasActiveClipsIn(groupIds = []) {
       const wanted = new Set(groupIds);
-      for (const name of state.clips.keys()) {
+      for (const [name, run] of state.clips) {
         const clip = clips.get(name);
-        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) return true;
+        // Live ownership, not declared channels: a clip superseded out of a group no longer
+        // poses it, so it must not count as 'still active there'.
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group)
+          && !(run.superseded && run.superseded.has(ch.group)))) return true;
       }
       return false;
     },
     clipElapsed(name, timeS) {
       const run = state.clips.get(name);
       if (!run) return null;
-      return (Number.isFinite(timeS) ? timeS : 0) - run.startS;
+      return ((Number.isFinite(timeS) ? timeS : 0) - run.startS) * run.rateScale;
     },
     clipDuration(name) {
       const clip = clips.get(name);
@@ -498,16 +565,20 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      */
     settle(durationS = 1.0, timeS = 0) {
       if (disposed || !state.clips.size) return false;
+      const at = Number.isFinite(timeS) ? timeS : 0;
       const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
       const merged = new Map();
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
         if (!clip) continue;
-        const t = (timeS - run.startS) * run.rateScale;
+        const t = (at - run.startS) * run.rateScale;
         const deltas = evaluateMotionClip(
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       const channels = [];
       for (const [groupId, delta] of merged) {
@@ -530,7 +601,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       };
       clips.set(settleName, settleClip);
       state.clips.clear();
-      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      state.clips.set(settleName, { startS: at, rateScale: 1 });
       trimParkedSettles();
       state.latest = settleName;
       state.parked = false;
@@ -547,6 +618,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      */
     settleGroups(durationS = 1.0, timeS = 0, groupIds = []) {
       if (disposed || !state.clips.size) return false;
+      const at = Number.isFinite(timeS) ? timeS : 0;
       const wanted = new Set(groupIds || []);
       if (!wanted.size) return false;
       const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
@@ -554,11 +626,14 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
         if (!clip) continue;
-        const t = (timeS - run.startS) * run.rateScale;
+        const t = (at - run.startS) * run.rateScale;
         const deltas = evaluateMotionClip(
           checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
         );
-        for (const [groupId, delta] of deltas) merged.set(groupId, delta);
+        for (const [groupId, delta] of deltas) {
+          if (run.superseded && run.superseded.has(groupId)) continue;
+          merged.set(groupId, delta);
+        }
       }
       const channels = [];
       for (const groupId of wanted) {
@@ -583,13 +658,17 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
       };
       clips.set(settleName, settleClip);
-      for (const name of [...state.clips.keys()]) {
+      for (const [name, run] of [...state.clips]) {
         const clip = clips.get(name);
-        if (clip && clip.channels.some((ch) => wanted.has(ch.group))) {
+        // Drop a clip only when a LIVE (non-superseded) channel is being settled — declared
+        // overlap alone would kill a clip whose wanted groups were already claimed away,
+        // snapping its remaining live groups.
+        if (clip && clip.channels.some((ch) => wanted.has(ch.group)
+          && !(run.superseded && run.superseded.has(ch.group)))) {
           state.clips.delete(name);
         }
       }
-      state.clips.set(settleName, { startS: timeS, rateScale: 1 });
+      state.clips.set(settleName, { startS: at, rateScale: 1 });
       // Runs after settleName joins state.clips so the fresh clip is never collected as dead.
       trimParkedSettles();
       state.latest = settleName;
@@ -649,19 +728,24 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return true;
     },
 
-    /** Advance every bound pivot to the merged clip pose at `timeS` (sim seconds). */
-    update(timeS) {
+    /**
+     * Advance every bound pivot to the merged clip pose at `timeS` (eval-clock seconds).
+     * `a11y` mirrors the renderer's accessibility options: `reducedMotion`/`motionReduce`
+     * parks the ambient attach loop entirely and damps event-clip deltas to REDUCED_AMP,
+     * matching the rest of the motion systems' reduced-motion convention.
+     */
+    update(timeS, a11y) {
       if (disposed || !state.clips.size) return;
-      const merged = new Map();
+      const reduced = !!(a11y && (a11y.reducedMotion === true || a11y.motionReduce === true));
+      const dampen = reduced ? REDUCED_AMP : 1;
+      mergeStamp += 1;
       for (const [name, run] of state.clips) {
         const clip = clips.get(name);
         if (!clip) {
           // A run-entry outliving its clip must not throw inside the frame loop — drop it
           // like a parked clip rather than failing the whole entity pass.
           state.clips.delete(name);
-          if (state.latest === name) {
-            state.latest = state.clips.size ? [...state.clips.keys()].pop() : null;
-          }
+          if (state.latest === name) state.latest = lastClipName();
           continue;
         }
         const t = (timeS - run.startS) * run.rateScale;
@@ -669,49 +753,81 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           // Rest-ended clips park this frame — their final pose is excluded from the merge so
           // owned groups land exactly at rest (or under a still-active clip's delta).
           state.clips.delete(name);
-          if (state.latest === name) {
-            state.latest = state.clips.size ? [...state.clips.keys()].pop() : null;
-          }
+          if (state.latest === name) state.latest = lastClipName();
           continue;
         }
-        const deltas = evaluateMotionClip(
-          checked, clip, clip.loop ? t : Math.min(t, clip.durationS),
-        );
-        // Later map entries override earlier ones per group — newest clip wins a shared group.
-        // Groups a newer clip permanently claimed stay suppressed even after that clip parks.
-        for (const [groupId, delta] of deltas) {
-          if (run.superseded && run.superseded.has(groupId)) continue;
-          merged.set(groupId, delta);
+        if (reduced && ambientClip !== null && name === ambientClip) continue;
+        const local = clip.loop === true
+          ? ((t % clip.durationS) + clip.durationS) % clip.durationS
+          : Math.min(Math.max(t, 0), clip.durationS);
+        // Write channel samples straight into each group's stamped delta slot — latest-started
+        // wins a shared group, and groups a newer clip permanently claimed stay suppressed.
+        for (const channel of clip.channels) {
+          if (run.superseded && run.superseded.has(channel.group)) continue;
+          const slot = groups.get(channel.group);
+          if (!slot) continue;
+          const delta = slot.delta;
+          if (delta.stamp !== mergeStamp) {
+            delta.stamp = mergeStamp;
+            delta.hasT = false;
+            delta.hasR = false;
+          }
+          if (channel.path === 'translation') {
+            sampleChannelInto(channel, local, delta.t);
+            if (dampen !== 1) {
+              delta.t[0] *= dampen; delta.t[1] *= dampen; delta.t[2] *= dampen;
+            }
+            delta.hasT = true;
+          } else {
+            sampleChannelInto(channel, local, delta.q);
+            if (dampen !== 1) dampQuat(delta.q, dampen);
+            delta.hasR = true;
+          }
         }
       }
-      for (const [id, { binding, nodes }] of groups) {
-        const delta = merged.get(id) || {};
-        const hasT = Array.isArray(delta.translation);
-        const hasR = Array.isArray(delta.rotation);
+      for (const { binding, nodes, delta } of groups.values()) {
+        const active = delta.stamp === mergeStamp && (delta.hasT || delta.hasR);
         const restT = binding.restPose.translation;
         const restQ = binding.restPose.rotation;
         for (const node of nodes) {
-          if (!nodeHasVisibleMesh(node) || (!hasT && !hasR)) {
+          if (!nodeHasVisibleMesh(node) || !active) {
             // No clip owns this group right now, or a hidden part: park at rest.
             node.position.set(...restT);
             node.quaternion.set(...restQ);
             continue;
           }
-          node.position.set(
-            restT[0] + delta.translation[0],
-            restT[1] + delta.translation[1],
-            restT[2] + delta.translation[2],
-          );
-          if (hasR) {
-            const q = quatMul(restQ[0], restQ[1], restQ[2], restQ[3],
-              delta.rotation[0], delta.rotation[1], delta.rotation[2], delta.rotation[3]);
-            node.quaternion.set(q[0], q[1], q[2], q[3]);
+          if (delta.hasT) {
+            node.position.set(
+              restT[0] + delta.t[0],
+              restT[1] + delta.t[1],
+              restT[2] + delta.t[2],
+            );
+          } else {
+            node.position.set(...restT);
+          }
+          if (delta.hasR) {
+            quatMulInto(scratchQ, restQ[0], restQ[1], restQ[2], restQ[3],
+              delta.q[0], delta.q[1], delta.q[2], delta.q[3]);
+            node.quaternion.set(scratchQ[0], scratchQ[1], scratchQ[2], scratchQ[3]);
           } else {
             node.quaternion.set(...restQ);
           }
         }
       }
-      if (!state.clips.size) state.parked = true;
+      // Ambient resume: a bank that maps the synthetic 'authoredMotion:attach' event to a
+      // LOOPING clip treats it as the rig's idle life — started once at attach (the render-side
+      // attach kick) and re-entered whenever the last event clip drains. One-shot attach clips
+      // and rigs that never declare the event are unaffected; an explicit rest setState still
+      // parks for a frame but the next update resumes ambient, which is what a docked machine
+      // should look like (calm, not dead). Reduced-motion holds the rig parked instead.
+      if (!state.clips.size) {
+        state.parked = true;
+        if (!reduced && ambientClip !== null) {
+          state.clips.set(ambientClip, { startS: timeS, rateScale: 1 });
+          state.latest = ambientClip;
+          state.parked = false;
+        }
+      }
     },
 
     /**

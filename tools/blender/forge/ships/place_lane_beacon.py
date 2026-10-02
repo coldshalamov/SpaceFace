@@ -14,6 +14,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_36  # noqa: E402
 
 SHIP_ID = 'place_lane_beacon'
 COLORS = {
@@ -185,10 +188,23 @@ def build():
     s.detail = 2
     F.vent(s, 'LampVent', (HX - 0.2, 0.45, ARM_Z1 + 0.3), (0.4, 0.4, 0.06), slats=3, axis='y')
     s.detail = 0
+
+    # ANI-36: rig the gantry — tip lamp head pans the lane, avi beacon spins,
+    # signal pods nod. Lamp/pod membership by name prefix (bands share the root).
+    lamp = [o for o in s.objects if o.name.startswith(('Lamp', 'Tip'))]
+    avi = [o for o in s.objects if o.name.startswith('AviBeacon')]
+    pods = [[o for o in s.objects if o.name.startswith(f'Pod{i}')] for i in range(3)]
+    s.ani36_bank = ANI_36.build(s, {'lamp': lamp, 'avi': avi, 'pods': pods},
+                                source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
     import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani36_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_36.motion_bank.MOTIONS_DIR,
+                                                   'lane-beacon.motion.json'))

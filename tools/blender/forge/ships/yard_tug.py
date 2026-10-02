@@ -12,6 +12,7 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_03  # noqa: E402
+import ANI_21  # noqa: E402
 
 SHIP_ID = 'yard_tug'
 COLORS = {
@@ -188,6 +189,8 @@ def build():
         'fairlead': [_dmg['Fairlead'], _dmg['FairleadRoll']],
         'hook': [_dmg['TowHook'], _dmg['TowCable']],
     }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    # ANI-21: idle hook dangle + line quiver ride the same groups and merge into the tug's bank.
+    ANI_21.build(s, None, source_asset_id=None, bank=s.ani03_bank)
     return s
 
 

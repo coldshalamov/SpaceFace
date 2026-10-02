@@ -1,0 +1,80 @@
+"""ANI-27 — nav-buoy lane life: cage rotation + spire pulse ring.
+
+Lane furniture should never sit dead: the lantern's cage assembly turns slowly
+like a lighthouse shutter, and a service ring rides up the spire when the lane
+network answers a navigation event — the whole field of buoys pings when the
+player sets a waypoint or the band radio resolves a bearing.
+
+Groups
+  nav_buoy_cage — the lantern cage (8 bars + 3 hoops), spins about the spire axis.
+  nav_buoy_pulse — a spare service ring at the spire base, rides up on pulse.
+
+Clips
+- beacon_spin (14s, loop): slow continuous yaw, quarter-turn keys.
+- ring_pulse (1.5s, rest): ring travels the spire and blends back down.
+
+Triggers: `authoredMotion:attach` -> beacon_spin; `nav:waypoint` /
+`band:bearingResolved` -> ring_pulse (fanned out to every live buoy bank).
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import motion_bank  # noqa: E402
+from mathutils import Euler  # noqa: E402
+
+RIG_ID = 'nav_buoy'
+SPIN_PERIOD = 14.0
+PULSE_TRAVEL = 8.6    # spire run: base ring to just under the lamp seat
+PULSE_HOME_Z = -2.8   # pulse ring's docked seat (loc keys are absolute local)
+
+
+def register(ship, parts):
+    """parts: {'cage': [objs], 'pulse': obj}."""
+    ship.motion_group('nav_buoy_cage', pivot=(0.0, 0.0, 7.3), objects=list(parts['cage']))
+    ship.motion_group('nav_buoy_pulse', pivot=(0.0, 0.0, -2.8), objects=[parts['pulse']])
+
+
+def author(bank):
+    spin = bank.clip('beacon_spin', SPIN_PERIOD, loop=True, end_mode='rest')
+    for i in range(4):
+        spin.key('nav_buoy_cage', i * SPIN_PERIOD / 3.0,
+                 rot=Euler((0.0, 0.0, i * 2 * 3.141592653589793 / 3.0)))
+
+    # Ring climbs the spire, holds a beat at the lamp seat, then slides home —
+    # the recock reads as the beacon cycling for the next pulse, no evict snap.
+    # Both legs run on smoothstep envelopes: piecewise-linear keys step velocity at
+    # every corner, which reads as a pop on an 8.6 WU run.
+    pulse = bank.clip('ring_pulse', 2.4, loop=False, end_mode='rest')
+    pulse_steps = 12
+    for i in range(pulse_steps + 1):
+        t = 1.2 * i / pulse_steps
+        u = i / pulse_steps
+        f = u * u * (3.0 - 2.0 * u)
+        # loc keys are absolute local: the pulse ring climbs the spire from its
+        # docked seat at z=-2.8, not from the buoy's origin.
+        pulse.key('nav_buoy_pulse', t, loc=(0.0, 0.0, PULSE_HOME_Z + PULSE_TRAVEL * f))
+    for i in range(pulse_steps + 1):
+        t = 1.2 + 1.2 * i / pulse_steps
+        u = i / pulse_steps
+        f = 1.0 - u * u * (3.0 - 2.0 * u)
+        pulse.key('nav_buoy_pulse', t, loc=(0.0, 0.0, PULSE_HOME_Z + PULSE_TRAVEL * f))
+
+
+EVENTS = {
+    'authoredMotion:attach': 'beacon_spin',
+    'nav:waypoint': 'ring_pulse',
+    'band:bearingResolved': 'ring_pulse',
+    # A capital mass on scope reads as a nav-net warning ping.
+    'capitalBoss:telegraph': 'ring_pulse',
+}
+
+
+def build(ship, parts, source_asset_id, bank=None):
+    register(ship, parts)
+    if bank is None:
+        bank = motion_bank.MotionBank(ship, RIG_ID, source_asset_id, events=dict(EVENTS))
+    else:
+        bank.events.update(EVENTS)
+    author(bank)
+    return bank

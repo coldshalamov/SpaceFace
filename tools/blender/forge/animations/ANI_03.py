@@ -20,6 +20,7 @@ Clips: payout (1.6 s hold), catch (0.45 s hold), reel (0.95 s hold), release (0.
 Bank routes: tether:attached/massline:snareDeployed -> payout, tether:snapCatch -> catch,
 tether:reelPump -> reel, tether:released/massline:snareEnded/tether:latchDenied -> release.
 """
+import math
 import os
 import sys
 
@@ -98,8 +99,22 @@ def author(bank):
         reel.key('yard_tug_fairlead', t, rot=Euler((0.0, 0.0, a)))
 
     release = bank.clip('release', 0.45, loop=False, end_mode='rest')
-    # slack release: the drum kicks loose and spins back to zero
-    for t, a in [(0.0, REEL_SPIN_RAD), (0.13, REEL_SPIN_RAD - 0.25), (0.3, -1.55), (0.45, 0.0)]:
+    # slack release: the drum holds wound for a beat, kicks loose fast, then lands
+    # soft with a hair of overshoot. Keys sit on the 60fps bake grid — off-grid
+    # keys resample into velocity steps.
+    release_profile = []
+    for i in range(28):
+        t = i / 60.0
+        if t <= 0.1:
+            f = 0.0
+        elif t <= 0.3:
+            u = (t - 0.1) / 0.2
+            f = 1.09 * u * u * (3.0 - 2.0 * u)
+        else:
+            u = (t - 0.3) / 0.15
+            f = 1.09 - 0.09 * (u * u * (3.0 - 2.0 * u))
+        release_profile.append((t, REEL_SPIN_RAD * (1.0 - f)))
+    for t, a in release_profile:
         release.key('yard_tug_winch', t, rot=Euler((0.0, a, 0.0)))
     for t, dx, a in [(0.0, -0.06, 0.0), (0.11, -0.02, -0.04), (0.45, 0.0, 0.0)]:
         release.key('yard_tug_hook', t, loc=hook_at(dx), rot=Euler((0.0, a, 0.0)))

@@ -10,6 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_30  # noqa: E402
 
 SHIP_ID = 'inspection_cutter'
 COLORS = {
@@ -163,10 +166,20 @@ def build():
     F.light(s, 'StrobeBridge', (-3.4, 0.0, 2.72), 'glow_cyan', size=0.2)
     F.light(s, 'NavPort', (-9.2, 2.62, -0.2), 'glow_red', size=0.18)
     F.light(s, 'NavStarboard', (-9.2, -2.62, -0.2), 'glow_green', size=0.18)
+    _o = {o.name: o for o in s.objects}
+    s.ani30_bank = ANI_30.build(s, {
+        'arm': [_o['ClampTube'], _o['ClampCollar'], _o['ClampSeal'],
+                _o['Claw0'], _o['Claw1'], _o['Claw2'], _o['Claw3']],
+        'scanring': _o['ScanRing'],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani30_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_30.motion_bank.MOTIONS_DIR,
+                                                   'inspection-cutter.motion.json'))

@@ -155,7 +155,7 @@ class MotionBank:
             return out
 
         channels = {}
-        frames_out = list(range(0, int(round(clip.duration_s * 60)) + 1))
+        end_frame = int(round(clip.duration_s * 60))
         for rig_id in clip._keys:
             pivot = self.ship.motion_pivots.get(rig_id)
             if pivot is None:
@@ -166,25 +166,33 @@ class MotionBank:
             keymap = clip._keys[rig_id]
             loc_entries = sorted((f, Vector(v['loc'])) for f, v in keymap.items() if 'loc' in v)
             rot_entries = sorted((f, v['rot']) for f, v in keymap.items() if 'rot' in v)
-            loc_at = _channel_samples(loc_entries, frames_out, rest_loc)
-            rot_at = _channel_samples(rot_entries, frames_out, rest_rot_b)
-            t_times, t_values, r_times, r_values = [], [], [], []
-            for frame in frames_out:
-                basis = Matrix.Translation(loc_at[frame]) @ rot_at[frame].to_matrix().to_4x4()
-                tg, qg = blender_local_to_gltf(basis)
-                # translation delta is additive on the rest position
-                dt = [tg[0] - rest_t[0], tg[1] - rest_t[1], tg[2] - rest_t[2]]
-                # rotation delta left-multiplies the rest quaternion: q = rest ⊗ delta
-                dq = _quat_mul(_quat_inv([rest_q[3], rest_q[0], rest_q[1], rest_q[2]]),
-                               [qg[3], qg[0], qg[1], qg[2]])
-                t_times.append(frame / 60.0)
-                t_values += dt
-                r_times.append(frame / 60.0)
-                r_values += [dq.x, dq.y, dq.z, dq.w]
-            channels[rig_id] = {
-                'translation': (t_times, t_values),
-                'rotation': (r_times, r_values),
-            }
+            # Emit at the authored keys (+ the clip endpoints) rather than dense 60 fps:
+            # the runtime slerps/lerps between samples, so a sparse channel reproduces the
+            # curve exactly at a fraction of the bytes. A path with no authored keys emits
+            # no channel at all — the evaluator holds rest for unwritten paths anyway.
+            channels[rig_id] = {}
+            if loc_entries:
+                key_frames = sorted({0.0, float(end_frame)} | {f for f, _ in loc_entries})
+                loc_at = _channel_samples(loc_entries, key_frames, rest_loc)
+                t_times, t_values = [], []
+                for frame in key_frames:
+                    tg, _ = blender_local_to_gltf(Matrix.Translation(loc_at[frame]))
+                    dt = [tg[0] - rest_t[0], tg[1] - rest_t[1], tg[2] - rest_t[2]]
+                    t_times.append(frame / 60.0)
+                    t_values += dt
+                channels[rig_id]['translation'] = (t_times, t_values)
+            if rot_entries:
+                key_frames = sorted({0.0, float(end_frame)} | {f for f, _ in rot_entries})
+                rot_at = _channel_samples(rot_entries, key_frames, rest_rot_b)
+                r_times, r_values = [], []
+                for frame in key_frames:
+                    _, qg = blender_local_to_gltf(rot_at[frame].to_matrix().to_4x4())
+                    # rotation delta left-multiplies the rest quaternion: q = rest ⊗ delta
+                    dq = _quat_mul(_quat_inv([rest_q[3], rest_q[0], rest_q[1], rest_q[2]]),
+                                   [qg[3], qg[0], qg[1], qg[2]])
+                    r_times.append(frame / 60.0)
+                    r_values += [dq.x, dq.y, dq.z, dq.w]
+                channels[rig_id]['rotation'] = (r_times, r_values)
         return channels
 
     def _rest_basis(self, rig_id):
