@@ -190,8 +190,12 @@ export function createRenderPackageLoader(options = {}) {
         return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions);
       }
       retainConsumer(existing.key);
-      if (!existing.packageOwner && !retainPackageOwner(existing)) {
-        throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
+      if (!existing.packageOwner) {
+        if (!retainPackageOwner(existing)) {
+          throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
+        }
+      } else {
+        existing.refCount = (existing.refCount || 0) + 1;
       }
       return loaded;
     }
@@ -208,6 +212,7 @@ export function createRenderPackageLoader(options = {}) {
       request: null,
       evicted: false,
       admission: newAdmission(`render-package:${metadata.assetId || contentHash}`),
+      refCount: 1,
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
@@ -238,13 +243,23 @@ export function createRenderPackageLoader(options = {}) {
             : null;
         } catch (error) {
           disposeUnregisteredResources(plan.resources);
+          disposeDecodedResources(decoded);
           throw error;
         }
         try {
           entry.admission.assertActive();
         } catch (error) {
           disposeUnregisteredResources(plan.resources);
+          disposeDecodedResources(decoded);
           throw error;
+        }
+        // NXI-230: Superseded old-generation check releases only this decode's private resources
+        if (cache.get(contentHash) !== entry || entry.evicted) {
+          disposeUnregisteredResources(plan.resources);
+          disposeDecodedResources(decoded);
+          if (entry.request) entry.request.cancel('superseded-old-generation');
+          entry.request = null;
+          throw new Error(`Render package decode for ${metadata.assetId} was superseded.`);
         }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
           residency,
@@ -272,6 +287,7 @@ export function createRenderPackageLoader(options = {}) {
           });
         } catch (error) {
           disposeUnregisteredResources(loaded.resources);
+          disposeDecodedResources(decoded);
           throw error;
         }
         retainConsumer(entry.key);
@@ -305,14 +321,25 @@ export function createRenderPackageLoader(options = {}) {
 
   function retainPackageOwner(entry) {
     if (disposed || entry.evicted) return false;
+    if (entry.packageOwner) {
+      entry.refCount = (entry.refCount || 1) + 1;
+      return true;
+    }
     const owner = createOwner('package-cache', entry.metadata.contentHash);
     if (!residency.retain(entry.key, owner, { role: 'render-package-cache' })) return false;
     entry.packageOwner = owner;
     entry.loaded?.markRetained();
+    entry.refCount = 1;
     return true;
   }
 
   function releasePackageOwner(entry, reason = 'render-package-released') {
+    if (!entry) return false;
+    if (entry.refCount > 1) {
+      entry.refCount--;
+      return true;
+    }
+    entry.refCount = 0;
     const owner = entry.packageOwner;
     if (!owner) return false;
     entry.packageOwner = null;
@@ -361,9 +388,6 @@ export function createRenderPackageLoader(options = {}) {
   function dispose(reason = 'render-package-loader-disposed') {
     if (disposed) return false;
     disposed = true;
-    for (const admission of [...activeAdmissions]) {
-      admission.abort(new Error('Render package loader has been disposed.'));
-    }
     for (const entry of cache.values()) {
       if (entry.admission) {
         entry.admission.abort(new Error(
@@ -374,6 +398,9 @@ export function createRenderPackageLoader(options = {}) {
       entry.request = null;
       releasePackageOwner(entry, reason);
       dropPackageDetachManifest(entry.metadata.contentHash);
+    }
+    for (const admission of [...activeAdmissions]) {
+      admission.abort(new Error('Render package loader has been disposed.'));
     }
     return true;
   }

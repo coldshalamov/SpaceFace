@@ -407,13 +407,13 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | industry | grok-15 | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
 | people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
 | ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
-| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 220, 229, 236, 238, 239 |
+| hand | glm-hand-220 | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 220, 229, 236, 238, 239 |
 | missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
 | world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
 | story | grok-15 | story | 192, 215, 216, 253 |
 | input | devin-demo5 | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
-| physics | glm-machine-258 | physics clocks, manifest | 258 |
+| physics | free | physics clocks, manifest | 258 |
 | accept | free | judge work that is already built | 60, 63, 64 |
 | imports | free | doc imports only, after code seams | 30 |
 | art | free | one visible asset defect; skip if the graphics lane is live | 223 |
@@ -687,7 +687,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 167 | BUILD | [NXB-035](design/program/next-wave-2026-09-28/build/NXB-035.md) | A claim raid has one outcome whether the player arrives or stays away | Existing owners; SF-101, SF-105, SF-165, PQ-170 | SHIPPED |
 | 168 | BUILD | [NXB-037](design/program/next-wave-2026-09-28/build/NXB-037.md) | Two active jobs can reference one physical object without duplicating it or its reward | NXB-025; SF-108, SF-144, SF-146, SF-278 | WAITING NXB-025 |
 | 170 | BUILD | [NXB-057](design/program/next-wave-2026-09-28/build/NXB-057.md) | Integrate the current performance branch, then fix one measured cross-feature regression | PR-174-or-equivalent-integrated; SF-256, SF-262, SF-265, SF-268, PR-174 | WAITING PR-174-or-equivalent-integrated |
-| 171 | BUILD | [NXB-058](design/program/next-wave-2026-09-28/build/NXB-058.md) | Shared render resources survive one consumer leaving and retire after the last one | Existing owners; SF-259, SF-261, SF-268, SF-270 | OPEN |
+| 171 | BUILD | [NXB-058](design/program/next-wave-2026-09-28/build/NXB-058.md) | Shared render resources survive one consumer leaving and retire after the last one | Existing owners; SF-259, SF-261, SF-268, SF-270 | DONE |
 | 175 | BUILD | [NXB-005](design/program/next-wave-2026-09-28/build/NXB-005.md) | A recovered tow reaches a receiver with its custody and value intact | Existing owners; SF-029, SF-111, SF-273, SF-286 | OPEN |
 | 176 | BUILD | [NXB-007](design/program/next-wave-2026-09-28/build/NXB-007.md) | One physical kill has one readable legal and salvage aftermath | Existing owners; SF-030, SF-042, SF-159, SF-292 | OPEN |
 | 178 | BUILD | [NXB-012](design/program/next-wave-2026-09-28/build/NXB-012.md) | Countermeasures break a particular lock rather than erase every threat | Existing owners; SF-040, SF-050, SF-057 | SHIPPED |
