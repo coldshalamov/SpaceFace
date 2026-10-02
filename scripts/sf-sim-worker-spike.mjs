@@ -1,32 +1,45 @@
-// S1 Phase-A spike — golden-in-worker probe.
+// S1 Phase-B stage 6 — the flip: worker-driven ticks, main-side accumulator.
 //
-// Runs the 47-A golden composition inside a real worker_threads worker
-// (scripts/lib/wholeSimWorker.mjs) while the main thread keeps the production
-// present-side machinery: the 8-deep completedTick ring, the REAL
-// createPresentationPublisher + createPresentationWorld, and journal-range acks.
-// Journal records cross as packed typed arrays (the "byte-range"); entity-info
-// blocks feed a main-side read-model projection for resolver sites.
+// The main lane runs production's advanceFixedTimestep: each accumulated step
+// posts a {kind:'tick'} directive; the worker steps the sim and replies with
+// the transport frame (packed journal range + spawn infos + aux + domain
+// diffs + events). The present side drains every RESOLVED reply per frame and
+// presents only the newest completed tick — consumeLatestCompletedTick's
+// newest-wins merge; a late reply re-presents the previous frame, never
+// blocks. SIM_LANE=main swaps the worker for an in-process client over the
+// SAME host module (scripts/lib/simWorkerHost.mjs) — identical reply objects
+// through identical consume plumbing; the flag is the byte-for-byte revert.
 //
 // Gates:
-//   (a) hash parity — worker finalize sha256 === golden sha256
+//   (a) hash parity — finalize sha256 === golden sha256 (post-flip baseline)
 //   (b) transport — pack(worker) + post/decode + consume(main) < 0.5 ms/tick
-//   (c) ring bounds — completedTick ring ≤ 8; journal overflow→rebuild exercised
-//       via --journal-capacity / --ack-stall; pause gate via --probe pause
-//   (d) command channel — stage 1: every directive mutation crosses as a typed
-//       {input|bus|settings|rpc} envelope; worker-side inputCommandHistory.toTape()
-//       must byte-match the main-side reference recording (lossless transport)
+//   (c) ring bounds — in-flight directives ≤ pipeline bound; journal
+//       overflow→rebuild via --journal-capacity / --ack-stall; pause via
+//       --probe pause
+//   (d) command channel — lossless envelope transport (tape byte-equality)
+//   (i) digest canary (--canary) — worker-lane vs main-lane replies must
+//       hash identically for every one of the 720 directives, through the
+//       reload-at-600 boundary
+//   (j) crash fail-closed (--probe crash) — a thrown step on either lane
+//       rejects the directive at the same tick with the same failure shape
 //
 // Usage:
 //   node scripts/sf-sim-worker-spike.mjs [--ticks 720] [--seed 47]
 //     [--inputs test/47a.inputs.json] [--reload-at 600] [--repeat 1]
-//     [--pipeline N] [--journal-capacity N] [--ack-stall]
-//     [--probe pause|aux|churn|domains] [--expected-hash <sha256>] [--json]
+//     [--pipeline N] [--journal-capacity N] [--ack-stall] [--consume-batch N]
+//     [--probe pause|aux|churn|domains|commands|market-parity|crash]
+//     [--sim-lane worker|main] [--canary] [--expected-hash <sha256>] [--json]
+//   SIM_LANE=main env var is equivalent to --sim-lane main.
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
+
+import { advanceFixedTimestep, LOOP_FIXED_DT, MAX_CATCHUP_STEPS } from '../src/core/simulationRunner.js';
+import { createSimHost } from './lib/simWorkerHost.mjs';
 
 import { createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../src/core/presentationJournal.js';
 import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
@@ -52,18 +65,30 @@ import {
   applyDestroyIds,
   applyDomainPathUpdate,
   applySpawnInfos,
+  canonicalSignature,
   createDomainProbeChecker,
   createReadModel,
   digestIds,
   DOMAIN_MIRROR_KEYS,
   readModelCollectIds,
+  resolveDomainValue,
   sameDomainContainerKind,
 } from './lib/simReadModel.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WORKER_PATH = resolve(ROOT, 'scripts/lib/wholeSimWorker.mjs');
-const GOLDEN_HASH = 'e517a97bd256045b0db0f96a7124a5abd539478a84ee305e36e1eb8479449dd3';
+// Post-flip baseline — upstream re-baselined the 47a golden at 9fac82f34; the
+// comparator was stale (stage-5 hash). This is the main-lane golden the flip
+// must still produce bit-identically.
+const GOLDEN_HASH = 'f589bdd53360693b76d89ea54db2dd5816f45feb00c5f203d882a9637d729cdb';
 const COMPLETED_TICK_RING_DEPTH = 8;
+
+// The production rAF schedule can't be measured on a benchmark headless box,
+// so the spike drives a deterministic frame-DT pattern: 12 frames = 12 steps,
+// exercising 0-step frames (ring holds), 2-step frames (catch-up), and 1-step
+// frames (nominal). Bounded far under HITCH_FRAME_TICKS so nothing sheds — the
+// step set is exactly the tape's 720 ticks either lane.
+const FRAME_PATTERN = Object.freeze([1.0, 0.4, 1.6, 1.0, 1.0, 0.2, 1.8, 1.0, 1.0, 0.6, 1.4, 1.0]);
 
 const argv = process.argv.slice(2);
 function argValue(flag, fallback) {
@@ -82,10 +107,14 @@ const OPT = {
   reloadAt: argInt('--reload-at', 600),
   repeat: argInt('--repeat', 1),
   pipeline: Math.max(1, Math.min(COMPLETED_TICK_RING_DEPTH, argInt('--pipeline', 1))),
-  consumeBatch: Math.max(1, argInt('--consume-batch', 1)),
+  // 0 = production drain-all (consumeLatestCompletedTick drains every pending
+  // reply); N>0 caps replies consumed per frame to model present-side lag.
+  consumeBatch: Math.max(0, argInt('--consume-batch', 0)),
   journalCapacity: argInt('--journal-capacity', null),
   ackStall: argv.includes('--ack-stall'),
   probe: argValue('--probe', null),
+  simLane: argValue('--sim-lane', process.env.SIM_LANE || 'worker'),
+  canary: argv.includes('--canary'),
   expectedHash: argValue('--expected-hash', GOLDEN_HASH),
   json: argv.includes('--json'),
 };
@@ -260,6 +289,7 @@ function createWorkerClient() {
   });
   return {
     worker,
+    lane: 'worker',
     postNs: 0n,
     send(msg) {
       msg.seq = ++seq;
@@ -271,15 +301,72 @@ function createWorkerClient() {
   };
 }
 
+// SIM_LANE=main — the in-process client. Identical host module, identical
+// reply objects, identical in-order serialization: a promise chain stands in
+// for the worker's postMessage chain (each directive completes before the next
+// dispatches). The ONLY differences are transport artifacts: no structured
+// clone, no real sendNs/wire latency. Rejection shape is normalized to the
+// worker lane's (throw → 'worker error: <message>') so fail-closed parity is
+// exact under --probe crash.
+function createInProcessClient() {
+  const host = createSimHost();
+  let seq = 0;
+  let chain = Promise.resolve();
+  return {
+    lane: 'main',
+    send(msg) {
+      msg.seq = ++seq;
+      const task = chain.then(async () => {
+        try {
+          let reply;
+          if (msg.kind === 'init') {
+            reply = { kind: 'ready', ...(await host.init(msg)) };
+          } else if (msg.kind === 'tick') {
+            reply = await host.tick(msg);
+            reply.kind = 'tickDone';
+            reply.sendNs = Number(process.hrtime.bigint());
+          } else if (msg.kind === 'finalize') {
+            reply = { kind: 'done', ...(await host.finalize()) };
+          } else if (msg.kind === 'shutdown') {
+            host.shutdown();
+            reply = { kind: 'bye' };
+          } else {
+            throw new Error(`unknown directive kind: ${msg.kind}`);
+          }
+          reply.seq = msg.seq;
+          reply._recvNs = process.hrtime.bigint();
+          return reply;
+        } catch (error) {
+          const err = new Error(`worker error: ${error && error.message ? error.message : error}`);
+          err.stack = error && error.stack ? String(error.stack) : err.stack;
+          throw err;
+        }
+      });
+      // Serialize regardless of outcome — the next directive must not run while
+      // this one is mid-flight, matching the worker adapter's chain.
+      chain = task.then(() => {}, () => {});
+      return task;
+    },
+    async terminate() { await chain.catch(() => {}); },
+  };
+}
+
+function createClient(lane) {
+  return lane === 'main' ? createInProcessClient() : createWorkerClient();
+}
+
 // ---------------------------------------------------------------------------
 // One full run.
 // ---------------------------------------------------------------------------
 async function runOnce(options = {}) {
   const tape = readJson(OPT.inputs);
   const frames = normalizeTape(tape);
-  const client = createWorkerClient();
+  const lane = options.lane || OPT.simLane;
+  const client = createClient(lane);
   try {
-    return await runBody(client, frames, options);
+    const result = await runBody(client, frames, options);
+    result.lane = lane;
+    return result;
   } finally {
     await client.terminate();
   }
@@ -291,16 +378,13 @@ async function runBody(client, frames, options = {}) {
   const world = createPresentationWorld();
   const publisher = createPresentationPublisher(world, readModel, { journal });
 
-  // 8-deep completedTick ring — mirrors simulationRunner's bounded publication.
-  const completedTickRing = [];
-  function ringPush(record) {
-    if (completedTickRing.length >= COMPLETED_TICK_RING_DEPTH) {
-      throw new Error(`completedTick ring overflow beyond ${COMPLETED_TICK_RING_DEPTH}`);
-    }
-    completedTickRing.push(record);
-  }
+  // The in-flight directive ring — production's 8-deep completedTick bound,
+  // moved ahead of the wire: pending replies hold journal packs until the
+  // present side drains them (newest-wins per frame).
+  const pendingDirectives = []; // {order, p, meta, resolved, reply, failed}
   let ringHighWater = 0;
   let ackedJournalEnd = 0;
+  let simulationFailure = null;
   const timing = {
     packMs: [], wireMs: [], consumeMs: [], transportMs: [],
     workMs: [], directiveWireMs: [], rttMs: [], transportTicks: [],
@@ -380,6 +464,11 @@ async function runBody(client, frames, options = {}) {
     journalCapacity: OPT.journalCapacity,
     scenarioContractPath: 'src/data/scenarios/47a.scenario.json',
     eagerMarketMint: options.eagerMarketMint === true,
+    // Instrumentation flags (item D-F3): probe blocks ship only when asked.
+    aux: OPT.probe === 'aux',
+    auxVerify: OPT.probe === 'aux',
+    domainProbe: OPT.probe === 'domains',
+    crashAt: Number.isSafeInteger(options.crashAt) ? options.crashAt : null,
   });
   assert.equal(init.kind, 'ready');
 
@@ -407,14 +496,18 @@ async function runBody(client, frames, options = {}) {
   // init batch, then the init probe signs the full set like a completed tick.
   applyDomainUpdatesTracked(init.domainUpdates);
   for (const key of DOMAIN_MIRROR_KEYS) {
-    if (!readModel.domains.has(key)) domainMissingKeys.push(key);
+    if (!readModel.domains.has(key)) {
+      // Leaf keys that resolve absent at init (drill.*, sectorSim.field,
+      // save.slots, factionPresence.boarding) aren't "missing" — they ship a
+      // facade the first tick the leaf becomes present.
+      if (resolveDomainValue(initState, key) === undefined) continue;
+      domainMissingKeys.push(key);
+    }
   }
   compareDomainProbe(init.domainProbe, 'init');
 
   let frameIndex = 0;
   let currentInput = frames[0] ? frames[0].input : {};
-  const pendingTicks = []; // promises, in-order
-  const tickMeta = new Map();
   // Stage-1 command channel: all directive-side mutations cross as typed
   // {input|bus|settings|rpc} envelopes. refInputHistory records every input
   // envelope main-side so the worker's own history.toTape() proves lossless
@@ -547,8 +640,67 @@ async function runBody(client, frames, options = {}) {
     refInputHistory.record(tick, currentInput, { sequence: seq });
   }
 
-  function postTick(tick, steps) {
-    enqueueFrameEnvelopes(tick);
+  // ---- stage-6 flip: accumulator on main, steps as directives ------------
+  const flip = {
+    frames: 0, steppingFrames: 0, multiStepFrames: 0, zeroStepFrames: 0,
+    directivesPosted: 0, drainDirectives: 0,
+    repliesConsumed: 0, completedTicksConsumed: 0,
+    presentedTicks: 0, rePresents: 0, skippedPresentationTicks: 0,
+    maxInFlight: 0, alphaSum: 0, lastAlpha: 0,
+    orderViolations: 0,
+  };
+  const canaryDigests = options.canary === true ? [] : null;
+  const warmStubTicks = [];
+  let lastDrainedOrder = -1;
+
+  const canaryScratch = {};
+  // Digest canary — hash every reply's deterministic fields (tick ids, journal
+  // pack contents incl. typed-array payloads, spawn/aux/domain/event channels,
+  // acks). Timing fields are deliberately excluded.
+  function replyDigestSig(reply) {
+    const pack = reply.pack || {};
+    return {
+      tick: reply.tick,
+      stateTick: reply.stateTick,
+      simTime: reply.simTime,
+      // inputWallMs carries the enqueue wall clock (Date.now) — scheduling metadata, not a
+      // sim-truth field. Null it so the canary compares like-for-like across lanes/processes.
+      completedTick: reply.completedTick ? { ...reply.completedTick, inputWallMs: 0 } : null,
+      journalStart: reply.journalStart,
+      journalEnd: reply.journalEnd,
+      journalFullRebuild: reply.journalFullRebuild === true,
+      journalRebuildGeneration: reply.journalRebuildGeneration,
+      journalValid: reply.journalValid === true,
+      pack: {
+        count: pack.count, start: pack.start, end: pack.end,
+        scalars: pack.scalars, kinds: pack.kinds, typeIndex: pack.typeIndex,
+        typeTable: pack.typeTable, spawnEntityIds: pack.spawnEntityIds,
+      },
+      spawnInfos: reply.spawnInfos,
+      auxUpserts: reply.auxUpserts,
+      auxRemovals: reply.auxRemovals,
+      collectProbe: reply.collectProbe,
+      // Wall-clock by design (slot savedAt/lastSavedAt ISO stamps, excluded from the
+      // authoritative hash): normalize ISO strings so the canary compares sim truth only.
+      domainUpdates: Array.isArray(reply.domainUpdates)
+        ? reply.domainUpdates.map((u) => u && typeof u.v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(u.v) ? { ...u, v: '<iso>' } : u)
+        : reply.domainUpdates,
+      domainProbe: reply.domainProbe,
+      domainShipBytes: reply.domainShipBytes,
+      events: reply.events,
+      warmStubs: reply.warmStubs,
+      commandsProbe: reply.commandsProbe,
+      commandProbe: reply.commandProbe,
+      foldsApplied: reply.foldsApplied,
+      rpcAcks: reply.rpcAcks,
+      settingsAcks: reply.settingsAcks,
+      spawnAcks: reply.spawnAcks,
+      commandAcks: reply.commandAcks,
+    };
+  }
+
+  function postTick(tick, steps, extra = null) {
+    if (steps > 0) enqueueFrameEnvelopes(tick);
     const commands = commandRing.drain();
     const sendNs = Number(process.hrtime.bigint());
     const p = client.send({
@@ -562,169 +714,241 @@ async function runBody(client, frames, options = {}) {
       domains: OPT.probe === 'domains',
       commandsProbe: OPT.probe === 'commands',
       commandProbe: OPT.probe === 'commands',
+      ...(extra || {}),
     });
-    tickMeta.set(p, { sendNs, tick });
-    pendingTicks.push(p);
+    const entry = {
+      order: flip.directivesPosted++,
+      p, meta: { sendNs, tick, steps, ...extra },
+      resolved: false, reply: null, failed: null,
+    };
+    if (steps === 0) flip.drainDirectives++;
+    p.then(
+      (reply) => { entry.resolved = true; entry.reply = reply; },
+      (error) => { entry.resolved = true; entry.failed = error; },
+    );
+    pendingDirectives.push(entry);
+    ringHighWater = Math.max(ringHighWater, pendingDirectives.length);
   }
 
-  function consumeRing(threshold) {
-    // Consume drain: completedTicks leave the ring when the present side applies
-    // their journal range (consumeLatestCompletedTick drains all pending). A
-    // consume-batch >1 models present-side lag (frames slower than ticks).
-    while (completedTickRing.length >= threshold) {
-      const item = completedTickRing.shift();
-      for (const evt of item.events || []) {
-        eventsReceived++;
-        if (evt && typeof evt === 'object' && evt.t) {
-          receivedByType[evt.t] = (receivedByType[evt.t] || 0) + 1;
-          if (evt.lane === 'presentation') {
-            // Re-enqueue into the presentationQueue model; drain one slot per
-            // consumed tick (the 8/frame drain budget lives on the main side).
-            presentationQueue.push(evt);
-            for (let n = 0; n < 8 && presentationQueue.length; n++) {
-              presentationQueue.shift();
-              presentationDrained++;
-            }
+  // Every drained reply applies its full stream — events, domain updates,
+  // journal pack, spawn infos, aux rows, acks — regardless of whether its
+  // completedTick is the one that ends up presented.
+  function applyReplyStreams(reply) {
+    const meta = reply._meta;
+    for (const evt of reply.events || []) {
+      eventsReceived++;
+      if (evt && typeof evt === 'object' && evt.t) {
+        receivedByType[evt.t] = (receivedByType[evt.t] || 0) + 1;
+        if (evt.lane === 'presentation') {
+          // Re-enqueue into the presentationQueue model; drain one slot per
+          // consumed tick (the 8/frame drain budget lives on the main side).
+          presentationQueue.push(evt);
+          for (let n = 0; n < 8 && presentationQueue.length; n++) {
+            presentationQueue.shift();
+            presentationDrained++;
           }
         }
       }
-      // Stage-4: domain updates apply on every reply — a steps:0 directive can
-      // still carry command-driven domain mutations the mirror must not lose.
-      applyDomainUpdatesTracked(item.domainUpdates);
-      if (item.completedTick == null) {
-        // steps:0 directive — commands delivered, no completedTick published.
-        continue;
-      }
-      const frame = item;
-      const meta = frame._meta;
-      const recvNs = frame._recvNs;
-      journal.push(frame.pack, {
-        fullRebuild: frame.journalFullRebuild,
-        generation: frame.journalRebuildGeneration,
-      });
-      if (frame.journalFullRebuild) readModel.entities.clear();
-      applySpawnInfos(readModel, frame.spawnInfos);
-      applyAuxUpserts(readModel, frame.auxUpserts);
-      applyAuxRemovals(readModel, frame.auxRemovals);
-      const consumeStart = process.hrtime.bigint();
-      const r = publisher.consume({
-        journalStart: frame.journalStart,
-        journalEnd: frame.journalEnd,
-        journalFullRebuild: frame.journalFullRebuild,
-        journalRebuildGeneration: frame.journalRebuildGeneration,
-        journalValid: frame.journalValid,
-        journal,
-      });
-      const consumeNs = process.hrtime.bigint() - consumeStart;
-      if (r.fallback) {
-        throw new Error(`publisher fell back at tick ${meta.tick}: ${r.error}`);
-      }
-      // Stage-3: destroy records carry the entities-map deletions (parity with
-      // state.entities.delete timing — removal-time, not kill-time).
-      if (frame.journalStart < frame.journalEnd) {
-        destroyScratch.length = 0;
-        journal.visitRange(frame.journalStart, frame.journalEnd, null, (rec) => {
-          if (rec.kind === JOURNAL_DESTROY_KIND) destroyScratch.push(rec.entityId);
-        });
-        if (destroyScratch.length) applyDestroyIds(readModel, destroyScratch);
-      }
-      journal.discardThrough(frame.journalEnd);
-      ackedJournalEnd = Math.max(ackedJournalEnd, frame.journalEnd);
-
-      // Gate F — collect-set equality: the read model's windowed collect must
-      // return the same id set the worker's live collect just walked.
-      const probe = frame.collectProbe;
-      if (probe && probe.digest) {
-        collectProbes++;
-        readModelCollectIds(readModel, probe, readModelScratch);
-        const modelDigest = digestIds(readModelScratch);
-        if (modelDigest !== probe.digest) {
-          collectMismatches++;
-          if (collectMismatchSamples.length < 8) {
-            const modelSet = new Set(readModelScratch);
-            const liveSet = new Set(probe.ids || []);
-            collectMismatchSamples.push({
-              tick: meta.tick,
-              modelDigest,
-              liveDigest: probe.digest,
-              liveCount: probe.count,
-              modelCount: readModelScratch.length,
-              onlyModel: readModelScratch.filter((id) => !liveSet.has(id)).slice(0, 12),
-              onlyLive: (probe.ids || []).filter((id) => !modelSet.has(id)).slice(0, 12),
-            });
-          }
-        }
-      }
-
-      // Gate F2 — domain-mirror parity: every mirrored key present in
-      // readModel.domains, facade signatures equal to the worker's live set.
-      compareDomainProbe(frame.domainProbe, meta.tick);
-
-      const wireNs = recvNs - BigInt(frame.sendNs);
-      const directiveWireNs = BigInt(frame.arrivalNs) - BigInt(meta.sendNs);
-      const transportNs = wireNs + BigInt(Math.round(frame.packMs * 1e6)) + consumeNs;
-      timing.packMs.push(frame.packMs);
-      timing.wireMs.push(Number(wireNs) / 1e6);
-      timing.consumeMs.push(Number(consumeNs) / 1e6);
-      timing.transportMs.push(Number(transportNs) / 1e6);
-      timing.workMs.push(frame.workMs);
-      timing.directiveWireMs.push(Number(directiveWireNs) / 1e6);
-      timing.rttMs.push((Number(recvNs) - meta.sendNs) / 1e6);
-      timing.transportTicks.push({ tick: meta.tick, ms: Number(transportNs) / 1e6 });
-      timing.domainDiffMs.push(frame.domainDiffMs || 0);
-      timing.domainShipBytes.push(frame.domainShipBytes || 0);
     }
-  }
-
-  async function drainOne() {
-    const p = pendingTicks.shift();
-    const meta = tickMeta.get(p);
-    tickMeta.delete(p);
-    const reply = await p;
-    reply._meta = meta;
+    applyDomainUpdatesTracked(reply.domainUpdates);
     if (Array.isArray(reply.rpcAcks)) observedRpcAcks.push(...reply.rpcAcks);
     if (Array.isArray(reply.settingsAcks)) observedSettingsAcks.push(...reply.settingsAcks);
     observeStage5Reply(reply);
-    ringPush(reply); // tickDone envelope = completedTick + journal byte-range
-    ringHighWater = Math.max(ringHighWater, completedTickRing.length);
-    consumeRing(OPT.consumeBatch);
+    if (Array.isArray(reply.warmStubs) && reply.warmStubs.length) {
+      warmStubTicks.push({ tick: meta.tick, count: reply.warmStubs.length });
+    }
+    journal.push(reply.pack, {
+      fullRebuild: reply.journalFullRebuild,
+      generation: reply.journalRebuildGeneration,
+    });
+    if (reply.journalFullRebuild) readModel.entities.clear();
+    applySpawnInfos(readModel, reply.spawnInfos);
+    applyAuxUpserts(readModel, reply.auxUpserts);
+    applyAuxRemovals(readModel, reply.auxRemovals);
+    if (canaryDigests) {
+      const sig = replyDigestSig(reply);
+      canaryDigests.push({ order: reply._meta.order, tick: reply.tick, digest: createHash('sha256').update(canonicalSignature(sig, canaryScratch)).digest('hex'), sig });
+    }
   }
 
-  // Pause-probe: at tick 2, deliver the tick-2 tape commands via a steps:0
-  // directive (timeScale<=0 path), then a normal steps:1 tick. Command drain at
-  // directive level must not strand them; hash stays identical.
+  // consumeLatestCompletedTick semantics on the wire: drain every RESOLVED
+  // reply in post order, then present only the newest completed tick — merged
+  // [earliest journalStart .. newest journalEnd]. A drained-but-skipped reply
+  // still applied its streams above; only its presentation tick is dropped
+  // (skippedPresentationTicks = production's stale-tick discard counter).
+  function consumeResolved() {
+    const batch = OPT.consumeBatch;
+    let drained = 0;
+    let consumedTicks = 0;
+    let mergedStart = null;
+    let rebuildGen = null;
+    let latest = null;
+    while (pendingDirectives.length && pendingDirectives[0].resolved
+        && (batch === 0 || drained < batch)) {
+      const entry = pendingDirectives.shift();
+      drained++;
+      flip.repliesConsumed++;
+      // SPSC ordering proof: reply stream must drain in strict post order.
+      if (entry.order <= lastDrainedOrder) flip.orderViolations++;
+      lastDrainedOrder = entry.order;
+      if (entry.failed) {
+        simulationFailure = {
+          site: 'tick',
+          tick: entry.meta.tick,
+          message: String((entry.failed && entry.failed.message) || entry.failed),
+        };
+        throw entry.failed; // fail-closed — same shape as an in-process step throw
+      }
+      const reply = entry.reply;
+      reply._meta = entry.meta;
+      applyReplyStreams(reply);
+      if (meta_pauseProbeCheck(reply, entry)) { /* counted inside */ }
+      if (reply.completedTick != null) {
+        consumedTicks++;
+        flip.completedTicksConsumed++;
+        if (mergedStart == null || reply.journalFullRebuild) mergedStart = reply.journalStart;
+        if (reply.journalFullRebuild) rebuildGen = reply.journalRebuildGeneration;
+        latest = reply;
+      }
+    }
+    if (!latest) return;
+    flip.presentedTicks++;
+    flip.skippedPresentationTicks += consumedTicks - 1;
+    const frame = latest;
+    const meta = frame._meta;
+    const recvNs = frame._recvNs;
+    // Destroy ids come out of the merged journal range — the read model tracks
+    // the presented window, same as production's merged consume.
+    if (mergedStart < frame.journalEnd) {
+      destroyScratch.length = 0;
+      journal.visitRange(mergedStart, frame.journalEnd, null, (rec) => {
+        if (rec.kind === JOURNAL_DESTROY_KIND) destroyScratch.push(rec.entityId);
+      });
+      if (destroyScratch.length) applyDestroyIds(readModel, destroyScratch);
+    }
+    const consumeStart = process.hrtime.bigint();
+    const r = publisher.consume({
+      journalStart: mergedStart,
+      journalEnd: frame.journalEnd,
+      journalFullRebuild: rebuildGen != null,
+      journalRebuildGeneration: rebuildGen != null ? rebuildGen : frame.journalRebuildGeneration,
+      journalValid: frame.journalValid,
+      journal,
+    });
+    const consumeNs = process.hrtime.bigint() - consumeStart;
+    if (r.fallback) {
+      throw new Error(`publisher fell back at tick ${meta.tick}: ${r.error}`);
+    }
+    journal.discardThrough(frame.journalEnd);
+    ackedJournalEnd = Math.max(ackedJournalEnd, frame.journalEnd);
+
+    // Gate F — collect-set equality (instrumented ticks only; the probe block
+    // ships under --probe aux).
+    const probe = frame.collectProbe;
+    if (probe && probe.digest) {
+      collectProbes++;
+      readModelCollectIds(readModel, probe, readModelScratch);
+      const modelDigest = digestIds(readModelScratch);
+      if (modelDigest !== probe.digest) {
+        collectMismatches++;
+        if (collectMismatchSamples.length < 8) {
+          const modelSet = new Set(readModelScratch);
+          const liveSet = new Set(probe.ids || []);
+          collectMismatchSamples.push({
+            tick: meta.tick,
+            modelDigest,
+            liveDigest: probe.digest,
+            liveCount: probe.count,
+            modelCount: readModelScratch.length,
+            onlyModel: readModelScratch.filter((id) => !liveSet.has(id)).slice(0, 12),
+            onlyLive: (probe.ids || []).filter((id) => !modelSet.has(id)).slice(0, 12),
+          });
+        }
+      }
+    }
+
+    // Gate F2 — domain-mirror parity (probe blocks ship under --probe domains).
+    compareDomainProbe(frame.domainProbe, meta.tick);
+
+    const wireNs = recvNs - BigInt(frame.sendNs);
+    const directiveWireNs = BigInt(frame.arrivalNs) - BigInt(meta.sendNs);
+    const transportNs = wireNs + BigInt(Math.round(frame.packMs * 1e6)) + consumeNs;
+    timing.packMs.push(frame.packMs);
+    timing.wireMs.push(Number(wireNs) / 1e6);
+    timing.consumeMs.push(Number(consumeNs) / 1e6);
+    timing.transportMs.push(Number(transportNs) / 1e6);
+    timing.workMs.push(frame.workMs);
+    timing.directiveWireMs.push(Number(directiveWireNs) / 1e6);
+    timing.rttMs.push((Number(recvNs) - meta.sendNs) / 1e6);
+    timing.transportTicks.push({ tick: meta.tick, ms: Number(transportNs) / 1e6 });
+    timing.domainDiffMs.push(frame.domainDiffMs || 0);
+    timing.domainShipBytes.push(frame.domainShipBytes || 0);
+  }
+
+  let pauseReplyOk = false;
+  function meta_pauseProbeCheck(reply, entry) {
+    if (!entry.meta || entry.meta.pauseProbe !== true) return false;
+    assert.equal(reply.completedTick, null, 'steps:0 must not publish a completedTick');
+    assert.equal(reply.stateTick, entry.meta.tick, 'steps:0 must not advance state.tick');
+    pauseReplyOk = true;
+    return true;
+  }
+
+  // Pause-probe: at the frame whose step produces tick 2, deliver the tick-2
+  // tape commands through a steps:0 drain directive first (the timeScale<=0
+  // path), then the step itself. Ordering is post-order on the SPSC channel.
   const pauseAt = OPT.probe === 'pause' ? 2 : -1;
 
-  for (let tick = 0; tick < OPT.ticks; tick++) {
-    if (tick === pauseAt) {
-      pauseProbed = true;
-      enqueueFrameEnvelopes(tick);
-      // Settings + rpc kinds exercise the same steps:0 drain: an idempotent
-      // timeScale write and a noop rpc must land even with no tick advancing,
-      // and their acks must come back on the directive reply.
-      commandRing.pushSettings('timeScale', 1);
-      commandRing.pushRpc('pause-probe-1', 'noop');
-      const commands = commandRing.drain();
-      const paused = await client.send({
-        kind: 'tick', tick, commands, steps: 0,
-        ackJournalEnd: OPT.ackStall ? 0 : ackedJournalEnd,
-      });
-      assert.equal(paused.kind, 'tickDone');
-      assert.equal(paused.completedTick, null, 'steps:0 must not publish a completedTick');
-      assert.equal(paused.stateTick, tick, 'steps:0 must not advance state.tick');
-      applyDomainUpdatesTracked(paused.domainUpdates);
-      if (Array.isArray(paused.rpcAcks)) observedRpcAcks.push(...paused.rpcAcks);
-      if (Array.isArray(paused.settingsAcks)) observedSettingsAcks.push(...paused.settingsAcks);
-      observeStage5Reply(paused);
+  const advanceResult = { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+  let accumulator = 0;
+  let nextTick = 0;
+  for (let f = 0; nextTick < OPT.ticks; f++) {
+    flip.frames++;
+    const frameDt = LOOP_FIXED_DT * FRAME_PATTERN[f % FRAME_PATTERN.length];
+    advanceFixedTimestep(accumulator, frameDt, 1, () => {
+      const tick = nextTick++;
+      if (tick === pauseAt && !pauseProbed) {
+        pauseProbed = true;
+        // Drain directive: tape commands for this tick + a settings write and
+        // a noop rpc exercise the steps:0 command path — acks still return.
+        enqueueFrameEnvelopes(tick);
+        commandRing.pushSettings('timeScale', 1);
+        commandRing.pushRpc('pause-probe-1', 'noop');
+        postTick(tick, 0, { pauseProbe: true });
+      }
       postTick(tick, 1);
-      while (pendingTicks.length) await drainOne();
-      continue;
+    }, advanceResult, LOOP_FIXED_DT, MAX_CATCHUP_STEPS);
+    accumulator = advanceResult.accumulator;
+    // interpolationAlpha = clamp(accumulator / fixedDt) — a main-side schedule
+    // quantity computed before the drain; worker execution latency never
+    // enters it.
+    flip.lastAlpha = Math.min(1, Math.max(0, accumulator / LOOP_FIXED_DT));
+    flip.alphaSum += flip.lastAlpha;
+    if (advanceResult.steps > 0) {
+      flip.steppingFrames++;
+      if (advanceResult.steps > 1) flip.multiStepFrames++;
+    } else {
+      flip.zeroStepFrames++;
+      // 0-step frames still drain pending commands — an unpause/load addressed
+      // to a non-ticking lane must not strand in the ring.
+      if (commandRing.size > 0) postTick(nextTick, 0, { drain: true });
     }
-    postTick(tick, 1);
-    if (pendingTicks.length >= OPT.pipeline) await drainOne();
+    // Bounded in-flight window: block only when the pipeline bound is hit AND
+    // the oldest reply hasn't landed; otherwise drain whatever resolved.
+    while (pendingDirectives.length >= OPT.pipeline && !pendingDirectives[0].resolved) {
+      await pendingDirectives[0].p.then(() => {}, () => {});
+    }
+    const beforeConsumed = flip.repliesConsumed;
+    consumeResolved();
+    if (flip.repliesConsumed === beforeConsumed) flip.rePresents++;
   }
-  while (pendingTicks.length) await drainOne();
-  consumeRing(1);
+  // Final drain — every posted directive resolves and consumes.
+  while (pendingDirectives.length) {
+    if (!pendingDirectives[0].resolved) {
+      await pendingDirectives[0].p.then(() => {}, () => {});
+    }
+    consumeResolved();
+  }
 
   const fin = await client.send({ kind: 'finalize' });
   assert.equal(fin.kind, 'done');
@@ -764,6 +988,17 @@ async function runBody(client, frames, options = {}) {
     auxRowsShipped: fin.auxRowsShipped,
     auxUpsertsTotal: fin.auxUpsertsTotal,
     auxRemovalsTotal: fin.auxRemovalsTotal,
+    auxJournalArmed: fin.auxJournalArmed,
+    auxJournalDirtyAdds: fin.auxJournalDirtyAdds,
+    auxJournalSkippedRows: fin.auxJournalSkippedRows,
+    auxJournalBreaches: fin.auxJournalBreaches,
+    auxJournalBreachSamples: fin.auxJournalBreachSamples,
+    warmStubCount: fin.warmStubCount,
+    warmStubTicks,
+    flip,
+    canaryDigests,
+    simulationFailure,
+    pauseReplyOk,
     domainProbes,
     domainSweeps,
     domainPathChecks,
@@ -817,12 +1052,73 @@ function reportStats(s) {
   return { n: s.n, mean: round(s.mean), p50: round(s.p50), p95: round(s.p95), max: round(s.max) };
 }
 
+// --probe crash: an injected worker step throw must surface as a rejected
+// directive at the same tick on BOTH lanes — fail-closed parity is what main
+// would see as `onSimulationFailure` after the flip.
+async function runCrashLane(lane, crashAt) {
+  const client = createClient(lane);
+  const result = { lane, failed: false, failTick: null, message: null };
+  try {
+    const init = await client.send({
+      kind: 'init', seed: OPT.seed, reloadAt: null,
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json',
+      crashAt,
+    });
+    if (init.kind !== 'ready') throw new Error(`init failed on ${lane} lane`);
+    for (let t = 0; t <= crashAt + 2; t++) {
+      try {
+        await client.send({ kind: 'tick', tick: t, commands: [], steps: 1, ackJournalEnd: 0 });
+      } catch (error) {
+        result.failed = true;
+        result.failTick = t;
+        result.message = String(error && error.message ? error.message : error);
+        return result;
+      }
+    }
+    return result;
+  } finally {
+    await client.terminate();
+  }
+}
+
 async function main() {
   const results = [];
+  // --probe crash: dedicated fail-closed check across both lanes.
+  let crash = { enabled: OPT.probe === 'crash' };
+  if (crash.enabled) {
+    const crashAt = 240;
+    const workerRes = await runCrashLane('worker', crashAt);
+    const mainRes = await runCrashLane('main', crashAt);
+    crash = {
+      enabled: true, crashAt,
+      pass: workerRes.failed === true && mainRes.failed === true
+        && workerRes.failTick === mainRes.failTick
+        && workerRes.message === mainRes.message,
+      worker: workerRes,
+      main: mainRes,
+    };
+    const verdict = crash.pass ? 'ALL PASS' : 'GATE FAILURE';
+    const out = { schema: 'spaceface.s1WorkerSpike.v1', mode: 'crash-probe', options: OPT, gateJ_crash: crash, verdict };
+    if (OPT.json) {
+      console.log(JSON.stringify(out, null, 2));
+    } else {
+      console.log(`\n=== S1 Phase-B stage-6 spike: crash probe ===`);
+      console.log(`GATE J crash       : ${crash.pass ? 'PASS' : 'FAIL'}  crashAt=${crashAt}`);
+      console.log(`  worker: failed=${workerRes.failed} failTick=${workerRes.failTick} message=${workerRes.message}`);
+      console.log(`  main  : failed=${mainRes.failed} failTick=${mainRes.failTick} message=${mainRes.message}`);
+      console.log(`verdict: ${verdict}`);
+    }
+    process.exitCode = crash.pass ? 0 : 1;
+    return;
+  }
+
   // --probe market-parity: identical scripted quote/inspect rpcs against the
   // lazy path (eager OFF) and the deferred path (eager ON). Answers AND the
   // whole-run state hash must match — deferred mints land byte-identically.
   const parity = { enabled: OPT.probe === 'market-parity' };
+  // --canary: run BOTH lanes and hash every reply's deterministic payload
+  // fields — the tick-for-tick journal-stream identity check (item A).
+  const canary = { enabled: OPT.canary === true };
   if (parity.enabled) {
     const off = await runOnce({ eagerMarketMint: false, parityQuotes: true });
     const on = await runOnce({ eagerMarketMint: true, parityQuotes: true });
@@ -840,6 +1136,55 @@ async function main() {
       return { id, equal: JSON.stringify(a) === JSON.stringify(b), off: a || null, on: b || null };
     });
     parity.pass = parity.hashEqual && parity.pairs.every((p) => p.equal && p.off && p.on);
+  } else if (canary.enabled) {
+    const workerRun = await runOnce({ lane: 'worker', canary: true });
+    const mainRun = await runOnce({ lane: 'main', canary: true });
+    results.push(workerRun, mainRun);
+    const w = workerRun.canaryDigests || [];
+    const m = mainRun.canaryDigests || [];
+    canary.workerDigests = w.length;
+    canary.mainDigests = m.length;
+    canary.mismatches = [];
+    const n = Math.min(w.length, m.length);
+    function diffSigPaths(a, b, base = '') {
+      const out = [];
+      if (a === b) return out;
+      if (a == null || b == null || typeof a !== 'object' || typeof b !== 'object') {
+        out.push(`${base || '$'}: ${JSON.stringify(a)?.slice(0, 60)} !== ${JSON.stringify(b)?.slice(0, 60)}`);
+        return out;
+      }
+      const aArr = Array.isArray(a) || ArrayBuffer.isView(a);
+      const bArr = Array.isArray(b) || ArrayBuffer.isView(b);
+      if (aArr !== bArr) { out.push(`${base}: type differs`); return out; }
+      if (aArr) {
+        const len = Math.max(a.length, b.length);
+        for (let i = 0; i < len && out.length < 24; i++) out.push(...diffSigPaths(a[i], b[i], `${base}[${i}]`));
+        return out;
+      }
+      for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+        if (out.length >= 24) break;
+        out.push(...diffSigPaths(a[k], b[k], base ? `${base}.${k}` : k));
+      }
+      return out;
+    }
+    for (let i = 0; i < n; i++) {
+      if (w[i].digest !== m[i].digest || w[i].tick !== m[i].tick) {
+        canary.mismatches.push({
+          index: i,
+          workerTick: w[i].tick, mainTick: m[i].tick,
+          workerDigest: w[i].digest, mainDigest: m[i].digest,
+          paths: diffSigPaths(w[i].sig, m[i].sig).slice(0, 12),
+        });
+      }
+    }
+    if (w.length !== m.length) {
+      canary.mismatches.push({ index: n, error: `digest count differs: worker=${w.length} main=${m.length}` });
+    }
+    canary.workerHash = workerRun.sha256;
+    canary.mainHash = mainRun.sha256;
+    canary.hashEqual = workerRun.sha256 === mainRun.sha256;
+    canary.pass = canary.mismatches.length === 0 && canary.hashEqual
+      && canary.workerDigests > 0 && canary.mainDigests > 0;
   } else {
     for (let i = 0; i < OPT.repeat; i++) {
       results.push(await runOnce());
@@ -852,7 +1197,7 @@ async function main() {
   // Gate (a): hash parity — mutating probes (aux) still must be deterministic
   // across repeats but are not expected to match the golden hash.
   const mutatingProbe = OPT.probe === 'aux' || OPT.probe === 'churn' || OPT.probe === 'domains'
-    || OPT.probe === 'commands' || OPT.probe === 'market-parity';
+    || OPT.probe === 'commands' || OPT.probe === 'market-parity' || OPT.probe === 'crash';
   const gateA = {
     pass: allHashEqual && (mutatingProbe || hashMatch) && results[0].stateTick === OPT.ticks,
     sha256: results[0].sha256,
@@ -946,15 +1291,24 @@ async function main() {
   // GATE F — stage-3 read model v1: the read-model collect (entities via
   // journal spawns/destroys + aux rows via the upsert/removal channel, windowed
   // query) must digest equal to the worker's live collectMeshPresentationEntities
-  // on every completed tick.
+  // on every completed tick. Stage-6: the probe is instrumentation — it ships
+  // only under --probe aux; flag-off runs skip the check (zero probe cost).
   const gateF = {
-    pass: run.collectMismatches === 0 && run.collectProbes > 0,
+    pass: OPT.probe !== 'aux' || (run.collectMismatches === 0 && run.collectProbes > 0),
+    instrumented: OPT.probe === 'aux',
     probes: run.collectProbes,
     mismatches: run.collectMismatches,
     samples: run.collectMismatchSamples,
     auxRowsShipped: run.auxRowsShipped,
     auxUpsertsTotal: run.auxUpsertsTotal,
     auxRemovalsTotal: run.auxRemovalsTotal,
+    auxJournalArmed: run.auxJournalArmed,
+    auxJournalDirtyAdds: run.auxJournalDirtyAdds,
+    auxJournalSkippedRows: run.auxJournalSkippedRows,
+    auxJournalBreaches: run.auxJournalBreaches,
+    auxJournalBreachSamples: run.auxJournalBreachSamples,
+    warmStubCount: run.warmStubCount,
+    warmStubTicks: run.warmStubTicks,
   };
 
   // GATE F2 — stage-4 domain mirrors (read model v2): every mirrored key
@@ -1003,8 +1357,9 @@ async function main() {
   };
 
   const gateF2 = {
-    pass: run.domainMismatches === 0 && run.domainProbes > 0
-      && run.domainMissingKeys.length === 0 && run.domainIdentityBreaks === 0,
+    pass: run.domainMissingKeys.length === 0 && run.domainIdentityBreaks === 0
+      && (OPT.probe !== 'domains' || (run.domainMismatches === 0 && run.domainProbes > 0)),
+    instrumented: OPT.probe === 'domains',
     probes: run.domainProbes,
     sweeps: run.domainSweeps,
     pathChecks: run.domainPathChecks,
@@ -1036,12 +1391,51 @@ async function main() {
     },
   };
 
+  // GATE I — digest canary (--canary): worker-lane replies must hash
+  // identical to main-lane replies for every directive — the journal stream
+  // is tick-for-tick identical across the flip, through the reload boundary.
+  const gateI = {
+    pass: !canary.enabled || canary.pass === true,
+    enabled: canary.enabled,
+    workerDigests: canary.workerDigests || 0,
+    mainDigests: canary.mainDigests || 0,
+    mismatches: canary.mismatches || [],
+    hashEqual: canary.hashEqual || null,
+  };
+
+  // Flip accounting — the schedule proof: accumulator kept on main, one
+  // directive per accumulated step, newest-wins consumption, ordering proof.
+  const flip = run.flip || {};
+  const flipOk = flip.completedTicksConsumed === OPT.ticks
+    && flip.presentedTicks + flip.rePresents >= 0
+    && flip.orderViolations === 0
+    && flip.maxInFlight <= OPT.pipeline;
+  const gateJ = {
+    pass: !canary.enabled || flipOk,
+    enabled: canary.enabled,
+    frames: flip.frames,
+    steppingFrames: flip.steppingFrames,
+    multiStepFrames: flip.multiStepFrames,
+    zeroStepFrames: flip.zeroStepFrames,
+    directivesPosted: flip.directivesPosted,
+    drainDirectives: flip.drainDirectives,
+    repliesConsumed: flip.repliesConsumed,
+    completedTicksConsumed: flip.completedTicksConsumed,
+    presentedTicks: flip.presentedTicks,
+    rePresents: flip.rePresents,
+    skippedPresentationTicks: flip.skippedPresentationTicks,
+    maxInFlight: flip.maxInFlight,
+    orderViolations: flip.orderViolations,
+    meanAlpha: flip.frames ? round(flip.alphaSum / flip.frames) : 0,
+    simulationFailure: run.simulationFailure,
+  };
+
   const summary = {
     schema: 'spaceface.s1WorkerSpike.v1',
     mode: 'whole-sim-in-worker',
     options: OPT,
-    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF, f2_domainMirrors: gateF2, g_commandSurface: gateG, h_marketParity: gateH },
-    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass && gateF2.pass && gateG.pass && gateH.pass ? 'ALL PASS' : 'GATE FAILURE',
+    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF, f2_domainMirrors: gateF2, g_commandSurface: gateG, h_marketParity: gateH, i_canary: gateI, j_flip: gateJ },
+    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass && gateF2.pass && gateG.pass && gateH.pass && gateI.pass && gateJ.pass ? 'ALL PASS' : 'GATE FAILURE',
     run: {
       entityCount: run.entityCount,
       droppedEventCount: run.droppedEventCount,
@@ -1060,7 +1454,7 @@ async function main() {
   if (OPT.json) {
     console.log(JSON.stringify(summary, null, 2));
   } else {
-    console.log(`\n=== S1 Phase-A spike: whole-sim-in-worker ===`);
+    console.log(`\n=== S1 Phase-B stage-6 spike: the flip (lane=${OPT.simLane}) ===`);
     console.log(`GATE A hash parity : ${gateA.pass ? 'PASS' : 'FAIL'}  sha256=${gateA.sha256}`);
     console.log(`                     expected=${gateA.expected}  runs=${gateA.runs} allEqual=${gateA.allRunsEqual}`);
     console.log(`GATE B transport   : ${gateB.pass ? 'PASS' : 'FAIL'}  <0.5ms/tick  ` +
@@ -1094,6 +1488,14 @@ async function main() {
       console.log(`                     pairs=${JSON.stringify(gateH.pairs.map((p) => ({ id: p.id, equal: p.equal })))}`);
       if (!gateH.pass) console.log(`                     detail=${JSON.stringify(gateH.pairs)}`);
     }
+    if (gateI.enabled) {
+      console.log(`GATE I canary      : ${gateI.pass ? 'PASS' : 'FAIL'}  digests=${gateI.workerDigests}/${gateI.mainDigests} mismatches=${gateI.mismatches.length} hashEqual=${gateI.hashEqual}`);
+      if (gateI.mismatches.length) {
+        console.log(`                     samples=${JSON.stringify(gateI.mismatches.slice(0, 6))}`);
+      }
+    }
+    console.log(`GATE J flip sched  : ${gateJ.pass ? 'PASS' : 'FAIL'}  frames=${gateJ.frames} (steps=${gateJ.steppingFrames} multi=${gateJ.multiStepFrames} zero=${gateJ.zeroStepFrames})`);
+    console.log(`                     directives=${gateJ.directivesPosted} (drain=${gateJ.drainDirectives}) consumed=${gateJ.repliesConsumed} completed=${gateJ.completedTicksConsumed} presented=${gateJ.presentedTicks} rePresents=${gateJ.rePresents} skipped=${gateJ.skippedPresentationTicks} maxInFlight=${gateJ.maxInFlight} orderViolations=${gateJ.orderViolations} meanAlpha=${gateJ.meanAlpha}`);
     console.log(`run: entities=${run.entityCount} events=${run.eventsReceived} dropped=${run.droppedEventCount} avgWorkMs=${round(run.avgWorkMs)} workerHeap=${round((run.workerHeapUsedBytes || 0) / 1e6, 1)}MB`);
     console.log(`rebuild reasons: ${JSON.stringify(run.rebuildReasons)}`);
     console.log(`identity offenders: ${JSON.stringify((run.identityOffenders || []).slice(0, 12))}`);

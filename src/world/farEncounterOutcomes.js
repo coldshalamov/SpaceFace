@@ -5,6 +5,7 @@
 import { hash32 } from '../core/rng.js';
 import { ballisticDrift } from './worldCatchup.js';
 import { encounterFingerprint, resolvedEncounterFingerprint } from './encounterCausality.js';
+import { markAuxRowDirty } from './auxRowJournal.js';
 
 const DELAY_MIN_S = 8;
 const DELAY_SPAN_S = 12;
@@ -66,6 +67,8 @@ export function resolveFarEncounters(state, simTime) {
 
         driftRecordTo(a, due, t);
         driftRecordTo(b, due, t);
+        markAuxRowDirty(table, a.id);
+        markAuxRowDirty(table, b.id);
 
         const lo = a.id < b.id ? a : b;
         const hi = a.id < b.id ? b : a;
@@ -91,6 +94,7 @@ export function resolveFarEncounters(state, simTime) {
         loser.nextEventAtT = -1;
         loser.encounterFingerprint = causality.fingerprint;
         loser.resolvedEncounterFingerprint = experience && experience.fingerprint;
+        markAuxRowDirty(table, loser.id);
         winner.nextEventAtT = t + WINNER_COOLDOWN_S;
         resolved++;
       }

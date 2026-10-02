@@ -2,6 +2,7 @@
 
 import { allocateEntityId, clearEntityRuntime } from '../core/entity.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const DRESSING_TABLE_SCHEMA = 'spaceface.dressingTable.v1';
 
@@ -72,6 +73,7 @@ export function insertDressingRow(state, spec = {}) {
   table.rows.push(row);
   table.byId.set(id, row);
   table.version++;
+  markAuxRowDirty(table, id);
   return row;
 }
 
@@ -90,6 +92,7 @@ export function dropDressingRow(state, id) {
   if (idx >= 0) table.rows.splice(idx, 1);
   table.byId.delete(id);
   table.version++;
+  markAuxRowRemoved(table, id);
   clearEntityRuntime(row);
   return true;
 }
@@ -106,6 +109,7 @@ export function dropDressingSector(state, sectorId, keep = null) {
     if (typeof keep === 'function' && keep(row)) continue;
     table.rows.splice(i, 1);
     table.byId.delete(row.id);
+    markAuxRowRemoved(table, row.id);
     clearEntityRuntime(row);
     dropped++;
   }

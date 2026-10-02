@@ -9,6 +9,7 @@ import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPoli
 import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
 export const ASTEROID_FIELD_CELL = 220;
@@ -138,6 +139,7 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.byId.set(id, rec);
   gridAdd(field, rec);
   field.version++;
+  markAuxRowDirty(field, id);
   return rec;
 }
 
@@ -204,6 +206,7 @@ function removeFieldRecord(field, rec) {
   gridRemove(field, rec);
   field.version++;
   rec.alive = false;
+  markAuxRowRemoved(field, rec.id);
   clearEntityRuntime(rec);
   return true;
 }

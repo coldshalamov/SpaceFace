@@ -7045,21 +7045,32 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
     });
   };
   let lastRequest = { requested: 0, ids: [] };
+  // Settle-verdict latch: under the worker lane the readiness verdict reads a mirror that can
+  // sit one transport frame behind the authored upgrades it gates. Require pending===0 on two
+  // consecutive observations (the mirror consumes a fresh transport frame between polls); the
+  // same rule on the in-process lane costs one extra yield and no verdict change.
+  let settledPolls = 0;
   while (now() - started < timeoutMs) {
     lastRequest = request();
     pump();
     const readiness = authoredCriticalVisualReadiness(state);
     const pending = (readiness && readiness.openingPending) || [];
     if (pending.length === 0) {
-      return {
-        settled: true,
-        waitedMs: now() - started,
-        pending: 0,
-        ids: [],
-        requested: lastRequest,
-        queue: describeAuthoredUpgradeQueue(options.scene),
-      };
+      settledPolls++;
+      if (settledPolls >= 2) {
+        return {
+          settled: true,
+          waitedMs: now() - started,
+          pending: 0,
+          ids: [],
+          requested: lastRequest,
+          queue: describeAuthoredUpgradeQueue(options.scene),
+        };
+      }
+      await yieldToMain();
+      continue;
     }
+    settledPolls = 0;
     const stillOpen = pending.filter((entry) => (
       openingAssetCanStillSettle(entry, state, options.meshes)
     ));

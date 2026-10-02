@@ -359,16 +359,34 @@ export function digestIds(ids) {
 //   conflicts / aiEncounter / interventions (outside the census set).
 // ---------------------------------------------------------------------------
 
+// Stage-6 narrowed census (item C): mirror only what the render/UI lane
+// provably reads. Whole roots carry dynamic consumers (player.cargo, economy.*,
+// missions.active, factions[id].rep, combat.attachments, bare `state.onboarding`
+// object reads, meta.seed/playtimeS, run.kind/ruleset, input.* live controls,
+// fuel.current/max, aceMemory[id], cursor on the asteroid screen, sandbox,
+// mode/simTime/tick/playerId/ruleset scalars). Dotted keys mirror just the
+// consumed subtree — resolveDomainValue walks every segment.
+//
+// Dropped vs the stage-4 set: world.sectorId and world.currentSector (dead
+// keys — neither ever exists on gameState), and the untouched halves of the
+// narrowed roots (sectorSim.* minus .field, npcJobs.* minus .byId,
+// factionPresence.* minus .boarding, automation internals, drill internals,
+// save internals, world.records internals besides .byId).
 export const DOMAIN_MIRROR_KEYS = Object.freeze([
-  'mode', 'simTime', 'tick', 'player', 'playerId',
-  'missions', 'nav', 'economy', 'drill', 'story', 'factions', 'combat',
-  'input', 'fuel', 'sectorSim', 'ruleset', 'npcJobs', 'factionPresence',
-  'aceMemory', 'automation', 'sandbox', 'onboarding', 'meta', 'run', 'save',
+  // whole-root mirrors
+  'mode', 'simTime', 'tick', 'playerId', 'ruleset',
+  'player', 'missions', 'nav', 'economy', 'story', 'factions', 'combat',
+  'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
+  // leaf-path mirrors (root stays on the facade; only the subtree ships)
+  'sectorSim.field', 'npcJobs.byId', 'factionPresence.boarding',
+  'automation.meta', 'automation.traders', 'automation.fleet',
+  'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
+  'drill.asteroidId',
+  'save.slots', 'save.currentSlot',
   'world.currentSectorId', 'world.sectors', 'world.discovery',
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
-  'world.scanPings', 'world.activeSector', 'world.records',
-  'world.currentSector', 'world.sectorId',
+  'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
 ]);
 
@@ -376,14 +394,21 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
 // value whose signature exceeds this is flagged in the run diagnostics.
 export const DOMAIN_SHIP_CAP_BYTES = 256 * 1024;
 
-// Live-state accessor for a mirrored key. Dotted keys resolve under state.world.
+// Live-state accessor for a mirrored key. Every segment walks off the state
+// root — 'world.currentSectorId' reaches state.world.currentSectorId, and the
+// stage-6 leaf keys ('sectorSim.field', 'drill.scan', 'world.records.byId')
+// walk their full path. A dead segment resolves to undefined: the differ then
+// treats the leaf as absent rather than throwing on a missing container.
 export function resolveDomainValue(state, key) {
   if (!state) return undefined;
-  if (key.startsWith('world.')) {
-    const world = state.world;
-    return world ? world[key.slice(6)] : undefined;
+  let node = state;
+  const start = key.indexOf('.');
+  if (start < 0) return node[key];
+  for (const seg of key.split('.')) {
+    if (node == null) return undefined;
+    node = node[seg];
   }
-  return state[key];
+  return node;
 }
 
 // Path granularity: mirrored roots are diffed at leaf-path level, not whole-key.
@@ -417,6 +442,19 @@ export const DOMAIN_WARM_TICKS = 10;
 // offset half a period from the probe sweep so no single pass does both.
 export const DOMAIN_ENUM_TICKS = 10;
 export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
+// Stage-6 per-domain freshness budgets (item C): leaf paths under a listed
+// root re-sign no more often than N passes. The effective interval is
+// max(sizeTier, cadence) — cadence only ever RELAXES a leaf (markets refresh
+// ~6x/s, slow UI bags ~1x/s); a cold leaf keeps its aligned-burst slot.
+// Roots not listed keep the size-tier schedule unchanged.
+export const DOMAIN_CADENCE = Object.freeze({
+  economy: 10, missions: 10, story: 10, factions: 30,
+  sectorSim: 10, npcJobs: 30, factionPresence: 10, automation: 30,
+  onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
+  'world.sectors': 10, 'world.discovery': 10, 'world.records': 60,
+  'world.frontierRumors': 10, 'world.scanPings': 10, 'world.activeSector': 10,
+  'world.vestaOreCache': 60, 'world.pallasHiddenCache': 60,
+});
 // Every Nth probe ships the full slot/digest set instead of the changed-set
 // delta: a periodic whole-facade re-verification that also re-checks for
 // facade paths the live state no longer has.
@@ -792,7 +830,12 @@ export function sameDomainContainerKind(a, b) {
 // segs[0] is the mirrored root key (which itself may contain dots, e.g.
 // 'world.currentSectorId').
 
-export function createDomainDiffer() {
+export function createDomainDiffer(options = {}) {
+  // Stage-6 instrumentation gate (item F3): the probe slot table + digest sets
+  // exist only for --probe domains runs. Production ticks pass probe:false and
+  // pay zero slot bookkeeping / zero probe alloc; diff updates are identical
+  // either way (probe content never fed the shipped updates).
+  const probeEnabled = options.probe === true;
   const paths = new Map();
   const sigScratch = {};
   const cloneScratch = {};
@@ -808,6 +851,7 @@ export function createDomainDiffer() {
   let probeGen = 0;
 
   function assignProbeSlot(node, path) {
+    if (!probeEnabled) return;
     const slot = freeSlots.length ? freeSlots.pop() : probeSlots.length;
     probeSlots[slot] = path;
     node.probeSlot = slot;
@@ -816,7 +860,7 @@ export function createDomainDiffer() {
   }
 
   function releaseProbeSlot(node) {
-    if (node.probeSlot == null) return;
+    if (!probeEnabled || node.probeSlot == null) return;
     probeSlots[node.probeSlot] = null;
     freeSlots.push(node.probeSlot);
     pendingRemovals.push(node.probeSlot);
@@ -895,11 +939,17 @@ export function createDomainDiffer() {
     }
     node.leaf = true;
     if (node.lastSign >= 0) {
-      if (node.bytes > DOMAIN_COLD_BYTES) {
-        if (tick % DOMAIN_COLD_TICKS !== DOMAIN_COLD_OFFSET) return;
-      } else if (node.bytes > DOMAIN_WARM_BYTES
-          && tick % DOMAIN_WARM_TICKS !== node.slot % DOMAIN_WARM_TICKS) {
-        return;
+      const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
+        : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
+      const interval = Math.max(tierTicks, DOMAIN_CADENCE[segs[0]] || 0);
+      if (interval > 1) {
+        // Cold leaves keep their aligned burst (the amortized pass the p95
+        // exclusion covers); every other interval staggers by node slot.
+        if (tierTicks === DOMAIN_COLD_TICKS && interval === DOMAIN_COLD_TICKS) {
+          if (tick % DOMAIN_COLD_TICKS !== DOMAIN_COLD_OFFSET) return;
+        } else if (tick % interval !== node.slot % interval) {
+          return;
+        }
       }
     }
     const sig = canonicalSignature(v, sigScratch);
@@ -933,25 +983,28 @@ export function createDomainDiffer() {
         walk(key, [key], resolveDomainValue(state, key), tick, updates, stats);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
-      const s = [];
-      const h = [];
-      for (const n of paths.values()) {
-        if (!n.leaf || n.probeSlot == null) continue;
-        if (sweep || n.probeChanged) {
-          s.push(n.probeSlot);
-          h.push(n.digest);
-          n.probeChanged = false;
+      let probe = null;
+      if (probeEnabled) {
+        const s = [];
+        const h = [];
+        for (const n of paths.values()) {
+          if (!n.leaf || n.probeSlot == null) continue;
+          if (sweep || n.probeChanged) {
+            s.push(n.probeSlot);
+            h.push(n.digest);
+            n.probeChanged = false;
+          }
         }
+        probe = {
+          gen: probeGen,
+          sweep,
+          a: pendingAdds.splice(0),
+          r: pendingRemovals.splice(0),
+          s,
+          h,
+        };
       }
       stats.diffMs = Number(process.hrtime.bigint() - start) / 1e6;
-      const probe = {
-        gen: probeGen,
-        sweep,
-        a: pendingAdds.splice(0),
-        r: pendingRemovals.splice(0),
-        s,
-        h,
-      };
       return { updates, probe, ...stats };
     },
   };

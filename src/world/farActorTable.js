@@ -11,6 +11,7 @@ import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
 import { resolveFarEncounters } from './farEncounterOutcomes.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
@@ -356,6 +357,7 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   }
   rec.lastExactT = toT;
   rec.lastObservedT = toT;
+  markAuxRowDirty(table, rec.id);
   // A moved row must re-key the spatial grid — otherwise query discs centred on the
   // stale cell keep returning it beside ghosts while its true cell never sees it.
   if (table && rec.pos) {
@@ -392,6 +394,7 @@ export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   table.byId.set(rec.id, rec);
   gridAdd(table, rec);
   table.version++;
+  markAuxRowDirty(table, rec.id);
   return rec;
 }
 
@@ -501,6 +504,7 @@ function removeFarRecord(table, rec) {
   gridRemove(table, rec);
   table.version++;
   rec.alive = false;
+  markAuxRowRemoved(table, rec.id);
   clearEntityRuntime(rec);
   return true;
 }
