@@ -345,6 +345,7 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
+    markAuxRowDirty(table, rec.id);
     return rec;
   }
   // In-place advance: the per-tick sweep only needs the record's fields to land —
@@ -353,6 +354,7 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   const advanced = advanceWorldRecordInto(rec, fromT, toT);
   if (!advanced) {
     rec.lastExactT = toT;
+    markAuxRowDirty(table, rec.id);
     return rec;
   }
   rec.lastExactT = toT;
@@ -596,7 +598,7 @@ export function promoteFarActor(state, id, helpers) {
     granted = true;
   }
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  catchUpFarRecord(rec, simTime);
+  catchUpFarRecord(rec, simTime, state.world && state.world.farActors);
   // The renderer resolves an id to one presentation row, so never raise a body onto an id a
   // dressing prop or field rock holds; take a fresh one instead.
   const reserved = Number.isSafeInteger(rec.id) && rec.id > 0

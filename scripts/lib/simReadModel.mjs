@@ -460,6 +460,19 @@ export const DOMAIN_CADENCE = Object.freeze({
 // facade paths the live state no longer has.
 export const DOMAIN_PROBE_SWEEP_TICKS = 60;
 
+// Cadence keys name the mirrored root OR a dot-prefix of it — 'sectorSim' binds
+// 'sectorSim.field', 'world.records' binds 'world.records.byId'. Longest prefix wins.
+const DOMAIN_CADENCE_KEYS = Object.keys(DOMAIN_CADENCE);
+function domainCadenceFor(rootKey) {
+  let ticks = 0;
+  for (const key of DOMAIN_CADENCE_KEYS) {
+    if (rootKey === key || rootKey.startsWith(`${key}.`)) {
+      if (DOMAIN_CADENCE[key] > ticks) ticks = DOMAIN_CADENCE[key];
+    }
+  }
+  return ticks;
+}
+
 function expandDepthFor(segs) {
   let depth = DOMAIN_EXPAND[segs[0]] || 0;
   for (const rule of DOMAIN_EXPAND_PATHS) {
@@ -941,7 +954,7 @@ export function createDomainDiffer(options = {}) {
     if (node.lastSign >= 0) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
-      const interval = Math.max(tierTicks, DOMAIN_CADENCE[segs[0]] || 0);
+      const interval = Math.max(tierTicks, domainCadenceFor(segs[0]));
       if (interval > 1) {
         // Cold leaves keep their aligned burst (the amortized pass the p95
         // exclusion covers); every other interval staggers by node slot.

@@ -180,6 +180,7 @@ import {
   insertDressingRow,
   getDressingRow,
 } from '../world/dressingTable.js';
+import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
   materializeAlienEcology,
@@ -3148,9 +3149,16 @@ export const world = {
     if (!spins || !spins.length) return;
     const entities = this.state.entities;
     for (const row of spins) {
-      const ent = (entities && entities.get && entities.get(row.id))
-        || getDressingRow(this.state, row.id);
-      if (ent) ent.rot += row.spin * dt;
+      const ent = entities && entities.get && entities.get(row.id);
+      if (ent) {
+        ent.rot += row.spin * dt;
+        continue;
+      }
+      const dr = getDressingRow(this.state, row.id);
+      if (dr) {
+        dr.rot += row.spin * dt;
+        markAuxRowDirty(this.state.world.dressing, dr.id);
+      }
     }
   },
 

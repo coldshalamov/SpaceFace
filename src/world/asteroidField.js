@@ -225,12 +225,13 @@ export function dropAsteroidFieldSector(state, sectorId) {
   return dropped;
 }
 
-function catchUpFieldRock(rec, simTime) {
+function catchUpFieldRock(rec, simTime, field = null) {
   if (!rec) return rec;
   const toT = Number.isFinite(simTime) ? simTime : 0;
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
+    markAuxRowDirty(field, rec.id);
     return rec;
   }
   const advanced = advanceResourceBody({
@@ -249,6 +250,7 @@ function catchUpFieldRock(rec, simTime) {
     rec.angVel = finite(advanced.angVel, rec.angVel);
   }
   rec.lastExactT = toT;
+  markAuxRowDirty(field, rec.id);
   return rec;
 }
 
@@ -312,7 +314,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     : null;
   if (!spawn) return null;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  catchUpFieldRock(rec, simTime);
+  catchUpFieldRock(rec, simTime, state.world && state.world.asteroidField);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
   const optic = isOpticRockData(data);

@@ -71,7 +71,6 @@ import {
   digestIds,
   DOMAIN_MIRROR_KEYS,
   readModelCollectIds,
-  resolveDomainValue,
   sameDomainContainerKind,
 } from './lib/simReadModel.mjs';
 
@@ -495,12 +494,13 @@ async function runBody(client, frames, options = {}) {
   // Stage-4 init coverage: every mirrored key must land a facade from the
   // init batch, then the init probe signs the full set like a completed tick.
   applyDomainUpdatesTracked(init.domainUpdates);
+  const initAbsentKeys = new Set(init.domainAbsentKeys || []);
   for (const key of DOMAIN_MIRROR_KEYS) {
     if (!readModel.domains.has(key)) {
       // Leaf keys that resolve absent at init (drill.*, sectorSim.field,
       // save.slots, factionPresence.boarding) aren't "missing" — they ship a
       // facade the first tick the leaf becomes present.
-      if (resolveDomainValue(initState, key) === undefined) continue;
+      if (initAbsentKeys.has(key)) continue;
       domainMissingKeys.push(key);
     }
   }

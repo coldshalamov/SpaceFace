@@ -56,6 +56,8 @@ import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.j
 import {
   createDomainDiffer,
   digestIds,
+  DOMAIN_MIRROR_KEYS,
+  resolveDomainValue,
 } from './simReadModel.mjs';
 import {
   finite,
@@ -785,6 +787,10 @@ export function createSimHost() {
       domainProbe: host.domainProbeEnabled ? initDomains.probe : null,
       domainShipBytes: initDomains.shipBytes,
       domainDiffMs: initDomains.diffMs,
+      // Mirror keys that resolve absent at init (drill.*, sectorSim.field,
+      // save.slots, factionPresence.boarding) — the main lane's missing-keys
+      // gate exempts exactly these; they facade on first presence.
+      domainAbsentKeys: DOMAIN_MIRROR_KEYS.filter((key) => resolveDomainValue(state, key) === undefined),
       scenarioContractSha256: scenarioContract.sha256,
     };
   }
