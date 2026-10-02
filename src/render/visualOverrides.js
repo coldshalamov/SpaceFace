@@ -28,6 +28,7 @@ import {
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  carryAdmittedOnceStamp,
   enqueueBoundaryUpgrade,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
@@ -1116,6 +1117,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
       // (owner chain, final visibility). One exact-target re-touch here pays any residual link
       // inside this continuation instead of the first presented bloom pass.

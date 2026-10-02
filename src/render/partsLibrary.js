@@ -3161,6 +3161,7 @@ function commitAuthoredCargoCapsuleBoundary(
   boundary.add(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActiveRoot(authored.root);
+  carryAdmittedOnceStamp(authored.root, boundary);
   releaseDetachedCargoCapsuleSubstrate(fallbackRoot);
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
@@ -3701,6 +3702,17 @@ function authoredAdmissionStarted(state) {
     || state === 'same-semantic-fallback';
 }
 
+// The committed half of authoredAdmissionStarted: every status whose boundary already shows
+// committed content (authored or a committed fallback). A released-but-wedged job sitting on
+// one of these states must keep its abort exemption — re-admission would hide drawn content.
+function authoredCommittedBoundaryStatus(state) {
+  return state === 'authored'
+    || state === 'authored-prepared'
+    || state === 'same-semantic-fallback'
+    || state === 'same-semantic-fallback-prepared'
+    || state === 'authored-with-cleanup-error';
+}
+
 async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, options, setActive) {
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
   const loadPart = options && typeof options.loadAuthoredPart === 'function'
@@ -4002,6 +4014,7 @@ function commitAuthoredPlaceBoundary(
   freezeStaticTransformRoot(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
+  carryAdmittedOnceStamp(authored.root, boundary);
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
@@ -5624,8 +5637,11 @@ function backgroundUpgradePriority(job) {
   // crosses the glass. Grade it above ambient. Same pure predicate and horizon the
   // renderer's isEntityAuthoredUpgradeRelevant ends on (partsLibrary cannot import
   // renderer.js — the cycle is documented at authoredLiveTableCamera).
+  // Payloads are hulls on the same horizon — the renderer's deadline classifier and the
+  // readable-contact predicate both include them: a jettisoned pod towed into frame starves
+  // identically at rung 10 while its capsule waits behind ambient work.
   if ((entity.type === 'ship' || entity.type === 'wreck' || entity.type === 'drone'
-      || entity.type === 'station')
+      || entity.type === 'station' || entity.type === 'payload')
       && willEntityEnterAuthoredUpgradeRunway(entity, liveState, {
         horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
       })) return 5;
@@ -5858,8 +5874,7 @@ function abortStalledOrInactiveUpgradeJobs(state) {
       // unreleased job so the relevance poll re-requests the boundary.
       const releasedButUncommitted = job.serialSlotReleased === true
         && !(job.boundary && job.boundary.userData
-          && (job.boundary.userData.authoredAssetState === 'authored'
-            || job.boundary.userData.authoredAssetState === 'authored-prepared'));
+          && authoredCommittedBoundaryStatus(job.boundary.userData.authoredAssetState));
       if ((job.serialSlotReleased !== true || releasedButUncommitted)
           && jobIsStalledInFlight(job, now, bound)) {
         abortStalledUpgradeJob(state, job);
@@ -8057,6 +8072,20 @@ export function disposePreparedAuthoredBoundary(boundary) {
 }
 
 /**
+ * The compile pass stamps sfAdmittedOnce on the detached authored/packaged root; the submit
+ * gate and the bloom unready hide read the boundary. Carry the stamp at every commit so a
+ * later latch (contact-pick/bloom/mesh-build hold) on an already-linked boundary keeps it
+ * drawn instead of whole-hiding the committed body until a boundary-level compile settles —
+ * the 20-frame authored-body blank the ship path showed first.
+ */
+export function carryAdmittedOnceStamp(detachedRoot, boundary) {
+  if (detachedRoot && detachedRoot.userData && detachedRoot.userData.sfAdmittedOnce === true
+      && boundary && boundary.userData) {
+    boundary.userData.sfAdmittedOnce = true;
+  }
+}
+
+/**
  * Operand-B disposal guarded to the disposer this run installed. A stale run that reads the
  * boundary slot after a newer run re-armed it must not invoke (and so dispose) the live run's
  * prepared root — it cleans up only what it prepared itself.
@@ -8477,13 +8506,7 @@ async function commitAuthoredBoundary(
   boundary.add(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
-  // The compile pass stamps sfAdmittedOnce on the detached authored root; the submit
-  // gate reads the boundary. Carry the stamp so a later latch (contact-pick/bloom)
-  // on an already-linked boundary keeps it drawn instead of hiding it until a
-  // boundary-level compile settles — the 20-frame authored-ship blank.
-  if (authored.root.userData && authored.root.userData.sfAdmittedOnce === true) {
-    boundary.userData.sfAdmittedOnce = true;
-  }
+  carryAdmittedOnceStamp(authored.root, boundary);
 
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';

@@ -63,6 +63,7 @@ import {
   AUTHORED_ADMISSION_RETRY_MAX,
   authoredReadmissionStatus,
   boundaryLiveEntity,
+  carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
@@ -4051,6 +4052,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       // procedural children while this admission was mid-flight.
       hideProceduralChildren(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       canonicalizeObjectSurfaceProgramKeys(packaged);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
