@@ -14,6 +14,7 @@ import {
 } from './assetResidency.js';
 import * as THREE from 'three';
 import { activeDecodeClass, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { createAsyncAdmission } from './asyncAdmission.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -57,6 +58,16 @@ export function createRenderPackageLoader(options = {}) {
   const cache = new Map();
   let ownerSequence = 0;
   let disposed = false;
+
+  // Admission ledger: each decode generation rides one async-admission token. An evicted or
+  // superseded generation's token aborts so a late decode fails its assertActive instead of
+  // resurrecting private resources into a replaced package; dispose aborts every live token.
+  const activeAdmissions = new Set();
+  const newAdmission = (label) => {
+    const admission = createAsyncAdmission({ label });
+    activeAdmissions.add(admission);
+    return admission;
+  };
 
   const createOwner = (role, contentHash) => Object.freeze({
     type: 'render-package',
@@ -221,6 +232,7 @@ export function createRenderPackageLoader(options = {}) {
           disposeDecodedResources(decoded);
           if (entry.request) entry.request.cancel('superseded-old-generation');
           entry.request = null;
+          entry.admission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
           throw new Error(`Render package decode for ${metadata.assetId} was superseded.`);
         }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
@@ -245,6 +257,7 @@ export function createRenderPackageLoader(options = {}) {
               loaded.markEvicted();
               if (cache.get(contentHash) === entry) cache.delete(contentHash);
               dropPackageDetachManifest(contentHash);
+              entry.admission.abort(new Error(`Render package ${metadata.assetId} was evicted mid-decode.`));
             },
           });
         } catch (error) {
@@ -273,6 +286,11 @@ export function createRenderPackageLoader(options = {}) {
         return loaded;
       });
     cache.set(contentHash, entry);
+    const admissionSettled = () => {
+      entry.admission.finish();
+      activeAdmissions.delete(entry.admission);
+    };
+    entry.promise.then(admissionSettled, admissionSettled);
     entry.promise.catch(() => {
       if (entry.request) entry.request.cancel('render-package-decode-failed');
       entry.request = null;
