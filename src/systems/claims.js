@@ -815,10 +815,9 @@ export const claims = {
   },
 
   _travelInfrastructureStaticCandidates() {
-    const index = this.state && this.state.entityIndex;
-    if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.statics)) {
-      return index.statics;
-    }
+    // The blocker domain is every entityList member the blocker accepts — index.statics is
+    // station|asteroid only, so an index-ready-but-no-hash middle branch would silently stop
+    // mines/bombs/props blocking a hardpoint.
     return this.state.entityList || [];
   },
 

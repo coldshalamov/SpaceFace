@@ -103,6 +103,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
 
   let hoverId = null;
   let hoverEntity = null;
+  let hoverPick = null;
+  let lastPickPt = null;
+  let lastPickAtMs = 0;
   let gestureActive = false;
   let gestureTargetId = null;
   let hoverRootPublished = null;
@@ -244,10 +247,17 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     hidePreview();
   }
 
+  // The canvas is a fixed fullscreen surface — cache its offset briefly instead of forcing
+  // a getBoundingClientRect layout read every picked frame.
+  let vpOffsetCache = null;
   function pickerViewportOffset() {
     if (canvas && typeof canvas.getBoundingClientRect === 'function') {
-      const rect = canvas.getBoundingClientRect();
-      return { left: rect.left || 0, top: rect.top || 0 };
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if (!vpOffsetCache || now - vpOffsetCache.at >= 400) {
+        const rect = canvas.getBoundingClientRect();
+        vpOffsetCache = { at: now, left: rect.left || 0, top: rect.top || 0 };
+      }
+      return { left: vpOffsetCache.left, top: vpOffsetCache.top };
     }
     return { left: 0, top: 0 };
   }
@@ -446,10 +456,20 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const inp = state.input;
       const ps = inp && inp.pointerScreen;
       if (!pt || !ps || !ps.active) {
+        hoverPick = null;
+        lastPickPt = null;
         setHover(null);
       } else {
-        const hit = pickAt(pt);
-        setHover(hit && hit.entity ? hit.entity : null);
+        // The full-scene pick only re-runs when the pointer moved or ~11 Hz elapsed —
+        // hover latency stays imperceptible while the per-frame O(scene) walk is skipped
+        // for a still cursor between re-picks.
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (!lastPickPt || lastPickPt.x !== pt.x || lastPickPt.y !== pt.y || now - lastPickAtMs >= 90) {
+          lastPickAtMs = now;
+          lastPickPt = pt;
+          hoverPick = pickAt(pt);
+        }
+        setHover(hoverPick && hoverPick.entity ? hoverPick.entity : null);
       }
     }
     publishHover();

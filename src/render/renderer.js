@@ -3264,7 +3264,9 @@ function predictedSecondHopSectorId(state) {
   }
   const route = nav && nav.route;
   const legs = route && Array.isArray(route.legs) ? route.legs : null;
-  if (legs) {
+  // Same gate predictNextSector applies to the unengaged fallback: a plotted route the
+  // player hasn't taken is not travel intent — don't arm hop-2 warm for it.
+  if (nav && nav.autoTravel === true && legs) {
     for (let i = 0; i < legs.length - 1; i++) {
       const leg = legs[i];
       if (leg && String(leg.from) === currentSectorId) {
@@ -15504,7 +15506,7 @@ export const render = {
       // The attach-time hlod stamp is a declared class, not the drawn envelope: a hull that
       // outgrows it (stations whose authored body exceeds dockRadius) would resolve a coarser
       // LOD while its visible footprint is still large — union it with the measured cull radius.
-      const cullRadius = (entity && entityVisualCullRadius(entity, mesh)) || world.radii[slot] || 0;
+      const cullRadius = viewRadius || (entity ? entityVisualCullRadius(entity, mesh) : 0) || world.radii[slot] || 0;
       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
         ? Math.max(hlodVisualRadius, cullRadius)
         : cullRadius;

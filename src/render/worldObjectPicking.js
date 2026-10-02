@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 
 const FORGIVE_PX = 6;
 const TINY_BODY_PX = 12;
@@ -168,7 +169,7 @@ export function createWorldObjectPicker(env) {
   const getCamera = env.getCamera || (() => state && state.render && state.render.camera);
   const getMeshes = env.getMeshes || (() => state && state.render && state.render.meshes);
   const getScene = env.getScene || (() => state && state.render && state.render.scene);
-  const getViewport = env.getViewport || (() => {
+  const rawGetViewport = env.getViewport || (() => {
     const c = state && state.render && state.render.canvas;
     if (c && c.width && c.height) {
       const rect = typeof c.getBoundingClientRect === 'function' ? c.getBoundingClientRect() : null;
@@ -176,6 +177,17 @@ export function createWorldObjectPicker(env) {
     }
     return { width: 1, height: 1 };
   });
+  // The canvas is a fixed fullscreen surface — its rect only moves on resize, so a short
+  // TTL drops the forced getBoundingClientRect layout read out of the per-frame pick path.
+  let vpCache = null;
+  const perfNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+  const getViewport = () => {
+    const now = perfNow();
+    if (!vpCache || now - vpCache.at >= 500) {
+      vpCache = { at: now, vp: rawGetViewport() };
+    }
+    return vpCache && vpCache.vp;
+  };
 
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -302,6 +314,24 @@ export function createWorldObjectPicker(env) {
       if (!root || !rootPresented(root)) return;
       const entity = resolveWorldPresentationEntity(state, id);
       if (!isSelectableWorldObject(entity)) return;
+      // Envelope reject: the drawn cull sphere already covers every leaf sphere (it is the
+      // same bound frustum culling trusts — a leaf outside it would clip), so a ray that
+      // misses it misses every leaf. The approx path forgives FORGIVE_PX for tiny bodies;
+      // each leaf's overhangPx is bounded below by the envelope's own miss projected at
+      // the farthest leaf depth, so exceeding FORGIVE_PX proves no leaf can qualify.
+      const cullR = entityVisualCullRadius(entity, root);
+      if (cullR > 0) {
+        tmpV.setFromMatrixPosition(root.matrixWorld);
+        toCenter.subVectors(tmpV, ro);
+        const tE = toCenter.dot(rd);
+        if (tE + cullR < 0) return;
+        const envMissSq = toCenter.lengthSq() - tE * tE;
+        const envOverhang = envMissSq > 0 ? Math.sqrt(envMissSq) - cullR : -cullR;
+        if (envOverhang > 0) {
+          const pxScaleMin = projectRadiusPx(1, Math.max(0.001, tE + cullR), camera, vp);
+          if (!(envOverhang * pxScaleMin <= FORGIVE_PX)) return;
+        }
+      }
       const nodes = nodesFor(root);
       const batchPresented = presentedStaticBatch(nodes, root);
       for (let i = 0; i < nodes.length; i++) {

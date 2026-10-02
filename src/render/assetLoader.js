@@ -631,7 +631,15 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
-  if (deadlineJoin) (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
+  if (deadlineJoin) {
+    // Re-grade waiters still queued at ambient: the joined task's already-posted decodes
+    // froze their budget class at enqueue and would otherwise sit behind the whole ambient
+    // tail while the mount is on the player's deadline. Promote flushes the tail to deadline
+    // (FIFO preserved), matching the flag window the wrap raises for its remaining posts.
+    const budget = sharedDecodeTaskBudget();
+    if (budget && typeof budget.promote === 'function') budget.promote('deadline');
+    (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
+  }
   const blueprint = await task;
   if (!blueprint) {
     if (request) request.cancel('decode-failed');

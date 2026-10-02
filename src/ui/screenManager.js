@@ -237,6 +237,27 @@ export function createScreenManager(ctx) {
     return build(id);
   }
 
+  // Force one style+layout pass on a mounted-but-hidden root. A display:none mount never
+  // enters the render tree — its first in-flight open pays stylesheet compile, layout, and
+  // lazy font subsets inside the live frame. visibility:hidden still styles and lays out
+  // (fonts in laid-out text resolve; paint is skipped), and #ui-root carries
+  // contain:layout+paint with absolute-positioned screen roots, so the one-frame flash
+  // cannot disturb live UI. A racing real open wins: syncVisibility owns the element then.
+  function paintWarm(id) {
+    const rec = build(id);
+    if (!rec || !rec.el || rec.painted) return;
+    rec.painted = true;
+    const el = rec.el;
+    clearInlineDisplay(el.style);
+    el.style.display = 'flex';
+    el.style.visibility = 'hidden';
+    requestAnimationFrame(() => {
+      if (stack[stack.length - 1] === id) return;
+      el.style.visibility = '';
+      hideImportant(el.style);
+    });
+  }
+
   function syncVisibility() {
     const topId = stack[stack.length - 1] || null;
     for (const [id, rec] of registry) {
@@ -698,7 +719,7 @@ export function createScreenManager(ctx) {
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll, releaseScreen,
     isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
-    isLiveOverlay, locked, destroy, prewarm,
+    isLiveOverlay, locked, destroy, prewarm, paintWarm,
     screenMemory,
   };
 }

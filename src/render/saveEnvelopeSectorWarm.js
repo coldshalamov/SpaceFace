@@ -8,6 +8,7 @@
 // — overlapping menu dwell instead of the restore's authored-visuals gate.
 
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex } from '../data/sectors.js';
+import { isPlayerWanted } from '../systems/heat.js';
 import { ASTEROIDS } from '../data/mining.js';
 import {
   EVERYDAY_SPACE_KIT_SALT,
@@ -740,6 +741,19 @@ function liveEnemyPoolFor(sector) {
   return LIVE_PIRATE_ENEMIES;
 }
 
+// WANTED bounty hunters: inside the same ambient leg (world.js _spawnEnemiesChunks — after
+// the density<=0 early-out), a hot player in a lawless sector also spawns patrol_lawman
+// hunters. That spec resolves to a hull outside the ambient pool's catalog, so the hunter
+// arm must ride the roster beside the pool rows or ambush hunters mount decode-cold.
+function pushWantedHunterRosterRows(roster, state, sector) {
+  if (!sector || sector.security >= 0.6 || !isPlayerWanted(state)) return;
+  const archetype = 'patrol_lawman';
+  roster.push({
+    archetype,
+    factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+  });
+}
+
 /**
  * Queued world:spawnRequest cohorts for a sector (world.pendingSpawns rows flush inside the
  * enter sequence). Their forced enemyTypeId hulls get no roster arm from any other warm
@@ -1041,6 +1055,7 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
         factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
       });
     }
+    pushWantedHunterRosterRows(out.roster, state, sector);
   }
   const bossPoi = (sector.pois || []).find((p) => p && p.type === 'anomaly' && p.id === 'poi_boss');
   if (bossPoi) {
@@ -1149,6 +1164,7 @@ export function saveEnvelopeFullExtrasStubs(data) {
         factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
       });
     }
+    pushWantedHunterRosterRows(out.roster, data, sector);
   }
 
   const bossPoi = (sector.pois || []).find((p) => p && p.type === 'anomaly' && p.id === 'poi_boss');

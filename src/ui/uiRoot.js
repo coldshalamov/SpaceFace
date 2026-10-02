@@ -477,6 +477,7 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
+    this._screenPrewarmQueue = [];
 
     // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
     // door onto that entity's dossier. Mounted after the screen manager because it reads which
@@ -1173,6 +1174,12 @@ export const ui = {
       // Phase 1: fade to dark
       showDockFade('dock');
 
+      // The station hub mounts under the veil: build + one style/layout pass now so the
+      // Phase-2 swap flips visibility instead of paying a whole-app mount inside it.
+      if (this._registeredScreens && this._registeredScreens.has('station')) {
+        try { this._warmScreen('station'); } catch (e) { console.error(e); }
+      }
+
       // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
       // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
       // pushZoom widens the view ~25% over the fade so the approach reads as a committed fly-in,
@@ -1351,15 +1358,14 @@ export const ui = {
         }
         if (!this._registeredScreens) this._registeredScreens = new Set();
         this._registeredScreens.add(def.id);
-        // Menu dwell is the warm window: mount the screen's hidden root now so the first
-        // in-flight open doesn't pay mount() inside a live frame. station (a whole app, and
-        // masked by the dock ceremony) and ship (the shared stage owns the second GL context)
-        // keep their deferred mounts. Every other screen's mount is DOM/canvas and already
-        // re-sizes on show, so a display:none mount is the same state they sit in while cached.
-        if (this.state.mode === 'menu' && !SCREEN_PREWARM_DEFER.has(def.id) &&
-          this.screenManager && typeof this.screenManager.prewarm === 'function') {
-          try { this.screenManager.prewarm(def.id); }
-          catch (e) { console.error(`[ui] prewarm("${def.id}")`, e); }
+        // Mount + paint-warm on the serialized drain — one screen per yielded frame, in
+        // menu dwell AND on flight-idle slices (a fast embark used to strand the whole
+        // rest-wave behind the mode==='menu' gate). station (a whole app — it warms under
+        // the dock veil instead) and ship (the shared stage owns the second GL context)
+        // keep their owner-scheduled mounts.
+        if (!SCREEN_PREWARM_DEFER.has(def.id)) {
+          (this._screenPrewarmQueue || (this._screenPrewarmQueue = [])).push(def.id);
+          this._drainScreenPrewarmQueue(registrationCycle);
         }
         if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
           try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
@@ -1403,6 +1409,38 @@ export const ui = {
   // Push a screen that may still be in a deferred registration wave: retry until it registers or
   // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
   // game-over) so an early lifecycle event never becomes a dead press.
+  _warmScreen(id) {
+    if (this.screenManager && typeof this.screenManager.prewarm === 'function') {
+      this.screenManager.prewarm(id);
+    }
+    if (this.screenManager && typeof this.screenManager.paintWarm === 'function') {
+      this.screenManager.paintWarm(id);
+    }
+  },
+
+  // One queued screen mount+paint-warm per yielded frame; exits early if the registration
+  // cycle that populated the queue is superseded (the next cycle re-fills it).
+  _drainScreenPrewarmQueue(registrationCycle) {
+    if (this._screenPrewarmDraining) return;
+    const queue = this._screenPrewarmQueue;
+    if (!queue || !queue.length) return;
+    this._screenPrewarmDraining = true;
+    (async () => {
+      try {
+        while (queue.length) {
+          const id = queue.shift();
+          try { this._warmScreen(id); }
+          catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+          await yieldPresentationFrame();
+          if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        }
+      } finally {
+        this._screenPrewarmDraining = false;
+        if (queue.length) this._drainScreenPrewarmQueue(registrationCycle);
+      }
+    })();
+  },
+
   _pushScreenWhenRegistered(id, maxAttempts = 60) {
     const tryOpen = (attempts) => {
       if (this._registeredScreens && this._registeredScreens.has(id)) {

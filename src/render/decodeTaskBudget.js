@@ -50,8 +50,23 @@ export function createDecodeTaskBudget(limit) {
     }
     return new Promise((resolve) => { waiters.push({ decodeClass, resolve }); });
   };
+  const CLASS_RANK = { ambient: 0, deadline: 1, visible: 2 };
+  /**
+   * Re-grade every queued waiter strictly below `decodeClass` up to it, preserving FIFO.
+   * A demand-joiner (a mount joining a task that posted decodes ambient) can't name the
+   * waiters its task is blocked behind — the ambient tail it sits in is promoted whole,
+   * matching the global-flag idiom the post path already applies for the rest of the join
+   * window. Visible waiters keep their rank.
+   */
+  const promote = (decodeClass) => {
+    const rank = CLASS_RANK[decodeClass] || 0;
+    for (const w of waiters) {
+      if ((CLASS_RANK[w.decodeClass] || 0) < rank) w.decodeClass = decodeClass;
+    }
+  };
   return Object.freeze({
     acquire,
+    promote,
     get limit() { return size; },
     get inFlight() { return size - available; },
     get queued() { return waiters.length; },
