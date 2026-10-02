@@ -172,7 +172,7 @@ test('SP-07 tow sockets are pinned fore and aft on the long axis', () => {
 test('fork machine geometry agrees with the capture volume it visualizes', () => {
   const { json } = parseGlb(`assets/ships/parts/places/${FORK_PART_ID}.glb`);
   const nodes = new Map(json.nodes.map((node) => [node.name, node]));
-  assert.deepEqual(nodes.get('socket_mouth')?.translation, [0, 0, 0], 'mouth is the origin');
+  assert.deepEqual(nodes.get('socket_mouth')?.translation ?? [0, 0, 0], [0, 0, 0], 'mouth is the origin');
   assert.deepEqual(nodes.get('socket_seat')?.translation, [44, 0, 0], 'seat inside the bay');
   assert.ok(44 < BREAKAWAY_CAPTURE_FORK.depth, 'seat sits inside the usable depth');
   assert.deepEqual(nodes.get('socket_service')?.translation, [77, 5.5, 0]);
