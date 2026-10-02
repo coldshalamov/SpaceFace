@@ -140,6 +140,7 @@ const SHIPPED_MODULES = [
     // Alien Ecology AE-075 — biofilm filter: throttles hull-contamination accrual in
     // high-C space (ae.exposure), and slows cargo spoilage on biohazard lots.
     id: 'mod_filter_stack_s', name: 'Biofilm Filter Stack', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 9500,
+    sentence: 'Keeps the hull breathing clean.',
     energyDraw: 1,
     mods: { bioFilterMult: 0.35 },
     description: 'Electrostatic mesh over the intakes and plate seams. Contaminated sectors stop fouling your hull — and your manifest.',
@@ -151,6 +152,7 @@ const SHIPPED_MODULES = [
     // G01 — a biology-tuned scanner head: bio signatures resolve one rung up the reveal
     // ladder (read via effectiveRevelation in alienEcology spawn/refresh paths).
     id: 'mod_bio_spectral_pass_s', name: 'Bio-Spectral Pass Head', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 14000,
+    sentence: 'Sees organisms, not just contacts.',
     energyDraw: 2,
     mods: { bioScanTier: 1 },
     description: 'A scanning head retuned for filament-band returns. Biological contacts resolve one classification rung earlier.',
@@ -158,6 +160,7 @@ const SHIPPED_MODULES = [
   {
     // G04 — reads site coherence live; the HUD surfaces it while you sit inside a radius.
     id: 'mod_field_coherence_meter', name: 'Field Coherence Meter', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 11500,
+    sentence: 'Reads the field you are standing in.',
     energyDraw: 1,
     mods: { coherenceMeter: true },
     description: 'A rack listener on the relay band. Inside a colonized field it reports how coherent the ecology currently reads.',
@@ -165,6 +168,7 @@ const SHIPPED_MODULES = [
   {
     // G06 — sealed custody locker: biohazard lots stop feeding hull exposure accrual.
     id: 'mod_quarantine_locker_s', name: 'Quarantine Locker', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 16000,
+    sentence: 'Biohazard rides sealed.',
     energyDraw: 1,
     mods: { quarantineLocker: true },
     description: 'A sealed custody drawer rated for living cargo. What is locked in it does not breathe on the manifest.',
@@ -172,6 +176,7 @@ const SHIPPED_MODULES = [
   {
     // G07 — the heavy filter ring: deep-pocket accrual cut to a fifth.
     id: 'mod_filter_stack_m', name: 'Biofilm Filter Stack M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 21000,
+    sentence: 'The deep-clean stack, one size up.',
     requiresTech: 'tech_long_range_survey',
     energyDraw: 2,
     mods: { bioFilterMult: 0.20 },
@@ -180,6 +185,7 @@ const SHIPPED_MODULES = [
   {
     // G08 — a docked once-per-berth purge: docking with it fitted scrubs exposure clean.
     id: 'mod_hull_purge_ring_m', name: 'Hull Purge Ring', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 24000,
+    sentence: 'Leave the berth clean.',
     energyDraw: 3,
     mods: { hullPurgeRing: true },
     description: 'A burn collar around the plate seams. Docking with it fitted fires one sterilizing pass — fouled hulls berth clean.',
@@ -187,6 +193,7 @@ const SHIPPED_MODULES = [
   {
     // G10 — charge-throw drops a heat lure that drags heat-hunters off your plume (60s).
     id: 'mod_heat_lure_s', name: 'Heat Lure Beacon', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 13500,
+    sentence: 'A hotter signature than yours, thrown behind you.',
     energyDraw: 2,
     mods: { heatLure: true },
     description: 'Charge-thrown bait: a burn-flag beacon that reads hotter than your reactor. Predators chase the lie for a minute.',
@@ -194,6 +201,7 @@ const SHIPPED_MODULES = [
   {
     // G11 — emission damping: your hull presents a quieter mass/heat signature to fauna.
     id: 'mod_quiet_mask_s', name: 'Quiet Mask', slotType: 'utility', size: 'S', tier: 3, mass: 3, price: 26000,
+    sentence: 'Dimmer on the senses that hunt you.',
     requiresTech: 'tech_long_range_survey',
     energyDraw: 3,
     mods: { stealthBioMult: 0.45 },
@@ -202,6 +210,7 @@ const SHIPPED_MODULES = [
   {
     // G12 — relay-band probe: relay organisms report their coherence on the scanner.
     id: 'mod_relay_needle_s', name: 'Relay Needle', slotType: 'utility', size: 'S', tier: 2, mass: 1, price: 10500,
+    sentence: 'Hears who is broadcasting.',
     energyDraw: 1,
     mods: { relayNeedle: true },
     description: 'A tuned probe for the relay band. Coherent emitters report their broadcast strength instead of a bare contact.',
@@ -209,6 +218,7 @@ const SHIPPED_MODULES = [
   {
     // G13 — the cradle: a latched animal released under it reaches the hold alive.
     id: 'mod_capture_cradle_m', name: 'Capture Cradle', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 32000,
+    sentence: 'Catch it live, keep it.',
     requiresTech: 'tech_tractor_systems',
     energyDraw: 4,
     mods: { captureSurvivalMult: 0.85 },
@@ -225,6 +235,7 @@ const SHIPPED_MODULES = [
   {
     // K03 — quarantine paperwork as equipment: custody refusal softens to a discount.
     id: 'mod_containment_seal_s', name: 'Containment Seal Kit', slotType: 'utility', size: 'S', tier: 3, mass: 2, price: 28000,
+    sentence: 'Paperwork that opens sealed doors.',
     energyDraw: 1,
     mods: { containmentSeal: true },
     description: 'Registry-stamped quarantine seals. Stations that would refuse a biological lot instead take it at surrender prices.',
@@ -232,6 +243,7 @@ const SHIPPED_MODULES = [
   {
     // G02 — filament contrast filter: phantom contacts get flagged as probable echoes.
     id: 'mod_filament_contrast_s', name: 'Filament Contrast Filter', slotType: 'utility', size: 'S', tier: 2, mass: 1, price: 9800,
+    sentence: 'Stops the scanner lying to itself.',
     energyDraw: 1,
     mods: { filamentContrast: true },
     description: 'A polarized scanner gasket tuned to the membrane band. Mirror-echo contacts mark themselves instead of wearing a clean return.',
@@ -239,6 +251,7 @@ const SHIPPED_MODULES = [
   {
     // G03 — host-memory cartography: crossing a site’s long band maps the hull under the growth.
     id: 'mod_host_cartography_s', name: 'Host-Memory Cartography', slotType: 'utility', size: 'S', tier: 3, mass: 2, price: 21000,
+    sentence: 'Walk in already knowing the map.',
     requiresTech: 'tech_long_range_survey',
     energyDraw: 2,
     mods: { hostMapReveal: true },
@@ -247,6 +260,7 @@ const SHIPPED_MODULES = [
   {
     // G05 — echo recorder: relay pulses get logged to the field notebook.
     id: 'mod_echo_recorder_s', name: 'Echo Recorder', slotType: 'utility', size: 'S', tier: 2, mass: 1, price: 12000,
+    sentence: 'Writes the survey as you live it.',
     energyDraw: 1,
     mods: { echoRecorder: true },
     description: 'A slow tape for the relay band. Sites that pulse in phase leave a coherence signature in your flight log.',

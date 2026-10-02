@@ -1170,19 +1170,20 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/wpn_snarl_s.webm",
   "events": {
-   "toast": 42,
-   "combat:fire": 5,
+   "combat:fire": 4,
+   "combat:fire:player": 4,
    "combat:damage": 9,
    "projectile:hit": 4,
-   "tether:attached": 3,
-   "tether:reel": 3,
-   "combat:tumbled": 9,
-   "shieldDown": 3,
-   "combat:statusApplied": 8,
+   "tether:attached": 2,
+   "tether:reel": 2,
+   "combat:tumbled": 5,
+   "shieldDown": 2,
+   "combat:statusApplied": 3,
    "combat:outcome": 2,
-   "loot:drop": 1,
-   "entity:killed": 1,
-   "alert": 3
+   "loot:drop": 2,
+   "toast": 8,
+   "entity:killed": 2,
+   "alert": 5
   },
   "statDiff": {
    "topSpeed": {
@@ -1207,64 +1208,6 @@
   "mods": {},
   "poster": "assets/ui/fitting-media/wpn_snarl_s.png",
   "evidenceSamples": {
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "kind": "info",
-      "text": "LOCK LOST · Ship"
-     }
-    }
-   ],
    "combat:fire": [
     {
      "c": 1,
@@ -1289,12 +1232,6 @@
      "p": {
       "weaponId": "wpn_snarl_s"
      }
-    },
-    {
-     "c": 5,
-     "p": {
-      "weaponId": "wpn_snarl_s"
-     }
     }
    ],
    "combat:damage": [
@@ -1312,7 +1249,7 @@
      "c": 2,
      "p": {
       "targetId": 380,
-      "attackerId": 380,
+      "attackerId": null,
       "weaponId": null,
       "amount": 54.06719999999999,
       "damageType": null
@@ -1321,7 +1258,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 380,
+      "targetId": 378,
       "attackerId": 1,
       "weaponId": "wpn_snarl_s",
       "amount": 3.4499999999999997,
@@ -1331,7 +1268,17 @@
     {
      "c": 4,
      "p": {
-      "targetId": 380,
+      "targetId": 379,
+      "attackerId": 379,
+      "weaponId": null,
+      "amount": 3.9586177478464757,
+      "damageType": null
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 378,
       "attackerId": 1,
       "weaponId": "wpn_snarl_s",
       "amount": 3.4499999999999997,
@@ -1339,32 +1286,22 @@
      }
     },
     {
-     "c": 5,
-     "p": {
-      "targetId": 379,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 54.06719999999999,
-      "damageType": null
-     }
-    },
-    {
      "c": 6,
      "p": {
-      "targetId": 380,
+      "targetId": 378,
       "attackerId": 1,
       "weaponId": null,
-      "amount": 1.4547788641055655,
+      "amount": 94.15781436098115,
       "damageType": null
      }
     },
     {
      "c": 7,
      "p": {
-      "targetId": 378,
-      "attackerId": 378,
+      "targetId": 379,
+      "attackerId": 389,
       "weaponId": null,
-      "amount": 89.56889776940265,
+      "amount": 1.2310598636121484,
       "damageType": null
      }
     },
@@ -1372,9 +1309,9 @@
      "c": 8,
      "p": {
       "targetId": 380,
-      "attackerId": 1,
-      "weaponId": "wpn_snarl_s",
-      "amount": 3.4499999999999997,
+      "attackerId": 390,
+      "weaponId": null,
+      "amount": 360.6647930443326,
       "damageType": null
      }
     }
@@ -1391,7 +1328,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 380,
+      "targetId": 378,
       "weaponId": "wpn_snarl_s",
       "damageType": "ion"
      }
@@ -1399,7 +1336,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 380,
+      "targetId": 378,
       "weaponId": "wpn_snarl_s",
       "damageType": "ion"
      }
@@ -1407,7 +1344,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 380,
+      "targetId": 379,
       "weaponId": "wpn_snarl_s",
       "damageType": "ion"
      }
@@ -1425,12 +1362,6 @@
      "p": {
       "targetId": 380
      }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 378
-     }
     }
    ],
    "tether:reel": [
@@ -1444,12 +1375,6 @@
      "c": 2,
      "p": {
       "targetId": 380
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 378
      }
     }
    ],
@@ -1471,43 +1396,22 @@
     {
      "c": 3,
      "p": {
-      "attackerId": 379,
-      "source": "tether_share"
+      "attackerId": 1,
+      "source": "collision"
      }
     },
     {
      "c": 4,
      "p": {
-      "attackerId": 1,
+      "attackerId": 380,
       "source": "collision"
      }
     },
     {
      "c": 5,
      "p": {
-      "attackerId": 1,
+      "attackerId": 390,
       "source": "collision"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "attackerId": 379,
-      "source": "collision"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "attackerId": 380,
-      "source": "tether_share"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "attackerId": 380,
-      "source": "tether_share"
      }
     }
    ],
@@ -1518,10 +1422,6 @@
     },
     {
      "c": 2,
-     "p": {}
-    },
-    {
-     "c": 3,
      "p": {}
     }
    ],
@@ -1549,61 +1449,21 @@
       "attackerId": 1,
       "statusId": "status_tumbling"
      }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 380,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 380,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "targetId": 378,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "targetId": 378,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "targetId": 379,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
-     }
     }
    ],
    "combat:outcome": [
     {
      "c": 1,
      "p": {
-      "entityId": 380,
+      "entityId": 378,
       "reason": "entity:killed"
      }
     },
     {
      "c": 2,
      "p": {
-      "entityId": 378,
-      "reason": "fsm:flee"
+      "entityId": 380,
+      "reason": "entity:killed"
      }
     }
    ],
@@ -1613,11 +1473,77 @@
      "p": {
       "source": "kill_burst"
      }
+    },
+    {
+     "c": 2,
+     "p": {}
+    }
+   ],
+   "toast": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "good",
+      "text": "+6 REP · Concord"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "good",
+      "text": "+6 REP · Meridian"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "kind": "good",
+      "text": "+6 REP · Drift"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "kind": "good",
+      "text": "+6 REP · Choir"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "kind": "warn",
+      "text": "Hostile reinforcements inbound!"
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "kind": "warn",
+      "text": "HOSTILE REINFORCEMENTS INBOUND"
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "kind": "warn",
+      "text": "Reinforcements have arrived."
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "kind": "warn",
+      "text": "REINFORCEMENTS ON FIELD"
+     }
     }
    ],
    "entity:killed": [
     {
      "c": 1,
+     "p": {}
+    },
+    {
+     "c": 2,
      "p": {}
     }
    ],
@@ -1638,6 +1564,18 @@
      "c": 3,
      "p": {
       "text": "TARGET LOST"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "text": "HOSTILE REINFORCEMENTS INBOUND"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "text": "REINFORCEMENTS ON FIELD"
      }
     }
    ]

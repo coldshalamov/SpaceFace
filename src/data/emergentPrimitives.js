@@ -113,6 +113,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'wpn_sticky_detonator',
     name: 'Sticky Detonator',
+    sentence: 'Stick it, leave it, blow it when it counts.',
     price: 26000,
     damageType: 'explosive',
     dmg: 0,
@@ -128,6 +129,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'wpn_conductive_primer',
     name: 'Conductive Primer',
+    sentence: 'Paint one hull; the pack shares what lands next.',
     price: 28000,
     damageType: 'emp',
     dmg: 2,
@@ -144,6 +146,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_grav_anchor',
     name: 'Grav Anchor',
+    sentence: 'Pin a hull to nothing.',
     price: 32000,
     damageType: 'kinetic',
     rof: 2,
@@ -157,6 +160,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'wpn_thermal_cooker',
     name: 'Thermal Cooker',
+    sentence: 'Cook the ship inside its shield.',
     price: 36000,
     damageType: 'thermal',
     dmg: 8,
@@ -176,6 +180,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'wpn_mass_driver',
     name: 'Mass Driver',
+    sentence: 'A hammer with no payload but the hit.',
     price: 30000,
     damageType: 'kinetic',
     dmg: 0,
@@ -189,6 +194,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_polarity_inverter',
     name: 'Polarity Inverter',
+    sentence: 'Turns your tow into a shove.',
     price: 34000,
     damageType: 'emp',
     rof: 3,
@@ -201,6 +207,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_viscosity_field',
     name: 'Viscosity Field',
+    sentence: 'Make their engines fight water.',
     price: 30000,
     damageType: 'kinetic',
     rof: 1.2,
@@ -213,6 +220,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_hardlight_prism',
     name: 'Hardlight Prism',
+    sentence: 'One beam in, three out.',
     price: 38000,
     damageType: 'energy',
     rof: 1.2,
@@ -227,6 +235,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_thruster_hijacker',
     name: 'Thruster Hijacker',
+    sentence: 'You steer; they pay.',
     price: 33000,
     damageType: 'kinetic',
     rof: 1.5,
@@ -239,6 +248,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_seismic_gong',
     name: 'Seismic Gong',
+    sentence: 'Ring it — the whole pack staggers.',
     price: 31000,
     damageType: 'kinetic',
     rof: 0.8,
@@ -251,6 +261,7 @@ export const EMERGENT_WEAPON_DEFS = [
   gun({
     id: 'tool_quantum_sympathy',
     name: 'Quantum Sympathy',
+    sentence: 'Hurt one, bleed two.',
     price: 42000,
     damageType: 'emp',
     rof: 2,

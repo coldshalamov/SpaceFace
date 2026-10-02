@@ -378,6 +378,7 @@ async function runItem(id, spec) {
     const sceneName = DEMO_SCENE[spec.demo];
     if (sceneName && SCENES[sceneName]) await SCENES[sceneName](spec);
     await settle(500);
+    await sh(() => window.__showcase.muteLockToasts(true));
     await sh(() => window.__showcase.evidenceReset());
     const clipPath = path.join(OUT, `${id}.webm`);    const clipS = spec.clip || 8;
     if (!skipClips && spec.demo !== 'diagram') {
@@ -402,7 +403,9 @@ async function runItem(id, spec) {
     // `must` pins the signature event: an item may not pass on ambient damage/toasts alone.
     // Any demo whose whole point is pulling the trigger must show a discharge — a clip
     // that proves `ev` on collision noise alone is a silent clip shipped to the store.
-    const must = spec.must || (FIRE_DEMOS.has(spec.demo) ? ['combat:fire'] : []);
+    // Player-attributed discharge only: ambient hostile guns count toward combat:fire too,
+    // so the gate checks the shadow counter the harness increments on ownerId === playerId.
+    const must = spec.must || (FIRE_DEMOS.has(spec.demo) ? ['combat:fire:player'] : []);
     const mustOk = must.every((e) => (ev.counts[e] || 0) > 0);
     // The stat is proven either by a derived-field diff (numbers that live on the hull)
     // or by the fitted def carrying the same key in its mods (use-time flags).

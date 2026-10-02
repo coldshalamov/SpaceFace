@@ -84,6 +84,12 @@ async function installShowcaseApi(page) {
       ]) {
         on(ev, (p) => {
           const c = (evCounts[ev] = (evCounts[ev] || 0) + 1);
+          // combat:fire carries ownerId — a hostile's gun discharging in the arena counts
+          // toward the raw count, so the subject-proven number lives in a shadow counter
+          // the must-gate can check without trusting ambient fire.
+          if (ev === 'combat:fire' && p && p.ownerId === sf.state.playerId) {
+            evCounts['combat:fire:player'] = (evCounts['combat:fire:player'] || 0) + 1;
+          }
           if (!evWatch[ev]) evWatch[ev] = [];
           if (evWatch[ev].length < 8) evWatch[ev].push({ c, p: summarizePayload(p) });
         });
@@ -362,6 +368,22 @@ async function installShowcaseApi(page) {
         return true;
       },
       evidence() { return { counts: { ...evCounts }, samples: evWatch }; },
+      // A killed or drifting lock spams 'LOCK LOST · <Ship>' through the clip. One patch
+      // on the bus drops lock-voice toasts for the whole capture — kills still announce
+      // through entity:killed, and the counter is evidence-side, not renderer-side.
+      muteLockToasts(onOff) {
+        if (!window.__sfShowcaseToastPatched) {
+          const emit = sf.bus.emit.bind(sf.bus);
+          sf.bus.emit = (ev, p) => {
+            if (window.__sfShowcaseMuteLockToasts && ev === 'toast'
+                && p && /^LOCK /.test(String(p.text || ''))) return undefined;
+            return emit(ev, p);
+          };
+          window.__sfShowcaseToastPatched = true;
+        }
+        window.__sfShowcaseMuteLockToasts = !!onOff;
+        return window.__sfShowcaseMuteLockToasts;
+      },
       // --- recording -----------------------------------------------------------
       _rec: null,
       recordStart({ fps = 24, videoBitsPerSecond = 2_500_000 } = {}) {

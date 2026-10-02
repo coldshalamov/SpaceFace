@@ -33,6 +33,7 @@ const SHIPPED_WEAPONS = [
   {
     id: 'wpn_snarl_s', name: 'Snarl Webcaster', slotType: 'weapon', size: 'S', tier: 3,
     mass: 4, price: 38000, requiresTech: 'tech_fire_control',
+    sentence: 'Crowd control in a can — web a pack, then shove the tangle.',
     dmg: 3, rof: 0.8, dps: 2.4, damageType: 'ion', energyCost: 10,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.5,
     heatPerShot: 12, heatMax: 100, heatDissip: 18,
@@ -62,6 +63,7 @@ const SHIPPED_WEAPONS = [
   {
     id: 'wpn_flak_turret_s', name: 'Flak/PD Turret S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 11000,
     mount: 'turret',
+    sentence: 'The umbrella: it answers whatever is already shooting at you.',
     dmg: 4, rof: 8.0, dps: 32, damageType: 'kinetic', energyCost: 1,
     projSpeed: 320, range: 240, tracking: 'auto_turret', turretArcDeg: 180,
     intercepts: true,
@@ -180,6 +182,7 @@ const SHIPPED_WEAPONS = [
   // --- LARGE (L slot) ---
   {
     id: 'wpn_heavy_beam_l', name: 'Heavy Beam L', slotType: 'weapon', size: 'L', tier: 4, mass: 16, price: 130000, requiresTech: 'tech_capital_weapons',
+    sentence: 'A lance that never stops cutting.',
     dmg: 160, rof: 0, dps: 160, damageType: 'energy', energyCost: 22,
     projSpeed: Infinity, range: 900, tracking: 'hitscan',
     continuous: true, heatPerSec: 50, heatMax: 100, heatDissip: 20,
@@ -196,6 +199,7 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'wpn_torpedo_l', name: 'Torpedo L', slotType: 'weapon', size: 'L', tier: 4, mass: 24, price: 60000, requiresTech: 'tech_capital_weapons',
+    sentence: 'Point once — it does the flying and the killing.',
     mount: 'launcher',
     dmg: 320, splashDmg: 120, splashRadius: 70, rof: 0.25, dps: 80, damageType: 'explosive', energyCost: 10,
     projSpeed: 240, projSpeedMin: 140, range: 1400, tracking: 'homing', turnRate: 1.4, lockTimeS: 2.5,
@@ -203,6 +207,7 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'wpn_siege_lance_l', name: 'Siege Lance L', slotType: 'weapon', size: 'L', tier: 5, mass: 24, price: 310000, requiresTech: 'tech_flagship_command',
+    sentence: 'One shot, capital-grade.',
     mount: 'spinal',
     dmg: 420, rof: 0.5, dps: 210, damageType: 'kinetic', energyCost: 40,
     projSpeed: 600, range: 1600, tracking: 'fixed', armorPierce: 0.5,
