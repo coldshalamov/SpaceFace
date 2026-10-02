@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_COLOSSUS_PRODUCTION_V1",
- "sourceGlbSha256": "7e39c92b435d2f4f9ec1a016d42c84a30b9d17656fc5ecbb3a4ff368f9f214a5",
+ "sourceGlbSha256": "d996d8f6ec9334c91b626998e2bc93b0e6896d1307f2760ce155a20fbf0a841b",
  "fps": 60,
  "bindings": [
   {
