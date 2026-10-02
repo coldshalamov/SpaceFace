@@ -330,6 +330,21 @@ export function createFloatingText(ctx) {
     bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
   });
 
+  // NXI-108 — the relief cue cites the delivery that crossed the threshold, once.
+  bus.on('economy:shortageRelieved', (p) => {
+    if (!p) return;
+    const cmdty = CMDTY_BY_ID[p.commodityId];
+    const station = STATION_BY_ID[p.stationId];
+    const cmdtyName = cmdty ? cmdty.name : (p.commodityId || 'cargo');
+    const stationName = station ? station.name : (p.stationId || 'the yard');
+    const qty = Number.isFinite(p.qty) ? p.qty : null;
+    bus.emit('toast', {
+      text: 'SHORTAGE RELIEVED: ' + (qty ? qty + 'u ' : '') + cmdtyName + ' re-fed the line at ' + stationName,
+      kind: 'info',
+      ttl: 5,
+    });
+  });
+
   // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
   // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
   // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame
