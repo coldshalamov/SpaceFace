@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "dock_interior",
  "sourceAssetId": "SF_PLACE_DOCK_INTERIOR_MILITARY",
- "sourceGlbSha256": "d651d1b2ff7dae6b4173f59f3d121cf9fa142f2a738a5cb291fc4b653425ae4d",
+ "sourceGlbSha256": "0e8e70f2e0d626178b60d7d101b63943f59d47f78712aa9cac404aa0f72137ba",
  "fps": 60,
  "bindings": [
   {

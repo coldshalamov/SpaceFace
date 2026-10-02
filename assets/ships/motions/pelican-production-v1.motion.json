@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_PELICAN_PRODUCTION_V1",
- "sourceGlbSha256": "9670449bec7b61a2ad0d3a66cb48e5694509da04be29156ed918171d750ce4b1",
+ "sourceGlbSha256": "49a261dbae92e1d061edc4bcc4154e4fb2c9f05ba2e45cddbe51e8908117a0a5",
  "fps": 60,
  "bindings": [
   {

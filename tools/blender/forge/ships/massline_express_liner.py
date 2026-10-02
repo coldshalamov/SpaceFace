@@ -15,6 +15,9 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_38  # noqa: E402
+import math  # noqa: E402
+import bpy  # noqa: E402
+from mathutils import Vector  # noqa: E402
 
 SHIP_ID = 'massline_express_liner'
 COLORS = {
@@ -38,6 +41,46 @@ _GLTF = {
     'SOCKET_Mining_Front': (19.80, 0.10, 0.00), 'SOCKET_Tether_Massline': (-9.78, 0.10, 0.00),
 }
 SOCKETS = {k: (x, -z, y) for k, (x, y, z) in _GLTF.items()}
+
+
+# Close-zoom hero detail (Workflow C): every part is seated on the real skin of the part it sits on,
+# found by dropping a ray onto the built (pre-bevel) mesh, so nothing floats and nothing clips.
+def _hit(name, x, y, z=40.0):
+    o = bpy.data.objects.get(name)
+    ok, loc, nrm, _ = o.ray_cast(Vector((x, y, z)), Vector((0.0, 0.0, -1.0)))
+    return (loc, nrm) if ok else None
+
+
+def _studs(name, pts, nz=0.55, lift=0.05, sink=0.03):
+    """Fastener rods standing on part `name` at plan points, along the skin normal (one mesh via F.beams)."""
+    out = []
+    for x, y in pts:
+        h = _hit(name, x, y)
+        if h and h[1].z > nz:
+            out.append((tuple(h[0] - h[1] * sink), tuple(h[0] + h[1] * lift)))
+    return out
+
+
+def _run(name, pts, lift):
+    """A pipe/cable path hugging part `name`: plan points lifted `lift` above the skin."""
+    zs = [_hit(name, x, y) for x, y in pts]
+    return [(x, y, h[0].z + lift) for (x, y), h in zip(pts, zs) if h]
+
+
+def _hatch(part, cx, cy, sx, sy, lift=0.0):
+    """Access hatch on part: (coaming struts hugging the skin, handle strut)."""
+    c = [(cx - sx / 2, cy - sy / 2), (cx + sx / 2, cy - sy / 2), (cx + sx / 2, cy + sy / 2), (cx - sx / 2, cy + sy / 2)]
+    lp = _run(part, [c[0], ((c[0][0] + c[1][0]) / 2, c[0][1]), c[1], c[2], ((c[2][0] + c[3][0]) / 2, c[2][1]), c[3], c[0]],
+              lift)
+    hp = _run(part, [(cx, cy - sy * 0.22), (cx, cy + sy * 0.22)], 0.045 + lift)
+    return [(lp[i], lp[i + 1]) for i in range(len(lp) - 1)], (hp[0], hp[1])
+
+
+def _flank(name, x, z, side):
+    """Skin y of part `name` on the +/-y flank at height z (horizontal ray from outside)."""
+    o = bpy.data.objects.get(name)
+    ok, loc, _n, _i = o.ray_cast(Vector((x, side * 30.0, z)), Vector((0.0, -side, 0.0)))
+    return loc.y if ok else None
 
 
 def build():
@@ -130,6 +173,45 @@ def build():
     F.dish(s, 'CommsDish', (-12.4, 2.4, 5.3), 0.9, 0.25, axis=(-0.4, 0.3, 1))
     F.antenna(s, 'Mast', (-10.0, -2.2, 5.3), 2.0, tip='glow_red')
     F.vent(s, 'Vent', (-17.0, 3.8, 4.6), (1.6, 1.2, 0.2), mirror=True)
+    s.detail = 0
+
+    # --- close-zoom hero detail layer (LOD0 only; gunmetal and dark, finishes this hull already draws) ----
+    bpy.context.view_layer.update()
+    s.detail = 2
+    studs = []
+    # bulkhead rings bolted across the roof, clear of the spine, the galleries and the comms dish
+    for x in (-13.0, -8.6, -3.4, 1.8):
+        ys = (4.5, 5.0, 5.5, 6.0) if x == -13.0 else (1.8, 4.5, 5.0, 5.5, 6.0)
+        studs += _studs('Drum', [(x, sg * y) for sg in (1, -1) for y in ys])
+    # spine cover plate fastened along both edges; stern block fastened along its roof lip
+    studs += _studs('Spine', [(-16.2 + 1.6 * i, sg * 0.42) for i in range(16) for sg in (1, -1)])
+    studs += _studs('SternBlock', [(x, -5.7 + 0.95 * i) for x in (-20.0, -18.8) for i in range(13)], nz=0.8)
+    # boarding dock: a bolt circle on the collar face (starboard flank, Blender -Y)
+    for k in range(12):
+        a = 2 * math.pi * k / 12
+        c = (3.4 + 0.85 * math.cos(a), 0.4 + 0.85 * math.sin(a))
+        studs.append(((c[0], -9.47, c[1]), (c[0], -9.58, c[1])))
+    F.beams(s, 'HullStuds', studs, 0.15, material='gunmetal')
+
+    # roof service hatches along both outboard roof strips: gunmetal coaming, handle, four corner bolts
+    frames, handles, bolts = [], [], []
+    for cx in (-11.0, -6.0, -0.8):
+        for cy in (5.5, -5.5):
+            fr, hd = _hatch('Drum', cx, cy, 1.3, 0.9)
+            frames += fr
+            handles.append(hd)
+            bolts += _studs('Drum', [(cx + dx * 0.5, cy + dy * 0.32) for dx in (-1, 1) for dy in (-1, 1)])
+    F.beams(s, 'HatchComing', frames, 0.09, material='gunmetal')
+    F.beams(s, 'HatchHandle', handles, 0.08, material='gunmetal')
+    F.beams(s, 'HatchBolts', bolts, 0.1, material='gunmetal')
+
+    # the port service hatch on the flank (the one door the chase camera sees): coaming and bolts
+    hx, hz = -1.8, 0.4
+    sh = [(hx - 1.2, hz - 1.0), (hx + 1.2, hz - 1.0), (hx + 1.2, hz + 1.0), (hx - 1.2, hz + 1.0), (hx - 1.2, hz - 1.0)]
+    F.beams(s, 'ServiceHatchComing', [((sh[i][0], 8.84, sh[i][1]), (sh[i + 1][0], 8.84, sh[i + 1][1])) for i in range(4)],
+            0.12, material='gunmetal')
+    F.beams(s, 'ServiceHatchBolts', [((x, 8.80, z), (x, 8.92, z)) for x in (hx - 0.95, hx + 0.95) for z in (hz - 0.7, hz + 0.7)],
+            0.14, material='gunmetal')
     s.detail = 0
     F.light(s, 'NavPort', (-17.2, 8.2, 0.9), 'glow_red', size=0.3)
     F.light(s, 'NavStarboard', (-17.2, -8.2, 0.9), 'glow_green', size=0.3)

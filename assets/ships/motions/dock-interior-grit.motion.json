@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "dock_interior",
  "sourceAssetId": "SF_PLACE_DOCK_INTERIOR_GRIT",
- "sourceGlbSha256": "42e7eff1b3c935a501ce6883c4c5e18eeb8f1a1644f7f66cc03530ce9f772ec4",
+ "sourceGlbSha256": "a8fd60b0d50bfa8c72625742e3c1cdcdcfb50a55ee1fa55893219da12cd85199",
  "fps": 60,
  "bindings": [
   {

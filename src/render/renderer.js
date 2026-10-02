@@ -262,6 +262,7 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
 import { beginLookMood, updateLook } from './look.js';
+import { tickLampBus } from './lampBus.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { SWARM_RULESET, swarmEligibleEnemyIds } from '../data/swarmMode.js';
@@ -15762,6 +15763,9 @@ export const render = {
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
+    // The Lamp Bus: one shared clock for every blinking lamp (src/render/lampBus.js). Same clock the
+    // authored motion runs on, so a docked ship's lamps keep their rhythm; reduced-flash holds them steady.
+    tickLampBus(authoredNow, _worldSiteA11y.reducedFlash || !!(settings.video && settings.video.flashReduce));
     // PQ-133.08: law-arena room machinery animates once per frame on the sim clock — never per
     // entity, and never on wall time (a hard freeze holds the room's pose with the world).
     globalLawArenaDressing.updateRoom(simNow, presFrameDt, _worldSiteA11y);
