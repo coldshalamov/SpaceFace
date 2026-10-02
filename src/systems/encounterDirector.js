@@ -533,6 +533,8 @@ export const encounterDirector = {
     dir.squadMembership = {};
     dir.pending = [];
     dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
+    dir.activeMembership = {};
+    dir.scriptProbeRows = 0;
     dir.plannedKey = null;                             // same-day re-entry must replan
   },
 
@@ -1135,6 +1137,7 @@ export const encounterDirector = {
 
     const live = makeEncounterLiveRecord(state, item, shape, now);
     dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
     dir.stats.fired++;
     if (live.data.ceresActivityAmbush === true) {
       dir.stats.ceresActivityAmbush = { phase: 'revealed' };
@@ -1412,6 +1415,7 @@ export const encounterDirector = {
         if (ent && ent.id != null) {
           spawned.push(ent.id);
           rec.ids.push(ent.id);
+          indexActiveMember(dir, live, ent.id);
           live.ids.push(ent.id);
           live.roles[ent.id] = sh.role || 'squad';
           indexSquadMember(dir, live, ent.id);
@@ -1836,6 +1840,7 @@ export const encounterDirector = {
       if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
     dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
   },
 
@@ -1861,6 +1866,7 @@ export const encounterDirector = {
       causality: live.causality ? { ...live.causality } : null,
     });
     dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
   },
 
@@ -1970,36 +1976,68 @@ export const encounterDirector = {
     }
     if (dir.patrolIntervened) delete dir.patrolIntervened[id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
-    for (const squadId of Object.keys(dir.active)) {
+    // The active-spawn index answers the squad question in O(1) — every rec.ids push
+    // indexes, every removal drops, so a miss is provably absent. A stale-looking row
+    // (map hit, rec missing or ids lacking the entity) falls back to the original walk.
+    const squadId = dir.activeMembership ? dir.activeMembership[id] : null;
+    if (squadId != null) {
       const rec = dir.active[squadId];
-      const idx = rec.ids.indexOf(id);
-      if (idx === -1) continue;
-      rec.ids.splice(idx, 1);
-      const budget = this.helpers && this.helpers.spawnBudget;
-      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
-      if (!rec.ids.length) delete dir.active[squadId];
-      break;
-    }
-    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed.
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      const liveIndex = live.ids.indexOf(id);
-      if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
-        this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
-      }
-      if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
-        this._scriptEvent(live, 'cacheGone', { id });
-      }
-      if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
-        this._scriptEvent(live, 'sourceGone', { id });
-      }
-      if (liveIndex !== -1) {
-        for (let index = live.ids.length - 1; index >= 0; index--) {
-          if (live.ids[index] === id) live.ids.splice(index, 1);
+      const idx = rec ? rec.ids.indexOf(id) : -1;
+      if (rec && idx !== -1) {
+        delete dir.activeMembership[id];
+        rec.ids.splice(idx, 1);
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
+        if (!rec.ids.length) delete dir.active[squadId];
+      } else {
+        for (const sid of Object.keys(dir.active)) {
+          const row = dir.active[sid];
+          const rowIdx = row.ids.indexOf(id);
+          if (rowIdx === -1) continue;
+          delete dir.activeMembership[id];
+          row.ids.splice(rowIdx, 1);
+          const budget = this.helpers && this.helpers.spawnBudget;
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(sid, 1);
+          if (!row.ids.length) delete dir.active[sid];
+          break;
         }
-        if (live.roles && typeof live.roles === 'object') delete live.roles[id];
-        dropSquadMember(dir, live, id);
       }
+    }
+    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed. Rows
+    // whose script probes a data key (cacheId/sourceId) are not covered by the id
+    // membership map — when any such row exists (or the map answer looks stale), run
+    // the original full walk verbatim.
+    const probeRows = Number.isFinite(dir.scriptProbeRows) ? dir.scriptProbeRows : 0;
+    const memberLiveId = dir.squadMembership ? dir.squadMembership[id] : null;
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    const memberHit = !!(memberLive && memberLive.ids.indexOf(id) !== -1);
+    if (probeRows > 0 || (memberLiveId != null && !memberHit)) {
+      for (const lid of Object.keys(dir.live)) {
+        this._noteLiveGone(dir, dir.live[lid], id, p);
+      }
+    } else if (memberHit) {
+      this._noteLiveGone(dir, memberLive, id, p);
+    }
+  },
+
+  _noteLiveGone(dir, live, id, p) {
+    if (!live) return;
+    const liveIndex = live.ids.indexOf(id);
+    if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
+      this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
+    }
+    if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
+      this._scriptEvent(live, 'cacheGone', { id });
+    }
+    if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
+      this._scriptEvent(live, 'sourceGone', { id });
+    }
+    if (liveIndex !== -1) {
+      for (let index = live.ids.length - 1; index >= 0; index--) {
+        if (live.ids[index] === id) live.ids.splice(index, 1);
+      }
+      if (live.roles && typeof live.roles === 'object') delete live.roles[id];
+      dropSquadMember(dir, live, id);
     }
   },
 
@@ -2734,6 +2772,7 @@ export const encounterDirector = {
     const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
     live.data.restored = true;
     dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
     const marker = cohort.some((entity) => (
       entity.data && entity.data.ai
       && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER] === 'conflict'
@@ -2741,6 +2780,7 @@ export const encounterDirector = {
     const script = encounterScriptFor(live);
     if (!script || typeof script.resume !== 'function') {
       dropLiveSquadMembership(dir, live);
+      noteScriptProbeRow(dir, live, -1);
       delete dir.live[live.id];
       return false;
     }
@@ -4111,6 +4151,28 @@ function dropLiveSquadMembership(dir, live) {
   }
 }
 
+// entityId -> squadId for the active-spawn ledger: the same coverage contract as
+// squadMembership, only for dir.active rec.ids (every push indexes, every removal drops).
+function indexActiveMember(dir, live, id) {
+  if (!dir.activeMembership || typeof dir.activeMembership !== 'object' || Array.isArray(dir.activeMembership)) {
+    dir.activeMembership = {};
+  }
+  dir.activeMembership[id] = live.squadId;
+}
+
+function dropActiveMemberId(dir, id, squadId) {
+  const membership = dir.activeMembership;
+  if (membership && membership[id] === squadId) delete membership[id];
+}
+
+// dir.live rows whose script probes data.cacheId / data.sourceId in _onEntityGone — those
+// lookups are outside squadMembership coverage, so any live probe row forces the full walk.
+function noteScriptProbeRow(dir, live, sign) {
+  if (!live || (live.script !== 'salvageSignal' && live.script !== 'whisper')) return;
+  if (!Number.isFinite(dir.scriptProbeRows)) dir.scriptProbeRows = 0;
+  dir.scriptProbeRows += sign;
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -4120,6 +4182,21 @@ function ensureDirectorState(state) {
   if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
   if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
   if (!d.squadMembership || typeof d.squadMembership !== 'object' || Array.isArray(d.squadMembership)) d.squadMembership = {};
+  if (!d.activeMembership || typeof d.activeMembership !== 'object' || Array.isArray(d.activeMembership)) {
+    const map = {};
+    for (const squadId of Object.keys(d.active)) {
+      const rec = d.active[squadId];
+      if (!rec || !Array.isArray(rec.ids)) continue;
+      for (const id of rec.ids) map[id] = squadId;
+    }
+    d.activeMembership = map;
+  }
+  if (!Number.isFinite(d.scriptProbeRows)) {
+    d.scriptProbeRows = 0;
+    for (const live of Object.values(d.live)) {
+      if (live && (live.script === 'salvageSignal' || live.script === 'whisper')) d.scriptProbeRows += 1;
+    }
+  }
   if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
   if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
   if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;

@@ -881,6 +881,13 @@ export const npcJobsRuntime = {
     this._jobIds = null;
     this._jobIdsById = null;
     this._jobIdsDirty = true;
+    // Lazily-rebuilt entity-join maps for the gone path: entityId -> first entry in
+    // byId key order (mirroring _entryForEntity's first-match scan) and towTargetId ->
+    // entry list. Dirtied by _invalidateJobIds (every create/delete) and by each
+    // entityId / towTargetId field write below — a rebuilt map is provably current, so
+    // a miss is authoritative and needs no scan fallback.
+    this._goneIndex = null;
+    this._goneIndexDirty = true;
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
@@ -1036,6 +1043,7 @@ export const npcJobsRuntime = {
   _lots() { return this._ensureState().lots; },
   _invalidateJobIds() {
     this._jobIdsDirty = true;
+    this._goneIndexDirty = true;
     // Membership dirty wake for VFX quiet-empty latch (prepareFrame residual).
     // Soft-GPU fps not claimed.
     const bag = this.state && this.state.npcJobs;
@@ -1921,13 +1929,32 @@ export const npcJobsRuntime = {
       && this._hasExactCeresSectorAuthority(entity);
   },
 
+  _ensureGoneIndex() {
+    if (this._goneIndex && this._goneIndexDirty !== true) return this._goneIndex;
+    const byEntity = new Map();
+    const byTowTarget = new Map();
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry) continue;
+      if (entry.entityId != null && !byEntity.has(entry.entityId)) byEntity.set(entry.entityId, entry);
+      if (entry.towTargetId != null) {
+        let bucket = byTowTarget.get(entry.towTargetId);
+        if (!bucket) { bucket = []; byTowTarget.set(entry.towTargetId, bucket); }
+        bucket.push(entry);
+      }
+    }
+    this._goneIndex = { byEntity, byTowTarget };
+    this._goneIndexDirty = false;
+    return this._goneIndex;
+  },
+
   _entryForEntity(entityId) {
     if (entityId == null) return null;
-    const byId = this._byId();
-    for (const id of Object.keys(byId)) {
-      if (byId[id] && byId[id].entityId === entityId) return byId[id];
-    }
-    return null;
+    const hit = this._ensureGoneIndex().byEntity.get(entityId);
+    // The verify is defensive only: every link/unlink/delete site dirties the index,
+    // so under the documented coverage contract hit.entityId is already entityId.
+    return hit && hit.entityId === entityId ? hit : null;
   },
 
   newGame() {
@@ -2621,6 +2648,7 @@ export const npcJobsRuntime = {
     entry.towOwnerRef = null;
     entry.towTargetRef = null;
     entry.towNextScanSimT = 0;
+    this._goneIndexDirty = true;
     return !!attachment || attachmentId != null;
   },
 
@@ -2682,6 +2710,7 @@ export const npcJobsRuntime = {
         stampNpcMasslineHead(entity, plan.headId);
         entry.towAttachmentId = restored.id;
         entry.towTargetId = restored.targetId;
+        this._goneIndexDirty = true;
         entry.towOwnerRef = entity;
         entry.towTargetRef = this.state.entities && this.state.entities.get(restored.targetId) || null;
         if (entity.data) {
@@ -2721,6 +2750,7 @@ export const npcJobsRuntime = {
     const attachment = created.attachment;
     entry.towAttachmentId = attachment.id;
     entry.towTargetId = target.id;
+    this._goneIndexDirty = true;
     entry.towOwnerRef = entity;
     entry.towTargetRef = target;
     if (data) {
@@ -4873,6 +4903,7 @@ export const npcJobsRuntime = {
     virtualize(entry.job);
     entry.entityId = null;
     entry.threatId = null;
+    this._goneIndexDirty = true;
   },
 
   _onFarActorRestored(p) {
@@ -4912,6 +4943,7 @@ export const npcJobsRuntime = {
       virtualize(entry.job);
       entry.entityId = null;
       entry.threatId = null;
+      this._goneIndexDirty = true;
       this._clearViolenceStamp(entry);
     }
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
@@ -5013,6 +5045,7 @@ export const npcJobsRuntime = {
     materialize(entry.job);
     entry.entityId = entity.id;
     entry.threatId = null;
+    this._goneIndexDirty = true;
     clearRouteBrake(entity);
     entity.data.jobId = 'job:' + entry.worldRecordId;
     entity.data.jobPhase = entry.job.phase;
@@ -5076,12 +5109,9 @@ export const npcJobsRuntime = {
     if (id == null) return;
     const entry = this._entryForEntity(id);
     if (entry) this.release('job:' + entry.worldRecordId);
-    const byId = this._byId();
-    for (const jobId of Object.keys(byId)) {
-      const candidate = byId[jobId];
-      if (!candidate || candidate.towTargetId !== id) continue;
-      this._clearTugAttachment(candidate, 'npc_tow_target_gone');
-    }
+    const towed = this._ensureGoneIndex().byTowTarget.get(id);
+    if (!towed) return;
+    for (const candidate of towed) this._clearTugAttachment(candidate, 'npc_tow_target_gone');
   },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────

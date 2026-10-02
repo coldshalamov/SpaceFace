@@ -2146,28 +2146,32 @@ export const world = {
     return false;
   },
 
-  _destroyEntityAtIndex(i) {
+  _destroyEntityAtIndex(i, reason) {
     const state = this.state;
     const list = state.entityList;
     const e = list[i];
     if (!e) return;
     const removeEntity = this.helpers && this.helpers.removeEntity;
-    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i });
+    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i, reason });
     else e.alive = false;
   },
 
   // Batch despawn: one index pass via the core multi-corpse helper; falls back to the
   // per-entity walk when helpers are stubbed (minimal harnesses). Indices are normalized to
-  // highest-first — the reverse-walk order every caller used before.
-  _destroyEntitiesAtIndices(indices) {
+  // highest-first — the reverse-walk order every caller used before. Every caller is a
+  // residency-family teardown, so corpse emits carry reason:'sector_residency' like the
+  // run_reset/save_restore/virtualize tags — a listener that can classify the transition
+  // skips work it would otherwise pay per corpse inside the flush.
+  _destroyEntitiesAtIndices(indices, opts) {
     if (!indices || indices.length === 0) return;
     indices.sort((a, b) => b - a);
+    const reason = opts && opts.reason != null ? opts.reason : 'sector_residency';
     const removeAt = this.helpers && this.helpers.removeEntitiesAtIndices;
     if (typeof removeAt === 'function') {
-      removeAt(indices, { immediate: true });
+      removeAt(indices, { immediate: true, reason });
       return;
     }
-    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k]);
+    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k], reason);
   },
 
   /**

@@ -8256,9 +8256,43 @@ export const missions = {
   _contractClaimCrew(m) {
     const out = [];
     if (!m) return out;
-    forEachLivingWorldActor(this.state, (e) => {
-      if (e && e.data && String(e.data.contractClaimCrewOf) === String(m.id)) out.push(e);
-    });
+    const stamp = String(m.id);
+    const entities = this.state && this.state.entities;
+    // Cached ids resolve O(1) each and self-prune on re-verify (a dead, released,
+    // recycled, or stamp-cleared row fails the stamp check). The first resolution scans
+    // once to seed it; the spawn path below appends — callers only read membership
+    // (find/some/filter/iterate), never order.
+    let justScanned = false;
+    if (!Array.isArray(m._crewEntityIds)) {
+      m._crewEntityIds = [];
+      justScanned = true;
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && String(e.data.contractClaimCrewOf) === stamp) m._crewEntityIds.push(e.id);
+      });
+    }
+    if (m._crewEntityIds.length) {
+      const kept = [];
+      for (const id of m._crewEntityIds) {
+        const e = entities && entities.get ? entities.get(id) : null;
+        if (!e || e.alive === false || !e.data || String(e.data.contractClaimCrewOf) !== stamp) continue;
+        kept.push(id);
+        out.push(e);
+      }
+      if (kept.length !== m._crewEntityIds.length) m._crewEntityIds = kept;
+    }
+    // An empty resolve can't distinguish "all released" from ids reminted by a restore —
+    // one rescan covers it, tombstoned on this runtime (transient: a deserialized mission
+    // is a fresh key, so post-load always rescans) so a persistent empty stays O(1).
+    const tomb = this._claimCrewEmptyTomb || (this._claimCrewEmptyTomb = new WeakMap());
+    if (out.length === 0 && !justScanned && !tomb.has(m)) {
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && String(e.data.contractClaimCrewOf) === stamp) {
+          m._crewEntityIds.push(e.id);
+          out.push(e);
+        }
+      });
+      if (out.length === 0) tomb.set(m, true);
+    }
     return out;
   },
 
@@ -8441,6 +8475,9 @@ export const missions = {
       }
       if (ent) {
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        if (!Array.isArray(m._crewEntityIds)) m._crewEntityIds = [];
+        m._crewEntityIds.push(ent.id);
+        if (this._claimCrewEmptyTomb) this._claimCrewEmptyTomb.delete(m);
         spawned++;
         crewIndex++;
       }
@@ -9566,7 +9603,7 @@ export const missions = {
     const m = this.state.missions;
     // Strip transient runtime fields (entity ids) from active missions.
     const active = (m.active || []).map((a) => {
-      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, ...rest } = a;
+      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema

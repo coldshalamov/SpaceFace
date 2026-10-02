@@ -131,7 +131,9 @@ export function captureWorldSitePayloadState({
           ? index.byWorldRecordIdCount.get(payload.worldObjectId)
           : undefined;
         indexAnswered = twins === 1;
-        if (holder.alive !== false && holder.data
+        // Under twins>1 the index holder is the first registrant, not necessarily the
+        // walk's min-stableEntityId pick — accept the hit only when provably unique.
+        if (twins === 1 && holder.alive !== false && holder.data
             && holder.data.worldSiteId === manifest.id
             && holder.data.worldSitePayloadId === payload.id) live = holder;
       } else if (covered) {
