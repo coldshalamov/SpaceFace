@@ -79,22 +79,25 @@ export function modelTruthRow(id) {
 export function modelTruthRowForEntity(entity) {
   if (!entity) return null;
   const data = entity.data || {};
-  const keys = [
-    data.defId,
-    data.placeId,
-    data.archetypeGlb,
-    data.typeId,
-    data.lootTableId,
-    entity.id,
-  ];
-  for (const key of keys) {
-    if (key && BY_ID.has(key)) return BY_ID.get(key);
-  }
+  // Hot path (physics sync, LOS, scanning): short-circuit lookups in the canonical priority
+  // order, no per-call key array.
+  const row = (data.defId && BY_ID.get(data.defId))
+    || (data.placeId && BY_ID.get(data.placeId))
+    || (data.archetypeGlb && BY_ID.get(data.archetypeGlb))
+    || (data.typeId && BY_ID.get(data.typeId))
+    || (data.lootTableId && BY_ID.get(data.lootTableId))
+    || (entity.id && BY_ID.get(entity.id));
+  if (row) return row;
   if (data.trafficRole && BY_ID.has(`traffic:${data.trafficRole}`)) {
     return BY_ID.get(`traffic:${data.trafficRole}`);
   }
   if (data.isGate || data.isWormhole) return BY_ID.get('place_gate_jump_ring');
   return null;
+}
+
+/** The canonical proxy row: stations resolve through the station identity chain first. */
+export function modelTruthProxyRowForEntity(entity) {
+  return stationRow(entity) || modelTruthRowForEntity(entity);
 }
 
 /** World-space primitives for the measured skin, or null when the row has no skin yet. */
@@ -149,7 +152,7 @@ export function modelTruthContains(entity, x, z) {
 }
 
 export function modelTruthProxyManifest(entity) {
-  const row = stationRow(entity) || modelTruthRowForEntity(entity);
+  const row = modelTruthProxyRowForEntity(entity);
   const skin = row && row.proposedSkin;
   if (!row || !skin || skin.adopted !== true || !skin.primitives || !skin.primitives.length) return null;
   const dock = row.family === 'station' || row.family === 'gate';

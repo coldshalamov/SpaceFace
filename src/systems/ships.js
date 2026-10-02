@@ -2423,7 +2423,7 @@ function copyDerivedOntoEntity(e, d) {
   e.flightModel = d.flightModel;
   e.propulsion = d.propulsion;
   e.radius = d.radius; e.mass = d.mass;
-  syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia);
+  syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia, d.radius);
 }
 
 /** Apply only fields that depend on operational mass; cargo churn must not rebuild combat/runtime
