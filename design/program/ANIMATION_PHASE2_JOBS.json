@@ -463,6 +463,69 @@
     "__settle__N"
    ],
    "rationale": "A-list polish pass: overlay-flagged transients release group claims on drain so held base states revive; settleGroups gains a hold-target so mid-flight verbs blend onto the destination pose instead of teleporting to a rest key."
+  },
+  {
+   "id": "ANI-37",
+   "group": "B",
+   "status": "done",
+   "title": "Hornet intercept authority — customs verbs land on the real patrol hull",
+   "model": "hornet-production-v1",
+   "builder": "tools/blender/forge/animations/ANI_37.py",
+   "newPivots": [
+    "MOTION_HORNET_TIPPOD_P",
+    "MOTION_HORNET_TIPPOD_S",
+    "MOTION_HORNET_FLAP_P",
+    "MOTION_HORNET_FLAP_S",
+    "MOTION_HORNET_CANARD_P",
+    "MOTION_HORNET_CANARD_S"
+   ],
+   "triggers": [
+    "lawfulInspection:choose",
+    "customs:submit",
+    "player:scannedByPatrol",
+    "customs:breakScan",
+    "ai:telegraph",
+    "encounter:predationEngaged",
+    "ai:flee"
+   ],
+   "clips": [
+    "hornet_brace",
+    "hornet_sweep",
+    "hornet_lunge",
+    "hornet_yield",
+    "hornet_idle_drift"
+   ],
+   "rationale": "ship_hornet is the hull every customs patrol flies but it was unbanked, so patrol-addressed customs verbs fell through to the inspection-cutter fanout while the serving patrol sat rigid. The hornet rig gives the boarding arc a body on the actual hull."
+  },
+  {
+   "id": "ANI-38",
+   "group": "C",
+   "status": "done",
+   "title": "Chassis secondary-motion kit — every flying hull breathes",
+   "model": "30 hulls (all unbanked player + traffic wholeships)",
+   "builder": "tools/blender/forge/animations/ANI_38.py",
+   "newPivots": [
+    "MOTION_HULL_CORE"
+   ],
+   "triggers": [
+    "authoredMotion:attach",
+    "ai:telegraph",
+    "encounter:telegraph",
+    "encounter:predationTelegraph",
+    "ai:stateChange",
+    "ship:boostStart",
+    "ship:boostPreKick",
+    "ai:flee",
+    "npc:hailed"
+   ],
+   "clips": [
+    "hull_idle",
+    "hull_brace",
+    "hull_kick",
+    "hull_veer",
+    "hull_wag"
+   ],
+   "rationale": "Coverage pass: 12 player hulls and 18 traffic wholeships had no motion bank at all — dead airframes. One root pivot per hull carries small-amplitude chassis grammar (idle breathing, telegraph crouch, boost jolt, evasive bank, hail wing-rock). barkDirector emits npc:hailed so a pass-by greeting has a visible answer."
   }
  ]
 }

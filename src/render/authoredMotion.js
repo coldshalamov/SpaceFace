@@ -518,13 +518,16 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   // Hostile FSM transitions bristle the wasp rig on that exact hull; flee/engage keep their
   // dedicated events, so only the approach states read through here.
   const HOSTILE_STATES = new Set(['pursue', 'attack', 'strafe']);
+  // The bristle gate is rig-generic: a wasp mid-bristle or a hull mid-brace is
+  // already telling the same story, so a re-fired verb is swallowed, not restarted.
+  const braced = (c) => c.clipActive?.('wasp_bristle') || c.clipActive?.('hull_brace');
   const onAiStateChange = (payload) => {
     if (!payload || !HOSTILE_STATES.has(payload.to)) return;
-    dispatch('ai:stateChange', payload.npcId, payload, (c) => !c.clipActive?.('wasp_bristle'));
+    dispatch('ai:stateChange', payload.npcId, payload, (c) => !braced(c));
   };
   const onPredationTelegraph = (payload) => {
     dispatch('encounter:predationTelegraph', payload && payload.raiderId, payload,
-      (c) => !c.clipActive?.('wasp_bristle'));
+      (c) => !braced(c));
   };
   // The drive iris is the hull's power signature: cloak folds it, decloak primes it.
   const onCloakEngaged = () => dispatch('cloak:engaged', playerId(), null, () => true);
@@ -581,15 +584,15 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   // guns, fleeing tucks them. All entity-addressed; non-wasp rigs ignore the events.
   const onAiTelegraph = (payload) => {
     dispatch('ai:telegraph', payload && payload.entityId, payload,
-      (c) => !c.clipActive?.('wasp_bristle'));
+      (c) => !braced(c));
   };
   const onAiFlee = (payload) => {
     dispatch('ai:flee', payload && payload.entityId, payload,
-      (c) => !c.clipActive?.('wasp_flee'));
+      (c) => !(c.clipActive?.('wasp_flee') || c.clipActive?.('hull_veer')));
   };
   const onPredationEngaged = (payload) => {
     dispatch('encounter:predationEngaged', payload && payload.raiderId, payload,
-      (c) => !c.clipActive?.('wasp_predate'));
+      (c) => !(c.clipActive?.('wasp_predate') || c.clipActive?.('hull_kick')));
   };
   // ANI-30: the customs boarding arm reaches for you. customs:submit/breakScan and the
   // scan verdict carry the patrol entity id; lawfulInspection:choose only carries a case
@@ -907,6 +910,10 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('encounter:predationTelegraph', onPredationTelegraph),
     bus.on('cloak:engaged', onCloakEngaged),
     bus.on('cloak:dropped', onCloakDropped),
+    // ANI-38: passing traffic's hail gets a visible answer — the hull rocks its wings.
+    bus.on('npc:hailed', (payload) => {
+      dispatch('npc:hailed', payload && payload.entityId, payload, () => true);
+    }),
     bus.on('cargo:jettisoned', onCargoJettisoned),
     bus.on('planet:collector', onPlanetCollector),
     bus.on('massSeed:deployed', onMassSeedDeployed),

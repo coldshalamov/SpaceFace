@@ -6150,7 +6150,7 @@
       "priority": "P2",
       "file": "wholeships/apron_shuttle.glb",
       "tris": 40832,
-      "bytes": 2489748,
+      "bytes": 2491264,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6203,7 +6203,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
       "tris": 38474,
-      "bytes": 2244640,
+      "bytes": 2246484,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6256,7 +6256,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_lode.glb",
       "tris": 32574,
-      "bytes": 2024468,
+      "bytes": 2026016,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6308,7 +6308,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
       "tris": 37724,
-      "bytes": 2363440,
+      "bytes": 2365024,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6343,12 +6343,12 @@
           -3.105302095413208
         ],
         "max": [
-          9.64134693145752,
+          9.641345977783203,
           2.076219081878662,
           3.0450000762939453
         ],
         "dimensionsM": [
-          18.36199951171875,
+          18.361998558044434,
           2.901238799095154,
           6.150302171707153
         ]
@@ -6362,7 +6362,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
       "tris": 37810,
-      "bytes": 2351136,
+      "bytes": 2352792,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6394,17 +6394,17 @@
         "min": [
           -8.720653533935547,
           -0.675000011920929,
-          -3.2748544216156006
+          -3.2748405933380127
         ],
         "max": [
           10.599640846252441,
           1.7044999599456787,
-          3.2748405933380127
+          3.2748546600341797
         ],
         "dimensionsM": [
           19.32029438018799,
           2.3794999718666077,
-          6.549695014953613
+          6.549695253372192
         ]
       },
       "note": "PQ-193.06 — Corsair Blade, live corsair_raider body. Foundry variant of the Ashline Rig with ram-lip, four blades, weapon collars, and lamps; donor PBR materials on the kit; pirate Rig slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb."
@@ -6423,7 +6423,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
       "tris": 38496,
-      "bytes": 2263296,
+      "bytes": 2264300,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6484,7 +6484,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
       "tris": 33032,
-      "bytes": 1972636,
+      "bytes": 1973612,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6544,7 +6544,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_colossus",
       "tris": 59184,
-      "bytes": 3610344,
+      "bytes": 3611212,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6574,7 +6574,7 @@
       "bounds": {
         "min": [
           -26.92018699645996,
-          -2.3138718605041504,
+          -2.3138813972473145,
           -13.108247756958008
         ],
         "max": [
@@ -6584,7 +6584,7 @@
         ],
         "dimensionsM": [
           53.50069808959961,
-          12.066371440887451,
+          12.066380977630615,
           26.216559410095215
         ]
       },
@@ -6597,7 +6597,7 @@
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
       "tris": 64326,
-      "bytes": 3726732,
+      "bytes": 3728348,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6650,7 +6650,7 @@
       "priority": "P1",
       "file": "wholeships/helios_cradle.glb",
       "tris": 68886,
-      "bytes": 3969672,
+      "bytes": 3971392,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6703,7 +6703,7 @@
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
       "tris": 29244,
-      "bytes": 1753620,
+      "bytes": 1755232,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6756,7 +6756,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
       "tris": 54220,
-      "bytes": 3233332,
+      "bytes": 3235584,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6810,7 +6810,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
       "tris": 54220,
-      "bytes": 3233492,
+      "bytes": 3235740,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6864,7 +6864,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
       "tris": 54220,
-      "bytes": 3233480,
+      "bytes": 3235644,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6918,7 +6918,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_reach.glb",
       "tris": 54220,
-      "bytes": 3233744,
+      "bytes": 3235800,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7093,7 +7093,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ironback",
       "tris": 44718,
-      "bytes": 2519832,
+      "bytes": 2520668,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7124,7 +7124,7 @@
         "min": [
           -9.970046997070312,
           -1.0499999523162842,
-          -3.390800714492798
+          -3.3908004760742188
         ],
         "max": [
           9.946205139160156,
@@ -7134,7 +7134,7 @@
         "dimensionsM": [
           19.91625213623047,
           3.8251876831054688,
-          6.781601190567017
+          6.7816009521484375
         ]
       },
       "note": "Fleet remaster production Ironback. Live player mining barge. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7286,7 +7286,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_leviathan",
       "tris": 53340,
-      "bytes": 3469780,
+      "bytes": 3470752,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7347,7 +7347,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_saucer",
       "tris": 60570,
-      "bytes": 3517788,
+      "bytes": 3518520,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7380,7 +7380,7 @@
         "min": [
           -9.75,
           -3.996148109436035,
-          -11.030622482299805
+          -11.030624389648438
         ],
         "max": [
           11.212514877319336,
@@ -7390,7 +7390,7 @@
         "dimensionsM": [
           20.962514877319336,
           7.562405586242676,
-          22.061019897460938
+          22.06102180480957
         ]
       },
       "note": "Forge-v1 production build (tools/blender/forge/ships/saucer.py): inertialess exotic player hull — lenticular gunmetal disc, cyan rim light chain, ventral drive core."
@@ -7409,7 +7409,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
       "tris": 33160,
-      "bytes": 1974728,
+      "bytes": 1975392,
       "textureSize": 1024,
       "hooks": [
         "HOOK_DRIVE_CORE"
@@ -7472,7 +7472,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
       "tris": 24994,
-      "bytes": 1541812,
+      "bytes": 1542784,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7594,7 +7594,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
       "tris": 25470,
-      "bytes": 1527832,
+      "bytes": 1528732,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7647,7 +7647,7 @@
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
       "tris": 38670,
-      "bytes": 2284004,
+      "bytes": 2285824,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7707,7 +7707,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
       "tris": 27864,
-      "bytes": 1656676,
+      "bytes": 1657508,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7759,7 +7759,7 @@
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
       "tris": 52822,
-      "bytes": 3104972,
+      "bytes": 3106628,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7812,7 +7812,7 @@
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
       "tris": 68503,
-      "bytes": 3903624,
+      "bytes": 3905488,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7916,7 +7916,7 @@
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
       "tris": 34101,
-      "bytes": 2156216,
+      "bytes": 2158072,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7969,7 +7969,7 @@
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
       "tris": 49866,
-      "bytes": 2898912,
+      "bytes": 2900356,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8022,7 +8022,7 @@
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
       "tris": 70912,
-      "bytes": 4044896,
+      "bytes": 4046644,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8083,7 +8083,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
       "tris": 46694,
-      "bytes": 2988576,
+      "bytes": 2989476,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8117,12 +8117,12 @@
           -6.255528926849365
         ],
         "max": [
-          20.50646209716797,
+          20.5068302154541,
           9.058894157409668,
           6.255528926849365
         ],
         "dimensionsM": [
-          42.127389907836914,
+          42.12775802612305,
           11.058894157409668,
           12.51105785369873
         ]

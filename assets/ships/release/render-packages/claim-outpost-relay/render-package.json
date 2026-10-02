@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "44137a87eb152e0fd7cac2080ddade3d5f937c23a755c16907d4cf8026ea6922",
+  "contentHash": "fe328c537594d23ec09f8f926583321bcf6c59b29b9885d0ac6b5dd5b50997f4",
   "dynamicGroups": [
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hook-nav-port.dynamic",
@@ -3687,7 +3687,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "9fcb8ac0c7ecf41d30b51d4a867f45521d93ff169385298a596ee16a68e9af11",
+      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
       "uri": "pilots.json"
     }
   },
@@ -5259,7 +5259,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
   },
-  "runtimeHash": "5be7e5f59055cda1e563bdf68bb08973c0a23160dba824648d0efe553aa85e92",
+  "runtimeHash": "c12106e25e0c53f0f1a23b4a49bdb7ab96bb14976ef0edb1c591e5269f78d258",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

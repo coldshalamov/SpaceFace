@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "05e254a43a3d2a9e181d1abf1878740de8c94ce458617cd6444802224232567d",
+  "contentHash": "3c515fdfe437c0fedd777b5814e78e31b3ba7dd6f1d9c24681e188c2d273aa9b",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-grave-shard.mesh.lod0-hook-nav-port.dynamic",
@@ -3517,7 +3517,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "9fcb8ac0c7ecf41d30b51d4a867f45521d93ff169385298a596ee16a68e9af11",
+      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
       "uri": "pilots.json"
     }
   },
@@ -4900,7 +4900,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb"
   },
-  "runtimeHash": "8156acbd82a688f6360466707f0791fd6402d62ca63293ea506b17dc6096bb24",
+  "runtimeHash": "6c79e8af28808600032b14a679ade34bd3467967425f9b3fc9e247c4ed6cfed4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

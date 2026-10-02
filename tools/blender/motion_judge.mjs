@@ -270,6 +270,17 @@ const SEQUENCES = {
     ['wait', 1.2], ['ev', 'customs:breakScan'], ['wait', 1.8],
     ['expectDrives', 'hornet_idle_drift'],
   ],
+  // ANI-38 chassis grammar on a player hull and a traffic wholeship: a hail, a
+  // telegraph mid-hail (claim hand-off), boost kick, then ambient back underneath.
+  'atlas-production-v1': [
+    ['ev', 'npc:hailed'], ['wait', 0.8], ['ev', 'ai:telegraph'],
+    ['wait', 1.2], ['ev', 'ship:boostStart'], ['wait', 1.4],
+    ['expectDrives', 'hull_idle'],
+  ],
+  'ashline-dart': [
+    ['ev', 'ai:telegraph'], ['wait', 0.6], ['ev', 'ai:flee'],
+    ['wait', 1.8], ['expectDrives', 'hull_idle'],
+  ],
   'freight-platform': [
     // Handlers gate throughput on pickBusy; the raw probe still fires it mid-pick to
     // prove the claim hand-off can't pop — then waits out the bridged 3.2s sweep.
