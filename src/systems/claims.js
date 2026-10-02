@@ -822,10 +822,12 @@ export const claims = {
     return this.state.entityList || [];
   },
 
-  // Statics the spatial hash cannot cover: hash membership requires e.collides truthy, so a
-  // member with collides===undefined would still pass _travelInfrastructureStaticBlocker
-  // (only ===false fails it) yet never reach a queryRadius result. Rebuilt only on index
-  // churn or a post-spawn collides flip, so the per-check walk stays at this small list.
+  // Blocker-passing bodies the spatial hash cannot cover: hash membership requires
+  // e.collides truthy, so a member with collides===undefined/0 still passes
+  // _travelInfrastructureStaticBlocker (only ===false fails it) yet never reaches a
+  // queryRadius result. The domain is the blocker domain — entityList minus the six
+  // excluded types — not index.statics. Rebuilt only on index churn or a post-spawn
+  // collides flip, so the per-check walk stays at this small list.
   _travelInfrastructureStaticsUncovered() {
     const index = this.state && this.state.entityIndex;
     const version = index && Number.isFinite(index.version) ? index.version : null;
@@ -836,25 +838,44 @@ export const claims = {
       cache.version = version == null ? -1 : version;
       cache.epoch = epoch;
       cache.list.length = 0;
-      const list = index && Array.isArray(index.statics) ? index.statics : [];
-      for (const e of list) if (e && e.collides !== true) cache.list.push(e);
+      const list = (this.state && this.state.entityList) || [];
+      for (const e of list) if (e && !e.collides && e.collides !== false) cache.list.push(e);
     }
     return cache.list;
   },
 
+  // The hash + uncovered pair only covers the blocker domain when the index provably
+  // covers every entity: hash members derive from index lanes, so an unindexed
+  // collides-truthy member would live in neither set.
+  _travelInfrastructureIndexCovers() {
+    const index = this.state && this.state.entityIndex;
+    const entities = this.state && this.state.entities;
+    return !!(
+      index
+      && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index._indexedIds instanceof Set
+      && entities
+      && entities.size === index._indexedIds.size
+    );
+  },
+
   // Radius bound for the padded query: every covered blocker satisfies
-  // dist < base + e.radius <= base + maxR. Statics' radius is spawn-stable.
-  _travelInfrastructureStaticsMaxRadius() {
+  // dist < base + e.radius <= base + maxR. The domain is every entityList member:
+  // blockers are not station/asteroid-only, and a collides===false member can only
+  // enter via a collides flip (epoch-bumped) or a radius growth (epoch-bumped at the
+  // single post-spawn growth site, alienEcology juvenile promotion).
+  _travelInfrastructureBlockerMaxRadius() {
     const index = this.state && this.state.entityIndex;
     const version = index && Number.isFinite(index.version) ? index.version : null;
     const epoch = collidesFlipEpoch();
-    const cache = this._infraStaticsMaxR
-      || (this._infraStaticsMaxR = { version: -1, epoch: -1, max: 0 });
+    const cache = this._infraBlockerMaxR
+      || (this._infraBlockerMaxR = { version: -1, epoch: -1, max: 0 });
     if (version === null || cache.version !== version || cache.epoch !== epoch) {
       cache.version = version == null ? -1 : version;
       cache.epoch = epoch;
       cache.max = 0;
-      const list = index && Array.isArray(index.statics) ? index.statics : [];
+      const list = (this.state && this.state.entityList) || [];
       for (const e of list) {
         const r = e && Math.max(0, Number(e.radius) || 0);
         if (r > cache.max) cache.max = r;
@@ -863,11 +884,13 @@ export const claims = {
     return cache.max;
   },
 
-  // Shared blocker probe over a candidate set. index.statics holds stations+asteroids only,
-  // so hash candidates outside that pair were never evaluated by the old walk either.
+  // Shared blocker probe over a candidate set. The blocker itself applies the domain
+  // (excludes ship/drone/projectile/pickup/payload/wreck) — any other type that passes it
+  // (mine, bomb, fx, place prop, ...) blocked under the original entityList walk and must
+  // keep blocking here.
   _travelInfrastructureAnyBlocker(candidates, test) {
     for (const entity of candidates) {
-      if (!entity || (entity.type !== 'station' && entity.type !== 'asteroid')) continue;
+      if (!entity) continue;
       if (test(entity)) return true;
     }
     return false;
@@ -875,11 +898,10 @@ export const claims = {
 
   _travelInfrastructurePointClear(pos, body, station) {
     const hash = this.state && this.state.spatialHash;
-    const index = this.state && this.state.entityIndex;
-    if (hasActiveSpatialHash(hash) && index && Array.isArray(index.statics)) {
+    if (hasActiveSpatialHash(hash) && this._travelInfrastructureIndexCovers()) {
       const out = this._infraPointScratch || (this._infraPointScratch = []);
       out.length = 0;
-      hash.queryRadius(pos.x, pos.z, 72 + this._travelInfrastructureStaticsMaxRadius(), out);
+      hash.queryRadius(pos.x, pos.z, 72 + this._travelInfrastructureBlockerMaxRadius(), out);
       const hits = (entity) => {
         if (!this._travelInfrastructureStaticBlocker(entity, body, station)) return false;
         const clearance = 72 + Math.max(0, Number(entity.radius) || 0);
@@ -912,14 +934,13 @@ export const claims = {
       ) < radius * radius;
     };
     const hash = this.state && this.state.spatialHash;
-    const index = this.state && this.state.entityIndex;
-    if (hasActiveSpatialHash(hash) && index && Array.isArray(index.statics)) {
+    if (hasActiveSpatialHash(hash) && this._travelInfrastructureIndexCovers()) {
       // One union disc covers the corridor's Minkowski sum: any blocker within
       // corridorRadius+e.radius of the segment sits inside it.
       const midX = (from.x + to.x) / 2;
       const midZ = (from.z + to.z) / 2;
       const halfLen = Math.hypot(to.x - from.x, to.z - from.z) / 2;
-      const r = halfLen + corridorRadiusWU + this._travelInfrastructureStaticsMaxRadius();
+      const r = halfLen + corridorRadiusWU + this._travelInfrastructureBlockerMaxRadius();
       const out = this._infraCorridorScratch || (this._infraCorridorScratch = []);
       out.length = 0;
       hash.queryRadius(midX, midZ, r, out);

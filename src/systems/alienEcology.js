@@ -40,7 +40,7 @@ import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
-import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
@@ -1119,6 +1119,9 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       && (rec.state === 'awake' || rec.state === 'bloom')) {
     eco.juvenile = false;
     e.radius = species.radius;
+    // Radius grew: invalidate footprint-epoch caches (hash query pads, uncovered-static
+    // lists) that are sized from the member's spawn-stable radius assumption.
+    bumpCollidesFlipEpoch();
     const label = scannerBiologyLabel(effectiveRevelation(state), species.signature);
     e.data.scanLabel = label;
     e.data.name = effectiveRevelation(state) >= 2 ? species.name : `${label} (adult)`;
