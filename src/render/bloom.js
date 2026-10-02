@@ -1107,13 +1107,18 @@ export function createUnreadyDrawableGuard(renderer) {
     // drivers, so the program-readiness scan below can never see them — drawing one would link
     // its variants synchronously inside this presented frame. Hide the root (subtree included)
     // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
+    // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
+    // the whole ship for the admission window: the per-material scan below and the
+    // renderBufferDirect guard still cover its never-compiled children.
     const pendingSubjects = renderer && renderer.userData
       ? renderer.userData.spacefacePendingPipelineSubjects
       : null;
     if (pendingSubjects && pendingSubjects.size > 0) {
       for (const subject of pendingSubjects) {
         if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
-        if (subject && subject.visible === true) {
+        if (subject && subject.visible === true
+            && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
           unreadySceneScratch[unreadySceneCount] = subject;
           unreadySceneCount += 1;
           subject.visible = false;

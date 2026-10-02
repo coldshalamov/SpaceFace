@@ -281,6 +281,15 @@ async function sampleVisualStability(page, options) {
       });
     }
 
+    // A transient pop event floods ~200 entries and the 80-entry report cap then masks the
+    // ship-never-resolved tail entirely (the perennial ~5-8 ships hiding behind pop runs).
+    // Report never-resolved verdicts first — a real pop already red-verdicts on entry count.
+    const neverResolvedFailures = failures.filter(
+      (entry) => entry && entry.reason === 'ship-never-resolved-past-window',
+    );
+    const transientFailures = failures.filter(
+      (entry) => !entry || entry.reason !== 'ship-never-resolved-past-window',
+    );
     return {
       ok: failures.length === 0,
       frameCount: frames,
@@ -291,7 +300,7 @@ async function sampleVisualStability(page, options) {
       frameCap,
       maxShipCount,
       failureCount: failures.length,
-      failures: failures.slice(0, 80),
+      failures: [...neverResolvedFailures, ...transientFailures].slice(0, 80),
       trackedShips: Array.from(tracks.values()).map((track) => summarizeTrack(track)),
       finalShips: finalShips.map((ship) => summarizeShip(ship)),
     };

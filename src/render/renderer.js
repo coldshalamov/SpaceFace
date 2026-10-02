@@ -16140,17 +16140,21 @@ export const render = {
         const sliceInFlight = this.state.mode === 'flight'
           && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
         if (sliceInFlight || linkOnGlass) {
-          const data = m.userData || (m.userData = {});
-          data.pipelinesPending = true;
-          data.pipelinesPendingBy = 'mesh-build-compile';
           const subject = m;
+          // Counted hold, not a raw flag: the rAF-gap early-hide is real (an unlinked
+          // mesh must not reach a presented frame), and routing it through
+          // markSubjectPipelinesPending keeps pending ⇒ counted — the tag also
+          // survives attribution until the real compile re-marks it.
+          markSubjectPipelinesPending(subject, true, 'mesh-build-compile');
           void yieldAfterPresent().then(() => {
             const compile = this.state && this.state.render
               && this.state.render.compileObjectPipelines;
             if (typeof compile === 'function' && subject && subject.parent) {
-              return compile(subject);
+              return compile(subject, { debugBy: 'mesh-build-compile' });
             }
-            if (subject && subject.userData) subject.userData.pipelinesPending = false;
+            return null;
+          }).finally(() => {
+            markSubjectPipelinesPending(subject, false);
           }).catch(() => null);
         } else {
           void compileFn(m);

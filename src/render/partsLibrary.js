@@ -31,6 +31,7 @@ import {
   TABLE_BAND,
   TABLE_DECODE_RUNWAY_SECONDS,
   TABLE_FRAME_SKIRT_WU,
+  TABLE_PROMOTE_HORIZON_SECONDS,
   authoredPrefetchRadius,
   classifyTableBand,
   glassHalfExtents,
@@ -2760,12 +2761,20 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         }
       },
     })).then((result) => {
-      if (result && result.status === 'cancelled-before-queue') {
+      // 'deferred-arena-dressing' is the same armed-but-refused outcome the cancel
+      // path restores: enqueue declined before a job existed, leaving 'loading'
+      // + a settled promise that would pin every future request at the existing
+      // short-circuit. Restore the armed state so the approach trigger and the
+      // post-run sector return re-request it.
+      if (result && (result.status === 'cancelled-before-queue'
+          || result.status === 'deferred-arena-dressing')) {
         delete boundary.userData.authoredUpgradePromise;
         if (boundary.userData.authoredAssetState === 'loading') {
           boundary.userData.authoredAssetState = 'awaiting-authored-admission';
         }
-        boundary.userData.authoredReadmissionReason = 'cancelled-before-queue-detached';
+        boundary.userData.authoredReadmissionReason = result.status === 'cancelled-before-queue'
+          ? 'cancelled-before-queue-detached'
+          : 'deferred-arena-dressing';
         armed = true;
         if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
       }
@@ -5569,6 +5578,18 @@ function backgroundUpgradePriority(job) {
   if (liveState.player && liveState.player.targetId === entity.id) return 2;
   if (entity.team === 1) return 3;
   if (entityIsOnscreen(entity, liveState)) return 4;
+  // A hull the admission policy itself flags as due — inside the authored prefetch
+  // disc, or closing inside the promote horizon — parked at rung 10 starves behind
+  // every ambient arrival the serial queue keeps feeding (observed 93–281 s
+  // 'loading' parks on inbound ships): its authored body lands only after the hull
+  // crosses the glass. Grade it above ambient. Same pure predicate and horizon the
+  // renderer's isEntityAuthoredUpgradeRelevant ends on (partsLibrary cannot import
+  // renderer.js — the cycle is documented at authoredLiveTableCamera).
+  if ((entity.type === 'ship' || entity.type === 'wreck' || entity.type === 'drone'
+      || entity.type === 'station')
+      && willEntityEnterAuthoredUpgradeRunway(entity, liveState, {
+        horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
+      })) return 5;
   return 10;
 }
 
@@ -5786,8 +5807,17 @@ function settleStalledUpgradeDiagnostics(state) {
     // A job whose serial slot already released is parked in detached GPU prep — aborting it
     // rescues nothing (the slot is free) and would re-mark its 'authored-prepared' boundary
     // 'awaiting-authored-admission', duplicating the whole compose+compile+upload it already
-    // paid. Only unreleased slots get the abort.
-    if (job.serialSlotReleased !== true && jobIsStalledInFlight(job, now, bound)) {
+    // paid. That protection only holds while the boundary actually reached a committed state:
+    // a released job wedged earlier ('loading'/'compiling-pipelines') pins its promise past the
+    // readmission gate — neither status is a READMISSION status — leaving a permanent resolving
+    // marker on glass (observed 278 s parked on readable glass). Abort those the same as an
+    // unreleased job so the relevance poll re-requests the boundary.
+    const releasedButUncommitted = job.serialSlotReleased === true
+      && !(job.boundary && job.boundary.userData
+        && (job.boundary.userData.authoredAssetState === 'authored'
+          || job.boundary.userData.authoredAssetState === 'authored-prepared'));
+    if ((job.serialSlotReleased !== true || releasedButUncommitted)
+        && jobIsStalledInFlight(job, now, bound)) {
       abortStalledUpgradeJob(state, job);
     }
   }
@@ -5798,9 +5828,11 @@ function abortStalledUpgradeJob(state, job) {
   job.lifecycle = 'aborted-stalled';
   job.abortedStalled = true;
   // The promise's own finally skips the serial decrement once serialSlotReleased reads true —
-  // single accounting, even though the abandoned run settles whenever it unwinds.
+  // single accounting, even though the abandoned run settles whenever it unwinds. A job whose
+  // slot already released must not decrement twice (the settle watchdog now also aborts those
+  // when their boundary never committed).
+  if (job.serialSlotReleased !== true) state.inFlight = Math.max(0, state.inFlight - 1);
   job.serialSlotReleased = true;
-  state.inFlight = Math.max(0, state.inFlight - 1);
   cleanupQueuedJob(state, job);
   // The abandoned run may sit on a decoder task that will never settle — every later request
   // deduping onto it wedges identically. Drop the unfinished task entries (and the boundary's
@@ -8296,6 +8328,13 @@ async function commitAuthoredBoundary(
   boundary.add(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
+  // The compile pass stamps sfAdmittedOnce on the detached authored root; the submit
+  // gate reads the boundary. Carry the stamp so a later latch (contact-pick/bloom)
+  // on an already-linked boundary keeps it drawn instead of hiding it until a
+  // boundary-level compile settles — the 20-frame authored-ship blank.
+  if (authored.root.userData && authored.root.userData.sfAdmittedOnce === true) {
+    boundary.userData.sfAdmittedOnce = true;
+  }
 
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
