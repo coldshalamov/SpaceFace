@@ -192,22 +192,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.dead-hulk",
-    "expectedContentHash": "3ac0bdf5f98747f60e78c24b1750008bed8538ce62fc6fcbf385d558c68c85d5",
+    "expectedContentHash": "f2dc315b4bd0446d06787e6f9eb12b92c4a07ebdba291850f3a5e18db23b40b9",
     "key": "dead-hulk",
     "metadataUrl": "assets/ships/release/render-packages/dead-hulk/render-package.json",
     "runtimeAssetId": "place_dead_hulk",
     "slot": "place",
-    "sourceSha256": "a2cd980874445fa4c2929265be5a660dce2c5baff86a1c6ea29d07c20f86b423",
+    "sourceSha256": "2c1113cf9cf92072565e8f2606fe82e6d24ea71bd9047a705cbbba6a22c34634",
     "sourceUrl": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
   {
     "assetId": "sf.render.debris-chunk",
-    "expectedContentHash": "f00fd99fd1bd3bc3b75fdab167642cdd6f23001856a1a1451a8443f8b4388b42",
+    "expectedContentHash": "9ba08e25cc86441b6bf320a2cb5575653f1a3b70c7149d407b8a7f90fdf5ddaa",
     "key": "debris-chunk",
     "metadataUrl": "assets/ships/release/render-packages/debris-chunk/render-package.json",
     "runtimeAssetId": "place_debris_chunk",
     "slot": "place",
-    "sourceSha256": "4ea1e04c4b1763fd48a4ef9f267834b08cdfecfa844e22701f493523eb2d6e3a",
+    "sourceSha256": "b8f5af68d85f21971220d8f4270d049202e95f8e5eb479a02ca7dd8e27df6344",
     "sourceUrl": "assets/ships/release/parts/places/place_debris_chunk.glb"
   },
   {
