@@ -407,10 +407,14 @@ function assertFrameWhitelist(frame) {
   // for the doctrine's own read of it.
   // `occupantGeneration` (NXI-049) is an intentional addition: aiPorts stamps the live occupant
   // token so a squad never follows a ship that reused a dead leader's entity id.
+  // `turretsLost`/`turretPhaseEdges` (FB-018/019/020, landed in 183b91a57) are intentional
+  // additions: aiPorts stamps the live mount-loss count and phase edges from
+  // combat/turretSubsystems.js, contracts.js normalizes both, and combatDoctrine's mount-loss
+  // phase planner reads exactly these to shift doctrine phases as turrets die.
   assertExactKeys(frame.self, [
     'activity', 'aimProjectileSpeed', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
     'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'occupantGeneration', 'operationalMassBand', 'pos', 'radius',
-    'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'vel',
+    'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'turretPhaseEdges', 'turretsLost', 'vel',
     'woundedFallbackSpent',
   ], 'SensorFrame.self');
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');

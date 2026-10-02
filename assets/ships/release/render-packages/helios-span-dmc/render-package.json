@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fe774745978d373b3f7e9a7b4cf260c19bcebd77de24c177e5b6ce97fe045fb1",
+  "contentHash": "5d426ed08eae54420387eb380c87cc5660a38e6e95b0bf3d1a73d7dd77ae07fd",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -758,7 +758,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2212ef75056d430287bb3d38dd5b3c1e857f11877ef3a16e260dbd20f223b41e",
+      "geometryHash": "b45fb298ae5b35075dfb51eb2bd73993c92e8417c679b888332952a21c76e50f",
       "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 5622,
       "indexed": true,
@@ -784,13 +784,13 @@
       },
       "drawMode": 4,
       "geometryHash": "7f313d4783b8c36dab196e44c204dc6280eaae837a727c46d770ae7763c1a20d",
-      "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -958,7 +958,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec8f83e985840f23ad965bef2ea6f2641fa985562c63cfe7d24041d28ec3b3ba",
+      "geometryHash": "b7f403f7b5c49054e9ed99d0979e4fdcebc2a9d5dde94091bfffc514c824f303",
       "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 27174,
       "indexed": true,
@@ -1224,16 +1224,16 @@
         "max": [
           14.599714279174805,
           0.3098146617412567,
-          4.5998687744140625
+          4.599842071533203
         ],
         "min": [
           -13.998035430908203,
           -2.001255750656128,
-          -4.59990119934082
+          -4.59992790222168
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31441e8cbecec11b13e59c2ac76d6d7b381ff0186cb16bf04b222959de7bd578",
+      "geometryHash": "558c79b91c637123e227f22e419f6b40981fa164b4011393b79fc7dc942dc0ef",
       "id": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 1770,
       "indexed": true,
@@ -1242,7 +1242,7 @@
       "meshName": "LOD1_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 576
+      "vertexCount": 575
     },
     {
       "bounds": {
@@ -1259,13 +1259,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2a296c5c42c91e25f605229d8535e2e21bf3a6981c475bfee30a785a886e5ac5",
-      "id": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber",
+      "meshName": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1424,16 +1424,16 @@
         "max": [
           14.600069046020508,
           2.1289751529693604,
-          4.599864482879639
+          4.59989070892334
         ],
         "min": [
           -13.998522758483887,
           -1.707793951034546,
-          -4.6001763343811035
+          -4.6001505851745605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3b26aa8b64712c203ccc1f7e1bb544837e0276931dd8aa9c19c7a0b51f41208",
+      "geometryHash": "ac17eacd54dc8e6555d8e35cb8bbd462129b8436ccffd4b8f309e3b3993c9e1c",
       "id": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 10596,
       "indexed": true,
@@ -1674,16 +1674,16 @@
         "max": [
           14.60000228881836,
           0.2972733974456787,
-          4.5965256690979
+          4.596516132354736
         ],
         "min": [
           -13.998820304870605,
           -1.9999189376831055,
-          -4.596607685089111
+          -4.596617221832275
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5b05a79075ee1c7fb735fd38b00c0e82392be6fd749fea4aa3efc44d321d5bc",
+      "geometryHash": "5e967dc8e2fe20b6368116e2949e292991957ab5e405934e66c7b4cfed846f93",
       "id": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 1059,
       "indexed": true,
@@ -1709,13 +1709,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2a296c5c42c91e25f605229d8535e2e21bf3a6981c475bfee30a785a886e5ac5",
-      "id": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber",
+      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1874,16 +1874,16 @@
         "max": [
           14.600387573242188,
           2.1293087005615234,
-          4.596573829650879
+          4.596564292907715
         ],
         "min": [
           -13.998734474182129,
           -1.749426007270813,
-          -4.59665584564209
+          -4.596665382385254
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4aa73d54825039b6f8e3ec78c195bc9d035fbb80a2430e2e90a9ef958df7ab5e",
+      "geometryHash": "0cc3a1275e03b7046cc15a5ed906b49b55458e2c74fd097116697e106e0b6ab1",
       "id": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 4572,
       "indexed": true,
@@ -2057,17 +2057,17 @@
       ]
     },
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -2620,7 +2620,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -2640,8 +2640,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3570,7 +3570,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber",
+      "id": "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -3590,8 +3590,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -4470,7 +4470,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber",
+      "id": "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -4490,8 +4490,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -5807,22 +5807,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "53fd00a6b72333e061694c6717d84d1f3c129af0c9d5d7b3bc7962bd1c63e4ff"
+      "sha256": "fcd2efcba260bef50c77b9ff281ace57919ce4f4b9e8f0c400e73e9bb6d74c62"
     },
     "sourceGlb": {
-      "bytes": 1180236,
-      "sha256": "48e97c5bf6ffa68816e02380b7409d3d7abd01a51704802e9b20942e8f48398c",
+      "bytes": 1180308,
+      "sha256": "10d8edf41a4eb8e8943be3939e85974e00e66e5c058ce3ea2617347948bd3e64",
       "uri": "helios_span_dmc.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2177016,
-    "sha256": "53f5736a2b7a6b4ab88b7faf43ca2884140c4ba3d11c4e737a6c1fceaa1a6572",
+    "bytes": 2177132,
+    "sha256": "d8763a78588e5a77accf8717e44a3ddac6fd2e2bb609144797003c1306e58b2b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6830,9 +6830,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6739,
+      "bytes": 7257,
       "rigId": "hull",
-      "sha256": "9df373cf252c34e089a4d0ae9fe8b24fa38bbb70d5d9bd68d5fad88baeff991a",
+      "sha256": "d66b0b3591199681ff73393287e408b5f6023d8f9b68dc6fcb98b544d098b91e",
       "uri": "assets/ships/motions/helios-span-dmc.motion.json"
     },
     "nodeCount": 70,
@@ -6969,7 +6969,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -7524,7 +7524,7 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -8051,7 +8051,7 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 45,
         "tags": {
           "canopy": false,
@@ -8423,7 +8423,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_span_dmc.glb"
   },
-  "runtimeHash": "42b8d11332de22b5c5a1bdab44c7b607b42c4996bec784f59517303ad403ae60",
+  "runtimeHash": "c4e6d146530b84619652efc8ea400ede6735a70623065cbb17bbc97e79355615",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -8446,7 +8446,7 @@
         "sf.render.helios-span-dmc.node.lod0-motion-hull-core-armor-b",
         "sf.render.helios-span-dmc.node.lod0-motion-hull-core-armor-box",
         "sf.render.helios-span-dmc.node.lod0-motion-hull-core-armor-teal",
-        "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.helios-span-dmc.node.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.helios-span-dmc.node.lod0-motion-hull-core-canopy",
         "sf.render.helios-span-dmc.node.lod0-motion-hull-core-hook-drive-core",
         "sf.render.helios-span-dmc.node.lod0-motion-hull-core-hook-nav-port",
@@ -8465,7 +8465,7 @@
         "sf.render.helios-span-dmc.node.lod1-motion-hull-core-armor-b",
         "sf.render.helios-span-dmc.node.lod1-motion-hull-core-armor-box",
         "sf.render.helios-span-dmc.node.lod1-motion-hull-core-armor-teal",
-        "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber",
+        "sf.render.helios-span-dmc.node.lod1-motion-hull-core-beacon-amber-beacon",
         "sf.render.helios-span-dmc.node.lod1-motion-hull-core-canopy",
         "sf.render.helios-span-dmc.node.lod1-motion-hull-core-hook-drive-core",
         "sf.render.helios-span-dmc.node.lod1-motion-hull-core-hook-nav-port",
@@ -8483,7 +8483,7 @@
         "sf.render.helios-span-dmc.node.lod2-motion-hull-core-armor-b",
         "sf.render.helios-span-dmc.node.lod2-motion-hull-core-armor-box",
         "sf.render.helios-span-dmc.node.lod2-motion-hull-core-armor-teal",
-        "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber",
+        "sf.render.helios-span-dmc.node.lod2-motion-hull-core-beacon-amber-beacon",
         "sf.render.helios-span-dmc.node.lod2-motion-hull-core-canopy",
         "sf.render.helios-span-dmc.node.lod2-motion-hull-core-hook-drive-core",
         "sf.render.helios-span-dmc.node.lod2-motion-hull-core-hook-nav-port",

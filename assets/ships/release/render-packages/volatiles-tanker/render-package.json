@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8f6edf4edfe20d926dd10c3817696295702548b50f530901e9cb7f12d744ac84",
+  "contentHash": "74b009a8aceff8e7493987c136960f52c6e7f137e58b220e89d1c88d5b4d5ac0",
   "dynamicGroups": [
     {
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -1003,7 +1003,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45decc9417a02f49727416d7e211de403317565b31a8181fd715547e35ce4a2d",
+      "geometryHash": "05dc8548a28a4c8aa806e963144a09cbbcc8133b684230bf6cedb0b8b46b28a5",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 23367,
       "indexed": true,
@@ -1012,7 +1012,7 @@
       "meshName": "LOD1_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7476
+      "vertexCount": 7474
     },
     {
       "bounds": {
@@ -1344,16 +1344,16 @@
         "max": [
           17.600046157836914,
           3.048640012741089,
-          3.0430619716644287
+          3.0443778038024902
         ],
         "min": [
           -16.399633407592773,
           -2.9986064434051514,
-          -3.045689821243286
+          -3.0443737506866455
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61c532d7ea696b8b1be816f5d0d00fcb23c329d3c6e4d0d258e39a5b9543cec7",
+      "geometryHash": "54dca7b48b6133d67bbd63bc0cde597dc0d2345d178c523007c324583e3d3686",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 10170,
       "indexed": true,
@@ -1678,7 +1678,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88fe1e9e35e941ca19e20de148db3a651c93c6ad3f99985d0c3588661890b5d8",
+      "geometryHash": "becfe8eea5f188ad6473a2d708951b68967af1457637a282d7e3f33698395ff0",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-warning.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -4809,19 +4809,19 @@
       "sha256": "042280a5f7a9b6ddfc33b0e220fa079f9e9d14f14dec840ad2fc1393345eac43"
     },
     "sourceGlb": {
-      "bytes": 1379004,
-      "sha256": "4478b8c560f3c23617e75fbd0577ec6156aaadb9d6ccbe9bbebdfc5a9eeea898",
+      "bytes": 1379000,
+      "sha256": "dca38912e10fd23f5f89dd4d041368d6b2cb0ae440bffbd25c0a70d1ccb6782d",
       "uri": "volatiles_tanker.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2723584,
-    "sha256": "dfd2b36a3939b6ea8f175f010c6bc5726dabcfbeaf07631c671474ed95e77f16",
+    "bytes": 2723376,
+    "sha256": "417f07c5c9f6b096547865b3e14ae4ed09d342ff8fa032486fc83600da6594f2",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5769,9 +5769,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6740,
+      "bytes": 7199,
       "rigId": "hull",
-      "sha256": "7ac12251bcd33a9a7efb0c013866189aec1adf529ec3b86d40b8057b0814f846",
+      "sha256": "30573293d1b998fda38a7d51907168a7d34c689b345043e0098ac4d6214f66e3",
       "uri": "assets/ships/motions/volatiles-tanker.motion.json"
     },
     "nodeCount": 58,
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/volatiles_tanker.glb"
   },
-  "runtimeHash": "e6b9cd5c8b184e6275cb3e23a53b1e208c2aefde0148f687035bc942995fe4e8",
+  "runtimeHash": "40dc9cb690a6089529b7c44d56b6f3b2a9e4932cf51988e1088597b153c46094",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -11,6 +11,13 @@ const LONG_TIMEOUT_MS = 420000;
 const COMMAND_TIMEOUT_OVERRIDES_MS = {
   'probe-flight-visual': 720000,
   'probe-ship-visual-stability': 660000,
+  // 2026-10-02 (run 37023815314): the dock tour finished and printed its OK lines at ~195s on the
+  // runner but was orphaned at the 180s DEFAULT cap — its resolved filename
+  // (check-station-tab-navigation-runtime.mjs) carries no playwright/chromium token, so the
+  // browser-text classifier never gave it the LONG class every other browser probe gets. Same
+  // environment reality the check's own START_TIMEOUT_MS documents: software-GL boot is ~2x a
+  // real GPU. Budget the environment, assert the behavior.
+  'check-station-tabs': 420000,
 };
 const TAIL_LIMIT = 1600;
 

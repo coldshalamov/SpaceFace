@@ -49,49 +49,93 @@ def register(ship, objects):
     ship.motion_group('hull_core', pivot=(0.0, 0.0, 0.0), objects=list(objects))
 
 
-def author(bank):
+# ---- weight: the same grammar, scaled by the hull's own size ------------------------------------
+# The constants above were tuned on a ~22 m hull (the fleet median). A 10 m dart and a 60 m
+# dreadnought do not share one motion: a longer body turns through SMALLER angles, takes LONGER to
+# get there (a pendulum's period grows with the square root of its length), and heaves in
+# proportion to its length. mass_scales() turns the hull's length into those three multipliers; a
+# hull of reference length gets exactly (1, 1, 1), so the grammar and the clip names are unchanged.
+REF_LENGTH = 22.0
+AMP_EXPONENT = -0.35       # angular amplitude  ~ (length / ref) ** -0.35
+TIME_EXPONENT = 0.5        # durations          ~ (length / ref) ** 0.5
+AMP_RANGE = (0.55, 1.6)
+TIME_RANGE = (0.75, 2.2)
+HEAVE_RANGE = (0.3, 3.0)   # heave in metres ~ length / ref
+
+
+def hull_length(objects):
+    """Longest horizontal extent of the airframe in metres (world-space bounds of its meshes)."""
+    import bpy  # noqa: F401  (this module also loads outside Blender for the tests)
+    from mathutils import Vector
+    lo = Vector((1e9, 1e9, 1e9))
+    hi = Vector((-1e9, -1e9, -1e9))
+    for obj in objects:
+        if getattr(obj, 'type', None) != 'MESH':
+            continue
+        for corner in obj.bound_box:
+            w = obj.matrix_world @ Vector(corner)
+            lo = Vector((min(lo.x, w.x), min(lo.y, w.y), min(lo.z, w.z)))
+            hi = Vector((max(hi.x, w.x), max(hi.y, w.y), max(hi.z, w.z)))
+    return max(hi.x - lo.x, hi.y - lo.y) if hi.x > lo.x else REF_LENGTH
+
+
+def mass_scales(length):
+    """(angle, time, heave) multipliers for a hull of this length."""
+    ratio = max(1e-3, float(length) / REF_LENGTH)
+    clamp = lambda v, rng: min(rng[1], max(rng[0], v))  # noqa: E731
+    return (clamp(ratio ** AMP_EXPONENT, AMP_RANGE),
+            clamp(ratio ** TIME_EXPONENT, TIME_RANGE),
+            clamp(ratio, HEAVE_RANGE))
+
+
+def author(bank, amp=1.0, tm=1.0, heave=1.0):
+    """Author the five chassis clips; amp scales angles, tm scales every time, heave scales metres."""
+    def rot(roll=0.0, pitch=0.0, yaw=0.0):
+        return Euler((roll * amp, pitch * amp, yaw * amp))
+
+    def loc(z=0.0):
+        return (0.0, 0.0, z * heave)
+
     # --- idle: the chassis breathes — roll and pitch 90° out of phase, faint heave ---
-    idle = bank.clip('hull_idle', 8.0, loop=True, end_mode='rest')
+    period = 8.0 * tm
+    idle = bank.clip('hull_idle', period, loop=True, end_mode='rest')
     for i in range(9):
-        t = i * 8.0 / 8
-        ph = 2 * math.pi * t / 8.0
-        idle.key('hull_core', t,
-                 loc=(0.0, 0.0, IDLE_HEAVE * math.sin(ph)),
-                 rot=Euler((IDLE_ROLL * math.sin(ph),
-                            IDLE_PITCH * math.sin(ph + math.pi / 2), 0.0)))
+        t = i * period / 8
+        ph = 2 * math.pi * t / period
+        idle.key('hull_core', t, loc=loc(IDLE_HEAVE * math.sin(ph)),
+                 rot=rot(IDLE_ROLL * math.sin(ph), IDLE_PITCH * math.sin(ph + math.pi / 2)))
 
     # --- brace: nose up into the intercept, level the wings ---------------------
-    c = bank.clip('hull_brace', 1.2, loop=False, end_mode='rest')
-    c.key('hull_core', 0.0, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
-    c.key('hull_core', 0.2, loc=(0.0, 0.0, 0.04), rot=Euler((0.0, BRACE_PITCH, 0.0)))
-    c.key('hull_core', 0.55, loc=(0.0, 0.0, 0.03), rot=Euler((BRACE_ROLL, BRACE_PITCH * 0.9, 0.0)))
-    c.key('hull_core', 0.85, loc=(0.0, 0.0, 0.01), rot=Euler((0.0, BRACE_PITCH * 0.35, 0.0)))
-    c.key('hull_core', 1.2, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
+    c = bank.clip('hull_brace', 1.2 * tm, loop=False, end_mode='rest')
+    c.key('hull_core', 0.0, loc=loc(), rot=rot())
+    c.key('hull_core', 0.2 * tm, loc=loc(0.04), rot=rot(0.0, BRACE_PITCH))
+    c.key('hull_core', 0.55 * tm, loc=loc(0.03), rot=rot(BRACE_ROLL, BRACE_PITCH * 0.9))
+    c.key('hull_core', 0.85 * tm, loc=loc(0.01), rot=rot(0.0, BRACE_PITCH * 0.35))
+    c.key('hull_core', 1.2 * tm, loc=loc(), rot=rot())
 
     # --- kick: boost ignition slams the nose down, chassis springs back ---------
-    c = bank.clip('hull_kick', 0.9, loop=False, end_mode='rest')
-    c.key('hull_core', 0.0, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
-    c.key('hull_core', 0.1, loc=(0.0, 0.0, KICK_HEAVE), rot=Euler((0.0, KICK_PITCH, 0.0)))
-    c.key('hull_core', 0.4, loc=(0.0, 0.0, KICK_HEAVE * -0.25),
-          rot=Euler((0.0, KICK_PITCH * -0.22, 0.0)))
-    c.key('hull_core', 0.9, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
+    c = bank.clip('hull_kick', 0.9 * tm, loop=False, end_mode='rest')
+    c.key('hull_core', 0.0, loc=loc(), rot=rot())
+    c.key('hull_core', 0.1 * tm, loc=loc(KICK_HEAVE), rot=rot(0.0, KICK_PITCH))
+    c.key('hull_core', 0.4 * tm, loc=loc(KICK_HEAVE * -0.25), rot=rot(0.0, KICK_PITCH * -0.22))
+    c.key('hull_core', 0.9 * tm, loc=loc(), rot=rot())
 
     # --- veer: hard bank through a roll excursion, yaw washes out ---------------
-    c = bank.clip('hull_veer', 1.4, loop=False, end_mode='rest')
-    c.key('hull_core', 0.0, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
-    c.key('hull_core', 0.22, rot=Euler((VEER_ROLL, 0.0, VEER_YAW)))
-    c.key('hull_core', 0.7, rot=Euler((VEER_ROLL * 0.82, 0.0, VEER_YAW * 0.9)))
-    c.key('hull_core', 1.05, rot=Euler((VEER_ROLL * 0.25, 0.0, VEER_YAW * 0.3)))
-    c.key('hull_core', 1.4, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
+    c = bank.clip('hull_veer', 1.4 * tm, loop=False, end_mode='rest')
+    c.key('hull_core', 0.0, loc=loc(), rot=rot())
+    c.key('hull_core', 0.22 * tm, rot=rot(VEER_ROLL, 0.0, VEER_YAW))
+    c.key('hull_core', 0.7 * tm, rot=rot(VEER_ROLL * 0.82, 0.0, VEER_YAW * 0.9))
+    c.key('hull_core', 1.05 * tm, rot=rot(VEER_ROLL * 0.25, 0.0, VEER_YAW * 0.3))
+    c.key('hull_core', 1.4 * tm, loc=loc(), rot=rot())
 
     # --- wag: the passing-traffic greeting — rock the wings once ------------------
-    c = bank.clip('hull_wag', 1.6, loop=False, end_mode='rest')
-    c.key('hull_core', 0.0, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
-    c.key('hull_core', 0.25, rot=Euler((WAG_ROLL, 0.0, 0.0)))
-    c.key('hull_core', 0.55, rot=Euler((-WAG_ROLL * 0.9, 0.0, 0.0)))
-    c.key('hull_core', 0.85, rot=Euler((WAG_ROLL * 0.55, 0.0, 0.0)))
-    c.key('hull_core', 1.15, rot=Euler((-WAG_ROLL * 0.2, 0.0, 0.0)))
-    c.key('hull_core', 1.6, loc=(0.0, 0.0, 0.0), rot=Euler((0.0, 0.0, 0.0)))
+    c = bank.clip('hull_wag', 1.6 * tm, loop=False, end_mode='rest')
+    c.key('hull_core', 0.0, loc=loc(), rot=rot())
+    c.key('hull_core', 0.25 * tm, rot=rot(WAG_ROLL))
+    c.key('hull_core', 0.55 * tm, rot=rot(-WAG_ROLL * 0.9))
+    c.key('hull_core', 0.85 * tm, rot=rot(WAG_ROLL * 0.55))
+    c.key('hull_core', 1.15 * tm, rot=rot(-WAG_ROLL * 0.2))
+    c.key('hull_core', 1.6 * tm, loc=loc(), rot=rot())
 
 
 EVENTS = {
@@ -114,7 +158,7 @@ def build(ship, objects, source_asset_id, bank=None, rig_id='hull'):
                                     events=dict(EVENTS))
     else:
         bank.events.update(EVENTS)
-    author(bank)
+    author(bank, *mass_scales(hull_length(objects)))
     return bank
 
 

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "57eab55376b47a9e9378ad0627b54137c70585d6077a7af2c988290856c9edd7",
+  "contentHash": "9393a868efe96ff8e22158ae10c20807064777a30f32347e66fbc1e3c99df58a",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.dynamic",
@@ -674,16 +674,16 @@
         "max": [
           7.892499923706055,
           1.619673490524292,
-          3.0997562408447266
+          3.0997543334960938
         ],
         "min": [
           -7.190614700317383,
           -0.9396734833717346,
-          -3.450054407119751
+          -3.4500560760498047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc9fa7104d5f621e91474835f3d7a1f8af4d53a08a9fc0b8659bb9845dd31fc5",
+      "geometryHash": "ae6bc46d54041c305bf0e7360d5444f46785b4f64332744680746c439a015f15",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 4125,
       "indexed": true,
@@ -709,13 +709,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2511f5a5b020cf584eddb4700227e4ef5e8dd59881d29f7a9daabbf6c2a9370b",
-      "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber.001",
-      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon.001",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -772,18 +772,18 @@
     {
       "bounds": {
         "max": [
-          -3.3127901554107666,
-          0.158008388237789,
-          -1.1002499513817172
+          -3.3128538131713867,
+          0.15799986416420608,
+          -1.1006047932084517
         ],
         "min": [
-          -7.193552494049072,
-          -0.11865596379502091,
-          -2.4495808429526944
+          -7.1933770179748535,
+          -0.11864743972143799,
+          -2.449378827435164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "485ba9bcd6189db329c1ceb35c25bf53ab53247ffca14388f12ffcae270db173",
+      "geometryHash": "f7ca0a9a52b7d52e3b2470ac561b0b8e68d6eda036410eccf23509dca0b4e77b",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.primitive.0",
       "indexCount": 207,
       "indexed": true,
@@ -797,18 +797,18 @@
     {
       "bounds": {
         "max": [
-          -3.309670925140381,
-          0.019854480393121085,
-          -1.100362874419484
+          -3.3090672492980957,
+          0.019866675852334953,
+          -1.100557702050151
         ],
         "min": [
-          -7.195240497589111,
-          -0.1186490524484609,
-          -2.4494679199149276
+          -7.195321083068848,
+          -0.11866124790767477,
+          -2.449425918593465
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66d9ce6af664c8e999ed89a24dddaf29c3e157ef89cd18533d5f8342d2b169aa",
+      "geometryHash": "34fa090826ff3bafe238743139fb927adcfc2e08124f4c0b4add3ae9abee81d7",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-mechanical.primitive.0",
       "indexCount": 171,
       "indexed": true,
@@ -1333,7 +1333,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dfa95dcc331c42cbef7cb4ea98f87307abaff931e8e63d45bb12f3c8b1f57002",
+      "geometryHash": "f36498109a9e3a1274477e47bd67c35b465b6cec80e09abd1fadacffb700de26",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 9666,
       "indexed": true,
@@ -1342,7 +1342,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical.001",
       "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3138
+      "vertexCount": 3137
     },
     {
       "bounds": {
@@ -1432,6 +1432,13 @@
       ]
     },
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -1469,13 +1476,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "496dbb172a30622c9fe28000f4e56f8a0130177f0643857b471760e995a748b5",
@@ -1845,7 +1845,7 @@
       ]
     },
     {
-      "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1865,8 +1865,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -1997,21 +1997,21 @@
     {
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-armor",
       "localTransform": [
-        1.9403811693191528,
+        1.9402616024017334,
         0,
         0,
         0,
         0,
-        1.9403811693191528,
+        1.9402616024017334,
         0,
         0,
         0,
         0,
-        1.9403811693191528,
+        1.9402616024017334,
         0,
-        -5.253171324729919,
+        -5.25311541557312,
         0.01967621222138405,
-        -1.7749153971672058,
+        -1.7749918103218079,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2026,42 +2026,42 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
       "worldTransform": [
-        1.9403811693191528,
+        1.9402616024017334,
         0,
         0,
         0,
         0,
-        1.9403811693191528,
+        1.9402616024017334,
         0,
         0,
         0,
         0,
-        1.9403811693191528,
+        1.9402616024017334,
         0,
-        -5.253171324729919,
+        -5.25311541557312,
         0.01967621222138405,
-        -1.7749153971672058,
+        -1.7749918103218079,
         1
       ]
     },
     {
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-mechanical",
       "localTransform": [
-        1.9427847862243652,
+        1.943126916885376,
         0,
         0,
         0,
         0,
-        1.9427847862243652,
+        1.943126916885376,
         0,
         0,
         0,
         0,
-        1.9427847862243652,
+        1.943126916885376,
         0,
-        -5.252455711364746,
+        -5.252194166183472,
         -0.04939728602766991,
-        -1.7749153971672058,
+        -1.7749918103218079,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2076,21 +2076,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
       "worldTransform": [
-        1.9427847862243652,
+        1.943126916885376,
         0,
         0,
         0,
         0,
-        1.9427847862243652,
+        1.943126916885376,
         0,
         0,
         0,
         0,
-        1.9427847862243652,
+        1.943126916885376,
         0,
-        -5.252455711364746,
+        -5.252194166183472,
         -0.04939728602766991,
-        -1.7749153971672058,
+        -1.7749918103218079,
         1
       ]
     },
@@ -3344,22 +3344,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "578d5dcca303b8cb73f4a26e9949466c91d4f3956c011929b61b2755efcad33f"
+      "sha256": "6946ccecf473707582bcdb31aa591d9b79a28b1617596e5c98af4610fc4a2ed0"
     },
     "sourceGlb": {
-      "bytes": 570992,
-      "sha256": "4dd4692318cc9f623f3285517e892efbbc948cd5ddc6e0a23385a00d8c81b672",
+      "bytes": 570996,
+      "sha256": "a6d17d63bee76e0432b604c2849b4716fc53484c96eedf414da71a42476a6602",
       "uri": "drifter_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 823944,
-    "sha256": "c6f2f1a720c778b60d86d25763a99424d45cfbddc3d2439977c30c66fb50bf45",
+    "bytes": 823936,
+    "sha256": "364b4934cc770580483c96de0b69f269937d65ccff9530492072e52aeae7784c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4225,9 +4225,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6749,
+      "bytes": 7234,
       "rigId": "hull",
-      "sha256": "315d70e0b06d764dd01c65c13ee2b68098e2c7546b395f7f048602d923f922d4",
+      "sha256": "c1d4823af1bb51dc3f8d7961d9f067380e04cc663409c00fc7c70e552fd1475c",
       "uri": "assets/ships/motions/drifter-production-v1.motion.json"
     },
     "nodeCount": 45,
@@ -4280,7 +4280,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -4347,21 +4347,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.9403811693191528,
+          1.9402616024017334,
           0,
           0,
           0,
           0,
-          1.9403811693191528,
+          1.9402616024017334,
           0,
           0,
           0,
           0,
-          1.9403811693191528,
+          1.9402616024017334,
           0,
-          -5.253171324729919,
+          -5.25311541557312,
           0.01967621222138405,
-          -1.7749153971672058,
+          -1.7749918103218079,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
@@ -4376,21 +4376,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.9427847862243652,
+          1.943126916885376,
           0,
           0,
           0,
           0,
-          1.9427847862243652,
+          1.943126916885376,
           0,
           0,
           0,
           0,
-          1.9427847862243652,
+          1.943126916885376,
           0,
-          -5.252455711364746,
+          -5.252194166183472,
           -0.04939728602766991,
-          -1.7749153971672058,
+          -1.7749918103218079,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
@@ -5082,7 +5082,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb"
   },
-  "runtimeHash": "9bb91267a36be2a95fb74060b5c5df9182f5e02f88c161ab85d18221196139be",
+  "runtimeHash": "3c9ea3d4c2531644aaf842fd5ba8d0c9bb3f08c1b99b99a34162ac76362b7b5b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -5102,7 +5102,7 @@
       "nodeIds": [
         "sf.render.drifter-production-v1-lod1.mesh.collision-hull",
         "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-armor",
-        "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber",
+        "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-brushedmetal",
         "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-canopy",
         "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-armor",

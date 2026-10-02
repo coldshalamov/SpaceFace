@@ -188,7 +188,7 @@ def build():
     s.detail = 0
     F.light(s, 'NavPort', (-4.7, PY + POD_W / 2 + 0.06, 0.75), 'glow_red', size=0.15)
     F.light(s, 'NavStarboard', (-4.7, -PY - POD_W / 2 - 0.06, 0.75), 'glow_green', size=0.15)
-    F.light(s, 'Beacon', (6.0, 0.0, 1.62), 'glow_amber', size=0.14)
+    F.light(s, 'Beacon', (6.0, 0.0, 1.62), 'glow_amber.beacon', size=0.14)
 
     # --- close-zoom detail layer (LOD0 only; existing finishes, laid on the skin so nothing floats) ---
     bpy.context.view_layer.update()

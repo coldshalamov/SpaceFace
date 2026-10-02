@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fe07788156016e6f31537c2926bb1e3c1314f3345ab1f4fee1c772e2b6ed4ee8",
+  "contentHash": "7cedcfc3e862937f79e7ee8047828e830ce32582448744625213ffd4d9094995",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -598,9 +598,9 @@
       "nodeId": "sf.render.yard-tug.node.lod0-hook-secondary-mast-mechanical"
     },
     {
-      "id": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber.dynamic",
+      "id": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber-beacon.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber"
+      "nodeId": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber-beacon"
     },
     {
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-fairlead-hook-secondary-towgear-armor.dynamic",
@@ -648,9 +648,9 @@
       "nodeId": "sf.render.yard-tug.node.lod1-hook-secondary-mast-mechanical"
     },
     {
-      "id": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber.dynamic",
+      "id": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber-beacon.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber"
+      "nodeId": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber-beacon"
     },
     {
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-fairlead-hook-secondary-towgear-armor.dynamic",
@@ -688,9 +688,9 @@
       "nodeId": "sf.render.yard-tug.node.lod2-hook-nav-starboard"
     },
     {
-      "id": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber.dynamic",
+      "id": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber-beacon.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber"
+      "nodeId": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber-beacon"
     },
     {
       "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-fairlead-hook-secondary-towgear-armor.dynamic",
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ea8bf623d3d4ee96d697bc320141193ae54810cc082d691368a679f7ce552cd",
+      "geometryHash": "5323643ac7f90ce48c74a4e838352a4e47fa7fa590e7d48ba162d871d0dd8f3b",
       "id": "sf.render.yard-tug.node.lod0-armor.primitive.0",
       "indexCount": 32280,
       "indexed": true,
@@ -974,13 +974,13 @@
       },
       "drawMode": 4,
       "geometryHash": "369b2beb0f848cabdf0f3147c153dc407ee7f885e1ecffbe9ecb7887a9820dce",
-      "id": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber.primitive.0",
+      "id": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber-beacon.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeId": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber",
+      "meshName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeId": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -1348,7 +1348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6f0fafee5f67588d3c41f2983f327b210235eabeaa9bdc7c421dc1107e42df5",
+      "geometryHash": "54c1c65cef2ea4d2aa0df96def10deeabb960d55aa34193573147c49d71ed661",
       "id": "sf.render.yard-tug.node.lod1-armor.primitive.0",
       "indexCount": 8757,
       "indexed": true,
@@ -1574,13 +1574,13 @@
       },
       "drawMode": 4,
       "geometryHash": "bb3506618b8b35556072d4b452d434d41af55282ccb69ba19058ee25787615fb",
-      "id": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber.primitive.0",
+      "id": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber-beacon.primitive.0",
       "indexCount": 24,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeId": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber",
+      "meshName": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeId": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 16
     },
@@ -1948,7 +1948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0d4866eb550f45b6bd88ebc9fda2c9231a4d786f4b446100a0973f6291d9507",
+      "geometryHash": "4de9bbbfecd6a997faa0929b03a7f786f8075d3eedd2f9795e9deafc0cac3a4e",
       "id": "sf.render.yard-tug.node.lod2-armor.primitive.0",
       "indexCount": 4818,
       "indexed": true,
@@ -2124,13 +2124,13 @@
       },
       "drawMode": 4,
       "geometryHash": "beec054d4c4ac1174dc92d5c2f90f7dc16271b625f6bf1692129261814ab5dd6",
-      "id": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber.primitive.0",
+      "id": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber-beacon.primitive.0",
       "indexCount": 6,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeId": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber",
+      "meshName": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeId": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 6
     },
@@ -2223,7 +2223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc72ebe74200914b2b8375a107d09d6ac01e389ec92914faa8830d0042bd683d",
+      "geometryHash": "9a5be731ebd1d16a21b98acff5b0d016e712fe99c95fc2c911f07e14c756777d",
       "id": "sf.render.yard-tug.node.lod2-mechanical.primitive.0",
       "indexCount": 1746,
       "indexed": true,
@@ -2490,17 +2490,17 @@
   "lods": [],
   "materials": [
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -3223,7 +3223,7 @@
       ]
     },
     {
-      "id": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber",
+      "id": "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
       "localTransform": [
         8.24500036239624,
         0,
@@ -3243,8 +3243,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
       "nodePath": [
         0,
         10
@@ -4407,7 +4407,7 @@
       ]
     },
     {
-      "id": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber",
+      "id": "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber-beacon",
       "localTransform": [
         8.24500060081482,
         0,
@@ -4427,8 +4427,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeName": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber",
+      "mergeBoundary": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeName": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
       "nodePath": [
         0,
         26
@@ -5493,7 +5493,7 @@
       ]
     },
     {
-      "id": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber",
+      "id": "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber-beacon",
       "localTransform": [
         8.24500060081482,
         0,
@@ -5513,8 +5513,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeName": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber",
+      "mergeBoundary": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeName": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
       "nodePath": [
         0,
         40
@@ -7021,22 +7021,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6425016bef3ddcb1179c0dd08cb367ea784bcc27adbc00650d345a8036985322"
+      "sha256": "5e628c875401d877455155f7a82e9ff3cc643598ea5f64efc57c525a0196c661"
     },
     "sourceGlb": {
-      "bytes": 1350744,
-      "sha256": "af1fda2b4345a9433ca72de6512c36046c33acd51df88acf85e3150a9696debc",
+      "bytes": 1350816,
+      "sha256": "9f33875afb48a38986d1232a46f43857fe9255c7e7e9b308266b303e9fdd2003",
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2523372,
-    "sha256": "26a32ca1a275d3eac3ffdf6c06222d1e6810cb40492bd22d1e9372ad36cec1be",
+    "bytes": 2523492,
+    "sha256": "a1cb3389d5b88c8efb25652b6a065e972dbfc46f766a7024db368a03e425b43b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8255,7 +8255,7 @@
     "motionBank": {
       "bytes": 19510,
       "rigId": "yard_tug_winch",
-      "sha256": "eedc1db6f5a8869c4184febb27bdbc12b0b1a4bd26f689b26f2a7935f2280a6c",
+      "sha256": "861aa3685521ebf67e08ff2d4992a8fc9b87b6ad2407db687fd88e87a7567fa5",
       "uri": "assets/ships/motions/yard-tug.motion.json"
     },
     "nodeCount": 88,
@@ -8547,7 +8547,7 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
+        "name": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -9004,7 +9004,7 @@
           0,
           1
         ],
-        "name": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber",
+        "name": "LOD1_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
         "planIndex": 28,
         "tags": {
           "canopy": false,
@@ -9405,7 +9405,7 @@
           0,
           1
         ],
-        "name": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber",
+        "name": "LOD2_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
         "planIndex": 42,
         "tags": {
           "canopy": false,
@@ -10261,7 +10261,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "4264f1dab45fbcd9dc4248b7d4aa964f8b115045a38449bbbfe870558a70c019",
+  "runtimeHash": "53a872198c064320a5c4b40e0a3313cb9ceb718dab78a1a82e266bdc04de8572",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -10289,7 +10289,7 @@
         "sf.render.yard-tug.node.lod0-hook-nav-starboard",
         "sf.render.yard-tug.node.lod0-hook-secondary-mast-glow-red",
         "sf.render.yard-tug.node.lod0-hook-secondary-mast-mechanical",
-        "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber",
+        "sf.render.yard-tug.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
         "sf.render.yard-tug.node.lod0-hull",
         "sf.render.yard-tug.node.lod0-lights-cyan-rust",
         "sf.render.yard-tug.node.lod0-lights-warm",
@@ -10313,7 +10313,7 @@
         "sf.render.yard-tug.node.lod1-hook-nav-starboard",
         "sf.render.yard-tug.node.lod1-hook-secondary-mast-glow-red",
         "sf.render.yard-tug.node.lod1-hook-secondary-mast-mechanical",
-        "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber",
+        "sf.render.yard-tug.node.lod1-hook-sensor-beacon-beacon-amber-beacon",
         "sf.render.yard-tug.node.lod1-hull",
         "sf.render.yard-tug.node.lod1-lights-cyan-rust",
         "sf.render.yard-tug.node.lod1-lights-warm",
@@ -10335,7 +10335,7 @@
         "sf.render.yard-tug.node.lod2-hook-drive-core",
         "sf.render.yard-tug.node.lod2-hook-nav-port",
         "sf.render.yard-tug.node.lod2-hook-nav-starboard",
-        "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber",
+        "sf.render.yard-tug.node.lod2-hook-sensor-beacon-beacon-amber-beacon",
         "sf.render.yard-tug.node.lod2-hull",
         "sf.render.yard-tug.node.lod2-lights-cyan-rust",
         "sf.render.yard-tug.node.lod2-lights-warm",

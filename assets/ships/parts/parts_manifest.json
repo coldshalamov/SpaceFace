@@ -4012,8 +4012,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
-      "tris": 56628,
-      "bytes": 6841444,
+      "tris": 56852,
+      "bytes": 6887196,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4050,17 +4050,17 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -62.70553207397461,
+          -62.70552062988281,
           -63.415489196777344,
           -16.577632904052734
         ],
         "max": [
-          43.06789016723633,
+          43.06936264038086,
           60.974998474121094,
           16.244068145751953
         ],
         "dimensionsM": [
-          105.77342224121094,
+          105.77488327026367,
           124.39048767089844,
           32.82170104980469
         ]
@@ -4134,8 +4134,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 81485,
-      "bytes": 5684044,
+      "tris": 81482,
+      "bytes": 5709116,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4195,7 +4195,7 @@
       "priority": "P1",
       "file": "places/place_station_mining.glb",
       "tris": 43596,
-      "bytes": 4884204,
+      "bytes": 4862340,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4256,7 +4256,7 @@
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
       "tris": 60432,
-      "bytes": 6426192,
+      "bytes": 6449960,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -4317,7 +4317,7 @@
       "priority": "P1",
       "file": "places/place_station_research.glb",
       "tris": 67224,
-      "bytes": 6802620,
+      "bytes": 6835944,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6203,7 +6203,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
       "tris": 38474,
-      "bytes": 2246484,
+      "bytes": 2246292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6308,7 +6308,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
       "tris": 37724,
-      "bytes": 2365024,
+      "bytes": 2365116,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6343,12 +6343,12 @@
           -3.105302095413208
         ],
         "max": [
-          9.641345977783203,
+          9.64134693145752,
           2.076219081878662,
           3.0450000762939453
         ],
         "dimensionsM": [
-          18.361998558044434,
+          18.36199951171875,
           2.901238799095154,
           6.150302171707153
         ]
@@ -6362,7 +6362,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
       "tris": 37810,
-      "bytes": 2352792,
+      "bytes": 2352844,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6423,7 +6423,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
       "tris": 39968,
-      "bytes": 2400872,
+      "bytes": 2400936,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6483,8 +6483,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
-      "tris": 33032,
-      "bytes": 1973612,
+      "tris": 34806,
+      "bytes": 2134012,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6544,7 +6544,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_colossus",
       "tris": 59184,
-      "bytes": 3611212,
+      "bytes": 3611260,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6597,7 +6597,7 @@
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
       "tris": 64326,
-      "bytes": 3728348,
+      "bytes": 3728428,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6703,7 +6703,7 @@
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
       "tris": 29244,
-      "bytes": 1755232,
+      "bytes": 1755160,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6756,7 +6756,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
       "tris": 54220,
-      "bytes": 3235584,
+      "bytes": 3235708,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6810,7 +6810,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
       "tris": 54220,
-      "bytes": 3235740,
+      "bytes": 3235768,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6864,7 +6864,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
       "tris": 54220,
-      "bytes": 3235644,
+      "bytes": 3235568,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6918,7 +6918,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_reach.glb",
       "tris": 54220,
-      "bytes": 3235800,
+      "bytes": 3235632,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6979,7 +6979,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 16076,
-      "bytes": 1167732,
+      "bytes": 1167784,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7347,7 +7347,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_saucer",
       "tris": 60570,
-      "bytes": 3518520,
+      "bytes": 3519124,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7472,7 +7472,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
       "tris": 26746,
-      "bytes": 1721488,
+      "bytes": 1721536,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7525,7 +7525,7 @@
       "priority": "P2",
       "file": "wholeships/ore_barge.glb",
       "tris": 62648,
-      "bytes": 3893248,
+      "bytes": 3893328,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7647,7 +7647,7 @@
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
       "tris": 38670,
-      "bytes": 2285824,
+      "bytes": 2286144,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7707,7 +7707,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
       "tris": 33120,
-      "bytes": 2101644,
+      "bytes": 2101692,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7759,7 +7759,7 @@
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
       "tris": 52822,
-      "bytes": 3106628,
+      "bytes": 3106704,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7812,7 +7812,7 @@
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
       "tris": 68503,
-      "bytes": 3905488,
+      "bytes": 3905344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7969,7 +7969,7 @@
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
       "tris": 49866,
-      "bytes": 2900356,
+      "bytes": 2900432,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8022,7 +8022,7 @@
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
       "tris": 70912,
-      "bytes": 4046644,
+      "bytes": 4046544,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8083,7 +8083,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
       "tris": 46694,
-      "bytes": 2989476,
+      "bytes": 2989524,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8151,7 +8151,7 @@
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
       "tris": 39784,
-      "bytes": 2175916,
+      "bytes": 2175964,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8204,7 +8204,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_free_militia.glb",
       "tris": 62310,
-      "bytes": 3378472,
+      "bytes": 3378396,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8257,7 +8257,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_mts_escort.glb",
       "tris": 62310,
-      "bytes": 3378312,
+      "bytes": 3378492,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8310,7 +8310,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_scn_patrol.glb",
       "tris": 62310,
-      "bytes": 3378308,
+      "bytes": 3378388,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8357,12 +8357,334 @@
       "note": "PQ-193.09 — live Wasp carrying the SCN patrol faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_scn_patrol_v01.glb."
     },
     {
+      "id": "wholeship_hornet_scn_interdictor",
+      "assetId": "SF_HORNET_SCN_INTERDICTOR",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/hornet_scn_interdictor.glb",
+      "tris": 23197,
+      "bytes": 1584748,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.220991134643555,
+          -0.4906860888004303,
+          -4.400000095367432
+        ],
+        "max": [
+          4.619999885559082,
+          0.9656911492347717,
+          4.400000095367432
+        ],
+        "dimensionsM": [
+          9.840991020202637,
+          1.456377238035202,
+          8.800000190734863
+        ]
+      },
+      "note": "PQ-193.09 S6 faction hull — live Concord Navy interdictor: the Hornet frame under navy lacquer, pale pursuit stripe and blue wing-edge lamps. Routes the patrol_lawman and customs_cutter enemy ids; the player Hornet is untouched. Forge variant (tools/blender/forge/ships/hornet_scn_interdictor.py)"
+    },
+    {
+      "id": "wholeship_wasp_quiet_ghost",
+      "assetId": "SF_WASP_QUIET_GHOST",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/wasp_quiet_ghost.glb",
+      "tris": 62310,
+      "bytes": 3378356,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.720288276672363,
+          -0.9000327587127686,
+          -8.079795837402344
+        ],
+        "max": [
+          10.90018367767334,
+          1.75,
+          8.079795837402344
+        ],
+        "dimensionsM": [
+          21.620471954345703,
+          2.6500327587127686,
+          16.159591674804688
+        ]
+      },
+      "note": "PQ-193.09 S6 faction hull — live Quiet ghost: the Wasp under ink-violet lacquer with ultraviolet strip lights. Routes the quiet_ghost enemy id only; pirate, lancer and player Wasp stay the accepted hull. Forge variant (tools/blender/forge/ships/wasp_quiet_ghost.py)"
+    },
+    {
+      "id": "wholeship_ashline_dart_choir",
+      "assetId": "SF_WHOLESHIP_ASHLINE_DART_CHOIR",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_dart_choir.glb",
+      "tris": 38474,
+      "bytes": 2246236,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -7.770679950714111,
+          -1.100000023841858,
+          -3.4468319416046143
+        ],
+        "max": [
+          8.54833984375,
+          1.3244999647140503,
+          3.4468319416046143
+        ],
+        "dimensionsM": [
+          16.31901979446411,
+          2.424499988555908,
+          6.8936638832092285
+        ]
+      },
+      "note": "PQ-193.09 S6 faction hull — live Ascendant Choir zealot: the Ashline dart under plum lacquer, bone ridge and edge, magenta lamp. Routes the choir_zealot enemy id. Forge variant (tools/blender/forge/ships/ashline_dart_choir.py)"
+    },
+    {
+      "id": "wholeship_ashline_lode_vael",
+      "assetId": "SF_WHOLESHIP_ASHLINE_LODE_VAEL",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_lode_vael.glb",
+      "tris": 32574,
+      "bytes": 2026124,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.920680046081543,
+          -0.9504451751708984,
+          -5.510000228881836
+        ],
+        "max": [
+          11.199649810791016,
+          3.075605869293213,
+          5.510000228881836
+        ],
+        "dimensionsM": [
+          22.12032985687256,
+          4.026051044464111,
+          11.020000457763672
+        ]
+      },
+      "note": "PQ-193.09 S6 faction hull — live Vael warden: the Ashline lode under deep teal lacquer, jade trim and mint lamps. Routes the warden_escort enemy id. Forge variant (tools/blender/forge/ships/ashline_lode_vael.py)"
+    },
+    {
+      "id": "wholeship_ashline_rig_quiet",
+      "assetId": "SF_WHOLESHIP_ASHLINE_RIG_QUIET",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_rig_quiet.glb",
+      "tris": 37724,
+      "bytes": 2365160,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.72065258026123,
+          -0.8250197172164917,
+          -3.105302095413208
+        ],
+        "max": [
+          9.641345977783203,
+          2.076219081878662,
+          3.0450000762939453
+        ],
+        "dimensionsM": [
+          18.361998558044434,
+          2.901238799095154,
+          6.150302171707153
+        ]
+      },
+      "note": "PQ-193.09 S6 faction hull — live Quiet armed smuggler: the Ashline rig under ink-indigo lacquer, violet trim and ultraviolet lamps. Worn by rig-hull hostiles fielded under faction_quiet (the Tethys and Pallas smuggler zones). Forge variant (tools/blender/forge/ships/ashline_rig_quiet.py)"
+    },
+    {
+      "id": "wholeship_helios_cradle_dmc",
+      "assetId": "SF_WHOLESHIP_HELIOS_CRADLE_DMC",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_cradle_dmc.glb",
+      "tris": 68886,
+      "bytes": 3971508,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.820595741271973,
+          -3.4000000953674316,
+          -4.732181072235107
+        ],
+        "max": [
+          13.000091552734375,
+          3.6992721557617188,
+          4.732181072235107
+        ],
+        "dimensionsM": [
+          23.820687294006348,
+          7.09927225112915,
+          9.464362144470215
+        ]
+      },
+      "note": "PQ-193.09 S6 faction hull — live Drift Miners Collective barge: the Helios Cradle in copper plate with a dark umber bin and copper strip lights. Worn by the miner traffic role in faction_dmc sectors (Ceres, Vesta, Charon). Forge variant (tools/blender/forge/ships/helios_cradle_dmc.py)"
+    },
+    {
       "id": "wholeship_yard_tug",
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
       "tris": 65520,
-      "bytes": 3774460,
+      "bytes": 3774540,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

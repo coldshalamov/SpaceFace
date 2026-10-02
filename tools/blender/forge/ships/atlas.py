@@ -140,7 +140,7 @@ def build():
     ped = F.box(s, 'MastFoot', (8.9, 0.0, 1.78), (0.5, 0.5, 0.2), material='gunmetal', bevel=0.02)
     mast = F.cylinder(s, 'Mast', (8.9, 0.0, 1.8), (8.9, 0.0, 2.9), 0.06, 0.035, material='gunmetal', segments=10)
     arm = F.box(s, 'MastArm', (8.9, 0.0, 2.55), (0.1, 1.2, 0.08), material='gunmetal', bevel=0.0)
-    beacon = F.light(s, 'Beacon', (8.9, 0.0, 2.93), 'glow_amber', size=0.16)
+    beacon = F.light(s, 'Beacon', (8.9, 0.0, 2.93), 'glow_amber.beacon', size=0.16)
     s.hook_part('HOOK_SENSOR_MAST', ped, mast, arm, beacon)
 
     # --- docking collar on the spine nose, with three orange clamp jaws -----------------------------
@@ -223,7 +223,7 @@ def build():
     F.light(s, 'NavStarboard', (-5.6, -(CY + CW / 2 + 0.34), 1.3), 'glow_green', size=0.2)
     F.light(s, 'NavPortFwd', (11.0, 1.45, 0.6), 'glow_red', size=0.14)
     F.light(s, 'NavStarboardFwd', (11.0, -1.45, 0.6), 'glow_green', size=0.14)
-    F.light(s, 'BeaconAft', (-9.6, 0.0, 1.66), 'glow_amber', size=0.18)
+    F.light(s, 'BeaconAft', (-9.6, 0.0, 1.66), 'glow_amber.beacon', size=0.18)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 

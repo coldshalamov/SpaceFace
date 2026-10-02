@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "75b81effcb63cc4a496ad10d9f6b6a9489dfe9887c15e866cb1cd14bec864879",
+  "contentHash": "edd6297d7494a531dc96298bb9f335249ce2f4fe6c80e24d5cc0b9527575a0ea",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-free-militia.node.lod0-hook-armor-flap-armor.dynamic",
@@ -739,13 +739,13 @@
       },
       "drawMode": 4,
       "geometryHash": "f5149e437007fd5ce351e886ee119c4260918422aceb603df1ca6fe663cb4b07",
-      "id": "sf.render.wasp-free-militia.node.lod0-beacon-amber.primitive.0",
+      "id": "sf.render.wasp-free-militia.node.lod0-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.wasp-free-militia.node.lod0-beacon-amber",
+      "meshName": "LOD0_Beacon_Amber_beacon",
+      "nodeId": "sf.render.wasp-free-militia.node.lod0-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1013,7 +1013,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d491d33984f59ba86954f2491fecf28c423abd1f910b8a569c1e774ec51a0dc5",
+      "geometryHash": "3159ae29d5de3cd495fc89d6e671e188b74ab80748ad7abee37806aa99e9d12c",
       "id": "sf.render.wasp-free-militia.node.lod0-mechanical.primitive.0",
       "indexCount": 12051,
       "indexed": true,
@@ -1263,7 +1263,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90a00150263b9e2355029091d75dee9c09af8c7cb6f914adba119edbe5b4d256",
+      "geometryHash": "561ca204bf287933580dff2f1b1ea5173fdc2dd032298c674408f119ead43a50",
       "id": "sf.render.wasp-free-militia.node.lod1-armor.primitive.0",
       "indexCount": 5115,
       "indexed": true,
@@ -1289,13 +1289,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ac391e16d99412d081d2c476f9e375b013fd381de8f41bea0029952dd2929f80",
-      "id": "sf.render.wasp-free-militia.node.lod1-beacon-amber.primitive.0",
+      "id": "sf.render.wasp-free-militia.node.lod1-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Beacon_Amber",
-      "nodeId": "sf.render.wasp-free-militia.node.lod1-beacon-amber",
+      "meshName": "LOD1_Beacon_Amber_beacon",
+      "nodeId": "sf.render.wasp-free-militia.node.lod1-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1513,16 +1513,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "949a9c41e5ab1035b04afc0bc4669c949c8feec8df318c6872950713a7f78f8a",
+      "geometryHash": "8a564db1df0d967c38c1059c9f9c2f4a4c40adcfbd3a1dbde84819b600342485",
       "id": "sf.render.wasp-free-militia.node.lod1-hull.primitive.0",
-      "indexCount": 11595,
+      "indexCount": 11598,
       "indexed": true,
       "materialHash": "947e24d3fbeec2cac256e8d1a5f8997bea93fa023823a6a7a8265b94249bd0d9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.wasp-free-militia.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3067
+      "vertexCount": 3069
     },
     {
       "bounds": {
@@ -1563,16 +1563,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "839c7a5b5cebed305e7ab674680ac37b3e0dd2e14ed770a466e51f8b1f72f9fa",
+      "geometryHash": "a4d54847277f28853dbdae8a34a7b4ab730502b2b4218ea152cc6324119fcc5b",
       "id": "sf.render.wasp-free-militia.node.lod1-mechanical.primitive.0",
-      "indexCount": 10119,
+      "indexCount": 10116,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.wasp-free-militia.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3246
+      "vertexCount": 3245
     },
     {
       "bounds": {
@@ -1803,17 +1803,17 @@
       "bounds": {
         "max": [
           3.9502506256103516,
-          1.1744440793991089,
-          5.189309597015381
+          1.174453616142273,
+          5.189359664916992
         ],
         "min": [
-          -9.091981887817383,
-          -0.7965981364250183,
-          -5.189309597015381
+          -9.092108726501465,
+          -0.7966076731681824,
+          -5.189359664916992
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44db34c6e0af7f593e90108fd60a4d18e0321f121d88e1948ce3473f9183ae78",
+      "geometryHash": "713888072e1d09fda87b20f141a0e9f449260b96733f644d6d6e954a6113723f",
       "id": "sf.render.wasp-free-militia.node.lod2-armor.primitive.0",
       "indexCount": 2700,
       "indexed": true,
@@ -1839,13 +1839,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ac391e16d99412d081d2c476f9e375b013fd381de8f41bea0029952dd2929f80",
-      "id": "sf.render.wasp-free-militia.node.lod2-beacon-amber.primitive.0",
+      "id": "sf.render.wasp-free-militia.node.lod2-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Beacon_Amber",
-      "nodeId": "sf.render.wasp-free-militia.node.lod2-beacon-amber",
+      "meshName": "LOD2_Beacon_Amber_beacon",
+      "nodeId": "sf.render.wasp-free-militia.node.lod2-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1988,16 +1988,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd9a4cf2524b580448112d213f54a93121db20760df640017999e9e12b69210c",
+      "geometryHash": "4fb6cd3811a8b063e312b6cd007458f0ce5cc5085ef484003330ac43bb740efb",
       "id": "sf.render.wasp-free-militia.node.lod2-hull.primitive.0",
-      "indexCount": 5559,
+      "indexCount": 5556,
       "indexed": true,
       "materialHash": "947e24d3fbeec2cac256e8d1a5f8997bea93fa023823a6a7a8265b94249bd0d9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.wasp-free-militia.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1541
+      "vertexCount": 1538
     },
     {
       "bounds": {
@@ -2013,7 +2013,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b85901d3d5dce7572dfad6265b31b1f321b739730cc902d8e011bbe3893560d1",
+      "geometryHash": "fba70b54e4485cf0ab110989b515b47ec3f1ed42c85a7cc572f423f2b4bda262",
       "id": "sf.render.wasp-free-militia.node.lod2-lights-cyan.primitive.0",
       "indexCount": 705,
       "indexed": true,
@@ -2038,7 +2038,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd6679e3836a5cd82b1786f9ec458781e4a69916a18d9a6cb6200077775c88de",
+      "geometryHash": "7aeffa3fc0c80fe18ddf28c9b8e7e39dc3e1b7556038880b54587b07c38a454a",
       "id": "sf.render.wasp-free-militia.node.lod2-mechanical.primitive.0",
       "indexCount": 3639,
       "indexed": true,
@@ -2047,7 +2047,7 @@
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.wasp-free-militia.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1169
+      "vertexCount": 1168
     },
     {
       "bounds": {
@@ -2063,16 +2063,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8c2c04f681a66d30a96e8235400791245f177f2cb0c71a35af954490523606f",
+      "geometryHash": "71b798646304398469bac5f7ea50c8b4056836ff911ff74e4afc7b69d91cd4d3",
       "id": "sf.render.wasp-free-militia.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 4383,
+      "indexCount": 4386,
       "indexed": true,
       "materialHash": "8214949ffc1c28fa4a3d3fdbbf0329870ff799e2738678a6d06faf31e01c844b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.wasp-free-militia.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1633
+      "vertexCount": 1634
     },
     {
       "bounds": {
@@ -2280,6 +2280,13 @@
   "lods": [],
   "materials": [
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -2317,13 +2324,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -2550,7 +2550,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-free-militia.node.lod0-beacon-amber",
+      "id": "sf.render.wasp-free-militia.node.lod0-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -2570,8 +2570,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
+      "mergeBoundary": "LOD0_Beacon_Amber_beacon",
+      "nodeName": "LOD0_Beacon_Amber_beacon",
       "nodePath": [
         0,
         2
@@ -3636,7 +3636,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-free-militia.node.lod1-beacon-amber",
+      "id": "sf.render.wasp-free-militia.node.lod1-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -3656,8 +3656,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Beacon_Amber",
-      "nodeName": "LOD1_Beacon_Amber",
+      "mergeBoundary": "LOD1_Beacon_Amber_beacon",
+      "nodeName": "LOD1_Beacon_Amber_beacon",
       "nodePath": [
         0,
         16
@@ -4722,7 +4722,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-free-militia.node.lod2-beacon-amber",
+      "id": "sf.render.wasp-free-militia.node.lod2-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -4742,8 +4742,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Beacon_Amber",
-      "nodeName": "LOD2_Beacon_Amber",
+      "mergeBoundary": "LOD2_Beacon_Amber_beacon",
+      "nodeName": "LOD2_Beacon_Amber_beacon",
       "nodePath": [
         0,
         30
@@ -6397,22 +6397,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "3b9ee4fd2b1419f9f396b127e610b61a54ee09b0bfed48da568899ea88346c58"
+      "sha256": "34b8555f4de33cacd180105416e34070164dd478a469d010e81b7fa03b493487"
     },
     "sourceGlb": {
-      "bytes": 1189596,
-      "sha256": "23846e40c0c709117f9670207cd530f53cd8527b80d6172ceba67d593f67bbab",
+      "bytes": 1189532,
+      "sha256": "0b32b171505f1f88e4489eeb0e45c71277d3acd9ca89bc9421f0d4255a58bcb3",
       "uri": "wasp_free_militia.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2266668,
-    "sha256": "63a6e01e42f9ad9a9d7f99a05740ee821b21e01cd61d694164b337222bbb32c2",
+    "bytes": 2266344,
+    "sha256": "e8738567663ceabf559adba9ba735c81ca6deee640ba2cf5a9fbeac725abfdad",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7647,7 +7647,7 @@
           0,
           1
         ],
-        "name": "LOD0_Beacon_Amber",
+        "name": "LOD0_Beacon_Amber_beacon",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -8050,7 +8050,7 @@
           0,
           1
         ],
-        "name": "LOD1_Beacon_Amber",
+        "name": "LOD1_Beacon_Amber_beacon",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -8453,7 +8453,7 @@
           0,
           1
         ],
-        "name": "LOD2_Beacon_Amber",
+        "name": "LOD2_Beacon_Amber_beacon",
         "planIndex": 32,
         "tags": {
           "canopy": false,
@@ -9405,7 +9405,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_free_militia.glb"
   },
-  "runtimeHash": "19071373c9245def3d7e6784a75cd254961a431534a2b4e65bbd9a3cfc693147",
+  "runtimeHash": "9de2ada6aa75f5c413d8aab83563c77acb9ad33a728ae6c9f5f5ee35b1ac516d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -9425,7 +9425,7 @@
       "nodeIds": [
         "sf.render.wasp-free-militia.node.collision-hull",
         "sf.render.wasp-free-militia.node.lod0-armor",
-        "sf.render.wasp-free-militia.node.lod0-beacon-amber",
+        "sf.render.wasp-free-militia.node.lod0-beacon-amber-beacon",
         "sf.render.wasp-free-militia.node.lod0-canopy",
         "sf.render.wasp-free-militia.node.lod0-hook-armor-flap-armor",
         "sf.render.wasp-free-militia.node.lod0-hook-drive-core",
@@ -9447,7 +9447,7 @@
         "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-s-armor",
         "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-s-mechanical",
         "sf.render.wasp-free-militia.node.lod1-armor",
-        "sf.render.wasp-free-militia.node.lod1-beacon-amber",
+        "sf.render.wasp-free-militia.node.lod1-beacon-amber-beacon",
         "sf.render.wasp-free-militia.node.lod1-canopy",
         "sf.render.wasp-free-militia.node.lod1-hook-armor-flap-armor",
         "sf.render.wasp-free-militia.node.lod1-hook-drive-core",
@@ -9469,7 +9469,7 @@
         "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-s-armor",
         "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-s-mechanical",
         "sf.render.wasp-free-militia.node.lod2-armor",
-        "sf.render.wasp-free-militia.node.lod2-beacon-amber",
+        "sf.render.wasp-free-militia.node.lod2-beacon-amber-beacon",
         "sf.render.wasp-free-militia.node.lod2-canopy",
         "sf.render.wasp-free-militia.node.lod2-hook-armor-flap-armor",
         "sf.render.wasp-free-militia.node.lod2-hook-drive-core",

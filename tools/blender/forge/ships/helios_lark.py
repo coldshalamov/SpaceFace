@@ -81,7 +81,7 @@ def build():
     s.detail = 0
     F.light(s, 'NavPort', (-6.0, 3.95, 0.1), 'glow_red')
     F.light(s, 'NavStarboard', (-6.0, -3.95, 0.1), 'glow_green')
-    F.light(s, 'Beacon', (-7.4, 0.0, 0.75), 'glow_amber', size=0.12)
+    F.light(s, 'Beacon', (-7.4, 0.0, 0.75), 'glow_amber.beacon', size=0.12)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 

@@ -11,8 +11,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_apron_shuttle",
       "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
-      "releaseSha256": "c435507d8b5144f52cad0d294b23bae57185f0704234ace310158aa964cba4c9",
-      "releaseBytes": 934600,
+      "releaseSha256": "582fe9781cc34bde6abc967604c427178dbee9ee10b630e4ae03fc861a1da1d9",
+      "releaseBytes": 934596,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -32,8 +32,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_dart",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart.glb",
-      "releaseSha256": "13c823788d699e4ed38c7aafda34fdc9a1730992eb1afa97f9a26dcf118b64db",
-      "releaseBytes": 896524,
+      "releaseSha256": "5bed5388e0e3b9802b01648a8150700b520071a63cb67850b6fd9349dd80ed07",
+      "releaseBytes": 896216,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -53,8 +53,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_lode",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_lode.glb",
-      "releaseSha256": "b83aaad5ce19f57738c6e7696062f413e6d2a336130d20292ddfa5fde7917ab9",
-      "releaseBytes": 849944,
+      "releaseSha256": "c05ca10d2751ebf935b729fa8a9290caa41cb06bd021ee3c38f34c7581611640",
+      "releaseBytes": 849976,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -74,8 +74,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig.glb",
-      "releaseSha256": "99f665ec9b5d2e97b730d168ce59b9e34fea12f07c1aa3c2b7932bdffe9f492d",
-      "releaseBytes": 948956,
+      "releaseSha256": "7cbfd2b907c7adb6cf9801eb340f9f187e8fbd45a01dad53aba36b96f0593dba",
+      "releaseBytes": 949044,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -95,7 +95,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig_corsair_blade",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb",
-      "releaseSha256": "312a5198e219fc8852167bd73129c8efaa699bc8cd63cd1c4905de1d14741fb3",
+      "releaseSha256": "af3d12a0428df731f563a251915550f8f94a06afae296117a4e0ad7c00fece52",
       "releaseBytes": 935596,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -116,8 +116,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_blackmarket",
       "sourceUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "releaseSha256": "3f94602bdc95696b6b324916261d9685f4fe26915bd2469623fa49286cc19561",
-      "releaseBytes": 2118640,
+      "releaseSha256": "e31153ffbae6c9f36b86c3d2937fb493ba3f0a151d5c8443b5a2f3c0ad5e0e1f",
+      "releaseBytes": 1988400,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -200,8 +200,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_refinery",
       "sourceUrl": "assets/ships/release/parts/places/place_station_refinery.glb",
-      "releaseSha256": "fb24c6c27d598d83b31fedb44737922f8e7ab74b935e35bacca79249c95dc5ef",
-      "releaseBytes": 2047980,
+      "releaseSha256": "3d5f63b19886135304e7a28edd0ff624c84f2f5f26fd51ded8f12477652f8b25",
+      "releaseBytes": 1936344,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -872,8 +872,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_arclight",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_arclight.glb",
-      "releaseSha256": "a3fe7c3f89bae6e32a59569beaa24f07b8897e25d3ad068071c941cefa6d113d",
-      "releaseBytes": 1275456,
+      "releaseSha256": "8ab1a45e0027df978da9d897d1c95751ef929239197a8d77997b871fb8e9016e",
+      "releaseBytes": 1275556,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -893,7 +893,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_cradle",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_cradle.glb",
-      "releaseSha256": "cd93791fa0c21810230bad9c5cf77ec4a5ca3b2fbef52697f3480a090670feb5",
+      "releaseSha256": "0ff76aa7743b2452d5d2281cab6735da274ddd706ea0f9e956e7f2476dae280d",
       "releaseBytes": 1343588,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -914,8 +914,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_lark",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_lark.glb",
-      "releaseSha256": "541a280fb75950c47567cf33fdecdebadee8525e9b1a398ed67e91ce1dfb933f",
-      "releaseBytes": 744036,
+      "releaseSha256": "5c4023465631daa8ee8ecf73e93d56d740b4a97f21f3087a1a10c52e0ce1cbc7",
+      "releaseBytes": 744064,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -998,8 +998,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span.glb",
-      "releaseSha256": "3f56b0aff75da99424a38d48d538c0a5ab18e0bee00c5152c0354ff821e6765d",
-      "releaseBytes": 1180124,
+      "releaseSha256": "dff76dd783b81d4ad80430e7156e1100d37a31a5475e80dd4b628fb25f9a9301",
+      "releaseBytes": 1180204,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1499,8 +1499,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_military",
       "sourceUrl": "assets/ships/release/parts/places/place_station_military.glb",
-      "releaseSha256": "558c181bc03e3348b43c7810324e71dfae43363d0a9693c42caa1e2ef2f5074c",
-      "releaseBytes": 1616236,
+      "releaseSha256": "df033400ae5b9e6cb8c923a532c2f5bdce89e2b517af94f3ba5b2b4d8de3af36",
+      "releaseBytes": 1667124,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1520,8 +1520,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_mining",
       "sourceUrl": "assets/ships/release/parts/places/place_station_mining.glb",
-      "releaseSha256": "225c78098f40ba81e4465fa841c2e91f30d7c2b220892b5a769f350adb45a7bc",
-      "releaseBytes": 1631168,
+      "releaseSha256": "e201a23cf5977c86a161ac5c6d2692f3fd444c211c5fe2f4c76e7554e1741d84",
+      "releaseBytes": 1515152,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1583,8 +1583,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ore_barge",
       "sourceUrl": "assets/ships/release/parts/wholeships/ore_barge.glb",
-      "releaseSha256": "b08a9ac89c6d89c0ff8ae0a71a48104efa7cb38fec9543df2f2dd33977c3a11f",
-      "releaseBytes": 1307892,
+      "releaseSha256": "9faad6e2a1e7f2110a39d9df39debc11107a3487685621d8d455c7f190d5ba22",
+      "releaseBytes": 1307972,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1676,8 +1676,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_prospector_skiff",
       "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb",
-      "releaseSha256": "ccc8ea31f852ba6b53af45da12aafa31ff3d47623cd49f5f899d72789524cffe",
-      "releaseBytes": 915576,
+      "releaseSha256": "ccb1120f2bb1090eb9a3cefdc9123c92d9e419579d68cdf40a392e66ecda8218",
+      "releaseBytes": 915728,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1718,8 +1718,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_repair_tender",
       "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb",
-      "releaseSha256": "2fb2319ca4e773c9f6b98fb08e0eadc63566d861abf48a84893df62db6a70512",
-      "releaseBytes": 1121208,
+      "releaseSha256": "05436f87c31968827ba5439f0b965f536648e6f5beb8b7a1bf6d97307a361269",
+      "releaseBytes": 1121284,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1739,8 +1739,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_rescue_lifter",
       "sourceUrl": "assets/ships/release/parts/wholeships/rescue_lifter.glb",
-      "releaseSha256": "018e232465feb369ea49875cd199417a20e93b2f4e0c3658ece133a6f1086b84",
-      "releaseBytes": 1344324,
+      "releaseSha256": "bb11604af99ac7b8417ad2125d8064ed95266aef1c355a7ed32b9f9c6c49b993",
+      "releaseBytes": 1344316,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1760,8 +1760,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_research",
       "sourceUrl": "assets/ships/release/parts/places/place_station_research.glb",
-      "releaseSha256": "ff8695b65dcd48501e17a4321c680947b620e583cd4f8be0bf2e625b5f5d2535",
-      "releaseBytes": 2185588,
+      "releaseSha256": "513ae1cca1303cb68157b63756d85079ea493a522eb01e4d794e04dec9f6925d",
+      "releaseBytes": 2098528,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1958,8 +1958,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_survey_pin",
       "sourceUrl": "assets/ships/release/parts/wholeships/survey_pin.glb",
-      "releaseSha256": "24a3a366385db5b328e36d7f4bd4b53d82849d51765d5931423fc9af05938b54",
-      "releaseBytes": 1049456,
+      "releaseSha256": "cc7870055c98bc88ac0444d9ce4b9549ccf74fac3bc77b88949925c3b43e8729",
+      "releaseBytes": 1049532,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -2021,8 +2021,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_volatiles_tanker",
       "sourceUrl": "assets/ships/release/parts/wholeships/volatiles_tanker.glb",
-      "releaseSha256": "4478b8c560f3c23617e75fbd0577ec6156aaadb9d6ccbe9bbebdfc5a9eeea898",
-      "releaseBytes": 1379004,
+      "releaseSha256": "dca38912e10fd23f5f89dd4d041368d6b2cb0ae440bffbd25c0a70d1ccb6782d",
+      "releaseBytes": 1379000,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -2042,8 +2042,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
-      "releaseSha256": "97a430c7825a0075682b2c939df6e4b0aa460257c2dc619674ada4c948477dd6",
-      "releaseBytes": 799748,
+      "releaseSha256": "2f5a0dce2673ea802046b6d5950f2e48c70e0de32609765aa2f3a3c4a5be0b5d",
+      "releaseBytes": 799804,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -2510,8 +2510,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_yard_tug",
       "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "releaseSha256": "af1fda2b4345a9433ca72de6512c36046c33acd51df88acf85e3150a9696debc",
-      "releaseBytes": 1350744,
+      "releaseSha256": "9f33875afb48a38986d1232a46f43857fe9255c7e7e9b308266b303e9fdd2003",
+      "releaseBytes": 1350816,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3671,8 +3671,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
-      "releaseSha256": "4753d4a395729c9a7b2dcc4a4fdc395629b7c3b0edadf45eba041b049d0b8f20",
-      "releaseBytes": 836720,
+      "releaseSha256": "fab36769249cd13cdf543a6dc896f765f6204cf514bff4afcf5819d8d67e3007",
+      "releaseBytes": 836772,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3692,8 +3692,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
-      "releaseSha256": "4dd4692318cc9f623f3285517e892efbbc948cd5ddc6e0a23385a00d8c81b672",
-      "releaseBytes": 570992,
+      "releaseSha256": "a6d17d63bee76e0432b604c2849b4716fc53484c96eedf414da71a42476a6602",
+      "releaseBytes": 570996,
       "rootNode": "DRIFTER_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3713,8 +3713,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_drifter_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
-      "releaseSha256": "31c62d443cb7736094cf1006c8557e78a23bc42a701d61b23e0aa6fd3bf05d87",
-      "releaseBytes": 463932,
+      "releaseSha256": "0951f5a48b8074bf720da92de3273f98f828f20751a10139d571cbeef787cfc2",
+      "releaseBytes": 463988,
       "rootNode": "DRIFTER_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3818,8 +3818,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1.glb",
-      "releaseSha256": "21093ae9482f8e41be2a24e5afb1397172f0eb79d7fa6e30a39a362ad2bbe99d",
-      "releaseBytes": 894300,
+      "releaseSha256": "69bdccbf77ffce01b5cb0fcb957107c7b515c83e8579879ed202fbbb5d383472",
+      "releaseBytes": 894364,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3839,8 +3839,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
-      "releaseSha256": "be82683ae3fa87e0c50c3012a8326092e151938f4abb824cb18b470033348f3e",
-      "releaseBytes": 787564,
+      "releaseSha256": "553d506a9816b5bc95f5371d9aa8a329f3ece5efdc942b977c768c62068a8787",
+      "releaseBytes": 824300,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3860,8 +3860,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_colossus_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/colossus_production_v1.glb",
-      "releaseSha256": "66315d638b612858d78876c56400cf7e0ce8781d49f3417a7f620fa4e98e357a",
-      "releaseBytes": 1160564,
+      "releaseSha256": "ae6b9e467d2a3459f358b29ee2728ced05212342ba648aaaaa8d40d25832ed90",
+      "releaseBytes": 1160636,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3881,8 +3881,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-      "releaseSha256": "16d1254f032a510781b7012c136192aa774e7203f779ef9b4a89d2fe88644170",
-      "releaseBytes": 582396,
+      "releaseSha256": "f9de7cb955ac2dbc150feaac72a72f76f349c49daba3bccb78bdcb846903e392",
+      "releaseBytes": 582448,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3902,8 +3902,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ironback_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
-      "releaseSha256": "69f45df354394e3200f5381fa3d861017f00271c982b0321d351a4e8bcadbc01",
-      "releaseBytes": 921776,
+      "releaseSha256": "4ed8f25f6e45c677281f7b0d1645105c366daf67975f3fb72a195efafa64598a",
+      "releaseBytes": 921772,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3923,8 +3923,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_leviathan_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb",
-      "releaseSha256": "cac5e77cb9463241da98c7f1a0b835cef587f1621fd5d603c1ee6fdd5cf2b80b",
-      "releaseBytes": 1116964,
+      "releaseSha256": "9d7434ade1160602dba168d1c29dd07a1bc27a39fd91346724d3d9391e3a4ff7",
+      "releaseBytes": 1116956,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3944,8 +3944,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_saucer_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1.glb",
-      "releaseSha256": "2a66df79e05ff3af06c70c0460d9ce83ac96d5c4972c67078dcae279c4df93c5",
-      "releaseBytes": 1160752,
+      "releaseSha256": "b1bd9bfa3b61b8dac9f1e7c7443c72cccf16a69065d95539536a472a54a328db",
+      "releaseBytes": 1161384,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3965,8 +3965,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1.glb",
-      "releaseSha256": "026bd9f7cb139f574fb8e28296c6a0599849497f915d57b8a991ddfb5f3f55f3",
-      "releaseBytes": 713036,
+      "releaseSha256": "47440cb2d6a17ebac5e12684808fc529b8b0ecd3d7c4afb658c7a9793ba68a54",
+      "releaseBytes": 713092,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3986,8 +3986,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
-      "releaseSha256": "64ca55effa50816821f380ce2ec9c4eaac7a91646f7ea02cee409b07cbb3e7bd",
-      "releaseBytes": 796356,
+      "releaseSha256": "d61767b905024312dbc6b8d898eb0353f4826cfdfc7408dd6e635ba4749059ae",
+      "releaseBytes": 796388,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4007,8 +4007,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1.glb",
-      "releaseSha256": "7fa633616adddcee6228409be9f5ab0bdfe8c7d746ffa7200940bcaaaaae20fc",
-      "releaseBytes": 992668,
+      "releaseSha256": "84d0e7a1625be78a612463ee52a9b259e20d1d968196f6c6e6200e4de460f1cc",
+      "releaseBytes": 992716,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4028,8 +4028,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
-      "releaseSha256": "b9a8f26f84116f1e4ff5faa0b832cdcccf61a536897441c57037992eab9eb46a",
-      "releaseBytes": 824064,
+      "releaseSha256": "af5f836068bb759dcccc025ebe0aa42559a9016a2493c16babc439e229b0bb64",
+      "releaseBytes": 824076,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4112,8 +4112,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_dmc",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_dmc.glb",
-      "releaseSha256": "48e97c5bf6ffa68816e02380b7409d3d7abd01a51704802e9b20942e8f48398c",
-      "releaseBytes": 1180236,
+      "releaseSha256": "10d8edf41a4eb8e8943be3939e85974e00e66e5c058ce3ea2617347948bd3e64",
+      "releaseBytes": 1180308,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4133,8 +4133,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_mts",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_mts.glb",
-      "releaseSha256": "b5f7c4a8dc7656ca5a85ed56b8f762f7ba17502436e871c4c17c62d5dddc66d4",
-      "releaseBytes": 1180196,
+      "releaseSha256": "8a179e7384db2514b2a38fce5c6e5c9ba88652cf702d6a1620206baa3954d8f5",
+      "releaseBytes": 1180212,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4154,8 +4154,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_reach",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_reach.glb",
-      "releaseSha256": "2b61f1a69604ee95b1d98ab4e2800340d6fd391d9562aa7439b12196208fe8a2",
-      "releaseBytes": 1180300,
+      "releaseSha256": "f29542b985a11b268d216d64f6d43681661adbcdb71cbc94c970a671f062db01",
+      "releaseBytes": 1180272,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4175,8 +4175,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_free_militia",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_free_militia.glb",
-      "releaseSha256": "23846e40c0c709117f9670207cd530f53cd8527b80d6172ceba67d593f67bbab",
-      "releaseBytes": 1189596,
+      "releaseSha256": "0b32b171505f1f88e4489eeb0e45c71277d3acd9ca89bc9421f0d4255a58bcb3",
+      "releaseBytes": 1189532,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4196,8 +4196,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_mts_escort",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_mts_escort.glb",
-      "releaseSha256": "685d814d7ef680e81fc54c7c8ebcae6eac97e72660c69d57280375ad41daa293",
-      "releaseBytes": 1189420,
+      "releaseSha256": "7e68b457a7ddfdab6cb873ecb35ba39dd1571e16c69e402c850600cea11d379f",
+      "releaseBytes": 1189604,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4217,8 +4217,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_scn_patrol",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_scn_patrol.glb",
-      "releaseSha256": "3499124ce91a78f896e4129ee5412d399d9929429850e5a1b1ad0d05b4642dce",
-      "releaseBytes": 1189432,
+      "releaseSha256": "85ea76c86f8c6e4444fb990f42c53962ae81236d0c06d0810afba69a796667d1",
+      "releaseBytes": 1189508,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4228,6 +4228,132 @@
       ],
       "outputDir": "assets/ships/release/render-packages/wasp-scn-patrol",
       "metadataUrl": "assets/ships/release/render-packages/wasp-scn-patrol/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "hornet-scn-interdictor",
+      "assetId": "sf.render.hornet-scn-interdictor",
+      "runtimeAssetId": "SF_HORNET_SCN_INTERDICTOR",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_hornet_scn_interdictor",
+      "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb",
+      "releaseSha256": "54ca1ae25fe91f66206e57463894015d385c1c4ed7549c2db787b45d2ac9f728",
+      "releaseBytes": 762992,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/hornet-scn-interdictor",
+      "metadataUrl": "assets/ships/release/render-packages/hornet-scn-interdictor/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "wasp-quiet-ghost",
+      "assetId": "sf.render.wasp-quiet-ghost",
+      "runtimeAssetId": "SF_WASP_QUIET_GHOST",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_wasp_quiet_ghost",
+      "sourceUrl": "assets/ships/release/parts/wholeships/wasp_quiet_ghost.glb",
+      "releaseSha256": "6e1cfba45e96b69251cc187a2ac7e3702ec2054eccba100bae2710619628acff",
+      "releaseBytes": 1189512,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/wasp-quiet-ghost",
+      "metadataUrl": "assets/ships/release/render-packages/wasp-quiet-ghost/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "ashline-dart-choir",
+      "assetId": "sf.render.ashline-dart-choir",
+      "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_DART_CHOIR",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ashline_dart_choir",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart_choir.glb",
+      "releaseSha256": "7203ce075fab179f46879b4c1ef06571179c42a4fe8375e45f926bb9523df502",
+      "releaseBytes": 896440,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ashline-dart-choir",
+      "metadataUrl": "assets/ships/release/render-packages/ashline-dart-choir/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "ashline-lode-vael",
+      "assetId": "sf.render.ashline-lode-vael",
+      "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_LODE_VAEL",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ashline_lode_vael",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ashline_lode_vael.glb",
+      "releaseSha256": "9b1db91d1c6f26231db5432884983dea10e394dee5147d1ac6c38efa767cbe10",
+      "releaseBytes": 850080,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ashline-lode-vael",
+      "metadataUrl": "assets/ships/release/render-packages/ashline-lode-vael/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "ashline-rig-quiet",
+      "assetId": "sf.render.ashline-rig-quiet",
+      "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG_QUIET",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ashline_rig_quiet",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_quiet.glb",
+      "releaseSha256": "ad659081bc2905c6517ebcdb7c6a402757b57e36685648498eb1382c050958e7",
+      "releaseBytes": 949092,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ashline-rig-quiet",
+      "metadataUrl": "assets/ships/release/render-packages/ashline-rig-quiet/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "helios-cradle-dmc",
+      "assetId": "sf.render.helios-cradle-dmc",
+      "runtimeAssetId": "SF_WHOLESHIP_HELIOS_CRADLE_DMC",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_helios_cradle_dmc",
+      "sourceUrl": "assets/ships/release/parts/wholeships/helios_cradle_dmc.glb",
+      "releaseSha256": "388f36d1ba6d727f21a97108f44b0982356989fdb5702749d1e7f5cd61e80311",
+      "releaseBytes": 1343704,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/helios-cradle-dmc",
+      "metadataUrl": "assets/ships/release/render-packages/helios-cradle-dmc/render-package.json",
       "sceneRoot": true
     },
     {
@@ -4280,8 +4406,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb",
-      "releaseSha256": "0cfd676a77b543dc3216df122734267028fa779396d7d2a27295e8eea2c93c38",
-      "releaseBytes": 569648,
+      "releaseSha256": "8079597d25d0bf192de4fbd01333ca143f0014d85ce54e51ae971c3d8d1a87e8",
+      "releaseBytes": 569736,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4301,8 +4427,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb",
-      "releaseSha256": "0fd96f92a1b7a29194c838a5a4ab2079cba6bdc3aaa1087d9f4e45e95ceda6ce",
-      "releaseBytes": 450180,
+      "releaseSha256": "842c0ec53ef32c6a8a7243937c57014a7383a372f6b653608887e3e8e30b4667",
+      "releaseBytes": 450256,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4322,8 +4448,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-      "releaseSha256": "6f7792841b71fd70a50f2078b95a71948ea94ee9ab0aac7747444ba629f884a4",
-      "releaseBytes": 435628,
+      "releaseSha256": "3478d512e2074ca7d69c97bd63c5fb672be514a42ef106864373d045c9c02b90",
+      "releaseBytes": 435672,
       "rootNode": "HORNET_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4343,8 +4469,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-      "releaseSha256": "288ead16a9d7d078f08856017521ca862e536b386074cd71a2bb72039579d2da",
-      "releaseBytes": 372804,
+      "releaseSha256": "db92f624e1113ddcbbcbcc9dafb8ac0b061e61309fa212bb57987edd51d09bba",
+      "releaseBytes": 372856,
       "rootNode": "HORNET_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4364,8 +4490,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb",
-      "releaseSha256": "a00e4c8dee0739fbe4c779ce4d1724f5983f4c0c31b97bd4981599d55e179de8",
-      "releaseBytes": 558216,
+      "releaseSha256": "2aa9d7d14d6b087e20ad38092c9d9941471819c1225e1e6a76fc5993edd9cb41",
+      "releaseBytes": 558884,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4385,8 +4511,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb",
-      "releaseSha256": "91914f91da308280dc2176d9788517403aa0f4bee5f266c59b92d6a86b3d4d27",
-      "releaseBytes": 453152,
+      "releaseSha256": "35c7843ab636e2cf2c275e9373986dac0bbe56551d1873cdfd8ec4dd43ea8912",
+      "releaseBytes": 453776,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4406,8 +4532,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb",
-      "releaseSha256": "0862622f076849ca1c7ee6c0917b90b9b55a99bb713f41c8e4c3ccc31c1167c4",
-      "releaseBytes": 701072,
+      "releaseSha256": "acd1c3e240e525e2e7bd73f3e03ccc3cd01b2b2cb1e58af8b873635a66055fda",
+      "releaseBytes": 701328,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4427,8 +4553,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod2.glb",
-      "releaseSha256": "ca1d91fbd403151ec1af5e8ab957dd61961c896f44a878c526c0b3a56cace6c8",
-      "releaseBytes": 518332,
+      "releaseSha256": "17bb9dab878b8d178c39ec40a4c58e2e0b7d36e9ef9985a1958cc01ecb7a08cd",
+      "releaseBytes": 518572,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4448,8 +4574,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "releaseSha256": "6500f0297ae9c8bebd0128750e2a4ebd8eb361742ac81880c70d27b8fd83edcb",
-      "releaseBytes": 548256,
+      "releaseSha256": "c3fac502cc7bdd267e7836913cdf7d4fe2dfe7c596eb1e892758b17eaf28f21c",
+      "releaseBytes": 548244,
       "sceneRoot": true,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4469,7 +4595,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "releaseSha256": "0e61b670d630f8083a6dd857476c0487d5e0312306860ffc83c13015ecea8f74",
+      "releaseSha256": "930cf7767d3843cc50716246b9a01c68a3eab21a44285770913139937d7aa8bf",
       "releaseBytes": 431856,
       "sceneRoot": true,
       "dynamicNameIncludes": [
@@ -4490,8 +4616,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb",
-      "releaseSha256": "abc1244c8dbfa6d1c4b0edb55f3cb8825ddc13a961496704b229e6281bce1e9d",
-      "releaseBytes": 506768,
+      "releaseSha256": "ee11a21aff24c1a7ef7924182a0f5099b7532fe70455355e5b552eeb0df81760",
+      "releaseBytes": 506816,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4511,8 +4637,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb",
-      "releaseSha256": "e50bc80cf654bb4b9d56b08ec7087a76236d590db0ee7ccd6d8955f1e5fd29f0",
-      "releaseBytes": 419656,
+      "releaseSha256": "0ce88b800c646ed500f7f7c13811c00a69b80b18d06ba8b7d258326b7a2c2ff7",
+      "releaseBytes": 419712,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4532,8 +4658,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb",
-      "releaseSha256": "0a41ab5a4a701e7bc0cd59c98e3f54404ef08acdf45be018f16a6642644677cb",
-      "releaseBytes": 616784,
+      "releaseSha256": "6ba37ce4ff2e2745a9cb508087a5216d86b82ad7dfeef404c68622d489dd7113",
+      "releaseBytes": 616844,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4553,8 +4679,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb",
-      "releaseSha256": "60416962cb3d53d5f3fcea32c9789468fd88598123d13903354ac80a0e50fdd7",
-      "releaseBytes": 491868,
+      "releaseSha256": "208aa3bbddf937101a9c24d1ae958cfc480a725324b1b675233d7175cd63ac80",
+      "releaseBytes": 491928,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4574,8 +4700,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb",
-      "releaseSha256": "36ddce4d44cb92ccec078cf619ff9d405be28849be40d34e2894ab200525ee0f",
-      "releaseBytes": 503280,
+      "releaseSha256": "72ff529c7b436f8ce2e37d8198798d827c35129646bc09962afe0cc56d4a3824",
+      "releaseBytes": 503396,
       "rootNode": "RANGER_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4595,8 +4721,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb",
-      "releaseSha256": "8a60f63e141f9f5381556c2756777f1be8109b6e250dd8f0685f31621f484e02",
-      "releaseBytes": 423180,
+      "releaseSha256": "a0eb4adae647eb3f72fa82310581a9d03c320bb73bda28d59a96884c1bcbf119",
+      "releaseBytes": 423240,
       "rootNode": "RANGER_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4725,8 +4851,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod1/render-package.json",
-      "releaseBytes": 497840,
-      "releaseSha256": "0470d153eff8b082eca129fb71059eecb7cbc3a9d32ae008972c1b01f4742027"
+      "releaseBytes": 497784,
+      "releaseSha256": "6c245c7dba51b3c5c752629e917d9b411f01a62b8ff9b1aba5565e06ba9a192d"
     },
     {
       "key": "pelican-production-v1-lod2",
@@ -4746,8 +4872,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod2/render-package.json",
-      "releaseBytes": 411492,
-      "releaseSha256": "ffdaf3a7e723234515e469deff754cf2ab670415226947c54a1007957c4dc070"
+      "releaseBytes": 411496,
+      "releaseSha256": "8879c116735fccad673fae1ed8c2f19c4d31243790ac581ec77e938e6e7d8afc"
     },
     {
       "key": "colossus-production-v1-lod1",
@@ -4767,8 +4893,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod1/render-package.json",
-      "releaseBytes": 760840,
-      "releaseSha256": "3a97ba322a510a15dfb78daa6427cbe70d6fcd1e3cfc1ac79cb5876ed7dcd331"
+      "releaseBytes": 760888,
+      "releaseSha256": "107e747e8a7e376964c51a0551e9370927c49957734fbcf5e9d608f87aa108ed"
     },
     {
       "key": "colossus-production-v1-lod2",
@@ -4788,8 +4914,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod2/render-package.json",
-      "releaseBytes": 555156,
-      "releaseSha256": "5e67f06f4bd7ce43e6b2f79f39c2f06f84a8f0ef19762ed4aa64f572f130fcc4"
+      "releaseBytes": 555220,
+      "releaseSha256": "c5af644df799b761b66d8ba911cbcf37f0af493fa3a1d14a4573c17912b9c160"
     },
     {
       "key": "ironback-production-v1-lod1",
@@ -4809,8 +4935,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
-      "releaseBytes": 612404,
-      "releaseSha256": "a27fd7e04c828dc018bc26bb1d5c5e6460cc474486132fc5dd9d30d0459abe6c"
+      "releaseBytes": 612396,
+      "releaseSha256": "b65e54c4899f599a574fbdd25a6fcaee88a1391bc51def5ec1b110cb758128e1"
     },
     {
       "key": "ironback-production-v1-lod2",
@@ -4830,8 +4956,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
-      "releaseBytes": 468940,
-      "releaseSha256": "1e51fe22f870f143a93d5032edd3797c6403f3ffebc4425d10b40cbae3ec5a51"
+      "releaseBytes": 468920,
+      "releaseSha256": "0003bc1a167127699816ef73abbe8f6d664e67294a6c52af1cd05309bfcef48d"
     },
     {
       "key": "leviathan-production-v1-lod1",
@@ -4851,8 +4977,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod1/render-package.json",
-      "releaseBytes": 776008,
-      "releaseSha256": "674f80e576fd67ecc0c053ba9f85fadc1e21f7378ee186b7b426a6823f0a0281"
+      "releaseBytes": 775804,
+      "releaseSha256": "ffdc10993cedfd60592658ccb75d54ec79e269cc14dc2dab96ea58407abfb8ea"
     },
     {
       "key": "leviathan-production-v1-lod2",
@@ -4872,8 +4998,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod2/render-package.json",
-      "releaseBytes": 566516,
-      "releaseSha256": "61d783a59fbd8505fc1d9a311bf286a109fdb225b8b9a17bc92f048cd235bc7a"
+      "releaseBytes": 566580,
+      "releaseSha256": "e04129567604a995376d9247db0805f8fd48c3aec94d4c0bc65cc9965d4e7590"
     },
     {
       "key": "quiessence-freighter-a",
@@ -4904,8 +5030,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_saucer_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb",
-      "releaseSha256": "44e38aefb723187a0eaab81bc6cefd43bf659d0e50342ea7db014690d4de439f",
-      "releaseBytes": 735128,
+      "releaseSha256": "e83c703ba8c4e6d3498a3ef20a2f6b9df20fbf5fefe57674bbd38bead6446922",
+      "releaseBytes": 735748,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4925,8 +5051,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_saucer_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/saucer_production_v1_lod2.glb",
-      "releaseSha256": "54450bac88839da95c2786f0af5055437e62212cf715b3949c07c6be8e046984",
-      "releaseBytes": 534436,
+      "releaseSha256": "f263a736b4f3ff610f8fa87f205046eee825ca75ca90942764a9947132d9005f",
+      "releaseBytes": 535056,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
