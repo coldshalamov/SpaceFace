@@ -20,6 +20,7 @@ test('the Kestrel recipe stamps DIE LAUGHING through the stencil kit', () => {
   assert.match(recipe, /'DIE'/);
   assert.match(recipe, /'LAUGHING'/);
   assert.match(recipe, /'Sponson'/, 'the marking sits on the port sponson armour course');
+  assert.match(recipe, /angle=math\.pi/, 'the marking is turned to read upright at the spawn heading (nose screen-left under the chase camera)');
   assert.doesNotMatch(recipe, /NameBoard/, 'the blank ivory plaque is replaced by the stencil');
 });
 
