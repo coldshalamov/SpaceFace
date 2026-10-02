@@ -15,6 +15,8 @@
 // Lab session is present (state.run.kind === 'lab' && phase !== 'inactive'); the gate is re-read
 // on every applyMinimum recompute, not only at request time.
 
+import { laneWriteSetting } from './simLaneCommands.js';
+
 const SERVICE_BY_STATE = new WeakMap();
 
 // Ceiling matches MAX_CATCHUP_STEPS in src/core/simulationRunner.js: the runner never takes more
@@ -80,7 +82,12 @@ export function createTimeEffects(state) {
     });
     const next = minScale * minLabSpeed;
     effectiveScale = next;
-    if (state.timeScale !== next) state.timeScale = next;
+    // The worker lane's sim reads this scalar sim-side; ship the write, then
+    // apply the local one (off-lane laneWriteSetting falls through to state).
+    if (state.timeScale !== next) {
+      laneWriteSetting(state, 'timeScale', next);
+      state.timeScale = next;
+    }
     return next;
   }
 
@@ -110,7 +117,10 @@ export function createTimeEffects(state) {
     reset() {
       requests.clear();
       effectiveScale = 1;
-      if (state.timeScale !== 1) state.timeScale = 1;
+      if (state.timeScale !== 1) {
+        laneWriteSetting(state, 'timeScale', 1);
+        state.timeScale = 1;
+      }
       return effectiveScale;
     },
 

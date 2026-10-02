@@ -36,7 +36,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,

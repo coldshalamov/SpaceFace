@@ -26,7 +26,8 @@
 //     them; dressing rows ride the same aux channel but keep pushAlive's
 //     _noMesh filter and dedupe against journaled ids.
 
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
+import { nowNs } from './simRealm.mjs';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
 import {
   timeToEnterRadiusSeconds,
@@ -63,27 +64,89 @@ export function createReadModel() {
 export function applySpawnInfos(readModel, spawnInfos) {
   for (const info of spawnInfos || []) {
     if (!info || !Number.isSafeInteger(info.entityId)) continue;
-    readModel.entities.set(info.entityId, {
+    const row = {
       id: info.entityId,
       type: info.type,
       alive: info.alive !== false,
       team: info.team,
       factionId: info.factionId,
-      pos: { x: info.x || 0, y: 0, z: info.z || 0 },
+      pos: { x: info.x || 0, y: finite(info.y, 0), z: info.z || 0 },
+      prevPos: null,
+      vel: { x: finite(info.vx, 0), z: finite(info.vz, 0) },
+      rot: finite(info.rot, 0),
       radius: info.radius || 0,
       isPlayer: info.isPlayer === true,
       farResident: info.farResident === true,
       fieldResident: info.fieldResident === true,
       sectorId: info.sectorId || null,
       flags: info.flags || {},
-      data: {
-        callsign: info.callsign,
-        name: info.name,
-        trafficRole: info.trafficRole,
-        role: info.role,
-      },
+      data: info.data && typeof info.data === 'object'
+        ? canonicalClone(info.data)
+        : {
+          callsign: info.callsign,
+          name: info.name,
+          trafficRole: info.trafficRole,
+          role: info.role,
+        },
       activity: { presentationTier: info.presentationTier || 0 },
-    });
+    };
+    // Stage-8 vitals: per-entity scalar fields the renderer/UI read off the live
+    // entity (hull, shield, fuel, and friends). Shipped on spawn and refreshed by
+    // the vitals diff channel; absent fields stay undefined rather than 0.
+    if (info.vitals && typeof info.vitals === 'object') {
+      Object.assign(row, canonicalClone(info.vitals));
+    }
+    readModel.entities.set(info.entityId, row);
+  }
+}
+
+/**
+ * Stage-8: update facade pose from a drained journal transform record — pos,
+ * prevPos, and the yaw/bank/pitch rotation tuple. The journal IS the pose truth
+ * the presentation lane consumes, so the facade answers the same values.
+ */
+export function applyFacadePose(readModel, entityId, pose) {
+  const row = readModel && readModel.entities.get(entityId);
+  if (!row || !pose || typeof pose !== 'object') return;
+  if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
+  if (Number.isFinite(pose.x)) { row.prevPos.x = row.pos.x; row.pos.x = pose.x; }
+  if (Number.isFinite(pose.y)) { row.prevPos.y = row.pos.y; row.pos.y = pose.y; }
+  if (Number.isFinite(pose.z)) { row.prevPos.z = row.pos.z; row.pos.z = pose.z; }
+  if (Number.isFinite(pose.rot)) row.rot = pose.rot;
+  if (Number.isFinite(pose.prevX)) row.prevPos.x = pose.prevX;
+  if (Number.isFinite(pose.prevY)) row.prevPos.y = pose.prevY;
+  if (Number.isFinite(pose.prevZ)) row.prevPos.z = pose.prevZ;
+  if (Number.isFinite(pose.prevRot)) row.prevRot = pose.prevRot;
+  if (Number.isFinite(pose.bank)) row.bank = pose.bank;
+  if (Number.isFinite(pose.pitch)) row.pitch = pose.pitch;
+}
+
+/**
+ * Stage-8: apply the vitals diff channel — [entityId, fields] pairs replacing
+ * named scalar fields on the facade row (null entity ids / unknown facades skip).
+ */
+export function applyEntityVitals(readModel, vitals) {
+  if (!Array.isArray(vitals) || !vitals.length) return;
+  for (const entry of vitals) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const id = entry[0];
+    const fields = entry[1];
+    if (!Number.isSafeInteger(id) || !fields || typeof fields !== 'object') continue;
+    const row = readModel.entities.get(id);
+    if (!row) continue;
+    for (const key of Object.keys(fields)) {
+      const v = fields[key];
+      if (v === undefined) delete row[key];
+      else row[key] = v;
+    }
+    // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
+    // tape, playable checks) consume the nested `vel` vector the live entity
+    // carries — refold so both views stay coherent.
+    if (fields.vx !== undefined || fields.vz !== undefined) {
+      if (!row.vel || typeof row.vel !== 'object') row.vel = { x: 0, y: 0, z: 0 };
+      if (fields.vx !== undefined) row.vel.x = fields.vx;
+      if (fields.vz !== undefined) row.vel.z = fields.vz;
+    }
   }
 }
 
@@ -554,7 +617,7 @@ function isCanonicalObject(v) {
 // crosses the wire in the probe. 16 hex chars per path keeps the per-tick
 // probe under a few KB; collision risk is nil at ~150-path scale.
 export function domainSigDigest(sig) {
-  return createHash('sha256').update(sig).digest('hex').slice(0, 16);
+  return sha256Hex(sig).slice(0, 16);
 }
 
 // --- canonical signature ----------------------------------------------------
@@ -1055,7 +1118,7 @@ export function createDomainDiffer(options = {}) {
   return {
     paths,
     diff(state, tick) {
-      const start = process.hrtime.bigint();
+      const start = nowNs();
       const updates = [];
       const stats = { shipBytes: 0, ships: 0, signedBytes: 0, oversize: [] };
       for (const key of DOMAIN_MIRROR_KEYS) {
@@ -1083,7 +1146,7 @@ export function createDomainDiffer(options = {}) {
           h,
         };
       }
-      stats.diffMs = Number(process.hrtime.bigint() - start) / 1e6;
+      stats.diffMs = Number(nowNs() - start) / 1e6;
       return { updates, probe, ...stats };
     },
   };

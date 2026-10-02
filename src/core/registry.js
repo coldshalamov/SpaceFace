@@ -182,6 +182,8 @@ import { save } from '../save/saveSystem.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
+import { isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
+import { laneRpc, laneDomEvent } from './simLaneCommands.js';
 import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
@@ -794,10 +796,67 @@ export function createRegistry(ctx) {
   byName.set('aiSlot', aiSlot);
   byName.set('flightSlot', flightSlot);
 
+  // Stage-8 whole-sim worker lane: sim-owned (node-safe) systems init inside the
+  // worker realm, not on the presenting thread. registry.get answers with lane
+  // facades for the covered seams and undefined for the rest (the stage-5 census
+  // verified uncovered callers degrade via optional chaining / try-catch). The
+  // lifecycle init/destroy sets exclude sim-owned systems entirely — they are
+  // owned by the worker's own registry.
+  const laneWorker = ctx && ctx.simLane === 'worker';
+  const laneSimOwned = laneWorker
+    ? new Set(resolved.authoritativeSystemIds.filter((id) => isNodeSafeSystemId(id)))
+    : null;
+
+  function laneSystemFacade(name) {
+    const st = ctx && ctx.state;
+    switch (name) {
+      case 'save':
+        return {
+          name: 'save',
+          save: (slot) => laneRpc('saveWrite', { slot: slot === undefined ? null : slot }),
+          load: (slot) => laneRpc('saveLoad', { slot: slot === undefined ? null : slot }),
+          delete: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
+          get slots() { return (st && st.save && st.save.slots) || []; },
+          get currentSlot() { return st && st.save ? st.save.currentSlot : null; },
+          deferRunTransition: () => false,
+          deferLoadedGameRestore: () => false,
+        };
+      case 'physics':
+        return {
+          name: 'physics',
+          prepareBackend: (_st, opts) => laneRpc('physicsPrep', {
+            backend: (opts && opts.backend) || 'rapier-dynamic',
+          }).then((ack) => (ack && ack.ok === false
+            ? Promise.reject(new Error(ack.reason || 'physicsPrep failed'))
+            : ack)),
+          backend: () => (st && st.physicsBackend) || 'rapier-dynamic',
+        };
+      case 'input':
+        return {
+          name: 'input',
+          releaseHeldControls: () => laneDomEvent({ type: 'blur' }),
+          getInput: () => (st ? st.input : null),
+          inputActivityStamp: () => null,
+        };
+      case 'economy':
+        // Price lookups are synchronous reads — the stage-5 census showed the
+        // only caller (market price column) degrades to a blank cell on null.
+        return { name: 'economy', quote: () => null };
+      default:
+        return undefined;
+    }
+  }
+
+  const lifecycleSystems = laneSimOwned
+    ? SYSTEMS.filter((s) => !(s && laneSimOwned.has(s.name)))
+    : SYSTEMS;
+
   const lifecycle = createSystemLifecycle({
-    systems: SYSTEMS,
+    systems: lifecycleSystems,
     context: ctx,
-    getDestroyCandidates: () => [...UPDATE_ORDER, ...SYSTEMS],
+    getDestroyCandidates: () => laneSimOwned
+      ? [...UPDATE_ORDER, ...SYSTEMS].filter((s) => !(s && laneSimOwned.has(s.name)))
+      : [...UPDATE_ORDER, ...SYSTEMS],
     dependencies: TEARDOWN_DEPENDENCIES,
     onTeardown: () => postInputPartitions.dispose(),
   });
@@ -809,11 +868,16 @@ export function createRegistry(ctx) {
     /** Structured Phase-2 runtime manifest resolve result (profile, hashes, orders, features). */
     runtimeManifest: resolved,
     ctx,
-    get(name) { return byName.get(name); },
+    get(name) {
+      if (laneSimOwned && laneSimOwned.has(name)) return laneSystemFacade(name);
+      return byName.get(name);
+    },
     init: lifecycle.init,
     initAsync: lifecycle.initAsync,
     destroy: lifecycle.destroy,
     keepalive(dt = 0, wallDt = dt) {
+      // Sim-owned keepalive lives in the worker realm under the flip.
+      if (laneSimOwned) return;
       const state = ctx.state;
       if (input.update) input.update(dt, state);
       if (save.update) save.update(dt, state);

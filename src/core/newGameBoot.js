@@ -286,9 +286,17 @@ export function resetRunState(state, opts = {}) {
   state.drill = fresh.drill;
   state.claims = fresh.claims;
   state.traffic = fresh.traffic;
+  resetRunUiState(state, fresh.ui);
+  state.save = fresh.save;
+}
+
+// The ui reset step of resetRunState — exported separately because the main
+// realm owns state.ui: under the worker lane this body runs on the worker's
+// throwaway ui, and the main-side call site must replay the same write for the
+// mirrored facade to match a main-lane boot.
+export function resetRunUiState(state, freshUi = null) {
   const ui = state.ui || (state.ui = {});
   const screenStack = Array.isArray(ui.screenStack) ? ui.screenStack : [];
   screenStack.length = 0;
-  Object.assign(ui, fresh.ui, { screenStack });
-  state.save = fresh.save;
+  Object.assign(ui, freshUi || createGameState(0).ui, { screenStack });
 }

@@ -515,7 +515,7 @@ const OPPOSING_ACTIONS = new Map([
   ['strafeLeft', 'strafeRight'],
 ]);
 
-function eventCode(e) {
+export function eventCode(e) {
   if (e && e.code) return e.code;
   const key = e && typeof e.key === 'string' ? e.key.toLowerCase() : '';
   return KEY_CODE_FALLBACKS[key] || '';
@@ -667,17 +667,37 @@ function dropUnreleasedHeldEdges(queue, keys) {
   queue.length = write;
 }
 
-function isTextEntryTarget(target) {
+export function isTextEntryTarget(target) {
   if (!target || typeof target.closest !== 'function') return false;
   return !!target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
 }
 
-function isUiCommandTarget(target) {
+export function isUiCommandTarget(target) {
   if (!target || typeof target.closest !== 'function') return false;
   return !!target.closest('button, [role="button"], a[href], input, textarea, select, [contenteditable="true"], [contenteditable=""], #ui-root, #screens');
 }
 
-function modalInputActive() {
+// --- sim-lane overrides ------------------------------------------------------
+// When the whole sim runs in a worker (simLane=worker), DOM facts the reducer
+// needs — viewport size and the modal-body latch — cannot be read there. The
+// main lane ships them in as lane overrides; `null` keeps the DOM read for the
+// main lane. The fold arrives over the command channel before any tick applies
+// it, so both lanes reduce identical inputs.
+let _laneViewport = null;      // {width, height} — replaces innerWidth/innerHeight
+let _laneModalActive = null;   // boolean — replaces the document.body class read
+
+export function setLaneViewport(width, height) {
+  _laneViewport = Number.isFinite(width) && Number.isFinite(height)
+    ? { width, height }
+    : null;
+}
+
+export function setLaneModalActive(active) {
+  _laneModalActive = active === null || active === undefined ? null : active === true;
+}
+
+export function modalInputActive() {
+  if (_laneModalActive !== null) return _laneModalActive;
   const body = typeof document !== 'undefined' ? document.body : null;
   if (!body || !body.classList || typeof body.classList.contains !== 'function') return false;
   // Pausing modals AND live overlays both own the keyboard: a screen over a running sim must not
@@ -695,6 +715,7 @@ function syncPointerScreen(state, x, y) {
 }
 
 function viewportSize() {
+  if (_laneViewport) return { width: _laneViewport.width, height: _laneViewport.height };
   return {
     width: typeof innerWidth === 'number' ? Math.max(1, innerWidth) : 1,
     height: typeof innerHeight === 'number' ? Math.max(1, innerHeight) : 1,
@@ -758,6 +779,7 @@ function resetAutoTargetPath(host, state = host && host.state) {
 function stickViewport() {
   // Pass a collapsed window through as itself. viewportSize() floors at 1px for the pointer,
   // which would turn a minimize into a real radius and keep commanding thrust.
+  if (_laneViewport) return { width: _laneViewport.width, height: _laneViewport.height };
   const width = typeof innerWidth === 'number' ? innerWidth : 1;
   const height = typeof innerHeight === 'number' ? innerHeight : 1;
   return { width, height };
@@ -788,6 +810,89 @@ function simClockMs(state) {
   return t * 1000;
 }
 
+// --- normalized DOM-event reducers -------------------------------------------
+// One DOM event, one descriptor, one reducer — shared by the real DOM adapter
+// (descriptors built from live events on the presenting lane) and the sim-lane
+// path (descriptors shipped to the sim's realm via ingestLaneDomEvent). Field
+// names are the wire contract. `uiCommand`/`offCanvas`/`neutralize` are computed
+// on the realm that owns the DOM — the sim realm replays them verbatim.
+export function domKeyEvent(host, d = {}) {
+  applyFlightKeyEvent(host, {
+    code: d.code,
+    pressed: d.pressed === true,
+    repeat: d.repeat === true,
+    blocked: d.blocked === true,
+  });
+}
+
+export function domPointerMoveEvent(host, d = {}) {
+  if (!host || !Number.isFinite(d.clientX) || !Number.isFinite(d.clientY)) return;
+  const geometry = centeredPointer();
+  if (host.state && host.state.input && host.state.input.autoFire) {
+    if (d.neutralize === true || d.uiCommand === true) return;
+    // Dynamic combat-stick input records from the mousemove stream ONLY. Browsers
+    // dispatch a compatibility mousemove for every pointermove, so accepting both
+    // would double the stick displacement whenever pointer lock is absent.
+    if (d.type === 'pointermove') return;
+    const movementX = Number.isFinite(d.movementX) ? d.movementX : 0;
+    const movementY = Number.isFinite(d.movementY) ? d.movementY : 0;
+    if (movementX === 0 && movementY === 0) return;
+    recordAutoTargetStick(host, movementX, movementY);
+    host._screen.x = geometry.cx;
+    host._screen.y = geometry.cy;
+    host._screen.active = true;
+    host._ndc.x = 0;
+    host._ndc.y = 0;
+  } else {
+    host._screen.x = d.clientX;
+    host._screen.y = d.clientY;
+    host._screen.active = true;
+    host._ndc.x = (host._screen.x / geometry.width) * 2 - 1;
+    host._ndc.y = -(host._screen.y / geometry.height) * 2 + 1;
+  }
+  syncPointerScreen(host.state, host._screen.x, host._screen.y);
+  // noteFlightPointer equivalent — uiCommand already computed on the DOM realm.
+  if (d.uiCommand !== true) {
+    host._kbmActivityPending = true;
+    host._pointerHelmEdge = true;
+  }
+}
+
+export function domMouseDownEvent(host, d = {}) {
+  if (!host) return;
+  domPointerMoveEvent(host, d);
+  if (d.offCanvas === true || (!host._canvas && d.uiCommand === true)) {
+    host._m0 = false; host._m1 = false; host._m2 = false;
+    host._clearM2HoldClock();
+    return;
+  }
+  if (d.button === 0) host._m0 = true;
+  if (d.button === 1) host._m1 = true;
+  if (d.button === 2) {
+    host._m2 = true; host._m2HeldS = 0; host._m2ToolLane = null; host._m2SlingTargetId = null;
+    host._clearM2HoldClock();
+    const clockTarget = host._m2TimerTarget;
+    if (host._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
+      const epoch = host._m2HoldEpoch;
+      try {
+        host._m2HoldTimer = clockTarget.setTimeout(() => {
+          if (host._initialized && host._m2 === true && host._m2HoldEpoch === epoch) {
+            host._m2HoldReady = true;
+          }
+        }, WORLD_TOOL_HOLD_S * 1000);
+      } catch (_) { host._m2HoldTimer = null; }
+    }
+  }
+  host._kbmActivityPending = true;
+}
+
+export function domMouseUpEvent(host, d = {}) {
+  if (!host) return;
+  if (d.button === 0) host._m0 = false;
+  if (d.button === 1) host._m1 = false;
+  if (d.button === 2) { host._m2 = false; host._clearM2HoldClock(); }
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -803,8 +908,11 @@ export const input = {
     this._domBindings = [];
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
-    const viewportW = typeof innerWidth === 'number' ? innerWidth : 0;
-    const viewportH = typeof innerHeight === 'number' ? innerHeight : 0;
+    const initViewport = _laneViewport || null;
+    const viewportW = initViewport ? initViewport.width
+      : (typeof innerWidth === 'number' ? innerWidth : 0);
+    const viewportH = initViewport ? initViewport.height
+      : (typeof innerHeight === 'number' ? innerHeight : 0);
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
@@ -835,6 +943,13 @@ export const input = {
     this._inputActivitySeq = 0;
     this._lastInputWallMs = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
+    // Worker realm (simLane=worker): no window/document, but self carries real timers —
+    // the m2 world-tool hold clock keeps its wall-duration semantics inside the sim realm.
+    if (typeof window === 'undefined' && typeof self !== 'undefined'
+        && typeof self.setTimeout === 'function' && typeof self.clearTimeout === 'function') {
+      this._m2UsesUiClock = true;
+      this._m2TimerTarget = self;
+    }
 
     this.gamepad = createGamepad(ctx);
     ctx.gamepad = this.gamepad;
@@ -853,6 +968,39 @@ export const input = {
     }
     this._domAdapterAttached = true;
     this._attachDomInputAdapter(keys);
+  },
+
+  /**
+   * simLane=worker: apply one DOM-event descriptor shipped from the main lane.
+   * The descriptor is built by the same normalized functions the main adapter uses,
+   * so the reducer evolves identically on whichever realm hosts the sim.
+   */
+  ingestLaneDomEvent(d) {
+    if (!d || typeof d !== 'object') return;
+    switch (d.type) {
+      case 'keydown':
+      case 'keyup':
+        domKeyEvent(this, d);
+        break;
+      case 'pointermove':
+      case 'mousemove':
+        domPointerMoveEvent(this, d);
+        break;
+      case 'mousedown':
+        domMouseDownEvent(this, d);
+        break;
+      case 'mouseup':
+        domMouseUpEvent(this, d);
+        break;
+      case 'blur':
+        this.releaseHeldControls('window-blur');
+        break;
+      case 'resize':
+        if (this.touch && typeof this.touch.autoDetect === 'function') this.touch.autoDetect();
+        break;
+      default:
+        break;
+    }
   },
 
   /**
@@ -876,7 +1024,8 @@ export const input = {
     listen(windowTarget, 'resize', () => this.touch.autoDetect());
 
     listen(windowTarget, 'keydown', (e) => {
-      applyFlightKeyEvent(this, {
+      domKeyEvent(this, {
+        type: 'keydown',
         code: eventCode(e),
         pressed: true,
         repeat: e.repeat === true,
@@ -886,78 +1035,33 @@ export const input = {
       });
     });
     listen(windowTarget, 'keyup', (e) => {
-      applyFlightKeyEvent(this, {
-        code: eventCode(e),
-        pressed: false,
-        blocked: false,
-      });
+      domKeyEvent(this, { type: 'keyup', code: eventCode(e), pressed: false });
     });
     listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || windowTarget;
-    const handlePointerMove = (e) => {
-      if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
-      const geometry = centeredPointer();
-      if (this.state && this.state.input && this.state.input.autoFire) {
-        if (shouldNeutralizeFlightInput(this.state, modalInputActive()) || isUiCommandTarget(e.target)) return;
-        // Dynamic combat-stick input records from the mousemove stream ONLY. Browsers dispatch a
-        // compatibility mousemove for every pointermove, so accepting both would double the stick
-        // displacement whenever pointer lock is absent.
-        if (e.type === 'pointermove') return;
-        const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
-        const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
-        if (movementX === 0 && movementY === 0) return;
-        recordAutoTargetStick(this, movementX, movementY);
-        this._screen.x = geometry.cx;
-        this._screen.y = geometry.cy;
-        this._screen.active = true;
-        this._ndc.x = 0;
-        this._ndc.y = 0;
-      } else {
-        this._screen.x = e.clientX;
-        this._screen.y = e.clientY;
-        this._screen.active = true;
-        this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
-        this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
-      }
-      syncPointerScreen(this.state, this._screen.x, this._screen.y);
-      noteFlightPointer(this, e.target);
-    };
+    const pointerDescriptor = (e) => ({
+      type: e.type,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      movementX: e.movementX,
+      movementY: e.movementY,
+      uiCommand: isUiCommandTarget(e.target),
+      neutralize: shouldNeutralizeFlightInput(this.state, modalInputActive()),
+    });
+    const handlePointerMove = (e) => domPointerMoveEvent(this, pointerDescriptor(e));
     // Capture pointer truth before overlays can consume the event. Electron focus/activation can
     // otherwise leave the software cursor at its fallback center until a later unhandled move.
     listen(windowTarget, 'mousemove', handlePointerMove, { capture: true });
     listen(windowTarget, 'pointermove', handlePointerMove, { capture: true });
     listen(pointerSurface, 'mousedown', (e) => {
-      handlePointerMove(e);
-      if (this._canvas && e.target !== this._canvas) {
-        this._m0 = false; this._m1 = false; this._m2 = false;
-        this._clearM2HoldClock();
-        return;
-      }
-      if (!this._canvas && isUiCommandTarget(e.target)) {
-        this._m0 = false; this._m1 = false; this._m2 = false;
-        this._clearM2HoldClock();
-        return;
-      }
-      if (e.button === 0) this._m0 = true;
-      if (e.button === 1) { this._m1 = true; if (typeof e.preventDefault === 'function') e.preventDefault(); } // no autoscroll cursor
-      if (e.button === 2) {
-        this._m2 = true; this._m2HeldS = 0; this._m2ToolLane = null; this._m2SlingTargetId = null;
-        this._clearM2HoldClock();
-        const clockTarget = this._m2TimerTarget;
-        if (this._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
-          const epoch = this._m2HoldEpoch;
-          try {
-            this._m2HoldTimer = clockTarget.setTimeout(() => {
-              if (this._initialized && this._m2 === true && this._m2HoldEpoch === epoch) {
-                this._m2HoldReady = true;
-              }
-            }, WORLD_TOOL_HOLD_S * 1000);
-          } catch (_) { this._m2HoldTimer = null; }
-        }
-      }
-      this._kbmActivityPending = true;
+      const d = pointerDescriptor(e);
+      d.type = 'mousedown';
+      d.offCanvas = !!(this._canvas && e.target !== this._canvas);
+      d.button = e.button;
+      domMouseDownEvent(this, d);
+      if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault(); // no autoscroll cursor
     });
-    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } });
+    listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }));
     listen(pointerSurface, 'contextmenu', (e) => e.preventDefault());
   },
 

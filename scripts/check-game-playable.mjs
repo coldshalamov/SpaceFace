@@ -59,6 +59,13 @@ const NO_ROUNDTRIP = process.argv.includes('--no-roundtrip');
 // not evidence about the app the player actually launches. Back up the save directory before using
 // this: the running game autosaves into it.
 const PLAYER_PROFILE = process.argv.includes('--player-profile');
+// --sim-lane worker boots the game with ?simLane=worker — the whole authoritative
+// sim runs in a module Worker and presentation consumes the wire journal
+// (S1 stage-8 flip verification lane). Browser route only: the isolated
+// Electron root-url contract requires a query-free URL, so the desktop route
+// cannot forward the lane flag without main.cjs plumbing.
+const SIM_LANE_ARG = (() => { const i = process.argv.indexOf('--sim-lane'); return i > 0 ? process.argv[i + 1] : null; })();
+const SIM_LANE_QUERY = SIM_LANE_ARG ? `?simLane=${encodeURIComponent(SIM_LANE_ARG)}` : '';
 const SLOT_ARG = (() => { const i = process.argv.indexOf('--slot'); return i > 0 ? process.argv[i + 1] : null; })();
 const pw = await loadPlaywright();
 const { chromium } = pw;
@@ -208,8 +215,14 @@ async function openElectronRoute() {
   return { page, baseUrl: new URL(page.url()).origin + '/' };
 }
 
+if (ELECTRON && SIM_LANE_ARG) {
+  console.error('  --sim-lane cannot run on the Electron route: the isolated root URL must be query-free.');
+  console.error('  Run the browser lane: node scripts/check-game-playable.mjs --sim-lane ' + SIM_LANE_ARG);
+  process.exit(2);
+}
+
 try {
-  console.log('\nSpaceFace — playable check\n');
+  console.log('\nSpaceFace — playable check' + (SIM_LANE_ARG ? ` (simLane=${SIM_LANE_ARG})` : '') + '\n');
   const opened = ELECTRON ? await openElectronRoute() : await openBrowserRoute();
   const page = opened.page;
   routeBaseUrl = opened.baseUrl;
@@ -307,7 +320,7 @@ try {
     // the CPU (per-request wall time then starves in the renderer, not the network — the server
     // answers a 1.4MB file in 170ms while the box is pinned). 180s matches the budget this file
     // already grants the desktop route's waitForLoadState below; a real hang still fails here.
-    await page.goto(routeBaseUrl, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.goto(routeBaseUrl + SIM_LANE_QUERY, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   } else {
     // The desktop route boots itself and may raise the cinematic splash, which swallows a scripted
     // .click(). A real key press is the only thing that dismisses it.
@@ -368,6 +381,7 @@ try {
         start: window.__playableStart,
         screens: [...document.querySelectorAll('[data-screen]')]
           .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
+        lane: window.SF?.simLaneDiag?.() || window.SF?.laneDiag || null,
       })).catch(() => null);
       record('LAUNCH', false, `never entered flight — ${err.message} — ${JSON.stringify(detail)}`);
     }

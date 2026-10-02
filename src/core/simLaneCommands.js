@@ -115,7 +115,7 @@ export function laneClearNavWaypoint(state) {
 export const LANE_SETTINGS_WRITERS = {
   timeScale: (state, value) => {
     const v = Number(value);
-    if (Number.isFinite(v) && v > 0) state.timeScale = v;
+    if (Number.isFinite(v) && v >= 0) state.timeScale = v;
   },
   'settings.gameplay.difficulty': (state, value) => {
     if (!state.settings || typeof state.settings !== 'object') return;
@@ -208,4 +208,37 @@ export function laneNotifySpawnAcks(acks) {
     _spawnAckCbs.delete(a.token);
     try { cb(a.id, a.ok !== false, a.error); } catch (e) { /* listener errors are caller bugs */ }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Stage-8 lane emits — DOM event descriptors, the ui fold, and the viewport
+// size. Sink-only: on the main lane these are no-ops (the sim lives locally and
+// already reads the real DOM). Emitters return true when shipped.
+// ---------------------------------------------------------------------------
+export function laneDomEvent(d) {
+  if (!_sink || !d || typeof d !== 'object') return false;
+  _sink({ kind: 'domEvent', d });
+  return true;
+}
+
+export function laneUiFold(p) {
+  if (!_sink || !p || typeof p !== 'object') return false;
+  _sink({ kind: 'uiFold', p });
+  return true;
+}
+
+export function laneViewport(w, h) {
+  if (!_sink) return false;
+  _sink({ kind: 'viewport', w, h });
+  return true;
+}
+
+// Generic sim-bus event replay (main → worker): the sim's listener set inside
+// the worker hears it exactly like a local emit. Emitter-side callers wrap
+// their own emit with a forward-suppression latch so drained worker→main
+// events never echo back.
+export function laneBusEmit(type, payload) {
+  if (!_sink || typeof type !== 'string' || type.length === 0) return false;
+  _sink({ kind: 'busEmit', emit: type, payload });
+  return true;
 }

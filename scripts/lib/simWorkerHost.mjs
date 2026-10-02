@@ -70,6 +70,15 @@ import {
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
 import { projectBridgeEvent } from './simEventBridge.mjs';
+import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
+import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
+import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js';
+import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
+import { createBus } from '../../src/core/eventBus.js';
+import { createGameState } from '../../src/core/gameState.js';
+import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
+import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
+import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
 import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
@@ -222,7 +231,27 @@ export function sabFreePackSlot(header, pack) {
 
 // Versioned entity-info projection — the read-model payload a main-side resolver
 // consumes after applying a SPAWN. Flat scalars + strings only; versioned so the
-// field set can grow without a protocol break.
+// field set can grow without a protocol break. v=2 (stage 8) adds pose/vitals/
+// the canonical-cloned data block so the main-side facade answers the same
+// questions the live entity would.
+const VITAL_FIELDS = [
+  'hull', 'hullMax', 'shield', 'shieldMax', 'fuel', 'fuelMax', 'heat', 'heatMax',
+  'rot', 'bank', 'pitch', 'angVel', 'radius', 'team', 'collides', 'alive', 'ttl',
+  'isPlayer', 'physicsSleeping',
+];
+
+function entityVitalsOf(e) {
+  const fields = {};
+  for (const k of VITAL_FIELDS) {
+    if (e[k] !== undefined) fields[k] = e[k];
+  }
+  if (e.vel && typeof e.vel === 'object') {
+    fields.vx = finite(e.vel.x);
+    fields.vz = finite(e.vel.z);
+  }
+  return fields;
+}
+
 function entityInfoBlock(state, entityId) {
   const e = resolveWorldPresentationEntity(state, entityId);
   if (!e) return null;
@@ -237,14 +266,18 @@ function entityInfoBlock(state, entityId) {
   }
   const activity = e.activity && typeof e.activity === 'object' ? e.activity : {};
   return {
-    v: 1,
+    v: 2,
     entityId,
     type: typeof e.type === 'string' ? e.type : null,
     alive: e.alive !== false,
     team: Number.isFinite(e.team) ? e.team : 0,
     factionId: typeof e.factionId === 'string' ? e.factionId : (typeof data.factionId === 'string' ? data.factionId : null),
     x: finite(e.pos && e.pos.x),
+    y: finite(e.pos && e.pos.y),
     z: finite(e.pos && e.pos.z),
+    vx: finite(e.vel && e.vel.x),
+    vz: finite(e.vel && e.vel.z),
+    rot: finite(e.rot),
     radius: finite(e.radius),
     callsign: typeof data.callsign === 'string' ? data.callsign : null,
     name: typeof data.name === 'string' ? data.name : null,
@@ -256,7 +289,33 @@ function entityInfoBlock(state, entityId) {
     farResident: e.farResident === true,
     fieldResident: e.fieldResident === true,
     flags: flatFlags,
+    vitals: entityVitalsOf(e),
+    data: canonicalClone(data),
   };
+}
+
+// Per-tick vitals diff (production lane): scalar entity fields the renderer/UI
+// reads that are neither journal pose nor spawn-time data. A JSON signature
+// per entity per drain keeps the wire to changed rows only.
+function collectEntityVitals(state, vitalShadow) {
+  const out = [];
+  const seen = new Set();
+  for (const e of state.entityList || []) {
+    if (!e || !Number.isSafeInteger(e.id)) continue;
+    seen.add(e.id);
+    const fields = entityVitalsOf(e);
+    const sig = JSON.stringify(fields);
+    if (vitalShadow.get(e.id) !== sig) {
+      vitalShadow.set(e.id, sig);
+      out.push([e.id, fields]);
+    }
+  }
+  if (vitalShadow.size > seen.size) {
+    for (const id of vitalShadow.keys()) {
+      if (!seen.has(id)) vitalShadow.delete(id);
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +414,13 @@ const BRIDGE_EVENTS = [
 ];
 
 export function createSimHost() {
+  // The save system's synchronous localStorage contract runs against a staged
+  // snapshot in worker realms (browser worker, node worker_threads): main
+  // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
+  // worker-side writes relay back through the tick reply's storageOps so
+  // durable persistence stays main-owned.
+  const pendingStorageOps = [];
+  installLaneStorage(globalThis, { onWrite: (op, key, value) => pendingStorageOps.push({ op, key, value }) });
   const host = {
     ready: false,
     sim: null,
@@ -414,6 +480,21 @@ export function createSimHost() {
     // timing
     totalWorkNs: 0n,
     totalPackNs: 0n,
+    // stage-8 production lane
+    profile: null,            // 'legacy47a' (default) | 'production'
+    runtime: null,            // createAuthoritativeRuntime instance (production)
+    stepper: null,            // createAuthoritativeStepper (production)
+    tickBoundary: null,       // wire-side input boundary (production)
+    inputPublishes: [],       // per-step publish records drained onto the reply
+    vitalShadow: new Map(),   // entityId -> vitals signature (production diff channel)
+    // replayed main→worker emits must not echo back — scoped to the replayed
+    // TYPE so a cascaded emit (save:loaded riding a forwarded game:load)
+    // still bridges: main's presenters need it to unstack screens.
+    suppressEventCapture: 0,
+    suppressedEmitTypes: new Map(),
+    modalActive: false,       // uiFold modal latch (production)
+    screenStackLen: 0,        // uiFold screen-stack depth (production)
+    restorePoint: null,       // save.restore envelope staged on the bus (load parity)
   };
 
   function drainEvents() {
@@ -448,7 +529,7 @@ export function createSimHost() {
       inputSequence: host.completedSequence,
       inputCommandSeq: host.lastInputSeq,
       inputWallMs: host.lastInputWallMs,
-      lifecycleGeneration: 0,
+      lifecycleGeneration: Number.isSafeInteger(host.lifecycleGeneration) ? host.lifecycleGeneration : 0,
       journalStart,
       journalEnd,
     };
@@ -593,7 +674,389 @@ export function createSimHost() {
     return host.registry;
   }
 
+  // One bridge-event record, shared by the per-type install (legacy47a lane)
+  // and the capture-all emit wrap (production lane — the sim owns events main
+  // has never seen, so whitelisting there would silently drop real traffic).
+  function recordBridgeEvent(type, payload) {
+    const projected = projectBridgeEvent(type, payload);
+    host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
+    if (projected.dropped) {
+      host.droppedEventCount++;
+      host.droppedEventTypes[type] = (host.droppedEventTypes[type] || 0) + 1;
+      if (host.dropSamples.length < 20) {
+        host.dropSamples.push({
+          t: type, reason: projected.reason,
+          path: projected.hits && projected.hits.path,
+          ctor: projected.hits && projected.hits.ctor,
+        });
+      }
+      if (projected.unintentional) {
+        host.unintentionalDrops++;
+        host.unintentionalDropTypes[type] = (host.unintentionalDropTypes[type] || 0) + 1;
+      }
+      if (projected.hits) {
+        host.unbridgeable.depth += projected.hits.depth;
+        host.unbridgeable.typed += projected.hits.typed;
+      }
+      return;
+    }
+    host.pendingEvents.push({ t: type, p: projected.flat, lane: projected.lane });
+  }
+
+  function installBridgeCapture(bus, captureAll) {
+    if (captureAll === true) {
+      const origEmit = bus.emit.bind(bus);
+      bus.emit = (type, payload) => {
+        if (host.suppressEventCapture <= 0 && (host.suppressedEmitTypes.get(type) | 0) <= 0 && typeof type === 'string') {
+          recordBridgeEvent(type, payload);
+        }
+        return origEmit(type, payload);
+      };
+      return;
+    }
+    for (const type of BRIDGE_EVENTS) {
+      bus.on(type, (payload) => recordBridgeEvent(type, payload));
+    }
+  }
+
+  // The rpc handler surface is lane-neutral — same ops, same ctx shape. The
+  // simLike argument is { helpers, spawn } so the production runtime (which
+  // exposes helpers/spawn but not its sim object) serves identically.
+  function installRpcHandlers(state, simLike, registry) {
+    host.rpcHandlers = buildRpcHandlers(state, simLike, registry);
+  }
+
+  function buildRpcHandlers(state, simLike, registry) {
+    const sim = simLike;
+    return new Map([
+      ['quote', (args) => {
+        const e = registry.get('economy');
+        if (!e || typeof e.quote !== 'function') throw new Error('economy system unavailable');
+        return e.quote(args.stationId, args.commodityId, args.side, args.qty);
+      }],
+      // Probe/diagnostic op: returns a compact signature of one listing entry +
+      // its cycle so the market-parity gate can compare eager vs lazy mints
+      // without shipping the whole market row.
+      ['inspectListing', (args) => {
+        const e = registry.get('economy');
+        const market = (state.economy.markets || {})[args.stationId] || null;
+        const pending = e && e._pendingMints ? e._pendingMints.get(args.stationId) : null;
+        const entry = (market && market[args.commodityId]) || (pending && pending.listings[args.commodityId]) || null;
+        const cycle = ((state.economy.cycles || {})[args.stationId] || {})[args.commodityId]
+          || (pending && pending.cycles[args.commodityId]) || null;
+        return {
+          entry: entry ? {
+            stock: entry.stock, equilibrium: entry.equilibrium, baseEq: entry.baseEq,
+            role: entry.role, lastMid: entry.lastMid, lastBuy: entry.lastBuy, lastSell: entry.lastSell,
+            demandMult: entry.demandMult,
+          } : null,
+          cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
+          pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
+        };
+      }],
+      // Station market history — the render lane's on-demand backfill for the
+      // 'history' field the commodity wire mode projects out of market leaves
+      // (stage-7 item B): iterate-all readers keep mid/buy/sell/stock on the
+      // wire, the 64-point rings come through here only when a UI asks.
+      ['marketHistory', (args) => {
+        const market = (state.economy.markets || {})[(args && args.stationId) || ''];
+        if (!market) return { stationId: args && args.stationId, histories: null };
+        if (args && args.commodityId) {
+          const entry = market[args.commodityId];
+          return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
+        }
+        const histories = {};
+        for (const cid of Object.keys(market)) {
+          histories[cid] = (market[cid] && market[cid].history) || null;
+        }
+        return { stationId: args.stationId, histories };
+      }],
+      ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
+      // Sandbox/lab ops converted off the direct-call surface. Each replays the
+      // same sequence the call site ran synchronously under SIM_LANE=main.
+      ['crucibleThrowStep', () => {
+        const system = registry.get('masslineThrow');
+        if (!system || typeof system.update !== 'function') return { released: false, reason: 'unavailable' };
+        state.input = state.input || {};
+        state.input.actions = state.input.actions || {};
+        const acts = state.input.actions;
+        acts.throwArm = false;
+        system.update(1 / 60, state);
+        if (!state.player || !state.player.tether || !state.player.tether.active) {
+          return { released: false, reason: 'no-tether' };
+        }
+        acts.throwArm = true;
+        system.update(1 / 60, state);
+        acts.throwArm = false;
+        const last = state.massline2 && state.massline2.throw && state.massline2.throw.lastThrow;
+        if (last && last.tick === state.tick) {
+          return { released: true, releaseId: last.releaseId, payloadId: last.payloadId };
+        }
+        if (system._pendingSnap) return { released: false, queued: true };
+        return { released: false, reason: 'late' };
+      }],
+      ['sandboxPreAttachTether', (args) => {
+        const kernel = (registry.get('actions') || {}).kernel
+          || (registry.get('combat') || {}).kernel
+          || getCombatKernel({ state, registry });
+        const attachments = kernel && kernel.attachments;
+        if (!attachments || typeof attachments.create !== 'function') {
+          return { ok: false, reason: 'no-attachment-service' };
+        }
+        return attachments.create(args);
+      }],
+      ['labBudgetPackage', (args) => applyBudgetedLabPackage(
+        { state, helpers: sim.helpers, registry, bus: host.bus },
+        (args && args.packageSpec) || {},
+      )],
+      // New-game boot: the whole sim-side mutation sequence (entity clear, run reset,
+      // system resets, starter pick, NG+, scene bootstrap) replays inside this directive
+      // window. The ack resolves after the kicked physics-prep promise settles, so the
+      // caller's physics gate still holds.
+      ['newGameBoot', async (args) => runNewGameSimBoot({
+        state,
+        helpers: sim.helpers,
+        bus: host.bus,
+        registry,
+        opts: (args && args.opts) || {},
+        newGamePlus: (args && args.newGamePlus) || null,
+        awaitPhysicsPrep: true,
+      })],
+      // Presentation-side journal rebuild requests ride the rpc channel: the
+      // real journal rebuilds worker-side and the range ships on this reply.
+      ['journalRebuild', () => {
+        if (host.journal && typeof host.journal.requestRebuild === 'function') {
+          host.journal.requestRebuild('lane-request');
+          return { ok: true };
+        }
+        return { ok: false, reason: 'journal-unavailable' };
+      }],
+      // Save persistence ops — the worker realm has no localStorage, so these
+      // execute against in-memory state only (documented stage-8 gap: writes
+      // do not persist to disk this stage).
+      ['saveWrite', (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.save !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        return { ok: true, result: s.save((args && args.name) || undefined) };
+      }],
+      ['saveLoad', (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        return { ok: true, result: s.load((args && args.slot) || undefined) };
+      }],
+      ['saveDelete', (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.delete !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        return { ok: true, result: s.delete((args && args.slot) || undefined) };
+      }],
+      // Stage-8 diagnostic: worker-side ground truth for read-model divergences.
+      // Returns the live player entity slice, input, and the freeze verdict so a
+      // probe can tell sim-side state from shipping-side state without shipping
+      // the whole state object.
+      ['probeState', (args) => {
+        const id = (args && Number.isSafeInteger(args.entityId)) ? args.entityId : state.playerId;
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+        const flight = registry.get('flight') || registry.get('flightSlot') || null;
+        const physics = registry.get('physics') || null;
+        const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
+        return {
+          tick: state.tick,
+          simTime: state.simTime,
+          mode: state.mode,
+          timeScale: state.timeScale,
+          playerId: state.playerId,
+          skipFullTick: shouldSkipFullTickSystems(state),
+          input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ, boost: state.input.boost, blocked: state.input.blocked } : null,
+          ui: state.ui ? {
+            docked: state.ui.docked,
+            screenStackLen: Array.isArray(state.ui.screenStack) ? state.ui.screenStack.length : -1,
+            modalActive: host.modalActive,
+          } : null,
+          gameplay: state.settings && state.settings.gameplay ? {
+            physicsBackend: state.settings.gameplay.physicsBackend,
+            flightBackend: state.settings.gameplay.flightBackend,
+            aiBackend: state.settings.gameplay.aiBackend,
+            difficulty: state.settings.gameplay.difficulty,
+            runtimeProfile: state.settings.gameplay.runtimeProfile,
+          } : null,
+          render: state.render ? { sectorShellAdmission: state.render.sectorShellAdmission === true } : null,
+          world: state.world ? {
+            currentSectorId: state.world.currentSectorId,
+            sectorKeys: state.world.sectors ? Object.keys(state.world.sectors).length : -1,
+            activeSector: state.world.activeSector ? { id: state.world.activeSector.id, entityCount: Array.isArray(state.world.activeSector.entities) ? state.world.activeSector.entities.length : -1 } : null,
+          } : null,
+          lastRpcAck: host.lastRpcAck || null,
+          lastBusEmit: host.lastBusEmit || null,
+          lastStorageStage: host.lastStorageStage || null,
+          droppedEventTypes: host.droppedEventTypes,
+          dropSamples: host.dropSamples,
+          saveDiag: (() => {
+            const s = registry.get('save');
+            return s && s._diag ? { loads: s._diag.loads, errors: s._diag.errors } : null;
+          })(),
+          player: e ? {
+            id: e.id, type: e.type, alive: e.alive,
+            vx: e.vx, vz: e.vz,
+            pos: e.pos ? { x: e.pos.x, y: e.pos.y, z: e.pos.z } : null,
+            prevPos: e.prevPos ? { x: e.prevPos.x, z: e.prevPos.z } : null,
+            rot: e.rot, hull: e.hull, physicsSleeping: e.physicsSleeping === true,
+          } : null,
+          entityCount: state.entities && typeof state.entities.size === 'number' ? state.entities.size : null,
+          entityListLen: Array.isArray(state.entityList) ? state.entityList.length : null,
+          flight: flight ? { name: flight.name || null, hasUpdate: typeof flight.update === 'function', diag: flight._diag ? { ...flight._diag } : null } : null,
+          physics: physics ? { name: physics.name || null, hasUpdate: typeof physics.update === 'function', diag: physics._diag ? { sg02Ready: physics._diag.sg02Ready, sg02Bodies: physics._diag.sg02Bodies, sg02DynamicBodies: physics._diag.sg02DynamicBodies, sg02SyncMode: physics._diag.sg02SyncMode, backend: physics._diag.backend, sg02InitTimedOut: physics._diag.sg02InitTimedOut } : null } : null,
+          stepperSystems,
+        };
+      }],
+    ]);
+  }
+
+  // Stage-8 production lane: the whole authoritative sim (production manifest,
+  // nodeSafeOnly materialization) steps inside this realm off the shipped state
+  // snapshot. The runner-facing surfaces — journal, aux, domains, commands,
+  // replies — are identical to the legacy lane's.
+  async function handleInitProduction(msg) {
+    const seed = (Number(msg.seed) >>> 0) || 1;
+    host.reloadAt = null;
+    host.crashAt = Number.isSafeInteger(msg.crashAt) ? msg.crashAt : null;
+    configureDomainMirroring(msg.domainMirroring || {});
+    host.domainDiffer = createDomainDiffer({ probe: false });
+    host.sabArena = bindSabJournalArena(msg.sabArena);
+
+    const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
+      ? msg.journalCapacity
+      : undefined;
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    host.journal = journal;
+    host.scratch = createPresentationJournalRecord();
+    host.suppressedSpawns = [];
+    host.identityOffenders = [];
+
+    // Contract ships on the directive in the browser realm; node adapters may
+    // still read it off disk via the realm fs shim.
+    const contract = msg.scenarioContract != null
+      ? { document: msg.scenarioContract, path: msg.scenarioContractPath || null, sha256: msg.scenarioContractHash || null }
+      : loadScenarioContract(msg.scenarioContractPath || 'src/data/scenarios/47a.scenario.json');
+
+    // Lane input geometry/modal state ships before the runtime inits (input.init
+    // reads the viewport at construction for stick reset).
+    setLaneViewport(Number(msg.viewport && msg.viewport.w), Number(msg.viewport && msg.viewport.h));
+    const bus = createBus();
+    const helpers = {
+      scenarioContract: contract.document || null,
+      scenarioContractPath: contract.path,
+      scenarioContractHash: contract.sha256,
+      warmSectorFullExtras: (sectorId, bag) => {
+        const stubs = liveSectorFullExtrasStubs(host.state, String(sectorId), bag || null);
+        if (stubs && stubs.sectorId) {
+          host.warmStubs.push(stubs);
+          host.warmStubCount++;
+        }
+      },
+    };
+    // Boot state rebuild: createGameState(seed) already equals the presenting
+    // lane's boot state (menu) — persisted overrides ship as plain JSON
+    // (settings), and any live entity graphs stay on main until the sim spawns
+    // its own. Shipping the live state object is off the table: functions
+    // (rng) and Maps do not survive a transport clone, and menu-time state has
+    // no sim-authored data worth carrying anyway.
+    const state = createGameState(seed);
+    if (msg.settings && typeof msg.settings === 'object') {
+      deepAssignInPlace(state.settings, canonicalClone(msg.settings));
+    }
+    const runtime = createAuthoritativeRuntime({
+      profileId: 'production',
+      nodeSafeOnly: true,
+      seed,
+      state,
+      bus,
+      helpers,
+      tacticalAI: msg.tacticalAI !== false,
+      presentationJournal: journal,
+    });
+    // The production profile's feature MAPS are process-global module state.
+    // The runtime's init wrapped withFeatureMaps (restore-on-exit); inside a
+    // dedicated sim realm nothing else reads those maps, so apply them
+    // permanently — one seeding, zero per-step restore traffic.
+    applyFeatureConfigToMaps(runtime.config.features);
+    host.runtime = runtime;
+    host.state = runtime.state;
+    host.bus = runtime.bus;
+    const registry = { get: (name) => runtime.getSystem(name) };
+    host.registry = registry;
+    // Sim-shaped facade for shared call sites (drain ctx, rpc handlers).
+    host.sim = { helpers, spawn: (spec) => runtime.spawn(spec) };
+
+    const updateOrder = runtime.manifest.authoritativeUpdateOrder;
+    // Step the sim's init'd forks, not the manifest's definition objects —
+    // createSimulation forkSystem()s each definition, so stepping the raw
+    // module objects runs update() on un-initialized singletons (this.bus unset).
+    const postInputPartitions = partitionUpdateSystems(
+      updateOrder.slice(1).map((def) => runtime.getSystem(def && def.name) || def),
+      {
+        state: host.state,
+        bus: host.bus,
+      },
+    );
+    host.stepper = createAuthoritativeStepper({
+      state: host.state,
+      input: runtime.getSystem('input'),
+      core: runtime.getSystem('core'),
+      postInputPartitions,
+      getSystem: (name) => runtime.getSystem(name),
+    });
+    // Wire-side input boundary: the worker captures the same fields the main
+    // lane's inputCommandSnapshots ring captures — shipped per stepped tick and
+    // replayed through the real ring main-side (see simLaneMain.js).
+    host.inputPublishes = [];
+    host.tickBoundary = {
+      publishInputCommand(input, actualTick, activityStamp) {
+        host.inputPublishes.push({
+          actualTick,
+          inputSeq: Number.isSafeInteger(input && input._activitySeq) ? input._activitySeq : 0,
+          inputWallMs: Number.isFinite(activityStamp && activityStamp.wallMs) ? activityStamp.wallMs : 0,
+          input: canonicalClone(input),
+        });
+      },
+    };
+
+    installRpcHandlers(host.state, host.sim, registry);
+    installBridgeCapture(host.bus, msg.bridgeAll === true);
+
+    const initRebuild = rebuildJournalIfNeeded();
+    if (initRebuild && !initRebuild.failed && initRebuild.end > initRebuild.start) {
+      initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
+      initRebuild.spawnInfos = [];
+      for (const entityId of initRebuild.pack.spawnEntityIds) {
+        const info = entityInfoBlock(host.state, entityId);
+        if (info) initRebuild.spawnInfos.push(info);
+      }
+    }
+    host.committedJournalSequence = journal.getWriteSequence();
+    const initAux = diffAuxTables(host.state);
+    const initDomains = diffDomains(host.state, host.domainDiffSeq++);
+    // Vitals shadow primes on init — spawnInfo vitals already carry the fields.
+    collectEntityVitals(host.state, host.vitalShadow);
+    host.ready = true;
+    return {
+      journalSequence: host.committedJournalSequence,
+      initRebuild,
+      auxUpserts: initAux.upserts,
+      auxRemovals: initAux.removals,
+      collectProbe: null,
+      domainUpdates: initDomains.updates,
+      domainProbe: null,
+      domainShipBytes: initDomains.shipBytes,
+      domainDiffMs: initDomains.diffMs,
+      domainAbsentKeys: DOMAIN_MIRROR_KEYS.filter((key) => resolveDomainValue(host.state, key) === undefined),
+      scenarioContractSha256: contract.sha256,
+      profile: 'production',
+    };
+  }
+
   async function handleInit(msg) {
+    host.profile = msg.profile === 'production' ? 'production' : 'legacy47a';
+    if (host.profile === 'production') return handleInitProduction(msg);
     applyFeatureConfigToMaps(LEGACY47A_FEATURES);
     Object.assign(COMBAT_FLAGS, { weaponImpulseConsequences: false });
 
@@ -703,129 +1166,8 @@ export function createSimHost() {
     // Stage-5 rpc ops: the hard-sync seams promoted to correlated request/ack
     // envelopes. quote/inspectListing are synchronous reads; physicsPrep and
     // newGame run inside handleTick's directive window (awaited before stepping).
-    host.rpcHandlers = new Map([
-      ['quote', (args) => {
-        const e = registry.get('economy');
-        if (!e || typeof e.quote !== 'function') throw new Error('economy system unavailable');
-        return e.quote(args.stationId, args.commodityId, args.side, args.qty);
-      }],
-      // Probe/diagnostic op: returns a compact signature of one listing entry +
-      // its cycle so the market-parity gate can compare eager vs lazy mints
-      // without shipping the whole market row.
-      ['inspectListing', (args) => {
-        const e = registry.get('economy');
-        const market = (state.economy.markets || {})[args.stationId] || null;
-        const pending = e && e._pendingMints ? e._pendingMints.get(args.stationId) : null;
-        const entry = (market && market[args.commodityId]) || (pending && pending.listings[args.commodityId]) || null;
-        const cycle = ((state.economy.cycles || {})[args.stationId] || {})[args.commodityId]
-          || (pending && pending.cycles[args.commodityId]) || null;
-        return {
-          entry: entry ? {
-            stock: entry.stock, equilibrium: entry.equilibrium, baseEq: entry.baseEq,
-            role: entry.role, lastMid: entry.lastMid, lastBuy: entry.lastBuy, lastSell: entry.lastSell,
-            demandMult: entry.demandMult,
-          } : null,
-          cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
-          pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
-        };
-      }],
-      // Station market history — the render lane's on-demand backfill for the
-      // 'history' field the commodity wire mode projects out of market leaves
-      // (stage-7 item B): iterate-all readers keep mid/buy/sell/stock on the
-      // wire, the 64-point rings come through here only when a UI asks.
-      ['marketHistory', (args) => {
-        const market = (state.economy.markets || {})[(args && args.stationId) || ''];
-        if (!market) return { stationId: args && args.stationId, histories: null };
-        if (args && args.commodityId) {
-          const entry = market[args.commodityId];
-          return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
-        }
-        const histories = {};
-        for (const cid of Object.keys(market)) {
-          histories[cid] = (market[cid] && market[cid].history) || null;
-        }
-        return { stationId: args.stationId, histories };
-      }],
-      ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
-      // Sandbox/lab ops converted off the direct-call surface. Each replays the
-      // same sequence the call site ran synchronously under SIM_LANE=main.
-      ['crucibleThrowStep', () => {
-        const system = registry.get('masslineThrow');
-        if (!system || typeof system.update !== 'function') return { released: false, reason: 'unavailable' };
-        state.input = state.input || {};
-        state.input.actions = state.input.actions || {};
-        const acts = state.input.actions;
-        acts.throwArm = false;
-        system.update(1 / 60, state);
-        if (!state.player || !state.player.tether || !state.player.tether.active) {
-          return { released: false, reason: 'no-tether' };
-        }
-        acts.throwArm = true;
-        system.update(1 / 60, state);
-        acts.throwArm = false;
-        const last = state.massline2 && state.massline2.throw && state.massline2.throw.lastThrow;
-        if (last && last.tick === state.tick) {
-          return { released: true, releaseId: last.releaseId, payloadId: last.payloadId };
-        }
-        if (system._pendingSnap) return { released: false, queued: true };
-        return { released: false, reason: 'late' };
-      }],
-      ['sandboxPreAttachTether', (args) => {
-        const kernel = (registry.get('actions') || {}).kernel
-          || (registry.get('combat') || {}).kernel
-          || getCombatKernel({ state, registry });
-        const attachments = kernel && kernel.attachments;
-        if (!attachments || typeof attachments.create !== 'function') {
-          return { ok: false, reason: 'no-attachment-service' };
-        }
-        return attachments.create(args);
-      }],
-      ['labBudgetPackage', (args) => applyBudgetedLabPackage(
-        { state, helpers: sim.helpers, registry, bus: host.bus },
-        (args && args.packageSpec) || {},
-      )],
-      // New-game boot: the whole sim-side mutation sequence (entity clear, run reset,
-      // system resets, starter pick, NG+, scene bootstrap) replays inside this directive
-      // window. The ack resolves after the kicked physics-prep promise settles, so the
-      // caller's physics gate still holds.
-      ['newGameBoot', async (args) => runNewGameSimBoot({
-        state,
-        helpers: sim.helpers,
-        bus: host.bus,
-        registry,
-        opts: (args && args.opts) || {},
-        newGamePlus: (args && args.newGamePlus) || null,
-        awaitPhysicsPrep: true,
-      })],
-    ]);
-
-    for (const type of BRIDGE_EVENTS) {
-      bus.on(type, (payload) => {
-        const projected = projectBridgeEvent(type, payload);
-        host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
-        if (projected.dropped) {
-          host.droppedEventCount++;
-          host.droppedEventTypes[type] = (host.droppedEventTypes[type] || 0) + 1;
-          if (host.dropSamples.length < 20) {
-            host.dropSamples.push({
-              t: type, reason: projected.reason,
-              path: projected.hits && projected.hits.path,
-              ctor: projected.hits && projected.hits.ctor,
-            });
-          }
-          if (projected.unintentional) {
-            host.unintentionalDrops++;
-            host.unintentionalDropTypes[type] = (host.unintentionalDropTypes[type] || 0) + 1;
-          }
-          if (projected.hits) {
-            host.unbridgeable.depth += projected.hits.depth;
-            host.unbridgeable.typed += projected.hits.typed;
-          }
-          return;
-        }
-        host.pendingEvents.push({ t: type, p: projected.flat, lane: projected.lane });
-      });
-    }
+    installRpcHandlers(state, sim, registry);
+    installBridgeCapture(bus, msg.bridgeAll === true);
 
     state.settings.gameplay.physicsBackend = 'rapier-dynamic';
     state.settings.gameplay.aiBackend = 'legacy';
@@ -911,14 +1253,17 @@ export function createSimHost() {
 
   async function handleTick(msg) {
     const { state, sim, journal, scratch } = host;
-    const workStart = process.hrtime.bigint();
-    const arrivalNs = process.hrtime.bigint();
+    const workStart = nowNs();
+    const arrivalNs = nowNs();
 
     // Command drain + input application happen per directive even when steps === 0 —
     // the runner-level gate (timeScale<=0 skips advanceFixedTimestep) must not strand
     // unpause/load commands addressed to a non-ticking worker. Stage 1: every
     // directive-side mutation arrives as a typed {input|bus|settings|rpc} envelope
     // folded in wire order through the shared channel.
+    if (Number.isSafeInteger(msg.generation) && msg.generation >= 0) {
+      host.lifecycleGeneration = msg.generation;
+    }
     const drain = drainSimCommandEnvelopes(msg.commands || [], {
       state,
       helpers: sim.helpers,
@@ -927,6 +1272,40 @@ export function createSimHost() {
       registry: host.registry,
       rpcHandlers: host.rpcHandlers,
       promote: { farActor: promoteFarActor, asteroidRock: promoteAsteroidFieldRock },
+      // Stage-8 realms: only the production lane sends these; the same hooks
+      // keep both lanes' drain call-site identical.
+      ingestDomEvent: (d) => {
+        const inp = host.registry && host.registry.get && host.registry.get('input');
+        if (inp && typeof inp.ingestLaneDomEvent === 'function') inp.ingestLaneDomEvent(d);
+      },
+      applyUiFold: (p) => {
+        if (!p || typeof p !== 'object') return;
+        host.modalActive = p.modalActive === true;
+        host.screenStackLen = Number.isSafeInteger(p.screenStackLen) ? Math.max(0, p.screenStackLen) : 0;
+        setLaneModalActive(host.modalActive);
+        // The sim reads ui.screenStack's DEPTH for neutralization; contents are
+        // presentation-owned and never cross the lane.
+        if (state.ui && Array.isArray(state.ui.screenStack)) {
+          state.ui.screenStack.length = host.screenStackLen;
+          for (let i = 0; i < host.screenStackLen; i++) {
+            if (state.ui.screenStack[i] === undefined) state.ui.screenStack[i] = true;
+          }
+        }
+      },
+      setViewport: (w, h) => setLaneViewport(Number(w), Number(h)),
+      emitBusEvent: (type, payload) => {
+        if (!host.bus || typeof host.bus.emit !== 'function' || typeof type !== 'string') return;
+        // Load/save events carry main's sf.* keyspace; stage it onto the lane
+        // storage shim first so save.load/save.save run their own slot logic
+        // against real bytes.
+        if ((type === 'game:load' || type === 'game:save') && payload && payload.__laneStorage) {
+          stageLaneStorage(payload.__laneStorage);
+          host.lastStorageStage = { type, keys: Object.keys(payload.__laneStorage).length };
+        }
+        host.lastBusEmit = type;
+        host.suppressedEmitTypes.set(type, (host.suppressedEmitTypes.get(type) | 0) + 1);
+        try { host.bus.emit(type, payload); } finally { host.suppressedEmitTypes.set(type, host.suppressedEmitTypes.get(type) - 1); }
+      },
     });
     // Async rpc ops (physicsPrep, newGame) resolve inside this directive window —
     // still before the tick steps, preserving drain-before-step ordering.
@@ -934,8 +1313,10 @@ export function createSimHost() {
       try {
         const result = await pending.promise;
         drain.rpcAcks.push({ id: pending.id, ok: true, result });
+        host.lastRpcAck = { op: pending.op, ok: true };
       } catch (e) {
         drain.rpcAcks.push({ id: pending.id, ok: false, reason: String((e && e.message) || e), op: pending.op });
+        host.lastRpcAck = { op: pending.op, ok: false, reason: String((e && e.message) || e) };
       }
     }
     host.lastInputSeq = drain.inputSeq || 0;
@@ -947,6 +1328,7 @@ export function createSimHost() {
       }
     }
     const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
+    const production = host.profile === 'production';
 
     // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
     if (Number.isSafeInteger(msg.ackJournalEnd) && msg.ackJournalEnd > 0) {
@@ -955,9 +1337,14 @@ export function createSimHost() {
 
     let completedTick = null;
     let journalStart = host.committedJournalSequence;
+    if (production) host.inputPublishes.length = 0;
     for (let s = 0; s < steps; s++) {
-      update47aScenarioActorIntents(state);
-      sim.step(SIM_DT);
+      if (production) {
+        host.stepper.step(SIM_DT, host.tickBoundary);
+      } else {
+        update47aScenarioActorIntents(state);
+        sim.step(SIM_DT);
+      }
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.
@@ -1057,6 +1444,14 @@ export function createSimHost() {
         journalEnd = rebuild.end;
       }
     }
+    // Input attribution: the production lane's boundary publishes ride the
+    // wire (one per step); the newest publish's activity seq/wallMs is the
+    // completedTick's attribution, mirroring pendingInputCommandSeq main-side.
+    if (production && host.inputPublishes.length > 0) {
+      const lastPublish = host.inputPublishes[host.inputPublishes.length - 1];
+      host.lastInputSeq = lastPublish.inputSeq;
+      host.lastInputWallMs = lastPublish.inputWallMs;
+    }
     if (steps > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
@@ -1064,11 +1459,11 @@ export function createSimHost() {
     // starts there. Present-side acks (discardThrough) lag behind this cursor.
     host.committedJournalSequence = journalEnd;
 
-    const workNs = process.hrtime.bigint() - workStart;
+    const workNs = nowNs() - workStart;
     host.totalWorkNs += workNs;
     host.tickCount += steps;
 
-    const packStart = process.hrtime.bigint();
+    const packStart = nowNs();
     let pack;
     try {
       pack = journalStart < journalEnd
@@ -1086,10 +1481,11 @@ export function createSimHost() {
       const info = entityInfoBlock(state, entityId);
       if (info) spawnInfos.push(info);
     }
-    const packNs = process.hrtime.bigint() - packStart;
+    const packNs = nowNs() - packStart;
     host.totalPackNs += packNs;
 
     const events = drainEvents();
+    const entityVitals = production ? collectEntityVitals(state, host.vitalShadow) : null;
     const aux = diffAuxTables(state);
     host.auxUpsertsTotal += aux.upserts.length;
     host.auxRemovalsTotal += aux.removals.length;
@@ -1129,6 +1525,9 @@ export function createSimHost() {
       // Applied-envelope list ships only when the directive asks for it — the
       // commands probe's coverage evidence; zero per-tick wire cost otherwise.
       commandProbe: msg.commandProbe ? drain.applied : undefined,
+      inputPublishes: production ? host.inputPublishes.splice(0) : undefined,
+      storageOps: pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined,
+      entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
       sendNs: 0, // stamped just before postMessage/dispatch resolve
@@ -1144,7 +1543,7 @@ export function createSimHost() {
     const journalDiag = journal && typeof journal.getDiagnostics === 'function'
       ? journal.getDiagnostics()
       : null;
-    const mem = process.memoryUsage();
+    const mem = realmMemoryUsage();
     return {
       sha256,
       stateTick: state.tick,
@@ -1192,7 +1591,10 @@ export function createSimHost() {
   }
 
   function handleShutdown() {
-    try { host.sim && host.sim.dispose(); } catch (_) { /* spike teardown */ }
+    try {
+      if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
+      else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();
+    } catch (_) { /* spike teardown */ }
   }
 
   // Dispatch table — the adapters (worker_threads or in-process) call this;

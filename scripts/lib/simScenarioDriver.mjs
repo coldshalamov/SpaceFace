@@ -11,16 +11,35 @@
 //
 // Pure module: no argv reads, no self-execute, no side effects at import.
 
-import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { canonicalStringify } from '../../src/core/simSnapshot.js';
+import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { validateScenarioDocument, formatScenarioIssue } from '../../src/contracts/scenarioSchemas.js';
+import { realmReadFileSync, realmResolvePath } from './simRealm.mjs';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+// Realm-neutral assert — the harness's contract checks are throw-on-violation,
+// and this module must import cleanly inside a browser Worker realm (stage 8),
+// so node:assert/strict cannot be referenced at import time.
+function assert(cond, message) {
+  if (!cond) {
+    const err = new Error(message === undefined ? 'assertion failed' : message);
+    err.name = 'AssertionError';
+    throw err;
+  }
+}
+assert.equal = (a, b, message) => assert(a === b,
+  message === undefined
+    ? `assert.equal failed: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`
+    : message);
+
+// Repo root for contract/save file reads — installed by node adapters at boot
+// (installRealmFs); the browser realm never reaches readJson (its contract
+// ships on the init directive) so the fallback is a loud throw, not a guess.
+let _root = null;
+export function installScenarioRoot(root) { _root = root; }
+function repoPath(rel) {
+  if (_root) return realmResolvePath(_root, rel);
+  return rel;
+}
 
 // Handoff staging positions. Staging at the beat (not spawn) keeps every <=720-tick
 // telemetry golden byte-identical; the live route keeps its own dormant-then-approach
@@ -37,7 +56,7 @@ export function normalizePath(path) {
 }
 
 export function readJson(rel) {
-  return JSON.parse(readFileSync(resolve(ROOT, rel), 'utf8'));
+  return JSON.parse(realmReadFileSync(repoPath(rel), 'utf8'));
 }
 
 export function loadScenarioContract(rel) {
@@ -48,12 +67,12 @@ export function loadScenarioContract(rel) {
   return {
     path,
     document,
-    sha256: createHash('sha256').update(canonicalStringify(document)).digest('hex'),
+    sha256: sha256Hex(canonicalStringify(document)),
   };
 }
 
 export function hashSnapshot(snapshot) {
-  return createHash('sha256').update(canonicalStringify(snapshot)).digest('hex');
+  return sha256Hex(canonicalStringify(snapshot));
 }
 
 export async function preparePhysicsBackend(registry, state, physicsBackend, options = {}) {

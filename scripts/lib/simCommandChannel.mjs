@@ -26,6 +26,16 @@
 // - rpc     : request/ack pairs for the hard-sync seams stage 5 remediates
 //             (physicsPrep, economy.quote, newGame boot); 'noop' echoes an ack.
 //             Handlers live in ctx.rpcHandlers (worker-supplied).
+// - dom     : stage-8 DOM-event descriptor (key/pointer/mouse/blur/resize). The
+//             reducer runs whichever realm the sim is on; DOM-only facts
+//             (uiCommand, offCanvas, neutralize) are computed on the DOM realm
+//             before shipping. Worker applies via ctx.ingestDomEvent.
+// - ui      : stage-8 ui-fold snapshot {screenStackLen, modalActive} — the sim
+//             needs the screen-stack depth (not contents) for
+//             shouldNeutralizeFlightInput plus the document.body modal latch.
+//             Worker applies via ctx.applyUiFold.
+// - viewport: stage-8 viewport size {w, h} — overrides innerWidth/innerHeight
+//             reads (viewportSize/stickViewport) inside the sim realm.
 //
 // inputCommandSeq on a completed tick names the newest input envelope that tick
 // consumed — the P7 input-latency attribution completedTick.inputCommandSeq/
@@ -51,6 +61,9 @@ export const SIM_COMMAND_TYPES = Object.freeze({
   SPAWN: 'spawn',
   REMOVE: 'remove',
   PROMOTE: 'promote',
+  DOM: 'dom',
+  UI: 'ui',
+  VIEWPORT: 'viewport',
 });
 
 export function createSimCommandRing() {
@@ -121,6 +134,12 @@ export function pushLaneCommand(ring, d) {
     case 'remove': return ring.push(SIM_COMMAND_TYPES.REMOVE, { token: d.token, id: d.id, opts: d.opts || null });
     case 'promote': return ring.push(SIM_COMMAND_TYPES.PROMOTE, { id: d.id, source: d.source, reason: d.reason });
     case 'rpc': return ring.pushRpc(d.id, d.op, d.args);
+    case 'domEvent': return ring.push(SIM_COMMAND_TYPES.DOM, { d: d.d });
+    // Stage-8: generic sim-bus event replay (main → worker). Rides the BUS
+    // type with an { emit } payload — tape-command BUS payloads carry { kind }.
+    case 'busEmit': return ring.push(SIM_COMMAND_TYPES.BUS, { emit: d.emit, payload: d.payload });
+    case 'uiFold': return ring.push(SIM_COMMAND_TYPES.UI, d.p || null);
+    case 'viewport': return ring.push(SIM_COMMAND_TYPES.VIEWPORT, { w: d.w, h: d.h });
     default: return null;
   }
 }
@@ -144,6 +163,14 @@ export function applySimCommandEnvelope(env, ctx) {
       return { type: SIM_COMMAND_TYPES.INPUT, inputSeq: env.seq, inputWallMs: env.wallMs, foldCount };
     }
     case SIM_COMMAND_TYPES.BUS:
+      // { emit } payloads replay a sim-bus event that originated main-side
+      // (worker-side emit capture is suppressed around the emit so it cannot
+      // echo back over the wire — see emitBusEvent in the drain ctx).
+      if (p && typeof p === 'object' && typeof p.emit === 'string') {
+        if (typeof ctx.emitBusEvent === 'function') ctx.emitBusEvent(p.emit, p.payload);
+        else if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit(p.emit, p.payload);
+        return { type: SIM_COMMAND_TYPES.BUS };
+      }
       applyTapeCommands(state, helpers, [p]);
       return { type: SIM_COMMAND_TYPES.BUS };
     case SIM_COMMAND_TYPES.SETTINGS: {
@@ -155,6 +182,15 @@ export function applySimCommandEnvelope(env, ctx) {
       return { type: SIM_COMMAND_TYPES.NAV, ack: { ok: applyLaneNav(state, p) } };
     case SIM_COMMAND_TYPES.MODE:
       return { type: SIM_COMMAND_TYPES.MODE, ack: { ok: applyLaneMode(state, ctx.bus, p && p.mode), mode: p && p.mode } };
+    case SIM_COMMAND_TYPES.DOM:
+      if (typeof ctx.ingestDomEvent === 'function') ctx.ingestDomEvent(p && p.d);
+      return { type: SIM_COMMAND_TYPES.DOM };
+    case SIM_COMMAND_TYPES.UI:
+      if (typeof ctx.applyUiFold === 'function') ctx.applyUiFold(p);
+      return { type: SIM_COMMAND_TYPES.UI };
+    case SIM_COMMAND_TYPES.VIEWPORT:
+      if (typeof ctx.setViewport === 'function') ctx.setViewport(p && p.w, p && p.h);
+      return { type: SIM_COMMAND_TYPES.VIEWPORT };
     case SIM_COMMAND_TYPES.SPAWN: {
       const token = p && p.token;
       try {

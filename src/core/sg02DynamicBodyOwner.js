@@ -2497,7 +2497,19 @@ export class Sg02DynamicBodyOwner {
 }
 
 async function loadRapierCompat() {
-  return loadRapierCompatRuntime();
+  return loadRapierCompatRuntime({ importModule: importRapierCompatModule });
+}
+
+// Module Workers resolve specifiers without the document's import map, so the
+// bare specifier path (document main thread, node_modules on the node lanes)
+// is tried first and the vendored bundle by URL second — the same build the
+// page itself loads, addressed relative to this module.
+async function importRapierCompatModule() {
+  try {
+    return await import('@dimforge/rapier3d-compat');
+  } catch (_) {
+    return import(new URL('../../vendor/rapier3d-compat/rapier.mjs', import.meta.url).href);
+  }
 }
 
 function resetBodyForces(body) {

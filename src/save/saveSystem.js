@@ -24,6 +24,7 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
@@ -64,6 +65,23 @@ import {
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
+
+// The sf.* keyspace snapshot staged onto worker-side storage for a forwarded
+// save/load — the sim realm resolves slots and recovery against real bytes.
+function _collectSfStorage() {
+  const out = {};
+  try {
+    if (typeof localStorage === 'undefined') return out;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (typeof key === 'string' && key.startsWith('sf.')) {
+        const v = localStorage.getItem(key);
+        if (typeof v === 'string') out[key] = v;
+      }
+    }
+  } catch (_) { /* storage enumeration unavailable */ }
+  return out;
+}
 
 // Save-store write generation: detecting slot changes used to mean walking + hashing every
 // stored blob on EVERY listSlots call — multi-MB getItem copies plus an FNV-1a pass per
@@ -268,6 +286,10 @@ export const save = {
         });
         return false;
       }
+      // Worker lane: the forwarded game:save runs the sim realm's own save —
+      // its bytes relay back and persist here. Serializing the mirror facade
+      // on main would stall the frame and produce a dead-state envelope.
+      if (laneCommandSink && laneCommandSink()) return false;
       return this.save((p && p.slot) || 'quick', { reason: 'manual' });
     });
     bus.on('game:load', (p) => {
@@ -282,6 +304,10 @@ export const save = {
       if (this._campaignSaveSuppressed()) {
         bus.emit('run:endRequested', { outcome: 'aborted', reason: 'load_during_run', tick: 0 });
       }
+      // Worker lane: the forwarded game:load drives the sim realm's own load
+      // (staged sf.* bytes). Restoring here would parse the envelope on main —
+      // exactly the stall the lane exists to remove — into a dead mirror.
+      if (laneCommandSink && laneCommandSink()) return false;
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
       // The painted defer path swallows a promise (nextPaint().then(restore).catch), so the
@@ -1135,6 +1161,13 @@ export const save = {
   /** Serialize the current state and persist it to localStorage under `slot`. */
   save(slot, options = {}) {
     slot = slot || 'quick';
+    // Worker lane (main side): the sim realm's own save system writes real
+    // bytes; they relay back and persist to localStorage. The mirror facade
+    // cannot produce a trustworthy envelope, so calls forward instead of run.
+    if (laneCommandSink && laneCommandSink()) {
+      laneBusEmit('game:save', { slot, __laneStorage: _collectSfStorage() });
+      return true;
+    }
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
@@ -3465,6 +3498,12 @@ export const save = {
   /** Load a slot (or 'latest'). Validates fully before any destructive restore; a live run is
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot, options = null) {
+    // Worker lane (main side): restore authority sits in the sim realm — the
+    // forwarded event stages this realm's sf.* bytes for its slot resolution.
+    if (laneCommandSink && laneCommandSink()) {
+      laneBusEmit('game:load', { slot: slot || 'latest', __laneStorage: _collectSfStorage() });
+      return true;
+    }
     // preferAsync: the painted Continue lane asks for the worker-backed restore; callers that
     // stub `load` as the restore primitive (tests, overrides) keep the seam — options are just
     // a second argument to them.

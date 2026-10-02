@@ -7,8 +7,13 @@
 // just before postMessage, and hand back the typed-array transfer list.
 
 import { parentPort, workerData } from 'node:worker_threads';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { createSimHost } from './simWorkerHost.mjs';
+import { installRealmFs } from './simRealm.mjs';
+
+installRealmFs({ readFileSync, resolve });
 
 const { tick, init, finalize, shutdown } = createSimHost();
 

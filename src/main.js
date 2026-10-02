@@ -7,6 +7,7 @@ import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
+import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
@@ -27,6 +28,7 @@ import {
   resolveNewGamePlusOverlay,
   resetCombatInputMode,
   runNewGameSimBoot,
+  resetRunUiState,
 } from './core/newGameBoot.js';
 import {
   describeGameStartFailure,
@@ -144,6 +146,11 @@ async function boot() {
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
     };
+    // Stage-8: resolve the sim-lane flags once at boot (?simLane=worker, ?simSab=1).
+    // ctx.simLane lands BEFORE createRegistry so the registry can skip init of
+    // sim-owned systems when the whole sim lives in the worker.
+    const simLaneFlags = resolveSimLaneFlags();
+    for (const w of simLaneFlags.warnings) console.warn(`[simLane] ${w}`);
     const ctx = {
       state,
       bus,
@@ -152,10 +159,25 @@ async function boot() {
       helpers,
       timeEffects,
       presentationJournal,
+      simLane: simLaneFlags.lane,
     };
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
+    // Whole-sim worker lane: null on the main lane (zero behavior change);
+    // otherwise a createSimulationRunner-compatible lane runner plus the
+    // transport journal presentation consumes.
+    const simLaneRuntime = createSimLaneRuntime({
+      state,
+      registry,
+      bus,
+      flags: simLaneFlags,
+      helpers,
+    });
+    // The render publisher binds ctx.presentationJournal at renderer init —
+    // under the lane it must read the transport journal, not the in-process
+    // one (which the worker's journal replaces wholesale).
+    if (simLaneRuntime) ctx.presentationJournal = simLaneRuntime.journal;
     const bootInitMetrics = await registry.initAsync({
       // Each yield costs a rAF+task hop (~a frame); the loading shell owns the picture, so
       // larger slices convert that scheduling overhead back into time-to-title.
@@ -273,6 +295,18 @@ async function boot() {
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
+    // Worker lane: the sim realm's save.load restores state off-thread, so the
+    // restore generator's own helpers.finalizeLoadedGame call never fires
+    // there. The bridged save:loaded is the same signal — drive the identical
+    // main-side finalization (visual gates, enterFlightMode, ui:closeAll) here.
+    // On the main lane this listener is inert: finalizeLoadedGame already ran
+    // inside the save generator before save:loaded emitted.
+    bus.on('save:loaded', (payload) => {
+      if (!(laneCommandSink && laneCommandSink())) return;
+      try {
+        helpers.finalizeLoadedGame(payload || {});
+      } catch (err) { console.error('[SpaceFace] lane finalizeLoadedGame failed', err); }
+    });
     // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
     // differently before vs after docking once. Loading it at boot keeps the cascade identical
     // regardless of dock history; stationStyles positions it after the Deckplate sheet, matching
@@ -316,7 +350,10 @@ async function boot() {
     });
 
     loopController = startLoop(state, registry, {
-      presentationJournal,
+      // Under the flip the presentation lane reads the transport journal and
+      // steps the worker-backed runner; identical shapes on the main lane.
+      presentationJournal: simLaneRuntime ? simLaneRuntime.journal : presentationJournal,
+      simulationRunner: simLaneRuntime ? simLaneRuntime.runner : undefined,
       onSimulationFailure(failure) {
         const receipt = closeRuntime();
         if (receipt.errorCount > 0) {
@@ -328,12 +365,15 @@ async function boot() {
     ctx.simStep = () => loopController.stepOnce();
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
+      getPresentationFrame: () => loopController.getPresentationFrame?.(),
       getLifecycleState: () => loopController.getLifecycleState(),
       isSuspended: () => loopController.isSuspended(),
       simStep: () => loopController.stepOnce(),
     };
     SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, {
       state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,
+      simLaneDiag: simLaneRuntime ? () => simLaneRuntime.runner.getDiagnostics() : null,
+      laneRpc,
     });
     // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
     // renderer.js once a run exists; running the all-archetype precompile here competes with the
@@ -523,6 +563,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         });
         const bootResult = await physicsPrep;
         if (!bootResult || bootResult.aborted) return;
+        // state.ui is main-owned — the boot's reset ran against the worker's
+        // copy, so replay the same ui write here or the menu screens pinned on
+        // screenStack would hold shouldFreezeFlightSubmit open forever.
+        resetRunUiState(state);
         return;
       }
       const bootResult = await runNewGameSimBoot({

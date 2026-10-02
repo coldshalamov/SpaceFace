@@ -48,6 +48,9 @@ import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
 import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
 import { createPresentationWorld } from '../src/render/presentationWorld.js';
 import { createSimCommandRing, pushLaneCommand } from './lib/simCommandChannel.mjs';
+import { installRealmFs } from './lib/simRealm.mjs';
+
+installRealmFs({ readFileSync, resolve });
 import {
   installSimCommandSink,
   uninstallSimCommandSink,

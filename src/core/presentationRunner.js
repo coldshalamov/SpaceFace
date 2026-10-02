@@ -744,7 +744,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     const rebuiltJournal = rebuildJournalIfNeeded();
     if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
       && completedTickCount > 0) {
-      mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
+      if (mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd)
+        && latestCompletedTick.fullRebuild === true) {
+        // Lane-supplied rebuild: the consumed range already IS the worker's
+        // rebuild set — flag the pending range as a full rebuild so the
+        // publisher re-seats instead of applying deltas.
+        pendingJournalFullRebuild = true;
+        pendingJournalRebuildGeneration = latestCompletedTick.rebuildGeneration || 0;
+      }
     }
 
     const alpha = simulationRunner.interpolationAlpha();

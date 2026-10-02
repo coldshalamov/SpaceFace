@@ -102,6 +102,38 @@ export const EVENT_BRIDGE_ADAPTERS = {
   'cargo:changed': (p) => (p && typeof p === 'object'
     ? { usedU: Number.isFinite(p.usedU) ? p.usedU : 0, massT: Number.isFinite(p.massT) ? p.massT : 0 }
     : undefined),
+  // save:loaded carries the tensionDirector arc snapshot — deeper than
+  // EVENT_BRIDGE_DEPTH. Its only consumer is the tension director inside the
+  // sim realm; the wire keeps the receipt fields (slot/flags/skip receipt).
+  'save:loaded': (p) => {
+    if (!p || typeof p !== 'object') return undefined;
+    const flat = flattenEventPayload({
+      slot: p.slot ?? null,
+      visualGatePending: p.visualGatePending === true,
+      recovered: p.recovered === true,
+      skippedNewer: p.skippedNewer ?? null,
+      tensionDirector: null,
+    }, 0);
+    return flat === REJECT ? undefined : flat;
+  },
+  // sector:enter carries the whole sector object (stations/services exceed
+  // depth). Main-side listeners read sectorId plus name/seed for display;
+  // deep sector state still reaches them through the world mirror.
+  'sector:enter': (p) => {
+    if (!p || typeof p !== 'object') return undefined;
+    const s = p.sector;
+    const flat = flattenEventPayload({
+      sectorId: p.sectorId ?? null,
+      sector: s && typeof s === 'object'
+        ? { id: s.id ?? null, name: s.name ?? null, seed: s.seed ?? null }
+        : null,
+      entryPoint: p.entryPoint ?? null,
+      firstVisit: p.firstVisit,
+      continuous: p.continuous,
+      noTeleport: p.noTeleport,
+    }, 0);
+    return flat === REJECT ? undefined : flat;
+  },
 };
 
 /**
