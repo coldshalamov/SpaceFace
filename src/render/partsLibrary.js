@@ -1581,11 +1581,21 @@ function packagedLiveWholeShipFile(file) {
   return PACKAGED_LIVE_WHOLE_SHIP_FILES.has(relative) ? relative : null;
 }
 
+// S6 faction hulls: palette + lit-trim variants of the hull the enemy already renders (same
+// geometry, collider fit and sockets; tools/blender/forge/variant.py). Enemy-id keyed on purpose:
+// the live entity's factionId is whatever zone or encounter fielded it, the enemy id is not.
+//   patrol_lawman, customs_cutter  Concord navy Hornet interdictor (was the player's yellow Hornet)
+//   quiet_ghost                    The Quiet's ink-violet Wasp (lancer_sniper and the pirate Wasp stay put)
+//   choir_zealot                   Ascendant Choir plum/magenta dart (the Reach dart keeps its sodium)
+//   warden_escort                  Vael teal lode (the Reach bruisers keep the oxide lode)
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'wholeships/ashline_dart.glb',
-  choir_zealot: 'wholeships/ashline_dart.glb',
+  choir_zealot: 'wholeships/ashline_dart_choir.glb',
   lancer_sniper: 'wholeships/wasp_production_v1.glb',
-  quiet_ghost: 'wholeships/wasp_production_v1.glb',
+  quiet_ghost: 'wholeships/wasp_quiet_ghost.glb',
+  patrol_lawman: 'wholeships/hornet_scn_interdictor.glb',
+  customs_cutter: 'wholeships/hornet_scn_interdictor.glb',
+  warden_escort: 'wholeships/ashline_lode_vael.glb',
   bruiser_brawler: 'wholeships/ashline_lode.glb',
   pd_screen_escort: 'wholeships/ashline_lode.glb',
   field_anchor_controller: 'wholeships/ashline_lode.glb',
@@ -1597,9 +1607,12 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
-  choir_zealot: 'SF_WHOLESHIP_ASHLINE_DART',
+  choir_zealot: 'SF_WHOLESHIP_ASHLINE_DART_CHOIR',
   lancer_sniper: 'SF_WASP_PRODUCTION_V1',
-  quiet_ghost: 'SF_WASP_PRODUCTION_V1',
+  quiet_ghost: 'SF_WASP_QUIET_GHOST',
+  patrol_lawman: 'SF_HORNET_SCN_INTERDICTOR',
+  customs_cutter: 'SF_HORNET_SCN_INTERDICTOR',
+  warden_escort: 'SF_WHOLESHIP_ASHLINE_LODE_VAEL',
   bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
   pd_screen_escort: 'SF_WHOLESHIP_ASHLINE_LODE',
   field_anchor_controller: 'SF_WHOLESHIP_ASHLINE_LODE',
@@ -1718,8 +1731,20 @@ const WASP_FACTION_KIT_BY_FACTION = Object.freeze({
   faction_scn: Object.freeze({ file: 'wholeships/wasp_scn_patrol.glb', assetId: 'SF_WASP_SCN_PATROL' }),
 });
 const WASP_FACTION_KIT_ROLES = Object.freeze(new Set(['patrol', 'escort']));
+// S6: faction-fielded hulls whose enemy id / role is shared across factions, so the body follows the
+// entity's factionId like the Span and Wasp kits. Rig hostiles fielded under the Quiet (the smuggler
+// zones of Tethys Junction and Pallas Drift) and miner barges flying for the Drift Miners Collective
+// (Ceres, Vesta, Charon traffic) wear their operator's paint; every other faction keeps the base hull.
+const RIG_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_quiet: Object.freeze({ file: 'wholeships/ashline_rig_quiet.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG_QUIET' }),
+});
+const CRADLE_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_dmc: Object.freeze({ file: 'wholeships/helios_cradle_dmc.glb', assetId: 'SF_WHOLESHIP_HELIOS_CRADLE_DMC' }),
+});
 const LIVE_SPAN_FILE = 'wholeships/helios_span.glb';
 const LIVE_WASP_FILE = 'wholeships/wasp_production_v1.glb';
+const LIVE_RIG_FILE = 'wholeships/ashline_rig.glb';
+const LIVE_CRADLE_FILE = 'wholeships/helios_cradle.glb';
 const LIVE_TRADE_HUB_FILE = 'places/place_station_trade_hub.glb';
 /** Helios / Kessler opening-flyby NPC slots. Each must resolve a packaged complete hull. */
 export const OPENING_FLYBY_NPC_SLOTS = Object.freeze([
@@ -1741,6 +1766,8 @@ const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
   ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
   ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(RIG_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(CRADLE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
 ]);
 // Retail-routable release paths so check:asset-reachability counts the kits as live.
 const FACTION_KIT_RELEASE_URLS = Object.freeze([
@@ -1750,6 +1777,12 @@ const FACTION_KIT_RELEASE_URLS = Object.freeze([
   'assets/ships/release/parts/wholeships/wasp_free_militia.glb',
   'assets/ships/release/parts/wholeships/wasp_mts_escort.glb',
   'assets/ships/release/parts/wholeships/wasp_scn_patrol.glb',
+  'assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb',
+  'assets/ships/release/parts/wholeships/wasp_quiet_ghost.glb',
+  'assets/ships/release/parts/wholeships/ashline_dart_choir.glb',
+  'assets/ships/release/parts/wholeships/ashline_lode_vael.glb',
+  'assets/ships/release/parts/wholeships/ashline_rig_quiet.glb',
+  'assets/ships/release/parts/wholeships/helios_cradle_dmc.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb',
@@ -1809,6 +1842,14 @@ function applyFactionWholeShipKit(entity, selection) {
     const role = String(entity && entity.data && entity.data.trafficRole || '');
     if (!WASP_FACTION_KIT_ROLES.has(role)) return selection;
     const kit = WASP_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_RIG_FILE) {
+    const kit = RIG_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_CRADLE_FILE) {
+    const kit = CRADLE_FACTION_KIT_BY_FACTION[factionId];
     if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
   }
   return selection;
@@ -2066,6 +2107,32 @@ export function liveSolidGlbCatalog() {
       packagedLive: isPackagedLiveWholeShipFile(kit.file),
     });
   }
+  for (const [faction, kit] of Object.entries(RIG_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `rig:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 18,
+      colliderKind: 'capsule',
+      proportionsKey: 'pirate_swoop',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(CRADLE_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `cradle:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 14,
+      colliderKind: 'capsule',
+      proportionsKey: 'miner',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
 
   for (const file of PLACE_FILES) {
     if (STATION_ARCHETYPE_FILES.includes(file)) continue;
@@ -2187,6 +2254,8 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
     ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(RIG_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(CRADLE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
     // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
     // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp
