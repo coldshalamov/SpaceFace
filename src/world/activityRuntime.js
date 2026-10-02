@@ -744,7 +744,9 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     const entity = unseen[i];
     runtime.seenEntityIds.add(entity.id);
     runtime.currentEntityIds.add(entity.id);
+    const partitionBefore = entity._physicsPartition;
     entity._physicsPartition = 2;
+    if (partitionBefore !== 2) PHYSICS_PARTITION_EPOCH += 1;
     runtime.physicsDynamics.push(entity);
     runtime.physicsDynamicsVersion++;
     runtime.exactIds.push(entity.id);
