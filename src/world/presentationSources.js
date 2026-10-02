@@ -82,6 +82,15 @@ export function resolveWorldPresentationEntity(state, id) {
   return live && live.alive !== false ? live : null;
 }
 
+// Single source for journal writer-side eligibility — every lane that produces journal
+// records (main runner, whole-sim worker) must share this predicate or a mesh-less lane
+// journals a spawn the collect set can never republish (the once-per-tick rebuild storm
+// class). Mirrors pushAlive's mesh test; `alive` is per-record data, not eligibility.
+export function entityIsJournaled(e) {
+  return !!(e && e._noMesh !== true
+    && !(e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)));
+}
+
 function pushAlive(out, row) {
   if (!row || row.alive === false || row._noMesh) return;
   if (row.type === 'projectile' && projectileSkipsVisualFactoryMesh(row)) return;

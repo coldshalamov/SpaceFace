@@ -7,22 +7,15 @@
 // directive step. Replies carry { completedTick, journal byte-range pack, spawn info blocks,
 // flat-subset events }.
 //
-// SPIKE DUPLICATION: the 47-A assembly and loop-body helpers below are replicated from
-// scripts/sf-sim-cli.mjs (which self-executes on import and cannot be shared). Phase-B should
-// extract a scripts/lib/sim47aShared.mjs consumed by both. Any divergence is caught by the
-// golden hash gate.
+// The 47-A assembly and loop-body helpers come from the shared driver
+// (scripts/lib/simScenarioDriver.mjs, Phase-B stage 0) — the same module the CLI lane
+// consumes. Any divergence is caught by the golden hash gate.
 
-import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parentPort, workerData } from 'node:worker_threads';
 
 import { createSimulation, SIM_DT } from '../../src/core/sim.js';
-import { canonicalStringify, snapshotSimState } from '../../src/core/simSnapshot.js';
+import { snapshotSimState } from '../../src/core/simSnapshot.js';
 import { createPresentationJournal, createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../../src/core/presentationJournal.js';
-import { validateScenarioDocument, formatScenarioIssue } from '../../src/contracts/scenarioSchemas.js';
 import { scenarioRuntime } from '../../src/systems/scenarioRuntime.js';
 import { presentationOrchestrator } from '../../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../../src/systems/presentationAdapters.js';
@@ -46,212 +39,19 @@ import {
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
-import { collectJournalPresentationEntities, resolveWorldPresentationEntity } from '../../src/world/presentationSources.js';
-import { projectileSkipsVisualFactoryMesh } from '../../src/render/weapons/recipes.js';
+import { collectJournalPresentationEntities, entityIsJournaled, resolveWorldPresentationEntity } from '../../src/world/presentationSources.js';
+import {
+  applyInput,
+  applyTapeCommands,
+  finite,
+  hashSnapshot,
+  loadScenarioContract,
+  preparePhysicsBackend,
+  reloadThroughSave,
+  update47aScenarioActorIntents,
+} from './simScenarioDriver.mjs';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-// ---------------------------------------------------------------------------
-// Replicated sf-sim-cli helpers (verbatim semantics — hash is the arbiter).
-// ---------------------------------------------------------------------------
-
-const HANDOFF_STAND_OFF_TUG = { x: 815, z: 95, rot: -0.35 };
-const HANDOFF_ZONE_BEACON = { x: 780, z: 320 };
-
-function finite(value, fallback) {
-  return Number.isFinite(value) ? value : fallback;
-}
-
-function normalizePath(path) {
-  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
-}
-
-function readJson(rel) {
-  return JSON.parse(readFileSync(resolve(ROOT, rel), 'utf8'));
-}
-
-function loadScenarioContract(rel) {
-  const path = normalizePath(rel);
-  const document = readJson(rel);
-  const report = validateScenarioDocument(document, { file: path });
-  assert(report.ok, `scenario contract invalid:\n${report.issues.map(formatScenarioIssue).join('\n')}`);
-  return {
-    path,
-    document,
-    sha256: createHash('sha256').update(canonicalStringify(document)).digest('hex'),
-  };
-}
-
-function hashSnapshot(snapshot) {
-  return createHash('sha256').update(canonicalStringify(snapshot)).digest('hex');
-}
-
-async function preparePhysicsBackend(registry, state, physicsBackend, options = {}) {
-  if (physicsBackend !== 'rapier-dynamic') return;
-  const physicsSys = registry.get('physics');
-  assert(physicsSys, '47-A dynamic replay requires the physics system');
-  assert.equal(typeof physicsSys.prepareBackend, 'function',
-    '47-A dynamic replay requires physics.prepareBackend');
-  const ready = await physicsSys.prepareBackend(state, options);
-  assert.equal(ready, true, '47-A dynamic replay requires SG-02 dynamic authority to be ready before ticking');
-  assert.equal(state.physicsRuntime && state.physicsRuntime.diagnostics && state.physicsRuntime.diagnostics.sg02Ready,
-    true,
-    '47-A dynamic replay should publish ready SG-02 diagnostics before ticking');
-}
-
-async function reloadThroughSave(registry, state, reloadAt, options = {}) {
-  const saveSys = registry.get('save');
-  assert(saveSys && typeof saveSys.serialize === 'function' && typeof saveSys.loadEnvelope === 'function',
-    '47-A reload check requires the real save system');
-  const persistentBefore = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
-  const envelope = saveSys.serialize('sf-sim-reload');
-  assert.equal(saveSys.loadEnvelope(envelope, 'sf-sim-reload'), true, '47-A reload check should load its own envelope');
-  state.settings.gameplay.flightBackend = options.flightBackend === 'v3' ? 'v3' : 'legacy';
-  const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
-  assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
-  assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
-  await preparePhysicsBackend(registry, state, options.physicsBackend || 'rapier-dynamic', { reset: true });
-}
-
-function applyInput(state, input) {
-  const aimAngle = finite(input.aimAngle, state.input.aimAngle || 0);
-  const player = state.entities.get(state.playerId);
-  const origin = player ? player.pos : { x: 0, z: 0 };
-  Object.assign(state.input, {
-    moveX: finite(input.moveX, 0),
-    moveZ: finite(input.moveZ, 0),
-    turnIntent: finite(input.turnIntent, input.moveX || 0),
-    boost: !!input.boost,
-    fire: !!input.fire,
-    fireGroup: input.fireGroup == null ? null : input.fireGroup,
-    aimAngle,
-    aimWorld: {
-      x: origin.x + Math.cos(aimAngle) * 1000,
-      z: origin.z + Math.sin(aimAngle) * 1000,
-    },
-  });
-}
-
-function resolveScenarioEntity(state, ref) {
-  if (ref == null) return null;
-  if (Number.isSafeInteger(ref)) return state.entities.get(ref) || null;
-  const id = String(ref);
-  if (id === 'player' || id === 'player_kestrel') return state.entities.get(state.playerId) || null;
-  const binding = state.scenario && state.scenario.actorBindings && state.scenario.actorBindings[id];
-  if (binding && binding.status === 'bound') return state.entities.get(binding.entityId) || null;
-  return (state.entityList || []).find((entity) => {
-    const data = entity && entity.data || {};
-    return data.scenarioActorId === id || data.scenarioRole === id || data.assetRef === id || data.defId === id;
-  }) || null;
-}
-
-function resolveAttachmentRef(state, ref, ownerId) {
-  const id = String(ref);
-  if (id !== 'latestOwned') return id;
-  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
-  const latest = Object.values(attachments)
-    .filter((attachment) => attachment && attachment.state === 'active' && attachment.ownerId === ownerId)
-    .sort((a, b) => String(b.id).localeCompare(String(a.id)))[0];
-  assert(latest, `golden tape attachment ref did not resolve: ${ref}`);
-  return latest.id;
-}
-
-function applyTapeCommands(state, helpers, commands) {
-  if (!Array.isArray(commands) || commands.length === 0) return;
-  for (const command of commands) {
-    if (!command) continue;
-    if (command.kind === 'scenarioBranch') {
-      assert(helpers && typeof helpers.applyScenarioBranch === 'function',
-        'golden tape scenarioBranch commands require the SG-05 applyScenarioBranch helper');
-      const result = helpers.applyScenarioBranch(command.branchId, {
-        source: command.source || 'golden-tape',
-      });
-      assert(result && result.ok, `golden tape scenarioBranch rejected: ${command.branchId} (${result && result.reason || 'unknown'})`);
-      continue;
-    }
-    if (command.kind !== 'combatAction') continue;
-    assert(helpers && typeof helpers.requestCombatAction === 'function',
-      'golden tape combatAction commands require the SG-03 requestCombatAction helper');
-    const actor = resolveScenarioEntity(state, command.actor);
-    assert(actor, `golden tape command actor did not resolve: ${command.actor}`);
-    const request = {
-      actorId: actor.id,
-      actionId: command.actionId,
-      source: { kind: command.source || 'player', controllerId: 'golden-tape' },
-    };
-    if (command.target != null) {
-      const target = resolveScenarioEntity(state, command.target);
-      assert(target, `golden tape command target did not resolve: ${command.target}`);
-      request.targetId = target.id;
-    }
-    if (command.attachment != null) {
-      request.attachmentId = resolveAttachmentRef(state, command.attachment, actor.id);
-    }
-    const result = helpers.requestCombatAction(request);
-    assert(result && result.ok, `golden tape combatAction rejected: ${command.actionId} (${result && result.reason || 'unknown'})`);
-  }
-}
-
-function placeEntity(entity, x, z, rot) {
-  if (!entity) return;
-  entity.pos.x = x;
-  entity.pos.z = z;
-  if (entity.prevPos) {
-    entity.prevPos.x = x;
-    entity.prevPos.z = z;
-  }
-  entity.rot = rot;
-  entity.angVel = 0;
-  if (entity.vel) {
-    entity.vel.x = 0;
-    entity.vel.z = 0;
-  }
-}
-
-function set47aTacticalActive(entity, active) {
-  if (!entity || !entity.data || !entity.data.ai) return;
-  entity.data.ai.passive = !active;
-}
-
-function stage47aHandoffActors(state, recoveryTug, simTime, activeBeat) {
-  if (!(simTime >= 270 || activeBeat === 'recovery_tug' || activeBeat === 'resolution_branch')) return;
-  if (recoveryTug && recoveryTug.alive !== false
-      && Math.hypot(recoveryTug.pos.x - HANDOFF_STAND_OFF_TUG.x,
-        recoveryTug.pos.z - HANDOFF_STAND_OFF_TUG.z) > 0.01) {
-    placeEntity(recoveryTug, HANDOFF_STAND_OFF_TUG.x, HANDOFF_STAND_OFF_TUG.z, HANDOFF_STAND_OFF_TUG.rot);
-    recoveryTug.flags = Object.assign({}, recoveryTug.flags, { noInterp: true });
-    recoveryTug.physicsSleeping = false;
-  }
-  const beacon = resolveScenarioEntity(state, 'kessler_handoff_beacon');
-  if (beacon && Math.hypot(beacon.pos.x - HANDOFF_ZONE_BEACON.x, beacon.pos.z - HANDOFF_ZONE_BEACON.z) > 0.01) {
-    placeEntity(beacon, HANDOFF_ZONE_BEACON.x, HANDOFF_ZONE_BEACON.z, beacon.rot || 0);
-  }
-}
-
-function update47aScenarioActorIntents(state) {
-  const player = state.entities.get(state.playerId);
-  const scenario = state.scenario && state.scenario.active;
-  if (!player || !scenario) return;
-  const interceptor = resolveScenarioEntity(state, 'scavenger_interceptor');
-  const harasser = resolveScenarioEntity(state, 'scavenger_harasser');
-  const thief = resolveScenarioEntity(state, 'scavenger_thief');
-  const recoveryTug = resolveScenarioEntity(state, 'official_recovery_tug');
-  const activeBeat = scenario.activeBeatId;
-  const simTime = state.simTime || 0;
-  set47aTacticalActive(interceptor, simTime >= 75 || activeBeat === 'scavenger_arrival');
-  set47aTacticalActive(harasser, simTime >= 75 || activeBeat === 'scavenger_arrival');
-  set47aTacticalActive(thief, simTime >= 75 || activeBeat === 'scavenger_arrival');
-  set47aTacticalActive(recoveryTug, simTime >= 270 || activeBeat === 'recovery_tug');
-  stage47aHandoffActors(state, recoveryTug, simTime, activeBeat);
-  if (!harasser || !harasser.alive) return;
-  const shouldFire = (simTime >= 75 && simTime <= 76.25) || (activeBeat === 'scavenger_arrival' && simTime <= 76.25);
-  harasser.data.intent = shouldFire
-    ? {
-        fire: true,
-        aimAngle: Math.atan2(player.pos.z - harasser.pos.z, player.pos.x - harasser.pos.x),
-      }
-    : null;
-}
 
 // ---------------------------------------------------------------------------
 // Journal transport pack — the "byte-range" that crosses worker→main.
@@ -470,13 +270,7 @@ async function handleInit(msg) {
   const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
     ? msg.journalCapacity
     : undefined;
-  // Writer-side eligibility mirrors pushAlive()'s mesh test in presentationSources.js:
-  // entities the rebuild collect can never republish are never journaled. Without
-  // this, a spawn suppressed during a pending rebuild (save restore at tick 600)
-  // leaves the entity unspawned forever → transform-without-spawn → rebuild storm.
-  const isEntityJournaled = (e) => !!(e && e._noMesh !== true
-    && !(e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)));
-  const journal = createPresentationJournal(journalCapacity, { isEntityJournaled });
+  const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
   host.journal = journal;
   host.scratch = createPresentationJournalRecord(); // visitRange copies each record into this
 
@@ -648,7 +442,7 @@ async function handleTick(msg) {
     update47aScenarioActorIntents(state);
     sim.step(SIM_DT);
     if (host.reloadAt != null && state.tick === host.reloadAt) {
-      await reloadThroughSave(registryRef(), state, host.reloadAt, {
+      await reloadThroughSave(registryRef(), state, null, host.reloadAt, {
         physicsBackend: 'rapier-dynamic',
         flightBackend: 'legacy',
       });
