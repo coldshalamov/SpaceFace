@@ -3858,6 +3858,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
   }
 
+  function emitFitIntent(eventName, payload) {
+    let refused = false;
+    const mark = () => { refused = true; };
+    const unsubscribe = ctx.bus && typeof ctx.bus.on === 'function' ? ctx.bus.on('module:fitRefused', mark) : null;
+    if (ctx.bus) ctx.bus.emit(eventName, payload);
+    if (typeof unsubscribe === 'function') unsubscribe();
+    return !refused;
+  }
+
   function closeChooser(opts = {}) {
     if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
@@ -4817,7 +4826,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           return;
         }
       }
-      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex, shipIndex: statedShipIndex, expectedPrice: statedPrice, hullDefId: statedHullDefId }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
+      if (ctx.bus) {
+        const accepted = emitFitIntent('ui:buyModule', { defId, fitSlotIndex, shipIndex: statedShipIndex, expectedPrice: statedPrice, hullDefId: statedHullDefId });
+        if (!accepted) {
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          focusNamedStationControl(bf, chooserEl);
+          return;
+        }
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+      }
       // the bought module rides home into its socket
       explodeSeat(true, defId);
       explodeLockSeat = true;
@@ -4828,11 +4845,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const fi = ev.target.closest('[data-fit-inv]');
     if (fi && !fi.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
       if (ctx.bus) {
-        ctx.bus.emit('ui:fitModule', {
+        const accepted = emitFitIntent('ui:fitModule', {
           shipIndex: viewIdx,
           slotIndex: Number(fi.getAttribute('data-fit-inv-slot')),
           instanceId: fi.getAttribute('data-fit-inv'),
         });
+        if (!accepted) {
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          if (typeof fi.focus === 'function') fi.focus({ preventScroll: true });
+          return;
+        }
         ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
       }
       closeChooser(); setTimeout(refresh, 70); return;

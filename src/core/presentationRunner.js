@@ -14,6 +14,7 @@ import { collectJournalPresentationEntities } from '../world/presentationSources
 import { resolveFrameCap, stepFrameCapDebt } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
+import { syncFocusLossHold } from './focusLossHold.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -167,6 +168,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const visibilityTarget = Object.prototype.hasOwnProperty.call(deps, 'visibilityTarget')
     ? deps.visibilityTarget
     : globalThis.document;
+  const focusTarget = Object.prototype.hasOwnProperty.call(deps, 'focusTarget')
+    ? deps.focusTarget
+    : (typeof globalThis.window !== 'undefined' ? globalThis.window : null);
   const lifecyclePort = Object.prototype.hasOwnProperty.call(deps, 'lifecyclePort')
     ? deps.lifecyclePort
     : globalThis.window?.spacefaceLifecycle;
@@ -402,6 +406,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         recordTeardownError('removeVisibilityListener', error, errors);
       }
     }
+    if (focusTarget && typeof focusTarget.removeEventListener === 'function') {
+      try {
+        focusTarget.removeEventListener('blur', onWindowBlur);
+        focusTarget.removeEventListener('focus', onWindowFocus);
+      } catch (error) {
+        recordTeardownError('removeFocusListener', error, errors);
+      }
+    }
     if (inputResumeTarget && typeof inputResumeTarget.removeEventListener === 'function') {
       try {
         inputResumeTarget.removeEventListener('pointerdown', onInputResume, true);
@@ -557,6 +569,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     diagnostics.visibilityState = visibilityTarget?.visibilityState || 'unavailable';
     documentHidden = diagnostics.visibilityState === 'hidden';
     synchronizeLifecycle('document-visibility');
+  }
+
+  function onWindowBlur() {
+    if (destroyed) return;
+    try { syncFocusLossHold(state, true); } catch (_) { /* the clock owner reports its own errors */ }
+  }
+
+  function onWindowFocus() {
+    if (destroyed) return;
+    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
   }
 
   function onInputResume() {
@@ -1030,6 +1052,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
   if (visibilityTarget && typeof visibilityTarget.addEventListener === 'function') {
     visibilityTarget.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  if (focusTarget && typeof focusTarget.addEventListener === 'function') {
+    focusTarget.addEventListener('blur', onWindowBlur);
+    focusTarget.addEventListener('focus', onWindowFocus);
   }
   if (inputResumeTarget && typeof inputResumeTarget.addEventListener === 'function') {
     inputResumeTarget.addEventListener('pointerdown', onInputResume, true);

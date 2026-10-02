@@ -1870,12 +1870,21 @@ export const ships = {
   /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
    *  pushes a new instance into moduleInventory. Returns true on success. */
   buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null }) {
+    const refuse = (reason) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex: fitSlotIndex,
+        defId,
+        reason: reason || 'refused',
+      });
+      return false;
+    };
     const def = defById(defId);
     const p = this.state.player;
-    if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return false; }
+    if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return refuse('unknown_module'); }
     if (!this.isUnlocked(def)) {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
-      return false;
+      return refuse('research_required');
     }
     if (hullDefId != null) {
       const namedHull = this.ownedShip(shipIndex);
@@ -1885,7 +1894,7 @@ export const ships = {
           kind: 'error',
           ttl: 3,
         });
-        return false;
+        return refuse('different_hull');
       }
     }
     const offer = stationShopOffer(def, dockedShopStationId(this.state));
@@ -1896,18 +1905,18 @@ export const ships = {
         kind: 'error',
         ttl: 3,
       });
-      return false;
+      return refuse('price_changed');
     }
     if (price > 0 && p.credits < price) {
       this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
-      return false;
+      return refuse('insufficient_credits');
     }
     const shouldFit = Number.isInteger(fitSlotIndex);
     if (shouldFit) {
       const blocker = this.moduleFitBlocker({ shipIndex, slotIndex: fitSlotIndex, def });
       if (blocker) {
         if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
-        return false;
+        return refuse(blocker.reason);
       }
     }
     const item = { instanceId: this.nextInstanceId(), defId };
@@ -2092,30 +2101,40 @@ export const ships = {
   /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
    *  slot on the active (or given) owned ship. */
   fitModule({ shipIndex, slotIndex, instanceId, defId }) {
+    const refuse = (reason) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex,
+        defId,
+        instanceId,
+        reason: reason || 'refused',
+      });
+      return false;
+    };
     const p = this.state.player;
     const owned = this.ownedShip(shipIndex);
-    if (!owned) return false;
+    if (!owned) return refuse('missing_ship');
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slots = buildSlotList(shipDef);
     const slot = slots[slotIndex];
-    if (!slot) return false;
+    if (!slot) return refuse('unknown_slot');
 
     // resolve the module def + whether it comes from inventory
     let invIdx = -1;
     let def = null;
     if (instanceId != null) {
       invIdx = p.moduleInventory.findIndex((m) => m.instanceId === instanceId);
-      if (invIdx < 0) return false;
+      if (invIdx < 0) return refuse('missing_module');
       def = defById(p.moduleInventory[invIdx].defId);
       defId = p.moduleInventory[invIdx].defId;
     } else if (defId != null) {
       def = defById(defId);
     }
-    if (!def) return false;
+    if (!def) return refuse('unknown_module');
     const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def });
     if (blocker) {
       if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
-      return false;
+      return refuse(blocker.reason);
     }
 
     const existing = owned.fittings[slotIndex];

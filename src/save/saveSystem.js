@@ -24,6 +24,8 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
+import { stampIronmanLatch } from './ironmanChoice.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
@@ -789,6 +791,7 @@ export const save = {
     if (settings && settings.gameplay && Object.prototype.hasOwnProperty.call(settings.gameplay, 'runtimeProfile')) {
       delete settings.gameplay.runtimeProfile;
     }
+    stampIronmanLatch(settings, this.state && this.state.simTime);
     return settings;
   },
 
@@ -925,6 +928,8 @@ export const save = {
     // Establish the save boundary before any serializer reads live state. Manual saves are
     // synchronous; autosaves use the same boundary in their chunked capture below. The journal
     // remains pending until the write succeeds, so a failed save can retry the same facts.
+    beginFocusLossSaveWrite(this.state);
+    try {
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
     let envelope;
     let serializeMs = 0;
@@ -963,6 +968,9 @@ export const save = {
     const ok = this._publishSaveResult(slot, envelope, write, timing);
     if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
     return ok;
+    } finally {
+      endFocusLossSaveWrite(this.state);
+    }
   },
 
   _writeSlot(slot, envelope, options = {}) {
@@ -4860,6 +4868,10 @@ function sanitizeRestoredSettings(settings) {
   // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
   // old save pin Off forever.
   if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  s.gameplay.pauseOnFocusLoss = s.gameplay.pauseOnFocusLoss !== false;
+  if (s.gameplay.ironmanChoiceLocked !== true) delete s.gameplay.ironmanChoiceLocked;
+  if (!s.audio || typeof s.audio !== 'object' || Array.isArray(s.audio)) s.audio = {};
+  s.audio.muteOnFocusLoss = s.audio.muteOnFocusLoss === true;
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
@@ -4925,6 +4937,7 @@ function profileSettingsSnapshot(settings) {
       damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
+      pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
     },
   };
 }

@@ -16,7 +16,7 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
-import { traumaFromContact } from './feel.js';
+import { screenShakeScale, traumaFromContact } from './feel.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import {
   createLatchSpring,
@@ -1820,7 +1820,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const motionScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
         const vl = readVelocityLanguage(state);
         const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
-        const shakeScale = motionScale * bandShake;
+        const shakeScale = motionScale * bandShake * screenShakeScale(state && state.settings);
         // Resample the shake noise on a FIXED-RATE accumulator, not once per rendered frame. The
         // amplitude was already frame-rate independent (trauma decays against frameDt above), but the
         // *frequency* was the display refresh rate: the same trauma read as a fast buzz at 144 Hz and

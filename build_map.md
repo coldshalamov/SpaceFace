@@ -648,7 +648,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 140 | PB-PERF-C | SF-263+264+266+269+270 present/loop seam: bounded publish, alloc reduction, spatial scaling, edge-once input, intact-picture gate | PB | OPEN — seam renderer.js serial with 75/139 |
 | 141 | PB-PERF-D | SF-258+259+260 reproduce-gated trio: starvation root cause (D36/D84 surfaces), residual retention (D24), pose-jump attribution (D60 closed — retire or reproduce) | PB | OPEN — CHECK trio |
 | 142 | PB-PERF-E | SF-261 one measured material-key per render contract — residual key noise only after SF-256 lands | PB | PARKED gated on row 75 |
-| 143 | PB-AUD-A | SF-227+230 engine effort under load/brake + field heard through force direction | PB | OPEN — seam audioSystem serial |
+| 143 | PB-AUD-A | SF-227+230 engine effort under load/brake + field heard through force direction | PB | OPEN — SF-227 effort voice shipped (loaded thrust drops pitch, brake speaks at zero throttle); SF-230 field-direction still open. seam audioSystem serial |
 | 144 | PB-AUD-B | SF-231+235 comms yield to the immediate problem + refusal reasons split (ammo vs target) | PB | OPEN — seam audioSystem serial |
 | 145 | PB-AUD-C | SF-232+233+240 machine work-cycle rhythm, anomaly-evidence cue, whole-mix family acceptance | PB | OPEN — seam audioSystem serial |
 | 146 | PB-AUD-D | SF-226+228+229+234+236+237 verify six: release/break distinct, slam separation, bomb phases, encounter arc, origin-shift reset, voice budget | PB | OPEN — CHECK sextet |
@@ -658,7 +658,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | OPEN — seam saveSystem serial |
 | 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | OPEN — seam saveSystem serial |
 | 152 | PB-CONT-C | SF-280+281+284 migration template, failed-save visibility, bounds preserve consequences | PB | OPEN — seam saveSystem serial |
-| 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | OPEN — non-saveSystem seams; parallel-safe with 150–152 |
+| 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | OPEN — SF-276 pointer-cancel releases held fire and thrust; SF-271, SF-275, SF-279 still open. non-saveSystem seams; parallel-safe with 150–152 |
 | 154 | PB-CONT-E | SF-272+282 validate-then-restore boundary + one real browser/Electron divergence | PB | OPEN — CHECK pair |
 | 155 | PB-ECO | SF-181–195 Charon Bloom ecology — 15-packet opt-in expansion; SF-181 first if admitted (deep-dive 08), 183–185/189/192/193 chain behind it | PB | PARKED expansion opt-in |
 | 156 | PB-LANE-GRAPHICS | SF-211–214, 220, 224 — authored-hull/LOD/wreck-family/place-state packets; Forge+assets write-sets | PB | PARKED devin-graphics lane |
@@ -837,7 +837,7 @@ named in the status for the frontend lane to take alone):
 | 257 | FB-084+FB-085+FB-086+FB-087 | Kill beats by weight, photo filters, one kill recorder, replay from where you died | PB | OPEN — seam camera.js / crucible.js (ORRERY lane: FB-087) |
 | 258 | FB-088+FB-089+FB-090+FB-095 | The machine on the table clock: gated spatial hash, declared clocks, five quiet latches, wall-time guard | PB | OPEN — seam physics.js / authoritativeSystemManifest.js |
 | 259 | FB-091+FB-092+FB-096+FB-097+FB-098+FB-141 | The machine on the present: budgeted admission, enumerated arrival roster, no first-frame allocation, hitch ring, one batched archetype, probe doors | PB | OPEN — seam renderer.js |
-| 260 | FB-099+FB-100+FB-126+FB-105+FB-112 | Dead settings controls live, options reach parity, focus loss mutes and pauses, Ironman is one-way, settings speak to a reader | PB | OPEN — seam settings.js (ORRERY lane: FB-112) |
+| 260 | FB-099+FB-100+FB-126+FB-105+FB-112 | Dead settings controls live, options reach parity, focus loss mutes and pauses, Ironman is one-way, settings speak to a reader | PB | OPEN — FB-099 screen shake, FB-100 parity, FB-105 ironman latch, FB-126 focus hold shipped; FB-112 is ORRERY |
 | 261 | FB-102+FB-103+FB-106+FB-107 | Career counters and a statistics screen, a shell that remembers its window, honest locale labels | PB | OPEN — seam achievements.js / electron main / localization (ORRERY lane: FB-103) |
 | 262 | FB-134+FB-138+FB-139+FB-011+FB-008 | Small closures: the corridor typo, wing refusals, vengeful returns, the massline readout, the overspeed band | PB | OPEN — seam dockingCorridor.js / wingmanRadial.js / masslineCadenceReadout.js (ORRERY lane: FB-011, FB-008) |
 

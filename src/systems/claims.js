@@ -308,6 +308,11 @@ export function claimDefenseRating(body, bodies = []) {
 }
 
 /** Departed freight is sold, returned, recovered, or explicitly lost. Nothing is invented. */
+export function listedMarketSell(entry) {
+  const listed = Number(entry && entry.lastSell);
+  return Number.isFinite(listed) && listed > 0 ? listed : null;
+}
+
 export function relayFreightLedger(departed, aboard, recoverable = 0) {
   const left = Math.max(0, Math.floor(Number(departed) || 0));
   const onHull = Math.max(0, Math.min(left, Math.floor(Number(aboard) || 0)));
@@ -1176,12 +1181,22 @@ export const claims = {
     if (convoy.saleSettled === true) return;
     convoy.saleSettled = true;
     const economy = this._economyPeer();
-    const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
-    if (!(unit > 0)) {
+    const markets = this.state && this.state.economy && this.state.economy.markets;
+    const stationMarket = markets && markets[convoy.destStationId];
+    const entry = stationMarket && stationMarket[convoy.goodId];
+    const listed = listedMarketSell(entry);
+    const unit = listed != null && economy && economy.priceOf
+      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell')
+      : null;
+    if (!(listed > 0) || !(unit > 0)) {
       spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
       if (convoy.qtyLedger) convoy.qtyLedger.returned = qty;
-      this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
-        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId });
+      this._receipt(
+        body,
+        'convoy_returned',
+        listed > 0 ? 'No buyer found — freight returned' : 'No market price — freight held',
+        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, missingPrice: !(listed > 0) },
+      );
       return;
     }
     // PQ-170.01: a station the player's freight grew keeps less of the sale.

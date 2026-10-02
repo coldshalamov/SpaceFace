@@ -35,6 +35,7 @@ import {
   legacyContinuousGain,
   readPublishedThrottle,
   readTetherLoad,
+  readDriveSpeed01,
   stepElementaryVoices,
 } from './elementaryVoices.js';
 import {
@@ -3056,7 +3057,8 @@ export const audio = {
     };
 
     const masterVal = a.master == null ? 0.55 : a.master;
-    const masterTarget = muted ? 0 : linearGain(masterVal) * 0.501187;
+    const focusMuted = !!(this.state && this.state.render && this.state.render.focusLossMuted);
+    const masterTarget = (muted || focusMuted) ? 0 : linearGain(masterVal) * 0.501187;
     ramp('master', rt.masterGain.gain, masterTarget, true);
 
     const sfxVal = a.sfx == null ? 0.7 : a.sfx;
@@ -6776,6 +6778,8 @@ export const audio = {
       priorityDuck: rt._priorityDuckEngine,
       motionReduce: this._motionReduced(),
       tier: this.state ? this._resolveEngineTier(player) : 'idle',
+      speed01: readDriveSpeed01(player),
+      braking: !!(input.brake || (input.actions && input.actions.brake)),
       dt: stepDt,
       paused,
       flight: inFlight,
