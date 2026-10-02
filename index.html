@@ -187,7 +187,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-                <!-- modulepreload:registry:begin -->
+                  <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -369,7 +369,9 @@
   <link rel="modulepreload" href="./src/core/frameLiveness.js" />
   <link rel="modulepreload" href="./src/core/inputCommandSnapshot.js" />
   <link rel="modulepreload" href="./src/core/livingHull.js" />
+  <link rel="modulepreload" href="./src/core/mainToSimEventSurface.js" />
   <link rel="modulepreload" href="./src/core/math.js" />
+  <link rel="modulepreload" href="./src/core/newGameBoot.js" />
   <link rel="modulepreload" href="./src/core/newGamePlus.js" />
   <link rel="modulepreload" href="./src/core/perfCounters.js" />
   <link rel="modulepreload" href="./src/core/perfRuntime.js" />
@@ -389,6 +391,9 @@
   <link rel="modulepreload" href="./src/core/runtimeWitness.js" />
   <link rel="modulepreload" href="./src/core/sg02DynamicBodyOwner.js" />
   <link rel="modulepreload" href="./src/core/sim.js" />
+  <link rel="modulepreload" href="./src/core/simLaneCommands.js" />
+  <link rel="modulepreload" href="./src/core/simLaneJournal.js" />
+  <link rel="modulepreload" href="./src/core/simLaneMain.js" />
   <link rel="modulepreload" href="./src/core/simulationRunner.js" />
   <link rel="modulepreload" href="./src/core/spatialHash.js" />
   <link rel="modulepreload" href="./src/core/spatialQuery.js" />
@@ -629,6 +634,7 @@
   <link rel="modulepreload" href="./src/data/salvageLegality.js" />
   <link rel="modulepreload" href="./src/data/sandboxSetPieceFollowOns.js" />
   <link rel="modulepreload" href="./src/data/saveVersion.js" />
+  <link rel="modulepreload" href="./src/data/scanClues.js" />
   <link rel="modulepreload" href="./src/data/scanReveal.js" />
   <link rel="modulepreload" href="./src/data/sectorActivityPockets.js" />
   <link rel="modulepreload" href="./src/data/sectorAnchors.js" />
@@ -862,6 +868,8 @@
   <link rel="modulepreload" href="./src/render/particleShards.js" />
   <link rel="modulepreload" href="./src/render/persistentSubmitLanes.js" />
   <link rel="modulepreload" href="./src/render/pickupMotionPresentation.js" />
+  <link rel="modulepreload" href="./src/render/pickupShapeData.generated.js" />
+  <link rel="modulepreload" href="./src/render/pickupShapes.js" />
   <link rel="modulepreload" href="./src/render/pipelineAutoFlushPolicy.js" />
   <link rel="modulepreload" href="./src/render/planarAdditivePolicy.js" />
   <link rel="modulepreload" href="./src/render/planetFactory.js" />
@@ -946,6 +954,7 @@
   <link rel="modulepreload" href="./src/render/thruster/ribbon/driveForge.js" />
   <link rel="modulepreload" href="./src/render/thruster/ribbon/exhaustLag.js" />
   <link rel="modulepreload" href="./src/render/thruster/ribbon/plasmaRibbons.js" />
+  <link rel="modulepreload" href="./src/render/thruster/ribbon/plumeSlug.js" />
   <link rel="modulepreload" href="./src/render/thruster/systems/accessibility.js" />
   <link rel="modulepreload" href="./src/render/thruster/systems/continuousPlume.js" />
   <link rel="modulepreload" href="./src/render/thruster/systems/eventLight.js" />
@@ -1022,6 +1031,7 @@
   <link rel="modulepreload" href="./src/story/campaign47a/embodiedDialogue.js" />
   <link rel="modulepreload" href="./src/story/campaign47a/embodiedMissions.js" />
   <link rel="modulepreload" href="./src/story/campaign47a/index.js" />
+  <link rel="modulepreload" href="./src/story/endings/continuationAccess.js" />
   <link rel="modulepreload" href="./src/story/endings/eligibility.js" />
   <link rel="modulepreload" href="./src/story/endings/endingDefs.js" />
   <link rel="modulepreload" href="./src/story/endings/finaleContent.js" />
@@ -1032,6 +1042,7 @@
   <link rel="modulepreload" href="./src/story/endings/resolve.js" />
   <link rel="modulepreload" href="./src/story/endings/value.js" />
   <link rel="modulepreload" href="./src/story/mechanicVoice.js" />
+  <link rel="modulepreload" href="./src/story/storyFacts.js" />
   <link rel="modulepreload" href="./src/story/storyLedger.js" />
   <link rel="modulepreload" href="./src/systems/aceMemory.js" />
   <link rel="modulepreload" href="./src/systems/actions.js" />
@@ -1151,6 +1162,7 @@
   <link rel="modulepreload" href="./src/systems/recoveryEncounter.js" />
   <link rel="modulepreload" href="./src/systems/regionalEcology.js" />
   <link rel="modulepreload" href="./src/systems/routeFollower.js" />
+  <link rel="modulepreload" href="./src/systems/routePlanner.js" />
   <link rel="modulepreload" href="./src/systems/runSession.js" />
   <link rel="modulepreload" href="./src/systems/salvage.js" />
   <link rel="modulepreload" href="./src/systems/salvageActions.js" />
@@ -1514,6 +1526,7 @@
   <link rel="modulepreload" href="./src/world/activityRuntime.js" />
   <link rel="modulepreload" href="./src/world/arranger.js" />
   <link rel="modulepreload" href="./src/world/asteroidField.js" />
+  <link rel="modulepreload" href="./src/world/auxRowJournal.js" />
   <link rel="modulepreload" href="./src/world/customsWeir.js" />
   <link rel="modulepreload" href="./src/world/dressingTable.js" />
   <link rel="modulepreload" href="./src/world/embodimentRecipes.js" />

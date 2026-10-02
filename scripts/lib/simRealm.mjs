@@ -114,11 +114,23 @@ export function installLaneStorage(globalObj, { onWrite } = {}) {
  * Replace the staged snapshot wholesale: entries the main realm no longer
  * holds disappear here too (slot deletes must be visible to recovery logic).
  */
-export function stageLaneStorage(entries) {
+export function stageLaneStorage(entries, preserveOps = null) {
   if (!entries || typeof entries !== 'object') return;
   _laneStore.clear();
   for (const key of Object.keys(entries)) {
     const v = entries[key];
     if (typeof v === 'string') _laneStore.set(key, v);
+  }
+  // Writes the worker already staged but has not yet relayed main-side must
+  // survive the wholesale restage — the incoming snapshot predates them.
+  if (Array.isArray(preserveOps)) {
+    for (const op of preserveOps) {
+      try {
+        if (!op) continue;
+        if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') _laneStore.set(op.key, op.value);
+        else if (op.op === 'remove' && typeof op.key === 'string') _laneStore.delete(op.key);
+        else if (op.op === 'clear') { for (const k of [..._laneStore.keys()]) _laneStore.delete(k); }
+      } catch (_) { /* staging replay is best-effort */ }
+    }
   }
 }

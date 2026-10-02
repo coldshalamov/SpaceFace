@@ -194,8 +194,19 @@ import {
   tickMachineLayer,
   machineRouteOpen,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
-import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
+// Route planning core — shared with the worker-lane main-side facade
+// (src/core/registry.js). Pure functions; the handshake burn stays here.
+import {
+  DRIVE_TIERS,
+  DEFAULT_DRIVE,
+  ROUTE_BASE_FUEL as BASE_FUEL,
+  ROUTE_BASE_INTERDICT as BASE_INTERDICT,
+  routeEdgeDist,
+  routeInterdictChance,
+  wormholeGateCheck,
+  computeDiscoveredRoute,
+} from './routePlanner.js';
 import { removeCargo } from './cargo.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
@@ -255,8 +266,7 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
 const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
-const BASE_FUEL = 4;            // fuel units per lightyear
-const BASE_INTERDICT = 0.35;
+
 const GATE_CHARGE = 3.0;        // s align time for a gate jump
 const GATE_COOLDOWN = 0;
 const DRIVE_COOLDOWN = 6.0;     // s
@@ -293,14 +303,7 @@ const MEMBERSHIP_SWITCH_FRACTION = 0.35;
 const MEMBERSHIP_MIN_PENETRATION_WU = 2500;
 const MEMBERSHIP_DWELL_S = 8;
 
-// Jump-drive tiers (design 05). Resolved from the equipped module; defaults to T1.
-const DRIVE_TIERS = {
-  jump_t1: { baseCharge: 8.0, tierFuelMult: 1.0,  driveStealth: 0.0,  hotJump: false },
-  jump_t2: { baseCharge: 5.5, tierFuelMult: 0.85, driveStealth: 0.15, hotJump: false },
-  jump_t3: { baseCharge: 3.5, tierFuelMult: 0.70, driveStealth: 0.35, hotJump: true  },
-};
-const DEFAULT_DRIVE = DRIVE_TIERS.jump_t1;
-
+// Jump-drive tiers + defaults come from routePlanner.js (shared with the lane facade).
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const STATION_SECTOR_ID = new Map();
@@ -5205,69 +5208,10 @@ export const world = {
 
   /** Dijkstra over discovered edges. Weight = per-leg fuelCost ('fuel') or 1 ('hops'). */
   computeRoute(targetSectorId, mode = 'fuel') {
-    const state = this.state;
-    const start = state.world.currentSectorId;
-    if (!start || !targetSectorId || start === targetSectorId) return null;
-    const drive = this._activeDrive();
-
-    const dist = new Map(), prev = new Map();
-    const visited = new Set();
-    dist.set(start, 0);
-    const pq = [start];
-
-    const sectorOf = (id) => state.world.sectors[id] || SECTOR_BY_ID.get(id);
-    const isDiscovered = (id) => {
-      const d = state.world.discovery[id];
-      return id === start || (d && d.discovered);
-    };
-
-    while (pq.length) {
-      // Pop the smallest-dist node (linear scan; the canonical graph is only 24 nodes).
-      let bi = 0;
-      for (let i = 1; i < pq.length; i++) {
-        if ((dist.get(pq[i]) ?? Infinity) < (dist.get(pq[bi]) ?? Infinity)) bi = i;
-      }
-      const u = pq.splice(bi, 1)[0];
-      if (visited.has(u)) continue;
-      visited.add(u);
-      if (u === targetSectorId) break;
-      const su = sectorOf(u);
-      if (!su) continue;
-      const neighbors = [...(su.neighbors || [])];
-      if (su.wormholeTo && this._wormholeUnlocked(su)) neighbors.push(su.wormholeTo.sectorId);
-      for (const v of neighbors) {
-        if (!isDiscovered(v) && v !== targetSectorId) continue; // route only through known space
-        const sv = sectorOf(v);
-        if (!sv) continue;
-        const edgeDist = this._edgeDist(su, sv);
-        const w = mode === 'hops' ? 1 : Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
-        const alt = (dist.get(u) ?? Infinity) + w;
-        if (alt < (dist.get(v) ?? Infinity)) {
-          dist.set(v, alt); prev.set(v, u);
-          if (!visited.has(v)) pq.push(v);
-        }
-      }
-    }
-
-    if (!prev.has(targetSectorId)) return null;
-    // reconstruct
-    const nodes = [];
-    let cur = targetSectorId;
-    while (cur && cur !== start) { nodes.unshift(cur); cur = prev.get(cur); }
-    nodes.unshift(start);
-
-    const legs = [];
-    let totalFuel = 0;
-    for (let i = 0; i < nodes.length - 1; i++) {
-      const a = sectorOf(nodes[i]), b = sectorOf(nodes[i + 1]);
-      const edgeDist = this._edgeDist(a, b);
-      const fuel = Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
-      const charge = drive.baseCharge * (edgeDist / 4);
-      const interdict = this._interdictChance(b, 'drive', drive);
-      legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict });
-      totalFuel += fuel;
-    }
-    return { legs, totalFuel, totalHops: legs.length };
+    return computeDiscoveredRoute(this.state, targetSectorId, mode, {
+      drive: this._activeDrive(),
+      wormholeGate: (_st, sector) => (this._wormholeUnlocked(sector) ? 'open' : 'closed'),
+    });
   },
 
   // =========================================================================================
@@ -5643,54 +5587,21 @@ export const world = {
   },
 
   _wormholeUnlocked(sector) {
-    if (!sector || !sector.wormholeTo) return false;
-    const gate = sector.wormholeTo.gatedBy; // e.g. "tech:tech_long_range_survey"
-    let open = !gate;
-    if (gate) {
-      const [kind, key] = gate.split(':');
-      if (kind === 'tech') open = (this.state.player.researchedNodes || []).includes(key);
-      else if (kind === 'flag') open = !!(this.state.story.flags || {})[key];
-      else if (kind === 'machine') {
-        // AE-108 revoked routes: machine-protocol standing opens transit the tech tree cannot.
-        if (machineRouteOpen(this.state, key)) return true;
-        // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
-        const cargo = this.state.player && this.state.player.cargo;
-        if (cargo && cargo.items && (cargo.items.cmdty_gate_handshake || 0) > 0) {
-          removeCargo(this.state, 'cmdty_gate_handshake', 1);
-          const ae = ensureAlienEcologyState(this.state);
-          if (!ae.machineAccess) ae.machineAccess = {};
-          ae.machineAccess[key] = true;
-          this.bus.emit('toast', {
-            text: 'Handshake token accepted — the gate files you as a route-holder.',
-            kind: 'good', ttl: 6,
-          });
-          return true;
-        }
-        return false;
-      } else open = false;
-    }
-    // AE-108: `machineGate` puts the machines' credential on a charted route — the gate
-    // keeps its authored prerequisite, but a fault verdict refuses transit outright and
-    // clean machine standing (or a burned handshake token) opens it without that research.
-    const machineKey = sector.wormholeTo.machineGate;
-    if (!machineKey) return open;
-    const ae = this.state.world && this.state.world.alienEcology;
-    if (ae && MACHINE_PROTOCOL_FAULTS.includes(ae.machineProtocol)) return false;
-    if (open) return true;
-    if (machineRouteOpen(this.state, machineKey)) return true;
-    const cargo2 = this.state.player && this.state.player.cargo;
-    if (cargo2 && cargo2.items && (cargo2.items.cmdty_gate_handshake || 0) > 0) {
-      removeCargo(this.state, 'cmdty_gate_handshake', 1);
-      const ae2 = ensureAlienEcologyState(this.state);
-      if (!ae2.machineAccess) ae2.machineAccess = {};
-      ae2.machineAccess[machineKey] = true;
-      this.bus.emit('toast', {
-        text: 'Handshake token accepted — the gate files you as a route-holder.',
-        kind: 'good', ttl: 6,
-      });
-      return true;
-    }
-    return false;
+    // Pure gate evaluation lives in routePlanner; the handshake burn + toast are
+    // the only side effects and they stay here.
+    const gate = wormholeGateCheck(this.state, sector, machineRouteOpen);
+    if (gate.status === 'open') return true;
+    if (gate.status !== 'burnable') return false;
+    // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
+    removeCargo(this.state, 'cmdty_gate_handshake', 1);
+    const ae = ensureAlienEcologyState(this.state);
+    if (!ae.machineAccess) ae.machineAccess = {};
+    ae.machineAccess[gate.burnKey] = true;
+    this.bus.emit('toast', {
+      text: 'Handshake token accepted — the gate files you as a route-holder.',
+      kind: 'good', ttl: 6,
+    });
+    return true;
   },
 
   _onLockChanged({ locked }) {
@@ -6394,22 +6305,13 @@ export const world = {
     return true;
   },
 
-  // --- numeric helpers ----------------------------------------------------------------------
-  // Edge distance in lightyears from the two sectors' static map positions (clamped 2..9).
+  // --- numeric helpers (shared with the lane facade via routePlanner.js) ---------------------
   _edgeDist(a, b) {
-    if (a && b && a.position && b.position) {
-      const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y;
-      const raw = Math.hypot(dx, dy);
-      return clamp(raw * 1.4 + 1.5, 2, 9);
-    }
-    return 4;
+    return routeEdgeDist(a, b);
   },
 
   _interdictChance(sector, via, drive) {
-    if (!sector) return 0;
-    if (via === 'gate') return clamp(0.02 + 0.06 * sector.tier - 0.10, 0, 0.15);
-    const sec = sector.security != null ? sector.security : 0.5;
-    return clamp(BASE_INTERDICT * (1 - sec) * (1 - (drive.driveStealth || 0)), 0, 0.6);
+    return routeInterdictChance(sector, via, drive);
   },
 
   _gateToll(sector) {

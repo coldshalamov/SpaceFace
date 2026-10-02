@@ -15,7 +15,7 @@ import { installRealmFs } from './simRealm.mjs';
 
 installRealmFs({ readFileSync, resolve });
 
-const { tick, init, finalize, shutdown } = createSimHost();
+const { tick, init, finalize, shutdown, drainStorageOps } = createSimHost();
 
 let chain = Promise.resolve();
 parentPort.on('message', (msg) => {
@@ -43,7 +43,7 @@ parentPort.on('message', (msg) => {
         parentPort.postMessage({ kind: 'done', seq: msg.seq, ...result });
       } else if (msg.kind === 'shutdown') {
         shutdown();
-        parentPort.postMessage({ kind: 'bye', seq: msg.seq });
+        parentPort.postMessage({ kind: 'bye', seq: msg.seq, storageOps: drainStorageOps() });
       }
     } catch (error) {
       parentPort.postMessage({

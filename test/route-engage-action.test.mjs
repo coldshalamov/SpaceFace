@@ -34,6 +34,7 @@ const MAP_SOURCE = readFileSync(new URL('../src/ui/galaxyMap.js', import.meta.ur
 const FRAME_SOURCE = readFileSync(new URL('../src/ui/views/navigationFrame.js', import.meta.url), 'utf8');
 const FOLLOWER_SOURCE = readFileSync(new URL('../src/systems/routeFollower.js', import.meta.url), 'utf8');
 const WORLD_SOURCE = readFileSync(new URL('../src/systems/world.js', import.meta.url), 'utf8');
+const ROUTE_PLANNER_SOURCE = readFileSync(new URL('../src/systems/routePlanner.js', import.meta.url), 'utf8');
 
 function busSpy() {
   const events = [];
@@ -180,9 +181,12 @@ test('the fixtures are shaped the way the REAL producer reads them', () => {
 });
 
 test('the map does not read any field the producers do not write', () => {
-  // world.computeRoute returns `{ legs, totalFuel, totalHops: legs.length }` (world.js:2168) —
-  // pinned narrowly on the part the map depends on, so cosmetic edits to the other keys are free.
-  assert.match(WORLD_SOURCE, /return \{ legs, totalFuel,/,
+  // computeDiscoveredRoute (routePlanner.js — the pure core world.computeRoute delegates to)
+  // returns `{ legs, totalFuel, totalHops: legs.length }`; world.js delegates unchanged.
+  // Pinned narrowly on the part the map depends on, so cosmetic edits to the other keys are free.
+  assert.match(WORLD_SOURCE, /computeDiscoveredRoute/,
+    'world.computeRoute must keep delegating to routePlanner\'s discovered-route core');
+  assert.match(ROUTE_PLANNER_SOURCE, /return \{ legs, totalFuel,/,
     'computeRoute must keep returning `legs` — the map counts it for the plotted-route reason');
   assert.ok(!/^\s*phase:/m.test(FOLLOWER_SOURCE),
     'routeFollower must not introduce a `phase` field without the map being updated with it');

@@ -9,6 +9,7 @@ export { bindCommittedRange } from '../views/settingsControls.js';
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
+import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import {
   DEFAULTS as INPUT_DEFAULTS,
@@ -454,6 +455,9 @@ export const settingsScreen = {
     else s[key] = value;
     const payload = { section, key, value };
     if (persist === false) payload.persist = false;
+    // Worker-lane parity: the same write must land on the sim-owned settings
+    // subtree (sink-only on the main lane — falls through to applyLaneSetting).
+    laneWriteSetting(ctx.state, 'settings.' + (section ? section + '.' : '') + key, value);
     ctx.bus.emit('settings:changed', payload);
     try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
   },
@@ -828,6 +832,8 @@ export const settingsScreen = {
     build.word('Reset to defaults', () => {
       s.controls.bindings = null;
       s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
+      laneWriteSetting(ctx.state, 'settings.controls.bindings', null);
+      laneWriteSetting(ctx.state, 'settings.controls.masslineBindingProfile', MASSLINE_BINDING_PROFILE_SPACE);
       ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
       this._render(ctx);
     }, 'Arrow keys always also work for movement.');
@@ -904,6 +910,10 @@ export const settingsScreen = {
       s.controls.bindings[action] = arr;
       live[action] = arr;
     }
+    // Ship the whole binding map: the delete-to-default path removes the key
+    // entirely, which a leaf write cannot express. Spread — the envelope must
+    // not carry a live reference (the map keeps mutating per bind).
+    laneWriteSetting(ctx.state, 'settings.controls.bindings', { ...s.controls.bindings });
     ctx.bus.emit('settings:changed', { section: 'controls', key: action, value: s.controls.bindings[action] });
     this._render(ctx); // refresh the rows to show the new label
   },

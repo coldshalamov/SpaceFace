@@ -19,6 +19,7 @@
 // recency already works).
 
 import { recordDrawFlightGesture } from './drawFlightInput.js';
+import { laneWriteSetting } from '../core/simLaneCommands.js';
 
 const STYLE_ID = 'sf-touch-style';
 const OVERLAY_ID = 'sf-touch-overlay';
@@ -622,6 +623,7 @@ export function createTouch(ctx) {
       state.settings.controls = state.settings.controls || {};
       state.settings.controls.touch = state.settings.controls.touch || {};
       state.settings.controls.touch.enabled = on;
+      laneWriteSetting(state, 'settings.controls.touch.enabled', on);
       if (on == null) this.autoDetect();
       else this.setEnabled(!!on);
       if (bus && bus.emit) bus.emit('settings:changed', { section: 'controls' });

@@ -995,6 +995,13 @@ export const input = {
       case 'blur':
         this.releaseHeldControls('window-blur');
         break;
+      case 'gestureCancel':
+        // worldObjectInteraction's main-side cancel call — the m2 gesture
+        // state lives on this (sim-owned) input system under the lane.
+        if (typeof this.cancelWorldObjectGesture === 'function') {
+          this.cancelWorldObjectGesture(typeof d.reason === 'string' ? d.reason : 'lane');
+        }
+        break;
       case 'resize':
         if (this.touch && typeof this.touch.autoDetect === 'function') this.touch.autoDetect();
         break;

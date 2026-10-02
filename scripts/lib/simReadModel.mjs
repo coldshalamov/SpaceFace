@@ -451,6 +451,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  // machineGate/machine-route standing for the main-side computeRoute facade
+  // (routePlanner reads machineAccess + machineProtocol only).
+  'world.alienEcology',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored

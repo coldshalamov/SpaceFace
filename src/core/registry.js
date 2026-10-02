@@ -183,7 +183,13 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
-import { laneRpc, laneDomEvent } from './simLaneCommands.js';
+import { laneRpc, laneDomEvent, laneKeepalive } from './simLaneCommands.js';
+import {
+  computeDiscoveredRoute,
+  activeDriveForState,
+  wormholeGateCheck,
+  machineRouteStanding,
+} from '../systems/routePlanner.js';
 import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
@@ -816,6 +822,25 @@ export function createRegistry(ctx) {
           save: (slot) => laneRpc('saveWrite', { slot: slot === undefined ? null : slot }),
           load: (slot) => laneRpc('saveLoad', { slot: slot === undefined ? null : slot }),
           delete: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
+          // saveLoad.js's delete path — the delete must reach the worker's save
+          // system (staged store + index), not just main's localStorage.
+          deleteSlot: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
+          // File import: the File lives main-side (DOM), the envelope load is
+          // sim-owned. Reads the file here, then routes through saveImport.
+          importFile: (file, cb) => {
+            const finish = (ok) => { try { if (cb) cb(!!ok); } catch (_) {} };
+            if (!file || typeof FileReader === 'undefined') { finish(false); return; }
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                Promise.resolve(laneRpc('saveImport', { json: String(reader.result || ''), slot: 'quick' }))
+                  .then((ack) => finish(ack && ack.ok !== false))
+                  .catch(() => finish(false));
+              } catch (_) { finish(false); }
+            };
+            reader.onerror = () => finish(false);
+            reader.readAsText(file);
+          },
           get slots() { return (st && st.save && st.save.slots) || []; },
           get currentSlot() { return st && st.save ? st.save.currentSlot : null; },
           deferRunTransition: () => false,
@@ -837,11 +862,32 @@ export function createRegistry(ctx) {
           releaseHeldControls: () => laneDomEvent({ type: 'blur' }),
           getInput: () => (st ? st.input : null),
           inputActivityStamp: () => null,
+          // worldObjectInteraction cancels the m2 object gesture via this — the
+          // gesture state is sim-owned, so it ships as a DOM descriptor.
+          cancelWorldObjectGesture: (reason) => laneDomEvent({
+            type: 'gestureCancel',
+            reason: typeof reason === 'string' ? reason : 'lifecycle',
+          }),
         };
       case 'economy':
         // Price lookups are synchronous reads — the stage-5 census showed the
         // only caller (market price column) degrades to a blank cell on null.
         return { name: 'economy', quote: () => null };
+      case 'world':
+        return {
+          name: 'world',
+          // galaxyMap's preview/alternatives calls are synchronous — the route
+          // Dijkstra runs here over the mirrored world state (identical math,
+          // shared module). A held handshake token counts as preview-open: the
+          // route exists, and the burn happens when the jump executes.
+          computeRoute: (targetSectorId, mode = 'fuel') => computeDiscoveredRoute(st, targetSectorId, mode, {
+            drive: activeDriveForState(st),
+            wormholeGate: (_st, sector) => {
+              const g = wormholeGateCheck(st, sector, machineRouteStanding);
+              return g.status === 'closed' ? 'closed' : 'open';
+            },
+          }),
+        };
       default:
         return undefined;
     }
@@ -876,8 +922,11 @@ export function createRegistry(ctx) {
     initAsync: lifecycle.initAsync,
     destroy: lifecycle.destroy,
     keepalive(dt = 0, wallDt = dt) {
-      // Sim-owned keepalive lives in the worker realm under the flip.
-      if (laneSimOwned) return;
+      // Sim-owned keepalive lives in the worker realm under the flip — ship
+      // the wall-clock dt so the worker's registry keepalive can run the yard
+      // and friends while the world is frozen (steps:0 freezes must not starve
+      // a paid repair).
+      if (laneSimOwned) { laneKeepalive(wallDt); return; }
       const state = ctx.state;
       if (input.update) input.update(dt, state);
       if (save.update) save.update(dt, state);

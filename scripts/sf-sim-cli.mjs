@@ -4,6 +4,13 @@
 
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+// Stage-8 moved scenario reads behind the realm-fs seam (browser realms never
+// touch disk); the node CLI is a disk host and installs it like the worker
+// adapters do.
+import { installRealmFs } from './lib/simRealm.mjs';
+installRealmFs({ readFileSync, resolve });
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';

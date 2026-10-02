@@ -142,14 +142,42 @@ export const LANE_SETTINGS_WRITERS = {
 };
 
 export function applyLaneSetting(state, key, value) {
+  if (!state) return false;
   const fn = LANE_SETTINGS_WRITERS[key];
-  if (!fn || !state) return false;
-  fn(state, value);
-  return true;
+  if (fn) { fn(state, value); return true; }
+  // Generic deep-path writer: settings.<section>[.<nested>...].<leaf>. Covers
+  // the whole settings tree the settings surface mutates (gameplay, controls,
+  // accessibility, audio, video, ui) without a per-key writer entry; explicit
+  // writers above keep precedence for shaped values.
+  if (typeof key === 'string' && key.startsWith('settings.')) {
+    const segs = key.split('.');
+    if (segs.length >= 2) {
+      let node = state.settings && typeof state.settings === 'object'
+        ? state.settings
+        : (state.settings = {});
+      for (let i = 1; i < segs.length - 1; i++) {
+        const next = node[segs[i]];
+        node = (next && typeof next === 'object') ? next : (node[segs[i]] = {});
+      }
+      node[segs[segs.length - 1]] = value;
+      return true;
+    }
+  }
+  return false;
 }
 export function laneWriteSetting(state, key, value) {
   if (_sink) { _sink({ kind: 'settings', key, value }); return true; }
   return applyLaneSetting(state, key, value);
+}
+
+// Wall-clock keepalive — registry.keepalive(0, frameDt) is sim-owned under the
+// lane, so the worker's registry must receive the frame dt explicitly. The
+// worker runs keepalive(0, wallDt): yard repair and friends tick while the
+// world is frozen.
+export function laneKeepalive(wallDt) {
+  if (!_sink) return false;
+  _sink({ kind: 'keepalive', wallDt: Number.isFinite(wallDt) ? wallDt : 0 });
+  return true;
 }
 
 // ---------------------------------------------------------------------------

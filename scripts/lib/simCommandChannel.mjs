@@ -64,6 +64,7 @@ export const SIM_COMMAND_TYPES = Object.freeze({
   DOM: 'dom',
   UI: 'ui',
   VIEWPORT: 'viewport',
+  KEEPALIVE: 'keepalive',
 });
 
 export function createSimCommandRing() {
@@ -135,6 +136,7 @@ export function pushLaneCommand(ring, d) {
     case 'promote': return ring.push(SIM_COMMAND_TYPES.PROMOTE, { id: d.id, source: d.source, reason: d.reason });
     case 'rpc': return ring.pushRpc(d.id, d.op, d.args);
     case 'domEvent': return ring.push(SIM_COMMAND_TYPES.DOM, { d: d.d });
+    case 'keepalive': return ring.push(SIM_COMMAND_TYPES.KEEPALIVE, { wallDt: Number.isFinite(d.wallDt) ? d.wallDt : 0 });
     // Stage-8: generic sim-bus event replay (main → worker). Rides the BUS
     // type with an { emit } payload — tape-command BUS payloads carry { kind }.
     case 'busEmit': return ring.push(SIM_COMMAND_TYPES.BUS, { emit: d.emit, payload: d.payload });
@@ -185,6 +187,13 @@ export function applySimCommandEnvelope(env, ctx) {
     case SIM_COMMAND_TYPES.DOM:
       if (typeof ctx.ingestDomEvent === 'function') ctx.ingestDomEvent(p && p.d);
       return { type: SIM_COMMAND_TYPES.DOM };
+    case SIM_COMMAND_TYPES.KEEPALIVE:
+      // Sim-owned wall-clock keepalive: the freeze starves the worker of steps,
+      // so the main realm ships its frame dt and the worker's registry runs
+      // keepalive(0, wallDt) — yard repair & friends tick while the world is
+      // frozen, same as the in-process lane.
+      if (typeof ctx.keepalive === 'function') ctx.keepalive(p && p.wallDt);
+      return { type: SIM_COMMAND_TYPES.KEEPALIVE };
     case SIM_COMMAND_TYPES.UI:
       if (typeof ctx.applyUiFold === 'function') ctx.applyUiFold(p);
       return { type: SIM_COMMAND_TYPES.UI };

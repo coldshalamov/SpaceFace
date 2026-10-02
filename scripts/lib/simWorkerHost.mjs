@@ -421,6 +421,9 @@ export function createSimHost() {
   // durable persistence stays main-owned.
   const pendingStorageOps = [];
   installLaneStorage(globalThis, { onWrite: (op, key, value) => pendingStorageOps.push({ op, key, value }) });
+  // Reply attachment for ANY reply kind — writes must not wait for the next
+  // tickDone (init-ready/finalize/done/bye replies carry them too).
+  const drainStorageOps = () => (pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined);
   const host = {
     ready: false,
     sim: null,
@@ -846,8 +849,20 @@ export function createSimHost() {
       }],
       ['saveDelete', (args) => {
         const s = registry.get('save');
-        if (!s || typeof s.delete !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.delete((args && args.slot) || undefined) };
+        if (!s || typeof s.deleteSlot !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        return { ok: true, result: s.deleteSlot((args && args.slot) || undefined) };
+      }],
+      // Import an exported envelope JSON into a slot — the lane-twin of
+      // saveSystem.importString (main-side importFile reads the File, then
+      // routes the envelope here so the worker's save system loads it).
+      ['saveImport', (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.importString !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        const json = args && typeof args.json === 'string' ? args.json : null;
+        if (!json) return { ok: false, reason: 'import-empty' };
+        const result = s.importString(json, (args && args.slot) || 'quick');
+        const ok = result === true || (result && result.ok === true);
+        return { ok, result: result && typeof result === 'object' ? result : null };
       }],
       // Stage-8 diagnostic: worker-side ground truth for read-model divergences.
       // Returns the live player entity slice, input, and the freeze verdict so a
@@ -1043,6 +1058,7 @@ export function createSimHost() {
       initRebuild,
       auxUpserts: initAux.upserts,
       auxRemovals: initAux.removals,
+      storageOps: drainStorageOps(),
       collectProbe: null,
       domainUpdates: initDomains.updates,
       domainProbe: null,
@@ -1243,6 +1259,7 @@ export function createSimHost() {
       domainProbe: host.domainProbeEnabled ? initDomains.probe : null,
       domainShipBytes: initDomains.shipBytes,
       domainDiffMs: initDomains.diffMs,
+      storageOps: drainStorageOps(),
       // Mirror keys that resolve absent at init (drill.*, sectorSim.field,
       // save.slots, factionPresence.boarding) — the main lane's missing-keys
       // gate exempts exactly these; they facade on first presence.
@@ -1293,14 +1310,43 @@ export function createSimHost() {
         }
       },
       setViewport: (w, h) => setLaneViewport(Number(w), Number(h)),
+      keepalive: (wallDt) => {
+        // Mirror createRegistry.keepalive's frozen-window body against the
+        // worker's systems: input/save tick at dt 0, the yard runs on wall
+        // clock (the whole point of shipping wallDt across the lane).
+        const reg = host.registry;
+        if (!reg || !Number.isFinite(wallDt)) return;
+        const inputSys = reg.get && reg.get('input');
+        if (inputSys && typeof inputSys.update === 'function') inputSys.update(0, state);
+        const saveSys = reg.get && reg.get('save');
+        if (saveSys && typeof saveSys.update === 'function') saveSys.update(0, state);
+        const yard = reg.get && reg.get('stationServices');
+        if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
+      },
       emitBusEvent: (type, payload) => {
         if (!host.bus || typeof host.bus.emit !== 'function' || typeof type !== 'string') return;
         // Load/save events carry main's sf.* keyspace; stage it onto the lane
         // storage shim first so save.load/save.save run their own slot logic
-        // against real bytes.
+        // against real bytes. Writes the worker staged but has not yet relayed
+        // main-side must survive the restage — the snapshot predates them.
         if ((type === 'game:load' || type === 'game:save') && payload && payload.__laneStorage) {
-          stageLaneStorage(payload.__laneStorage);
+          stageLaneStorage(payload.__laneStorage, pendingStorageOps);
           host.lastStorageStage = { type, keys: Object.keys(payload.__laneStorage).length };
+        }
+        // Mirror of remapEventPayload on the main side: forwarded { entityRef }
+        // tokens resolve back to live entities so sim listeners see the same
+        // shape a local emit would carry.
+        if (payload && typeof payload === 'object' && state.entities) {
+          const ref = (v) => v && typeof v === 'object' && Number.isFinite(v.entityRef);
+          for (const k of Object.keys(payload)) {
+            const v = payload[k];
+            if (ref(v)) payload[k] = state.entities.get(v.entityRef) || v;
+            else if (Array.isArray(v)) {
+              for (let i = 0; i < v.length; i++) {
+                if (ref(v[i])) v[i] = state.entities.get(v[i].entityRef) || v[i];
+              }
+            }
+          }
         }
         host.lastBusEmit = type;
         host.suppressedEmitTypes.set(type, (host.suppressedEmitTypes.get(type) | 0) + 1);
@@ -1526,7 +1572,7 @@ export function createSimHost() {
       // commands probe's coverage evidence; zero per-tick wire cost otherwise.
       commandProbe: msg.commandProbe ? drain.applied : undefined,
       inputPublishes: production ? host.inputPublishes.splice(0) : undefined,
-      storageOps: pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined,
+      storageOps: drainStorageOps(),
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
@@ -1546,6 +1592,7 @@ export function createSimHost() {
     const mem = realmMemoryUsage();
     return {
       sha256,
+      storageOps: drainStorageOps(),
       stateTick: state.tick,
       entityCount: state.entityList.length,
       journalDiag,
@@ -1605,5 +1652,6 @@ export function createSimHost() {
     async tick(msg) { return handleTick(msg); },
     async finalize() { return handleFinalize(); },
     shutdown() { handleShutdown(); },
+    drainStorageOps,
   };
 }

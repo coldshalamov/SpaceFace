@@ -37,7 +37,9 @@ import {
   pushLaneCommand,
 } from '../../scripts/lib/simCommandChannel.mjs';
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
-import { createSimLaneJournal } from './simLaneJournal.js';
+import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
+import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
+import { MAIN_TO_SIM_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -72,19 +74,10 @@ const LANE_STALL_MS = 5000;
 const LANE_COMPLETED_TICK_CAPACITY = 8;
 
 // Sim-bus events that legitimately originate main-side and must replay in the
-// worker realm. The worker's own emits NEVER appear on this list — that is the
-// echo-prevention invariant (worker→main replay runs under suppression).
-const MAIN_TO_SIM_BUS_EVENTS = new Set([
-  'world:playerRelocated',
-  'ship:appearanceChanged',
-  'entity:kill',
-  'entity:spawnRequest',
-  'save:restoring',
-  'save:loaded',
-  'game:load',
-  'game:save',
-  'scenario:branchChoice',
-]);
+// worker realm — the census-generated set lives in mainToSimEventSurface.js
+// (regenerate via `node scripts/lib/eventSurfaceCensus.mjs --forward-set`). The
+// worker's own emits are never bridged back — that is the echo-prevention
+// invariant (worker→main replay runs under suppression).
 
 // The save system's keyspace — shipped to the worker on save/load forwards so
 // its own slot-resolution and recovery logic sees real bytes.
@@ -461,7 +454,26 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       try {
         for (const ev of msg.events) {
           if (ev && typeof ev.t === 'string') {
-            try { bus.emit(ev.t, remapEventPayload(ev.p)); } catch (_) { /* listener faults stay caller-side */ }
+            try {
+              const p = remapEventPayload(ev.p);
+              if (ev.t === 'sector:enter' && p && typeof p === 'object') {
+                // The bridge ships a lite {id,name,seed} shell; renderer sector
+                // visuals need the full sector — resolve it from the world
+                // mirror (world.sectors is a mirrored leaf).
+                const sid = String(p.sectorId || (p.sector && p.sector.id) || '');
+                const full = sid && state.world && state.world.sectors
+                  ? state.world.sectors[sid] : null;
+                if (full && typeof full === 'object') p.sector = full;
+              } else if (ev.t === 'settings:restored' && p && typeof p === 'object') {
+                // Save restore replaced state.settings inside the worker
+                // wholesale; the mirror is main-owned so the restore must be
+                // grafted back here for the facade to answer correctly.
+                if (p.settings && typeof p.settings === 'object') {
+                  state.settings = canonicalClone(p.settings);
+                }
+              }
+              bus.emit(ev.t, p);
+            } catch (_) { boundaryErrorCount++; }
           }
         }
       } finally { suppressForward--; }
@@ -667,25 +679,48 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 
   // ---- main→worker bus forward -------------------------------------------------------------------
   let suppressForward = 0;
-  installBusForward(bus);
+  // Census coverage check: emits whose type is not in the forward set die at
+  // the boundary. Counted per type so a missed census entry surfaces in
+  // getDiagnostics() instead of vanishing silently.
+  let unforwardedEmitCount = 0;
+  const unforwardedEmitTypes = new Map();
+  const busForward = installBusForward(bus);
   function installBusForward(b) {
-    if (!b || typeof b.emit !== 'function') return;
+    if (!b || typeof b.emit !== 'function') return null;
     const origEmit = b.emit.bind(b);
     b.emit = (type, payload) => {
       const result = origEmit(type, payload);
-      if (suppressForward <= 0 && MAIN_TO_SIM_BUS_EVENTS.has(type)) {
-        try {
-          let wirePayload = payload;
-          if (type === 'game:load' || type === 'game:save') {
-            // The worker realm has no localStorage of its own — stage this
-            // realm's sf.* keyspace so its save system resolves slots and
-            // recovery against real bytes.
-            wirePayload = Object.assign({}, payload, { __laneStorage: collectLaneSaveStorage() });
+      if (suppressForward <= 0 && typeof type === 'string') {
+        if (MAIN_TO_SIM_BUS_EVENTS.has(type)) {
+          try {
+            let wirePayload = payload;
+            if (type === 'game:load' || type === 'game:save') {
+              // The worker realm has no localStorage of its own — stage this
+              // realm's sf.* keyspace so its save system resolves slots and
+              // recovery against real bytes.
+              wirePayload = Object.assign({}, payload, { __laneStorage: collectLaneSaveStorage() });
+            }
+            // Same projection the worker→main bridge applies: live sim objects
+            // flatten to { entityRef } tokens and unflattenable members reject
+            // the whole emit (counted, never shipped malformed).
+            const flat = flattenEventPayload(wirePayload);
+            if (typeof flat === 'symbol') {
+              droppedEnvelopes++;
+            } else {
+              laneBusEmit(type, flat);
+            }
+          } catch (_) { droppedEnvelopes++; }
+        } else {
+          unforwardedEmitCount++;
+          if (unforwardedEmitTypes.size < 256) {
+            unforwardedEmitTypes.set(type, (unforwardedEmitTypes.get(type) || 0) + 1);
           }
-          laneBusEmit(type, canonicalClone(wirePayload));
-        } catch (_) { droppedEnvelopes++; }
+        }
       }
       return result;
+    };
+    return {
+      restore() { b.emit = origEmit; },
     };
   }
 
@@ -806,6 +841,8 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         droppedEnvelopes,
         suppressedEchoes,
         domainAppliedKeys,
+        unforwardedEmitCount,
+        unforwardedEmitTypes: Object.fromEntries(unforwardedEmitTypes),
         skippedPresentationTicks,
         consumedTickCount,
         completedTicksPending: completedCount,
@@ -835,17 +872,23 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     scenarioContract: helpers && helpers.scenarioContract ? canonicalClone(helpers.scenarioContract) : null,
     scenarioContractPath: helpers && helpers.scenarioContractPath ? helpers.scenarioContractPath : null,
     scenarioContractHash: helpers && helpers.scenarioContractHash ? helpers.scenarioContractHash : null,
-    sabArena: null, // browser lane: SAB needs COOP/COEP — the transfer channel is the default.
+    // ?simSab=1 honours the flag: the arena is minted here (crossOriginIsolated
+    // was already resolved into warnings → sab=false when unavailable) and the
+    // worker binds it for journal packs. Attach locally so busy-bit release
+    // works on evicted SAB-backed packs.
+    sabArena: resolved.sab ? createLaneSabJournalArena() : null,
   };
   const readyPromise = new Promise((resolve, reject) => {
     pending.set(initSeq, { kind: 'init', resolve, reject });
   });
   channel.post(initPayload);
+  if (initPayload.sabArena) journal.attachSabArena(initPayload.sabArena);
 
   function close() {
     if (laneClosed) return false;
     laneClosed = true;
     try { uninstallSink(); } catch (_) {}
+    try { if (busForward && typeof busForward.restore === 'function') busForward.restore(); } catch (_) {}
     try { domSurface.dispose(); } catch (_) {}
     try { journal.close(); } catch (_) {}
 
@@ -889,6 +932,15 @@ function createBrowserChannel() {
     const error = (event && (event.error || event.message)) || 'worker error';
     for (const h of errorHandlers) {
       try { h(error); } catch (_) {}
+    }
+  };
+  // Deserialization failures (a postMessage payload the structured-clone pass
+  // could not materialize — e.g. a mis-bound SAB descriptor) arrive here, not
+  // on onerror/onmessage. Surface them through the same error path so they
+  // quarantine the lane instead of dropping silently.
+  worker.onmessageerror = (event) => {
+    for (const h of errorHandlers) {
+      try { h(new Error(`worker message deserialization failed: ${(event && event.type) || 'messageerror'}`)); } catch (_) {}
     }
   };
   return {

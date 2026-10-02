@@ -484,6 +484,100 @@ try {
     record('CONTROLS' + tag, controlsOk, controlsOk
       ? `thrust responded (speed ${control.speed.toFixed(1)} -> ${after.speed.toFixed(1)}, moved ${moved.toFixed(1)} wu)`
       : `holding thrust for 1.6s did NOTHING (speed ${control.speed.toFixed(2)} -> ${after.speed.toFixed(2)}, moved ${moved.toFixed(2)} wu)`);
+
+    // ── 6b. LANE-FWD (worker lane only) ──────────────────────────────────────────────────────
+    // Stage 9: the main→sim bus forward set is census-driven (~108 types). Emitting on the
+    // main-side bus must reach worker subscribers: a pos-typed ui:setCourse lands a mirrored
+    // nav.waypoint and the worker's own nav:waypoint receipt bridges back; settings:changed
+    // drives _writeProfileSettings in the worker whose localStorage write rides the storageOps
+    // relay; a sector-typed setCourse + nav:engageRoute exercises the route executor.
+    if (SIM_LANE_ARG === 'worker') {
+      try {
+        await page.evaluate(() => {
+          window.__laneFwdReceipts = { waypoint: 0, probe: 0, denied: 0 };
+          // The bridged nav:waypoint replay carries the worker's own emit; the
+          // tracked mission re-owns nav.waypoint each tick, so match OUR emit by
+          // reason+pos on the receipt rather than on state.nav.waypoint.
+          window.SF.bus.on('nav:waypoint', (w) => {
+            window.__laneFwdReceipts.waypoint++;
+            if (w && w.reason === 'laneFwdCheck') window.__laneFwdReceipts.probe++;
+          });
+          window.SF.bus.on('nav:routeExecutorDenied', () => window.__laneFwdReceipts.denied++);
+          const st = window.SF.state;
+          const p = st.entities.get(st.playerId);
+          const pos = { x: (p ? p.pos.x : 0) + 4000, y: 0, z: (p ? p.pos.z : 0) + 4000 };
+          window.SF.bus.emit('ui:setCourse', { pos, label: 'LANEPROBE', reason: 'laneFwdCheck' });
+        });
+        await page.waitForTimeout(900);
+        const fwd = await page.evaluate(() => {
+          const st = window.SF.state;
+          const wp = st.nav && st.nav.waypoint;
+          // settings:changed -> worker saveSystem._writeProfileSettings -> storageOps relay.
+          window.SF.bus.emit('settings:changed', { section: 'playable', key: 'laneProbe' });
+          const sid = st.world && st.world.currentSectorId;
+          const sector = sid && st.world.sectors && st.world.sectors[sid];
+          const hop = sector && Array.isArray(sector.neighbors)
+            ? sector.neighbors.find((n) => st.world.discovery && st.world.discovery[n] && st.world.discovery[n].discovered)
+            : null;
+          return {
+            waypointLabel: wp && wp.label,
+            waypointReceipts: window.__laneFwdReceipts.waypoint,
+            probeReceipts: window.__laneFwdReceipts.probe,
+            hopSectorId: hop || null,
+          };
+        });
+        await page.waitForTimeout(900);
+        const fwd2 = await page.evaluate((hop) => {
+          const st = window.SF.state;
+          const profile = localStorage.getItem('sf.settings.profile.v1');
+          let route = null;
+          if (hop) {
+            window.SF.bus.emit('ui:setCourse', { sectorId: hop, reason: 'laneFwdCheck' });
+          }
+          return { profileWritten: !!profile, hop };
+        }, fwd.hopSectorId);
+        await page.waitForTimeout(900);
+        const fwd3 = await page.evaluate(() => {
+          const st = window.SF.state;
+          const route = st.nav && st.nav.route;
+          let engaged = null;
+          if (route && Array.isArray(route.legs) && route.legs.length) {
+            window.SF.bus.emit('nav:engageRoute', {});
+            engaged = 'sent';
+          } else {
+            engaged = 'no-route';
+          }
+          return { hasRoute: !!engaged && engaged === 'sent', engaged };
+        });
+        await page.waitForTimeout(900);
+        const fwd4 = await page.evaluate(() => {
+          const st = window.SF.state;
+          const diag = (window.SF.simLaneDiag && window.SF.simLaneDiag()) || {};
+          return {
+            executor: !!(st.nav && st.nav.executor && st.nav.executor.status === 'engaged'),
+            denied: window.__laneFwdReceipts.denied,
+            unforwarded: diag.unforwardedEmitCount ?? null,
+            unforwardedTypes: diag.unforwardedEmitTypes || null,
+          };
+        });
+        // ui:setCourse crossed the lane iff the worker's own nav:waypoint receipt
+        // (marked by our reason) bridged back — tracked missions legitimately
+        // re-own state.nav.waypoint every tick, so the receipt is the proof.
+        const courseOk = fwd.probeReceipts > 0 && fwd.waypointReceipts > 0;
+        const settingsOk = fwd2.profileWritten === true;
+        const routeOk = fwd3.engaged === 'no-route'
+          || fwd4.executor === true || fwd4.denied > 0;
+        const unforwardedForProbe = fwd4.unforwardedTypes
+          ? ['ui:setCourse', 'settings:changed', 'nav:engageRoute'].filter((t) => t in fwd4.unforwardedTypes)
+          : [];
+        const ok = courseOk && settingsOk && routeOk && unforwardedForProbe.length === 0;
+        record('LANE-FWD' + tag, ok, ok
+          ? `ui:setCourse -> nav.waypoint (${fwd.waypointReceipts} receipt), settings:changed -> profile write, engage=${fwd3.engaged}${fwd4.executor ? '/executor' : fwd4.denied ? '/denied' : ''}`
+          : `waypoint=${JSON.stringify(fwd.waypointLabel)} receipts=${fwd.waypointReceipts} probeReceipts=${fwd.probeReceipts} profile=${fwd2.profileWritten} route=${fwd3.engaged} exec=${fwd4.executor} denied=${fwd4.denied} unfwd=${JSON.stringify(unforwardedForProbe)}`);
+      } catch (err) {
+        record('LANE-FWD' + tag, false, 'forwarded-surface exercise threw: ' + err.message);
+      }
+    }
   }
 
   if (inFlight) {

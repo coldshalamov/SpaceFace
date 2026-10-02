@@ -11,6 +11,7 @@ import {
   MOTION_ASK_CHOICES,
   recordMotionChoice,
 } from '../accessibility.js';
+import { laneWriteSetting } from '../../core/simLaneCommands.js';
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -91,6 +92,14 @@ export const motionAskScreen = {
     if (!MOTION_ASK_CHOICES.includes(action)) return;
     const settings = ctx && ctx.state && ctx.state.settings;
     recordMotionChoice(settings, action);
+    // Worker-lane parity for the whole choice bundle recordMotionChoice
+    // writes (motionPreference + motionAsked/Prompted + video.motionReduce).
+    if (ctx && ctx.state && settings && typeof settings === 'object') {
+      laneWriteSetting(ctx.state, 'settings.accessibility', { ...settings.accessibility });
+      if (settings.video && typeof settings.video === 'object') {
+        laneWriteSetting(ctx.state, 'settings.video.motionReduce', settings.video.motionReduce);
+      }
+    }
     if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
       ctx.bus.emit('settings:changed', {
         section: 'accessibility',

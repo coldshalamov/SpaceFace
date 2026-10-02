@@ -30,6 +30,25 @@ const KIND_BY_CODE = Object.freeze({
   4: PRESENTATION_JOURNAL_KINDS.VISUAL,
 });
 
+// Mirror of createSabJournalArena in scripts/lib/simWorkerHost.mjs — the main
+// realm mints the arena and ships its descriptor on the init directive; the
+// worker binds it for journal packs. Same magic/layout/slot accounting.
+const SAB_LAYOUT_VERSION = 1;
+const SAB_HEADER_BYTES = 64;
+const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
+
+export function createLaneSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
+  if (typeof SharedArrayBuffer !== 'function') return null;
+  const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
+  const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes);
+  const header = new Int32Array(sab, 0, SAB_HEADER_INTS);
+  header[0] = SAB_HEADER_MAGIC;
+  header[1] = SAB_LAYOUT_VERSION;
+  header[2] = slotCount;
+  header[3] = recordCap;
+  return { sab, slotCount, recordCap, slotBytes };
+}
+
 export function createSimLaneJournal() {
   // Contiguous-by-construction segments [start, end) carrying the wire columns.
   const segments = [];

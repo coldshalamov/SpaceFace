@@ -16,7 +16,7 @@
 import { createSimHost } from '../../scripts/lib/simWorkerHost.mjs';
 import { nowNs } from '../../scripts/lib/simRealm.mjs';
 
-const { tick, init, finalize, shutdown } = createSimHost();
+const { tick, init, finalize, shutdown, drainStorageOps } = createSimHost();
 
 let chain = Promise.resolve();
 self.onmessage = (event) => {
@@ -42,7 +42,9 @@ self.onmessage = (event) => {
         self.postMessage({ kind: 'done', seq: msg.seq, ...result });
       } else if (msg.kind === 'shutdown') {
         shutdown();
-        self.postMessage({ kind: 'bye', seq: msg.seq });
+        // storageOps rides every reply kind — writes must not wait for a
+        // tickDone that may never come (shutdown races a queued autosave).
+        self.postMessage({ kind: 'bye', seq: msg.seq, storageOps: drainStorageOps() });
       }
     } catch (error) {
       self.postMessage({

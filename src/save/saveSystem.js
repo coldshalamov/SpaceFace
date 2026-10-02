@@ -5058,6 +5058,13 @@ export const save = {
       }
     }
     this.state.settings = restored;
+    // Under the whole-sim lane, state.settings is main-owned and NOT mirrored:
+    // this wholesale restore must be replayed main-side or the facade answers
+    // stale reads. `settings:restored` bridges worker→main (clone the merge —
+    // live objects never cross the lane).
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try { this.bus.emit('settings:restored', { settings: clonePlain(restored) }); } catch (e) {}
+    }
   },
 
   _restoreNav(d) {
