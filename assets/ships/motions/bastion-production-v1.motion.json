@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_BASTION_PRODUCTION_V1",
- "sourceGlbSha256": "2827858f747fdb5fcc759d26a3cf3c50c3d6fb6e7b0db696a3d22e9691564b5f",
+ "sourceGlbSha256": "ee86f74cd841f4284b980b546ced89e7ba8a4f3999edfe497618539273f7a660",
  "fps": 60,
  "bindings": [
   {
