@@ -912,10 +912,19 @@ function entityWithinPlayerRadius(entity, state, radius) {
   if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
-  const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
+  const epos = ledgerAwarePos(entity, state);
+  const delta = tableLookAtDelta(state, player.pos, epos, _residencyLookDelta);
   const visual = entityVisualCullRadius(entity, entity.mesh);
   const reach = Math.max(0, Number(radius) || 0) + visual;
-  return delta.x * delta.x + delta.z * delta.z <= reach * reach;
+  const reach2 = reach * reach;
+  if (delta.x * delta.x + delta.z * delta.z <= reach2) return true;
+  // The collect disc unions the player leg so the destination cohort cooks during a
+  // post-relocate focus lag — keep must hold the same rows or they would build then
+  // evict on every poll until the glass lands. Steady state (focus at/near the
+  // player) the legs coincide and nothing extra stays resident.
+  const relPx = (Number.isFinite(epos && epos.x) ? epos.x : 0) - player.pos.x;
+  const relPz = (Number.isFinite(epos && epos.z) ? epos.z : 0) - player.pos.z;
+  return relPx * relPx + relPz * relPz <= reach2;
 }
 
 function liveTableCamera(state) {
@@ -1017,6 +1026,22 @@ function renderAdmissionEnv(state, out = _admissionEnv) {
   out.pvx = Number(player && player.vel && player.vel.x) || 0;
   out.pvz = Number(player && player.vel && player.vel.z) || 0;
   return out;
+}
+
+/**
+ * Player-anchored twin of the focus-anchored env: after a relocate the focus can
+ * trail the player by thousands of WU while it crawls over, and rows admitted on
+ * the player leg would otherwise never satisfy a focus-anchored glass measure
+ * until the glass lands. Same cook-from-the-player precedent as
+ * isInboundDecodeHull. Null when the focus anchor already IS the player (the
+ * common steady state — callers skip the second measure).
+ */
+function playerAnchoredAdmissionEnv(state, env) {
+  const player = playerEntityForRenderState(state);
+  const px = Number(player && player.pos && player.pos.x) || 0;
+  const pz = Number(player && player.pos && player.pos.z) || 0;
+  if (!env || (env.anchorX === px && env.anchorZ === pz)) return null;
+  return { glassR: env.glassR, anchorX: px, anchorZ: pz, pvx: env.pvx, pvz: env.pvz };
 }
 
 /**
@@ -1369,8 +1394,20 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   // Rows drifting away stay asleep — the leaned oval is a consequence, not a shape.
   if (isPresentationLedgerRow(entity)) {
     const env = renderAdmissionEnv(state);
-    return entityTimeToGlassSeconds(entity, env, state, TABLE_COLLECT_HORIZON_SECONDS)
-      <= TABLE_COLLECT_HORIZON_SECONDS;
+    let seconds = entityTimeToGlassSeconds(entity, env, state, TABLE_COLLECT_HORIZON_SECONDS);
+    if (seconds > TABLE_COLLECT_HORIZON_SECONDS) {
+      // The collect disc unions the player leg for exactly the post-relocate focus
+      // lag this clause would otherwise reject on — a row already inside the
+      // destination cohort must not be dropped by a stale-corner measure.
+      const envPlayer = playerAnchoredAdmissionEnv(state, env);
+      if (envPlayer) {
+        seconds = Math.min(
+          seconds,
+          entityTimeToGlassSeconds(entity, envPlayer, state, TABLE_COLLECT_HORIZON_SECONDS),
+        );
+      }
+    }
+    return seconds <= TABLE_COLLECT_HORIZON_SECONDS;
   }
   return false;
 }
@@ -2595,16 +2632,9 @@ function kickDecodeRunwayAssets(owner, entities) {
   const decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
   const decodeSeconds = (entity) => entityTimeToGlassSeconds(
     entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
-  // Player-anchored twin of the focus-anchored measure: after a relocate the focus can
-  // trail the player by thousands of WU while it crawls over, and rows the collect disc
-  // unioned in on the player leg would otherwise never satisfy the runway horizon until
-  // the glass lands. Same cook-from-the-player precedent as isInboundDecodeHull.
-  const kickPlayer = playerEntityForRenderState(state);
-  const kickPlayerX = Number(kickPlayer && kickPlayer.pos && kickPlayer.pos.x) || 0;
-  const kickPlayerZ = Number(kickPlayer && kickPlayer.pos && kickPlayer.pos.z) || 0;
-  const envPlayer = (env.anchorX === kickPlayerX && env.anchorZ === kickPlayerZ)
-    ? null
-    : { glassR: env.glassR, anchorX: kickPlayerX, anchorZ: kickPlayerZ, pvx: env.pvx, pvz: env.pvz };
+  // Player-anchored twin: rows the collect disc unioned in on the player leg would
+  // otherwise never satisfy the runway horizon until the focus finishes crawling over.
+  const envPlayer = playerAnchoredAdmissionEnv(state, env);
   const decodeSecondsPlayer = envPlayer
     ? (entity) => entityTimeToGlassSeconds(
         entity, envPlayer, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad)
