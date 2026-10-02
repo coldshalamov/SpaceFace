@@ -43,7 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| fight seam — §1C rows 178/179/200/202 next (flak interception, dreadnought phasing, hit confirmation landed) | devin-fight | IN PROGRESS | `src/systems/{countermeasures,weapons,fields,mines}.js`, `src/combat/`, `src/data/{enemies,combatDefs,weapons}.js`, `src/ai/combatDoctrine.js`, `test/` new focused tests, `build_map.md` §1C, `design/program/NOW.md` | rows 96+221+231+234 landed; land each row by pathspec |
+| swarm seam — §1C rows 97–101 PB-SWARM packets next | devin-swarm | IN PROGRESS | `src/systems/{survivalRun,swarmMode,survivalArena,survivalResults}.js`, `src/data/survivalDraft.js`, `test/` new focused tests, `build_map.md` §1C, `design/program/NOW.md` | fight seam drained (96/221/231/234 landed, rest SHIPPED); land each swarm row by pathspec |
 
 ## Remaster machine
 

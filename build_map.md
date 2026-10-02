@@ -399,8 +399,8 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | save | free | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
-| swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
-| fight | devin-fight | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
+| swarm | devin-swarm | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
+| fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | free | fields | 94, 162 |
 | law | grok-15 | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
