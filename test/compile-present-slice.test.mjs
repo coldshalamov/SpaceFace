@@ -4,11 +4,14 @@ import { readFile } from 'node:fs/promises';
 
 import {
   collectCompileSubjects,
+  collectUniqueCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
   revealSubjectWithAncestors,
   shouldSliceCompileAcrossPresents,
+  shouldSliceFlightAdmission,
 } from '../src/render/compilePresentSlice.js';
+import { openingCompileIssueKey } from '../src/render/renderer.js';
 
 test('collects mesh-like children and falls back to the root', () => {
   const leaf = { isMesh: true, name: 'hull' };
@@ -78,10 +81,95 @@ test('flight after first paint yields between compile subjects; loading does not
   assert.deepEqual(holes, ['kept'], 'null compile holes are skipped without a filter copy');
 });
 
+test('flight admission slicing yields only to an urgent single-root whole-batch compile', () => {
+  assert.equal(
+    shouldSliceFlightAdmission({ mode: 'flight', firstPlayable: true, urgent: true, rootCount: 1 }),
+    false,
+    'an urgent single root takes the whole-root compile branch — no per-mesh present waits');
+  assert.equal(
+    shouldSliceFlightAdmission({ mode: 'flight', firstPlayable: true, urgent: true, rootCount: 3 }),
+    true,
+    'an urgent multi-root batch keeps present slicing');
+  assert.equal(
+    shouldSliceFlightAdmission({ mode: 'flight', firstPlayable: true, urgent: false, rootCount: 1 }),
+    true,
+    'an ambient single root keeps the 4ms sliced lane');
+  assert.equal(
+    shouldSliceFlightAdmission({ mode: 'loading', firstPlayable: true, urgent: true, rootCount: 1 }),
+    false,
+    'loading never slices — unchanged');
+  assert.equal(
+    shouldSliceFlightAdmission({ mode: 'flight', firstPlayable: false, urgent: true, rootCount: 1 }),
+    false,
+    'flight before first paint never slices — unchanged');
+});
+
 test('live flight compile uses the present-sliced helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /shouldSliceCompileAcrossPresents/);
   assert.match(source, /compileSubjectsAcrossPresents/);
+  assert.match(source, /collectUniqueCompileSubjects\(root, openingCompileIssueKey\)/,
+    'the live sliced list dedupes identical full program signatures per root');
+  assert.match(source, /shouldSliceFlightAdmission\(\{\s*mode: state\.mode,[\s\S]*urgent: compileOptions && compileOptions\.urgent === true,\s*rootCount: batch\.length,/,
+    'the live branch forwards compile urgency and the real root count');
+});
+
+test('admission compile selection ranks urgent ahead of explicit ahead of ambient', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const helperStart = source.indexOf('export function compilePipelineSubject');
+  assert.ok(helperStart > 0, 'the selection helper is exported for coverage');
+  const helper = source.slice(helperStart, helperStart + 800);
+  const urgentAt = helper.indexOf('urgent === true');
+  const explicitAt = helper.indexOf('explicit === true');
+  assert.ok(urgentAt > 0 && explicitAt > urgentAt,
+    'an on-glass explicit admission must ride the urgent lane, not the ambient-fold batch');
+  assert.match(helper, /compile\(subject, \{ \.\.\.options, urgent: true \}\)/,
+    'the urgent lane forwards the caller option surface with the flag set');
+  assert.match(source, /compilePipelineSubject\(\s*pipelineAdmissions, subject, admissionOptions, urgent,/,
+    'admitSubjectPipelines routes the live chain through the shared selection');
+});
+
+test('unique compile subjects collapse identical signatures inside one root only', async () => {
+  const THREE = await import('three');
+  const geo = new THREE.BoxGeometry();
+  const mat = new THREE.MeshStandardMaterial();
+  const root = new THREE.Group();
+  for (let i = 0; i < 24; i++) root.add(new THREE.Mesh(geo, mat));
+  assert.equal(collectCompileSubjects(root).length, 24);
+  const unique = collectUniqueCompileSubjects(root, openingCompileIssueKey);
+  assert.equal(unique.length, 1,
+    '24 meshes sharing one full program signature issue a single compile candidate');
+  assert.equal(unique[0], root.children[0], 'the first occurrence keeps the compile slot');
+
+  const second = new THREE.Group();
+  second.add(new THREE.Mesh(geo, mat));
+  second.add(new THREE.Mesh(geo, mat));
+  assert.equal(collectUniqueCompileSubjects(second, openingCompileIssueKey).length, 1,
+    'a second root keeps its own candidate — signature dedupe never crosses roots');
+
+  const varied = new THREE.Group();
+  const coloredGeo = new THREE.BoxGeometry();
+  coloredGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(72), 3));
+  varied.add(new THREE.Mesh(geo, mat));
+  varied.add(new THREE.Mesh(coloredGeo, mat));
+  varied.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial()));
+  assert.equal(collectUniqueCompileSubjects(varied, openingCompileIssueKey).length, 3,
+    'distinct attribute or material signatures keep their own compiles');
+
+  const unkeyedA = { isMesh: true, name: 'a' };
+  const keyedMesh = { isMesh: true, name: 'keyed' };
+  const unkeyedB = { isMesh: true, name: 'b' };
+  const mixed = {
+    traverse(fn) { fn(this); fn(unkeyedA); fn(keyedMesh); fn(unkeyedB); },
+  };
+  assert.equal(collectUniqueCompileSubjects(mixed, () => null).length, 3,
+    'null keys never dedupe — every unknown issues its own compile');
+  const keyed = collectUniqueCompileSubjects(mixed, (s) => (s === unkeyedA || s === unkeyedB ? 'same' : null));
+  assert.equal(keyed.length, 2, 'equal non-null keys collapse to the first occurrence');
+  assert.equal(keyed[0], unkeyedA, 'first-occurrence order is preserved');
+  assert.equal(keyed[1], keyedMesh, 'a null key between duplicates is still retained');
+  assert.equal(collectUniqueCompileSubjects(null, () => 'x').length, 0);
+  assert.equal(collectUniqueCompileSubjects(root, null).length, 24,
+    'no key function returns the full collect list');
 });
 
 test('reveal for compile shows hidden instanced meshes and restores count', () => {

@@ -20,6 +20,7 @@ import {
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
+import { reelRebindText } from '../../systems/masslineInputGrammar.js';
 import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
@@ -33,7 +34,7 @@ import {
 } from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
 import { setGamepadCaptureHandler } from '../bindings.js';
-import { LANGUAGE_OPTIONS, gameLocalization, setGameLocale } from '../../localization/gameLocalization.js';
+import { LANGUAGE_OPTIONS, gameLocalization, localizeText, setGameLocale } from '../../localization/gameLocalization.js';
 import {
   ACCESSIBILITY_STATEMENT_ID,
   CHECKLIST_ITEMS,
@@ -306,6 +307,33 @@ function mergedBindingsFor(settings) {
 // Fixed interface keys from the live BINDINGS registry (not rebindable flight codes).
 // Pause is Esc/P (UI-owned, not in BINDINGS). Mission Log is BINDINGS.missionLog on keyboard/touch;
 // gamepad has no direct Mission Log button — Start opens Pause, then choose Mission Log.
+/** PRO-05 — one key the localizer can translate. en-US renders the old concatenation. */
+export function settingsInUseLabel(action) {
+  return localizeText('In use: {action}', { action: action == null ? '' : action });
+}
+
+export function settingsQualityKeepsNote(keeps, substitutes) {
+  return localizeText('Keeps {keeps}. Substitutes: {substitutes}.', {
+    keeps: keeps == null ? '' : keeps,
+    substitutes: substitutes == null ? '' : substitutes,
+  });
+}
+
+export function settingsPackRestartNote(modsDir) {
+  if (modsDir) {
+    return localizeText('No content packs installed. Drop a pack folder into {dir} and restart.', { dir: modsDir });
+  }
+  return localizeText('No content packs installed.');
+}
+
+export function settingsWorkshopSubscribedNote(count) {
+  return localizeText('Steam Workshop: {count} subscribed item(s). Sync mirrors them into the content directory; a restart loads them.', { count });
+}
+
+export function settingsWorkshopSyncedNote(count) {
+  return localizeText('Workshop sync mirrored {count} pack(s) — restart to load', { count });
+}
+
 export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Dock / interact', key: BINDINGS.dock.label, note: 'when prompted' },
   { label: 'Mission Log', key: BINDINGS.missionLog.label, note: 'active + completed contracts; gamepad: Start → Pause → Mission Log' },
@@ -478,7 +506,7 @@ export const settingsScreen = {
         (value) => this._applyPreset(ctx, value));
       const chosen = QUALITY_PRESETS.find((preset) => preset.id === (vd.qualityPreset || DEFAULT_QUALITY_PRESET));
       if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
-        build.note('Keeps ' + chosen.stays.join(', ') + '. Substitutes: ' + chosen.substitutes.join(', ') + '.');
+        build.note(settingsQualityKeepsNote(chosen.stays.join(', '), chosen.substitutes.join(', ')));
       }
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
@@ -547,12 +575,20 @@ export const settingsScreen = {
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
-      if (massline2Flag('enabled')) {
-        rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
-          ['arm', 'Auto-release on solution (default)'],
-          ['snap', 'Snap window on manual release'],
-          ['off', 'Off — raw physics'],
-        ], (v) => this._set(ctx, 'gameplay', 'masslineReleaseAssist', v));
+      const masslineFamilyOn = massline2Flag('enabled');
+      const releaseRow = rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
+        ['arm', 'Auto-release on solution (default)'],
+        ['snap', 'Snap window on manual release'],
+        ['off', 'Off — raw physics'],
+      ], (v) => { if (masslineFamilyOn) this._set(ctx, 'gameplay', 'masslineReleaseAssist', v); });
+      if (!masslineFamilyOn) {
+        const releaseSelect = releaseRow.querySelector ? releaseRow.querySelector('select') : null;
+        if (releaseSelect) {
+          releaseSelect.disabled = true;
+          releaseSelect.setAttribute('aria-disabled', 'true');
+        }
+        build.note('Massline release assist is unavailable because the Massline family is off.');
+      } else {
         build.note('The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.');
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
@@ -568,9 +604,7 @@ export const settingsScreen = {
       const modsDir = userContentDirLabel();
       build.header('Mods');
       if (!mods.length) {
-        build.note(modsDir
-          ? `No content packs installed. Drop a pack folder into ${modsDir} and restart.`
-          : 'No content packs installed.');
+        build.note(settingsPackRestartNote(modsDir));
       } else {
         if (modsDir) build.note(`Content packs load from ${modsDir}. Restart to pick up changes.`);
         for (const mod of mods) {
@@ -595,7 +629,7 @@ export const settingsScreen = {
         const wsNote = build.note('Steam Workshop: checking…');
         const workshopReady = shell.workshopStatus().then((s) => {
           wsNote.textContent = s && s.available
-            ? `Steam Workshop: ${s.items.length} subscribed item(s). Sync mirrors them into the content directory; a restart loads them.`
+            ? settingsWorkshopSubscribedNote(s.items.length)
             : `Steam Workshop unavailable (${(s && s.reason) || 'unknown'}) — publish and sync need the Steam build.`;
           return !!(s && s.available);
         }).catch(() => {
@@ -616,7 +650,7 @@ export const settingsScreen = {
             ctx.bus.emit('toast', {
               text: res && res.ok === false
                 ? `Workshop sync failed: ${res.error || res.reason || 'unknown'}`
-                : `Workshop sync mirrored ${n} pack(s) — restart to load`,
+                : settingsWorkshopSyncedNote(n),
               kind: 'info', ttl: 5,
             });
           }).catch(() => {});
@@ -782,7 +816,8 @@ export const settingsScreen = {
     build.break();
     REBINDABLE.forEach((action) => {
       const codes = live[action] || [];
-      const keyText = codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
+      const keyText = reelRebindText(action, codes)
+        || codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
       // `.sf-bind-btn--digit` marks a bare digit key (a hook kept from the legacy chip styling).
       build.key(REBIND_LABELS[action] || action, keyText,
         (btn) => this._capture(ctx, btn, action, live, base),
@@ -836,7 +871,7 @@ export const settingsScreen = {
       for (const other of REBINDABLE) {
         if (other === action) continue;
         if ((live[other] || []).includes(ev.code)) {
-          btn.textContent = 'In use: ' + (REBIND_LABELS[other] || other);
+          btn.textContent = settingsInUseLabel(REBIND_LABELS[other] || other);
           cue('deny');
           setTimeout(() => done(false), 900);
           return;
@@ -921,7 +956,7 @@ export const settingsScreen = {
       const others = { ...liveMap, [action]: [] };
       const conflict = findGamepadBindConflict(others, action, stdName);
       if (conflict) {
-        btn.textContent = 'In use: ' + (GAMEPAD_REBIND_LABELS[conflict] || conflict);
+        btn.textContent = settingsInUseLabel(GAMEPAD_REBIND_LABELS[conflict] || conflict);
         cue('deny');
         setTimeout(() => done(false), 900);
         return;

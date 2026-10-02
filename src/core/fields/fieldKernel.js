@@ -81,6 +81,12 @@ export function normalizeField(spec = {}) {
     expireAt: spec.durationS === Infinity ? Infinity : finite(spec.createdAt, 0) + Math.max(0, finite(spec.durationS, 0)),
     // PQ-147.02 — hitch lock (Mass Seed). Zero unless a body is latched to sourceId.
     lockStrength: Math.max(0, finite(spec.lockStrength, 0)),
+    // Velocity of the medium itself. Zero keeps viscosity in the world frame,
+    // bit-identical to fields that never authored a moving frame.
+    frame: {
+      x: finite(spec.frame && spec.frame.x),
+      z: finite(spec.frame && spec.frame.z),
+    },
   };
 }
 
@@ -150,6 +156,9 @@ export function couplingScale(bodyProfile) {
 // spares friendly craft; `filters.types` (if present) whitelists entity types.
 export function fieldAffectsBody(field, bodyProfile) {
   if (!field || !bodyProfile) return false;
+  // Kinematic / non-dynamic bodies keep their scripted motion. Omitted dynamic
+  // stays coupled so existing predictor profiles and heavy dynamic hulls still feel the field.
+  if (bodyProfile.dynamic === false || bodyProfile.kinematic === true) return false;
   const filters = field.filters;
   if (filters) {
     if (Array.isArray(filters.types) && !filters.types.includes(bodyProfile.type)) return false;
@@ -209,6 +218,16 @@ function hitchLockAcceleration(field, x, z, out) {
   o.ax = -dx * inv * a;
   o.az = -dz * inv * a;
   return o;
+}
+
+// Viscosity opposes velocity in the field's own frame (frame 0 is the world).
+// Power against that relative velocity is -c|u|^2, so a stationary medium cannot
+// add kinetic energy through drag alone. Pull and push stay the positional term.
+function viscosityAccel(field, vel, fall) {
+  const frame = field && field.frame;
+  const ux = finite(vel && vel.x) - finite(frame && frame.x);
+  const uz = finite(vel && vel.z) - finite(frame && frame.z);
+  return { x: -ux * field.damping * fall, z: -uz * field.damping * fall };
 }
 
 // Raw (pre-coupling) acceleration vector a single field applies at a world point. Writes into
@@ -271,8 +290,9 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
     // At the exact center the radial bearing is undefined, but an authored snare's velocity drag is
     // still well-defined. Plain wells/repulsors keep the old zero-force behavior.
     if (field.damping > 0 && vel) {
-      o.ax = -finite(vel.x) * field.damping * fall;
-      o.az = -finite(vel.z) * field.damping * fall;
+      const drag = viscosityAccel(field, vel, fall);
+      o.ax = drag.x;
+      o.az = drag.z;
     }
     return o;
   }
@@ -283,22 +303,47 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
   o.ax = ux * a * sign;
   o.az = uz * a * sign;
   if (field.damping > 0 && vel) {
-    o.ax -= finite(vel.x) * field.damping * fall;
-    o.az -= finite(vel.z) * field.damping * fall;
+    const drag = viscosityAccel(field, vel, fall);
+    o.ax += drag.x;
+    o.az += drag.z;
   }
   return o;
 }
 
 const _rawScratch = { ax: 0, az: 0 };
+const _fieldOrder = [];
+
+// Id order, stable for equal ids. Already-sorted lists (kernel.list()) keep their
+// index sequence, so the float sum stays bit-identical to the previous convention.
+function fieldSumOrder(fields) {
+  const n = fields.length;
+  _fieldOrder.length = n;
+  for (let i = 0; i < n; i++) _fieldOrder[i] = i;
+  for (let i = 1; i < n; i++) {
+    const idx = _fieldOrder[i];
+    const id = fields[idx] && fields[idx].id != null ? String(fields[idx].id) : '';
+    let j = i - 1;
+    while (j >= 0) {
+      const other = fields[_fieldOrder[j]];
+      const oid = other && other.id != null ? String(other.id) : '';
+      if (oid <= id) break;
+      _fieldOrder[j + 1] = _fieldOrder[j];
+      j--;
+    }
+    _fieldOrder[j + 1] = idx;
+  }
+  return _fieldOrder;
+}
 
 /**
  * PURE predictor seam + per-tick force source. Sum the coupling-scaled acceleration of every field
- * at `pos` for a body, then clamp the total magnitude to FIELD_MAX_ACCEL. `vel` is accepted for
- * signature parity with future velocity-dependent fields (currently unused — fields are positional).
+ * at the same pre-step `pos`/`vel`, then clamp the total magnitude to FIELD_MAX_ACCEL.
+ * Enumeration order does not matter: summation is id-sorted. The result is an acceleration,
+ * never a rewritten body velocity.
  *
  * @param {{x:number,z:number}} pos
  * @param {{x:number,z:number}|null} vel
- * @param {Array} fields          id-sorted snapshot (kernel.list())
+ * @param {Array} fields          field records (sorted here; kernel.list() is already id-sorted)
  * @param {number} simTime        caller sim clock (accepted for parity; math is time-independent)
  * @param {{mass:number,type:string,team:*,fieldResponseMult:number,id:*}} [bodyProfile]
  * @param {{ax:number,az:number}} [out]
@@ -310,11 +355,11 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   if (!pos || !Array.isArray(fields) || fields.length === 0) return o;
   const profile = bodyProfile || DEFAULT_PROFILE;
   const couple = couplingScale(profile);
+  const order = fieldSumOrder(fields);
   let sx = 0, sz = 0;
-  // Stable-order summation (fields are id-sorted) keeps the float result identical across runs.
   if (couple > 0) {
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
+    for (let n = 0; n < order.length; n++) {
+      const field = fields[order[n]];
       if (!fieldAffectsBody(field, profile)) continue;
       fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
       sx += _rawScratch.ax;
@@ -326,8 +371,8 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   // PQ-147.02 — hitch lock is a frame lock. It does not shrug with boost or mass.
   if (profile.hitchedTo != null) {
     const hitchId = String(profile.hitchedTo);
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
+    for (let n = 0; n < order.length; n++) {
+      const field = fields[order[n]];
       if (!(field.lockStrength > 0)) continue;
       if (field.sourceId == null || String(field.sourceId) !== hitchId) continue;
       hitchLockAcceleration(field, pos.x, pos.z, _lockScratch);
@@ -477,6 +522,12 @@ export function createFieldKernel() {
         if (l > 1e-6) { record.dir.x = dx / l; record.dir.z = dz / l; }
       }
       if (patch.strength != null) record.strength = Math.max(0, finite(patch.strength, record.strength));
+      if (patch.damping != null) record.damping = Math.max(0, finite(patch.damping, record.damping));
+      if (patch.frame) {
+        if (!record.frame) record.frame = { x: 0, z: 0 };
+        record.frame.x = finite(patch.frame.x, record.frame.x);
+        record.frame.z = finite(patch.frame.z, record.frame.z);
+      }
       // geometry mutation does not change ordering, so the id-sorted cache stays valid
       return record;
     },

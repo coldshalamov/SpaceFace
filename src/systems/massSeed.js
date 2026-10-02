@@ -134,6 +134,7 @@ export const massSeed = {
     if (state.mode !== 'flight') return;
     this._handleDeploy(state, ms);
     this._tickSeed(state, ms, dt);
+    if (ms.phase === 'idle') ms.latchPreview = null;
   },
 
   // ── deploy ──────────────────────────────────────────────────────────────────────────────
@@ -265,6 +266,7 @@ export const massSeed = {
     if (ms.phase === 'idle' || ms.seedId == null) return;
     const entity = state.entities && state.entities.get ? state.entities.get(ms.seedId) : null;
     if (!entity || entity.alive === false) {
+      ms.latchPreview = null;
       // A collapse already in progress owns the lifecycle: _beginCollapse cut the tether and
       // emitted massSeed:collapsing with the ORIGINAL reason. A kill landing inside the 0.45s
       // beat (the seed stays damageable by design) merely finishes that collapse on schedule —
@@ -282,6 +284,8 @@ export const massSeed = {
     }
     const now = nowOf(state);
     const seedState = entity.data && entity.data.massSeedState;
+    const player = state.entities.get(state.playerId);
+    publishMassSeedLatchPreview(state, entity, aimOnSeed(player, entity, state));
     switch (ms.phase) {
       case 'travel': {
         const elapsed = Math.max(0, Math.min(now - ms.deployedAt, ms.travelTimeS));
@@ -608,4 +612,53 @@ export function isMassSeedTetherEligible(entity) {
   if (!entity || entity.type !== 'massSeed' || entity.alive === false) return false;
   const seedState = entity.data && entity.data.massSeedState;
   return !!(seedState && seedState.tetherEligible === true);
+}
+
+// The latch preview names the seed as the anchor and whether it will hold.
+// Eligibility is the flag isMassSeedTetherEligible already publishes. Locking stays ineligible.
+export function massSeedLatchPreview(entity) {
+  if (!entity || entity.type !== 'massSeed' || entity.alive === false) return null;
+  const seedState = entity.data && entity.data.massSeedState;
+  const phase = seedState && seedState.phase || null;
+  const eligible = isMassSeedTetherEligible(entity);
+  return {
+    targetId: entity.id,
+    isMassSeedTetherEligible: eligible,
+    phase,
+    word: seedStateWord(phase, eligible),
+    x: entity.pos && entity.pos.x,
+    z: entity.pos && entity.pos.z,
+  };
+}
+
+function seedStateWord(phase, eligible) {
+  if (phase === 'locking') return 'LOCKING';
+  if (eligible) return 'HOLDS';
+  if (phase === 'travel') return 'SETTLING';
+  if (phase === 'collapsing') return 'FAILING';
+  return 'SEED';
+}
+
+// Aim on the seed publishes the preview. A miss clears only that seed.
+// Does not write the acquisition receipt — a locking seed stays unacquirable.
+export function publishMassSeedLatchPreview(state, entity, aiming) {
+  if (!state) return null;
+  const ms = ensureRuntime(state);
+  if (!aiming || !entity) {
+    if (!entity || (ms.latchPreview && ms.latchPreview.targetId === entity.id)) ms.latchPreview = null;
+    return null;
+  }
+  const preview = massSeedLatchPreview(entity);
+  ms.latchPreview = preview;
+  return preview;
+}
+
+function aimOnSeed(player, entity, state) {
+  if (!player || !player.pos || !entity || !entity.pos || entity.alive === false) return false;
+  const aim = state && state.input && state.input.aimWorld;
+  if (!aim || !Number.isFinite(aim.x) || !Number.isFinite(aim.z)) return false;
+  const radius = Math.max(0, Number(entity.radius) || 0) + 6;
+  const dx = aim.x - entity.pos.x;
+  const dz = aim.z - entity.pos.z;
+  return dx * dx + dz * dz <= radius * radius;
 }

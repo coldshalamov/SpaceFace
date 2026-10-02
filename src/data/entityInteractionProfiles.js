@@ -6,6 +6,7 @@
 
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
+import { bombInteractionState } from '../combat/bombDynamics.js';
 
 const profile = (value) => Object.freeze({
   mineable: false,
@@ -123,6 +124,10 @@ export function interactionProfileForEntity(entity) {
 
 export function interactionDisplayName(entity) {
   if (!entity) return 'Unknown Contact';
+  if (entity.type === 'bomb') {
+    const described = bombInteractionState(entity);
+    if (described) return described.label;
+  }
   const data = entity.data || {};
   const authored = data.scanLabel || data.label || data.name || data.displayName
     || data.callsign || entity.name;

@@ -39,7 +39,7 @@ import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 // the law's own protected definition and the release geometry's advisory corridor. Read
 // only on both sides — the cue never touches release authority.
 import { isLawProtectedBody } from '../systems/lawSecurity.js';
-import { isMassSeedTetherEligible } from '../systems/massSeed.js';
+import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
 import { resolveThrowCollateral } from '../combat/masslineReleaseGeometry.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
@@ -265,6 +265,27 @@ export const LINE_LOAD_WARN_ON = 0.75;
 export const LINE_LOAD_WARN_RISING_ON = 0.6;
 export const LINE_LOAD_RISE_RATE_ON = 0.5;
 export const LINE_LOAD_WARN_OFF = 0.5;
+// VERB-20 — both ends of a shared bridle load, already published on the remote mirror.
+// The LINE pill is the existing load readout; this does not add another one.
+export function resolveTetherShareHud(remote) {
+  if (!remote) return null;
+  const source = Number(remote.sourceShare);
+  const target = Number(remote.targetShare);
+  if (!Number.isFinite(source) || !Number.isFinite(target)) return null;
+  if (source < 0 || target < 0) return null;
+  return {
+    source,
+    target,
+    text: `A ${source.toFixed(2)} · B ${target.toFixed(2)}`,
+  };
+}
+
+// VERB-25 — one word on the existing latch caption: the seed is the anchor, and whether it holds.
+export function masslineSeedPreviewText(preview) {
+  if (!preview || typeof preview.word !== 'string' || !preview.word) return '';
+  return `ANCHOR · ${preview.word}`;
+}
+
 export function resolveLineLoadWarning(strain, trendPerS, warned) {
   const s = Number(strain);
   if (!(s >= 0) || !Number.isFinite(s)) return false;
@@ -656,6 +677,7 @@ function writeMasslineHudFields(fields, state, player) {
     && snare.receiptId == null && !snare.valid
     && !(playerState.remoteMassline && playerState.remoteMassline.active)
     && !(playerState.tether && playerState.tether.active)
+    && !(state.massSeed && state.massSeed.latchPreview && state.massSeed.latchPreview.word)
     && !cloak.active && !bulletTime.active
     && denial0 == null && verdict0 == null;
   if (quiescent) {
@@ -736,7 +758,14 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = snare.source && snare.source.z;
   fields[index++] = snare.target && snare.target.x;
   fields[index++] = snare.target && snare.target.z;
-  fields[index++] = !!(playerState.remoteMassline && playerState.remoteMassline.active);
+  const remoteLine = playerState.remoteMassline;
+  fields[index++] = !!(remoteLine && remoteLine.active);
+  fields[index++] = remoteLine && remoteLine.sourceShare;
+  fields[index++] = remoteLine && remoteLine.targetShare;
+  const seedAim = state.massSeed && state.massSeed.latchPreview;
+  fields[index++] = seedAim && seedAim.targetId;
+  fields[index++] = seedAim ? seedAim.isMassSeedTetherEligible : null;
+  fields[index++] = seedAim && seedAim.word;
   fields[index++] = bridle.phase;
   fields[index++] = bridle.sourceId;
   fields[index++] = bridle.sourceReceiptId;
@@ -1009,6 +1038,11 @@ export const masslineHud = {
     const receipt = state.masslineAcquisition;
     const selected = receipt && receipt.selected;
     const tethered = !!(state.player && state.player.tether && state.player.tether.active);
+    const seedAim = !tethered && state.massSeed && state.massSeed.latchPreview;
+    if (seedAim && seedAim.word && Number.isFinite(seedAim.x) && Number.isFinite(seedAim.z)
+      && (!selected || selected.targetId !== seedAim.targetId)) {
+      return this._renderSeedLatchPreview(dom, state, player, w2s, seedAim);
+    }
     if (!selected || tethered) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
@@ -1027,13 +1061,14 @@ export const masslineHud = {
     const cueY = pinned ? pinned.y : targetScreen.y;
     const ready = selected.status === 'ready';
     const read = resolveMasslineBracketRead(selected.status, selected.reason);
-    // VERB-25: a mass-seed anchor appends its own state word — the preview says whether the line
-    // will hold, not just that something is under the cursor.
-    const seedWord = massSeedPreviewWord(target);
-    const baseText = bracketReadText(read);
-    const basePaint = bracketPaintText(read);
-    const text = seedWord ? `${baseText ? `${baseText} · ` : ''}${seedWord}` : baseText;
-    const paint = seedWord ? `${basePaint ? `${basePaint} · ` : ''}${seedWord}` : basePaint;
+    const seedPreview = target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
+    if (seedPreview) {
+      selected.isMassSeedTetherEligible = seedPreview.isMassSeedTetherEligible;
+      selected.seedStateWord = seedPreview.word;
+    }
+    const seedText = masslineSeedPreviewText(seedPreview);
+    const text = seedText || bracketReadText(read);
+    const paint = seedText || bracketPaintText(read);
     const captionWidth = estimateCaptionWidth(paint || text);
     const placed = placeBracketWords(
       { x: cueX, y: cueY },
@@ -1071,6 +1106,58 @@ export const masslineHud = {
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, selected.status === name);
+    }
+  },
+
+  // VERB-25 — a mass seed under the cursor uses the same preview caption, not a second mark.
+  // A locking seed is not an acquisition candidate; this reads the preview massSeed published.
+  _renderSeedLatchPreview(dom, state, player, w2s, preview) {
+    const screen = projectWorld(w2s, preview.x, preview.z);
+    if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const offscreen = !screen.onScreen
+      || screen.x < 0 || screen.x > viewportWidth
+      || screen.y < 0 || screen.y > viewportHeight;
+    const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
+    const cueX = pinned ? pinned.x : screen.x;
+    const cueY = pinned ? pinned.y : screen.y;
+    const text = masslineSeedPreviewText(preview);
+    const captionWidth = estimateCaptionWidth(text);
+    const placed = placeBracketWords(
+      { x: cueX, y: cueY },
+      playerHullScreenRect(player, w2s),
+      { w: captionWidth, h: 18 },
+      { w: viewportWidth, h: viewportHeight },
+    );
+    const holds = preview.isMassSeedTetherEligible === true;
+    setStyle(dom.previewMark, 'display', 'block');
+    setStyle(dom.previewSourceMark, 'display', 'none');
+    setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
+    setClass(dom.previewMark, 'ml2-bridle-target', false);
+    setClass(dom.previewMark, 'ml2-offscreen', offscreen);
+    setClass(dom.previewMark, 'ml2-mark-protected', false);
+    setClass(dom.previewMark, 'ml2-mark-unavailable', !holds);
+    clearVerdictClasses(dom);
+    setBracketShape(dom.previewMark, holds ? 'can' : 'denied');
+    setAttr(dom.previewMark, 'aria-hidden', 'false');
+    setAttr(dom.previewMark, 'role', 'img');
+    setAttr(dom.previewMark, 'aria-label', offscreen ? `${text}, offscreen` : text);
+    setStyle(dom.previewSvg, 'display', 'none');
+    setClass(dom.previewSvg, 'ml2-snare-preview', false);
+    setClass(dom.previewSvg, 'ml2-bridle-preview', false);
+    setStyle(dom.previewEl, 'display', 'block');
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(placed.x)}px, ${Math.round(placed.y)}px, 0)`);
+    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    setAttr(dom.previewEl, 'data-bracket-state', holds ? 'CAN' : 'DENIED');
+    setAttr(dom.previewEl, 'aria-label', offscreen ? `${text}, offscreen` : text);
+    setAttr(dom.previewEl, 'data-receipt-id', '');
+    setAttr(dom.previewEl, 'data-target-id', String(preview.targetId ?? ''));
+    setAttr(dom.previewEl, 'data-seed-eligible', holds ? 'true' : 'false');
+    setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
+    for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
+      setClass(dom.previewEl, `ml2-preview-${name}`, !holds && name === 'invalid');
     }
   },
 
@@ -1617,16 +1704,25 @@ export const masslineHud = {
     const trend = prev && now > prev.t ? (strain - prev.strain) / Math.max(1e-3, now - prev.t) : 0;
     const warned = resolveLineLoadWarning(strain, trend, !!(prev && prev.warned));
     this._lineLoad = { strain, t: now, warned };
-    const showStrain = active && strain > 0.02;
+    const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
+    const showStrain = (active && strain > 0.02) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
     if (showStrain) {
-      setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(strain)})`);
-      setClass(dom.strainPill, 'ml2-warn', warned);
-      setAttr(dom.strainPill, 'aria-label', warned
-        ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
-        : `Massline line load ${Math.round(clamp01(strain) * 100)} percent`);
+      const bar = share && !(strain > 0.02)
+        ? Math.max(share.source, share.target)
+        : strain;
+      setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(bar)})`);
+      setClass(dom.strainPill, 'ml2-warn', warned && !share);
+      const label = share ? share.text : 'LINE';
+      if (dom.strainText && dom.strainText.textContent !== label) dom.strainText.textContent = label;
+      setAttr(dom.strainPill, 'aria-label', share
+        ? `Load split ${share.text}`
+        : warned
+          ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
+          : `Massline line load ${Math.round(clamp01(strain) * 100)} percent`);
     } else if (prev && prev.warned) {
       setClass(dom.strainPill, 'ml2-warn', false);
+      if (dom.strainText && dom.strainText.textContent !== 'LINE') dom.strainText.textContent = 'LINE';
     }
   },
 
@@ -1829,7 +1925,7 @@ export const masslineHud = {
       pill.appendChild(text);
       pill.appendChild(fill);
       meters.appendChild(pill);
-      return { pill, bar };
+      return { pill, bar, text };
     };
     const bt = makePill('FOCUS', 'ml2-bt');
     const ck = makePill('CLOAK', 'ml2-cloak');
@@ -1865,7 +1961,7 @@ export const masslineHud = {
       orbitSvg, orbitCircle,
       threatMark, threatMarkLabel, snagMark, snagMarkLabel,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
-      strainPill: strain.pill, strainFill: strain.bar,
+      strainPill: strain.pill, strainFill: strain.bar, strainText: strain.text,
     };
     // A recreated DOM tree must receive its first complete paint even when the state object was
     // reused across a route/new-run boundary and its previous signature happens to match.

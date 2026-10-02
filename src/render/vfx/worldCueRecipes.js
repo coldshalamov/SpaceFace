@@ -40,6 +40,11 @@ const variants=Object.freeze({
   // PIC-28: a hot dock leaves pods on the apron. Amber deposition at the berth so the
   // spill is seen where it happened, not only counted in the hold and the toast.
   'cargo.spill.berth':recipe('harvest','deposition',0xe0a45c,.9),
+  // PIC-26: the scavenger's cut is a torch mark on the wreck at the contact, not a new marker.
+  'wreck.scavenge.cut':{...recipe('grind','deposition',0xf0b060,.45),surfaceWork:true},
+  // PIC-27: the cooking core and the ejected core are bodies you can follow, not a countdown.
+  'salvage.cooker.tracked':recipe('prime','capture',0xff8844,.8),
+  'salvage.core.tracked':recipe('prime','capture',0xff6a3c,.9),
   'mining.heat.overheated':recipe('prime','capture',0xf09259,.64),
   // Ready means cooled and available; it does not claim that the pilot vented.
   'mining.vent.ready':recipe('cool','deposition',0x86bbc3,.62),
@@ -55,9 +60,45 @@ const SOURCE_CUES=new Set(['mining.survey.pulse','mining.survey.resolved',
   'mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
 const HARDWARE_CUES=new Set(['mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
 const DETACHED_CUES=new Set(['mining.survey.pulse','mining.drill.seismic_pulse','mining.drill.break']);
+const TRACKED_BODY_CUES=new Set(['salvage.cooker.tracked','salvage.core.tracked']);
 const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z);
 const body=(state,id)=>id==null?null:state.entities?.get?.(id);
 const copy=p=>({x:p.x,y:Number.isFinite(p.y)?p.y:0,z:p.z});
+
+function bodyByTrackKey(state,key){
+  if(!key)return null;
+  const index=state.entityIndex;
+  const lists=[];
+  if(index&&index.ready===true&&Array.isArray(index.pickups))lists.push(index.pickups);
+  if(index&&index.ready===true&&Array.isArray(index.wrecks))lists.push(index.wrecks);
+  if(!lists.length&&state.entities&&typeof state.entities.values==='function')lists.push(state.entities.values());
+  for(let l=0;l<lists.length;l++){
+    for(const entity of lists[l]){
+      if(!entity||entity.alive===false)continue;
+      if(entity.data&&entity.data.trackKey===key&&point(entity.pos))return entity;
+    }
+  }
+  return null;
+}
+
+function trackedBodyReceipt(payload,state){
+  const named=body(state,payload.targetId);
+  const liveNamed=named&&named.alive!==false&&point(named.pos)?named:null;
+  const tracked=liveNamed||bodyByTrackKey(state,payload.trackKey);
+  const anchor=tracked?tracked.pos:point(payload.position)?payload.position:null;
+  if(!point(anchor))return null;
+  let direction=null;
+  if(point(payload.direction)&&Math.hypot(payload.direction.x,payload.direction.z)>1e-6){
+    direction={x:payload.direction.x,z:payload.direction.z};
+  }else if(point(payload.velocity)&&Math.hypot(payload.velocity.x,payload.velocity.z)>1e-6){
+    direction={x:payload.velocity.x,z:payload.velocity.z};
+  }else if(Number.isFinite(tracked?.rot)){
+    direction={x:Math.cos(tracked.rot),z:Math.sin(tracked.rot)};
+  }
+  return {kind:payload.id,targetId:tracked?tracked.id:(payload.targetId??null),
+    sourceId:payload.sourceId??null,pos:copy(anchor),direction,trackedBody:true,
+    attachToTarget:!!tracked};
+}
 
 /** Consume the normalized presentation envelope, never the drill UI's col/row.
  * Unknown/missing-position receivers fail closed rather than flash at the player.
@@ -66,6 +107,7 @@ const copy=p=>({x:p.x,y:Number.isFinite(p.y)?p.y:0,z:p.z});
 export function resolveWorldCueReceipt(payload,state={}){
   const kind=payload?.id;
   if(!Object.hasOwn(variants,kind))return null;
+  if(TRACKED_BODY_CUES.has(kind))return trackedBodyReceipt(payload,state);
   const sourceId=payload.sourceId??null,source=body(state,sourceId);
   if(isComposedTravelCue(kind)){
     // Travel names the hull as source, except interdiction: that envelope names

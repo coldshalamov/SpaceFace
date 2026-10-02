@@ -193,20 +193,28 @@ export function isFalseManifestCandidate(entity) {
 
 export function manifestTrustForScan(entity, distance, previousReveal = null) {
   if (!isFalseManifestCandidate(entity)) return 'trusted';
-  if (distance <= SCAN_REVEAL_DEEP_RADIUS && previousReveal && previousReveal.manifestTrust === 'false') {
-    return 'suspect';
-  }
+  const previous = previousReveal && previousReveal.manifestTrust;
+  // A contradiction sticks. Falling back to the declared line on the next pulse
+  // would mint a new clue every other scan and hide that the hold already mismatched.
+  if (previous === 'suspect') return 'suspect';
+  if (distance <= SCAN_REVEAL_DEEP_RADIUS && previous === 'false') return 'suspect';
   return 'false';
 }
 
 function cargoHintFor(entity, manifestTrust) {
   const data = entity && entity.data || {};
-  if (data.cargoHint) return String(data.cargoHint);
-  if (data.falseManifest && typeof data.falseManifest === 'object' && data.falseManifest.cargoHint) {
-    return String(data.falseManifest.cargoHint);
+  const cover = data.falseManifest && typeof data.falseManifest === 'object' && data.falseManifest.cargoHint
+    ? String(data.falseManifest.cargoHint)
+    : null;
+  // A false or merely suspect manifest shows the declared line only. hiddenCargo,
+  // or a cargoHint that names the real hold, stays off the reveal until a later
+  // observation earns a contradiction — and even then the secret itself is not copied.
+  if (manifestTrust === 'false' || manifestTrust === 'suspect') {
+    if (cover) return cover;
+    if (manifestTrust === 'suspect') return 'manifest mismatch';
+    return 'declared civilian cargo';
   }
-  if (manifestTrust === 'false') return 'declared civilian cargo';
-  if (manifestTrust === 'suspect') return 'manifest mismatch';
+  if (data.cargoHint) return String(data.cargoHint);
   return data.trafficRole ? String(data.trafficRole) : null;
 }
 

@@ -17,7 +17,12 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
-import { hoistDeadlineGlassMeshBuilds, render } from '../src/render/renderer.js';
+import {
+  compilePipelineSubject,
+  hoistDeadlineGlassMeshBuilds,
+  preparePipelineSubjectResidency,
+  render,
+} from '../src/render/renderer.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
 
@@ -462,11 +467,19 @@ test('residencyOptionsForBoundary marks an on-glass boundary urgent on compile a
     ambientBoundary.userData.presentationEntityId = ambientEntity.id;
     const ambientOptions = partsLibrary.residencyOptionsForBoundary(ambientEntity, ambientBoundary, {});
     await ambientOptions.prepareAuthoredPipelines(ambientBoundary);
-    assert.equal(compileCalls.at(-1).options, undefined,
+    const ambientCompileOptions = compileCalls.at(-1).options;
+    assert.notEqual(ambientCompileOptions && ambientCompileOptions.urgent, true,
       'an off-glass boundary keeps the ambient lane');
+    assert.equal(typeof ambientCompileOptions.isActive, 'function',
+      'an off-glass boundary compile still carries the owner lifetime guard');
+    assert.equal(ambientCompileOptions.isActive(ambientBoundary), true,
+      'the lifetime guard answers true while its render owner is live');
     await ambientOptions.prepareAuthoredGpuResidency(ambientBoundary, { isResidencyOwnerActive: () => true });
     assert.equal(residencyCalls.at(-1).options.unSliced, false,
       'an off-glass boundary keeps the sliced ambient residency chain');
+    runtimeState.render = {};
+    assert.equal(ambientCompileOptions.isActive(ambientBoundary), false,
+      'the lifetime guard answers false once its captured render owner is stale');
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
@@ -512,4 +525,154 @@ test('authored GPU gate reports its sub-phase timings without changing admission
   // No hooks (preview/test harness): still skipped, no timing surface promised.
   const skipped = await partsLibrary.prepareAuthoredVisualPipelines(root, {});
   assert.equal(skipped.skipped, true);
+});
+
+test('pipeline residency: the first chained prepare forwards urgency and joins pending work', async () => {
+  const prepared = [];
+  const pending = new Map();
+  const tracker = {
+    pendingFor(subject) {
+      return pending.get(subject) || null;
+    },
+    prepare(subject, options) {
+      prepared.push({ subject, options });
+      const gate = Promise.resolve(options);
+      pending.set(subject, gate);
+      return gate;
+    },
+  };
+  const subject = { name: 'residency-subject' };
+  let live = true;
+  const admissionOptions = { isActive: (s) => live === true && s === subject };
+
+  const urgentPromise = preparePipelineSubjectResidency(tracker, subject, admissionOptions, true);
+  assert.equal(prepared.length, 1, 'no pending entry means one real prepare call');
+  assert.equal(prepared[0].options.unSliced, true,
+    'urgent residency rides the unSliced upload lane');
+  assert.equal(typeof prepared[0].options.isActive, 'function',
+    'the lifetime guard stays callable');
+  assert.equal(prepared[0].options.isActive(subject), true,
+    'the live owner is active');
+  live = false;
+  assert.equal(prepared[0].options.isActive(subject), false,
+    'a stale owner is rejected by the same guard');
+  await urgentPromise;
+
+  const ambientSubject = { name: 'ambient-subject' };
+  await preparePipelineSubjectResidency(tracker, ambientSubject, {}, false);
+  assert.equal(prepared.length, 2);
+  assert.equal(prepared[1].options.unSliced, false,
+    'ambient residency stays on the sliced upload lane');
+  assert.equal(prepared[1].options.isActive, undefined,
+    'no lifetime guard forwards as undefined');
+
+  const held = { name: 'held-subject' };
+  const shared = Promise.resolve('joined');
+  pending.set(held, shared);
+  const joined = preparePipelineSubjectResidency(tracker, held, { isActive: () => true }, true);
+  assert.equal(joined, shared, 'a pending entry is joined, not re-prepared');
+  assert.equal(prepared.length, 2, 'joining never calls prepare twice');
+});
+
+test('an urgent pipeline admission reaches the batch as a lone urgent subject', async () => {
+  const batches = [];
+  const tracker = createPipelineAdmissionTracker((subjects, options) => {
+    batches.push({ count: subjects.length, urgent: options && options.urgent === true });
+    return Promise.resolve({ ok: true });
+  }, { quietMs: 0, maxWaitMs: 10 });
+
+  await tracker.compile({ name: 'on-glass' }, { urgent: true });
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0].count, 1,
+    'urgent admission serializes as a single-subject batch — the whole-root branch applies');
+  assert.equal(batches[0].urgent, true, 'the urgent flag reaches the compile batch');
+
+  await Promise.all([tracker.compile({ name: 'a' }), tracker.compile({ name: 'b' })]);
+  const ambient = batches.slice(1);
+  assert.equal(ambient.length, 1, 'ambient compiles still coalesce into one batch');
+  assert.equal(ambient[0].count, 2);
+  assert.equal(ambient[0].urgent, false,
+    'ambient batches carry no urgent flag — they keep the sliced lane');
+});
+
+test('pipeline admission selection: an on-glass explicit admission rides the urgent lane', async () => {
+  const { tracker, order, resumed, gates } = makeTracker();
+  tracker.resumeAutoFlush();
+
+  const ambient = { name: 'ambient' };
+  const glass = { name: 'on-glass-explicit' };
+  const cA = tracker.compile(ambient);
+  assert.equal(tracker.queuedCount, 1);
+
+  const guard = (subject) => subject === glass;
+  const options = { explicit: true, skipSharedBatch: true, isActive: guard };
+  const cG = compilePipelineSubject(tracker, glass, options, true);
+  await Promise.resolve();
+
+  assert.equal(gates.length, 1, 'the urgent link is invoked immediately on the tail');
+  assert.deepEqual(order[0].subjects, [glass],
+    'urgent outranks explicit: the subject serializes alone instead of folding the ambient queue');
+  assert.equal(order[0].options.urgent, true);
+  assert.equal(order[0].options.explicit, true,
+    'caller-supplied fields survive the urgent wrap');
+  assert.equal(order[0].options.skipSharedBatch, true);
+  assert.equal(order[0].options.isActive, guard,
+    'the lifetime guard forwards verbatim');
+  assert.equal(tracker.queuedCount, 1, 'ambient work is untouched by the urgent link');
+
+  gates[0].resolve({ urgent: true });
+  assert.deepEqual(await cG, { urgent: true });
+
+  const beat = resumed.shift();
+  assert.equal(typeof beat, 'function', 'the ambient batch still needs its own scheduled beat');
+  beat();
+  await Promise.resolve();
+  assert.equal(gates.length, 2);
+  gates[1].resolve({ ok: true });
+  await cA;
+});
+
+test('pipeline admission selection: off-glass explicit and ambient keep their lanes', async () => {
+  const { tracker, order, gates } = makeTracker();
+  tracker.resumeAutoFlush();
+
+  const ambient = { name: 'ambient' };
+  const explicitSubject = { name: 'off-glass-explicit' };
+  const cA = tracker.compile(ambient);
+  assert.equal(tracker.queuedCount, 1);
+
+  const options = { explicit: true, skipSharedBatch: true, isActive: () => true };
+  const cE = compilePipelineSubject(tracker, explicitSubject, options, false);
+  await Promise.resolve();
+  assert.equal(gates.length, 1,
+    'an off-glass explicit admission folds the queued ambient set into its own link');
+  assert.deepEqual(order[0].subjects, [explicitSubject, ambient]);
+  gates[0].resolve({ folded: true });
+  assert.deepEqual(await cE, { folded: true });
+  assert.deepEqual(await cA, { folded: true });
+
+  const calls = [];
+  const mock = {
+    compile(subject, opts) { calls.push({ method: 'compile', opts }); return Promise.resolve(); },
+    compileExplicit(subject, opts) { calls.push({ method: 'compileExplicit', opts }); return Promise.resolve(); },
+  };
+  const ambientOptions = { isActive: () => true };
+  compilePipelineSubject(mock, ambient, ambientOptions, false);
+  assert.equal(calls[0].method, 'compile', 'ambient stays on the plain compile lane');
+  assert.strictEqual(calls[0].opts, ambientOptions,
+    'ambient admission forwards the same options object');
+
+  const explicitOptions = { explicit: true, isActive: () => true };
+  compilePipelineSubject(mock, explicitSubject, explicitOptions, false);
+  assert.equal(calls[1].method, 'compileExplicit',
+    'a non-urgent explicit admission keeps the fold lane');
+  assert.strictEqual(calls[1].opts, explicitOptions);
+
+  const urgentOptions = { explicit: true, isActive: () => true };
+  compilePipelineSubject(mock, explicitSubject, urgentOptions, true);
+  assert.equal(calls[2].method, 'compile', 'urgent wins over explicit');
+  assert.equal(calls[2].opts.urgent, true);
+  assert.equal(calls[2].opts.explicit, true);
+  assert.notStrictEqual(calls[2].opts, urgentOptions,
+    'the urgent wrap copies rather than mutating the caller options');
 });

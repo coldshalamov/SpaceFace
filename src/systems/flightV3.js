@@ -127,6 +127,9 @@ export const flightV3 = {
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
+    // Player-only. NPC steps overwrite _driveAuthority; the instrument must not
+    // unscale the player's request by the last NPC's drive.
+    this._playerDriveAuthority = null;
     this._diag = {
       version: 3,
       shipId: null,
@@ -256,6 +259,7 @@ export const flightV3 = {
       state.combat && state.combat.entities ? state.combat.entities[String(entity.id)] : null,
     );
     this._driveAuthority = driveAuthority;
+    if (isPlayer) this._playerDriveAuthority = driveAuthority;
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
@@ -517,6 +521,7 @@ export const flightV3 = {
     _diagArgs.body = bodySnapshotInto(player, profile, _diagBody);
     _diagArgs.profile = profile;
     _diagControl.telemetry = player._flightFrame;
+    _diagControl.authority = this._playerDriveAuthority || null;
     const telemetry = computeFlightTelemetry(_diagArgs);
     const stop = telemetry.braking;
     const mode = frame.mode || 'assisted';

@@ -255,11 +255,23 @@ export const salvageActions = {
         ventedCore: true,
         cooledAt: now + REACTOR_CORE_HOT_S,
         scanLabel: 'Reactor core',
+        // PIC-27: the ejected core is one trackable body. The fuse clock is unchanged.
+        trackKey: `vented-core:${wreck.id}`,
       },
     };
     this._bus.emit('entity:spawnRequest', { spec });
     this._bus.emit('salvage:coreEjected', {
       wreckId: wreck.id, targetId: wreck.id, cooledAt: now + REACTOR_CORE_HOT_S, t: now,
+    });
+    this._bus.emit('presentation:cue', {
+      id: 'salvage.core.tracked',
+      sourceEvent: 'salvage:coreEjected',
+      sourceId: wreck.id,
+      position: { x: spec.pos.x, z: spec.pos.z },
+      direction: { x: Math.cos(ang), z: Math.sin(ang) },
+      velocity: { x: spec.vel.x, z: spec.vel.z },
+      trackKey: spec.data.trackKey,
+      trackedBody: true,
     });
     this._bus.emit('toast', {
       text: `Core ejected — critical in ${REACTOR_CORE_HOT_S}s. Scoop it or clear the blast.`,
@@ -459,6 +471,17 @@ export const salvageActions = {
       this._bus.emit('salvage:cookerFlight', {
         cookerId: cooker.id, shipId: ship.id, core: cooker.core === true, at: now,
       });
+      // PIC-27: the cooking body itself is the shape. Detonation timing is untouched.
+      if (cooker.ent && cooker.ent.pos) {
+        this._bus.emit('presentation:cue', {
+          id: 'salvage.cooker.tracked',
+          sourceEvent: 'salvage:cookerFlight',
+          sourceId: ship.id,
+          targetId: cooker.ent.id,
+          position: { x: cooker.ent.pos.x, z: cooker.ent.pos.z },
+          trackedBody: true,
+        });
+      }
     }
     const voice = this._helpers && this._helpers.voice;
     if (voice && typeof voice.say === 'function') {

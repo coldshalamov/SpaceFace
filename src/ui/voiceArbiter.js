@@ -27,6 +27,7 @@
 // WITHOUT double-surfacing (a flag marks arbiter-originated toasts as pass-through).
 
 import { openingInstructionSolo } from './hudAttention.js';
+import { emitVoiceDismissFromBinding } from './bindings.js';
 
 // Default priority per channel — higher wins the floor.
 //
@@ -72,6 +73,17 @@ function priorityFor(channel, priority) {
 export function isDangerVoice(entry) {
   if (!entry) return false;
   if (entry.channel === 'alert') return true;
+  return Number.isFinite(entry.priority) && entry.priority >= DANGER_PRIORITY;
+}
+
+/**
+ * Life-critical squelch (danger floor, squelch_danger). The dismiss key must not clear these.
+ * Ordinary alert-channel warnings stay dismissable — channel alone is not critical squelch.
+ */
+export function isCriticalSquelchLine(entry) {
+  if (!entry) return false;
+  if (entry.critical === true || entry.squelch === 'critical' || entry.squelch === 'danger') return true;
+  if (entry.kind === 'danger' || entry.kind === 'squelch_danger') return true;
   return Number.isFinite(entry.priority) && entry.priority >= DANGER_PRIORITY;
 }
 
@@ -207,6 +219,7 @@ export class VoiceQueue {
    * promotes the next eligible candidate via step(). Returns the newly surfaced entry or null.
    */
   dismiss(now = 0, policy = {}) {
+    if (isCriticalSquelchLine(this._active)) return null;
     this._active = null;
     return this.step(now, policy);
   }
@@ -323,6 +336,7 @@ export const voiceArbiter = {
     this.bus.on('voice:say', say);
     this.bus.on('voice:dismiss', () => {
       if (!this.queue) return;
+      if (isCriticalSquelchLine(this.queue.active)) return;
       const policy = this._policy();
       const active = this.queue.active;
       // A player dismissal clears the pill once — but never a critical squelch (danger class),
@@ -332,6 +346,16 @@ export const voiceArbiter = {
       const surfaced = this.queue.dismiss(this._now(), policy);
       this._flushPresentation(surfaced);
     });
+    // The UI key router does not own F6. The registered binding emits voice:dismiss from here.
+    if (this._onVoiceDismissKey && typeof document !== 'undefined' && document.removeEventListener) {
+      document.removeEventListener('keydown', this._onVoiceDismissKey);
+    }
+    this._onVoiceDismissKey = (ev) => {
+      if (this.bus) emitVoiceDismissFromBinding(this.bus, ev);
+    };
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('keydown', this._onVoiceDismissKey);
+    }
 
     // Optionally intercept legacy "toast" emitters so they route through the arbiter too. We must not
     // double-surface: toasts we ourselves re-emit carry _fromVoice and are ignored here. We cannot

@@ -35,6 +35,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
+  // memorialThief is a uniqueWrecks sub-object (no id, no clock). Do not add it here.
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',

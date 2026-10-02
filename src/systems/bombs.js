@@ -14,7 +14,7 @@ import { Masks } from '../core/entity.js';
 import { FIELD_COUPLING } from '../data/fields.js';
 import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
-  bombFieldEnvelope, fillBombViscosityImpulse,
+  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse,
 } from '../combat/bombDynamics.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
@@ -148,7 +148,7 @@ function normalizeSelection(rt) {
 }
 function normalizeRack(rt) {
   const rack = rt.rack;
-  let sockets = Math.floor(Number(rack.sockets));
+  let sockets = Number(rack.sockets);
   if (!Number.isSafeInteger(sockets) || sockets < 1) sockets = BOMB_RACK.socketsBase;
   rack.sockets = sockets;
   const cells = Array.isArray(rack.cells) ? rack.cells : (rack.cells = []);
@@ -157,23 +157,25 @@ function normalizeRack(rt) {
   for (let i = 0; i < sockets; i++) {
     const c = cells[i], def = c && BOMB_DEFS[c.id];
     if (!def) { if (cells[i] !== null) cells[i] = null; continue; }
-    const raw = Math.floor(Number(c.count));
-    const count = Math.max(0, Math.min(def.magazine, Number.isFinite(raw) ? raw : 0));
+    const raw = Number(c.count);
+    const count = Number.isSafeInteger(raw) && raw >= 0 ? Math.min(def.magazine, raw) : 0;
     if (c.count !== count || c.id !== def.id) cells[i] = { id: def.id, count };
   }
   // Sockets trimmed by a smaller normalized count hand their units back to the hangar —
   // shrinking a rack never destroys ordnance the player paid for.
   for (let i = sockets; i < cells.length; i++) {
     const c = cells[i];
-    if (c && BOMB_DEFS[c.id] && c.count > 0) rt.stock[c.id] = (rt.stock[c.id] || 0) + Math.floor(c.count);
+    if (c && BOMB_DEFS[c.id] && Number.isSafeInteger(c.count) && c.count > 0) {
+      rt.stock[c.id] = (rt.stock[c.id] || 0) + c.count;
+    }
   }
   cells.length = sockets;
 }
 function normalizeStock(rt) {
   const stock = rt.stock && typeof rt.stock === 'object' && !Array.isArray(rt.stock) ? rt.stock : (rt.stock = {});
   for (const id of Object.keys(stock)) {
-    const n = Math.floor(Number(stock[id]));
-    if (BOMB_DEFS[id] && n > 0) stock[id] = n; else delete stock[id];
+    const raw = Number(stock[id]);
+    if (BOMB_DEFS[id] && Number.isSafeInteger(raw) && raw > 0) stock[id] = raw; else delete stock[id];
   }
 }
 function ensureRuntime(state) {
@@ -431,6 +433,87 @@ export function adaptBombProjectileProxy(bomb) {
   };
 }
 
+/**
+ * Kinematic redirect. The bomb stays the motion owner: same body, fuse, arming, and source.
+ * A rejected shove consumes nothing. The contributor is recorded beside the original owner.
+ */
+export function redirectLiveBomb(bomb, impulse, contributorId, tick = 0) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) {
+    return { ok: false, reason: 'not_bomb', consumed: false };
+  }
+  const data = bomb.data;
+  if (data.retired || data.phase === 'spent' || data.phase === 'field' || bomb.alive === false) {
+    return { ok: false, reason: 'not_redirectable', consumed: false };
+  }
+  const ix = Number(impulse && impulse.x) || 0;
+  const iz = Number(impulse && impulse.z) || 0;
+  if (!(Math.hypot(ix, iz) > 0)) return { ok: false, reason: 'no_impulse', consumed: false };
+  const armed = data.armed === true;
+  const armedAt = data.armedAt;
+  const detonateAt = data.detonateAt;
+  const ownerId = data.ownerId;
+  const phase = data.phase;
+  const mass = Math.max(0.25, Number(bomb.mass) || 2);
+  if (!bomb.vel) bomb.vel = { x: 0, z: 0 };
+  bomb.vel.x = (Number(bomb.vel.x) || 0) + ix / mass;
+  bomb.vel.z = (Number(bomb.vel.z) || 0) + iz / mass;
+  bomb.physicsBody = false;
+  data.armed = armed;
+  data.armedAt = armedAt;
+  data.detonateAt = detonateAt;
+  data.ownerId = ownerId;
+  data.phase = phase;
+  data.redirectContributor = {
+    id: contributorId == null ? null : contributorId,
+    tick: tick | 0,
+    impulse: { x: ix, z: iz },
+  };
+  recordImpulseProvenance(bomb, {
+    actorId: contributorId == null ? null : contributorId,
+    weaponId: 'bomb_redirect',
+    tag: 'bomb_redirect',
+    appliedTick: tick | 0,
+    magnitude: Math.hypot(ix, iz),
+    sourceOwnerId: ownerId == null ? null : ownerId,
+  });
+  return {
+    ok: true,
+    consumed: true,
+    bombId: bomb.id,
+    ownerId,
+    contributorId: contributorId == null ? null : contributorId,
+    armed,
+    detonateAt,
+    phase,
+  };
+}
+
+/** A destroyed casing is not a lock or a selected target. Dissipating effects are left alone. */
+export function clearDestroyedBombLocks(state, bomb) {
+  if (!bomb) return;
+  const id = bomb.id;
+  if (bomb.data) {
+    bomb.data.lockable = false;
+    bomb.data.interaction = null;
+  }
+  if (!state) return;
+  const player = state.player;
+  if (player) {
+    if (player.targetId === id) player.targetId = null;
+    if (player.gunTargetId === id) player.gunTargetId = null;
+  }
+  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  for (const entity of list) {
+    const combat = entity && entity.data && entity.data.combat;
+    if (!combat) continue;
+    if (combat.lockTarget === id) {
+      combat.lockTarget = null;
+      combat.lockProgress = 0;
+    }
+    if (combat.targetId === id) combat.targetId = null;
+  }
+}
+
 export const bombs = {
   name: 'bombs',
   saveSnapshotOwned: true,
@@ -579,7 +662,7 @@ export const bombs = {
     const next = loaded[(index + 1) % loaded.length];
     rt.selectedId = next.id;
     this.bus.emit('bombs:cycle', { payloadId: next.id, name: bombDef(next.id).name, index: rt.rack.cells.indexOf(next) });
-    this.bus.emit('toast', { text: `Bomb bay: ${bombDef(next.id).name}`, kind: 'info', ttl: 1.6 });
+    this.bus.emit('toast', { text: `Bomb bay: ${bombDef(next.id).name}`, kind: 'info', ttl: 1.6, silent: true });
     return next.id;
   },
 
@@ -590,7 +673,8 @@ export const bombs = {
     if (this._preparationInFlight) return false;
     const def = BOMB_DEFS[payloadId];
     if (!def) return false;
-    const n = Math.max(1, Math.floor(Number(units) || 0));
+    const n = Number(units);
+    if (!Number.isSafeInteger(n) || n <= 0) return false;
     const cost = def.price * n;
     const credits = Number(this.state.player && this.state.player.credits) || 0;
     if (credits < cost) {
@@ -612,7 +696,7 @@ export const bombs = {
   fitPayload({ socketIndex, payloadId } = {}) {
     if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state), def = BOMB_DEFS[payloadId];
-    const i = Math.floor(Number(socketIndex));
+    const i = Number(socketIndex);
     if (!def || !Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
     const cell = rt.rack.cells[i];
     if (cell && cell.id === payloadId) {
@@ -647,7 +731,7 @@ export const bombs = {
   unfitPayload({ socketIndex } = {}) {
     if (this._preparationInFlight) return false;
     const rt = ensureRuntime(this.state);
-    const i = Math.floor(Number(socketIndex));
+    const i = Number(socketIndex);
     if (!Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
     const cell = rt.rack.cells[i];
     if (!cell) return false;
@@ -710,15 +794,17 @@ export const bombs = {
     if (this._preparationInFlight) return false;
     const def = BOMB_DEFS[payloadId];
     if (!def) return false;
+    const n = Number(units);
+    if (!Number.isSafeInteger(n) || n <= 0) return false;
     const rt = ensureRuntime(this.state);
     const have = rt.stock[payloadId] || 0;
-    const n = Math.min(have, Math.max(1, Math.floor(Number(units) || 0)));
-    if (n <= 0) return false;
-    const refund = Math.max(1, Math.floor(def.price * n * BOMB_RACK.sellbackFraction));
-    rt.stock[payloadId] = have - n;
+    const toSell = Math.min(have, n);
+    if (toSell <= 0) return false;
+    const refund = Math.max(1, Math.floor(def.price * toSell * BOMB_RACK.sellbackFraction));
+    rt.stock[payloadId] = have - toSell;
     this.bus.emit('economy:grantCredits', { amount: refund, reason: `ordnance:resell:${payloadId}` });
-    this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: -n });
-    this.bus.emit('toast', { text: `${n}× ${def.name} sold back — ${refund} cr.`, kind: 'info', ttl: 1.8 });
+    this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: -toSell });
+    this.bus.emit('toast', { text: `${toSell}× ${def.name} sold back — ${refund} cr.`, kind: 'info', ttl: 1.8 });
     return true;
   },
 
@@ -796,7 +882,7 @@ export const bombs = {
     normalizeStock(this.state.bombs);
     normalizeSelection(this.state.bombs);
     this.bus.emit('bombs:rackChanged', { rack: this.state.bombs.rack, stock: this.state.bombs.stock });
-    this.bus.emit('toast', { text, kind: 'info', ttl: 1.8 });
+    this.bus.emit('toast', { text, kind: 'info', ttl: 1.8, silent: true });
   },
 
   // One eligibility scan and one stable order per occupied tick, NOT eight payload-specific
@@ -1028,17 +1114,20 @@ export const bombs = {
     const hits = [], shoves = [], attackerMass = massOf(state.entities.get(ownerId));
     for (const ent of this._targets) {
       if (!ent.alive || ent.id === originId) continue;
-      const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z, dist = Math.hypot(dx, dz);
+      const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
+      const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
+      const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
       if (!(falloff > 0)) continue;
-      let dirX = dist > 1e-8 ? dx / dist : 0, dirZ = dist > 1e-8 ? dz / dist : 1;
+      let dirX = radial.x, dirZ = radial.z;
       // Havoc is a cross-current, not a recoloured radial concussion. Preserve total impulse.
-      if (def.tangentRatio) {
+      // A zero radial (centers coincide) stays zero — there is no seeded axis to bend.
+      if (def.tangentRatio && (dirX !== 0 || dirZ !== 0)) {
         const q = def.tangentRatio, norm = Math.hypot(1, q), x = dirX;
         dirX = (dirX - dirZ * q) / norm; dirZ = (dirZ + x * q) / norm;
       }
       const magnitude = impulse * falloff;
-      if (magnitude > 0 && movable(ent) && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast')) {
+      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && movable(ent) && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast')) {
         considerShove(shoves, ent.id, dirX, dirZ, magnitude);
         this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger });
       }
@@ -1126,13 +1215,15 @@ export const bombs = {
     for (let targetIndex = 0; targetIndex < this._targets.length; targetIndex++) {
       const ent = this._targets[targetIndex];
       if (!ent.alive || ent.id === bomb.id) continue;
-      const dx = bomb.pos.x - ent.pos.x, dz = bomb.pos.z - ent.pos.z, dist = Math.hypot(dx, dz);
+      const dx = bomb.pos.x - ent.pos.x, dz = bomb.pos.z - ent.pos.z;
+      const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
+      const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
       if (!(falloff > 0)) continue;
-      if (f.kind === 'singularity' && movable(ent) && dist > 1e-8) {
+      if (f.kind === 'singularity' && movable(ent) && radial.dist > 0) {
         const mass = massOf(ent), couple = Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
         const j = f.strength * envelope * falloff * couple * mass * dt;
-        queuePhysicsImpulse(ent, { x: dx / dist * j, z: dz / dist * j });
+        queuePhysicsImpulse(ent, { x: radial.x * j, z: radial.z * j });
       } else if (f.kind === 'goo' && movable(ent)) {
         const coverage = this._gooCoverage[targetIndex] || 1;
         if (fillBombViscosityImpulse(this._viscosity, ent.vel, bomb.vel, effectiveMass(state, ent), dt, f.dragPerS * falloff, 1 / Math.max(1, coverage))) {
@@ -1178,6 +1269,12 @@ export const bombs = {
     return null;
   },
 
+  redirect(bomb, impulse, contributorId, state = this.state) {
+    const result = redirectLiveBomb(bomb, impulse, contributorId, state && state.tick);
+    if (result.ok) this.bus?.emit('bombs:redirected', result);
+    return result;
+  },
+
   _onProjectileHit(payload) {
     if (!this.state || !payload) return false;
     const target = this.state.entities.get(payload.targetId);
@@ -1206,6 +1303,9 @@ export const bombs = {
       d.phase = 'spent';
     }
     adaptBombProjectileProxy(bomb);
+    d.lockable = false;
+    d.interaction = null;
+    clearDestroyedBombLocks(state, bomb);
     this.bus?.emit('bombs:destroyed', {
       bombId, payloadId, ownerId, shotBy, pos, reason, trigger: reason,
     });

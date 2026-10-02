@@ -78,7 +78,7 @@ function defaultPlayer() {
     // "playerWanted" AI flag so patrol_lawman enemies actually hunt a criminal player. Decoupled
     // from per-faction aggro so "the law is after me" is one legible number, not eight.
     heat: 0,
-    heatZone: { active: false, center: { x: 0, z: 0 }, radius: 0, level: 0, outsideS: 0, clearAfterS: 0 },
+    heatZone: { active: false, center: { x: 0, z: 0 }, radius: 0, level: 0, outsideS: 0, clearAfterS: 0, sectorId: null },
     ownedShips: [], activeShipIndex: 0,
     moduleInventory: [], researchedNodes: [],
     droneTierCap: 1,

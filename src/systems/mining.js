@@ -38,6 +38,7 @@ import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmiss
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
 import { isHostileToPlayer } from './scanner.js';
+import { SECTOR_IMPULSE_DANGER_CAP } from './sectorSim.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
 import { debrisCacheFor, spawnDebrisCachePods } from '../data/scanReveal.js';
@@ -122,6 +123,9 @@ const BEAM_PICKUP_DIRECT_RADIUS = 60;
 const MINING_NOISE_GAIN_PER_S = 8;
 const MINING_NOISE_DECAY_PER_S = 3;
 const MINING_NOISE_DANGER = 70;
+// The size of the sector-danger blip one paid mining-noise episode buys (WORLD-33). Exported so
+// sectorSim and the field-picture test share the same bounded magnitude.
+export const MINING_NOISE_DANGER_IMPULSE = 0.05;
 // Loud mining is supposed to attract interdiction (grammar §9.5.2 amputation 3). A threshold
 // crossing emits one rate-limited `danger:miningNoise`; sectorSim owns the bounded field impulse
 // it pays (WORLD-33), so "greed gets loud" (src/ui/panels/moduleRisk.js:76) is now true.
@@ -2354,14 +2358,15 @@ export const mining = {
     const after = clamp(before + delta, 0, 100);
     state.player.miningNoise = after;
     if (before <= MINING_NOISE_DANGER && after > MINING_NOISE_DANGER) {
+      this.bus.emit('danger:miningNoise', { level: after, threshold: MINING_NOISE_DANGER });
       this._raiseMiningNoiseDanger(after, state);
     }
   },
 
-  // The attention meter's consequence. `danger:miningNoise` is the named crossing the sector field
-  // hears — sectorSim folds it into the danger node as a bounded `mining_noise` impulse. Rising
-  // danger lowers effective regional security, which encounterDirector reads straight into its
-  // combat-pressure accrual: loud mining brings hunters.
+  // The attention meter's consequence. `danger:miningNoise` reports every crossing; the paid mark
+  // goes through `sectorsim:impulse`, which sectorSim folds into the danger node as a bounded
+  // `mining_noise` impulse. Rising danger lowers effective regional security, which
+  // encounterDirector reads straight into its combat-pressure accrual: loud mining brings hunters.
   //
   // Rate-limited because the meter can re-cross the threshold every few seconds of beam time and an
   // unbounded drip would let one mining session dominate a sector's whole field history.
@@ -2371,11 +2376,10 @@ export const mining = {
     const sectorId = state.world && state.world.currentSectorId;
     if (!sectorId) return;
     this._noiseImpulseAt = now;
-    this.bus.emit('danger:miningNoise', {
-      level,
-      threshold: MINING_NOISE_DANGER,
-      sectorId,
-    });
+    // One impulse, cut to the field cap. sectorSim folds it into the danger node; the kernel
+    // then decays it. This does not spawn anyone — attention is the raised field, not a ship.
+    const danger = Math.min(SECTOR_IMPULSE_DANGER_CAP, MINING_NOISE_DANGER_IMPULSE);
+    this.bus.emit('sectorsim:impulse', { kind: 'mining_noise', sectorId, danger });
   },
 
   _ensureAsteroidSeams(ast) {

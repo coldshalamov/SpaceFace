@@ -16,6 +16,7 @@ import { semanticColor, semanticShape } from './accessibility.js';
 import { canvasFont } from './canvasFonts.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { heatZoneInCurrentSector } from '../systems/heat.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { SHIPS } from '../data/ships.js';
 import { prefersReducedMotion } from './effects/effectRuntime.js';
@@ -983,7 +984,7 @@ export function createRadar(ctx) {
       && state.settings.accessibility.colorblindMode
     ) || 'none';
 
-    drawHeatZone(g, state.player && state.player.heatZone, playerX, playerZ, radarScale, center, radius);
+    drawHeatZone(g, heatZoneInCurrentSector(state), playerX, playerZ, radarScale, center, radius);
 
     const rangeRatio = rangeRingRatioForEntity(player, range);
     const weaponRingRadius = radius * rangeRatio;

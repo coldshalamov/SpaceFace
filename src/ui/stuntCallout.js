@@ -162,6 +162,12 @@ export function comboReadout(combo, nowTick) {
   };
 }
 
+/** One line. The number is the existing bonus law, rounded. */
+export function selfSlingCalloutText(bonusDv) {
+  const whole = Math.round(Number(bonusDv) || 0);
+  return `SELF-SLING +${whole}`;
+}
+
 /**
  * The words for a settled bank receipt. A quiet/deadline/round_clear bank is a BANK;
  * a hard crash or death settles the open line at ×1 (SCORING_AND_COMBO §4.5) and the line
@@ -422,6 +428,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:styleBanked', (b) => onBank(b)));
+    unsubs.push(bus.on('massline:selfSling', (payload) => {
+      if (!calloutScope(getState())) return;
+      const whole = payload && payload.selfSlingBonusDv;
+      addLine('self-sling', selfSlingCalloutText(whole), '', calloutNow(), CALLOUT_TTL_MS, false);
+    }));
   }
 
   return {

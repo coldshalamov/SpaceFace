@@ -958,7 +958,7 @@ export class Sg02DynamicBodyOwner {
   _captureExpectedKinematics(rec) {
     const v = rec.body.linvel();
     const w = rec.body.angvel();
-    const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0 });
+    const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0, x: 0, z: 0 });
     const dt = this.fixedDt;
     const yawClampedByWrite = !Number.isFinite(w.y) || Math.abs(w.y) > SANE_MAX_YAW_RATE;
     if (yawClampedByWrite || !Number.isFinite(w.x) || !Number.isFinite(w.z)
@@ -993,6 +993,15 @@ export class Sg02DynamicBodyOwner {
     // no-contact prediction so a glancing station/rock contact cannot leave a one-frame heading
     // kick behind after its spin has been removed.
     e.yaw = wrapAngle(yawFromQuat(rec.body.rotation()) + e.wy * dt);
+    let px = rec._bodyPoseX;
+    let pz = rec._bodyPoseZ;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) {
+      const p = rec.body.translation();
+      px = rec._bodyPoseX = Math.fround(p.x);
+      pz = rec._bodyPoseZ = Math.fround(p.z);
+    }
+    e.x = px + e.vx * dt;
+    e.z = pz + e.vz * dt;
   }
 
   // Reads linvel/angvel (and rotation for the player, whose give rule needs solver yaw) into a
@@ -1032,6 +1041,31 @@ export class Sg02DynamicBodyOwner {
     return post;
   }
 
+  _contactResponseDvBudget(rec) {
+    const receipts = this._stepContactReceipts;
+    if (!receipts || receipts.length === 0) return Infinity;
+    const own = rec.entity && rec.entity.id;
+    const e = rec.expected;
+    const seen = this._contactBudgetIds || (this._contactBudgetIds = new Set());
+    seen.clear();
+    let slack = 0;
+    let involved = false;
+    for (let i = 0; i < receipts.length; i++) {
+      const receipt = receipts[i];
+      const otherId = receipt.aId === own ? receipt.bId : (receipt.bId === own ? receipt.aId : null);
+      if (otherId == null || seen.has(otherId)) continue;
+      seen.add(otherId);
+      involved = true;
+      const other = this.records.get(otherId);
+      const oe = other && other.expected;
+      const ovx = oe ? finite(oe.vx) : 0;
+      const ovz = oe ? finite(oe.vz) : 0;
+      slack += 2 * Math.hypot(finite(e && e.vx) - ovx, finite(e && e.vz) - ovz);
+    }
+    if (!involved) return Infinity;
+    return (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV) + slack;
+  }
+
   // PQ-137.11: player contact structural give.
   // The player is not ammunition: the solver's planar velocity response is REAL and passes
   // through untouched, but contact may never spin or kick the hull — yaw pose and rate restore
@@ -1043,9 +1077,6 @@ export class Sg02DynamicBodyOwner {
     const v = post && post.vDirty !== true ? post.v : rec.body.linvel();
     const vx = finite(v.x);
     const vz = finite(v.z);
-    const dvx = vx - e.vx;
-    const dvz = vz - e.vz;
-    const dMag = Math.hypot(dvx, dvz);
 
     // OWNER RECEIPTS (PQ-137.11 A). Before restoring anything, record what the SOLVER tried to do
     // to the player's heading and course. The rule's own answer is published beside it, so a
@@ -1065,6 +1096,41 @@ export class Sg02DynamicBodyOwner {
       ? wrapAngle(Math.atan2(vz, vx) - Math.atan2(e.vz, e.vx))
       : 0;
 
+    const rawDvx = Number(v.x) - e.vx;
+    const rawDvz = Number(v.z) - e.vz;
+    const rawDv = Math.hypot(rawDvx, rawDvz);
+    const contactDvBudget = (!Number.isFinite(rawDv)
+        || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+      ? this._contactResponseDvBudget(rec)
+      : Infinity;
+    let acceptedVx = vx;
+    let acceptedVz = vz;
+    if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
+      if (Number.isFinite(rawDv) && rawDv > 0) {
+        const scale = contactDvBudget / rawDv;
+        acceptedVx = e.vx + rawDvx * scale;
+        acceptedVz = e.vz + rawDvz * scale;
+      } else {
+        acceptedVx = e.vx;
+        acceptedVz = e.vz;
+      }
+      _vecWriteScratch.x = acceptedVx;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = acceptedVz;
+      rec.body.setLinvel(_vecWriteScratch, true);
+      const predictedX = Number.isFinite(e.x)
+        ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
+      const predictedZ = Number.isFinite(e.z)
+        ? e.z : finite(rec._bodyPoseZ) + e.vz * this.fixedDt;
+      _vecWriteScratch.x = predictedX + (acceptedVx - e.vx) * this.fixedDt;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = predictedZ + (acceptedVz - e.vz) * this.fixedDt;
+      rec.body.setTranslation(_vecWriteScratch, true);
+      rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
+      rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+      if (post) post.vDirty = true;
+    }
+
     // There is no episode budget to clock on the sim tick: the admitted linear response IS the
     // solver's planar velocity — sliding, deflection, and mass transfer are real physics — and
     // the recorded delta-V is the measured solver-vs-prediction gap rather than a shaped
@@ -1078,7 +1144,7 @@ export class Sg02DynamicBodyOwner {
     // nothing. The episode bookkeeping is gone with the budget: no cumulative counter, no
     // last-contact tick, and no tethered-traffic scan survive on the record — contact is just
     // contact now.
-    const actualPlayerDeltaV = dMag;
+    const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
@@ -1101,7 +1167,11 @@ export class Sg02DynamicBodyOwner {
     rec._lastSolverPlayerYawRateKick = solverYawRateKick;
     rec._lastSolverPlayerCourseRad = solverCourseKickRad;
     rec._lastAppliedPlayerHeadingRad = 0;
-    rec._lastAppliedPlayerCourseRad = solverCourseKickRad;
+    const appliedSpeed = Math.hypot(acceptedVx, acceptedVz);
+    rec._lastAppliedPlayerCourseRad = (expectedSpeedForCourse > PLAYER_CONTACT_ACTIVITY_EPSILON
+      && appliedSpeed > PLAYER_CONTACT_ACTIVITY_EPSILON)
+      ? wrapAngle(Math.atan2(acceptedVz, acceptedVx) - Math.atan2(e.vz, e.vx))
+      : 0;
     return actualPlayerDeltaV;
   }
 
@@ -1164,6 +1234,37 @@ export class Sg02DynamicBodyOwner {
     let vz = finite(v.z);
     let wy = -finite(w.y);
     let touched = false;
+    const rawDvx = Number(v.x) - e.vx;
+    const rawDvz = Number(v.z) - e.vz;
+    const rawDv = Math.hypot(rawDvx, rawDvz);
+    const contactDvBudget = (!Number.isFinite(rawDv)
+        || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+      ? this._contactResponseDvBudget(rec)
+      : Infinity;
+    if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
+      let acceptedDvx = 0;
+      let acceptedDvz = 0;
+      if (Number.isFinite(rawDv) && rawDv > 0) {
+        const scale = contactDvBudget / rawDv;
+        acceptedDvx = rawDvx * scale;
+        acceptedDvz = rawDvz * scale;
+      }
+      const predictedX = Number.isFinite(e.x)
+        ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
+      const predictedZ = Number.isFinite(e.z)
+        ? e.z : finite(rec._bodyPoseZ) + e.vz * this.fixedDt;
+      _vecWriteScratch.x = predictedX + acceptedDvx * this.fixedDt;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = predictedZ + acceptedDvz * this.fixedDt;
+      rec.body.setTranslation(_vecWriteScratch, true);
+      rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
+      rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+      if (!Number.isFinite(rawDv)) {
+        vx = e.vx;
+        vz = e.vz;
+        touched = true;
+      }
+    }
     const dvx = vx - e.vx;
     const dvz = vz - e.vz;
     const dv = Math.hypot(dvx, dvz);
@@ -1365,7 +1466,7 @@ export class Sg02DynamicBodyOwner {
       appliedTorque: zero3(),
       controlForce: zero3(),
       controlTorque: zero3(),
-      expected: { vx: 0, vz: 0, wy: 0, yaw: 0 },
+      expected: { vx: 0, vz: 0, wy: 0, yaw: 0, x: 0, z: 0 },
       // Mirror of the body's stored f32 translation so _maybeResyncBodyPose can compare without
       // allocating a Rapier vector each sync; refreshed at every setTranslation site.
       _bodyPoseX: Math.fround(posX),

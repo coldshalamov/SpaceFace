@@ -33,9 +33,11 @@ function makeLoadingState(extra = {}) {
 
 test('loading authored-upgrade relevance honours the widened first-flight set', () => {
   const wreck = { id: 42, type: 'wreck', alive: true, pos: { x: 60, z: 0 }, data: {} };
-  // Not on the opening table and no widened set published: stays deferred.
+  const runwayWreck = { id: 43, type: 'wreck', alive: true, pos: { x: 800, z: 0 }, data: {} };
   const closed = makeLoadingState();
-  assert.equal(isEntityAuthoredUpgradeRelevant(wreck, closed), false);
+  assert.equal(isEntityAuthoredUpgradeRelevant(wreck, closed), true);
+  assert.equal(isEntityAuthoredUpgradeRelevant(runwayWreck, closed), true,
+    'a contact body inside the authored approach runway upgrades during loading, not at flight');
   // Published into liveSectorFirstFlightIds by the widened cook: must request its
   // authored body while the upgrade queue is resumed behind the shell.
   const widened = makeLoadingState({
@@ -44,13 +46,14 @@ test('loading authored-upgrade relevance honours the widened first-flight set', 
   assert.equal(isEntityAuthoredUpgradeRelevant(wreck, widened), true);
   // A far entity the widening did not publish still must not upgrade during loading.
   const far = { id: 77, type: 'wreck', alive: true, pos: { x: 9000, z: 9000 }, data: {} };
+  // Not on the opening table and no widened set published: stays deferred.
   assert.equal(isEntityAuthoredUpgradeRelevant(far, widened), false);
 });
 
 test('shell-gated relevance admits published widened ids and nothing else', () => {
   const player = { id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 } };
   const drone = { id: 5, type: 'drone', alive: true, pos: { x: 30, z: 0 }, data: {} };
-  const outsider = { id: 6, type: 'wreck', alive: true, pos: { x: 30, z: 0 }, data: {} };
+  const outsider = { id: 6, type: 'wreck', alive: true, pos: { x: 7000, z: 0 }, data: {} };
   const state = {
     mode: 'flight',
     playerId: 1,

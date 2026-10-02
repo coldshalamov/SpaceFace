@@ -138,6 +138,7 @@ export const swarmSupply = {
     this._sinceDrop = 0;
     this._dropIndex = 0;
     this._live = new Set();
+    this._spent = new Set();
   },
 
   _player() {
@@ -211,6 +212,7 @@ export const swarmSupply = {
         // cell picked up on a bigger hull should not be worth proportionally less.
         amount: 1,
         swarmRepair: true,
+        swarmDropIndex: index,
         despawnAt: now + SWARM_REPAIR_TTL_S,
       },
     });
@@ -228,6 +230,8 @@ export const swarmSupply = {
     const entity = payload && payload.entity;
     if (!entity || entity.type !== 'pickup') return;
     if (!entity.data || entity.data.kind !== SWARM_REPAIR_KIND) return;
+    const dropIndex = entity.data.swarmDropIndex;
+    if (dropIndex != null && this._spent && this._spent.has(dropIndex)) return;
     this._live.add(entity.id);
   },
 
@@ -239,7 +243,11 @@ export const swarmSupply = {
   _onCollected(payload) {
     const id = payload && payload.pickupId;
     if (id == null || !this._live.has(id)) return;
+    const entity = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(id) : null;
+    const dropIndex = entity && entity.data ? entity.data.swarmDropIndex : null;
     this._live.delete(id);
+    if (dropIndex != null) this._spent.add(dropIndex);
     const run = liveSwarmRun(this.state);
     if (!run) return;
     if (payload.collectorId != null && payload.collectorId !== this.state.playerId) return;

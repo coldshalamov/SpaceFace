@@ -17,6 +17,24 @@ export function collectCompileSubjects(root) {
   return subjects.length ? subjects : [root];
 }
 
+export function collectUniqueCompileSubjects(root, keyFor) {
+  const subjects = collectCompileSubjects(root);
+  if (typeof keyFor !== 'function') return subjects;
+  const seen = new Set();
+  const unique = [];
+  for (const subject of subjects) {
+    const key = keyFor(subject);
+    if (key === null || key === undefined || key === '') {
+      unique.push(subject);
+      continue;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(subject);
+  }
+  return unique;
+}
+
 export const COMPILE_PRESENT_SLICE_MS = 4;
 
 export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldFn, options = {}) {
@@ -50,6 +68,14 @@ export function shouldSliceCompileAcrossPresents(options = {}) {
   if (options.mode === 'loading') return false;
   if (options.forceWholeBatch === true) return false;
   return options.firstPlayable === true && options.mode === 'flight';
+}
+
+export function shouldSliceFlightAdmission({ mode, firstPlayable, urgent, rootCount } = {}) {
+  return shouldSliceCompileAcrossPresents({
+    mode,
+    firstPlayable,
+    forceWholeBatch: urgent === true && rootCount === 1,
+  });
 }
 
 /**

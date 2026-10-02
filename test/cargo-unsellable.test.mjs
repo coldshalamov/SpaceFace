@@ -167,12 +167,13 @@ test('NXB-025: free units of a sealed commodity sell while the manifest stays lo
   assert.equal(state.player.credits, 120);
 });
 
-test('NXB-025: an over-free sale clamps to the unreserved quantity', () => {
+test('NXB-025: an over-free sale refuses and names the unreserved quantity', () => {
   const { commodityId, state, system } = tradeHarness({ preloadedCargo: true, sealedQty: 4, held: 7 });
   const result = system.execute('station_test', commodityId, 'sell', 7);
-  assert.equal(result.ok, true);
-  assert.equal(result.qty, 3, 'only the free units settle');
-  assert.equal(state.player.cargo.items[commodityId], 4, 'the manifest is untouched');
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'mission_cargo_locked');
+  assert.equal(result.free, 3, 'the refusal names the free count');
+  assert.equal(state.player.cargo.items[commodityId], 7, 'the manifest is untouched');
 });
 
 test('NXB-025: jettison dumps free units and keeps the sealed manifest aboard', () => {
@@ -190,8 +191,12 @@ test('NXB-025: jettison dumps free units and keeps the sealed manifest aboard', 
     helpers: { spawnEntity() { return { id: 99 }; } },
   });
 
-  const dumped = system.jettison(commodityId, 7);
-  assert.equal(dumped, 3, 'the free three dump; the sealed four stay');
+  // A request that would touch the sealed manifest refuses outright.
+  assert.equal(system.jettison(commodityId, 7), 0);
+  assert.equal(state.player.cargo.items[commodityId], 7);
+  // The free three dump on an exact or open request; the sealed four stay.
+  const dumped = system.jettison(commodityId, 3);
+  assert.equal(dumped, 3);
   assert.equal(state.player.cargo.items[commodityId], 4);
 });
 

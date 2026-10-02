@@ -14,6 +14,7 @@ import {
   summarizePacket,
   validateControlPlane,
 } from './lib/programControlPlane.mjs';
+import { boardReport } from './board-chunks.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const CHECKPOINT_STALE_MS = 90 * 60 * 1000;
@@ -33,7 +34,11 @@ function usage() {
 
 When dispatchUnits exist, --next returns the first ready unit without a fresh lookahead reservation;
 --include-reserved is for explicit inspection. --ready returns every ready unit and annotates reserved
-ones. Outputs compact JSON; starting a task requires no separate coordinator or lease.`);
+ones. Outputs compact JSON; starting a task requires no separate coordinator or lease.
+
+A drained result is not an empty plan. The live work is the seam table in build_map.md §1C.
+List it with: node scripts/board-chunks.mjs
+Do not treat a drained queue as the inference catalog.`);
 }
 
 function liveReservations(root) {
@@ -123,11 +128,11 @@ try {
 
 try {
   if (values.ready) {
-    console.log(JSON.stringify(
-      readyDispatchUnits(control).map((unit) => summarizeUnit(unit, control)),
-      null,
-      2,
-    ));
+    const ready = readyDispatchUnits(control).map((unit) => summarizeUnit(unit, control));
+    console.log(JSON.stringify(ready, null, 2));
+    if (!ready.length) {
+      console.error('program-dispatch: the old packet queue has nothing ready. That is not an empty plan. Run node scripts/board-chunks.mjs and claim a free seam in build_map.md §1C. Do not switch to the inference catalog.');
+    }
     process.exit(0);
   }
 
@@ -158,14 +163,19 @@ try {
     const [nextUnit] = candidates;
     if (!nextUnit) {
       if (!ready.length) {
-        fail(
-          'legacy queue drained: no ready PQ dispatch unit. This does not mean directed BUILD/INFERENCE work is exhausted. '
-            + 'Read build_map.md §1C and design/program/INFERENCE_IDEAS.md, including the Next Wave 300 rows. '
-            + 'For an advisory canonical-row selection, run node scripts/next-wave-read.mjs --kind build --next '
-            + 'or --kind inference --next. Check NOW.md and exact dirty hunks before claiming. '
-            + 'Do not invent features while a dependency-ready directed row exists. PQ-210.08 remains parked as pre-release prep.',
-          1,
-        );
+        const board = boardReport();
+        console.log(JSON.stringify({
+          legacyQueue: 'drained',
+          work: 'build_map.md §1C seams',
+          rule: 'The old packet queue is empty. Claim a free seam and do its open rows. This is not an empty plan and it is not the inference catalog.',
+          free: board.free.map((seam) => ({
+            seam: seam.seam,
+            openRows: seam.openRows,
+            files: seam.files,
+          })),
+          claimed: board.claimed.map((seam) => ({ seam: seam.seam, claim: seam.claim, openRows: seam.openRows.length })),
+        }, null, 2));
+        process.exit(0);
       }
       fail(`all ${ready.length} ready dispatch units have fresh lookahead reservations; inspect --ready or use --include-reserved explicitly`, 1);
     }

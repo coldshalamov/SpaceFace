@@ -35,7 +35,8 @@
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
-  COLD_START, ENDING_AIRLOCK_GRAFFITI, HELIOS_BAY7, THREAD_B_FRAGMENT_ID,
+  COLD_START, ENDING_AIRLOCK_GRAFFITI, ENDING_RETURN_ACK, ENDING_STATION_ACK,
+  HELIOS_BAY7, STORY_ENTRY_CONTACT, THREAD_B_FRAGMENT_ID,
 } from '../data/narrative.js';
 import {
   ORRIN_WITNESS_CONTACT_ID,
@@ -66,16 +67,20 @@ import {
 } from '../core/newGamePlus.js';
 // Campaign 47-A sidecar: ending sandbox/receipt meta only — endgameChoice stays canonical on state.story.
 import {
+  BEAT_STATUS,
+  beatDefAt,
   ensureCampaign47aState,
   noteSandboxMode,
   pushCampaignHistory,
   pushCampaignReceipt,
   pushChoiceLog,
   primaryCommsForBeat,
+  recoverEncounter,
 } from '../story/campaign47a/index.js';
 // M5 pure endings eligibility + resolution plans (five endings + sandbox continuation).
 import {
   ENDING_DEFS,
+  endingDef,
   isEndingId,
   SANDBOX_ID,
   SANDBOX_MODE_OPEN_FRONTIER,
@@ -99,6 +104,8 @@ import {
   endingHomeGraffiti,
   endingContinuationLine,
 } from '../story/endings/index.js';
+import { continuationJobPermitted, newGamePlusConsequenceLine } from '../story/endings/continuationAccess.js';
+import { normalizeStoryFacts, recallStoryFact, recordCareerDecision, recordStoryFact } from '../story/storyFacts.js';
 
 const ASHFALL = 'sector_ashfall_reach';
 const VALE_PROFIT_ID = 'story_vale_profit_100k';
@@ -107,6 +114,8 @@ const VALE_CLAIM_ID = 'story_vale_claim_charter';
 const VALE_PROFIT_THRESHOLD = 100000;
 const DEEP_REACH_VERGE_GATE_ID = 'gate_deep_reach_revoked';
 export const HELIOS_BAY7_PROXIMITY_WU = 320;
+// Sim-seconds a fight holds the story channel. Eligibility stays; the line waits for the lull.
+const STORY_CALM_GAP_S = 8;
 
 // Ambient comms cadence: one every 45–90s of flight sim time (the "constant low-grade migraine").
 const AMBIENT_MIN_S = 45;
@@ -135,7 +144,10 @@ export const story = {
     // ── Ambient + trap comms timer (driven from update()). ───────────────────────────────────
     bus.on('game:started', (p) => this._onNewGame(p || {}));
     bus.on('save:loaded', () => this._onLoaded());
-    bus.on('encounter:resolved', (p) => this._onOrrinWitnessTransition(p || {}));
+    bus.on('encounter:resolved', (p) => {
+      this._onOrrinWitnessTransition(p || {});
+      this._maybeSpeakBeatRecovery('encounter:resolved');
+    });
     bus.on('signal:investigated', (p) => this._onOrrinWitnessEvidence(p || {}));
     bus.on('orrinWitness:evidenceEnsured', (p) => this._onOrrinWitnessEnsured(p || {}));
     // ── Ambient comms registry (E1 depth-program consequences). A registered line is durable
@@ -150,6 +162,16 @@ export const story = {
       this._releaseDeferredColdStart();
       this._recoverValeMilestones();
     });
+    bus.on('story:playerChoiceRecorded', (p) => this._recordChoiceFact(p || {}));
+    bus.on('story:vergeEvidenceRecorded', (p) => this._recordVergeFact(p || {}));
+    bus.on('story:kurtzLedger', (p) => this._recordKurtzFact(p || {}));
+    bus.on('story:vergeValeGatesRevoked', (p) => this._recordVergeRevokeFact(p || {}));
+    bus.on('career:origin:offered', (p) => this._recordCareer('offered', p || {}));
+    bus.on('career:origin:declined', (p) => this._recordCareer('declined', p || {}));
+    bus.on('career:origins:declined', (p) => this._recordCareer('declined', p || {}));
+    bus.on('career:origins:accepted', (p) => this._recordCareer('chosen', p || {}));
+    bus.on('career:ladder:choose', (p) => this._recordCareer('chosen', p || {}));
+    bus.on('career:ladder:stepDone', (p) => this._recordCareer('ladder', p || {}));
     // While the tutorial owns the one-voice channel, suppress its tutorial-line windows so ambient
     // comms can't stomp a beat's verb. The tutorial system announces each line via tutorial:say.
     bus.on('tutorial:say', () => { this._lastTutorialSayS = (this.state.simTime || 0); });
@@ -183,19 +205,30 @@ export const story = {
     // Endings continue into normal public gameplay. These are existing player-driven events, not
     // fixture inputs or a second mission system; the durable continuity record advances once per
     // distinct mission/route/region/scan and unlocks one authored replay hook.
-    bus.on('mission:completed', (p) => this._onPostEndingSignal('mission:completed', p || {}));
+    bus.on('mission:completed', (p) => this._onContinuationMission(p || {}));
+    bus.on('mission:failed', () => this._maybeSpeakBeatRecovery('mission:failed'));
     bus.on('economy:tradeCompleted', (p) => {
+      this._noteStoryRoute('trade');
       this._onValeProfitMilestone();
       this._onPostEndingSignal('economy:tradeCompleted', p || {});
     });
     bus.on('economy:grantCredits', (p) => this._onAutomationRemittance(p || {}));
-    bus.on('asset:deployed', () => this._armValeRemittanceWatch());
+    bus.on('asset:deployed', () => {
+      this._armValeRemittanceWatch();
+      this._maybeSpeakBeatRecovery('asset:deployed');
+    });
     bus.on('conflict:flip', (p) => {
       const payload = p || {};
       this._recordConflictReaction(payload);
       this._onValeConflictMilestone(payload);
     });
-    bus.on('claim:claimed', (p) => this._onValeClaimMilestone(p || {}));
+    bus.on('claim:claimed', (p) => {
+      this._noteStoryRoute('salvage');
+      this._onValeClaimMilestone(p || {});
+    });
+    bus.on('salvage:completed', () => this._noteStoryRoute('salvage'));
+    bus.on('combat:fire', (p) => this._noteCombatPressure(p || {}));
+    bus.on('combat:hit', (p) => this._noteCombatPressure(p || {}));
     bus.on('sector:enter', (p) => this._onPostEndingSignal('sector:enter', p || {}));
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     bus.on('scan:completed', (p) => this._onHeliosBay7ScanPulse(p || {}));
@@ -223,15 +256,14 @@ export const story = {
     this._pumpWrittenFinale();
     if (this._writtenFinaleHoldsChannel()) return;
     if (state.ui && state.ui.docked) return;
-    this._pumpScheduled();
-    s.ambientTimerS = (s.ambientTimerS || 0) - dt;
-    if (s.ambientTimerS <= 0) {
-      this._fireAmbient();
-      this._rescheduleAmbient();
+    // Story lines and the ambient schedule both read state.simTime. A large dt cannot
+    // release a line whose stamp is still in the future, and a simTime jump cannot skip it.
+    this._syncNarrativeClock();
+    if ((s.trapNextAtS || 0) <= (state.simTime || 0)) {
+      s.trapNextAtS = (state.simTime || 0) + 5;
+      this._fireEligibleTraps();
     }
-    // Trap comms: cheap condition sweep on a slow cadence (every ~5s of sim time).
-    this._trapAcc = (this._trapAcc || 0) + dt;
-    if (this._trapAcc >= 5) { this._trapAcc = 0; this._fireEligibleTraps(); }
+    void dt;
 
     // Phase-2 early trigger (HUD-META-ARC note #2): the manifest self-correction should also begin
     // when the player crosses rep <= -100 with any law faction, not only on the B4 beat advance.
@@ -337,7 +369,7 @@ export const story = {
     // overlap a beat's verb. Re-queue the line for later instead of dropping it.
     if (this._onboardingActive() && this._recentTutorialLine(8)) {
       this._rescheduleAmbient();
-      return;
+      return false;
     }
     const s = this.state.story;
     this._ensureState();
@@ -359,6 +391,7 @@ export const story = {
       id: `amb_${id}_${Math.floor(this.state.simTime)}`, sender: def.sender, text: def.text,
       category: 'ambient', ttl: 7, persist: false, note: def.note,
     });
+    return true;
   },
 
   // True if a tutorial line fired within `windowS` seconds (used to keep ambient comms off the verb).
@@ -470,7 +503,9 @@ export const story = {
     const p3 = (s.phase || 1) >= 3;
     const lo = p3 ? AMBIENT_MIN_S_P3 : AMBIENT_MIN_S;
     const hi = p3 ? AMBIENT_MAX_S_P3 : AMBIENT_MAX_S;
-    s.ambientTimerS = lo + this._rng() * (hi - lo);
+    const delay = lo + this._rng() * (hi - lo);
+    s.ambientTimerS = delay;
+    s.ambientNextAtS = (this.state.simTime || 0) + delay;
   },
 
   _rebuildAmbientQueue() {
@@ -519,6 +554,8 @@ export const story = {
       }
     }
     this._surfaceConflictReaction(stationId);
+    this._acknowledgeEndingStation(stationId);
+    this._maybeSpeakBeatRecovery('dock:docked');
     if (stationId === 'station_ashcache') {
       s.flags.deep_reach_ashfall_docked = true;
       s.flags.ashfall_visited = true;
@@ -960,6 +997,7 @@ export const story = {
       // The finite accept line yields to the first transmission. Do not stack another toast here.
       if (!plan.writtenFinale) this._sayStoryLine(plan.resolution || plan.title, 8);
       this.bus.emit('endgame:finaleReady', this.getWrittenEndingArchive());
+      this._announceFinaleReady();
     }
     this._schedulePostEndingObjective();
   },
@@ -1278,6 +1316,15 @@ export const story = {
       text: 'VERGE LATTICE AWAKE — VALE GATE ACCESS REVOKED',
       assertive: true,
       shape: 'verge-gate-revocation',
+    });
+    // One comms line says why. The chart reads valeGatesRevoked and seals the gate markers.
+    this._fireComms({
+      id: 'verge_vale_gates_revoked',
+      sender: 'VERGE LATTICE',
+      text: 'The Verge revoked Vale\'s gate access. The lattice sealed these gates.',
+      category: 'story',
+      ttl: 9,
+      persist: true,
     });
     return true;
   },
@@ -1706,6 +1753,7 @@ export const story = {
       }
       this._maybeOfferEndgame();
     }
+    this._acknowledgeEndingReturn(sectorId);
     this._armHeliosBay7(s, sectorId);
   },
 
@@ -1716,10 +1764,12 @@ export const story = {
     this._ensureState(true);
     const legacy = storyNewGamePlusRecord(payload.newGamePlus, this.state.meta && this.state.meta.seed);
     if (legacy) {
+      // Declared receipt only. The overlay's player, cargo, claims, and entity ids never land.
       this.state.story.newGamePlus = legacy;
       this._applyLeftoverWorldFacts(legacy.worldFacts);
       this._applyLeftoverScars(legacy.scars);
       this.bus.emit('story:newGamePlusStarted', { ...legacy });
+      this._sayNewGamePlusConsequences(legacy);
     }
     // Re-install Thread-B fragment after narrative reset clears persistentCargo.
     this._ensureThreadBFragment();
@@ -1730,10 +1780,16 @@ export const story = {
     // player who opted out of tutorial hints, onboarding is inactive and the cold start fires now.
     // A Crucible launch reuses this dispatch: the arena has no adventure comms voice.
     if (isSurvivalRunLive(this.state && this.state.run)) return;
+    this._ensureStoryEntry();
+    const entry = this.state.story.storyEntry;
+    entry.pending = true;
     if (this._tutorialOwnsOpening()) {
       this._coldStartDeferred = true;
+      entry.deferred = true;
     } else {
-      this._fireColdStart();
+      this._coldStartDeferred = false;
+      entry.deferred = false;
+      this._presentStoryEntry();
     }
   },
 
@@ -1835,9 +1891,13 @@ export const story = {
 
   // Released once the tutorial hands off to story mode (or immediately if there was no tutorial).
   _releaseDeferredColdStart() {
-    if (!this._coldStartDeferred) return;
+    this._ensureStoryEntry();
+    const entry = this.state.story.storyEntry;
+    if (!entry.deferred && !this._coldStartDeferred && !entry.pending) return;
+    entry.deferred = false;
     this._coldStartDeferred = false;
-    this._fireColdStart();
+    if (!entry.voiced) entry.pending = true;
+    this._presentStoryEntry({ released: true });
   },
 
   // ── COLD START — the Tessera's first 20 seconds ──────────────────────────────────────────
@@ -1845,25 +1905,38 @@ export const story = {
   // The friend's message arrives at t=0. The registry and the dock follow without explanation.
   // No cutscene. No intro. The world just starts talking before you're ready.
   _fireColdStart() {
+    const s = this.state.story;
+    this._ensureStoryEntry();
+    const entryState = s.storyEntry;
+    if (entryState.voiced || (s.seenComms && s.seenComms.cold_friend)) {
+      entryState.voiced = true;
+      entryState.pending = false;
+      entryState.deferred = false;
+      this._coldStartDeferred = false;
+      return false;
+    }
+    entryState.voiced = true;
+    entryState.pending = false;
+    entryState.deferred = false;
+    entryState.atS = Number(this.state.simTime) || 0;
+    entryState.contactId = STORY_ENTRY_CONTACT.id;
+    this._coldStartDeferred = false;
     // Set the previous crew's graffiti on the bulkhead immediately.
     // Dark humor. They knew they might not make it. They were right.
     this.bus.emit('graffiti:show', {
       line: GRAFFITI.GANG_DIDNT_MAKE_IT,
       where: 'bulkhead', beat: -1,
     });
-    // Then the cold start comms arrive over the first ~20 seconds.
+    // The whole cold start, including the shared Helios berth, is one simTime queue.
     for (const entry of COLD_START) {
-      const event = {
+      this._scheduleNarrative(entry.delayS || 0, {
         kind: 'comms',
         id: entry.id, sender: entry.sender, text: entry.text,
         category: entry.category, ttl: entry.ttl, note: entry.note,
-      };
-      if (!entry.delayS || entry.delayS <= 0) {
-        this._fireScheduled(event);
-      } else {
-        this._scheduleNarrative(entry.delayS, event);
-      }
+      });
     }
+    this._pumpScheduled();
+    return true;
   },
 
   _scheduleNarrative(delayS, event) {
@@ -1878,14 +1951,23 @@ export const story = {
     const s = this.state.story;
     if (!s || !Array.isArray(s.scheduled) || !s.scheduled.length) return;
     const now = this.state.simTime || 0;
+    const calmUntil = s.narrativeCalmUntilS || 0;
     while (s.scheduled.length && (s.scheduled[0].at || 0) <= now) {
-      const event = s.scheduled.shift();
+      const event = s.scheduled[0];
+      // A fight holds the next comms line. It stays on the simTime queue; it is not dropped.
+      if (event && event.kind === 'comms' && now < calmUntil) return;
+      s.scheduled.shift();
       this._fireScheduled(event);
     }
   },
 
   _fireScheduled(event) {
     if (!event) return;
+    if (event.kind === 'comms' && event.id && this.state && this.state.story) {
+      const s = this.state.story;
+      s.seenComms = s.seenComms || {};
+      s.seenComms[event.id] = true;
+    }
     if (event.kind === 'graffiti') {
       this._showGraffiti(event.line, event.where, event.beat, event.author);
       return;
@@ -1914,6 +1996,12 @@ export const story = {
     this._reconcileOrrinWitnessCase();
     if (!(this.state.story.ambientTimerS > 0)) this._rescheduleAmbient();
     this._recoverValeMilestones();
+    this._reconcileStoryEntry();
+    if (this.state.story.endgameResolved && this.state.story.endgameChoice
+        && this.state.story.seenComms && !this.state.story.seenComms.finale_announced) {
+      // An ending filed before this line existed is not announced again on Continue.
+      this.state.story.seenComms.finale_announced = true;
+    }
     this._publishPostEndingContinuity('loaded');
   },
 
@@ -1947,6 +2035,11 @@ export const story = {
       s.endingGateNextAtS = 0;
       s.newGamePlus = null;
       s.persistentCargo = [];
+      s.storyEntry = null;
+      s.facts = [];
+      s.narrativeCalmUntilS = 0;
+      s.ambientNextAtS = 0;
+      s.trapNextAtS = (state.simTime || 0) + 5;
       s.valeMilestones = { conflictFlip: null };
       s.conflictReaction = normalizeConflictReactionState();
       s.verge = createVergeStoryState();
@@ -1998,6 +2091,7 @@ export const story = {
         if (!Array.isArray(s.verge.revocations)) s.verge.revocations = [];
       }
     }
+    this._ensureStoryEntry();
   },
 
   _validatedWrittenFinale(raw) {
@@ -2043,6 +2137,20 @@ export const story = {
         ? carried.endingGateNextAtS : 0;
       s.postEnding = normalizePostEndingContinuity(carried.postEnding);
       if (carried.newGamePlus) s.newGamePlus = normalizeStoryNewGamePlusRecord(carried.newGamePlus);
+      this._storyEntryPersisted = !!(carried.storyEntry && typeof carried.storyEntry === 'object'
+        && !Array.isArray(carried.storyEntry));
+      if (this._storyEntryPersisted) s.storyEntry = carried.storyEntry;
+      if (Array.isArray(carried.facts)) s.facts = normalizeStoryFacts(carried.facts);
+      if (Number.isFinite(carried.narrativeCalmUntilS) && carried.narrativeCalmUntilS >= 0) {
+        s.narrativeCalmUntilS = carried.narrativeCalmUntilS;
+      }
+      if (Number.isFinite(carried.ambientNextAtS) && carried.ambientNextAtS >= 0) {
+        s.ambientNextAtS = carried.ambientNextAtS;
+      }
+      if (Number.isFinite(carried.trapNextAtS) && carried.trapNextAtS >= 0) {
+        s.trapNextAtS = carried.trapNextAtS;
+      }
+      this._ensureStoryEntry();
       s.persistentCargo = Array.isArray(carried.persistentCargo) ? carried.persistentCargo.slice() : [];
       if (carried.valeMilestones && typeof carried.valeMilestones === 'object' && !Array.isArray(carried.valeMilestones)) {
         const flip = carried.valeMilestones.conflictFlip;
@@ -2061,7 +2169,319 @@ export const story = {
       }
     }
   },
+
+  _ensureStoryEntry() {
+    const state = this.state;
+    const s = state && state.story;
+    if (!s) return null;
+    s.storyEntry = normalizeStoryEntry(s.storyEntry);
+    s.facts = normalizeStoryFacts(s.facts);
+    if (!Number.isFinite(s.narrativeCalmUntilS) || s.narrativeCalmUntilS < 0) s.narrativeCalmUntilS = 0;
+    if (!Number.isFinite(s.ambientNextAtS) || s.ambientNextAtS < 0) s.ambientNextAtS = 0;
+    if (!Number.isFinite(s.trapNextAtS) || s.trapNextAtS < 0) s.trapNextAtS = (state.simTime || 0) + 5;
+    return s.storyEntry;
+  },
+
+  _syncNarrativeClock() {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    this._ensureStoryEntry();
+    const now = Number(this.state.simTime) || 0;
+    this._pumpScheduled();
+    this._presentStoryEntry();
+    if ((s.ambientNextAtS || 0) <= now) {
+      const fired = this._fireAmbient();
+      if (fired !== false) this._rescheduleAmbient();
+    }
+    s.ambientTimerS = Math.max(0, (s.ambientNextAtS || now) - now);
+  },
+
+  _presentStoryEntry(opts = {}) {
+    this._ensureStoryEntry();
+    const s = this.state.story;
+    const entry = s.storyEntry;
+    if (!entry.pending || entry.voiced) return false;
+    if (entry.deferred && !opts.released) return false;
+    if (!opts.released && this._onboardingActive()) return false;
+    const now = Number(this.state.simTime) || 0;
+    if (now < (s.narrativeCalmUntilS || 0)) return false;
+    return this._fireColdStart();
+  },
+
+  _reconcileStoryEntry() {
+    this._ensureStoryEntry();
+    const s = this.state.story;
+    const entry = s.storyEntry;
+    const heard = !!(s.seenComms && s.seenComms.cold_friend);
+    const queued = Array.isArray(s.scheduled) && s.scheduled.some((event) => event && event.id === 'cold_friend');
+    if (heard || queued) {
+      entry.voiced = true;
+      entry.pending = false;
+      entry.deferred = false;
+      this._coldStartDeferred = false;
+      return;
+    }
+    if (entry.voiced) return;
+    if (entry.deferred || this._coldStartDeferred) {
+      if (this._tutorialOwnsOpening()) {
+        entry.deferred = true;
+        entry.pending = true;
+        this._coldStartDeferred = true;
+        return;
+      }
+      entry.deferred = false;
+      this._coldStartDeferred = false;
+      entry.pending = true;
+      this._presentStoryEntry({ released: true });
+      return;
+    }
+    // A loaded life with no saved entry already passed the opener. Do not replay Kael.
+    if (this._storyEntryPersisted === false || (s.beatIndex | 0) > 0 || s.endgameResolved) {
+      entry.voiced = true;
+      entry.pending = false;
+      return;
+    }
+    this._presentStoryEntry();
+  },
+
+  _noteStoryRoute(route) {
+    if (route !== 'trade' && route !== 'combat' && route !== 'salvage') return;
+    this._ensureStoryEntry();
+    const entry = this.state.story.storyEntry;
+    if (!entry.route) entry.route = route;
+    if (entry.voiced) return;
+    entry.pending = true;
+    if (this._tutorialOwnsOpening()) {
+      entry.deferred = true;
+      this._coldStartDeferred = true;
+    }
+  },
+
+  _noteCombatPressure(payload) {
+    const playerId = this.state && this.state.playerId;
+    const ownerId = payload.ownerId;
+    const targetId = payload.targetId != null ? payload.targetId : payload.victimId;
+    if (ownerId !== playerId && targetId !== playerId) return;
+    const s = this.state.story;
+    if (!s) return;
+    this._ensureStoryEntry();
+    s.narrativeCalmUntilS = (Number(this.state.simTime) || 0) + STORY_CALM_GAP_S;
+    this._noteStoryRoute('combat');
+  },
+
+  _onContinuationMission(payload) {
+    const s = this.state && this.state.story;
+    if (!s || !s.endgameResolved || !s.endgameChoice) return false;
+    const permitted = continuationJobPermitted(s.endgameChoice, payload);
+    this.bus.emit('story:continuationAccess', {
+      choice: s.endgameChoice,
+      type: payload && payload.type || null,
+      missionId: payload && payload.missionId || null,
+      permitted,
+      atS: Number(this.state.simTime) || 0,
+    });
+    if (!permitted) return false;
+    return this._onPostEndingSignal('mission:completed', payload);
+  },
+
+  _acknowledgeEndingStation(stationId) {
+    const s = this.state && this.state.story;
+    if (!s || !s.endgameResolved || !s.endgameChoice || !stationId) return false;
+    const text = ENDING_STATION_ACK[s.endgameChoice];
+    if (!text) return false;
+    const id = `ending_station_${s.endgameChoice}_${stationId}`;
+    s.seenComms = s.seenComms || {};
+    if (s.seenComms[id]) return false;
+    s.seenComms[id] = true;
+    this._scheduleNarrative(0, {
+      kind: 'comms', id, sender: 'DOCK', text, category: 'story', ttl: 9, persist: true,
+    });
+    this._pumpScheduled();
+    return true;
+  },
+
+  _acknowledgeEndingReturn(sectorId) {
+    const s = this.state && this.state.story;
+    if (!s || !s.endgameResolved || !s.endgameChoice || sectorId !== ASHFALL) return false;
+    const text = ENDING_RETURN_ACK[s.endgameChoice];
+    if (!text) return false;
+    const id = `ending_return_${s.endgameChoice}`;
+    s.seenComms = s.seenComms || {};
+    if (s.seenComms[id]) return false;
+    s.seenComms[id] = true;
+    this._scheduleNarrative(0, {
+      kind: 'comms', id, sender: 'ASHFALL REACH', text, category: 'story', ttl: 9, persist: true,
+    });
+    this._pumpScheduled();
+    return true;
+  },
+
+  _announceFinaleReady() {
+    const s = this.state && this.state.story;
+    if (!s || !s.endgameResolved || !s.endgameChoice) return false;
+    s.seenComms = s.seenComms || {};
+    if (s.seenComms.finale_announced) return false;
+    s.seenComms.finale_announced = true;
+    const def = endingDef(s.endgameChoice);
+    const title = def && def.title || s.endgameChoice;
+    const now = Number(this.state.simTime) || 0;
+    recordStoryFact(s, {
+      id: `finale:${s.endgameChoice}`,
+      kind: 'finale',
+      beat: s.beatIndex || 0,
+      text: `${title} is ready`,
+      citation: `finale:${s.endgameChoice}@${Math.floor(now)}`,
+    }, now);
+    const wait = Math.max(0, (s.narrativeCalmUntilS || 0) - now);
+    this._scheduleNarrative(wait, {
+      kind: 'comms',
+      id: 'finale_announced',
+      sender: 'CONCORD ADMIN',
+      text: `${title} is filed. It will not be offered again.`,
+      category: 'story',
+      ttl: 10,
+      persist: true,
+    });
+    this._pumpScheduled();
+    return true;
+  },
+
+  _maybeSpeakBeatRecovery(signal) {
+    const state = this.state;
+    const s = state && state.story;
+    if (!s) return false;
+    const beat = s.beatIndex | 0;
+    if (beat < 4 || beat > 7) return false;
+    const def = beatDefAt(beat);
+    const recovery = def && def.recovery;
+    if (!recovery || !Array.isArray(recovery.rearmOn) || !recovery.rearmOn.includes(signal)) return false;
+    ensureCampaign47aState(state);
+    const own = s.campaign47a;
+    if (!own) return false;
+    const now = Number(state.simTime) || 0;
+    if (own.beatStatus === BEAT_STATUS.FAILED) {
+      const recovered = recoverEncounter(state, now);
+      if (!recovered || !recovered.ok) return false;
+    }
+    const fails = own.failuresByBeat && (own.failuresByBeat[String(beat)] | 0);
+    if (!fails) return false;
+    const id = `story_recovery_${beat}_${fails}`;
+    s.seenComms = s.seenComms || {};
+    if (s.seenComms[id]) return false;
+    s.seenComms[id] = true;
+    recordStoryFact(s, {
+      id,
+      kind: 'recovery',
+      beat,
+      text: recovery.line,
+      citation: `recovery:${beat}@${Math.floor(now)}`,
+    }, now);
+    this._scheduleNarrative(0, {
+      kind: 'comms',
+      id,
+      sender: def.title || 'CAPTAIN\'S LOG',
+      text: recovery.line,
+      category: 'story',
+      ttl: 8,
+      persist: false,
+    });
+    this._pumpScheduled();
+    return true;
+  },
+
+  _sayNewGamePlusConsequences(record) {
+    const text = newGamePlusConsequenceLine(record);
+    if (!text) return false;
+    const s = this.state.story;
+    s.seenComms = s.seenComms || {};
+    if (s.seenComms.ngplus_consequence) return false;
+    s.seenComms.ngplus_consequence = true;
+    this._scheduleNarrative(0, {
+      kind: 'comms',
+      id: 'ngplus_consequence',
+      sender: 'REGISTRY',
+      text,
+      category: 'story',
+      ttl: 12,
+      persist: true,
+    });
+    this._pumpScheduled();
+    return true;
+  },
+
+  _recordChoiceFact(payload) {
+    const choiceId = payload && payload.choiceId;
+    if (!choiceId) return null;
+    const encounterId = payload.encounterId || 'choice';
+    return recordStoryFact(this.state.story, {
+      id: `choice:${encounterId}:${choiceId}`,
+      kind: 'choice',
+      beat: this.state.story.beatIndex || 0,
+      text: payload.line || `Choice ${choiceId}`,
+      citation: `choice:${choiceId}`,
+    }, this.state.simTime || 0);
+  },
+
+  _recordVergeFact(payload) {
+    const key = payload && payload.key;
+    if (!key) return null;
+    return recordStoryFact(this.state.story, {
+      id: `verge:${key}`,
+      kind: 'verge_evidence',
+      beat: this.state.story.beatIndex || 0,
+      text: `Verge evidence ${key}`,
+      citation: `verge:${key}`,
+    }, this.state.simTime || 0);
+  },
+
+  _recordKurtzFact() {
+    return recordStoryFact(this.state.story, {
+      id: 'kurtz:ledger',
+      kind: 'kurtz_ledger',
+      beat: this.state.story.beatIndex || 0,
+      text: 'Kurtz ledger read',
+      citation: 'kurtz:ledger',
+    }, this.state.simTime || 0);
+  },
+
+  _recordVergeRevokeFact() {
+    return recordStoryFact(this.state.story, {
+      id: 'verge:revocation',
+      kind: 'verge_revocation',
+      beat: this.state.story.beatIndex || 0,
+      text: 'Vale gate access revoked',
+      citation: 'verge:revocation',
+    }, this.state.simTime || 0);
+  },
+
+  _recordCareer(kind, payload) {
+    return recordCareerDecision(
+      this.state.story,
+      kind,
+      payload,
+      this.state.simTime || 0,
+      this.state.story && this.state.story.beatIndex || 0,
+    );
+  },
+
+  recallFact(id) {
+    return recallStoryFact(this.state && this.state.story, id);
+  },
 };
+
+function normalizeStoryEntry(raw) {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const route = src.route === 'trade' || src.route === 'combat' || src.route === 'salvage' ? src.route : null;
+  const atS = Number(src.atS);
+  return {
+    deferred: src.deferred === true,
+    pending: src.pending === true,
+    voiced: src.voiced === true,
+    route,
+    atS: Number.isFinite(atS) && atS >= 0 ? atS : null,
+    contactId: src.contactId === STORY_ENTRY_CONTACT.id ? STORY_ENTRY_CONTACT.id : null,
+  };
+}
 
 function createVergeStoryState() {
   return {

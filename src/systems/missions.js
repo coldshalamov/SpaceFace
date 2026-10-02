@@ -182,7 +182,7 @@ import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, releasableContractUnits, removeCargo } from './cargo.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -3054,7 +3054,12 @@ export const missions = {
       ? this._withdrawSetPieceChoiceOffers(offer) : [];
     if (!setPieceCauseOf(offer) && board) board.slots = board.slots.filter((o) => o.id !== offer.id);
     if (inst.preloadedCargo && inst.params && inst.params.cmdtyId) {
-      const sealedQty = Math.max(1, inst.params.qty || 1);
+      const sealedQty = Math.max(1, Math.floor(Number(inst.params.qty) || 1));
+      // The reservation lives on the contract, not in a second inventory. It is visible
+      // as soon as the units land, and a failed load never leaves a half-open claim.
+      inst.params.sealedRemaining = sealedQty;
+      inst.params.sealedDelivered = 0;
+      inst.params.sealAccounted = true;
       const loaded = addCargo(state, inst.params.cmdtyId, sealedQty);
       if (loaded < sealedQty) {
         if (loaded > 0) removeCargo(state, inst.params.cmdtyId, loaded);
@@ -6344,15 +6349,31 @@ export const missions = {
           if (have > 0 && have < need) {
             const deal = mutationPartialSettlement(have, need, m.reward_cr);
             if (deal && deal.partial) {
-              removeCargo(this.state, m.params.cmdtyId, deal.deliverQty);
+              const deliverQty = m.preloadedCargo === true
+                ? Math.min(deal.deliverQty, releasableContractUnits(this.state, m))
+                : deal.deliverQty;
+              const removed = m.preloadedCargo === true
+                ? this._drawSealedUnits(m, deliverQty)
+                : removeCargo(this.state, m.params.cmdtyId, deliverQty);
+              if (removed <= 0) {
+                this.bus.emit('toast', {
+                  text: `Delivery: you are not carrying ${this._cmdtyName(m.params.cmdtyId)}`,
+                  kind: 'warn',
+                  ttl: 3,
+                });
+                continue;
+              }
               this.bus.emit('cargo:delivered', {
-                commodityId: m.params.cmdtyId, qty: deal.deliverQty,
+                commodityId: m.params.cmdtyId, qty: removed,
                 missionId: m.id, stationId: m.destStationId,
               });
-              m.reward_cr = deal.payCr;
+              const paid = removed === deal.deliverQty
+                ? deal
+                : (mutationPartialSettlement(removed, need, m.reward_cr) || deal);
+              m.reward_cr = paid.payCr;
               m.params.completionMethod = 'partial_recovery';
               this.bus.emit('toast', {
-                text: `Partial recovery: ${deal.deliverQty}/${need}u brought home — settled for ${deal.payCr.toLocaleString('en-US')} cr.`,
+                text: `Partial recovery: ${removed}/${need}u brought home — settled for ${paid.payCr.toLocaleString('en-US')} cr.`,
                 kind: 'warn',
                 ttl: 4,
               });
@@ -6429,25 +6450,96 @@ export const missions = {
 
   /** Delivery/passenger/cargo: verify the required commodity+qty is in the player hold and consume
    *  it via the cargo removeCargo helper. Passenger missions carry no commodity (cmdtyId null) →
-   *  always satisfied (the passenger rides in the ship, not the hold). Returns true if delivered. */
+   *  always satisfied (the passenger rides in the ship, not the hold). Returns true if delivered.
+   *  A preloaded contract consumes only its own remaining reservation, never another contract's
+   *  units and never the player's extra units of the same good. */
   _deliverCargo(m) {
     const p = m.params || {};
     if (!p.cmdtyId) return true; // passenger / abstract cargo — nothing to verify in the hold
-    const need = Math.max(1, p.qty || 1);
+    const tracked = m.preloadedCargo === true && (Number(p.qty) > 0 || p.sealAccounted === true);
+    if (tracked) this._accountSeal(m);
+    const need = tracked
+      ? Math.max(0, Math.floor(Number(m.params.sealedRemaining) || 0))
+      : Math.max(1, p.qty || 1);
+    if (tracked && need <= 0) return Math.floor(Number(m.params.sealedDelivered) || 0) > 0;
     const cargo = this.state.player && this.state.player.cargo;
     const have = (cargo && cargo.items && cargo.items[p.cmdtyId]) || 0;
     if (have < need) return false;
+    if (tracked && releasableContractUnits(this.state, m) < need) return false;
     if (m.storyTag === CONTRACT_47A_B0_TAG && Array.isArray(this.state.story && this.state.story.persistentCargo)) {
       this.state.story.persistentCargo = this.state.story.persistentCargo.filter((id) => id !== CONTRACT_47A_SAMPLE_ID);
     }
     // Consume the delivered cargo through the cargo single-writer helper (keeps volume/mass caches sane).
-    const removed = removeCargo(this.state, p.cmdtyId, need);
+    const removed = tracked
+      ? this._drawSealedUnits(m, need)
+      : removeCargo(this.state, p.cmdtyId, need);
     if (removed <= 0 && m.storyTag === CONTRACT_47A_B0_TAG) {
       const locked = this.state.story.persistentCargo || (this.state.story.persistentCargo = []);
       if (!locked.includes(CONTRACT_47A_SAMPLE_ID)) locked.push(CONTRACT_47A_SAMPLE_ID);
     }
     this.bus.emit('cargo:delivered', { commodityId: p.cmdtyId, qty: removed, missionId: m.id, stationId: m.destStationId });
     return removed > 0;
+  },
+
+  /** Record a known contracted quantity without inventing units already delivered. */
+  _accountSeal(m) {
+    if (!m || !m.params || m.params.sealAccounted === true) return;
+    const qty = Number(m.params.qty);
+    if (!(qty > 0)) return;
+    m.params.sealedRemaining = Math.floor(qty);
+    m.params.sealedDelivered = Math.max(0, Math.floor(Number(m.params.sealedDelivered) || 0));
+    m.params.sealAccounted = true;
+  },
+
+  /** Remove up to `qty` of this contract's own sealed units. Returns the units actually removed. */
+  _drawSealedUnits(m, qty) {
+    if (!m || m.preloadedCargo !== true || !m.params || !m.params.cmdtyId) return 0;
+    this._accountSeal(m);
+    if (m.params.sealAccounted !== true) return 0;
+    const want = Math.max(0, Math.floor(Number(qty) || 0));
+    const remaining = Math.max(0, Math.floor(Number(m.params.sealedRemaining) || 0));
+    const take = Math.min(want, remaining, releasableContractUnits(this.state, m));
+    if (take <= 0) return 0;
+    const removed = removeCargo(this.state, m.params.cmdtyId, take);
+    m.params.sealedRemaining = Math.max(0, remaining - removed);
+    m.params.sealedDelivered = Math.max(0, Math.floor(Number(m.params.sealedDelivered) || 0)) + removed;
+    return removed;
+  },
+
+  /**
+   * Turn in part of one sealed load. Refuses an amount this contract does not still reserve,
+   * so a repeated confirmation cannot spend the same units twice or a sibling contract's units.
+   */
+  deliverSealedPortion(missionId, qty) {
+    const active = (this.state && this.state.missions && this.state.missions.active) || [];
+    const mission = active.find((row) => row && row.id === missionId && row.status === 'active');
+    if (!mission || mission.preloadedCargo !== true || !mission.params || !mission.params.cmdtyId) {
+      return { ok: false, reason: 'not_sealed', removed: 0 };
+    }
+    const want = Math.max(0, Math.floor(Number(qty) || 0));
+    this._accountSeal(mission);
+    if (mission.params.sealAccounted !== true) {
+      return { ok: false, reason: 'ambiguous', removed: 0 };
+    }
+    const remaining = Math.max(0, Math.floor(Number(mission.params.sealedRemaining) || 0));
+    if (want <= 0) return { ok: false, reason: 'qty', removed: 0, remaining };
+    const cap = releasableContractUnits(this.state, mission);
+    if (want > cap) return { ok: false, reason: 'over_reserve', removed: 0, remaining, cap };
+    const removed = this._drawSealedUnits(mission, want);
+    if (removed > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:delivered', {
+        commodityId: mission.params.cmdtyId,
+        qty: removed,
+        missionId: mission.id,
+        stationId: mission.destStationId,
+        partial: true,
+      });
+    }
+    return {
+      ok: removed === want,
+      removed,
+      remaining: Math.max(0, Math.floor(Number(mission.params.sealedRemaining) || 0)),
+    };
   },
 
   _cmdtyName(id) { const c = CMDTY_BY_ID.get(id); return c ? c.name : 'cargo'; },
@@ -6840,9 +6932,18 @@ export const missions = {
 
   _removePreloadedContractCargo(mission) {
     if (!mission || !mission.preloadedCargo || !mission.params || !mission.params.cmdtyId) return 0;
-    return removeCargo(
-      this.state, mission.params.cmdtyId, Math.max(1, mission.params.qty || 1),
-    );
+    const cap = releasableContractUnits(this.state, mission);
+    const removed = cap > 0 ? removeCargo(this.state, mission.params.cmdtyId, cap) : 0;
+    // The contract is leaving. Zero its claim so a second confirmation cannot release it again.
+    if (Number(mission.params.qty) > 0 || mission.params.sealAccounted === true) {
+      this._accountSeal(mission);
+      mission.params.sealedDelivered = Math.max(0, Math.floor(Number(mission.params.sealedDelivered) || 0)) + removed;
+      mission.params.sealedRemaining = 0;
+    } else {
+      mission.params.sealAccounted = true;
+      mission.params.sealedRemaining = 0;
+    }
+    return removed;
   },
 
   /**

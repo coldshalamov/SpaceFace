@@ -284,12 +284,28 @@ test('restart replays the seed the run BEGAN with, through the real New Game req
   assert.equal(lastCrucibleSetup().seed, 99, 'the same seed is replayed');
 });
 
-test('seeds are clamped into the range the wave planner accepts', () => {
-  assert.equal(normalizeSeed(0), 1);
-  assert.equal(normalizeSeed(-5), 1);
+test('seeds are validated into the range the wave planner accepts without silent clamping', () => {
+  assert.equal(normalizeSeed(0), 0);
+  assert.equal(normalizeSeed(-5), -5);
   assert.equal(normalizeSeed('4242'), 4242);
-  assert.equal(normalizeSeed(NaN), 1);
-  assert.equal(normalizeSeed(0xffffffff + 100), 0xffffffff);
+  assert.ok(Number.isNaN(normalizeSeed(NaN)));
+  assert.equal(normalizeSeed(0xffffffff + 100), 0xffffffff + 100);
+
+  // Setup returns an error for invalid seeds and never silently clamps to 1
+  assert.equal(crucibleSetupFor({ seed: 0 }).ok, false);
+  assert.equal(crucibleSetupFor({ seed: -5 }).ok, false);
+  assert.equal(crucibleSetupFor({ seed: NaN }).ok, false);
+  assert.equal(crucibleSetupFor({ seed: 'bad' }).ok, false);
+  assert.equal(crucibleSetupFor({ seed: 0xffffffff + 100 }).ok, false);
+  assert.equal(crucibleSetupFor({ seed: 4242 }).ok, true);
+  assert.equal(crucibleSetupFor({ seed: '4242' }).ok, true);
+  assert.equal(crucibleSetupFor({ seed: 4242 }).value.seed, 4242);
+
+  // No partial run creation on invalid seed
+  const emitted = [];
+  const bus = { emit: (ev, payload) => emitted.push({ ev, payload }) };
+  assert.equal(requestCrucibleRun(bus, crucibleSetupFor({ seed: 0 })), false);
+  assert.equal(emitted.length, 0);
 });
 
 test('survivalResults is event-driven and never joins the per-frame update order', () => {

@@ -68,6 +68,13 @@ export const BOMB_CUE_TO_RECIPE = Object.freeze({
   'bombs.anchor.settle': 'sfx_bomb_anchor_settle',
   'combat.status.burning': 'sfx_bomb_thermite_burn',
   'combat.status.goo': 'sfx_bomb_goo_residue',
+  'bombs:cycle': 'sfx_bomb_rack_cycle',
+  'bombs:rackChanged': 'sfx_bomb_rack_change',
+});
+
+export const BOMB_RACK_CUES = Object.freeze({
+  cycle: 'sfx_bomb_rack_cycle',
+  rackChanged: 'sfx_bomb_rack_change',
 });
 
 const FIELD_LOOP_CUES = new Set(
@@ -366,6 +373,17 @@ export function bindBombAudio(host, bus) {
   bus.on('combat:statusExpired', (payload) => {
     if (!payload) return;
     stopLoop(host, bombStatusLoopKey(payload.targetId, payload.statusId));
+  });
+  // VERB-23: Cycling the bomb rack clicks and a changed rack is heard
+  bus.on('bombs:cycle', () => {
+    if (typeof host.play === 'function') {
+      host.play(BOMB_RACK_CUES.cycle, { gain: 0.45 });
+    }
+  });
+  bus.on('bombs:rackChanged', () => {
+    if (typeof host.play === 'function') {
+      host.play(BOMB_RACK_CUES.rackChanged, { gain: 0.55 });
+    }
   });
   host._syncBombAudio = () => syncBombAudioLoops(host);
 }
