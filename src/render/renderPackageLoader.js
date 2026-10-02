@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { activeDecodeClass, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -71,17 +71,17 @@ export function createRenderPackageLoader(options = {}) {
     const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
     const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache');
     try {
-      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions);
+      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, metadataOrUrl);
     } catch (error) {
       // Desktop Electron keeps a stable origin so saves persist. A previous immutable cache
       // entry for this same URL can still win once; bypass it and load the on-disk package.
       if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
       const reloaded = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload');
-      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions);
+      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, metadataOrUrl);
     }
   }
 
-  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}) {
+  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}, metadataUrl = null) {
     if (disposed) throw new Error('Render package loader has been disposed.');
     assertValidRenderPackage(metadataValue);
     const expectedHash = normalizeExpectedContentHash(expectedContentHash);
@@ -158,7 +158,7 @@ export function createRenderPackageLoader(options = {}) {
       const loaded = await existing.promise;
       if (existing.evicted) {
         if (cache.get(contentHash) === existing) cache.delete(contentHash);
-        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions);
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, metadataUrl);
       }
       retainConsumer(existing.key);
       if (!existing.packageOwner && !retainPackageOwner(existing, decodeWarm, decodeServed)) {
@@ -178,6 +178,7 @@ export function createRenderPackageLoader(options = {}) {
       key: `render-package:${contentHash}`,
       signature,
       metadata,
+      metadataUrl: typeof metadataUrl === 'string' ? metadataUrl : null,
       renderUrl,
       promise: null,
       loaded: null,
@@ -200,7 +201,14 @@ export function createRenderPackageLoader(options = {}) {
       // per-vertex layout rebake, canonicalize) inside one microtask drain. Pace it through the
       // same class lanes; the class travels by the caller's decode-class flag window, which a
       // joiner's wrap holds through settle — so joined tasks classify at the joiner's class too.
-      .then((decoded) => scheduleGltfCompile(() => preparePackageTail(decoded), activeDecodeClass()));
+      .then((decoded) => scheduleGltfCompile(() => {
+        // Same owner-activity re-check the source-GLB tail runs at drain time: an owner that
+        // departed while the tail queued skips the compile — the settled-null path cancels
+        // the request below instead of blueprint work spent on a dead boundary.
+        if (typeof loadOptions.isResidencyOwnerActive === 'function'
+          && !loadOptions.isResidencyOwnerActive()) return null;
+        return preparePackageTail(decoded);
+      }, activeDecodeClass(), entry.promise));
 
   function preparePackageTail(decoded) {
     return (async () => {
@@ -358,9 +366,28 @@ export function createRenderPackageLoader(options = {}) {
     });
   }
 
+  /**
+   * Re-grade a queued package compile tail to `joinClass` for the package loaded from
+   * `metadataUrl`. The dominant decode route's tail enqueues under the class that was active
+   * when its decode resolved — a deadline/visible joiner landing after the enqueue would
+   * otherwise sit behind every queued ambient compile. Returns true when a queued entry was
+   * re-graded; a settled or unstarted tail resolves false and the caller's flag window
+   * covers anything still to enqueue.
+   */
+  function regradeCompileFor(metadataUrl, joinClass) {
+    if (typeof metadataUrl !== 'string' || !metadataUrl) return false;
+    for (const entry of cache.values()) {
+      if (entry.metadataUrl === metadataUrl) {
+        return entry.promise ? regradeGltfCompile(entry.promise, joinClass) : false;
+      }
+    }
+    return false;
+  }
+
   return Object.freeze({
     load,
     loadWithSourceFallback,
+    regradeCompileFor,
     release,
     dispose,
     diagnostics,

@@ -31,6 +31,34 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
  * decode (decode-runway / wave-hull / admission-deadline work) never waits behind a queued
  * ambient warm; ambient fairness is preserved because the higher classes are rare and capped.
  */
+export const DECODE_CLASS_RANK = Object.freeze({ ambient: 0, deadline: 1, visible: 2 });
+
+// Cross-lane pace ledger: the frame-paced slicers (compose driver, compile drain) each guard
+// only their own budget — a busy frame would otherwise carry the SUM of every slicer's budget
+// in paced main-thread JS. Slicers report their measured slice spend here; a slicer that runs
+// later in the same frame window can read what the frame has already spent and stand down for
+// the frame instead of stacking its budget on top.
+const PACE_FRAME_WINDOW_MS = 8;
+const paceNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+  ? () => performance.now()
+  : () => Date.now();
+let paceFrameStartedAt = -Infinity;
+let paceFrameSpentMs = 0;
+
+export function notePacedFrameSpend(ms) {
+  const t = paceNow();
+  if (t - paceFrameStartedAt >= PACE_FRAME_WINDOW_MS) {
+    paceFrameStartedAt = t;
+    paceFrameSpentMs = 0;
+  }
+  paceFrameSpentMs += Math.max(0, Number(ms) || 0);
+}
+
+export function pacedFrameSpend() {
+  const t = paceNow();
+  return (t - paceFrameStartedAt < PACE_FRAME_WINDOW_MS) ? paceFrameSpentMs : 0;
+}
+
 export function createDecodeTaskBudget(limit) {
   const size = Math.max(1, Math.floor(limit));
   let available = size;
@@ -50,7 +78,7 @@ export function createDecodeTaskBudget(limit) {
     }
     return new Promise((resolve) => { waiters.push({ decodeClass, resolve }); });
   };
-  const CLASS_RANK = { ambient: 0, deadline: 1, visible: 2 };
+  const CLASS_RANK = DECODE_CLASS_RANK;
   /**
    * Re-grade every queued waiter strictly below `decodeClass` up to it, preserving FIFO.
    * A demand-joiner (a mount joining a task that posted decodes ambient) can't name the
@@ -185,6 +213,11 @@ const gltfCompilePending = { visible: [], deadline: [], ambient: [] };
 // already enqueued at a lower class (mirrors budget.promote's queued-waiter re-grade).
 const gltfCompileEntries = new WeakMap();
 let gltfCompileDrainScheduled = false;
+// Frames skipped in a row because another paced slicer already spent the frame's JS budget.
+// Aging prevents a perpetual visible/deadline stream from starving compile tails forever —
+// after the cap the drain runs one entry minimum per frame like before.
+let gltfCompileFramesSkipped = 0;
+const GLTF_COMPILE_MAX_SKIPPED_FRAMES = 2;
 
 function gltfCompileLaneFor(decodeClass) {
   return decodeClass === 'visible' ? gltfCompilePending.visible
@@ -196,6 +229,15 @@ function drainGltfCompileQueue() {
   const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? () => performance.now()
     : () => Date.now();
+  // Another paced slicer already ate the frame's JS budget — yield this frame rather than
+  // stack a second slice on top. The aging cap keeps a busy visible/deadline stream from
+  // starving ambient compile tails indefinitely.
+  if (pacedFrameSpend() >= GLTF_COMPILE_FRAME_MS && gltfCompileFramesSkipped < GLTF_COMPILE_MAX_SKIPPED_FRAMES) {
+    gltfCompileFramesSkipped += 1;
+    requestAnimationFrame(drainGltfCompileQueue);
+    return;
+  }
+  gltfCompileFramesSkipped = 0;
   const start = now();
   let ran = 0;
   while (ran === 0 || now() - start < GLTF_COMPILE_FRAME_MS) {
@@ -207,6 +249,7 @@ function drainGltfCompileQueue() {
     ran += 1;
     try { task.resolve(task.fn()); } catch (error) { task.reject(error); }
   }
+  notePacedFrameSpend(now() - start);
   const pending = gltfCompilePending.visible.length
     || gltfCompilePending.deadline.length
     || gltfCompilePending.ambient.length;

@@ -26,6 +26,7 @@ import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion
 import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
+import { notePacedFrameSpend } from './decodeTaskBudget.js';
 import {
   TABLE_BAND,
   TABLE_DECODE_RUNWAY_SECONDS,
@@ -8252,6 +8253,12 @@ async function commitAuthoredBoundary(
       );
       return false;
     }
+    // The async driver's mid-compose abort returns null on a stale verdict — stamping the
+    // boundary 'unavailable' here would overwrite a live epoch's state; that verdict belongs
+    // to the live admission.
+    if (staleAuthoredRunVerdict(boundary, options)
+      || (entity && entity.alive === false)
+      || !boundary.parent) return false;
     boundary.userData.authoredAssetState = 'unavailable';
     boundary.userData.authoredVisualRoot = 'none-build-failed';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
@@ -8820,7 +8827,7 @@ function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
   return library;
 }
 
-function* composedShipSteps(entity, library, scene, ownerBoundary, options = {}) {
+function* composedShipSteps(entity, library, scene, ownerBoundary, options = {}, composeTrace = null) {
   const releaseMode = isReleaseAssetMode(options);
   const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
   const assemblySeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
@@ -8894,6 +8901,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {})
     removeFlightRootTemplate(templateKey);
   }
   const root = new THREE.Group();
+  // Expose the in-progress root to the async driver: an early-returned generator simply dies
+  // suspended, so the caller cannot reach the partially built root to dispose it otherwise.
+  if (composeTrace) composeTrace.root = root;
   root.name = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
   root.userData.kind = 'ship';
   root.userData.assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${assemblySeed.toString(16)}`;
@@ -9296,6 +9306,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {})
       authoredSlots: authoredSlotMap,
     }));
   }
+  if (composeTrace) composeTrace.root = null;
   return result;
 }
 
@@ -9324,7 +9335,11 @@ function composeYield() {
 }
 
 async function buildComposedShipAsync(entity, library, scene, ownerBoundary, options = {}) {
-  const steps = composedShipSteps(entity, library, scene, ownerBoundary, options);
+  // The trace carries the partially built root back out if the run is early-returned so the
+  // driver can dispose it — the generator itself stays untouched by the abort (the sync driver
+  // composes without a trace and keeps its single-pass semantics bit-identical).
+  const composeTrace = { root: null };
+  const steps = composedShipSteps(entity, library, scene, ownerBoundary, options, composeTrace);
   const now = () => (
     typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now() : Date.now()
@@ -9332,12 +9347,31 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   let sliceStarted = now();
   let step = steps.next();
   while (!step.done) {
-    if (now() - sliceStarted >= COMPOSE_SLICE_MS) {
+    const sliceMs = now() - sliceStarted;
+    if (sliceMs >= COMPOSE_SLICE_MS) {
+      // Report the slice's cost before yielding: other frame-paced slicers (the compile drain)
+      // read the ledger later this frame and stand down instead of stacking their own budget.
+      notePacedFrameSpend(sliceMs);
       await composeYield();
       sliceStarted = now();
+      // A re-admission, stall-abort, owner death, or boundary detach that lands mid-compose
+      // must not keep burning slices (and then the full GPU prepare) on a ship the commit gate
+      // would only dispose at the end. Same verdicts commitAuthoredBoundary re-runs after
+      // compose — checked here per-slice so the abandoned run exits before its next slice.
+      if (staleAuthoredRunVerdict(ownerBoundary, options)
+        || (entity && entity.alive === false)
+        || (ownerBoundary && !ownerBoundary.parent)) {
+        try { steps.return(undefined); } catch { /* generator teardown is best-effort */ }
+        if (composeTrace.root) {
+          try { disposeDetachedObject(composeTrace.root); } catch { /* partial-root disposal is best-effort */ }
+          composeTrace.root = null;
+        }
+        return null;
+      }
     }
     step = steps.next();
   }
+  notePacedFrameSpend(now() - sliceStarted);
   return step.value;
 }
 

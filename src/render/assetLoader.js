@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { activeDecodeClass, deadlineDecodeActive, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { activeDecodeClass, deadlineDecodeActive, DECODE_CLASS_RANK, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import { loadMotionBank } from './authoredMotion.js';
 import {
@@ -596,6 +596,11 @@ export async function loadAuthoredPart(url, options = {}) {
       if (budget && typeof budget.promote === 'function') {
         budget.promote(joinClass);
       }
+      // The package tail may already sit queued in a lower lane — same re-grade the GLB
+      // lane runs on a join, resolved through the loader's content-hash cache by url.
+      if (runtime.renderPackages && typeof runtime.renderPackages.regradeCompileFor === 'function') {
+        runtime.renderPackages.regradeCompileFor(renderPackagePilot.metadataUrl, joinClass);
+      }
     }
     return (wrapDecodeClass ? () => wrapDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
       : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
@@ -676,11 +681,16 @@ export async function loadAuthoredPart(url, options = {}) {
     if (budget && typeof budget.promote === 'function') {
       budget.promote(joinClass);
     }
-    joinedAssetTaskClasses.set(task, joinClass);
-    // The tail may already sit queued in a lower lane — a join lands while the task is still
-    // pending (unsettled until the compile resolves), so re-grade the queued entry too. A tail
-    // not yet enqueued reads this join's class when it schedules.
-    regradeGltfCompile(task, joinClass);
+    // Retain the strongest join class, not the last: a deadline-only joiner landing after a
+    // visible joiner must not downgrade the shared tail back into the deadline lane.
+    const prevJoinClass = joinedAssetTaskClasses.get(task);
+    if (!(prevJoinClass && (DECODE_CLASS_RANK[prevJoinClass] || 0) >= (DECODE_CLASS_RANK[joinClass] || 0))) {
+      joinedAssetTaskClasses.set(task, joinClass);
+      // The tail may already sit queued in a lower lane — a join lands while the task is still
+      // pending (unsettled until the compile resolves), so re-grade the queued entry too. A tail
+      // not yet enqueued reads this join's class when it schedules.
+      regradeGltfCompile(task, joinClass);
+    }
     (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   }
   const blueprint = await task;
@@ -1208,6 +1218,8 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       // the byte-pressure race last, mirroring the decode-cache retain.
       residencySoftLease: !options.residencyOwner
         && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
+      // Mirrors the source-GLB tail's drain-time owner check inside the package compile tail.
+      isResidencyOwnerActive: options.isResidencyOwnerActive,
     }).then((renderPackage) => {
       // This outer cache is keyed by source URL while the loader evicts by content hash, and a
       // key only refreshes when the same URL is requested again — so a fulfilled task kept every
