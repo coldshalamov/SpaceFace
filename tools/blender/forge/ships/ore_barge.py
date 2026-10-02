@@ -190,7 +190,7 @@ def build():
     F.box(s, 'LampBar', (-12.8, 0.0, 4.82), (0.25, 2.4, 0.18), material='gunmetal', bevel=0.01)
     s.detail = 0
     F.light(s, 'Flood', (-12.66, 0.8, 4.84), 'glow_warm', size=0.2, mirror=True)
-    F.light(s, 'Beacon', (-15.3, 0.0, 6.55), 'glow_amber', size=0.22)
+    F.light(s, 'Beacon', (-15.3, 0.0, 6.55), 'glow_amber.beacon', size=0.22)
     F.light(s, 'BowLamp', (20.42, 1.4, 0.35), 'glow_warm', size=0.22, mirror=True)
     F.light(s, 'FoscleFlood', (19.52, 1.0, 1.62), 'glow_warm', size=0.24, mirror=True)
     F.light(s, 'NavPort', (-19.8, 4.6, 1.0), 'glow_red', size=0.3)
