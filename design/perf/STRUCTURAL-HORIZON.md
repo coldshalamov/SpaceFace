@@ -47,23 +47,23 @@ The runway already class-orders decodes (visible→deadline→ambient) through w
 
 Current warm horizon is the incoming sector + membership-candidate dwell. A two-sector-deep, byte-budgeted prefetch (weighted by jump-probability from the route graph) would cover plotted multi-hop routes; cost is wasted decode on unvisited branches — bounded by the existing soft-lease eviction. **Effort**: M. **Ceiling**: M (only the second hop of multi-hop travel gains).
 
-## S6. Frame-graph ordering inside the present frame
+## S6. Frame-graph ordering inside the present frame — VERIFIED LANDED (W26+)
 
-Cheap complement to S1: audit that within a presented frame, present-critical work (scene graph updates for already-admitted bodies, uniform updates, draw submit) is ordered strictly before deferred work (diagnostics publish, residency bookkeeping, emit drains). The presentation-tier bus + drain machinery exists; this is ordering, not new machinery. **Effort**: S-M. **Ceiling**: M — protects the tail of a heavy frame.
+Audited at `presentationRunner.js:830-985`: the rAF frame already orders **sim advance → present (`registry.renderUpdate`) → compile drain offered only the honest remainder (`frameBudgetMs − everything spent, sim included`) → emit-slice drain on re-measured remainder**. Deferred work cannot precede the present. Nothing left here.
 
-## S7. Economy burst slicing — the last measured main-thread spikes
+## S7. Economy burst slicing — PARTIALLY LANDED, remainder illegal under the golden
 
-The W4 kernel census left two ~19–30 ms spikes on the main thread (`econTick`, `save:loaded→refreshAllPersistentDemand`), and the report itself flags the cohort-straddle slicing pattern as the honest non-worker fix. Both can slice across ticks only if emit ordering into listeners is preserved — likely the risk-M gate that kept this deferred; classify whether the burst can yield *between* emits without changing order. **Effort**: M. **Ceiling**: H for hitch class (they are the largest measured single-frame sim blocks).
+- `save:loaded → refreshAllPersistentDemand` is already sliced: `ECONOMY_SAVE_LOADED_SLICES` adjacent listeners at `economy.js:1058-1065`, and `sectorsim:offlineSummary` queues the same sliced refresh drained one slice/tick at `:1083-1091` (deterministic boundaries).
+- `econTick` itself (~19 ms ×2/run) **cannot slice legally**: it is synchronous inside `registry.step`; yielding mid-tick hands a half-drifted `markets` map to downstream systems in the same tick → sim state differs → golden moves. Its emit sits at the end (`economy.js:1173`) but the internal work order is the contract, not the emit. Only legal reductions are internal algorithmic wins — the wave lanes' job, not a structural lever.
 
 ## Execution order (by ceiling × tractability)
 
-1. **S7** — smallest legal-scope drastic win on the largest measured block (once slicing legality is proven).
-2. **S6** — cheap ordering win, compounds with S7.
-3. **S2** — SoA sidecar; both a win and the S1/PQ-067 precondition.
-4. **S4/S5** — audit-gated; implement only where evidence clears the bar.
-5. **S3** — audit only; density evidence decides.
-6. **S1** — the XL spike: render-worker transport prototype, only after S2's columns exist to make transport cheap.
-7. **S0** — stays gated on the W4 revisit conditions.
+1. **S2** — SoA sidecar; both a modest direct win and the S1/PQ-067 precondition.
+2. **S4/S5** — audit-gated; implement only where evidence clears the bar.
+3. **S3** — audit only; density evidence decides.
+4. **S1** — the XL spike: render-worker transport prototype, only after S2's columns exist to make transport cheap.
+5. **S0** — stays gated on the W4 revisit conditions.
+6. ~~S6~~ — verified landed. ~~S7~~ — save:loaded half landed; econTick slicing proven illegal (recorded so it isn't re-proposed).
 
 ## A/B verification protocol (all levers)
 
