@@ -40,6 +40,14 @@ import {
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
 /**
+ * The opening lesson's pack hold is a ceiling, not a sentence. The tick the board has nothing
+ * left to fight — the lone hull dead or disabled — the held schedule advances to this far out,
+ * and the wave clock shrinks by the same shift, so the pack still gets its full minute measured
+ * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
+ */
+export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+
+/**
  * SWARM REINFORCEMENT (PQ-135).
  *
  * The arc names its batches up front. Swarm fills a finite round quota in paced groups,
@@ -160,6 +168,7 @@ export const survivalWave = {
     if (!this._active) return;
 
     this._cursor += 1;
+    this._maybeReleaseOpeningLesson();
     this._dispatchDue();
     this._reinforceSwarm(run);
     this._publishWaveProgress();
@@ -494,13 +503,44 @@ export const survivalWave = {
   },
 
   /**
+   * The opening lesson's hold ends the tick the board runs out of fight — the lone hull dead or
+   * disabled — rather than at the authored ceiling. Every held entry advances to one short beat
+   * out and the wave clock shrinks by the same shift. A lesson hull the budget refused to admit
+   * releases on the same rule: an empty lesson is already over.
+   */
+  _maybeReleaseOpeningLesson() {
+    const lesson = this._plan && this._plan.openingLesson;
+    if (!lesson || this._lessonReleased) return;
+    if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
+    if (this._actionableCohortCount() > 0) return;
+    this._lessonReleased = true;
+    const shift = lesson.holdTicks - (this._cursor + OPENING_LESSON_RELEASE_TICKS);
+    if (shift > 0) {
+      for (const item of this._pending) {
+        const entry = item && item.entry;
+        if (entry && Number.isInteger(entry.atTick) && entry.atTick > this._cursor) {
+          entry.atTick -= shift;
+        }
+      }
+      if (Number.isInteger(this._durationTicks) && this._durationTicks > shift) {
+        this._durationTicks -= shift;
+      }
+      if (this._swarm && Number.isInteger(this._swarm.durationTicks) && this._swarm.durationTicks > shift) {
+        this._swarm.durationTicks -= shift;
+      }
+    }
+    this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
+  },
+
+  /**
    * Hold the room at strength. Runs only for a swarm wave; a no-op everywhere else, including on
    * ticks where the room is already full — the common case, and the cheap one.
    */
   _reinforceSwarm(run, opts = {}) {
     if (!this._swarm || !this._plan) return;
     const lesson = this._plan.openingLesson;
-    if (lesson && Number.isFinite(lesson.holdTicks) && this._cursor < lesson.holdTicks) return;
+    if (lesson && !this._lessonReleased && Number.isFinite(lesson.holdTicks)
+      && this._cursor < lesson.holdTicks) return;
     const emergencyOnly = opts.emergencyOnly === true;
     if (!emergencyOnly && (this._cleared || !this._active)) return;
     if (!emergencyOnly && this._cursor < 0) return;
@@ -741,6 +781,7 @@ export const survivalWave = {
     this._reinforceBatch = 3;
     this._reinforceIndex = 0;
     this._lastReinforceTick = -9999;
+    this._lessonReleased = false;
     this._bossIds = new Set();
     // A capital champion's fight record never outlives its wave: terminal, surviving or
     // run-ended, the next wave (or teardown) starts from an empty fight ledger.

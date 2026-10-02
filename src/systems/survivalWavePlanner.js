@@ -720,13 +720,17 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
   return decorateWeeklyPlan(plan, mutators);
 }
 
-/** First swarm minute, before the pack. 45 seconds at the 60 Hz sim. */
+/**
+ * First swarm minute, before the pack. 45 seconds at the 60 Hz sim — a CEILING, not a sentence:
+ * the wave owner releases the pack the tick the lesson hull stops being a fight.
+ */
 export const OPENING_LESSON_HOLD_TICKS = 45 * 60;
 
 /**
- * Wave 1 of a first swarm run. The same bodies still arrive — one light hull now, the rest
- * after the hold — so the budget does not grow. A rock and a well ride on the plan for the
- * arena to place. Callers that omit teachOpening never see this.
+ * Wave 1 of a first swarm run. The same bodies still arrive — one light hull now, the rest when
+ * the lesson hull falls or the hold expires, whichever comes first — so the budget does not
+ * grow. A rock and a well ride on the plan for the arena to place. Callers that omit
+ * teachOpening never see this.
  */
 export function applyOpeningLesson(plan) {
   if (!plan || !Array.isArray(plan.packages) || plan.packages.length === 0) return plan;
