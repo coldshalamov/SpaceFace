@@ -98,10 +98,10 @@ Phase-B gap list (mechanical plumbing, not conceptual risk):
 
 | # | Stage | Gate | Risk |
 |---|---|---|---|
-| 0 | Shared sim-driver lib — extract ~290 LOC of 47a orchestration into `scripts/lib/simScenarioDriver.mjs` consumed by CLI + worker | golden via CLI AND worker | LOW |
-| 1 | Command ring + input channel — `{input\|bus\|settings\|rpc}` per directive; input fold unchanged worker-side; gamepad sampled main-side | golden in-worker + `inputCommandHistory.toTape()` A/B | MEDIUM |
-| 2 | Deep-flat event bridge — depth-4 projection, entity→read-model ref, per-type adapters only for live-object payloads; presentation tier re-enqueues into main's `presentationQueue` | 0 unintentional drops (was 437/7); listener-invocation parity probe | MEDIUM |
-| 3 | Read model v1 — entities + aux rows (ledger/farActor/dressing journal transform records; `appendNearbyLedgerRows`→windowed query; `_syncWorldPresentationTableMeshes` dies) | collect-set equality vs live walk | MEDIUM-HIGH |
+| 0 | ✅ `9a861d46d` — shared sim-driver lib (`scripts/lib/simScenarioDriver.mjs`) consumed by CLI + worker | golden via CLI AND worker | LOW |
+| 1 | ✅ `4a0b6d3d3` — command ring + input channel (`simCommandChannel.mjs`); `{input\|bus\|settings\|rpc}` envelopes; input fold unchanged worker-side | golden in-worker + `inputCommandHistory.toTape()` parity | MEDIUM |
+| 2 | ✅ `fdea9c3c9` — deep-flat event bridge (`simEventBridge.mjs`): depth-4 projection, vec-like leaf covers Vector2/3/4 payloads, `REJECT` sentinel, `{entityRef}` collapse, presentation lane re-enqueue | 0 unintentional drops, 479 events parity | MEDIUM |
+| 3 | ✅ `63c8c212b` — read model v1 (`simReadModel.mjs`): entities Map ← journal spawn infos + destroy records; aux channel (far/rock/dressing signature diff → upserts/removals — version counters don't cover in-place shelf sweeps); windowed collect twin of `appendNearbyLedgerRows`; `collectProbe` ships resolved inputs + live digest per tick; `--probe aux` exercises shelve/promote/mutate/drop | collect-set digest equality: 720/720 probes, 0 mismatches, both plain and aux-probe runs | MEDIUM-HIGH |
 | 4 | Read model v2 — domain mirrors (player/missions/economy/cargo facades, mutate-in-place never swap) | DOM-diff probe on fixed-seed replay | MEDIUM |
 | 5 | Hard-sync remediation — flag-gated eager market mint (commodity order → quote pure), promote→command+ack, physicsPrep→RPC | golden + market parity probe; save-compat review on mint ordering | HIGH(quote)/MEDIUM |
 | 6 | **The flip** — `advanceSimulation`→directive send (accumulator math stays main; steps count crosses), `consumeLatestCompletedTick` reads transport ring, `SIM_LANE=main` revert flag | identical journal streams tick-for-tick + digest canary | HIGHEST |
