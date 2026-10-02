@@ -10,6 +10,7 @@ import {
   releaseAsteroidInstancesForEntity,
   syncAsteroidInstancePool,
 } from '../src/render/asteroidInstancePool.js';
+import { makeEntity } from '../src/core/entity.js';
 import { createPersistentSubmitLanes, SUBMIT_LANE } from '../src/render/persistentSubmitLanes.js';
 import { reattachResidentGpuMeshes, render } from '../src/render/renderer.js';
 
@@ -168,4 +169,43 @@ test('unbind releases the submit-lane slot even when the presentation handle is 
   assert.equal(render._unbindPresentationMesh.call(context, 43, null), true);
   assert.deepEqual(unbindCalls, [[3, null]], 'a live handle still unbinds normally');
   assert.equal(lanes.diagnostics().liveSlots, 0, 'both reservations released');
+});
+
+test('presentation bind restores mesh/view refs on a promoted same-id entity', () => {
+  const bound = [];
+  const context = {
+    state: { playerId: 1 },
+    _livingHullPresentation: null,
+    _presentationHandleScratch: {},
+    _persistentSubmitLanes: createPersistentSubmitLanes(),
+    _presentationWorld: {
+      handleForEntityId: (id) => ({ slot: id }),
+      bindMesh: (handle, mesh, entity) => { bound.push({ handle, mesh, entity }); return true; },
+    },
+  };
+  const warmedRoot = new THREE.Group();
+  warmedRoot.userData.authoredAssetState = 'authored';
+
+  const promoted = makeEntity({ id: 42, type: 'asteroid', pos: { x: 5, z: 0 }, radius: 8 });
+  assert.equal(promoted.mesh, null);
+  assert.equal(promoted.view, null);
+
+  assert.equal(render._bindPresentationMesh.call(context, promoted, warmedRoot), true);
+  assert.equal(promoted.mesh, warmedRoot, 'the already-warmed root is rebound as the same object');
+  assert.equal(promoted.view && promoted.view.root, warmedRoot);
+  assert.equal(Object.keys(promoted).includes('mesh'), false,
+    'mesh stays on the non-enumerable render membrane');
+  assert.equal(Object.keys(promoted).includes('view'), false);
+  assert.equal(bound.length, 1);
+  assert.equal(bound[0].entity, promoted, 'bindMesh receives the current same-id entity');
+  assert.equal(bound[0].mesh, warmedRoot);
+  assert.equal(warmedRoot.userData.authoredAssetState, 'authored',
+    'binding must not reset the warm record state');
+
+  const keptView = { root: null, extra: 'keep' };
+  const reissued = makeEntity({ id: 43, type: 'asteroid', pos: { x: 9, z: 0 }, radius: 3 });
+  reissued.view = keptView;
+  assert.equal(render._bindPresentationMesh.call(context, reissued, warmedRoot), true);
+  assert.equal(reissued.view, keptView, 'an existing view object is updated, not replaced');
+  assert.equal(reissued.view.root, warmedRoot);
 });

@@ -88,8 +88,12 @@ const MODE_CLASSIFY_SCRATCH = {
  * @param {object} sample from sampleThrottleInto
  * @param {number} [boostBlend]
  */
-export function applyContinuumToSample(recipe, mode, sample, boostBlend = 0) {
+export function applyContinuumToSample(recipe, mode, sample, boostBlend = 0, weights = null) {
   const continuum = continuumForRecipe(recipe);
+  // Per-entity blended modes (see integrateModeWeights): the structural multipliers are a
+  // weighted mix of every mode, so a mode flip is a ~0.14 s crossfade instead of a one-frame step
+  // in length (brake x0.42, reverse x0.08).
+  if (weights && continuum) return applyBlendedContinuum(continuum, mode, sample, boostBlend, weights);
   const m = continuum && continuum[mode] ? continuum[mode] : null;
   if (!m) {
     sample.mode = mode || 'accel';
@@ -119,6 +123,90 @@ export function applyContinuumToSample(recipe, mode, sample, boostBlend = 0) {
   }
   sample.mode = mode;
   return sample;
+}
+
+/**
+ * Weighted continuum: the same structural multipliers as the discrete path, mixed by `weights`
+ * (one per DRIVE_MODES entry, summing to 1). With a one-hot weight vector this is exactly the
+ * discrete result. Allocates nothing.
+ */
+function applyBlendedContinuum(continuum, mode, sample, boostBlend, weights) {
+  let lengthMul = 0;
+  let widthMul = 0;
+  let turbMul = 0;
+  let flowMul = 0;
+  let driveMul = 0;
+  let coreBias = 0;
+  for (let i = 0; i < DRIVE_MODES.length; i++) {
+    const w = weights[i];
+    if (!(w > 1e-4)) continue;
+    const m = continuum[DRIVE_MODES[i]];
+    if (!m) {
+      lengthMul += w; widthMul += w; turbMul += w; flowMul += w; driveMul += w;
+    } else if (m.mainSuppressed) {
+      // The same numbers the discrete path applies for a suppressed main drive.
+      lengthMul += w * 0.08; widthMul += w * 0.55; turbMul += w * 0.35; flowMul += w * 0.2;
+      driveMul += w * 0.12;
+    } else {
+      lengthMul += w * (m.lengthMul != null ? m.lengthMul : 1);
+      widthMul += w * (m.widthMul != null ? m.widthMul : 1);
+      turbMul += w * (m.turbulenceMul != null ? m.turbulenceMul : 1);
+      flowMul += w * (m.flowMul != null ? m.flowMul : 1);
+      driveMul += w;
+      if (m.coreBias != null) coreBias += w * m.coreBias;
+    }
+  }
+  sample.length *= lengthMul;
+  sample.width *= widthMul;
+  sample.turbulence *= turbMul;
+  sample.flowSpeed *= flowMul;
+  sample.effectiveDrive *= driveMul;
+  if (coreBias !== 0) sample.coreSheathBalance = Math.max(0.15, sample.coreSheathBalance + coreBias);
+  // Boost structure stays continuous (blend-aware), now scaled by how little of the blend IS boost.
+  if (boostBlend > 0 && continuum.boost) {
+    const b = continuum.boost;
+    const t = Math.max(0, Math.min(1, boostBlend)) * (1 - (weights[BOOST_INDEX] || 0));
+    if (b.lengthMul != null) sample.length *= 1 + (b.lengthMul - 1) * t * 0.35;
+    if (b.flowMul != null) sample.flowSpeed *= 1 + (b.flowMul - 1) * t * 0.35;
+  }
+  sample.mode = mode;
+  return sample;
+}
+
+const BOOST_INDEX = DRIVE_MODES.indexOf('boost');
+const ACCEL_INDEX = DRIVE_MODES.indexOf('accel');
+
+/** Time constant of the drive-mode crossfade, seconds. */
+export const MODE_BLEND_TAU = 0.14;
+
+/**
+ * Advance one entity's mode weights toward the discrete mode `mode`. The weights live on the
+ * entity's own drive state (created once, lazily, so there is no per-frame allocation) and start
+ * one-hot, so a freshly spawned plume never fades in from a blend of nothing. Mutates and returns
+ * the Float32Array.
+ */
+export function integrateModeWeights(state, mode, dt) {
+  let w = state.modeWeights;
+  if (!w) {
+    w = state.modeWeights = new Float32Array(DRIVE_MODES.length);
+    state.modeSeeded = false;
+  }
+  let target = DRIVE_MODES.indexOf(mode);
+  if (target < 0) target = ACCEL_INDEX;
+  if (!state.modeSeeded) {
+    w.fill(0);
+    w[target] = 1;
+    state.modeSeeded = true;
+    return w;
+  }
+  const a = 1 - Math.exp(-Math.max(0, Math.min(0.1, Number.isFinite(dt) ? dt : 0)) / MODE_BLEND_TAU);
+  let sum = 0;
+  for (let i = 0; i < w.length; i++) {
+    w[i] += ((i === target ? 1 : 0) - w[i]) * a;
+    sum += w[i];
+  }
+  if (sum > 1e-6) for (let i = 0; i < w.length; i++) w[i] /= sum;
+  return w;
 }
 
 /**
@@ -206,7 +294,7 @@ export function sampleThrottleInto(recipe, throttle, a11y, out) {
       mode = resolveDriveMode(MODE_CLASSIFY_SCRATCH, recipe);
     }
   }
-  applyContinuumToSample(recipe, mode, out, boostBlend);
+  applyContinuumToSample(recipe, mode, out, boostBlend, flags.modeWeights || null);
   return out;
 }
 

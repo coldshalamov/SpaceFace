@@ -7,7 +7,7 @@ import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { interpolateGlobalToFrame, readFrameOrigin } from './frameCoordinates.js';
-import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+import { adoptFlybyHandoffDirector, CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
 import { createCameraGlide, resetCameraGlide, stepCameraGlide } from './cameraGlide.js';
 import {
   readOwnedExceptionalSpeed,
@@ -1182,6 +1182,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
   const _compositionSticky = { id: null, remainS: 0, wasActive: false };
   const cameraDirector = createCameraDirector();
+  adoptFlybyHandoffDirector(cameraDirector);
   let _holdT = 0;
   let _deathCam = false;
   let _directorFrame = cameraDirector.output;

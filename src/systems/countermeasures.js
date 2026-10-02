@@ -33,6 +33,27 @@
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { suppressDefeatedLock, targetIdentityGeneration } from '../ai/perception.js';
+
+/** A broken lock cannot be rebuilt on the same contact until this observation window passes. */
+export const LOCK_REACQUIRE_S = 1.2;
+
+export function suppressBrokenLock(combat, targetId, simTime, holdS = LOCK_REACQUIRE_S) {
+  if (!combat) return combat;
+  combat.lockTarget = null;
+  combat.lockProgress = 0;
+  combat.lockGeneration = (combat.lockGeneration | 0) + 1;
+  combat.lockSuppressTargetId = targetId;
+  combat.lockSuppressUntil = (Number(simTime) || 0) + holdS;
+  return combat;
+}
+
+/** True only for the contact whose guidance was just broken. A different target is a new observation. */
+export function lockLineageSuppressed(combat, targetId, simTime) {
+  if (!combat || targetId == null) return false;
+  return combat.lockSuppressTargetId === targetId
+    && (Number(simTime) || 0) < (Number(combat.lockSuppressUntil) || 0);
+}
 
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
@@ -69,6 +90,17 @@ const CM_KIND_AUDIO = Object.freeze({ chaff: 'cm_chaff', ecm: 'cm_ecm', decoy: '
 function ensureCm(e) {
   if (!e.data.cm) e.data.cm = { cooldownT: 0, effectT: 0, effect: null };
   return e.data.cm;
+}
+
+// A finite stock (live block, else the fitting) is a magazine. Unset stays the cooldown
+// dispenser — not an empty tube. Callers must not raise this number on a refusal.
+function liveCountermeasureStock(cm, cfg) {
+  if (cm && Number.isFinite(cm.stock)) return cm.stock;
+  if (cfg && Number.isFinite(cfg.stock)) {
+    cm.stock = cfg.stock;
+    return cm.stock;
+  }
+  return null;
 }
 
 /** Bench A/B: production default ON. Quiet latch skips ship walks when no CM/PDS interest. */
@@ -263,36 +295,23 @@ export const countermeasures = {
         const cz = cfg.kind === 'decoy' ? cm.effect.originZ : e.pos.z;
         const dx = p.pos.x - cx, dz = p.pos.z - cz;
         if (dx * dx + dz * dz > r2) continue; // outside the effect radius
-        if (cfg.kind === 'chaff') {
-          // Divert missiles targeting THIS ship to the decoy cloud (a static point behind the ship).
-          // Uses the deterministic sim RNG (state.rng) — the sim must be reproducible for replay
-          // verification (sf-sim.mjs --hash --repeat must match across runs). state.rng is always
-          // present in the sim; if absent (defensive), skip diversion rather than break determinism.
+        if (cfg.kind === 'chaff' || cfg.kind === 'decoy') {
+          // Chaff answers the defeated lineage: a second shooter's missile keeps its own solution.
+          // A decoy buoy is placed bait — it re-baits ANY seeker that crosses its water, lock or no.
           const rng = state.rng;
-          if (d.targetId === e.id && rng && rng() < cfg.divertPct) {
+          const bites = cfg.kind === 'decoy' ? true : missileMatchesLineage(d, cm.effect.lineage, p);
+          if (bites && rng && rng() < cfg.divertPct) {
             d.targetId = cm.effect.decoyId;
             d.diverted = true;
-            d.divertPos = {
-              x: cm.effect.originX,
-              z: cm.effect.originZ,
-            };
-          }
-        } else if (cfg.kind === 'decoy') {
-          // Bait verb: ANY seeker that crosses the buoy's water re-attacks the buoy — chaff only
-          // pulls missiles already aimed at you, for a moment; the buoy keeps eating locks for
-          // its whole duration. Already-hooked missiles are skipped, not re-rolled.
-          const rng = state.rng;
-          if (d.targetId !== cm.effect.decoyId && rng && rng() < cfg.divertPct) {
-            d.targetId = cm.effect.decoyId;
-            d.diverted = true;
+            d.guidanceBroken = true;
             d.divertPos = {
               x: cm.effect.originX,
               z: cm.effect.originZ,
             };
           }
         } else if (cfg.kind === 'ecm') {
-          // Jam guidance: zero the turnRate so the missile flies straight (weapons._steerHoming reads
-          // data.turnRate each tick). Tag _jammedBy so the effect-expiry pass (step 1) restores it.
+          // Jam only the defeated lineage. Other seekers in the radius keep turning.
+          if (!missileMatchesLineage(d, cm.effect.lineage, p)) continue;
           if (d._jammedBy !== e.id) {
             if (d._jammedTurnRate == null) d._jammedTurnRate = d.turnRate || 0;
             d.turnRate = (d._jammedTurnRate || 0) * cfg.turnRateMult;
@@ -357,61 +376,34 @@ export const countermeasures = {
       return false;
     }
     const cm = ensureCm(e);
-    if (cm.cooldownT > 0) {
-      this._denyDeploy(e, eq.cm.kind, 'cooldown', cm.cooldownT);
-      return false; // not ready
-    }
     const cfg = eq.cm;
-
-    // Nothing to answer: chaff/ECM are purely reactive — with no lock on this hull and no inbound
-    // seeker, a deploy would burn the cooldown for an empty cloud. Refuse honestly with a distinct
-    // reason (NXI-046: 'no_lock' is not 'cooldown'). The decoy buoy stays deployable — baiting
-    // seekers that haven't locked yet is its whole authored job.
-    if (cfg.kind !== 'decoy' && !this._missileThreat(e, this.state)) {
-      this._denyDeploy(e, cfg.kind, 'no_lock', 0);
+    const stock = liveCountermeasureStock(cm, cfg);
+    // Empty is its own refusal: no success cue, no buoy, and the count stays empty.
+    if (stock != null && !(stock >= 1)) {
+      this._denyDeploy(e, cfg.kind, 'empty', 0);
       return false;
     }
-
-    // Break ONE lineage: the particular lock this deploy defeats. Priority goes to a shooter whose
-    // live missile is already inbound on this hull (that lock produced the threat being answered),
-    // then the attacker furthest along its acquisition. Every other attacker keeps its lock and
-    // progress — one countermeasure answers one lock, it does not erase every threat at once.
-    const breakPct = cfg.lockBreakPct != null ? cfg.lockBreakPct : 1.0;
-    let brokenLockShipId = null;
-    {
-      const lockers = [];
-      for (const other of countermeasureShipCandidates(this.state)) {
-        if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
-        const oc = other.data && other.data.combat;
-        if (oc && oc.lockTarget === e.id) lockers.push(other);
-      }
-      if (lockers.length) {
-        const inboundOwners = new Set();
-        const projectiles = (this.state.entityIndex && this.state.entityIndex.projectiles)
-          || this.state.entityList || [];
-        for (const p of projectiles) {
-          const d = p && p.data;
-          if (!p || !p.alive || p.type !== 'projectile' || !d || d.kind !== 'missile') continue;
-          if (d.targetId === e.id && d.ownerId != null) inboundOwners.add(d.ownerId);
-        }
-        let best = null;
-        for (const other of lockers) {
-          const progress = (other.data.combat && other.data.combat.lockProgress) || 0;
-          const inbound = inboundOwners.has(other.id) ? 1 : 0;
-          // Inbound seeker beats build progress; ties resolve on progress, then lowest id —
-          // the pick must be deterministic for replay, never map-iteration luck.
-          if (!best || inbound > best.inbound
-              || (inbound === best.inbound && progress > best.progress)
-              || (inbound === best.inbound && progress === best.progress && other.id < best.other.id)) {
-            best = { other, inbound, progress };
-          }
-        }
-        const oc = best.other.data.combat;
-        oc.lockProgress = Math.max(0, (oc.lockProgress || 0) * (1 - breakPct));
-        if (oc.lockProgress <= 0) { oc.lockTarget = null; oc.lockTargetGeneration = null; }
-        brokenLockShipId = best.other.id;
+    if (cm.cooldownT > 0) {
+      this._denyDeploy(e, cfg.kind, 'cooldown', cm.cooldownT);
+      return false; // not ready
+    }
+    // Chaff and ECM answer an incoming lock or missile. A decoy buoy is bait you place
+    // before anyone has a lock, so that case is not this refusal.
+    if (cfg.kind !== 'decoy') {
+      ensureCountermeasureRuntime(this);
+      if (!this._missileThreat(e, this.state)) {
+        this._denyDeploy(e, cfg.kind, 'no_lock', 0);
+        return false;
       }
     }
+
+    if (stock != null) cm.stock = stock - 1;
+
+    // One deploy breaks one eligible lineage. A building lock with nothing in the air,
+    // and every other shooter who already has a missile, keep their solutions.
+    const breakPct = cfg.lockBreakPct != null ? cfg.lockBreakPct : 1.0;
+    const brokenLineage = breakOneLockLineage(this.state, e, breakPct);
+    const brokenLockShipId = brokenLineage ? brokenLineage.shooterId : null;
 
     // Spawn the timed effect. Chaff and the decoy buoy create a point seekers divert to (not a
     // live entity — weapons._steerHoming homes on divertPos); the decoy's point is the buoy and
@@ -425,6 +417,7 @@ export const countermeasures = {
       decoyId,
       originX: decoy ? decoy.x : e.pos.x,
       originZ: decoy ? decoy.z : e.pos.z,
+      lineage: brokenLineage,
     };
     cm.effectT = cfg.durationS;
     cm.cooldownT = cfg.cooldownS;
@@ -444,7 +437,7 @@ export const countermeasures = {
   },
 
   // A refused deploy is a beat the player must hear, never a silent `return false`: the sim event
-  // names the reason (kind + readyIn on cooldown; no_module otherwise) for any listener, and the
+  // names the reason (cooldown, empty, no_lock, or no_module) for any listener, and the
   // player additionally gets the one-voice alert + shared deny cue — the same channels the
   // weapons vent / mining vent refusals use. AI auto-deploy gates on fittings + cooldown before
   // calling _tryDeploy, so in practice only the player lands in the denied branches.
@@ -458,14 +451,18 @@ export const countermeasures = {
       tick: this.state.tick,
     });
     if (e.id !== this.state.playerId) return;
+    const ready = Math.ceil(Math.max(0, Number(readyIn) || 0));
+    const text = reason === 'cooldown'
+      ? `COUNTERMEASURE RECHARGING ${ready}s`
+      : reason === 'empty'
+        ? 'COUNTERMEASURES EMPTY'
+        : reason === 'no_lock'
+          ? 'NO INCOMING LOCK'
+          : 'NO COUNTERMEASURE FITTED';
     this.bus.emit('alert', {
       key: 'cm-denied',
       sev: 'warn',
-      text: reason === 'cooldown'
-        ? `COUNTERMEASURE RECHARGING ${Math.ceil(Math.max(0, Number(readyIn) || 0))}s`
-        : reason === 'no_lock'
-          ? 'NO INBOUND LOCK — HELD'
-          : 'NO COUNTERMEASURE FITTED',
+      text,
       ttl: 1.6,
     });
     this.bus.emit('audio:cue', { id: 'ui_deny' });
@@ -495,6 +492,119 @@ export const countermeasures = {
     return false;
   },
 };
+
+function inboundMissiles(state, targetId) {
+  const owned = new Set();
+  const loose = [];
+  const list = (state.entityIndex && state.entityIndex.projectiles) || state.entityList || [];
+  for (const p of list) {
+    if (!p || p.type !== 'projectile' || !p.alive) continue;
+    const d = p.data;
+    if (!d || d.kind !== 'missile' || d.targetId !== targetId) continue;
+    const owner = d.ownerId != null ? d.ownerId : p.ownerId;
+    if (owner != null) owned.add(owner);
+    else loose.push(p);
+  }
+  return { owned, loose };
+}
+
+function lockObservationCurrent(shooter, target) {
+  const contacts = shooter && shooter.data && shooter.data.perceptionContacts;
+  if (!Array.isArray(contacts)) return true;
+  let contact = null;
+  for (const row of contacts) {
+    if (row && row.id === target.id && row.kind !== 'lock') { contact = row; break; }
+  }
+  if (!contact) return false;
+  if (contact.visible === false) return false;
+  if (Number.isFinite(contact.ageTicks) && contact.ageTicks > 0) return false;
+  if (contact.targetGeneration != null && contact.targetGeneration !== targetIdentityGeneration(target)) return false;
+  return true;
+}
+
+/** Highest lock progress, then lowest shooter id. A live missile is required. */
+export function selectLockLineage(state, deployer) {
+  if (!state || !deployer) return null;
+  const inbound = inboundMissiles(state, deployer.id);
+  if (inbound.owned.size === 0 && inbound.loose.length === 0) return null;
+  let best = null;
+  for (const other of countermeasureShipCandidates(state)) {
+    if (!other || other.type !== 'ship' || !other.alive || other.id === deployer.id) continue;
+    const ownsRound = inbound.owned.has(other.id);
+    if (!ownsRound && inbound.loose.length === 0) continue;
+    const oc = other.data && other.data.combat;
+    if (!oc || oc.lockTarget !== deployer.id || !((oc.lockProgress || 0) > 0)) continue;
+    if (!lockObservationCurrent(other, deployer)) continue;
+    const lineage = {
+      shooterId: other.id,
+      targetId: deployer.id,
+      generation: oc.lockGeneration | 0,
+      targetGeneration: oc.lockTargetGeneration != null
+        ? oc.lockTargetGeneration
+        : targetIdentityGeneration(deployer),
+      progress: oc.lockProgress || 0,
+      missileId: ownsRound ? null : inbound.loose[0].id,
+    };
+    if (!best
+      || lineage.progress > best.progress
+      || (lineage.progress === best.progress && String(lineage.shooterId) < String(best.shooterId))) {
+      best = lineage;
+    }
+  }
+  if (best) return best;
+  const loose = inbound.loose.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
+  if (!loose) return null;
+  const data = loose.data || {};
+  return {
+    shooterId: data.ownerId != null ? data.ownerId : loose.id,
+    targetId: deployer.id,
+    generation: data.lockGeneration | 0,
+    targetGeneration: data.targetGeneration != null ? data.targetGeneration : targetIdentityGeneration(deployer),
+    progress: 1,
+    missileId: loose.id,
+  };
+}
+
+export function missileMatchesLineage(data, lineage, projectile) {
+  if (!data || !lineage || data.kind !== 'missile') return false;
+  if (data.targetId !== lineage.targetId) return false;
+  const owner = data.ownerId != null ? data.ownerId : (projectile && projectile.ownerId != null ? projectile.ownerId : null);
+  const claimedLoose = lineage.missileId != null && projectile && projectile.id === lineage.missileId;
+  if (!claimedLoose && (owner == null || owner !== lineage.shooterId)) return false;
+  if (data.lockGeneration != null && (data.lockGeneration | 0) !== (lineage.generation | 0)) return false;
+  if (data.targetGeneration != null && lineage.targetGeneration != null
+    && data.targetGeneration !== lineage.targetGeneration) return false;
+  return true;
+}
+
+function breakOneLockLineage(state, deployer, breakPct) {
+  const lineage = selectLockLineage(state, deployer);
+  if (!lineage) return null;
+  for (const other of countermeasureShipCandidates(state)) {
+    if (!other || other.id !== lineage.shooterId) continue;
+    const oc = other.data && other.data.combat;
+    if (!oc || oc.lockTarget !== deployer.id) return null;
+    oc.lockBroken = {
+      shooterId: other.id,
+      targetId: deployer.id,
+      generation: lineage.generation,
+      targetGeneration: lineage.targetGeneration,
+    };
+    oc.lockTargetGeneration = lineage.targetGeneration;
+    const nextProgress = Math.max(0, (oc.lockProgress || 0) * (1 - breakPct));
+    if (nextProgress <= 0) {
+      suppressBrokenLock(oc, deployer.id, state && state.simTime);
+      oc.lockTargetGeneration = lineage.targetGeneration;
+    } else {
+      oc.lockProgress = nextProgress;
+    }
+    if (Array.isArray(other.data.perceptionContacts)) {
+      other.data.perceptionContacts = suppressDefeatedLock(other.data.perceptionContacts, lineage);
+    }
+    return lineage;
+  }
+  return lineage;
+}
 
 function projectilesNear(state, pos, radius, out) {
   return queryNearbyEntities(state, pos, radius, out,

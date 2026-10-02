@@ -17,6 +17,52 @@ export const MASSLINE_SWING_TRACE_MIN_STEP_WU = 0.9; // ignore micro-samples; th
 // Below this tangential read the body is being towed, not swung — no arc to show.
 export const MASSLINE_SWING_TRACE_MIN_TANGENTIAL = 12;
 
+// PIC-29 — the fade after tether:releaseRated takes the grade the cadence law already named.
+// The swing itself stays the neutral cyan; only the dissolve changes colour. 'messy' is that
+// law's bottom band; 'rough' is the same fade so a payload that says rough matches it.
+// No particles, and the rating thresholds are not touched here.
+export const SWING_TRACE_GRADE_COLOR = Object.freeze({
+  razor: Object.freeze({ r: 0.522, g: 0.914, b: 0.792 }),
+  clean: Object.freeze({ r: 0.663, g: 0.910, b: 0.816 }),
+  good: Object.freeze({ r: 0.486, g: 0.894, b: 1 }),
+  messy: Object.freeze({ r: 0.93, g: 0.42, b: 0.18 }),
+  rough: Object.freeze({ r: 0.93, g: 0.42, b: 0.18 }),
+});
+
+const SWING_TRACE_NEUTRAL = Object.freeze({ r: 0.49, g: 0.89, b: 1 });
+let paintedGrade = null;
+
+export function swingTraceGradeColor(classification) {
+  if (classification === 'razor' || classification === 'clean' || classification === 'good') {
+    return SWING_TRACE_GRADE_COLOR[classification];
+  }
+  if (classification === 'messy' || classification === 'rough') return SWING_TRACE_GRADE_COLOR.rough;
+  return null;
+}
+
+/** Colour the live fade from a tether:releaseRated payload. Trace fields win over the module paint. */
+export function paintSwingTraceRelease(trace, payload) {
+  const color = swingTraceGradeColor(payload && payload.classification);
+  if (!color) return null;
+  paintedGrade = color;
+  if (trace) {
+    trace.releaseGrade = payload.classification;
+    trace.releaseR = color.r;
+    trace.releaseG = color.g;
+    trace.releaseB = color.b;
+  }
+  return color;
+}
+
+/** A new latch is a new swing — the ribbon returns to the neutral sweep until the next grade. */
+export function clearSwingTraceReleasePaint() {
+  paintedGrade = null;
+}
+
+export function swingTracePaint() {
+  return paintedGrade;
+}
+
 /** Allocate once at VFX init. Never call from the frame update. */
 export function createMasslineSwingTrace(sampleCapacity = MASSLINE_SWING_TRACE_CAPACITY) {
   const capacity = clampInteger(sampleCapacity, 8, 512);
@@ -105,9 +151,13 @@ export function writeMasslineSwingTraceGeometry(out, trace, opts) {
   const y = finite(opts && opts.y, 1.35);
   const width = Math.max(0.2, finite(opts && opts.width, 2.6));
   const gain = clamp01(opts && opts.brightness != null ? opts.brightness : 0.4);
-  const colorR = finite(opts && opts.colorR, 0.49);
-  const colorG = finite(opts && opts.colorG, 0.89);
-  const colorB = finite(opts && opts.colorB, 1);
+  const grade = trace && Number.isFinite(trace.releaseR)
+    ? { r: trace.releaseR, g: trace.releaseG, b: trace.releaseB }
+    : paintedGrade;
+  const neutral = grade || SWING_TRACE_NEUTRAL;
+  const colorR = finite(opts && opts.colorR, neutral.r);
+  const colorG = finite(opts && opts.colorG, neutral.g);
+  const colorB = finite(opts && opts.colorB, neutral.b);
 
   const positions = out.positions;
   const colors = out.colors;

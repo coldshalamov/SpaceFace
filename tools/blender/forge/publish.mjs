@@ -58,7 +58,17 @@ for (const shipId of shipIds) {
   const files = entry.layout === 'player'
     ? [entry.file, `${entry.file}_lod1`, `${entry.file}_lod2`]
     : [entry.file];
-  for (const f of files) (place ? placeIds : releaseIds).add(place ? f : `wholeship_${f}`);
+  // manifest row. Some families (Drifter) are released from build-sg04's WHOLE_SHIP_FILES list,
+  // not a manifest row.
+  const row = manifest.parts.find((r) => r.id === (place ? entry.file : `wholeship_${entry.file}`)) || null;
+  // Only 'places'/'works' manifest categories go through the place release pipeline (D94);
+  // other place-layout bodies (e.g. pods/) release via sg04 under their manifest part id.
+  const placeOwned = place && row != null && (row.category === 'places' || row.category === 'works');
+  for (const f of files) {
+    if (placeOwned) placeIds.add(f);
+    else if (place && row) releaseIds.add(row.id);
+    else releaseIds.add(`wholeship_${f}`);
+  }
   // Pilot keys are found by the release file they package (Wasp's LOD0 pilot is plain 'wasp').
   for (const f of files) {
     const hit = pilotsDoc.pilots.find((p) => p.sourceUrl === `assets/ships/release/parts/${dir}/${f}.glb`);
@@ -66,9 +76,6 @@ for (const shipId of shipIds) {
     pilotKeys.add(hit.key);
   }
 
-  // manifest row. Some families (Drifter) are released from build-sg04's WHOLE_SHIP_FILES list,
-  // not a manifest row.
-  const row = manifest.parts.find((r) => r.id === (place ? entry.file : `wholeship_${entry.file}`)) || null;
   if (row) {
     // Tint slots name only materials this body actually carries (a ship without a livery stripe has
     // no Material_Accent).

@@ -53,8 +53,9 @@ test('ANI-06 hatch swings ~104deg open, arm unfolds under it, and the stow parks
   assert.ok(axisMag(elbow, 2) > 1.6 && axisMag(elbow, 2) < 2.1,
     `elbow counter-rotated ${axisMag(elbow, 2)} rad (~105deg — forearm flat aft, no tall V)`);
   assert.equal(clip('serviceArm').endMode, 'hold', 'service pose holds for the job duration');
-  // stow returns every group to rest and HOLDS rest so the deployed hold can't re-claim them
-  assert.equal(clip('serviceStow').endMode, 'hold');
+  // stow returns every group to rest and evicts: starting it already deleted the
+  // fully-claimed deploy clip, so 'rest' frees the channels without a re-deploy
+  assert.equal(clip('serviceStow').endMode, 'rest');
   for (const id of ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow']) {
     const parked = delta('serviceStow', 2.9, id);
     assert.ok(rotMax(parked) < 0.02, `${id} parked at rest (rot ${rotMax(parked)})`);
@@ -71,7 +72,7 @@ test('ANI-07 cap peels ~17deg at peak, rocks once, and settles at a ~10deg damag
     `settled gap ${axisMag(settled, 0)} rad`);
   const fix = delta('armorStow', 0.9, 'kestrel_armor_cap');
   assert.ok(rotMax(fix) < 0.02, 'armorFix re-seats the cap');
-  assert.equal(clip('armorStow').endMode, 'hold');
+  assert.equal(clip('armorStow').endMode, 'rest');
 });
 
 test('ANI-06/07 bank events route service and damage lifecycle', () => {

@@ -64,3 +64,52 @@ test('tight-disc far query still finds local rows (grid path)', () => {
 test('row-scan respects FAR_ROW_BUDGET ceiling fixture', () => {
   assert.ok(FAR_ROW_BUDGET >= 64);
 });
+
+test('far query rejects nonfinite and nonpositive radii with zero grid reads', () => {
+  const state = createGameState();
+  const table = seedFarRows(state, 10);
+  let reads = 0;
+  const counting = new Map(table.grid);
+  const get = Map.prototype.get.bind(counting);
+  counting.get = (key) => { reads += 1; return get(key); };
+  table.grid = counting;
+  for (const radius of [Infinity, -Infinity, Number.NaN, -1, 0]) {
+    assert.deepEqual(queryFarActors(state, { x: 0, z: 0 }, radius), []);
+  }
+  assert.equal(reads, 0, 'an invalid radius must never touch the grid');
+});
+
+test('far query on an empty table returns immediately with zero reads', () => {
+  const state = createGameState();
+  const table = ensureFarActorTable(state);
+  let reads = 0;
+  const counting = new Map(table.grid);
+  const get = Map.prototype.get.bind(counting);
+  counting.get = (key) => { reads += 1; return get(key); };
+  table.grid = counting;
+  assert.deepEqual(queryFarActors(state, { x: 0, z: 0 }, 1e9), []);
+  assert.equal(reads, 0);
+});
+
+test('unsafe far query origin still answers from the bounded row scan', () => {
+  const state = createGameState();
+  const table = seedFarRows(state, 40);
+  let reads = 0;
+  const counting = new Map(table.grid);
+  const get = Map.prototype.get.bind(counting);
+  counting.get = (key) => { reads += 1; return get(key); };
+  table.grid = counting;
+  assert.deepEqual(queryFarActors(state, { x: 1e300, z: 0 }, 50), []);
+  const origin = { x: 0, z: 0 };
+  const radius = FAR_ACTOR_CELL * 20;
+  const hits = queryFarActors(state, origin, radius, []);
+  const r2 = radius * radius;
+  const expected = table.rows.filter((rec) => {
+    const dx = rec.pos.x - origin.x;
+    const dz = rec.pos.z - origin.z;
+    return dx * dx + dz * dz <= r2;
+  });
+  assert.equal(hits.length, expected.length);
+  const ids = new Set(hits.map((r) => r.id));
+  for (const rec of expected) assert.ok(ids.has(rec.id));
+});

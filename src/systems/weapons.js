@@ -24,6 +24,8 @@ import {
 } from '../combat/impulseKernel.js';
 import { isHostileToPlayer } from './scanner.js';
 import { cloakHidesEntityFrom } from './cloak.js';
+import { lockLineageSuppressed } from './countermeasures.js';
+import { targetIdentityGeneration } from '../ai/perception.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad, orbitalConstraintState,
@@ -802,17 +804,19 @@ export const weapons = {
     // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
     // under a scanner burn) the lock behaves exactly as before. One gate, player and NPC alike.
     const darkened = !!tgt && cloakHidesEntityFrom(state, e, tgt);
+    if (tgt && lockLineageSuppressed(combat, tgt.id, state.simTime)) {
+      combat.lockProgress = 0;
+      combat.lockTarget = null;
+      return;
+    }
     if (tgt && !darkened && this._inLockCone(e, tgt)) {
-      // Entity ids recycle: if the resolved target is a NEW occupant of the id this lock was
-      // built on, the stale lineage cannot hand its progress over — the fresh body starts at 0.
-      if (combat.lockTarget === tgt.id
-          && combat.lockTargetGeneration != null
-          && tgt.occupantGeneration != null
-          && combat.lockTargetGeneration !== tgt.occupantGeneration) {
+      const ident = targetIdentityGeneration(tgt);
+      if (combat.lockTarget !== tgt.id || (combat.lockTargetGeneration != null && combat.lockTargetGeneration !== ident)) {
+        if (combat.lockTarget != null) combat.lockGeneration = (combat.lockGeneration | 0) + 1;
         combat.lockProgress = 0;
       }
       combat.lockTarget = tgt.id;
-      combat.lockTargetGeneration = tgt.occupantGeneration != null ? tgt.occupantGeneration : null;
+      combat.lockTargetGeneration = ident;
       combat.lockProgress = Math.min(1, (combat.lockProgress || 0) + dt / Math.max(0.05, lockTimeS));
     } else {
       // lock decays when target leaves the cone / is gone / went dark — a darkened target bleeds
@@ -871,19 +875,10 @@ export const weapons = {
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
       if (!d.armed) { d.armed = true; }
-      let decoy = missileDecoyAim(d);
+      const decoy = missileDecoyAim(d);
       let tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
-      // A recycled id is not the lineage this round locked: when the occupant generation moved on,
-      // the seeker adopts the chaff vocabulary on its own last course — still a physical round that
-      // collides and TTLs normally, but it can never re-home onto the new body under the old id.
-      if (!decoy && tgt && d.targetGeneration != null
-          && tgt.occupantGeneration != null && tgt.occupantGeneration !== d.targetGeneration) {
-        const heading = Number.isFinite(p.rot) ? p.rot : Math.atan2(p.vel.z, p.vel.x);
-        d.diverted = true;
-        d.divertPos = { x: p.pos.x + Math.cos(heading) * 400, z: p.pos.z + Math.sin(heading) * 400 };
-        tgt = null;
-        decoy = missileDecoyAim(d);
-      }
+      // A recycled entity id is not yesterday's target. The round stays a physical body.
+      if (tgt && !guidanceAcceptsTarget(d, tgt)) tgt = null;
       // Cloak interplay (flag massline2.cloak): a target dark to THIS seeker bleeds its tracking
       // quality — turn authority scales down over CLOAK_SEEKER_DROP_S (ECM-style bleed on
       // data.turnRate), then the round adopts the chaff vocabulary: diverted onto a divertPos
@@ -1032,8 +1027,14 @@ export const weapons = {
     const cap = typeof e.cap === 'number' ? e.cap : (e.data.derived && e.data.derived.cap) || 0;
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;
+    const combatRuntime = combatRuntimeOf(state, e);
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
+      const bank = weaponBankReadiness(w, combatRuntime);
+      if (bank.disabled) {
+        if (def.emergentPrimitive) clearEmergentRay(state, e.id);
+        continue;
+      }
       if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
         // A sustained emergent ray opened by this mount would leak into world.ray forever if the
         // role gate simply skips its service — _serviceEmergent's !firing branch is the only
@@ -1431,9 +1432,9 @@ export const weapons = {
     }
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
-      // The seeker locked ONE occupant of this id — ids recycle, so the generation rides with the
-      // round and a stale lineage can never re-home onto the new body that inherits the number.
-      data.targetGeneration = tgt && tgt.occupantGeneration != null ? tgt.occupantGeneration : null;
+      data.targetGeneration = tgt ? targetIdentityGeneration(tgt) : null;
+      data.lockGeneration = e.data && e.data.combat ? (e.data.combat.lockGeneration | 0) : 0;
+      data.lockShooterId = e.id;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
       data.projSpeed = projSpeed;
       // accelerate from launch speed to projSpeed over the projectile's flight
@@ -1977,6 +1978,36 @@ export function solveLeadAngle(shooter, tgt, projSpeed) {
   const aimx = px + tv.x * t;
   const aimz = pz + tv.z * t;
   return Math.atan2(aimz, aimx);
+}
+
+/** A missile may finish its old solution. It may not adopt a body that reused the target id. */
+export function guidanceAcceptsTarget(data, target) {
+  if (!data || !target) return false;
+  if (data.targetGeneration == null) return true;
+  return targetIdentityGeneration(target) === data.targetGeneration;
+}
+
+export function weaponBankReadiness(mount, runtime) {
+  const subsystemId = (mount && mount.subsystemId) || 'subsystem_weapon';
+  const subsystems = runtime && runtime.subsystems;
+  const sub = subsystems && subsystems[subsystemId];
+  const disabled = !!(sub && (sub.effectiveDisabled === true || sub.destroyed === true));
+  const cooling = !!mount && (mount._cooldown || 0) > 0;
+  const heatMax = mount && Number.isFinite(mount.heatMax) && mount.heatMax > 0 ? mount.heatMax : null;
+  const hot = heatMax != null && (mount._heat || 0) >= heatMax;
+  const ready = !disabled && !cooling && !hot;
+  return {
+    subsystemId,
+    disabled,
+    ready,
+    advertised: disabled ? 'disabled' : (ready ? 'ready' : 'not_ready'),
+  };
+}
+
+function combatRuntimeOf(state, entity) {
+  const bag = state && state.combat && state.combat.entities;
+  if (bag && entity && entity.id != null && bag[String(entity.id)]) return bag[String(entity.id)];
+  return (entity && entity.data && entity.data.combatRuntime) || null;
 }
 
 function missileDecoyAim(d) {

@@ -33,7 +33,12 @@ export function computeFlightTelemetry({ body, profile, control = null, target =
     acceleration: control && control.telemetry && control.telemetry.acceleration
       ? vec(control.telemetry.acceleration)
       : { x: 0, z: 0 },
-    actuators: computeActuatorDemand(control, axes, { forward: forwardSpeed, lateral: lateralSpeed }),
+    actuators: computeActuatorDemand(
+      control,
+      axes,
+      { forward: forwardSpeed, lateral: lateralSpeed },
+      control && control.authority,
+    ),
     braking,
     projectedStop: braking.projectedStop,
     precisionEnvelopeRatio: ratio(speed, positive(p.precisionSpeed, INF)),
@@ -372,7 +377,25 @@ export class FlightTelemetryBuffer {
  * `manual`/`assist`/`governor` are provenance and vary by family; they are zeroed, never
  * dropped, so the key set is identical for every drive and for `control = null`.
  */
-function computeActuatorDemand(control, axes, localVelocity) {
+// manualLocal is stick × authority-scaled limits. Put the request back in the
+// catalog unit. A repair then changes achieved accel only — not this readout,
+// and not the profile limits braking already uses as its denominator.
+function authorityFraction(authority, key) {
+  if (!authority || typeof authority !== 'object') return 1;
+  const n = Number(authority[key]);
+  if (!Number.isFinite(n) || n <= 0 || n >= 1) return 1;
+  return n;
+}
+
+function restoreCatalogRequest(value, authority, positiveKey, negativeKey) {
+  const scale = value < 0
+    ? authorityFraction(authority, negativeKey)
+    : authorityFraction(authority, positiveKey);
+  if (!(scale > 0) || scale >= 1) return value;
+  return value / scale;
+}
+
+function computeActuatorDemand(control, axes, localVelocity, authority) {
   const t = control && control.telemetry && typeof control.telemetry === 'object' ? control.telemetry : null;
   const world = t ? vec(t.acceleration) : { x: 0, z: 0 };
   const forward = world.x * axes.fx + world.z * axes.fz;
@@ -399,8 +422,8 @@ function computeActuatorDemand(control, axes, localVelocity) {
   const governorEngaged = !!(governor && governor.engaged);
   const overspeed = !!(governor && governor.overspeed);
   const boostFraction = clamp(finite(t && t.boostFraction), 0, 1);
-  const manualForward = finite(manual && manual.forward);
-  const manualLateral = finite(manual && manual.lateral);
+  const manualForward = restoreCatalogRequest(finite(manual && manual.forward), authority, 'forward', 'reverse');
+  const manualLateral = restoreCatalogRequest(finite(manual && manual.lateral), authority, 'strafe', 'strafe');
   const requested = Math.hypot(manualForward, manualLateral);
   const achieved = Math.hypot(forward, lateral);
   const unavailableToken = explicitDriveState && (

@@ -68,7 +68,10 @@ const FORGE_FRAG = /* glsl */`
     float lip = exp(-vTube * vTube * 58.0);
     float body = exp(-vTube * 3.4) * (0.40 + 0.60 * pow(abs(cos(vTube * 9.424778)), 4.0));
 
-    float energy = (lip * 1.55 + body * 0.55) * (0.30 + uDrive * 0.95 + uBoost * 0.55);
+    // Lit from nothing: the collar ramps in with the drive instead of being switched on (and off)
+    // at 30% of its brightness when the drive crosses the visibility threshold.
+    float lit = smoothstep(0.0, 0.60, uDrive);
+    float energy = (lip * 1.55 + body * 0.55) * (0.30 + uDrive * 0.95 + uBoost * 0.55) * lit;
     energy *= shell;
 
     vec3 col = mix(uEdgeColor, uCoreColor, clamp(lip * 1.35 + uBoost * 0.3, 0.0, 1.0));

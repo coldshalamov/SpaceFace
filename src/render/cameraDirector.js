@@ -688,6 +688,10 @@ export function createCameraDirector() {
     output,
     reset,
     syncFollow,
+    /** PIC-23 — end and cancel both land here. One path back to FOLLOW. */
+    handoffToFollow() {
+      return syncFollow(output.focusX, output.focusZ, output.zoom);
+    },
     reprojectFrame(dx, dz) {
       const ox = Number.isFinite(dx) ? dx : 0;
       const oz = Number.isFinite(dz) ? dz : 0;
@@ -1233,5 +1237,35 @@ export function createCameraDirector() {
       output.predictiveLeadZ = 0;
       return output;
     },
+  };
+}
+
+let flybyHandoffDirector = null;
+
+/** The chase camera adopts the live director so a flyby handoff has somewhere to land. */
+export function adoptFlybyHandoffDirector(director) {
+  flybyHandoffDirector = director || null;
+  return flybyHandoffDirector;
+}
+
+/** One listener for flybyFocus:end and flybyFocus:cancel. */
+export function handoffFlybyFocusToFollow() {
+  if (flybyHandoffDirector && typeof flybyHandoffDirector.handoffToFollow === 'function') {
+    flybyHandoffDirector.handoffToFollow();
+  }
+}
+
+/** Subscribe both flyby events to that same handoff. */
+export function bindFlybyFocusHandoff(director, bus) {
+  adoptFlybyHandoffDirector(director);
+  if (!bus || typeof bus.on !== 'function') return () => {};
+  const hear = () => {
+    if (director && typeof director.handoffToFollow === 'function') director.handoffToFollow();
+  };
+  const offEnd = bus.on('flybyFocus:end', hear);
+  const offCancel = bus.on('flybyFocus:cancel', hear);
+  return () => {
+    if (typeof offEnd === 'function') offEnd();
+    if (typeof offCancel === 'function') offCancel();
   };
 }

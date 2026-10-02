@@ -204,6 +204,7 @@ function defaultHeatZone() {
     level: 0,
     outsideS: 0,
     clearAfterS: 0,
+    sectorId: null,
   };
 }
 
@@ -215,6 +216,7 @@ function heatZoneSnapshot(zone) {
     level: zone.level || 0,
     outsideS: zone.outsideS || 0,
     clearAfterS: zone.clearAfterS || 0,
+    sectorId: typeof zone.sectorId === 'string' && zone.sectorId ? zone.sectorId : null,
   } : defaultHeatZone();
 }
 
@@ -229,7 +231,22 @@ function ensureHeatZone(player) {
   if (!Number.isFinite(zone.level)) zone.level = 0;
   if (!Number.isFinite(zone.outsideS)) zone.outsideS = 0;
   if (!Number.isFinite(zone.clearAfterS)) zone.clearAfterS = 0;
+  if (typeof zone.sectorId !== 'string' || !zone.sectorId) zone.sectorId = null;
   player.heatZone = zone;
+  return zone;
+}
+
+function activeSectorId(state) {
+  const id = state && state.world && state.world.currentSectorId;
+  return typeof id === 'string' && id ? id : null;
+}
+
+/** The search circle when it belongs to the sector the player is in. Null after a jump. */
+export function heatZoneInCurrentSector(state) {
+  const zone = state && state.player && state.player.heatZone;
+  if (!zone || zone.active !== true) return null;
+  const here = activeSectorId(state);
+  if (zone.sectorId && here && zone.sectorId !== here) return null;
   return zone;
 }
 
@@ -237,10 +254,12 @@ function playerEntity(state) {
   return state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
 }
 
-function setZoneCenter(zone, entity) {
+function setZoneCenter(zone, entity, state) {
   if (!zone || !entity || !entity.pos) return;
   zone.center.x = entity.pos.x || 0;
   zone.center.z = entity.pos.z || 0;
+  const here = activeSectorId(state);
+  if (here) zone.sectorId = here;
 }
 
 function outsideHeatZone(entity, zone) {
@@ -515,6 +534,9 @@ export const heat = {
     const docked = !!((player.flags && player.flags.docked) || (entity && entity.flags && entity.flags.docked));
     if (docked) return;
     this._refreshZone(false);
+    // Inactive covers "clean" and "the search circle is in another sector".
+    // Leaving the sector must not zero the escape clock or count as time outside.
+    if (!zone.active) return;
     if (!outsideHeatZone(entity, zone)) {
       zone.outsideS = 0;
       return;
@@ -541,7 +563,17 @@ export const heat = {
       return;
     }
     const entity = playerEntity(this.state);
-    if (!zone.active || recenter) setZoneCenter(zone, entity);
+    const here = activeSectorId(this.state);
+    const away = !!(zone.sectorId && here && zone.sectorId !== here);
+    // The circle is the sector where the heat opened. A jump keeps the heat and
+    // the crime-scene center, and does not draw or escape-clock that circle here.
+    // A new wanted rise (recenter) opens the search in the sector you are in now.
+    if (away && !recenter) {
+      zone.active = false;
+      return;
+    }
+    if (recenter || (!zone.sectorId && !zone.active)) setZoneCenter(zone, entity, this.state);
+    else if (!zone.sectorId && here) zone.sectorId = here;
     zone.active = true;
     zone.level = level;
     zone.radius = heatRadiusForLevel(level);
@@ -624,6 +656,7 @@ export const heat = {
     zone.level = 0;
     zone.outsideS = 0;
     zone.clearAfterS = 0;
+    zone.sectorId = null;
   },
 
   /**

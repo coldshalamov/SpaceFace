@@ -129,12 +129,13 @@ export function crucibleHullChoices() {
 }
 
 export function normalizeSeed(seed) {
-  const n = Number(seed);
-  if (!Number.isFinite(n)) return CRUCIBLE_SEED_MIN;
-  const i = Math.trunc(n);
-  if (i < CRUCIBLE_SEED_MIN) return CRUCIBLE_SEED_MIN;
-  if (i > CRUCIBLE_SEED_MAX) return CRUCIBLE_SEED_MAX;
-  return i;
+  if (typeof seed === 'string') {
+    const trimmed = seed.trim();
+    if (!/^-?\d+$/.test(trimmed)) return NaN;
+    seed = Number(trimmed);
+  }
+  if (!Number.isFinite(seed)) return NaN;
+  return Number.isInteger(seed) ? seed : Math.trunc(seed);
 }
 
 /** The ordinary launch config, with the Crucible setup and its ruleset riding along. */
@@ -152,7 +153,11 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
  * through the real New Game request.
  */
 export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
-  if (!setup) return false;
+  const candidate = setup && setup.value ? setup.value : setup;
+  if (!candidate || candidate.ok === false) return false;
+  if (!Number.isInteger(candidate.seed) || candidate.seed < CRUCIBLE_SEED_MIN || candidate.seed > CRUCIBLE_SEED_MAX) {
+    return false;
+  }
   const requested = normalizeCrucibleRuleset(ruleset);
   let profile = null;
   if (requested === 'boss_circuit') {

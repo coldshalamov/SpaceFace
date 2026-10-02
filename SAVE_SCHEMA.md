@@ -275,6 +275,7 @@ Current save version: `14`
 | `$.player.heatZone.level` | number | 0 |
 | `$.player.heatZone.outsideS` | number | 0 |
 | `$.player.heatZone.radius` | number | 0 |
+| `$.player.heatZone.sectorId` | null | null |
 | `$.player.hints` | object | {} |
 | `$.player.hints.firstCargoFull` | boolean | false |
 | `$.player.hints.firstCombat` | boolean | false |

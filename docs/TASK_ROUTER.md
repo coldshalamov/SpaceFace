@@ -9,7 +9,7 @@ Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an
 
 | Task | Start here |
 |---|---|
-| No instruction, "next", or "go" | **`build_map.md` §1** — `node scripts/program-dispatch.mjs --next`, read the packet's "How agents get this wrong", finish the unit to its done-when in player units, report in §1.4 words, take the next. An A-list pass with no packet is §23, not a smaller queue row |
+| No instruction, "next", "go", or "do N tasks" | **`build_map.md` §1C seams** — `node scripts/board-chunks.mjs`. Claim a `free` seam whose files are not in a live NOW row and do up to N of its open rows (the rows are the tasks). `program-dispatch --next` only when it returns a real packet. A drained queue is not an empty plan and is not the inference catalog. An A-list pass with no packet is a §27 lane, not a smaller queue row |
 | Program map, "next N" / "what next" / multi-plan work, check-off, plan routing | **`build_map.md`**, then `design/program/NOW.md` + queue |
 | Same-picture performance option, investigation, or large port later | **`build_map.md` §8.2** → [`../design/PERF_OPTION_SPACE.md`](../design/PERF_OPTION_SPACE.md) |
 | Hitching / stuttering / not playing smoothly / low FPS | **`build_map.md` §8.4** → `--id PQ-204` ([`../design/program/PERF_ADVANCED_CAMPAIGN.md`](../design/program/PERF_ADVANCED_CAMPAIGN.md), prompt [`../design/program/PERF_ADVANCED_GOAL.txt`](../design/program/PERF_ADVANCED_GOAL.txt)). Table leftover scans stay [`../design/perf/TABLE_AUTHORITY_PLAN.md`](../design/perf/TABLE_AUTHORITY_PLAN.md). Do **not** cut quality, empty the sky, or dummy-prewarm shaders |

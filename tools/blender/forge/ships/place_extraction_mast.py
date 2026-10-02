@@ -12,6 +12,9 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
 import claim_outpost_kit as K  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_34  # noqa: E402
 
 SHIP_ID = 'place_extraction_mast'
 COLORS = dict(K.COLORS)
@@ -50,6 +53,13 @@ def build():
     F.cylinder(s, 'MastBandB', (0, 0, 8.8), (0, 0, 9.6), 0.95, material='hazard',
                segments=12)
 
+    # --- ANI-34 pumpjack: walking beam on a mid-mast trunnion + plunger rod --------------------
+    F.cylinder(s, 'BeamTrunnion', (-0.35, -0.5, 8.6), (-0.35, 0.5, 8.6), 0.22,
+                          material='gunmetal', segments=12)
+    beam = F.box(s, 'PumpBeam', (0.1, 0, 8.72), (3.4, 0.34, 0.4), material='hazard', bevel=0.04)
+    counter = F.box(s, 'PumpCounter', (-1.6, 0, 8.72), (0.7, 0.5, 0.9), material='paint2', bevel=0.06)
+    rod = F.cylinder(s, 'PlungerRod', (1.2, 0, 2.6), (1.2, 0, 8.5), 0.09, material='bare', segments=10)
+
     # --- crown flood head (SOCKET_Head station) ---------------------------------------------------
     F.box(s, 'Head', (0, 0, 11.9), (2.6, 2.6, 1.4), material='paint2', bevel=0.12)
     F.box(s, 'HeadBand', (0, 0, 12.0), (2.7, 2.7, 0.4), material='stripe', bevel=0.0)
@@ -63,10 +73,16 @@ def build():
         F.work_lamp(s, f'Flood{k}', (ax, ay, 11.5), aim=(_m.cos(r) * 0.5, _m.sin(r) * 0.5,
                                                         -0.8), size=0.5, lens='glow_amber')
     F.beacon(s, 'ClaimStrobe', (0, 0, 13.0), finish='glow_red', size=0.4)
+    s.ani34_bank = ANI_34.build(s, {'beam': [beam, counter], 'rod': rod},
+                                source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani34_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_34.motion_bank.MOTIONS_DIR,
+                                                   'extraction-mast.motion.json'))

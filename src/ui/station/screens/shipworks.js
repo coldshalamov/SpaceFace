@@ -204,6 +204,10 @@ export function shipworksDockIdForState(state) {
 export function syncShipworksDockForState(mount, state) {
   const dockId = shipworksDockIdForState(state);
   if (mount && typeof mount.setDockId === 'function') mount.setDockId(dockId);
+  // ANI-25: showing the shipworks while docked means the berth is holding this hull —
+  // seat the clamps and mate the boom on the backdrop rig (replayed after the async
+  // backdrop load lands inside the mount).
+  if (dockId && mount && typeof mount.dockVerb === 'function') mount.dockVerb('dock:docked');
   return dockId;
 }
 

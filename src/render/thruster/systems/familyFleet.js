@@ -336,6 +336,7 @@ export class FamilyProductionFleet {
       ship.driveState.plumeDrive = 0;
       ship.driveState.boostBlend = 0;
       ship.driveState.ignition = 0;
+      ship.driveState.modeSeeded = false;
       ship.spin = 0;
       ship.spinPhase = 0;
     }
@@ -665,6 +666,7 @@ export class FamilyProductionFleet {
       s.driveState.plumeDrive = 0;
       s.driveState.boostBlend = 0;
       s.driveState.ignition = 0;
+      s.driveState.modeSeeded = false;
       s.factionR = 0.533;
       s.factionG = 0.667;
       s.factionB = 1.0;

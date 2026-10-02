@@ -120,16 +120,24 @@ test('one deploy defeats only one lock lineage — the survivor keeps its progre
   a.data.combat.lockTargetGeneration = 5;
   b.data.combat.lockTarget = player.id; b.data.combat.lockProgress = 0.6;
   b.data.combat.lockTargetGeneration = 5;
-  track(state, a, b);
+  // The break answers a live lineage: A's seeker is already inbound, so A is the eligible lock.
+  const missile = {
+    id: 20, type: 'projectile', alive: true,
+    pos: { x: -120, z: 0 }, vel: { x: 90, z: 0 }, rot: 0, radius: 1,
+    data: { kind: 'missile', ownerId: a.id, targetId: player.id, targetGeneration: 5, turnRate: 2.8 },
+  };
+  track(state, a, b, missile);
 
   state.input.deployCountermeasure = true;
   cm.update(DT, state);
 
   assert.equal(deployed.length, 1, 'one deploy emits one event');
   assert.equal(deployed[0].brokenLockShipId, a.id,
-    'the furthest-progressed lineage is the one the chaff defeats');
+    'the lineage behind the inbound round is the one the chaff defeats');
   assert.equal(a.data.combat.lockTarget, null, 'the defeated lock is cleared');
-  assert.equal(a.data.combat.lockTargetGeneration, null);
+  assert.equal(a.data.combat.lockProgress, 0, 'the defeated lock keeps no progress');
+  assert.equal(a.data.combat.lockSuppressTargetId, player.id,
+    'the broken lineage is pinned against instant reacquisition');
   assert.equal(b.data.combat.lockTarget, player.id,
     "the second attacker's lock is untouched by the same deploy");
   assert.equal(b.data.combat.lockProgress, 0.6, 'the survivor keeps its acquisition progress');
@@ -203,7 +211,7 @@ test('an empty-sky deploy is refused as no_lock, distinct from a cooldown', () =
 
   assert.equal(denied.length, 1, 'an empty deploy is refused, never silently spent');
   assert.equal(denied[0].reason, 'no_lock', 'no inbound lock is its own reason, not cooldown');
-  assert.ok(alerts.some((a) => /NO INBOUND LOCK/.test(a.text)),
+  assert.ok(alerts.some((a) => /NO INCOMING LOCK/.test(a.text)),
     'the alert names the case without a debug log');
   const cmState = state.entities.get(1).data.cm;
   assert.equal(cmState.cooldownT || 0, 0, 'a refused deploy does not start the cooldown');
@@ -231,13 +239,17 @@ test('a missile whose target id recycled flies its last course instead of re-hom
   };
   track(state, missile);
 
-  // Recycle the id under the seeker: generation 9 is not the body it locked.
-  state.entities.set(player.id, { ...player, occupantGeneration: 9 });
+  // Recycle the id under the seeker: generation 9 is not the body it locked — and it is parked
+  // off-axis so a re-home would visibly curve the round downward.
+  state.entities.set(player.id, { ...player, occupantGeneration: 9, pos: { x: 60, z: -300 } });
 
   guns._steerHoming(DT, state);
-  assert.equal(missile.data.diverted, true, 'the stale lineage diverts onto its last fix');
-  assert.ok(missile.data.divertPos, 'a diverted round keeps a physical course');
-  assert.ok(missile.alive, 'broken guidance stays a physical projectile, not a deletion');
+  assert.equal(missile.alive, true, 'broken guidance stays a physical projectile, not a deletion');
+  assert.equal(missile.vel.z, 0, 'the stale lineage does not turn toward the new occupant');
+  guns._steerHoming(DT, state);
+  guns._steerHoming(DT, state);
+  assert.equal(missile.vel.z, 0, 'repeated ticks still cannot re-home onto the recycled id');
+  assert.equal(missile.data.targetId, player.id, 'the round keeps its last target id — it just cannot guide on it');
 
   // Control case: a fresh round locking the live occupant still steers at it.
   const fresh = {
@@ -247,5 +259,5 @@ test('a missile whose target id recycled flies its last course instead of re-hom
   };
   track(state, fresh);
   guns._steerHoming(DT, state);
-  assert.notEqual(fresh.data.diverted, true, 'a matching generation keeps live guidance');
+  assert.ok(fresh.vel.z < 0, `a matching generation turns toward the live occupant — got vz ${fresh.vel.z}`);
 });

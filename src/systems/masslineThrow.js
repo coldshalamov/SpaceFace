@@ -21,6 +21,7 @@ import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
+import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/masslineSwingTrace.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
@@ -106,6 +107,14 @@ export const masslineThrow = {
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:cut', (p) => this._onManualCut(p || {})));
+      // PIC-29: the swept ribbon fades in the grade this release already earned. Cleared on the
+      // next latch so the following swing is neutral until it, too, is rated.
+      this._unsubs.push(this.bus.on('tether:releaseRated', (p) => {
+        paintSwingTraceRelease(null, p || {});
+      }));
+      this._unsubs.push(this.bus.on('tether:latched', () => {
+        clearSwingTraceReleasePaint();
+      }));
       this._unsubs.push(this.bus.on('input:worldGestureCancelled', () => this._resetCadenceThrow(this.state)));
       for (const name of ['save:loaded', 'game:new', 'game:started', 'sector:exit', 'sector:enter']) {
         this._unsubs.push(this.bus.on(name, () => this._resetCadenceThrow(this.state)));
@@ -592,9 +601,11 @@ export const masslineThrow = {
     const runtime = ensureThrowSubtree(state);
     const prediction = predictionReceipt(runtime.selfSolution || {});
     const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
+    const earnedBonus = selfSlingBonusDv(speed, this._swing.load, true);
     const receipt = { releaseId, source: 'massline', physicsEarned: true,
       targetId: runtime.selfSolution && runtime.selfSolution.targetId,
-      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0, load: this._swing.load,
+      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0,
+      selfSlingBonusDv: Math.round(earnedBonus), load: this._swing.load,
       exitAngle: Math.atan2(player.vel.z, player.vel.x), exitSpeed: speed, tick: state.tick,
       prediction, impulses: [], releasePosition: { x: finite(player.pos.x), z: finite(player.pos.z) } };
     runtime.lastSelfSling = receipt;

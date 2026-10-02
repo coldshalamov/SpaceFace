@@ -61,6 +61,16 @@ export function resolveDockRingRate(baseRate, kind, ageS) {
   return base;
 }
 
+/** Green pass speeds the rings, amber hold eases them, red refusal nearly stops them. */
+export function resolveGateVerdictRingRate(baseRate, kind) {
+  const base = Number(baseRate);
+  if (!Number.isFinite(base)) return 0;
+  if (kind === 'pass' || kind === 'green') return base * 1.65;
+  if (kind === 'hold' || kind === 'amber') return base * 0.85;
+  if (kind === 'refusal' || kind === 'refuse' || kind === 'red') return base * 0.35;
+  return base;
+}
+
 /**
  * Dock contact thump: +0.8% swell seating on dock, −0.6% dip releasing on undock. Pure.
  */
@@ -95,6 +105,7 @@ export function createInfrastructureMotionTracker() {
   // Latest berthing pulse. dock:docked carries { stationId }; dock:undocked carries {} so the
   // undock pulse reuses the last docked station — berths always release where they seated.
   const dockPulse = { stationId: null, kind: null, t0: -1 };
+  const gatePulse = { sectorId: null, kind: null, t0: -1 };
 
   function onDocked(payload) {
     const stationId = payload && (payload.stationId != null ? payload.stationId : payload.id);
@@ -114,6 +125,12 @@ export function createInfrastructureMotionTracker() {
     if (!bus || typeof bus.on !== 'function') return;
     busSubscribers.push(bus.on('dock:docked', onDocked));
     busSubscribers.push(bus.on('dock:undocked', onUndocked));
+    busSubscribers.push(bus.on('gate:verdict', (payload) => {
+      if (!payload) return;
+      gatePulse.sectorId = payload.sectorId != null ? String(payload.sectorId) : null;
+      gatePulse.kind = payload.type || payload.kind || null;
+      gatePulse.t0 = lastSimTime;
+    }));
   }
 
   function unbindEvents() {
@@ -125,6 +142,9 @@ export function createInfrastructureMotionTracker() {
     dockPulse.stationId = null;
     dockPulse.kind = null;
     dockPulse.t0 = -1;
+    gatePulse.sectorId = null;
+    gatePulse.kind = null;
+    gatePulse.t0 = -1;
   }
 
   function getState(entityId) {
@@ -234,13 +254,19 @@ export function createInfrastructureMotionTracker() {
       * resolveRingSizeFactor(entity.radius);
     // Berthing pulse for the station being docked at (matched by stationId or entity id).
     let scalePing = 1;
+    const data = entity.data || {};
     if (dockPulse.t0 >= 0 && dockPulse.stationId != null && !reducedMotion) {
-      const data = entity.data || {};
       const sid = data.stationId != null ? String(data.stationId) : null;
       if (sid === dockPulse.stationId || String(entity.id) === dockPulse.stationId) {
         const age = simTime - dockPulse.t0;
         ringRate = resolveDockRingRate(ringRate, dockPulse.kind, age);
         scalePing = resolveDockScalePing(dockPulse.kind, age);
+      }
+    }
+    if (gatePulse.t0 >= 0 && simTime - gatePulse.t0 < 2 && !reducedMotion) {
+      const sectorId = data && data.sectorId != null ? String(data.sectorId) : null;
+      if (sectorId && sectorId === gatePulse.sectorId) {
+        ringRate = resolveGateVerdictRingRate(ringRate, gatePulse.kind);
       }
     }
     if (!reducedMotion) {

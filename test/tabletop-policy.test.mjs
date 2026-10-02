@@ -824,3 +824,24 @@ test('the critical-hub rung is scoped to the hub\'s own sector', () => {
   assert.equal(isCriticalHubInCurrentSector(ceresLandmark, 'sector_ceres_belt'), false,
     'an ordinary landmark was never critical');
 });
+
+test('travel speed stays finite on hostile inputs and keeps valid high speed', () => {
+  const withPlayer = (vel, maxSpeed) => ({
+    playerId: 1,
+    entities: new Map([[1, { id: 1, vel, maxSpeed }]]),
+  });
+  assert.equal(tableTravelSpeed(withPlayer({ x: Infinity, z: 0 }, 160)), TABLE_REFERENCE_SPEED_WU,
+    'a nonfinite velocity component cannot poison the runway estimate');
+  const extreme = tableTravelSpeed(withPlayer({ x: 1e308, z: 1e308 }, 160));
+  assert.ok(Number.isFinite(extreme) && extreme > TABLE_REFERENCE_SPEED_WU,
+    'a finite hypot result is preserved even at extreme magnitude');
+  assert.equal(tableTravelSpeed(withPlayer({ x: Number.NaN, z: 0 }, 160)), TABLE_REFERENCE_SPEED_WU);
+  assert.equal(tableTravelSpeed(withPlayer({ x: 0, z: 0 }, Infinity)), TABLE_REFERENCE_SPEED_WU,
+    'a nonfinite maxSpeed cannot poison the runway estimate');
+  assert.equal(tableTravelSpeed(withPlayer({ x: 0, z: 0 }, Number.NaN)), TABLE_REFERENCE_SPEED_WU);
+  assert.equal(tableTravelSpeed(withPlayer({ x: 0, z: 0 }, -50)), TABLE_REFERENCE_SPEED_WU);
+  assert.equal(tableTravelSpeed(withPlayer({ x: 500, z: 0 }, 160)), 500,
+    'a valid finite speed above the reference floor is preserved');
+  assert.equal(tableTravelSpeed(withPlayer({ x: 0, z: 0 }, 900)), 900,
+    'a valid finite maxSpeed above the reference floor is preserved');
+});

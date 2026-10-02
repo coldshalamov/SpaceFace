@@ -522,6 +522,11 @@ const FLIGHT_MATRIX = [
   },
   {
     verb: 'mining beam (fire group 2)',
+    // RMB is a world-tool hold (input.js WORLD_TOOL_HOLD_S, 0.28s), not a tap.
+    // 18 frames at the harness dt of 1/60 crosses that clock. Gamepad and touch
+    // mine are level-held, so the same hold still reads them. Other rows stay
+    // at one tick so edge-only verbs are not consumed before they are read.
+    holdTicks: 18,
     read: (st) => st.input.fireGroup === 2 && st.input.actions.aimedMine === true,
     serves: {
       mouse: { down: (d) => d.mouse('mousedown', 2), up: (d) => d.mouse('mouseup', 2) },
@@ -578,7 +583,8 @@ for (const row of FLIGHT_MATRIX) {
     s.tick();
     const before = { aimAngle: s.state.input.aimAngle, ndcX: s.state.input.mouseNdc.x };
     driver.down(s.dom, pad);
-    s.tick();
+    const holds = row.holdTicks ?? 1;
+    for (let i = 0; i < holds; i += 1) s.tick();
     const fired = row.read(s.state, before);
     driver.up(s.dom, pad);
     s.tick();
@@ -704,9 +710,10 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
     'pilot scheme: a side key while coasting yaws the nose and does not strafe');
   pilotFwd.down(s.dom);
   s.tick();
-  check(Math.abs(s.state.input.moveX) > 0.5 && Math.abs(s.state.input.turnIntent) > 0.001
-    && Math.abs(s.state.input.turnIntent) < 0.9,
-    'pilot scheme: a side key under forward thrust strafes with a partial carve, not a full yaw');
+  check(Math.abs(s.state.input.moveX) < 0.001
+    && Math.abs(s.state.input.turnIntent) > 0.5
+    && s.state.input.moveZ > 0.5,
+    'pilot scheme: a side key under forward thrust still yaws and does not strafe');
   pilotFwd.up(s.dom);
   pilotSide.up(s.dom);
   s.tick();

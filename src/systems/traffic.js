@@ -5957,6 +5957,7 @@ export const traffic = {
 
       if (dist < DOCK_RANGE) {
         // Arrived at station — survivor delivered
+        const podEntityId = rec.rescueTargetId;
         rec.carryingSurvivor = false;
         rec.rescueTargetId = null;
         rec.rescueTargetType = null;
@@ -5967,6 +5968,7 @@ export const traffic = {
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('survivorPod:delivered', {
             rescueHullId: e.id,
+            podEntityId,
             stationId: target.id,
             simTime: state.simTime || 0,
           });

@@ -150,6 +150,11 @@ export class ManeuverPlanner {
         collisionPasses: new Map(),
         reflex: emptyReflexState(),
         lastReflex: null,
+        retreatDeadlockTicks: 0,
+        invalidRetreatUntil: -1,
+        blockedRetreatX: 0,
+        blockedRetreatZ: 0,
+        lastRetreatSampleTick: null,
       };
       this.byEntity.set(entityId, runtime);
     }
@@ -271,14 +276,54 @@ export class ManeuverPlanner {
     if (!intentionalHold && !choreo && commanded > 0.2 && speed < this.config.stationarySpeed) runtime.stationaryTicks++;
     else runtime.stationaryTicks = 0;
 
+    // NXI-050: a retreat pinned on one blocked corridor must pick a different legal heading
+    // inside the deadlock horizon. Retreat speed is not raised to tunnel the obstacle.
+    const retreatPinned = !choreo
+      && intent.kind === ManeuverKind.RETREAT
+      && desired.obstacleAvoidance === true
+      && commanded > 0.2
+      && speed < this.config.stationarySpeed;
+    const retreatGap = Number.isInteger(runtime.lastRetreatSampleTick)
+      ? Math.max(1, tick - runtime.lastRetreatSampleTick)
+      : 1;
+    runtime.lastRetreatSampleTick = tick;
+    if (runtime.invalidRetreatUntil >= tick) {
+      // The alternate choice is already committed; do not re-arm the same corridor.
+    } else if (retreatPinned) {
+      runtime.retreatDeadlockTicks = (runtime.retreatDeadlockTicks || 0) + retreatGap;
+    } else {
+      runtime.retreatDeadlockTicks = 0;
+    }
+    const retreatHorizon = !choreo
+      && intent.kind === ManeuverKind.RETREAT
+      && ((runtime.retreatDeadlockTicks || 0) >= this.config.deadlockClearTicks
+        || runtime.invalidRetreatUntil >= tick);
+    if (retreatHorizon && !(runtime.invalidRetreatUntil >= tick)) {
+      runtime.blockedRetreatX = desired.x;
+      runtime.blockedRetreatZ = desired.z;
+      runtime.invalidRetreatUntil = tick + this.config.deadlockClearTicks;
+      runtime.retreatDeadlockTicks = 0;
+    }
+    if (retreatHorizon) {
+      const bx = runtime.blockedRetreatX || desired.x || 1;
+      const bz = runtime.blockedRetreatZ || desired.z || 0;
+      const mag = Math.hypot(bx, bz) || 1;
+      desired = unit2(-bz / mag, bx / mag);
+      desired.obstacleAvoidance = false;
+    }
+
     let kind = mustRejoin ? ManeuverKind.FORMATION : intent.kind;
     let reason = mustRejoin ? 'formation_bound_exceeded' : intent.reason || 'action_intent';
-    if (!choreo && (runtime.stationaryTicks >= this.config.stationaryLimitTicks || runtime.clearUntilTick >= tick)) {
-      if (runtime.clearUntilTick < tick) runtime.clearUntilTick = tick + this.config.deadlockClearTicks;
-      const side = hashUnit(this.seed, entityId, 'deadlock') < 0.5 ? -1 : 1;
-      desired = unit2(Math.cos(selfPose.rot) - Math.sin(selfPose.rot) * side * 0.8, Math.sin(selfPose.rot) + Math.cos(selfPose.rot) * side * 0.8);
+    if (!choreo && (retreatHorizon || runtime.stationaryTicks >= this.config.stationaryLimitTicks || runtime.clearUntilTick >= tick)) {
+      if (!retreatHorizon && runtime.clearUntilTick < tick) runtime.clearUntilTick = tick + this.config.deadlockClearTicks;
+      if (!retreatHorizon) {
+        const side = hashUnit(this.seed, entityId, 'deadlock') < 0.5 ? -1 : 1;
+        desired = unit2(Math.cos(selfPose.rot) - Math.sin(selfPose.rot) * side * 0.8, Math.sin(selfPose.rot) + Math.cos(selfPose.rot) * side * 0.8);
+        reason = 'stationary_watchdog';
+      } else {
+        reason = 'retreat_corridor_invalid';
+      }
       kind = ManeuverKind.CLEAR_DEADLOCK;
-      reason = 'stationary_watchdog';
       runtime.stationaryTicks = 0;
     }
 

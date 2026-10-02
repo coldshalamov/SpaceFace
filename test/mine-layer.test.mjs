@@ -10,6 +10,8 @@ import { physics } from '../src/core/physics.js';
 import { mines, MINE_TYPE, MINE_TELEGRAPH_CUE, countOwnerMines, listMines } from '../src/systems/mines.js';
 import { combat } from '../src/systems/combat.js';
 import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { ENEMY_DOCTRINE_OVERRIDES } from '../src/data/combatDefs.js';
 
 function boot(seed = 3251) {
   const sim = createSimulation({ seed, systems: [mines, combat] });
@@ -344,4 +346,11 @@ test('helpers.placeMine is exposed for encounter wiring', () => {
   assert.equal(typeof t.helpers.placeMine, 'function');
   const m = t.helpers.placeMine({ ownerId: t.player.id, pos: { x: 10, z: 10 }, team: 0, telegraph: false });
   assert.ok(m && m.type === MINE_TYPE);
+});
+
+test('FIGHT-01: mine_layer_jackal resolves mine_layer_wake directly from ENEMY_TYPES', () => {
+  const jackal = ENEMY_TYPES.find((e) => e.id === 'mine_layer_jackal');
+  assert.ok(jackal, 'mine_layer_jackal exists in ENEMY_TYPES');
+  assert.equal(jackal.combatDoctrineId, 'mine_layer_wake', 'jackal directly declares mine_layer_wake');
+  assert.equal(ENEMY_DOCTRINE_OVERRIDES.mine_layer_jackal, undefined, 'ENEMY_DOCTRINE_OVERRIDES no longer needs mine_layer_jackal');
 });

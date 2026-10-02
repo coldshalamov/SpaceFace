@@ -173,6 +173,25 @@ test('a cell is claimed by ID, so both publishers of pickup:collected work', () 
   assert.equal(h.player.hull, before + swarmRepairAmount(HULL_MAX), 'a bare payload still pays');
 });
 
+test('a collected cell stays spent through a refit respawn', () => {
+  const h = boot({ hull: HULL_MAX * 0.5 });
+  for (let i = 0; i < swarmRepairInterval(0.5); i++) killCohortBody(h);
+  const cell = cells(h)[0];
+  h.bus.emit('run:transitioned', { phase: 'draft' });
+  assert.ok(cells(h).some((row) => row.id === cell.id), 'draft does not sweep an uncollected cell');
+  const before = h.player.hull;
+  scoop(h, cell);
+  const paid = h.player.hull;
+  assert.ok(paid > before);
+  const replay = h.helpers.spawnEntity({
+    type: 'pickup',
+    pos: { x: cell.pos.x, z: cell.pos.z },
+    data: { ...cell.data, kind: SWARM_REPAIR_KIND },
+  });
+  scoop(h, replay);
+  assert.equal(h.player.hull, paid, 'the same drop does not heal again after refit');
+});
+
 test('a cell pays exactly once, however many receipts arrive', () => {
   const h = boot({ hull: HULL_MAX * 0.5 });
   for (let i = 0; i < swarmRepairInterval(0.5); i++) killCohortBody(h);

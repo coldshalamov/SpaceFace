@@ -16,6 +16,7 @@ import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { localizeText } from '../../localization/gameLocalization.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
@@ -219,6 +220,15 @@ function routeCommitment(state, wp) {
   return { kind: 'nav', objectiveLabel: 'NAV SET', targetSectorName: '' };
 }
 
+/** PRO-05 — Local Map copy with placeholders. en-US matches the old concatenation. */
+export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
+  const label = localizeText('Local Map ({key})', { key });
+  const hint = inThisSystem
+    ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
+    : localizeText('Open Local Map ({key}) for the live marker{place}; no jump route is required.', { key, place });
+  return { label, hint, title: 'Open Local Map' };
+}
+
 export function pauseMapAction(state) {
   const wp = state && state.nav && state.nav.waypoint;
   if (!wp) return null;
@@ -226,14 +236,15 @@ export function pauseMapAction(state) {
   const currentSectorId = state && state.world && state.world.currentSectorId || null;
   if (commitment.kind !== 'inter-system') {
     const place = commitment.targetSectorName ? ' in ' + commitment.targetSectorName : ' in this system';
-    const hint = commitment.kind === 'local'
-      ? 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker' + place + '; no jump route is required.'
-      : 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker in this system.';
+    const copy = commitment.kind === 'local'
+      ? localMapPauseCopy(BINDINGS.localmap.label, { place })
+      : localMapPauseCopy(BINDINGS.localmap.label, { inThisSystem: true });
+    const hint = copy.hint;
     // One public map surface: galaxyMap + LOCAL focus (not dual-primary localmap/starmap).
     const handoff = mapHandoffAction({
       focus: MAP_FOCUS.LOCAL,
-      label: 'Local Map (' + BINDINGS.localmap.label + ')',
-      title: 'Open Local Map',
+      label: copy.label,
+      title: copy.title,
       body: hint,
       sectorId: wp.sectorId || currentSectorId || null,
       stationId: wp.stationId || null,

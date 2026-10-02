@@ -92,6 +92,7 @@ if __name__ == '__main__':
     import forge_export as E
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
     import ANI_11  # noqa: E402
+    import ANI_24  # noqa: E402
     import motion_bank  # noqa: E402
     ship = build().finish()
     _o = {o.name: o for o in ship.objects}
@@ -103,6 +104,7 @@ if __name__ == '__main__':
         'retain_port': [_o['RetainerPort']],
         'retain_star': [_o['RetainerStar']],
     }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    ANI_24.build(ship, None, source_asset_id=None, bank=ship.ani11_bank)
     live = '--live' in sys.argv
     written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
     if live:

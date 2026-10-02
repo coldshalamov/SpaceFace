@@ -1577,6 +1577,17 @@ export const RECIPES = [
     repeatCount: 1,
     repeatIntervalS: 0.04,
   },
+  // Hitch latch is a softer triangle cousin of the massline lock, not a copy of it.
+  {
+    id: 'sfx_hitch_latch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 262,
+    freqSweep: [262, 174],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.14 },
+  },
   {
     id: 'sfx_tether_latch_body',
     category: 'weapon',
@@ -2143,6 +2154,17 @@ export const RECIPES = [
     gainMult: 0.55,
   },
   {
+    id: 'sfx_cloak_fade',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520,
+    freqSweep: [520, 220],
+    sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.04, sustain: 0.08, release: 0.55 },
+    gainMult: 0.28,
+  },
+  {
     id: 'sfx_massline_cloak_off',
     category: 'ui',
     type: 'noise_filtered',
@@ -2253,7 +2275,9 @@ export const RECIPES = [
     id: 'sfx_travel_arrival',
     category: 'engine',
     type: 'layered',
-    layers: ['sfx_jump_arrive', 'sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
+    // The jump whoosh stays its own recipe. Nesting it here never attaches the
+    // jump_arrive sample, so the decompression body was stranded inside the chord.
+    layers: ['sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
     gainMult: 0.75,
   },
   {
@@ -2852,6 +2876,30 @@ export const RECIPES = [
     noiseColor: 'pink',
     gainEnvelope: { attack: 0.14, sustain: 1.0, release: 0.2, peak: 0.22 },
     filterType: 'lowpass', filterFreq: 190, filterQ: 0.6,
+  },
+  // VERB-23: Crisp mechanical ratchet/click for cycling active bomb bay slot
+  {
+    id: 'sfx_bomb_rack_cycle',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.03, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass',
+    filterFreq: 1850,
+    filterQ: 3.5,
+    pitchRange: [0.98, 1.02],
+  },
+  // VERB-23: Heavy mechanical latch click when bomb rack composition changes
+  {
+    id: 'sfx_bomb_rack_change',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.04 },
+    filterType: 'bandpass',
+    filterFreq: 1200,
+    filterQ: 2.2,
+    pitchRange: [0.96, 1.04],
   },
 ];
 

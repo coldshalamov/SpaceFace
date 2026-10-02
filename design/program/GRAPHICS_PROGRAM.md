@@ -127,6 +127,10 @@ trim (13 hulls in one sitting, zero frame cost). The same loop, in ROI order, fo
 [`GRAPHICS_LIGHT_UPGRADES_GOAL.txt`](GRAPHICS_LIGHT_UPGRADES_GOAL.txt); the in-Blender design helpers
 are `tools/blender/forge/mcp_design_kit.py`.
 
+**GFX-16 (owner, 2026-10-01): make the world feel alive.** Motion, blinking and ambient life with weight and micro-movement, plus
+the thruster plume. Plan and slice order: [`GFX16_ALIVE_MOTION_PLAN.md`](GFX16_ALIVE_MOTION_PLAN.md). Status: planned, inventory not
+started. GFX-15 status: Workflow A and B tiers 1-3 landed; C and tier 4 partly built, see the HANDOFF in `tools/blender/forge/briefs/`.
+
 ## 5. Directions beyond the backlog (where the picture goes next)
 
 These are bigger bets, in rough value order. Each needs a short packet (outcome, done-when, files)

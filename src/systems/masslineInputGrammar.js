@@ -2,6 +2,18 @@
 // CADENCE: a tap cuts; a hold NEVER cuts on release, even when the pilot did not move an axis.
 // Intent memory helps ENTER line control, but never keeps winding after an axis returns neutral.
 export const MASSLINE_HOLD_S = 0.16;
+
+/** Shown on an unbound reel rebind row. Names the hold path; does not invent a key. */
+export function reelUnboundHoldSentence() {
+  return `Hold the tether, then push to reel. A press shorter than ${MASSLINE_HOLD_S}s still cuts.`;
+}
+
+/** Unbound reel rows name the hold path. A bound row returns '' so the key label wins. */
+export function reelRebindText(action, codes) {
+  const bound = Array.isArray(codes) && codes.some((code) => typeof code === 'string' && code.length > 0);
+  if ((action === 'reelIn' || action === 'reelOut') && !bound) return reelUnboundHoldSentence();
+  return '';
+}
 export const MASSLINE_INTENT_WINDOW_S = 0.22;
 const DEADZONE = 0.08;
 

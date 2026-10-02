@@ -45,6 +45,16 @@ export function authoredMotionRegistrySize() {
   return registry.size;
 }
 
+export function authoredMotionControllersForRig(rigId) {
+  const out = [];
+  for (const set of registry.values()) {
+    for (const controller of set) {
+      if (controller.rigId === rigId) out.push(controller);
+    }
+  }
+  return out;
+}
+
 /**
  * The authored-motion clock. It tracks sim time while the sim advances — clips paired with
  * sim quantities (payout, damage windows) stay locked to it — and falls back to wall-clock
@@ -90,12 +100,28 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   // Replace, don't accumulate: an entity rebuild rebinds fresh controllers on the same key, and
   // the stale set must release with its old root rather than keep updating detached pivots.
   registry.set(entityId, new Set(live));
+  // Site-scoped alias: dressing/props that stand for a site's exterior machinery carry the
+  // site key on entity.data (siteId/siteBeacon), and `site:*` events dispatch to `site:<id>`.
+  // Registering the alias lets the same physical rigs answer site lifecycle events.
+  const aliasKeys = [];
+  for (const key of [entity && entity.data && entity.data.siteId,
+    entity && entity.data && entity.data.siteBeacon]) {
+    if (key != null) {
+      const alias = `site:${key}`;
+      let set = registry.get(alias);
+      if (!set) registry.set(alias, (set = new Set()));
+      for (const controller of live) set.add(controller);
+      aliasKeys.push(alias);
+    }
+  }
 
   const detach = function detachAuthoredMotionDriver() {
-    const set = registry.get(entityId);
-    if (set) {
-      for (const controller of live) set.delete(controller);
-      if (!set.size) registry.delete(entityId);
+    for (const key of [entityId, ...aliasKeys]) {
+      const set = registry.get(key);
+      if (set) {
+        for (const controller of live) set.delete(controller);
+        if (!set.size) registry.delete(key);
+      }
     }
     if (root.userData.authoredMotionControllers === live) {
       delete root.userData.authoredMotionControllers;
@@ -108,8 +134,14 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   };
 
   root.userData.authoredMotionControllers = live;
-  root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow) {
-    for (const controller of live) controller.update(simNow);
+  // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
+  let attachFired = false;
+  root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y) {
+    if (!attachFired) {
+      attachFired = true;
+      for (const controller of live) controller.handleEvent?.('authoredMotion:attach', {}, simNow);
+    }
+    for (const controller of live) controller.update(simNow, a11y);
   };
   root.userData.authoredMotionEvent = function authoredMotionEvent(type, payload, simNow) {
     for (const controller of live) controller.handleEvent?.(type, payload, simNow);
@@ -144,17 +176,22 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       ? simNow() + (payload.simTime - raw)
       : simNow();
   };
+  // Returns the number of controllers that accepted — callers can fall back to a fanout
+  // when the addressed entity carries no banked rig (an unbanked hornet swallows the verb).
   const dispatch = (type, entityId, payload, accept) => {
-    if (entityId == null) return;
+    if (entityId == null) return 0;
     const anchor = anchorS(payload);
+    let hits = 0;
     for (const controller of authoredMotionControllersFor(entityId)) {
       if (!accept(controller)) continue;
       try {
         controller.handleEvent?.(type, payload, anchor);
+        hits += 1;
       } catch (error) {
         console.warn(`[authoredMotion] ${type} rejected by controller`, error);
       }
     }
+    return hits;
   };
   const onScanPulse = (payload) => {
     if (!payload || payload.source !== ACCEPTED_SCAN_SOURCE) return;
@@ -208,6 +245,14 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   };
   const onLatchDenied = (payload) => {
     dispatch('tether:latchDenied', PLAYER_ENTITY_ID, payload, lineDeployed);
+  };
+  // ANI-21: the yard-tug hook rig answers to load events on the tug that fired the snare —
+  // a quiver must not steal the winch's hook/fairlead groups mid-payout or mid-reel.
+  const onSnareArmed = (payload) => {
+    dispatch('massline:snareArmed', payload && payload.sourceId, payload, (c) => !lineDeployed(c));
+  };
+  const onTetherStrain = (payload) => {
+    dispatch('tether:strain', PLAYER_ENTITY_ID, payload, (c) => !lineDeployed(c));
   };
   // ANI-05: drive iris on the boost lifecycle. stow is gated so a stray boostStop (or a ship that
   // never opened) doesn't replay the retract against an already-parked iris.
@@ -268,6 +313,12 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       }
     }
   };
+  // ANI-17: the canopy rides the repair lifecycle — it hinges up while the pod arm works
+  // and swings shut however the job ends (stow, early settle, or abort). Gated on the
+  // canopyOpen clip so an interrupt never replays the rise against a closing canopy.
+  const closeCanopy = (id) => {
+    dispatch('kestrel:canopyClose', id, null, (c) => c.clipActive?.('canopyOpen'));
+  };
   const onServiceStarted = (payload) => {
     if (!isRepairJob(payload)) return;
     pruneStaleFlags();
@@ -275,6 +326,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     if (id == null || armJobs.has(id)) return;
     armJobs.set(id, { jobId: payload.jobId ?? null, at: simNow() });
     dispatch('kestrel:serviceArm', id, payload, () => true);
+    dispatch('kestrel:canopyOpen', id, payload, (c) => !c.clipActive?.('canopyOpen'));
   };
   const onServiceDone = (payload) => {
     if (!isRepairJob(payload)) return;
@@ -285,9 +337,11 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     armJobs.delete(id);
     if (simNow() - rec.at < DEPLOY_S) {
       settleServiceRig(id, 0.9);
+      closeCanopy(id);
       return;
     }
     dispatch('kestrel:serviceDone', id, payload, () => true);
+    closeCanopy(id);
   };
   const onServiceAborted = (payload) => {
     if (payload && payload.type && payload.type !== 'repair') return;
@@ -297,6 +351,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     if (!rec || !matchesJob(rec, payload)) return;
     armJobs.delete(id);
     settleServiceRig(id, 0.9);
+    closeCanopy(id);
   };
   // ANI-07: the port shoulder cap peels on the first hull hit that reaches it and stays up as
   // the damage state; a finished repair re-seats it. Re-peeling needs the plate seated again
@@ -308,6 +363,346 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     if (id == null || capPeeledAt.has(id) || !authoredMotionControllersFor(id).length) return;
     capPeeledAt.set(id, simNow());
     dispatch('kestrel:armorPeel', id, payload, () => true);
+  };
+  // ANI-18: a real hullBurst jolts the hull — but only when the cap isn't already peeled
+  // (a flinch claiming kestrel_armor_cap would steal a live peel/stow) and the dish isn't
+  // mid-scan (claiming dish+stem would park the scan head for the rest of the sweep).
+  const flinchFree = (c) => !c.clipActive?.('armorPeel')
+    && !c.clipActive?.('armorStow') && !c.clipActive?.('scan');
+  const onHullBurstHit = (payload) => {
+    dispatch('hullBurst:hit', payload && payload.targetId, payload, flinchFree);
+  };
+  // ANI-16: landing gear on dock approach — the rams drop on entering dock range, load as
+  // the ship settles onto the pad, and tuck on undock. Every strut clip's first key assumes
+  // the deployed pose except deploy itself, so settle/stow are gated on the gear being down
+  // (a stray undock or range-drop can never pop the skids out then back in).
+  const strutsDown = new Set();
+  const STRUT_GROUPS = ['kestrel_strut_p', 'kestrel_strut_s', 'kestrel_strut_f'];
+  const strutsLive = (id) => strutsDown.has(id) || anyActiveClips(id, STRUT_GROUPS);
+  // ANI-27: lane furniture fans out — navigation events have no buoy entity of their own,
+  // so a waypoint set or a resolved bearing pings every live nav_buoy bank in the field.
+  const fanout = (type, payload) => {
+    const anchor = anchorS(payload);
+    for (const controller of authoredMotionControllersForRig('nav_buoy')) {
+      try {
+        controller.handleEvent?.(type, payload, anchor);
+      } catch (error) {
+        console.warn(`[authoredMotion] ${type} rejected by nav_buoy controller`, error);
+      }
+    }
+  };
+  const onNavWaypoint = (payload) => fanout('nav:waypoint', payload);
+  const onBearingResolved = (payload) => fanout('band:bearingResolved', payload);
+  // ANI-34: site machinery is keyed `site:<siteId>` — production starts the pumpjack cycle,
+  // a removed machine settles the groups so the bank drains back to its ambient idle. The
+  // dressed extraction masts are ambient claim props (no site key), so they answer the same
+  // lifecycle by fanout — a working seam's on-screen machinery works. A site-keyed mast rides
+  // both lists; the Set dedupes it.
+  const siteMastControllers = (siteId) => new Set([
+    ...authoredMotionControllersFor(`site:${siteId}`),
+    ...authoredMotionControllersForRig('extraction_mast'),
+  ]);
+  const onSiteProducing = (payload) => {
+    if (!payload || payload.siteId == null) return;
+    dispatch('site:producing', `site:${payload.siteId}`, payload, () => true);
+    fanoutRig('extraction_mast', 'site:producing', payload,
+      (c) => !c.clipActive?.('mast_pump_cycle'));
+  };
+  const onSiteMachineRemoved = (payload) => {
+    if (!payload || payload.siteId == null) return;
+    for (const controller of siteMastControllers(payload.siteId)) {
+      try {
+        controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
+      } catch (error) {
+        console.warn('[authoredMotion] site machine settle rejected', error);
+      }
+    }
+  };
+  // The planet collector is the same extraction rig — on spins the pump up through the
+  // site's own event, off settles the beam/rod home.
+  const onPlanetCollector = (payload) => {
+    if (!payload || payload.siteId == null) return;
+    if (payload.on) {
+      dispatch('site:producing', `site:${payload.siteId}`, payload,
+        (c) => !c.clipActive?.('mast_pump_cycle'));
+      fanoutRig('extraction_mast', 'site:producing', payload,
+        (c) => !c.clipActive?.('mast_pump_cycle'));
+      return;
+    }
+    for (const controller of siteMastControllers(payload.siteId)) {
+      try {
+        controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
+      } catch (error) {
+        console.warn('[authoredMotion] planet collector settle rejected', error);
+      }
+    }
+  };
+  // ANI-33: the trap payload carries the placed buoy entity ids — each placed iris blooms.
+  const onInterdictionTriggered = (payload) => {
+    const ids = payload && payload.entityIds;
+    // The spawn path carries the placed buoy ids; the encounter-script snare carries
+    // only a sector — there every live buoy rig is part of the trap field.
+    if (!Array.isArray(ids)) {
+      fanoutRig('interdiction_buoy', 'interdiction:triggered', payload);
+      return;
+    }
+    for (const id of ids) dispatch('interdiction:triggered', id, payload, () => true);
+  };
+  const onSnareRequest = (payload) => {
+    // sourceId is the encounter record, not a rig entity — the snare warn spins up
+    // every live buoy core, so it always fans out.
+    fanoutRig('interdiction_buoy', 'cruise:snareRequest', payload);
+  };
+  const SNARE_PETALS = ['snare_petal_0', 'snare_petal_1', 'snare_petal_2',
+    'snare_petal_3', 'snare_petal_4', 'snare_petal_5'];
+  const SNARE_GROUPS = [...SNARE_PETALS, 'snare_core'];
+  // True while a clip is still inside its authored duration — a follow-on verb firing
+  // now would claim its groups onto a rest-keyed first frame and teleport them.
+  const clipMidFlight = (controller, clipName) => {
+    const elapsed = controller.clipElapsed?.(clipName, simNow());
+    const duration = controller.clipDuration?.(clipName);
+    return Number.isFinite(elapsed) && Number.isFinite(duration) && elapsed < duration;
+  };
+  // cruise:dropped carries no buoy id — fold every armed iris (the close clip is gated on
+  // an open unfold, so parked buoys ignore it). The snare core has no stop event of its
+  // own: a dropped snare parks it with the iris rather than spinning forever.
+  const onCruiseDropped = (payload) => {
+    if (!payload || !payload.snare) return;
+    const anchor = anchorS(payload);
+    const now = simNow();
+    for (const controller of authoredMotionControllersForRig('interdiction_buoy')) {
+      if (!controller.clipActive?.('petals_unfold')) continue;
+      try {
+        if (clipMidFlight(controller, 'petals_unfold')) {
+          // Mid-bloom drop: petals_close's first key assumes the full flare and would
+          // snap a half-open petal — blend the whole rig home from live pose instead.
+          controller.settleGroups?.(0.9, now, SNARE_GROUPS);
+        } else {
+          controller.handleEvent?.('cruise:dropped', payload, anchor);
+          controller.settleGroups?.(0.9, now, ['snare_core']);
+        }
+      } catch (error) {
+        console.warn('[authoredMotion] cruise:dropped rejected by interdiction_buoy', error);
+      }
+    }
+  };
+  // ANI-32: survivor-pod lifecycle is entity-addressed — the pod tumbles on eject and damps
+  // to a grapple attitude when a rescue is selected.
+  const onPodEjected = (payload) => {
+    dispatch('survivorPod:ejected', payload && payload.entityId, payload, () => true);
+  };
+  const onPodRescue = (payload) => {
+    // The runtime auto-bridges the claim: mid-tumble the shell eases onto pod_steady's
+    // doorway instead of teleporting to its rest-keyed first frame.
+    dispatch('survivorPod:rescueSelected', payload && payload.entityId, payload, () => true);
+  };
+  // Delivery settles the POD entity's rig — podEntityId rides the payload so the
+  // clip lands on the same rig the tumble/steady clips did, not the rescue craft.
+  const onPodDelivered = (payload) => {
+    dispatch('survivorPod:delivered', payload && payload.podEntityId, payload, () => true);
+  };
+  // Hot-core eject: salvage payloads name the wreck, not the cutter — brace every
+  // live jaw rig; the cutter working that wreck is the one on screen.
+  const onCoreEjected = (payload) => fanoutRig('salvage_cutter_jaw', 'salvage:coreEjected', payload);
+  // Encounter telegraphs carry the encounter record, not ship entities — every
+  // live wasp bristles; only rigs on screen answer anyway.
+  const onEncounterTelegraph = (payload) => fanoutRig('wasp', 'encounter:telegraph', payload);
+  // A rock breaking kicks the drill head; asteroid payloads carry no platform id.
+  const onAsteroidDestroyed = (payload) => fanoutRig('drill_platform', 'asteroid:destroyed', payload);
+  // Chunk splits fire per break — the kick cadence is bounded by the clip itself.
+  const onAsteroidChunked = (payload) => fanoutRig('drill_platform', 'asteroid:chunked', payload,
+    (c) => !c.clipActive?.('drill_stall_kick'));
+  // A capital telegraph rings the nav net — one pulse per cast, not per beaconed tick.
+  const onCapitalTelegraph = (payload) => fanoutRig('nav_buoy', 'capitalBoss:telegraph', payload,
+    (c) => !c.clipActive?.('ring_pulse'));
+  // Hostile FSM transitions bristle the wasp rig on that exact hull; flee/engage keep their
+  // dedicated events, so only the approach states read through here.
+  const HOSTILE_STATES = new Set(['pursue', 'attack', 'strafe']);
+  // The bristle gate is rig-generic: a wasp mid-bristle or a hull mid-brace is
+  // already telling the same story, so a re-fired verb is swallowed, not restarted.
+  const braced = (c) => c.clipActive?.('wasp_bristle') || c.clipActive?.('hull_brace');
+  const onAiStateChange = (payload) => {
+    if (!payload || !HOSTILE_STATES.has(payload.to)) return;
+    dispatch('ai:stateChange', payload.npcId, payload, (c) => !braced(c));
+  };
+  const onPredationTelegraph = (payload) => {
+    dispatch('encounter:predationTelegraph', payload && payload.raiderId, payload,
+      (c) => !braced(c));
+  };
+  // The drive iris is the hull's power signature: cloak folds it, decloak primes it.
+  const onCloakEngaged = () => dispatch('cloak:engaged', playerId(), null, () => true);
+  const onCloakDropped = () => dispatch('cloak:dropped', playerId(), null, () => true);
+  // Jettisoned pods always arrive tumbling — fanout is safe because only pods lacking the
+  // tumble re-enter it; a pod mid-steady/settle keeps its authored pose.
+  const onCargoJettisoned = (payload) => fanoutRig('survivor_pod', 'cargo:jettisoned', payload,
+    (c) => !c.clipActive?.('pod_eject_tumble') && !c.clipActive?.('pod_steady')
+      && !c.clipActive?.('pod_settle'));
+  // The massline is the seed-tether hardware: deployment pays the winch out, a
+  // lock snaps the catch, a cut or collapse releases it. Seed payloads never
+  // name a tug, so the lifecycle fans out to the live winch rigs.
+  const onMassSeedDeployed = (payload) => fanoutRig('yard_tug_winch', 'massSeed:deployed', payload);
+  // The winch holds its deployed pose under payout's 'hold' end, so a live payout run is
+  // the deploy state — catch/release never fire on hardware that was never deployed.
+  const onMassSeedLocked = (payload) => fanoutRig('yard_tug_winch', 'massSeed:locked', payload,
+    (c) => c.clipActive?.('payout') || c.clipActive?.('catch'));
+  const onMassSeedEnded = (type) => (payload) => fanoutRig('yard_tug_winch', type, payload,
+    (c) => c.clipActive?.('payout') || c.clipActive?.('catch'));
+  // Charge ticks stream every frame while charging — the gate surge re-arms only
+  // when the previous one drains, so the ring pulses at the clip's cadence.
+  // The surge is authored around the indexed hold pose: firing before the index stroke
+  // lands — or while reset owns the tips — would teleport the ring. Arm only while the
+  // index hold is the driven state and the previous pulse has drained.
+  const onChargeTick = (payload) => {
+    fanoutRig('gate_emitter_index', 'jump:chargeTick', payload,
+      (c) => !c.clipActive?.('emitter_charge_surge')
+        && c.clipDrives?.('index')
+        && !clipMidFlight(c, 'index'));
+  };
+  const sweepBusy = (c) => c.clipActive?.('gantry_sweep');
+  // ANI-26: drill sessions carry an asteroid id, never the platform entity — the only
+  // platform the player can see is the one the session is happening at, so the drill
+  // lifecycle fans out to every live drill_platform rig. start also arms the feed creep
+  // on a side-band event (one bus event -> one clip).
+  const fanoutRig = (rigId, type, payload, accept = () => true) => {
+    const anchor = anchorS(payload);
+    for (const controller of authoredMotionControllersForRig(rigId)) {
+      if (!accept(controller)) continue;
+      try {
+        controller.handleEvent?.(type, payload, anchor);
+      } catch (error) {
+        console.warn(`[authoredMotion] ${type} rejected by ${rigId} controller`, error);
+      }
+    }
+  };
+  const onDrillStart = (payload) => {
+    fanoutRig('drill_platform', 'drill:start', payload);
+    fanoutRig('drill_platform', 'drill:feed', payload);
+  };
+  const onDrillBreak = (payload) => fanoutRig('drill_platform', 'drill:break', payload);
+  const onDrillEnd = (payload) => fanoutRig('drill_platform', 'drill:end', payload);
+  // ANI-31: wasp body language — telegraph bristles the winglets, engagement punches the
+  // guns, fleeing tucks them. All entity-addressed; non-wasp rigs ignore the events.
+  const onAiTelegraph = (payload) => {
+    dispatch('ai:telegraph', payload && payload.entityId, payload,
+      (c) => !braced(c));
+  };
+  const onAiFlee = (payload) => {
+    dispatch('ai:flee', payload && payload.entityId, payload,
+      (c) => !(c.clipActive?.('wasp_flee') || c.clipActive?.('hull_veer')));
+  };
+  const onPredationEngaged = (payload) => {
+    dispatch('encounter:predationEngaged', payload && payload.raiderId, payload,
+      (c) => !(c.clipActive?.('wasp_predate') || c.clipActive?.('hull_kick')));
+  };
+  // ANI-30: the customs boarding arm reaches for you. customs:submit/breakScan and the
+  // scan verdict carry the patrol entity id; lawfulInspection:choose only carries a case
+  // id, so it fans out to the live cutter rigs (the patrol on screen is the one that
+  // served you). While the arm is extended, breakScan stows it.
+  const cutterArmOut = (c) => c.clipActive?.('arm_extend');
+  // A served inspection is live on either hull: the cutter's arm is out, or the
+  // patrol hornet is still braced/sweeping. breakScan only reaches rigs holding one.
+  const customsVerbLive = (c) => cutterArmOut(c)
+    || c.clipActive?.('hornet_brace') || c.clipActive?.('hornet_sweep');
+  const onLawfulChoose = (payload) => {
+    fanoutRig('inspection_cutter', 'lawfulInspection:choose', payload);
+    // Patrols spawn ship_hornet — every hornet in scope answers the callout too
+    // (its bank maps the same verb onto a canard/pod brace).
+    fanoutRig('hornet', 'lawfulInspection:choose', payload);
+  };
+  const onCustomsSubmit = (payload) => {
+    // The patrol addressing the player can still be an unbanked hull — when the
+    // addressed dispatch reaches nothing, hand the verb to the live cutter.
+    const hits = dispatch('customs:submit', payload && payload.patrolId, payload, () => true);
+    if (!hits) fanoutRig('inspection_cutter', 'customs:submit', payload);
+  };
+  const onCustomsBreak = (payload) => {
+    const hits = dispatch('customs:breakScan', payload && payload.patrolId, payload,
+      (c) => customsVerbLive(c));
+    if (!hits) {
+      fanoutRig('inspection_cutter', 'customs:breakScan', payload, (c) => cutterArmOut(c));
+      fanoutRig('hornet', 'customs:breakScan', payload, customsVerbLive);
+    }
+  };
+  const onScannedByPatrol = (payload) => {
+    const hits = dispatch('player:scannedByPatrol', payload && payload.patrolId, payload, () => true);
+    if (!hits) fanoutRig('inspection_cutter', 'player:scannedByPatrol', payload);
+  };
+  // ANI-28/29: freight muscle. oreCollected/minerRelocated name the barge entity itself;
+  // custodyChanged names the carrier ship. The apron crane is set-dressing with no
+  // stationId, so sector freight traffic fans out to every freight-platform rig in view.
+  const clawBusy = (c) => c.clipActive?.('claw_cycle');
+  const pickBusy = (c) => c.clipActive?.('gantry_pick');
+  const onOreCollected = (payload) => {
+    dispatch('traffic:oreCollected', payload && payload.carrierId, payload, (c) => !clawBusy(c));
+  };
+  const onMinerRelocated = (payload) => {
+    dispatch('npcjobs:minerRelocated', payload && payload.minerId, payload,
+      (c) => !c.clipActive?.('gantry_traverse'));
+  };
+  const onCustodyChanged = (payload) => {
+    dispatch('freight:custodyChanged', payload && payload.carrierId, payload, (c) => !clawBusy(c));
+    fanoutRig('freight_platform', 'freight:custodyChanged', payload,
+      (c) => !pickBusy(c) && !sweepBusy(c));
+  };
+  const onFreightArrival = (payload) => {
+    fanoutRig('freight_platform', 'freight:arrival', payload,
+      (c) => !pickBusy(c) && !sweepBusy(c));
+  };
+  const onStationThroughput = (payload) => {
+    // The gantry runs one job at a time — a throughput poll mid-pick would resteer
+    // the bridge mid-lift.
+    fanoutRig('freight_platform', 'station:throughput', payload,
+      (c) => !sweepBusy(c) && !pickBusy(c));
+  };
+  // ANI-25: the berth answers the same dock verbs the hull does — resolve the station's
+  // dock-interior entity so the clamps/boom play their half of the handshake.
+  const dockInteriorId = (payload) => (payload && payload.stationId != null
+    && typeof entityForStationId === 'function'
+    ? entityForStationId(payload.stationId) : null);
+  const onDockRange = (payload) => {
+    const id = playerId();
+    if (payload && payload.inRange) {
+      // ANI-25: the berth's ready stance only fires on approach-in.
+      dispatch('dock:range', dockInteriorId(payload), payload, () => true);
+      if (id != null) {
+        strutsDown.add(id);
+        dispatch('dock:range', id, payload, () => true);
+      }
+    } else if (id != null && strutsLive(id)) {
+      // Left range without docking — the bus event only covers 'in', so the stow rides a
+      // side-band event rather than sharing dock:range with the deploy clip. Mid-deploy
+      // the struts settle home from live pose — stow's first key assumes full extension.
+      strutsDown.delete(id);
+      const anchor = anchorS(payload);
+      let settled = false;
+      for (const controller of authoredMotionControllersFor(id)) {
+        try {
+          if (clipMidFlight(controller, 'struts_deploy')) {
+            settled = controller.settleGroups?.(0.8, simNow(), STRUT_GROUPS) || settled;
+          }
+        } catch (error) {
+          console.warn('[authoredMotion] kestrel:strutsStow rejected', error);
+        }
+      }
+      if (!settled) dispatch('kestrel:strutsStow', id, payload, () => true);
+    }
+  };
+  const onDocked = (payload) => {
+    dispatch('dock:docked', dockInteriorId(payload), payload, () => true);
+    const id = playerId();
+    if (id == null || !strutsLive(id)) return;
+    dispatch('dock:docked', id, payload, () => true);
+  };
+  const onUndocked = (payload) => {
+    dispatch('dock:undocked', dockInteriorId(payload), payload, () => true);
+    const id = playerId();
+    if (id == null || !strutsLive(id)) return;
+    strutsDown.delete(id);
+    dispatch('dock:undocked', id, payload, () => true);
+  };
+  const onDockDenied = (payload) => {
+    dispatch('dock:denied', dockInteriorId(payload), payload,
+      (c) => !c.clipActive?.('clamp_denied_flare'));
   };
   const onRepairCompleted = (payload) => {
     if (!payload || payload.type !== 'repair') return;
@@ -358,9 +753,13 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     // Always accept: the sim refires on the clip's own cadence and a mid-flight restart is a
     // smaller visual cost than a swallowed refire leaving the drum parked while it still grinds.
     dispatch('drone:grindStart', payload.id, payload, () => true);
+    // ANI-22: the sense vane folds for the grind on a side-band event — one bus event maps
+    // to one clip, so the vane can't share drone:grindStart with the drum cycle.
+    dispatch('drone:vaneStow', payload.id, payload, () => true);
   };
   const onGrindStop = (payload) => {
     dispatch('drone:grindStop', payload.id, payload, () => true);
+    dispatch('drone:vaneDeploy', payload.id, payload, () => true);
   };
   // ANI-11: the same starter beam accumulates split work against jettisoned cargo pods —
   // the beam pries the seals, so the pod's door rig answers to events addressed at the
@@ -372,7 +771,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   };
   const onPodBeamStop = (payload) => {
     if (!payload || payload.targetId == null) return;
-    const simTime = payload?.simTime ?? simNow();
+    const simTime = anchorS(payload);
     for (const controller of authoredMotionControllersFor(payload.targetId)) {
       if (!controller.clipActive?.('breach')) continue;
       const elapsed = controller.clipElapsed?.('breach', simTime);
@@ -399,15 +798,22 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       ? entityForStationId(payload.stationId)
       : null;
     if (entityId == null) return;
-    const now = payload.simTime ?? simNow();
+    const now = anchorS(payload);
     for (const controller of authoredMotionControllersFor(entityId)) {
       try {
         if (payload.active === false) {
           controller.settle?.(1.2, now);
-        } else if (payload.active && !controller.clipActive?.('workLoop')) {
-          // handleEvent restarts the loop at t=0 — a repeated active receipt while the
-          // loop is already running would teleport every pivot to the first key.
-          controller.handleEvent?.('fab:workStart', payload, now);
+        } else if (payload.active) {
+          // trolley_drift rides the bank's own event map: the reposition stroke answers
+          // every queue change, including mid-work churn where workLoop stays running.
+          if (!controller.clipActive?.('trolley_drift')) {
+            controller.handleEvent?.('craft:queueChanged', payload, now);
+          }
+          if (!controller.clipActive?.('workLoop')) {
+            // handleEvent restarts the loop at t=0 — a repeated active receipt while the
+            // loop is already running would teleport every pivot to the first key.
+            controller.handleEvent?.('fab:workStart', payload, now);
+          }
         }
       } catch (error) {
         console.warn('[authoredMotion] fab queue receipt rejected by controller', error);
@@ -451,6 +857,8 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('tether:released', onTetherReleased),
     bus.on('massline:snareEnded', onSnareEnded),
     bus.on('tether:latchDenied', onLatchDenied),
+    bus.on('massline:snareArmed', onSnareArmed),
+    bus.on('tether:strain', onTetherStrain),
     bus.on('ship:boostPreKick', onBoostPreKick),
     bus.on('ship:boostStart', onBoostStart),
     bus.on('ship:boostStop', onBoostStop),
@@ -458,6 +866,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('service:completed', onServiceDone),
     bus.on('service:aborted', onServiceAborted),
     bus.on('combat:damage', onCombatDamage, { presentation: true }),
+    bus.on('hullBurst:hit', onHullBurstHit),
     bus.on('service:completed', onRepairCompleted),
     bus.on('hull:fractured', onHullFractured),
     bus.on('salvage:npcExtraction', onNpcExtraction),
@@ -467,6 +876,55 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('mining:start', onPodMiningStart),
     bus.on('mining:stop', onPodBeamStop),
     bus.on('craft:queueChanged', onCraftQueue),
+    bus.on('nav:waypoint', onNavWaypoint),
+    bus.on('band:bearingResolved', onBearingResolved),
+    bus.on('site:producing', onSiteProducing),
+    bus.on('site:machineRemoved', onSiteMachineRemoved),
+    bus.on('interdiction:triggered', onInterdictionTriggered),
+    bus.on('cruise:snareRequest', onSnareRequest),
+    bus.on('cruise:dropped', onCruiseDropped),
+    bus.on('survivorPod:ejected', onPodEjected),
+    bus.on('survivorPod:rescueSelected', onPodRescue),
+    bus.on('drill:start', onDrillStart),
+    bus.on('drill:break', onDrillBreak),
+    bus.on('drill:end', onDrillEnd),
+    bus.on('ai:telegraph', onAiTelegraph),
+    bus.on('ai:flee', onAiFlee),
+    bus.on('encounter:predationEngaged', onPredationEngaged),
+    bus.on('lawfulInspection:choose', onLawfulChoose),
+    bus.on('customs:submit', onCustomsSubmit),
+    bus.on('customs:breakScan', onCustomsBreak),
+    bus.on('player:scannedByPatrol', onScannedByPatrol),
+    bus.on('traffic:oreCollected', onOreCollected),
+    bus.on('npcjobs:minerRelocated', onMinerRelocated),
+    bus.on('freight:custodyChanged', onCustodyChanged),
+    bus.on('freight:arrival', onFreightArrival),
+    bus.on('station:throughput', onStationThroughput),
+    bus.on('survivorPod:delivered', onPodDelivered),
+    bus.on('salvage:coreEjected', onCoreEjected),
+    bus.on('encounter:telegraph', onEncounterTelegraph),
+    bus.on('asteroid:destroyed', onAsteroidDestroyed),
+    bus.on('asteroid:chunked', onAsteroidChunked),
+    bus.on('capitalBoss:telegraph', onCapitalTelegraph),
+    bus.on('ai:stateChange', onAiStateChange),
+    bus.on('encounter:predationTelegraph', onPredationTelegraph),
+    bus.on('cloak:engaged', onCloakEngaged),
+    bus.on('cloak:dropped', onCloakDropped),
+    // ANI-38: passing traffic's hail gets a visible answer — the hull rocks its wings.
+    bus.on('npc:hailed', (payload) => {
+      dispatch('npc:hailed', payload && payload.entityId, payload, () => true);
+    }),
+    bus.on('cargo:jettisoned', onCargoJettisoned),
+    bus.on('planet:collector', onPlanetCollector),
+    bus.on('massSeed:deployed', onMassSeedDeployed),
+    bus.on('massSeed:locked', onMassSeedLocked),
+    bus.on('massSeed:tetherCut', onMassSeedEnded('massSeed:tetherCut')),
+    bus.on('massSeed:collapsed', onMassSeedEnded('massSeed:collapsed')),
+    bus.on('jump:chargeTick', onChargeTick),
+    bus.on('dock:range', onDockRange),
+    bus.on('dock:docked', onDocked),
+    bus.on('dock:undocked', onUndocked),
+    bus.on('dock:denied', onDockDenied),
     bus.on('gate:range', onGateRange),
     bus.on('jump:chargeStart', onJumpChargeStart),
     bus.on('jump:start', onGateReset),
@@ -503,7 +961,10 @@ export async function loadMotionBank(ref, fetchImpl) {
   if (!response || !response.ok) {
     throw new Error(`motion bank fetch failed: HTTP ${response && response.status} ${ref.uri}`);
   }
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  // Banks are text JSON; checkouts translate them per core.autocrlf (CRLF on Windows, LF on
+  // Linux). Refs attest canonical LF bytes, so normalize before enforcing the pin.
+  const fetched = new TextDecoder().decode(await response.arrayBuffer());
+  const bytes = new TextEncoder().encode(fetched.replace(/\r\n/g, '\n'));
   if (Number.isFinite(ref.bytes) && bytes.byteLength !== ref.bytes) {
     throw new Error(`motion bank byte length mismatch for ${ref.uri}: ${bytes.byteLength} != ${ref.bytes}.`);
   }

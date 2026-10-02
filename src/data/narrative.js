@@ -59,7 +59,42 @@ export const COLD_START = [
     category: 'ambient', ttl: 9,
     note: "Recognized by hull profile. Incident 7741 was not a quiet incident. His crew moved to a different berth by morning.",
   },
+  // Same next berth for a hauler, a fighter, or a salvager. station_helios is the live dock.
+  {
+    id: 'cold_next_berth', sender: 'HELIOS DOCKMASTER', delayS: 20,
+    text: 'Next berth: Helios Station. Contract 47-A is the same job if you hauled, fought, or pulled salvage.',
+    category: 'personal', ttl: 12,
+    note: 'Reachable dock is station_helios in sector_helios_prime. One opportunity, three first-hour routes.',
+  },
 ];
+
+/** The one authored opening every first-hour route is allowed to reach. */
+export const STORY_ENTRY_CONTACT = Object.freeze({
+  id: 'story_entry_helios',
+  contactId: 'helios_dockmaster',
+  stationId: 'station_helios',
+  sectorId: 'sector_helios_prime',
+  commsId: 'cold_next_berth',
+  routes: Object.freeze(['trade', 'combat', 'salvage']),
+});
+
+/** Dock voice after a filed ending. It names the continuation. It does not reopen the choice. */
+export const ENDING_STATION_ACK = Object.freeze({
+  A: 'Auxiliary watch holds at this dock. Patrol, bounty, and escort still file. The commission is not offered again.',
+  B: 'The quiet routes still close here. Your name stays off the board. The routing seat is not offered again.',
+  C: 'The loop return is already filed. This berth is the same berth. The jump is not offered again.',
+  D: 'The desk still keeps the ledger. You can leave this dock and come back. The stay is not offered again.',
+  E: 'Contract 47-B is the open work. 47-A stays closed. The courier does not ask again.',
+});
+
+/** Return to Ashfall, the place the ending changed. One line. No second payout. */
+export const ENDING_RETURN_ACK = Object.freeze({
+  A: 'Ashfall still shows the commission on the wall. The record stays expunged. Nothing reopens.',
+  B: 'Ashfall still moves freight without your name. The silence stays filed. Nothing reopens.',
+  C: 'Ashfall is the berth the jump returned. The date did not roll back. Nothing reopens.',
+  D: 'The desk is still yours. The ledger is still the ledger. Nothing reopens.',
+  E: '47-A is still closed on this wall. 47-B is the next manifest. Nothing reopens.',
+});
 
 // ── Reference codes that recur across the world ──────────────────────────────────────────────
 // These are not flavor — they are cross-references the player learns to recognise. REF 44-C is the

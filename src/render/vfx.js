@@ -107,6 +107,7 @@ import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
 import { readCustomsWeir } from '../presentation/customsWeir.js';
 import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
 import {
+  broadcastDishBeatRecord,
   createStationSideEventVfxFrameScratch,
   resolveStationSideEventVfxProfile,
   STATION_SIDE_EVENT_VFX_CAPACITY,
@@ -2465,6 +2466,17 @@ export const vfx = {
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
     add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
+    add('station:broadcastTic', (p) => {
+      const rec = broadcastDishBeatRecord(p);
+      if (!rec) return;
+      this._onStationSideEvent({
+        kind: 'sensor_sweep',
+        eventId: `broadcast:${rec.stationId}:${rec.tic}`,
+        stationId: rec.stationId,
+        from: rec.pos,
+        to: rec.pos,
+      });
+    });
     add('ship:thrust', (p) => this._onThrust(p));
     add('ship:boostStart', (p) => this._onBoost(p, true));
     add('ship:boostStop', (p) => this._onBoost(p, false));
@@ -12535,6 +12547,7 @@ export const vfx = {
       energy.plumeDrive > 0.02
       || energy.boostBlend > 0.02
       || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
+      || this._energyJetsFading(energy)
     )) return true;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
     if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
@@ -12603,6 +12616,18 @@ export const vfx = {
     return false;
   },
 
+  // A released jet is still tapering away: keep the energy path awake until it has run out by
+  // itself. Without this the sleep gate below (commanded drive already 0) calls
+  // `plasmaStream.reset()` / `retroVolume.reset()` a frame after the release - a hard hide in the
+  // middle of the taper (slice 1, thruster lifecycle).
+  _energyJetsFading(energy) {
+    if (!energy) return false;
+    const stream = energy.plasmaStream;
+    if (stream && typeof stream.isFading === 'function' && stream.isFading()) return true;
+    const retro = energy.retroVolume;
+    return !!(retro && typeof retro.isFading === 'function' && retro.isFading());
+  },
+
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
     const energy = this._energy;
@@ -12610,6 +12635,7 @@ export const vfx = {
       energy.plumeDrive > 0.02
       || energy.boostBlend > 0.02
       || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
+      || this._energyJetsFading(energy)
     )) return true;
     // Activity-gated, never "alive ship = awake": the idle-sleep invariant requires the energy
     // subsystem to do zero work when no ship is thrusting (master semantics, fleet-extended).
@@ -13400,13 +13426,20 @@ export const vfx = {
     // Reduced-flash convention shared with the family presentation path (eventLightScale 0.25).
     const flashGate = (this._productionThrusterA11y && this._productionThrusterA11y.reducedFlash)
       ? 0.25 : 1;
+    // `ramp` is the stream's chamber-heat ramp: the hull light lights and fades with the bell
+    // instead of snapping on/off at ~24% of its brightness the frame the spool crosses a threshold.
+    const lightRamp = Number.isFinite(src.ramp) ? Math.max(0, Math.min(1, src.ramp)) : 1;
     const intensity = Math.min(2.6,
-      2.6 * (0.24 + 0.76 * norm) * (1 + boost * 0.28) * flashGate * peakScale);
+      2.6 * (0.24 + 0.76 * norm) * (1 + boost * 0.28) * flashGate * peakScale * lightRamp);
     if (intensity <= 0.02) return release();
     const rgb = this._plumeCoreRgbScratch
       || (this._plumeCoreRgbScratch = { r: 0.38, g: 0.78, b: 1 });
     enginePlumeCoreRgbInto(getEngineProfileBase(this._engineProfileIdFor(player)), rgb);
     return this._upsertPlayerPlumeEventLight({
+      // `_upsertPlayerPlumeEventLight` rejects any source without `alive`; this object never carried it,
+      // so the plasma stream's hull light was released every frame (the three event-light tests were
+      // red on master for exactly this reason).
+      alive: true,
       x: src.x,
       y: src.y + 1.0,
       z: src.z,

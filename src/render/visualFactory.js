@@ -47,6 +47,7 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
+import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -3092,8 +3093,13 @@ function buildPickup(e) {
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
+  // GFX-16: one authored silhouette per commodity category (pickupShapes.js); modules and anything
+  // that is not a known commodity keep the original octahedron.
+  const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
   const gem = new THREE.Mesh(
-    getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
+    shapeName
+      ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
+      : getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
     getMaterial(`gemmat:${color}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
     }), SHARED_MATERIAL_ROLE.HULL)),
@@ -3102,6 +3108,7 @@ function buildPickup(e) {
   gem.material = gem.material.clone();
   g.add(gem);
   g.userData.kind = 'pickup'; g.userData.gem = gem;
+  g.userData.pickupShape = shapeName || 'octahedron';
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
@@ -4020,7 +4027,9 @@ function attachPackagedBody(root, relativeFile, entity) {
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
-      const publicationWait = waitForOpeningGraphPublicationRelease();
+      const publicationWait = waitForOpeningGraphPublicationRelease({
+        entity: boundaryLiveEntity(root, entity) || entity,
+      });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);

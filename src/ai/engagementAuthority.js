@@ -14,6 +14,7 @@ import {
 import { isPlayerWanted } from '../systems/heat.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { distance2, stableId } from './contracts.js';
+import { resolveCapitalOpening } from '../combat/subsystems.js';
 
 const TICKS_PER_SECOND = 60;
 export const MIN_AI_RESPONSE_WINDOW_S = 1;
@@ -152,6 +153,14 @@ export function authorizeAIEngagement({
 
   const phase = doctrinePhase(objectiveReason, doctrineId);
   if (!phase || !DOCTRINE_FIRE_PHASES[doctrineId]?.has(phase)) return denied('doctrine_fire_window');
+  // A disabled weapon battery closes the capital's shot. Hull percent does not.
+  // Recovery is the subsystem coming back, not a presentation timer.
+  if (doctrineId === 'capital_broadside'
+    || doctrineId === 'capital_broadside_tollman'
+    || doctrineId === 'capital_broadside_ala') {
+    const opening = resolveCapitalOpening(self);
+    if (opening.open) return denied('capital_subsystem_opening');
+  }
 
   const arenaPursuer = state.run?.kind === 'survival' && state.run.phase !== 'inactive'
     && self.data?.runCohort === 'survival';
