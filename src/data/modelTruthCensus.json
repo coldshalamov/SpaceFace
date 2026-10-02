@@ -1,8 +1,8 @@
 {
   "counts": {
-    "green": 6,
+    "rows": 199,
     "red": 193,
-    "rows": 199
+    "green": 6
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {

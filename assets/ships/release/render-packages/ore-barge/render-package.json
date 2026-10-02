@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        51
+        52
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        52
+        53
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        53
+        54
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        54
+        55
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        55
+        56
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        56
+        57
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        57
+        58
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        58
+        59
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        59
+        60
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        60
+        61
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        61
+        62
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        62
+        63
       ],
       "parentNodeId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c5c0d2527fd05cafb248046ba1f8b2af386c1d0c9b1fe2b327a14453bc53cb9f",
+  "contentHash": "1b0f69bb5c42641a1125de925c64ccc94787997ecb4a0141617ab8bfbfc32b8e",
   "dynamicGroups": [
     {
       "id": "sf.render.ore-barge.node.lod0-hook-drive-core.dynamic",
@@ -628,7 +628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "603351a511c683af822d037b1312d1c8d72a0aa04bb7d95adefdfca30c2e8c95",
+      "geometryHash": "a842fe5e84e7050049755f484a0850d805c9bc8f24c11836acf5680f400591cb",
       "id": "sf.render.ore-barge.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -1003,16 +1003,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da5c83293c01666022bcc5e45321aac599077b23e6c90f11ded625cd4de65d7e",
+      "geometryHash": "bdef9eddf40bce33884f08390afe7823431d3657335178661d1805fc05e83e25",
       "id": "sf.render.ore-barge.node.lod0-mechanical.primitive.0",
-      "indexCount": 16809,
+      "indexCount": 16245,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.ore-barge.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5336
+      "vertexCount": 5168
     },
     {
       "bounds": {
@@ -1067,6 +1067,131 @@
     {
       "bounds": {
         "max": [
+          1.707725077867508,
+          2.7750000953674316,
+          -1.2408662885427475
+        ],
+        "min": [
+          1.292274922132492,
+          2.2249999046325684,
+          -1.3991338163614273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cfa680b0752f41227f670b683377d58f042d9e0fcf10bd0d5de31c53e72d9160",
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-l-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BARGE_CLAW_L_Warning",
+      "nodeId": "sf.render.ore-barge.node.lod0-motion-barge-claw-l-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7500030398368835,
+          2.850027084350586,
+          -1.125
+        ],
+        "min": [
+          1.2499969601631165,
+          2.5099730491638184,
+          -2.075000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f1e6d4f10919ce82246248e47916e889542540a516e37c21f70f4d326d6b296f",
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanical.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BARGE_CLAW_Mechanical",
+      "nodeId": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5562151558697224,
+          3.3499999046325684,
+          -1.5437849275767803
+        ],
+        "min": [
+          1.4437849633395672,
+          2.8499999046325684,
+          -1.6562151201069355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2e89251bc3e7ce229772c2b483f9f7c40e2b7532ab07c11ba08f348c204c0ef",
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanicaldark.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodeId": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 341
+    },
+    {
+      "bounds": {
+        "max": [
+          1.707725077867508,
+          2.7750000953674316,
+          -1.8008662313222885
+        ],
+        "min": [
+          1.292274922132492,
+          2.2249999046325684,
+          -1.9591337591409683
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "202e80cd90e4f05a921bdb18b2eec4494b5e9aa1f989aad76b3285616e3b322b",
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-r-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BARGE_CLAW_R_Warning",
+      "nodeId": "sf.render.ore-barge.node.lod0-motion-barge-claw-r-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9999802112579346,
+          3.8000183403491974,
+          -1.0499999523162842
+        ],
+        "min": [
+          1.0000197887420654,
+          3.1999816596508026,
+          -2.1500000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a1dd9c66b670668234c3b06df63804aaddf403ccee3450e0e2b8b75246403de",
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-trolley-mechanical.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodeId": "sf.render.ore-barge.node.lod0-motion-barge-trolley-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
           20.40999984741211,
           4.05058479309082,
           4.570815563201904
@@ -1103,16 +1228,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c5765319310373dbbc34b5a93f6ccf72badf8e2c6654db456793ddaf2945a42",
+      "geometryHash": "b1502b730d99acfdb83369bf42342da262bd93b9c7e88db85a50d80ad099311c",
       "id": "sf.render.ore-barge.node.lod1-armor.primitive.0",
-      "indexCount": 2694,
+      "indexCount": 2712,
       "indexed": true,
       "materialHash": "3d2e96bd18f8bba6cb6cdb619574ecd76bf38bbd885f24122eec1ee2aa7d187e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.ore-barge.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 844
+      "vertexCount": 849
     },
     {
       "bounds": {
@@ -1167,27 +1292,27 @@
     {
       "bounds": {
         "max": [
-          -12.600309371948242,
+          -12.600141525268555,
           4.949316501617432,
           2.6992111206054688
         ],
         "min": [
-          -13.409574508666992,
+          -13.409405708312988,
           3.499988079071045,
           -2.6992361545562744
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb0b6f4ab722ecc184cabd89bf05780a6817c9b75243e31df53b757e489a6b0c",
+      "geometryHash": "855a045adcfc2b35573f892e36f5d823e8a40af9de7f6f43b1f4c1c3f90ae4a8",
       "id": "sf.render.ore-barge.node.lod1-canopy.primitive.0",
-      "indexCount": 1329,
+      "indexCount": 1335,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_CANOPY",
       "nodeId": "sf.render.ore-barge.node.lod1-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 358
+      "vertexCount": 359
     },
     {
       "bounds": {
@@ -1328,16 +1453,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c58f261256d820de8c9abb3e5197f41d1ec39f1b0f9de5628cfe1eff02ba3869",
+      "geometryHash": "479036be63237c43ca4b8533c71e957395ec821f4f34330cf820cf9e6581c5d3",
       "id": "sf.render.ore-barge.node.lod1-hull.primitive.0",
-      "indexCount": 9255,
+      "indexCount": 9408,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.ore-barge.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2725
+      "vertexCount": 2777
     },
     {
       "bounds": {
@@ -1353,16 +1478,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91da0e6a6c7ca1fa7e7c61d803735a7bd064868dce3ba32e69fbfc19aac6cb0b",
+      "geometryHash": "697db87fe68ccd52dba8ce9bc34ccf248af4d98634daa130de8003c6eeb3dab8",
       "id": "sf.render.ore-barge.node.lod1-lights-cyan-rust.primitive.0",
-      "indexCount": 513,
+      "indexCount": 540,
       "indexed": true,
       "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan_rust",
       "nodeId": "sf.render.ore-barge.node.lod1-lights-cyan-rust",
       "primitiveIndex": 0,
-      "vertexCount": 224
+      "vertexCount": 237
     },
     {
       "bounds": {
@@ -1453,16 +1578,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f83a3bcce41eebd11c891216369dae2bc9e105f805dc6cfc181fda077e2f5c0d",
+      "geometryHash": "5f80248e73a0c9ca7467f8416e1e48526a467fc02fd6309dc804515ef1c6e524",
       "id": "sf.render.ore-barge.node.lod1-mechanical.primitive.0",
-      "indexCount": 9639,
+      "indexCount": 9099,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.ore-barge.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3359
+      "vertexCount": 3195
     },
     {
       "bounds": {
@@ -1478,16 +1603,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f1ec02f9ab90c06a4b41806b75598f4bd1d1cb9ac04fc2dc91dd12a031c4414",
+      "geometryHash": "92898e02490281f3f45c7ad11b1dd34f5d3c15e319ecf0791bc034ca681a15e0",
       "id": "sf.render.ore-barge.node.lod1-mechanicaldark-ore.primitive.0",
-      "indexCount": 3144,
+      "indexCount": 3168,
       "indexed": true,
       "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark_ore",
       "nodeId": "sf.render.ore-barge.node.lod1-mechanicaldark-ore",
       "primitiveIndex": 0,
-      "vertexCount": 934
+      "vertexCount": 938
     },
     {
       "bounds": {
@@ -1503,16 +1628,141 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91346d8f5cb2452c9af32bceda8433215e8d30df6bd4da83c0634f55d346106c",
+      "geometryHash": "bc18464cd648f0a7a9c993f695a881fc4cbaef689963188fdcabf514c5a85d9f",
       "id": "sf.render.ore-barge.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 5544,
+      "indexCount": 5562,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.ore-barge.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2191
+      "vertexCount": 2197
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7073024362325668,
+          2.7740061283111572,
+          -1.2415126338601112
+        ],
+        "min": [
+          1.2927298694849014,
+          2.226053237915039,
+          -1.3981876596808434
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92685e79a1ff0fa89311d3ce4f5aa2e6f5db07fcba4213b307ffac71b0e6e998",
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-l-warning.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BARGE_CLAW_L_Warning",
+      "nodeId": "sf.render.ore-barge.node.lod1-motion-barge-claw-l-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7500030398368835,
+          2.850027084350586,
+          -1.125
+        ],
+        "min": [
+          1.2499969601631165,
+          2.5099730491638184,
+          -2.075000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ad69766c38cd463de6c5a192604468eb358104ec9b84dcc04023e8bfebe7201",
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanical.primitive.0",
+      "indexCount": 402,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BARGE_CLAW_Mechanical",
+      "nodeId": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 129
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5555767677724361,
+          3.348572015762329,
+          -1.5444373115897179
+        ],
+        "min": [
+          1.4444233514368534,
+          2.851008653640747,
+          -1.6561981216073036
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "361511de21e5935bb6cbfc70092be540423329e333b5aed5c8b9c818cbe1ae08",
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanicaldark.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodeId": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 129
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7072996199131012,
+          2.7740061283111572,
+          -1.801512636244297
+        ],
+        "min": [
+          1.2924594581127167,
+          2.226053237915039,
+          -1.9581876620650291
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8ad3e774513ae77aac23537f2ada539cc79505256788504e3efb72a6f2c28f2",
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-r-warning.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BARGE_CLAW_R_Warning",
+      "nodeId": "sf.render.ore-barge.node.lod1-motion-barge-claw-r-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9981512427330017,
+          3.7977298200130463,
+          -1.0518646836280823
+        ],
+        "min": [
+          1.0018487572669983,
+          3.2022701799869537,
+          -2.1481353640556335
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4b416f7aa438c67b5ea2cee40aa93de142c921bc8311c0448af1e2bcb98417f7",
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-trolley-mechanical.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodeId": "sf.render.ore-barge.node.lod1-motion-barge-trolley-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 77
     },
     {
       "bounds": {
@@ -1528,16 +1778,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc98f2eb82454e15e99eaf7d410b2e077e9a9dfa2681c6f90a26a50e0f12c7b3",
+      "geometryHash": "7928632a28d8d1a9443f635bc814a02b527e880692f28ee1defe60a27e677b50",
       "id": "sf.render.ore-barge.node.lod1-warning.primitive.0",
-      "indexCount": 5085,
+      "indexCount": 5151,
       "indexed": true,
       "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.ore-barge.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2004
+      "vertexCount": 2023
     },
     {
       "bounds": {
@@ -1553,7 +1803,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd5f826e77a9f702606a10752718945e89138d179bea112796d53ab78d0b2b82",
+      "geometryHash": "720090c1694c5fe4406ad4e8789eb36bfce0547bac011bcd380bf5b16128bf48",
       "id": "sf.render.ore-barge.node.lod2-armor.primitive.0",
       "indexCount": 1587,
       "indexed": true,
@@ -1703,7 +1953,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1412c2969682565ec8ed4cc82d65bc52d331e0232f8f60cabbfaf9c0cc46351a",
+      "geometryHash": "77c125285db7c1cd153534f78309fb4d89c961fad1ebd458694ec3c90c24500e",
       "id": "sf.render.ore-barge.node.lod2-hull.primitive.0",
       "indexCount": 4080,
       "indexed": true,
@@ -1778,41 +2028,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e9076ed9dbfa655a03b276cd06a6b15829cfd1e6ba481d11fbe1ca8cca640c5",
+      "geometryHash": "fb5bf41be3969aade5ce80f69561a88b514eee324579f8f90897174a67a7f895",
       "id": "sf.render.ore-barge.node.lod2-livery.primitive.0",
-      "indexCount": 1593,
+      "indexCount": 1605,
       "indexed": true,
       "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.ore-barge.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 497
+      "vertexCount": 498
     },
     {
       "bounds": {
         "max": [
           20.400665283203125,
-          3.796485662460327,
-          3.9549977779388428
+          2.586052656173706,
+          3.954955577850342
         ],
         "min": [
-          -22.77107810974121,
-          -2.148242235183716,
-          -3.955495834350586
+          -22.770618438720703,
+          -2.1464908123016357,
+          -3.955453634262085
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fa587c29c4d7cfc299119d56a654301916b98c7b5be7e1dcd0732ef280ed1b0",
+      "geometryHash": "54ff2e92afff764e91ef689d515cf37aa6b180b6063d62d230a6de2e0da858ec",
       "id": "sf.render.ore-barge.node.lod2-mechanical.primitive.0",
-      "indexCount": 2655,
+      "indexCount": 2532,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.ore-barge.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 907
+      "vertexCount": 861
     },
     {
       "bounds": {
@@ -1828,7 +2078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a58aeb60dc2471360fd394fd19b68772294e55414cfd240053e6f88c787fd737",
+      "geometryHash": "ad76c457ffdb8940a7f733c2442575cd2be5767fe8d1a8d6895ef2606ed340de",
       "id": "sf.render.ore-barge.node.lod2-mechanicaldark-ore.primitive.0",
       "indexCount": 1674,
       "indexed": true,
@@ -1843,26 +2093,151 @@
       "bounds": {
         "max": [
           18.437223434448242,
-          2.586637496948242,
-          4.0973124504089355
+          2.586611270904541,
+          4.097267150878906
         ],
         "min": [
-          -22.77107810974121,
-          -2.0816330909729004,
-          -4.0973124504089355
+          -22.770618438720703,
+          -2.081606864929199,
+          -4.097267150878906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18249d011f9c164a1b3853bf4af913f8f7bdedb3f6b2baa588a20a096285f4a9",
+      "geometryHash": "18750e3a69f22d5c075065dbf9f36c3b4cba7efe6a8c99002b6ebf2f2a1ae431",
       "id": "sf.render.ore-barge.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1932,
+      "indexCount": 1941,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.ore-barge.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 835
+      "vertexCount": 838
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7050524204969406,
+          2.77176833152771,
+          -1.2438874393701553
+        ],
+        "min": [
+          1.2957014590501785,
+          2.227113962173462,
+          -1.3975581973791122
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fb7644b068f613fbd854b0dfd79cf20e1f484f88bb1996c31d5bdbd7f3a11d38",
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-l-warning.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BARGE_CLAW_L_Warning",
+      "nodeId": "sf.render.ore-barge.node.lod2-motion-barge-claw-l-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 43
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7459334284067154,
+          2.8477475941181183,
+          -1.1272516250610352
+        ],
+        "min": [
+          1.252936229109764,
+          2.512704610824585,
+          -2.072927713394165
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc1beb028c5949fac37f8ffe906f0a3683da4e83eb4b33eb724d72f4779dc39d",
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanical.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BARGE_CLAW_Mechanical",
+      "nodeId": "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 67
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5556154996156693,
+          3.348572015762329,
+          -1.5442411005496979
+        ],
+        "min": [
+          1.4433080404996872,
+          2.851008653640747,
+          -1.655758947134018
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19a0ec395aa73ab28ae9cd4fcdb7f386def9fd191dc67e14bf07973770dd58ac",
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanicaldark.primitive.0",
+      "indexCount": 126,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodeId": "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7050468921661377,
+          2.77176833152771,
+          -1.8038873821496964
+        ],
+        "min": [
+          1.2960283756256104,
+          2.227113962173462,
+          -1.9575581401586533
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a9b12b98fc9d2fda928d4f5e533644c19039328efb0368ba6a3b098b480253d",
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-r-warning.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BARGE_CLAW_R_Warning",
+      "nodeId": "sf.render.ore-barge.node.lod2-motion-barge-claw-r-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 43
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9959225952625275,
+          3.7939295768737793,
+          -1.054097056388855
+        ],
+        "min": [
+          1.0040774047374725,
+          3.2035605907440186,
+          -2.1459031105041504
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1cd7c4f6dd6fc371292c1cb8210cb053bbfc771de441f821bbabbba22adad676",
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-trolley-mechanical.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodeId": "sf.render.ore-barge.node.lod2-motion-barge-trolley-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 42
     },
     {
       "bounds": {
@@ -3155,6 +3530,262 @@
       ]
     },
     {
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-l-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BARGE_CLAW_L_Warning",
+      "nodeName": "LOD0_MOTION_BARGE_CLAW_L_Warning",
+      "nodePath": [
+        0,
+        51,
+        3,
+        6,
+        0
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw-l",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.3200000524520874,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BARGE_CLAW_Mechanical",
+      "nodeName": "LOD0_MOTION_BARGE_CLAW_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        3,
+        0
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodeName": "LOD0_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodePath": [
+        0,
+        51,
+        3,
+        1
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-r-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BARGE_CLAW_R_Warning",
+      "nodeName": "LOD0_MOTION_BARGE_CLAW_R_Warning",
+      "nodePath": [
+        0,
+        51,
+        3,
+        7,
+        0
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw-r",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.8799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod0-motion-barge-trolley-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodeName": "LOD0_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        0
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.5,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
       "id": "sf.render.ore-barge.node.lod0-warning",
       "localTransform": [
         1,
@@ -4037,6 +4668,262 @@
       ]
     },
     {
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-l-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BARGE_CLAW_L_Warning",
+      "nodeName": "LOD1_MOTION_BARGE_CLAW_L_Warning",
+      "nodePath": [
+        0,
+        51,
+        3,
+        6,
+        1
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw-l",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.3200000524520874,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BARGE_CLAW_Mechanical",
+      "nodeName": "LOD1_MOTION_BARGE_CLAW_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        3,
+        2
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodeName": "LOD1_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodePath": [
+        0,
+        51,
+        3,
+        3
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-r-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BARGE_CLAW_R_Warning",
+      "nodeName": "LOD1_MOTION_BARGE_CLAW_R_Warning",
+      "nodePath": [
+        0,
+        51,
+        3,
+        7,
+        1
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw-r",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.8799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod1-motion-barge-trolley-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodeName": "LOD1_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        1
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.5,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
       "id": "sf.render.ore-barge.node.lod1-warning",
       "localTransform": [
         1,
@@ -4723,6 +5610,262 @@
       ]
     },
     {
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-l-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BARGE_CLAW_L_Warning",
+      "nodeName": "LOD2_MOTION_BARGE_CLAW_L_Warning",
+      "nodePath": [
+        0,
+        51,
+        3,
+        6,
+        2
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw-l",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.3200000524520874,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BARGE_CLAW_Mechanical",
+      "nodeName": "LOD2_MOTION_BARGE_CLAW_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        3,
+        4
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodeName": "LOD2_MOTION_BARGE_CLAW_MechanicalDark",
+      "nodePath": [
+        0,
+        51,
+        3,
+        5
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-claw-r-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BARGE_CLAW_R_Warning",
+      "nodeName": "LOD2_MOTION_BARGE_CLAW_R_Warning",
+      "nodePath": [
+        0,
+        51,
+        3,
+        7,
+        2
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw-r",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.8799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.lod2-motion-barge-trolley-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodeName": "LOD2_MOTION_BARGE_TROLLEY_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        2
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.5,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
       "id": "sf.render.ore-barge.node.lod2-warning",
       "localTransform": [
         1,
@@ -4768,6 +5911,207 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.motion-barge-claw",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.2999999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BARGE_CLAW",
+      "nodeName": "MOTION_BARGE_CLAW",
+      "nodePath": [
+        0,
+        51,
+        3
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-trolley",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.200000047683716,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.motion-barge-claw-l",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.6500000953674316,
+        0.2799999713897705,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BARGE_CLAW_L",
+      "nodeName": "MOTION_BARGE_CLAW_L",
+      "nodePath": [
+        0,
+        51,
+        3,
+        6
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.3200000524520874,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.motion-barge-claw-r",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.6500000953674316,
+        -0.2799999713897705,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BARGE_CLAW_R",
+      "nodeName": "MOTION_BARGE_CLAW_R",
+      "nodePath": [
+        0,
+        51,
+        3,
+        7
+      ],
+      "parentId": "sf.render.ore-barge.node.motion-barge-claw",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        2.549999952316284,
+        -1.8799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.node.motion-barge-trolley",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.5,
+        -1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BARGE_TROLLEY",
+      "nodeName": "MOTION_BARGE_TROLLEY",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        3.5,
+        -1.600000023841858,
         1
       ]
     },
@@ -4844,7 +6188,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        51
+        52
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -4893,7 +6237,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        52
+        53
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -4942,7 +6286,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        53
+        54
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -4991,7 +6335,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        54
+        55
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5040,7 +6384,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        55
+        56
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5089,7 +6433,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        56
+        57
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5138,7 +6482,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        57
+        58
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5187,7 +6531,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        58
+        59
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5236,7 +6580,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        59
+        60
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5285,7 +6629,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        60
+        61
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5334,7 +6678,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        61
+        62
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5383,7 +6727,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        62
+        63
       ],
       "parentId": "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
       "role": "immutable",
@@ -5410,28 +6754,28 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "c32ebfbcef3f64e95502c9226c085f3894b2fdf24a51d001305cf6d4781bc085"
+      "sha256": "2e1f37162e86d8716bd548baf62f1fd9466c7af45e20fe635abcd57a8fe59045"
     },
     "sourceGlb": {
-      "bytes": 1254300,
-      "sha256": "50d089be5c16c83eb0b572e7019a0fc2bfcf803ba3069f4b5a1904f2024480f4",
+      "bytes": 1307892,
+      "sha256": "b08a9ac89c6d89c0ff8ae0a71a48104efa7cb38fec9543df2f2dd33977c3a11f",
       "uri": "ore_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2558060,
-    "sha256": "54e61d2f62399553bc29083ea6ba44dfbf54643fc178a7878aeb00924e670477",
+    "bytes": 2650156,
+    "sha256": "e7e3be3917eb3778d02eff4bc644e71fb94f31a688d358e8431f3ce453885dc3",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -1.1155481338500977,
+        -1.1153182983398438,
         2.204403877258301,
         0
       ],
@@ -5441,12 +6785,12 @@
         4.755708694458008
       ],
       "min": [
-        -22.77107810974121,
+        -22.770618438720703,
         -2.2304444313049316,
         -4.755708694458008
       ],
       "size": [
-        43.31105995178223,
+        43.31060028076172,
         8.869696617126465,
         9.511417388916016
       ]
@@ -5470,13 +6814,273 @@
           0,
           1,
           0,
+          1.5,
+          3.5,
+          -1.600000023841858,
+          1
+        ],
+        "name": "MOTION_BARGE_TROLLEY",
+        "planIndex": 53,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "barge_trolley",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              1.5
+            ],
+            [
+              0,
+              1,
+              0,
+              1.600000023841858
+            ],
+            [
+              0,
+              0,
+              1,
+              3.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BARGE_TROLLEY",
+          "spaceface": {
+            "motionGroup": "barge_trolley"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BARGE_TROLLEY",
+            "recordIds": [
+              "sf.render.ore-barge.node.motion-barge-trolley"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "MOTION_BARGE_CLAW",
+        "planIndex": 57,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "barge_claw",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.2999999523162842
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BARGE_CLAW",
+          "spaceface": {
+            "motionGroup": "barge_claw"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BARGE_CLAW",
+            "recordIds": [
+              "sf.render.ore-barge.node.motion-barge-claw"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.3200000524520874,
+          1
+        ],
+        "name": "MOTION_BARGE_CLAW_L",
+        "planIndex": 64,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "barge_claw_l",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.2799999713897705
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.6500000953674316
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BARGE_CLAW_L",
+          "spaceface": {
+            "motionGroup": "barge_claw_l"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BARGE_CLAW_L",
+            "recordIds": [
+              "sf.render.ore-barge.node.motion-barge-claw-l"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.8799999952316284,
+          1
+        ],
+        "name": "MOTION_BARGE_CLAW_R",
+        "planIndex": 68,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "barge_claw_r",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0.2799999713897705
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.6500000953674316
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BARGE_CLAW_R",
+          "spaceface": {
+            "motionGroup": "barge_claw_r"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BARGE_CLAW_R",
+            "recordIds": [
+              "sf.render.ore-barge.node.motion-barge-claw-r"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           2.3440001010894775,
           2.198499917984009,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 53,
+        "planIndex": 72,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5528,7 +7132,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 54,
+        "planIndex": 73,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5580,7 +7184,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 55,
+        "planIndex": 74,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5632,7 +7236,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 56,
+        "planIndex": 75,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5684,7 +7288,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 57,
+        "planIndex": 76,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5736,7 +7340,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 58,
+        "planIndex": 77,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5788,7 +7392,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 59,
+        "planIndex": 78,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5840,7 +7444,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 60,
+        "planIndex": 79,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5892,7 +7496,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 61,
+        "planIndex": 80,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5944,7 +7548,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 62,
+        "planIndex": 81,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5996,7 +7600,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 63,
+        "planIndex": 82,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6048,7 +7652,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 64,
+        "planIndex": 83,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6088,9 +7692,9 @@
       "geology": 1,
       "glass": 3,
       "hull": 6,
-      "mechanical": 11,
+      "mechanical": 20,
       "signal": 17,
-      "warning": 3
+      "warning": 9
     },
     "materialProfiles": [
       {
@@ -6347,9 +7951,90 @@
         "allowTextures": true,
         "planIndex": 52,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "warning"
       }
     ],
-    "nodeCount": 65,
+    "motionBank": {
+      "bytes": 7165,
+      "rigId": "ore_barge",
+      "sha256": "9ce97f2bfcff8a0b4d71bc124387cc3e5e317f4f351dda5def991a6b0eb61c95",
+      "uri": "assets/ships/motions/ore-barge.motion.json"
+    },
+    "nodeCount": 84,
     "primitives": [
       {
         "canopy": false,
@@ -7763,13 +9448,433 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.5,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD0_MOTION_BARGE_TROLLEY_Mechanical",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.5,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD1_MOTION_BARGE_TROLLEY_Mechanical",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.5,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD2_MOTION_BARGE_TROLLEY_Mechanical",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD0_MOTION_BARGE_CLAW_Mechanical",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD0_MOTION_BARGE_CLAW_MechanicalDark",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD1_MOTION_BARGE_CLAW_Mechanical",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD1_MOTION_BARGE_CLAW_MechanicalDark",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD2_MOTION_BARGE_CLAW_Mechanical",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          3.200000047683716,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD2_MOTION_BARGE_CLAW_MechanicalDark",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.3200000524520874,
+          1
+        ],
+        "name": "LOD0_MOTION_BARGE_CLAW_L_Warning",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.3200000524520874,
+          1
+        ],
+        "name": "LOD1_MOTION_BARGE_CLAW_L_Warning",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.3200000524520874,
+          1
+        ],
+        "name": "LOD2_MOTION_BARGE_CLAW_L_Warning",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.8799999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_BARGE_CLAW_R_Warning",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.8799999952316284,
+          1
+        ],
+        "name": "LOD1_MOTION_BARGE_CLAW_R_Warning",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          2.549999952316284,
+          -1.8799999952316284,
+          1
+        ],
+        "name": "LOD2_MOTION_BARGE_CLAW_R_Warning",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "f2763e441fb46bdf6eb83b95da8f07536977a5837129add86e0057fcc9e6d683",
+  "runtimeHash": "3dc5c39d3752ad944f02e385a266a72d6412bfde6a46c6334e6340f7c7ef490a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -7780,7 +9885,7 @@
           4.755708694458008
         ],
         "min": [
-          -22.77107810974121,
+          -22.770618438720703,
           -2.2304444313049316,
           -4.755708694458008
         ]
@@ -7805,6 +9910,11 @@
         "sf.render.ore-barge.node.lod0-mechanical",
         "sf.render.ore-barge.node.lod0-mechanicaldark",
         "sf.render.ore-barge.node.lod0-mechanicaldark-ore",
+        "sf.render.ore-barge.node.lod0-motion-barge-claw-l-warning",
+        "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanical",
+        "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanicaldark",
+        "sf.render.ore-barge.node.lod0-motion-barge-claw-r-warning",
+        "sf.render.ore-barge.node.lod0-motion-barge-trolley-mechanical",
         "sf.render.ore-barge.node.lod0-warning",
         "sf.render.ore-barge.node.lod1-armor",
         "sf.render.ore-barge.node.lod1-beacon-amber",
@@ -7823,6 +9933,11 @@
         "sf.render.ore-barge.node.lod1-mechanical",
         "sf.render.ore-barge.node.lod1-mechanicaldark",
         "sf.render.ore-barge.node.lod1-mechanicaldark-ore",
+        "sf.render.ore-barge.node.lod1-motion-barge-claw-l-warning",
+        "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanical",
+        "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanicaldark",
+        "sf.render.ore-barge.node.lod1-motion-barge-claw-r-warning",
+        "sf.render.ore-barge.node.lod1-motion-barge-trolley-mechanical",
         "sf.render.ore-barge.node.lod1-warning",
         "sf.render.ore-barge.node.lod2-armor",
         "sf.render.ore-barge.node.lod2-beacon-amber",
@@ -7837,7 +9952,16 @@
         "sf.render.ore-barge.node.lod2-mechanical",
         "sf.render.ore-barge.node.lod2-mechanicaldark",
         "sf.render.ore-barge.node.lod2-mechanicaldark-ore",
+        "sf.render.ore-barge.node.lod2-motion-barge-claw-l-warning",
+        "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanical",
+        "sf.render.ore-barge.node.lod2-motion-barge-claw-mechanicaldark",
+        "sf.render.ore-barge.node.lod2-motion-barge-claw-r-warning",
+        "sf.render.ore-barge.node.lod2-motion-barge-trolley-mechanical",
         "sf.render.ore-barge.node.lod2-warning",
+        "sf.render.ore-barge.node.motion-barge-claw",
+        "sf.render.ore-barge.node.motion-barge-claw-l",
+        "sf.render.ore-barge.node.motion-barge-claw-r",
+        "sf.render.ore-barge.node.motion-barge-trolley",
         "sf.render.ore-barge.node.sf-npcwork-ore-barge-root",
         "sf.render.ore-barge.node.socket-camera-focus",
         "sf.render.ore-barge.node.socket-cargo-ventral",

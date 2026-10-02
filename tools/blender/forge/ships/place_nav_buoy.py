@@ -16,6 +16,9 @@ import bmesh
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_27  # noqa: E402
 
 SHIP_ID = 'place_nav_buoy'
 COLORS = {
@@ -143,10 +146,21 @@ def build():
     s.detail = 2
     F.antenna(s, 'Whip', polar(0.8, math.pi / 4, Z_LAMP1 + 0.28), 0.55, tip='glow_red')
     s.detail = 0
+
+    # ANI-27: pulse ring parked at the spire base — rides up on lane events.
+    pulse = F.ring(s, 'PulseRing', (0, 0, -2.8), 0.58, 0.05, axis=(0, 0, 1),
+                   material='glow_cyan', segments=24, sides=6)
+    cage = [o for o in s.objects if o.name.startswith('CageBar') or o.name.startswith('CageHoop')]
+    s.ani27_bank = ANI_27.build(s, {'cage': cage, 'pulse': pulse},
+                                source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani27_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_27.motion_bank.MOTIONS_DIR,
+                                                   'nav-buoy.motion.json'))

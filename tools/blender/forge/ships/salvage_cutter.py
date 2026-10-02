@@ -13,6 +13,7 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_09  # noqa: E402
+import ANI_23  # noqa: E402
 
 SHIP_ID = 'salvage_cutter'
 COLORS = {
@@ -166,6 +167,8 @@ def build():
         'ram_port': [_o['JawRamRod']],
         'ram_star': [_o['JawRamRod_M']],
     }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    # ANI-23: idle jaw chomp + ram brace merge into the jaw bank.
+    ANI_23.build(s, None, source_asset_id=None, bank=s.ani09_bank)
     return s
 
 
