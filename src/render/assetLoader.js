@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { activeDecodeClass, deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { activeDecodeClass, deadlineDecodeActive, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import { loadMotionBank } from './authoredMotion.js';
 import {
@@ -2055,7 +2055,7 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
 
 export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
-    const gltf = await loader.loadAsync(url);
+    const gltf = await scheduleGltfParse(() => loader.loadAsync(url));
     await dedupeGltfTextureSources(gltf);
     return gltf;
   }
@@ -2069,7 +2069,7 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const gltf = parseGlbJson(bytes);
   const errors = validateWholeShipJsonDocument(url, gltf);
   if (errors.length) throw new AssetContractError(url, errors);
-  const parsed = await loader.parseAsync(buffer, assetBasePath(url));
+  const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)));
   await dedupeGltfTextureSources(parsed);
   return parsed;
 }

@@ -555,6 +555,15 @@ export const sandboxScreen = {
     sectorSel.value = 'sector_helios_prime';
     fine.appendChild(sectorLabel); fine.appendChild(sectorSel);
 
+    // Form edits are dwell time too: the ship/sector the launch button will use is knowable
+    // before the click, so arm the same embark warm the preset tiles get on hover.
+    const armFineTune = () => emitSandboxEmbarkSpeculation(ctx.bus, {
+      sectorId: sectorSel.value || undefined,
+      shipId: shipSel.value || undefined,
+    });
+    shipSel.addEventListener('change', armFineTune);
+    sectorSel.addEventListener('change', armFineTune);
+
     const cameraLabel = el('label', null, 'Camera candidate');
     cameraLabel.htmlFor = 'sf-sandbox-camera';
     let cameraSel = document.createElement('select');

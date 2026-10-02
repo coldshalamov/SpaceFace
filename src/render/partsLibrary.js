@@ -869,7 +869,7 @@ const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
 // Gate the same spatial runway used by live authored prefetch so its initial decode/composition and
 // associated garbage collection finish behind loading. Distant authored-only boundaries remain
 // hidden and continue to stream on demand.
-const REGULAR_HULL_FILES = Object.freeze(
+export const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
 );
 

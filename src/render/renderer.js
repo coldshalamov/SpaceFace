@@ -108,6 +108,7 @@ import {
   PQ_193_05_GATE_PACKAGED_FILE,
   OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID,
   PART_LIBRARY_CONTRACT,
+  REGULAR_HULL_FILES,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
 import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
@@ -419,6 +420,8 @@ import {
 import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
 import { effectiveLawSecurity } from '../systems/lawSecurity.js';
+import { heatLevelFor, isPlayerWanted } from '../systems/heat.js';
+import { planGateScene } from '../data/gateControl.js';
 import { PURSUIT_RESOLVE_S, sectorSecurityOf } from '../systems/encounterDirector.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
@@ -1716,6 +1719,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     if (owner._holdExemptCollectS <= 0) {
       owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
       enqueueHoldExemptMeshBuilds(owner);
+      // The exempt verdicts only change with the collect — repartition the tail on this
+      // beat, not every display frame (the drain reads the stamped order meanwhile).
+      owner._holdExemptRepartition = true;
       // Lane C: authored decode must cook on the approach runway even while the
       // hold blocks ordinary residency thrash. preloadAuthoredAssetsForEntity is
       // bounded (2 starts) and never invents a dummy prewarm key.
@@ -1725,6 +1731,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     return 'held-first-flight';
   }
   owner._holdExemptCollectS = 0;
+  owner._holdExemptRepartition = false;
+  owner._holdExemptRemaining = 0;
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
   const pollCamera = owner.state && owner.state.camera || {};
@@ -3279,6 +3287,144 @@ function warmLawIncidentDispatchDecode(owner) {
   }
   if (roster.length) {
     warmEnemyRosterDecode(owner, roster, 'law-incident-decode-runway',
+      state.world && state.world.currentSectorId);
+  }
+}
+
+/**
+ * The wanted-tier posting bodies are not authored ships: wanted_tether_net /
+ * wanted_impound_yard / wanted_impound_lock resolve a seeded REGULAR_HULL_FILES pick keyed
+ * on the future entity id, so the file cannot be named before the spawn — and the tier
+ * posts the moment the heat level crosses, with no dispatchAt to lead. The pool is closed
+ * (10 class hulls), so when the player's heat reaches the bounty band — one tier below
+ * NETS, two below IMPOUND — decode the whole pool plus the patrol_lawman (warrant hunter)
+ * and customs_cutter (checkpoint cutter / impound clerk) escorts those posts mint. A heat
+ * dip below the band or a paid-off bounty just lets the lease expire; deduped per sector,
+ * file-level dedupe caps repeated decodes the rest of the way.
+ */
+function warmWantedTierDecode(owner) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !renderer.domElement) return;
+  const heat = state.player && Number.isFinite(state.player.heat) ? state.player.heat : 0;
+  if (heatLevelFor(heat) < 2) return;
+  const sectorId = (state.world && state.world.currentSectorId) || null;
+  const warmed = owner._wantedTierWarmSectors || (owner._wantedTierWarmSectors = new Set());
+  const sectorKey = sectorId || '';
+  if (warmed.has(sectorKey)) return;
+  warmed.add(sectorKey);
+  warmEnemyRosterDecode(owner, [
+    { archetype: 'patrol_lawman', factionId: 'faction_scn' },
+    { archetype: 'customs_cutter', factionId: 'faction_scn' },
+  ], 'wanted-tier-decode-runway', sectorId);
+  const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+    || 'assets/ships/release/parts/';
+  for (const file of REGULAR_HULL_FILES) {
+    Promise.resolve(loadAuthoredPart(`${releaseRoot}${file}`, {
+      renderer,
+      slot: 'hull',
+      optional: true,
+      residencyRole: 'wanted-tier-decode-runway',
+      sectorId,
+    })).catch(() => {});
+  }
+}
+
+const GATE_WING_WARM_DIST = 3000;
+const GATE_WING_WARM_DIST_SQ = GATE_WING_WARM_DIST * GATE_WING_WARM_DIST;
+const GATE_SCENE_DAY_SECONDS = 86400;
+
+/**
+ * Gate control posts its scan wing (ship_wasp ring, 60-120 WU off the gate) the instant the
+ * player starts the jump charge — inside the marker window at the very object the player
+ * stares at through the whole charge. The scene is a pure function of (seed, sector, gate,
+ * day, faction/security/wanted), so while the player sits on approach inside
+ * GATE_WING_WARM_DIST, replay planGateScene per in-range gate and warm the wasp hull the
+ * wing will draw — faction-kit included — before chargeStart ever fires. Deduped per
+ * (sector, gate, day): a hostile verdict or a superseded scene just lets the lease expire.
+ */
+function warmGateWingDecode(owner) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !renderer.domElement) return;
+  const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const ppos = player && player.pos;
+  if (!ppos) return;
+  const w = state.world || {};
+  const sector = (w.activeSector && (w.activeSector.factionId || Number.isFinite(w.activeSector.security))
+    ? w.activeSector
+    : (w.sectors && w.sectors[w.currentSectorId]) || w.activeSector) || null;
+  const gates = (w.activeSector && w.activeSector.gates) || [];
+  if (!sector || !gates.length) return;
+  const sectorId = w.currentSectorId || null;
+  const seed = state.meta && state.meta.seed || 1;
+  const day = Math.floor((Number.isFinite(state.simTime) ? state.simTime : 0) / GATE_SCENE_DAY_SECONDS);
+  const factionId = sector.factionId || null;
+  const security = Number.isFinite(sector.security) ? sector.security : 0.5;
+  const wanted = isPlayerWanted(state);
+  const warmed = owner._gateWingWarmKeys || (owner._gateWingWarmKeys = new Set());
+  const roster = [];
+  for (const gt of gates) {
+    const to = gt && (gt.to != null ? gt.to : gt.gateTo);
+    const gpos = gt && gt.pos;
+    if (to == null || !gpos) continue;
+    const dx = gpos.x - ppos.x;
+    const dz = gpos.z - ppos.z;
+    if (dx * dx + dz * dz > GATE_WING_WARM_DIST_SQ) continue;
+    const dedupe = `${sectorId}|${to}|${day}`;
+    if (warmed.has(dedupe)) continue;
+    const scene = planGateScene(seed, sectorId, to, day, { factionId, security, wanted });
+    if ((scene.scanWing | 0) <= 0) continue;
+    warmed.add(dedupe);
+    roster.push({
+      factionId: factionId || 'faction_scn',
+      entitySpec: { type: 'ship', shipId: 'ship_wasp', factionId: factionId || 'faction_scn' },
+    });
+  }
+  if (roster.length) {
+    warmEnemyRosterDecode(owner, roster, 'gate-wing-decode-runway', sectorId);
+  }
+}
+
+/**
+ * Station side events carry their own countdown: _planStation leaves each budgeted patrol
+ * (ship_wasp at the station's faction) in stationSideEvents.pending with a fixed dueAt, and
+ * _fire mints it the moment the beat lands — inside the marker window at the station seam.
+ * Poll the pending list once per residency pass; while a budgeted item's dueAt sits inside
+ * the decode runway, warm the patrol hull for the station it will launch from. Deferrals
+ * mutate dueAt and re-warm (the WeakMap keys the row), cancelled items let the lease expire.
+ */
+function warmStationPatrolDecode(owner) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  const pending = state && state.stationSideEvents && state.stationSideEvents.pending;
+  if (!state || !renderer || !renderer.domElement || !Array.isArray(pending) || !pending.length) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const warmedAt = owner._stationPatrolWarmAt || (owner._stationPatrolWarmAt = new WeakMap());
+  const roster = [];
+  let entities = null;
+  for (const item of pending) {
+    if (!item || (item.budget | 0) <= 0 || !Number.isFinite(item.dueAt)) continue;
+    if (item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    if (warmedAt.get(item) === item.dueAt) continue;
+    warmedAt.set(item, item.dueAt);
+    if (!entities) {
+      entities = state.entityList || (state.entities && typeof state.entities.values === 'function'
+        ? [...state.entities.values()] : []);
+    }
+    const station = entities.find((e) => e && (
+      e.id === item.stationId
+      || e.stationId === item.stationId
+      || (e.data && e.data.stationId) === item.stationId));
+    const factionId = (station && (station.data && station.data.factionId || station.factionId))
+      || 'faction_scn';
+    roster.push({
+      factionId,
+      entitySpec: { type: 'ship', shipId: 'ship_wasp', factionId },
+    });
+  }
+  if (roster.length) {
+    warmEnemyRosterDecode(owner, roster, 'station-patrol-decode-runway',
       state.world && state.world.currentSectorId);
   }
 }
@@ -15155,6 +15301,9 @@ export const render = {
     warmCultureIntroDecode(this);
     warmPursuitInterventionDecode(this);
     warmLawIncidentDispatchDecode(this);
+    warmWantedTierDecode(this);
+    warmGateWingDecode(this);
+    warmStationPatrolDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
@@ -15292,28 +15441,45 @@ export const render = {
     const queue = this._meshBuildQueue;
     const head = this._meshBuildQueueHead | 0;
     if (!queue || head >= queue.length) return 0;
-    const frame = this._activityFrame;
-    const glassIds = frame && frame.renderGlassIds;
-    const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
-    // Stable partition of the pending tail in one pass — exempt ids keep scan order ahead
-    // of the rest. splice-per-move paid O(tail) shifts per hoisted id for ~50 consecutive
-    // first-flight frames; slice+push pays the same ordering once.
-    const tail = queue.slice(head);
-    const hoisted = [];
-    const remainder = [];
-    for (let i = 0; i < tail.length; i++) {
-      const id = tail[i];
-      (exempt(resolveWorldPresentationEntity(this.state, id)) ? hoisted : remainder).push(id);
+    // Repartition only when the exempt collect just ran (the caller stamps
+    // _holdExemptRepartition on its 100 ms beat): re-evaluating the readable-glass
+    // predicate family per tail element every display frame was wasted work through
+    // the whole hold — ordering freshness degrades to the same cadence the collect
+    // already ships. The per-frame budgeted drain still runs; unbuildable skips count
+    // against the hoisted prefix via consumed head entries, not built count.
+    if (this._holdExemptRepartition === true) {
+      this._holdExemptRepartition = false;
+      const frame = this._activityFrame;
+      const glassIds = frame && frame.renderGlassIds;
+      const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
+      // Stable partition of the pending tail in one pass — exempt ids keep scan order
+      // ahead of the rest. splice-per-move paid O(tail) shifts per hoisted id; slice+push
+      // pays the same ordering once.
+      const tail = queue.slice(head);
+      const hoisted = [];
+      const remainder = [];
+      for (let i = 0; i < tail.length; i++) {
+        const id = tail[i];
+        (exempt(resolveWorldPresentationEntity(this.state, id)) ? hoisted : remainder).push(id);
+      }
+      queue.length = head;
+      for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
+      for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
+      this._holdExemptRemaining = hoisted.length;
     }
-    if (!hoisted.length) return 0;
-    queue.length = head;
-    for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
-    for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
-    // Cap to the ordinary runtime budget. Draining `moved` unbounded turned every
-    // on-glass / approach rock cohort into a single-frame dump (+11 s / +20 s clusters
-    // on soft-GPU crucible). Exempt ids stay hoisted at the head, so the next hold
-    // frames finish the rest without letting non-exempt work slip through.
-    return this._drainMeshBuildQueue(Math.min(hoisted.length, RUNTIME_MESH_BUILD_BUDGET));
+    const hoistedLeft = Math.min(Number(this._holdExemptRemaining) || 0, queue.length - head);
+    if (hoistedLeft <= 0) return 0;
+    // Cap to the ordinary runtime budget. Draining unbounded turned every on-glass /
+    // approach rock cohort into a single-frame dump (+11 s / +20 s clusters on soft-GPU
+    // crucible). Exempt ids stay hoisted at the head, so the next hold frames finish the
+    // rest without letting non-exempt work slip through.
+    const headBefore = this._meshBuildQueueHead;
+    const built = this._drainMeshBuildQueue(Math.min(hoistedLeft, RUNTIME_MESH_BUILD_BUDGET));
+    this._holdExemptRemaining = Math.max(
+      0,
+      hoistedLeft - (this._meshBuildQueueHead - headBefore),
+    );
+    return built;
   },
 
   _drainMeshBuildQueue(buildBudget) {

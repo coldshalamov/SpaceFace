@@ -570,17 +570,27 @@ function boundaryStandInDrawnEnvelope(data, entity) {
   if (target.recenter === 'xz') { c0x = 0; c0z = 0; }
   else if (target.recenter === 'xyz') { c0x = 0; c0y = 0; c0z = 0; }
   const yaw = Number.isFinite(target.yawDeg) && target.yawDeg !== 0 ? target.yawDeg * (Math.PI / 180) : 0;
-  if (yaw === 0) return { half, center: [c0x, c0y, c0z] };
-  const cos = Math.cos(yaw);
-  const sin = Math.sin(yaw);
-  return {
-    half: [
-      half[0] * Math.abs(cos) + half[2] * Math.abs(sin),
-      half[1],
-      half[0] * Math.abs(sin) + half[2] * Math.abs(cos),
-    ],
-    center: [c0x * cos + c0z * sin, c0y, -c0x * sin + c0z * cos],
-  };
+  const rotated = yaw === 0
+    ? { half, center: [c0x, c0y, c0z] }
+    : {
+      half: [
+        half[0] * Math.abs(Math.cos(yaw)) + half[2] * Math.abs(Math.sin(yaw)),
+        half[1],
+        half[0] * Math.abs(Math.sin(yaw)) + half[2] * Math.abs(Math.cos(yaw)),
+      ],
+      center: [c0x * Math.cos(yaw) + c0z * Math.sin(yaw), c0y, -c0x * Math.sin(yaw) + c0z * Math.cos(yaw)],
+    };
+  // syncResolvingMarker copies the hull's live bank/pitch onto the marker each frame, so a
+  // ship stand-in's drawn box leans its Y extent into XZ beyond this yaw-only stamp — the
+  // cull union is radial anyway, so widen X/Z to the rotation-invariant bound.
+  if (entity && entity.type === 'ship') {
+    rotated.half = [
+      Math.hypot(rotated.half[0], rotated.half[1]),
+      rotated.half[1],
+      Math.hypot(rotated.half[2], rotated.half[1]),
+    ];
+  }
+  return rotated;
 }
 
 /**

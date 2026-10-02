@@ -377,6 +377,38 @@ test('once-only spawn tails shed their own oldest past the 32-slice floor', () =
   assert.equal(destroyed, 32, 'the priority lane pays the remaining overflow');
 });
 
+test('zero-priority overflow prefers non-once-only cosmetics before spawn tails', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  bus.on('hud:fx', (p) => seen.push(`f:${p.id}`), { presentation: true });
+  // 40 spawn tails + 40 plain cosmetics, priority lane empty: combined 80 → 16 shed.
+  // The trim must skip past the once-only slices to the first non-once-only row —
+  // an unconditional head-drop would eat spawn stamps the floor exists to protect.
+  for (let i = 0; i < 40; i++) bus.emit('entity:spawned', { id: i });
+  for (let i = 0; i < 40; i++) bus.emit('hud:fx', { id: 1000 + i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:')).length;
+  assert.equal(spawned, 40, 'non-once-only cosmetics shed before any spawn tail');
+  const fx = seen.filter((s) => s.startsWith('f:')).length;
+  assert.equal(fx, 24, 'the overflow comes out of the non-once-only lane oldest-first');
+});
+
+test('pure once-only overflow past the floor sheds its own oldest with no priority lane', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  // 70 once-only slices, nothing else: the queue is 100% once-only past the 32-slice
+  // floor, so the trim sheds the oldest spawn tails to hold the 64-slice cap.
+  for (let i = 0; i < 70; i++) bus.emit('entity:spawned', { id: i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:'));
+  assert.equal(spawned.length, 64, 'the cap still holds with no other lane to pay');
+  assert.equal(spawned[0], 's:6', 'the trim sheds the oldest once-only slices');
+});
+
 test('a sustained priority burst cannot starve the cosmetic lane — bounded interleave', () => {
   const bus = createBus();
   bus.claimPresentationDrain();

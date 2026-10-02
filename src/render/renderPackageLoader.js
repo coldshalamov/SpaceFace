@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { activeDecodeClass, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -1080,7 +1080,7 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       });
     }
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    const gltf = await loader.parseAsync(buffer, resourceBaseUrl(url));
+    const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)));
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
     await dedupeGltfTextureSources(gltf);

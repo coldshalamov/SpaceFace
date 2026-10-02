@@ -135,6 +135,33 @@ export function withVisibleDecodeClass(fn) {
   }
 }
 
+// Main-thread GLTF scene-graph construction has no worker offload: the budget above caps
+// in-flight worker decodes, but each token releases when the worker returns — so a roster
+// warm that posts many decodes can land every parseAsync continuation in one display frame.
+// Pace parse STARTS through a per-frame FIFO: at most GLTF_PARSE_FRAME_LIMIT begin per
+// animation frame, the rest begin on later frames. Decode order and resolution values are
+// unchanged; only the start instant moves. Headless hosts (no rAF) run immediately — there
+// are no frames to protect.
+const GLTF_PARSE_FRAME_LIMIT = 2;
+const gltfParsePending = [];
+let gltfParseDrainScheduled = false;
+
+export function scheduleGltfParse(fn) {
+  if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
+  return new Promise((resolve, reject) => {
+    gltfParsePending.push({ fn, resolve, reject });
+    if (gltfParseDrainScheduled) return;
+    gltfParseDrainScheduled = true;
+    requestAnimationFrame(() => {
+      gltfParseDrainScheduled = false;
+      const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
+      for (const task of batch) {
+        Promise.resolve().then(task.fn).then(task.resolve, task.reject);
+      }
+    });
+  });
+}
+
 let shared = null;
 
 /** Process-wide budget shared by every decoder pool intake. */

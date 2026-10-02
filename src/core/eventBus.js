@@ -141,22 +141,25 @@ export function createBus() {
         || presentationQueue.length > COSMETIC_OVERFLOW_FLOOR;
       if (dropCosmetic) {
         let dropIndex = -1;
-        if (presentationPriorityQueue.length === 0) {
-          dropIndex = 0;
-        } else {
-          for (let i = 0; i < presentationQueue.length; i++) {
-            if (!PRESENTATION_ONCE_ONLY_EVENTS.has(presentationQueue[i].event)) {
-              dropIndex = i;
-              break;
-            }
-          }
-          // Every retained cosmetic is once-only: shed its oldest only past the deeper
-          // floor; below it the priority lane pays instead (self-healing hull residue
-          // before permanent spawn-stamp loss).
-          if (dropIndex === -1 && presentationOnceOnlyCount > ONCE_ONLY_OVERFLOW_FLOOR) {
-            dropIndex = 0;
+        // Prefer the oldest non-once-only cosmetic whether or not the priority lane is
+        // populated — a lifecycle slice self-heals (the residency poll re-stamps), while
+        // a once-only spawn stamp is a permanent pop-in.
+        for (let i = 0; i < presentationQueue.length; i++) {
+          if (!PRESENTATION_ONCE_ONLY_EVENTS.has(presentationQueue[i].event)) {
+            dropIndex = i;
+            break;
           }
         }
+        // Every retained cosmetic is once-only: shed its oldest only past the deeper
+        // floor; below it the priority lane pays instead (self-healing hull residue
+        // before permanent spawn-stamp loss).
+        if (dropIndex === -1 && presentationOnceOnlyCount > ONCE_ONLY_OVERFLOW_FLOOR) {
+          dropIndex = 0;
+        }
+        // Belt-and-braces: a floor that could stall the trim reintroduces the unbounded
+        // drain debt the cap exists to prevent — with no priority lane to pay, the cap
+        // forces the shed anyway.
+        if (dropIndex === -1 && presentationPriorityQueue.length === 0) dropIndex = 0;
         if (dropIndex !== -1) {
           const dropped = presentationQueue.splice(dropIndex, 1)[0];
           recyclePresentationSlice(dropped);
