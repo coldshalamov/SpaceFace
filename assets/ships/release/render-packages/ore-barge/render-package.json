@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8c36d282def1edf84aff00b4050b39517c3033c3fbd48e8b154a531a6632f96e",
+  "contentHash": "d1d8818e0d3c315cf5e16c21a7071821ea73c54983d10d3be6613a3f2158af2e",
   "dynamicGroups": [
     {
       "id": "sf.render.ore-barge.node.lod0-hook-drive-core.dynamic",
@@ -679,13 +679,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4c3fbc46fee3704736ed1ce20538c7e29548ce000abcf96c9e0034a7446ae5c2",
-      "id": "sf.render.ore-barge.node.lod0-beacon-amber.primitive.0",
+      "id": "sf.render.ore-barge.node.lod0-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.ore-barge.node.lod0-beacon-amber",
+      "meshName": "LOD0_Beacon_Amber_beacon",
+      "nodeId": "sf.render.ore-barge.node.lod0-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1254,13 +1254,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1eff2a1e3955b41b3badd44f4826a01d1ec4274465c01d0c5551a9832bd1094b",
-      "id": "sf.render.ore-barge.node.lod1-beacon-amber.primitive.0",
+      "id": "sf.render.ore-barge.node.lod1-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Beacon_Amber",
-      "nodeId": "sf.render.ore-barge.node.lod1-beacon-amber",
+      "meshName": "LOD1_Beacon_Amber_beacon",
+      "nodeId": "sf.render.ore-barge.node.lod1-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1829,13 +1829,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1eff2a1e3955b41b3badd44f4826a01d1ec4274465c01d0c5551a9832bd1094b",
-      "id": "sf.render.ore-barge.node.lod2-beacon-amber.primitive.0",
+      "id": "sf.render.ore-barge.node.lod2-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Beacon_Amber",
-      "nodeId": "sf.render.ore-barge.node.lod2-beacon-amber",
+      "meshName": "LOD2_Beacon_Amber_beacon",
+      "nodeId": "sf.render.ore-barge.node.lod2-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2302,6 +2302,13 @@
       ]
     },
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -2339,13 +2346,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "3d2e96bd18f8bba6cb6cdb619574ecd76bf38bbd885f24122eec1ee2aa7d187e",
@@ -2746,7 +2746,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-barge.node.lod0-beacon-amber",
+      "id": "sf.render.ore-barge.node.lod0-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -2766,8 +2766,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
+      "mergeBoundary": "LOD0_Beacon_Amber_beacon",
+      "nodeName": "LOD0_Beacon_Amber_beacon",
       "nodePath": [
         0,
         2
@@ -3884,7 +3884,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-barge.node.lod1-beacon-amber",
+      "id": "sf.render.ore-barge.node.lod1-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -3904,8 +3904,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Beacon_Amber",
-      "nodeName": "LOD1_Beacon_Amber",
+      "mergeBoundary": "LOD1_Beacon_Amber_beacon",
+      "nodeName": "LOD1_Beacon_Amber_beacon",
       "nodePath": [
         0,
         20
@@ -5022,7 +5022,7 @@
       ]
     },
     {
-      "id": "sf.render.ore-barge.node.lod2-beacon-amber",
+      "id": "sf.render.ore-barge.node.lod2-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -5042,8 +5042,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Beacon_Amber",
-      "nodeName": "LOD2_Beacon_Amber",
+      "mergeBoundary": "LOD2_Beacon_Amber_beacon",
+      "nodeName": "LOD2_Beacon_Amber_beacon",
       "nodePath": [
         0,
         38
@@ -6754,22 +6754,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "2e1f37162e86d8716bd548baf62f1fd9466c7af45e20fe635abcd57a8fe59045"
+      "sha256": "908bcd4567f616d6c8da8fa366c25cdd26ae6b050af5707596f3c9dd2b9d7b53"
     },
     "sourceGlb": {
-      "bytes": 1307892,
-      "sha256": "b08a9ac89c6d89c0ff8ae0a71a48104efa7cb38fec9543df2f2dd33977c3a11f",
+      "bytes": 1307972,
+      "sha256": "9faad6e2a1e7f2110a39d9df39debc11107a3487685621d8d455c7f190d5ba22",
       "uri": "ore_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2650156,
-    "sha256": "e7e3be3917eb3778d02eff4bc644e71fb94f31a688d358e8431f3ce453885dc3",
+    "bytes": 2650276,
+    "sha256": "ab5d229aaea09991b1022a3b2fc6e5f4d5d3884362d607d6c4157471a03a61c2",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8031,7 +8031,7 @@
     "motionBank": {
       "bytes": 7165,
       "rigId": "ore_barge",
-      "sha256": "9ce97f2bfcff8a0b4d71bc124387cc3e5e317f4f351dda5def991a6b0eb61c95",
+      "sha256": "6cc7e27525de1da002b65be9f7987d7a1f138a048f28955ad9d2d3bc9b3483a7",
       "uri": "assets/ships/motions/ore-barge.motion.json"
     },
     "nodeCount": 84,
@@ -8083,7 +8083,7 @@
           0,
           1
         ],
-        "name": "LOD0_Beacon_Amber",
+        "name": "LOD0_Beacon_Amber_beacon",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -8590,7 +8590,7 @@
           0,
           1
         ],
-        "name": "LOD1_Beacon_Amber",
+        "name": "LOD1_Beacon_Amber_beacon",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -9097,7 +9097,7 @@
           0,
           1
         ],
-        "name": "LOD2_Beacon_Amber",
+        "name": "LOD2_Beacon_Amber_beacon",
         "planIndex": 40,
         "tags": {
           "canopy": false,
@@ -9874,7 +9874,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "e35287fb8ad4cf4a36af86da60a42e68c7a6832818b49cd5ee1d8bd9f8902646",
+  "runtimeHash": "094f2ae2904dab4344bcfc0cf9e595e0d3908db61a3bdba4455066574551a1a4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -9894,7 +9894,7 @@
       "nodeIds": [
         "sf.render.ore-barge.node.collision-hull",
         "sf.render.ore-barge.node.lod0-armor",
-        "sf.render.ore-barge.node.lod0-beacon-amber",
+        "sf.render.ore-barge.node.lod0-beacon-amber-beacon",
         "sf.render.ore-barge.node.lod0-brushedmetal",
         "sf.render.ore-barge.node.lod0-canopy",
         "sf.render.ore-barge.node.lod0-ceramic-ore",
@@ -9917,7 +9917,7 @@
         "sf.render.ore-barge.node.lod0-motion-barge-trolley-mechanical",
         "sf.render.ore-barge.node.lod0-warning",
         "sf.render.ore-barge.node.lod1-armor",
-        "sf.render.ore-barge.node.lod1-beacon-amber",
+        "sf.render.ore-barge.node.lod1-beacon-amber-beacon",
         "sf.render.ore-barge.node.lod1-brushedmetal",
         "sf.render.ore-barge.node.lod1-canopy",
         "sf.render.ore-barge.node.lod1-ceramic-ore",
@@ -9940,7 +9940,7 @@
         "sf.render.ore-barge.node.lod1-motion-barge-trolley-mechanical",
         "sf.render.ore-barge.node.lod1-warning",
         "sf.render.ore-barge.node.lod2-armor",
-        "sf.render.ore-barge.node.lod2-beacon-amber",
+        "sf.render.ore-barge.node.lod2-beacon-amber-beacon",
         "sf.render.ore-barge.node.lod2-canopy",
         "sf.render.ore-barge.node.lod2-hook-drive-core",
         "sf.render.ore-barge.node.lod2-hook-nav-port",

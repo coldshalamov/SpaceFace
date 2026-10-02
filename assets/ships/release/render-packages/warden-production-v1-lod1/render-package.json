@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "731e40dea0ce897102188435d6764789e0ff7e03fa013ab255dddeb72df241ca",
+  "contentHash": "b1d369dd9eb523dfa3748f15180035aa2f98a6237ab903bc1909f75d8b57ff8e",
   "dynamicGroups": [
     {
       "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-port-armor.dynamic",
@@ -663,7 +663,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88ef8a646787415af06f37fac7a9f0408777884af9279986f24012107be2174a",
+      "geometryHash": "23b976d13c6c69d2b4b1a85334da615196c6fa3debd987e75a460af2e35fb843",
       "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 5997,
       "indexed": true,
@@ -672,7 +672,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Armor.001",
       "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2244
+      "vertexCount": 2243
     },
     {
       "bounds": {
@@ -689,13 +689,13 @@
       },
       "drawMode": 4,
       "geometryHash": "af0c9a61673bf9533e019b7df568d1647b353d7d256b97fe2fc9317af931809b",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber.001",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06b770c8f1899176ab4e475622a6cf639ceca4a28d172f14349d19b169fa558c",
+      "geometryHash": "b189fea70601eb780eea59d979b9326efcc65d9bec5e06ddb1e40a05b3a31800",
       "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 5709,
       "indexed": true,
@@ -1138,7 +1138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0096bb53ddba089811340eff7ab1017350ae4b06767bfd08d9b5bf5340f56cf6",
+      "geometryHash": "3acff105dfa66620c70dd12867e47f5529344df11cf359f8ab264887afc308e1",
       "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 10068,
       "indexed": true,
@@ -1155,9 +1155,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -1465,7 +1465,7 @@
       ]
     },
     {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1485,8 +1485,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3102,22 +3102,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "e558836ea736dfb7c229d720dc46784b302c909dd3cb0888fdaa08d7dff35f04"
+      "sha256": "85e5993f8abb3a9fbab0e4637caf9121f3df6e0508aaafe3fda87f665980f10e"
     },
     "sourceGlb": {
-      "bytes": 701072,
-      "sha256": "0862622f076849ca1c7ee6c0917b90b9b55a99bb713f41c8e4c3ccc31c1167c4",
+      "bytes": 701120,
+      "sha256": "0c7a1f8ed2e0dc000a16da27463a6ba69a0b8211f5d352b9756c7ce712f50a16",
       "uri": "warden_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1059360,
-    "sha256": "c543f646c126d7bccb216b4de3ba440c01be0c1cd926337014a4988b7d38ea61",
+    "bytes": 1059420,
+    "sha256": "45be66a10acf4b3140ac3fefa77ee7e3d4e63c18fcc3cf719aa44361da25c61d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3950,7 +3950,7 @@
     "motionBank": {
       "bytes": 6748,
       "rigId": "hull",
-      "sha256": "bcfaa7d1faaefed231b2fc856b1e0bdbbf504acace84719663b63063843a794f",
+      "sha256": "7b1af365f04c192bdabc433b67f7210718bda8ab947ad20918b098c4eccc1812",
       "uri": "assets/ships/motions/warden-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4003,7 +4003,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -4549,7 +4549,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb"
   },
-  "runtimeHash": "17591c5a079d49c72a97439fe953ca5f308fc6b999cad241015c625053e8c3bc",
+  "runtimeHash": "f29fcb2ed3e7d9101cb24dda5020e463ea15650ebe24e83921a859952e10451a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4569,7 +4569,7 @@
       "nodeIds": [
         "sf.render.warden-production-v1-lod1.node.collision-hull",
         "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-armor",
-        "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-port-armor",
         "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core",
         "sf.render.warden-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-port",
