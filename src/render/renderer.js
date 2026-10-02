@@ -15412,6 +15412,7 @@ export const render = {
         state.render.snapshotFence = {
           sequence: this._snapshotFence.sequence,
           packed,
+          bytes: this._snapshotFence.lastBytesPacked,
         };
       }
     }
@@ -15731,6 +15732,7 @@ export const render = {
         this.state.render.snapshotFence = {
           sequence: this._snapshotFence.sequence,
           packed,
+          bytes: this._snapshotFence.lastBytesPacked,
         };
       }
     }
