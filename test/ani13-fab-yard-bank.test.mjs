@@ -187,7 +187,11 @@ test('craft:queueChanged receipts reach only the resolved station entity', () =>
     assert.ok(emit, 'bus subscribed to craft:queueChanged');
 
     emit({ stationId: 'station_forge', active: true });
-    assert.deepEqual(calls, [['handleEvent', 'fab:workStart', 42]]);
+    // the reposition stroke rides the bank's own event map before the work loop claims it
+    assert.deepEqual(calls, [
+      ['handleEvent', 'craft:queueChanged', 42],
+      ['handleEvent', 'fab:workStart', 42],
+    ]);
 
     calls.length = 0;
     emit({ stationId: 'station_forge', active: false });

@@ -11,6 +11,9 @@ import bmesh
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_38  # noqa: E402
 
 SHIP_ID = 'ashline_lode'
 COLORS = {
@@ -156,10 +159,13 @@ def build():
     F.light(s, 'Beacon', (-6.5, 0.0, 2.12), 'glow_amber', size=0.18)
     F.light(s, 'ShoulderLamp', (-8.36, 3.0, 1.2), 'glow_amber', size=0.2, mirror=True)
     F.light(s, 'RamLamp', (4.3, 2.05, 0.52), 'glow_amber', size=0.2, mirror=True)
+    s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

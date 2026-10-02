@@ -26,6 +26,7 @@ import { yieldToBrowser } from '../render/startupGpuResidency.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
 import { buildKestrelHero } from '../render/ships/kestrelHero.js';
+import { bindInstanceMotion } from '../render/authoredMotion.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -560,6 +561,10 @@ export function createShipPreviewMount(canvas, opts) {
   let current = null;     // the displayed THREE.Object3D
   let dockRoot = null;
   let dockBlueprint = null;
+  let dockInstance = null;
+  let dockControllers = [];
+  let dockAnimUntil = 0;
+  let pendingDockVerb = null;
   let dockId = useDock ? opts.dockId : null;
   let dockLoadGen = 0;
   let rotating = true;
@@ -749,10 +754,33 @@ export function createShipPreviewMount(canvas, opts) {
       if (record) break;
     }
     if (!record || gen !== dockLoadGen || disposed) return;
-    // Link the hangar's programs and upload its textures before it joins the scene; drawn cold,
-    // its first frame linked every program synchronously (profiled at 6 s on Intel/ANGLE while
-    // the game's own boot compiles were still queued in the GPU process).
-    const nextDock = groupFromBlueprint(record);
+    // Banked hangars mount through the package node graph — the flat-primitive path bakes every
+    // transform into world meshes and leaves no MOTION_ nodes for the rig to drive.
+    let nextDock = null;
+    let nextInstance = null;
+    let nextControllers = [];
+    if (record.motionBank && record.renderPackage
+        && typeof record.renderPackage.createInstance === 'function') {
+      const instance = record.renderPackage.createInstance({ name: `RenderPackage_Dock_${id}` });
+      if (instance && instance.root && instance.root.isObject3D) {
+        const controller = bindInstanceMotion(instance.root, record.motionBank);
+        if (controller) nextControllers = [controller];
+        nextInstance = instance;
+        nextDock = instance.root;
+        const tagsByName = new Map([
+          ...(record.primitives || []).map((prim) => [prim.name, prim.tags]),
+          ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+        ]);
+        for (const node of instance.planNodes || []) {
+          if (node.visible === false) continue;
+          const tags = tagsByName.get(node.name) || {};
+          node.visible = !tags.lod || tags.lod === 'lod0';
+        }
+      } else if (instance && typeof instance.dispose === 'function') {
+        instance.dispose();
+      }
+    }
+    if (!nextDock) nextDock = groupFromBlueprint(record);
     try {
       await prepareForFirstDraw(nextDock);
     } catch (error) {
@@ -764,9 +792,21 @@ export function createShipPreviewMount(canvas, opts) {
       scene.remove(dockRoot);
       dockRoot = null;
       dockBlueprint = null;
+      if (dockInstance && typeof dockInstance.dispose === 'function') dockInstance.dispose();
+      dockInstance = null;
+      dockControllers = [];
     }
     dockRoot = nextDock;
+    dockInstance = nextInstance;
+    dockControllers = nextControllers;
     dockBlueprint = record;
+    if (pendingDockVerb) {
+      // The berth verb arrived while the backdrop was still loading — replay it against the
+      // fresh rig so the berth lands engaged rather than waiting for the next event.
+      const replay = pendingDockVerb;
+      pendingDockVerb = null;
+      dockVerb(replay);
+    }
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
     alignDockToCurrent();
@@ -1009,9 +1049,31 @@ export function createShipPreviewMount(canvas, opts) {
     rafId = 0;
     if (disposed) return;
     if (!active) return;
+    const nowS = performance.now() / 1000;
+    for (const controller of dockControllers) controller.update(nowS);
     renderNow();
-    // The turntable and the exploded-view ease both need frames; a static preview sleeps.
-    if (rotating || explodedSettling()) requestLoop();
+    // The turntable, the exploded-view ease and authored dock clips all need frames;
+    // a static preview sleeps. The dock verb's RAF window is bounded — a hold-ended
+    // berth pose persists in the node transforms without frames flowing.
+    if (rotating || explodedSettling() || nowS < dockAnimUntil) requestLoop();
+  }
+
+  // ANI-25: drive the hangar's berth rig from the caller — 'dock:docked' seats the clamps
+  // and mates the boom, 'dock:undocked' releases them. Wakes the RAF loop for one clip
+  // window so a sleeping static preview still plays the motion.
+  function dockVerb(type) {
+    pendingDockVerb = type;
+    if (!dockControllers.length) return;
+    const nowS = performance.now() / 1000;
+    dockAnimUntil = nowS + 2.5;
+    for (const controller of dockControllers) {
+      try {
+        controller.handleEvent?.(type, {}, nowS);
+      } catch (error) {
+        console.warn('[shipPreviewMount] dock verb rejected', type, error);
+      }
+    }
+    if (active && !rafId) requestLoop();
   }
 
   /**
@@ -1261,6 +1323,10 @@ export function createShipPreviewMount(canvas, opts) {
     if (!dockId) {
       dockLoadGen++;
       if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      if (dockInstance && typeof dockInstance.dispose === 'function') dockInstance.dispose();
+      dockInstance = null;
+      dockControllers = [];
+      pendingDockVerb = null;
       dockBlueprint = null;
       renderNow();
       return;
@@ -1285,6 +1351,9 @@ export function createShipPreviewMount(canvas, opts) {
   function releaseGpu() {
     try {
       if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      if (dockInstance && typeof dockInstance.dispose === 'function') dockInstance.dispose();
+      dockInstance = null;
+      dockControllers = [];
       dockBlueprint = null;
       clearExploded();
       if (explodedGlow) {
@@ -1332,7 +1401,7 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   return {
-    show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
+    show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, dockVerb, setActive,
     warmAssets, resize, frame, dispose, projectLocalPoint, getDefId, getAssetState, getVisualDiagnostics,
     setExplodedFocus,
   };

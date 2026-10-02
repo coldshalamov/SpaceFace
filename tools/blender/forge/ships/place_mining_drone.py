@@ -18,6 +18,7 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_10  # noqa: E402
+import ANI_22  # noqa: E402
 
 SHIP_ID = 'place_mining_drone'
 COLORS = {
@@ -103,6 +104,10 @@ def build():
     F.cylinder(s, 'LampLens', (2.5, 0, ZC + 0.8), (2.55, 0, ZC + 0.815), 0.18, material='glow_amber', segments=16,
                bevel=0.0)
     F.beacon(s, 'Beacon', (0.75, 0, ZC + 0.45), finish='glow_amber', size=0.22)
+    # ANI-22: thin dorsal sense vane, authored raised — it folds flat while the cutter spins.
+    vane = F.box(s, 'SenseVane', (0.08, 0, ZC + 0.68), (0.34, 0.035, 0.42), material='paint2',
+                 bevel=0.01, rot=(0.0, -0.35, 0.0))
+    F.band(s, 'SenseVane', (0.08, 0, 0), (0, 1, 0), 0.32, 'glow_cyan', facing=(0, 0, 1))
     s.detail = 2
     F.antenna(s, 'Ant', (-0.15, 0.4, ZC + 0.36), 0.42, tip='glow_red')
     F.rcs(s, 'Rcs', (-0.1, 0.62, ZC), size=0.2, mirror=True)
@@ -118,6 +123,8 @@ def build():
     )]
     s.ani10_bank = ANI_10.build(s, {'drum': drum},
                               source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    ANI_22.build(s, {'vane': vane}, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'],
+                 bank=s.ani10_bank)
     return s
 
 

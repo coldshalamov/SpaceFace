@@ -1123,6 +1123,8 @@ export const barkDirector = {
         position: { x: entity.pos.x, z: entity.pos.z },
         gain: 0.8,
       });
+      // The hailing hull answers visibly: banked ships rock their wings.
+      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: state.simTime });
     }
     return !!accepted;
   },

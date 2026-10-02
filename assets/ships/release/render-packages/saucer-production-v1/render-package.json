@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        16
+        2
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        17
+        3
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        18
+        4
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        19
+        5
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        20
+        6
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        21
+        7
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        22
+        8
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        23
+        9
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        24
+        10
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        25
+        11
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        26
+        12
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        27
+        13
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -576,7 +576,7 @@
       "nodeName": "SOCKET_Weapon_Port",
       "nodePath": [
         0,
-        28
+        14
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -622,7 +622,7 @@
       "nodeName": "SOCKET_Weapon_Starboard",
       "nodePath": [
         0,
-        29
+        15
       ],
       "parentNodeId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "worldTransform": [
@@ -657,55 +657,55 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cde913729278048ff76fae8aaa9a432b9c3b30aab5b47d566445e03ea1c01c8f",
+  "contentHash": "7752624fd33d4865f451c446e60aa6df3c3744d410c247acbd85076475ce50c4",
   "dynamicGroups": [
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-drive-core-mesh-lights-cyan.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-drive-core-mesh-lights-cyan"
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan"
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-nav-port.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-nav-port"
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-port"
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-nav-starboard.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-nav-starboard"
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-starboard"
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-secondary-vane-mechanical.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-secondary-vane-mechanical"
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical"
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-beacon-amber.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-beacon-amber"
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber"
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-mechanical.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-mechanical"
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical"
     }
   ],
   "geometry": [
     {
       "bounds": {
         "max": [
-          11.212379455566406,
-          3.5664725303649902,
+          11.212380409240723,
+          3.5664727687835693,
           11.030397415161133
         ],
         "min": [
-          -9.74986457824707,
-          -3.9963631629943848,
-          -11.030622482299805
+          -9.749865531921387,
+          -3.996363401412964,
+          -11.030624389648438
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3e45bee788a0a3d5d56102466cd874dcbf36d6a281eaf111c54694ce771fdee",
+      "geometryHash": "e027138cfc50a02562491eb81b14d5b76199f5cbb1c393627f89cd4c6a9bfdcb",
       "id": "sf.render.saucer-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -730,14 +730,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdc1300ebf61d0f25e89536a3121b5cda8d13b108e683c3ff044583213261274",
-      "id": "sf.render.saucer-production-v1.node.lod0-armor.primitive.0",
+      "geometryHash": "92cb13312e2e14ec7433ccd10f831d0c9315dabfd8f942a1e7122404a4c46cc4",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 23190,
       "indexed": true,
       "materialHash": "f1ccb18988172691872fa42e33810d337628a1a5b1f27c8b5b6d05c4110f2321",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Armor",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-armor",
+      "meshName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
       "vertexCount": 7014
     },
@@ -756,13 +756,13 @@
       },
       "drawMode": 4,
       "geometryHash": "750f40ed856f5a78831a8b83fe21df95e3c2128a276d544f04d63a10bae1ae77",
-      "id": "sf.render.saucer-production-v1.node.lod0-beacon-amber.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 864,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-beacon-amber",
       "primitiveIndex": 0,
       "vertexCount": 384
     },
@@ -781,13 +781,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4511a4bc73462430e034632d0fcc613854189ec6b4b5cf0fc9bda3b626a606de",
-      "id": "sf.render.saucer-production-v1.node.lod0-canopy.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 1068,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
-      "meshName": "LOD0_CANOPY",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-canopy",
+      "meshName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-canopy",
       "primitiveIndex": 0,
       "vertexCount": 248
     },
@@ -806,13 +806,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c6d12e302f2c13ca6801a7fdbca705bc58d8739cad14a1df0a24f8e019246380",
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-drive-core-mesh-lights-cyan.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.primitive.0",
       "indexCount": 1068,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-drive-core-mesh-lights-cyan",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 248
     },
@@ -831,13 +831,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a743d0508cd0a33569001ee09c7e4028e5dcef89eb34b3dbeb1e1d71a9ea4c84",
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-nav-port.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_NAV_PORT",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-nav-port",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-port",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -856,13 +856,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4b2566fe3e609e89139468ab3933f56ad4e923aeb7141ffb4961265af84223be",
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-nav-starboard.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_NAV_STARBOARD",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-nav-starboard",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -881,13 +881,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b9fc2d34dc368960e7908048c2ba5952506bf6015628b0e0a73234fc4e0def74",
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-secondary-vane-mechanical.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical.primitive.0",
       "indexCount": 4512,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_SECONDARY_VANE_Mechanical",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-secondary-vane-mechanical",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 1408
     },
@@ -906,13 +906,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5740c3bf0ab5d683c0d6e9b08257eb86d5f6b5e143ac0c606333c9de83e6636a",
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-beacon-amber.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber.primitive.0",
       "indexCount": 468,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_SENSOR_DOME_Beacon_Amber",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber",
       "primitiveIndex": 0,
       "vertexCount": 128
     },
@@ -931,13 +931,13 @@
       },
       "drawMode": 4,
       "geometryHash": "dca5d586d1180751cfa57e1c17d5baa2c544eedc69259c12bb1dfe6e245ef007",
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-mechanical.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 660,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_SENSOR_DOME_Mechanical",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-mechanical",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 224
     },
@@ -956,13 +956,13 @@
       },
       "drawMode": 4,
       "geometryHash": "3c8d235784297f1291bff18044fc604b6887b1c05f6e84e115250bd1160d63df",
-      "id": "sf.render.saucer-production-v1.node.lod0-hull.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 7716,
       "indexed": true,
       "materialHash": "00e17bddea7603818e8c8a02ae6262086f1b7c029b22d498c418ab2a3bd4eb73",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-hull",
+      "meshName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
       "vertexCount": 2430
     },
@@ -981,13 +981,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d5445318a6598fdf6602e38fead5b64931e3dde96ee18cea4306f4a954b5b0fe",
-      "id": "sf.render.saucer-production-v1.node.lod0-lights-cyan.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 22380,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Cyan",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-lights-cyan",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 6992
     },
@@ -1006,13 +1006,13 @@
       },
       "drawMode": 4,
       "geometryHash": "69bbf09c07f02f22be5f164d4bcc65eb7068b68b74f4ac8e5df50c15b7cde806",
-      "id": "sf.render.saucer-production-v1.node.lod0-lights-warm.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 5640,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Warm",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-lights-warm",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-warm",
       "primitiveIndex": 0,
       "vertexCount": 1744
     },
@@ -1031,13 +1031,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2f20c6cc6a7067378f23f945d4505bb8e07a2f4969c9fdfa62da0006502e0e16",
-      "id": "sf.render.saucer-production-v1.node.lod0-livery.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 540,
       "indexed": true,
       "materialHash": "ffc8be67d438f3bf22ec59f7fd8e17cfff5f4c7b4291240e1ff5367c318f09c3",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Livery",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-livery",
+      "meshName": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-livery",
       "primitiveIndex": 0,
       "vertexCount": 216
     },
@@ -1056,13 +1056,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ee624c7a71aad44baeaa55d8c48af67b6db3cd4c3165bd9ab17543f7aa4cbac8",
-      "id": "sf.render.saucer-production-v1.node.lod0-mechanical.primitive.0",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 11406,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Mechanical",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-mechanical",
+      "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 3120
     },
@@ -1080,16 +1080,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80d9f29c38559621291a49fe7c1b34335feede7311382e2aa82832559d8ab9e5",
-      "id": "sf.render.saucer-production-v1.node.lod0-mechanicaldark.primitive.0",
+      "geometryHash": "1d430477beec3dbfb5c09b02c811c33bd834deb4d804523a7b924ef52ad68251",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 101226,
       "indexed": true,
       "materialHash": "4c813c6941c62a7442f951138b24bb6e9fec4afe19bcd26ae8dfa7e9056fe7bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MechanicalDark",
-      "nodeId": "sf.render.saucer-production-v1.node.lod0-mechanicaldark",
+      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 35866
+      "vertexCount": 35864
     }
   ],
   "hlods": [],
@@ -1350,7 +1350,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-armor",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-armor",
       "localTransform": [
         1,
         0,
@@ -1370,13 +1370,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Armor",
-      "nodeName": "LOD0_Armor",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Armor",
       "nodePath": [
         0,
-        1
+        1,
+        0
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1399,7 +1400,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-beacon-amber",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -1419,13 +1420,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
       "nodePath": [
         0,
-        2
+        1,
+        1
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1448,7 +1450,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-canopy",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-canopy",
       "localTransform": [
         1,
         0,
@@ -1468,37 +1470,67 @@
         1
       ],
       "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_CANOPY",
-      "nodeName": "LOD0_CANOPY",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD0_MOTION_HULL_CORE_CANOPY",
       "nodePath": [
         0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.saucer-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan",
+      "localTransform": [
+        1.149999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.149999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.149999976158142,
+        0,
+        0,
+        -2.4499999284744263,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+      "nodePath": [
+        0,
+        1,
         3
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
-      "role": "immutable",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-drive-core-mesh-lights-cyan",
-      "localTransform": [
         1.149999976158142,
         0,
         0,
@@ -1515,39 +1547,40 @@
         -2.4499999284744263,
         0,
         1
+      ]
+    },
+    {
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        0.07500000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.07500000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.07500000298023224,
+        0,
+        0,
+        0.05000000074505806,
+        -9.5,
+        1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
-      "nodeName": "LOD0_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
       "nodePath": [
         0,
+        1,
         4
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "dynamic",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1.149999976158142,
-        0,
-        0,
-        0,
-        0,
-        1.149999976158142,
-        0,
-        0,
-        0,
-        0,
-        1.149999976158142,
-        0,
-        0,
-        -2.4499999284744263,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-nav-port",
-      "localTransform": [
         0.07500000298023224,
         0,
         0,
@@ -1564,15 +1597,37 @@
         0.05000000074505806,
         -9.5,
         1
+      ]
+    },
+    {
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.07500000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.07500000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.07500000298023224,
+        0,
+        0,
+        0.05000000074505806,
+        9.5,
+        1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
-      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
+        1,
         5
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "dynamic",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1590,62 +1645,42 @@
         0,
         0,
         0.05000000074505806,
-        -9.5,
+        9.5,
         1
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-nav-starboard",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical",
       "localTransform": [
-        0.07500000298023224,
+        6.121919631958008,
         0,
         0,
         0,
         0,
-        0.07500000298023224,
+        6.121919631958008,
         0,
         0,
         0,
         0,
-        0.07500000298023224,
+        6.121919631958008,
         0,
         0,
-        0.05000000074505806,
-        9.5,
+        -0.8799999952316284,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
-      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
       "nodePath": [
         0,
+        1,
         6
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "dynamic",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        0.07500000298023224,
-        0,
-        0,
-        0,
-        0,
-        0.07500000298023224,
-        0,
-        0,
-        0,
-        0,
-        0.07500000298023224,
-        0,
-        0,
-        0.05000000074505806,
-        9.5,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-secondary-vane-mechanical",
-      "localTransform": [
         6.121919631958008,
         0,
         0,
@@ -1662,39 +1697,40 @@
         -0.8799999952316284,
         0,
         1
+      ]
+    },
+    {
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber",
+      "localTransform": [
+        0.09920000284910202,
+        0,
+        0,
+        0,
+        0,
+        0.09920000284910202,
+        0,
+        0,
+        0,
+        0,
+        0.09920000284910202,
+        0,
+        0,
+        3.5149999856948853,
+        0,
+        1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_SECONDARY_VANE_Mechanical",
-      "nodeName": "LOD0_HOOK_SECONDARY_VANE_Mechanical",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
       "nodePath": [
         0,
+        1,
         7
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "dynamic",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        6.121919631958008,
-        0,
-        0,
-        0,
-        0,
-        6.121919631958008,
-        0,
-        0,
-        0,
-        0,
-        6.121919631958008,
-        0,
-        0,
-        -0.8799999952316284,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-beacon-amber",
-      "localTransform": [
         0.09920000284910202,
         0,
         0,
@@ -1711,39 +1747,40 @@
         3.5149999856948853,
         0,
         1
+      ]
+    },
+    {
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical",
+      "localTransform": [
+        0.12387444078922272,
+        0,
+        0,
+        0,
+        0,
+        0.12387444078922272,
+        0,
+        0,
+        0,
+        0,
+        0.12387444078922272,
+        0,
+        0,
+        3.4480000734329224,
+        0,
+        1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_SENSOR_DOME_Beacon_Amber",
-      "nodeName": "LOD0_HOOK_SENSOR_DOME_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
       "nodePath": [
         0,
+        1,
         8
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "dynamic",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        0.09920000284910202,
-        0,
-        0,
-        0,
-        0,
-        0.09920000284910202,
-        0,
-        0,
-        0,
-        0,
-        0.09920000284910202,
-        0,
-        0,
-        3.5149999856948853,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-mechanical",
-      "localTransform": [
         0.12387444078922272,
         0,
         0,
@@ -1760,38 +1797,60 @@
         3.4480000734329224,
         0,
         1
+      ]
+    },
+    {
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_SENSOR_DOME_Mechanical",
-      "nodeName": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodePath": [
         0,
+        1,
         9
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
-      "role": "dynamic",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
+      "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        0.12387444078922272,
+        1,
         0,
         0,
         0,
         0,
-        0.12387444078922272,
+        1,
         0,
         0,
         0,
         0,
-        0.12387444078922272,
+        1,
         0,
         0,
-        3.4480000734329224,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-hull",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-cyan",
       "localTransform": [
         1,
         0,
@@ -1811,13 +1870,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hull",
-      "nodeName": "LOD0_Hull",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
       "nodePath": [
         0,
+        1,
         10
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1840,7 +1900,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-lights-cyan",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
         1,
         0,
@@ -1860,13 +1920,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Cyan",
-      "nodeName": "LOD0_Lights_Cyan",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
       "nodePath": [
         0,
+        1,
         11
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1889,7 +1950,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-lights-warm",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-livery",
       "localTransform": [
         1,
         0,
@@ -1909,13 +1970,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Warm",
-      "nodeName": "LOD0_Lights_Warm",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Livery",
       "nodePath": [
         0,
+        1,
         12
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1938,7 +2000,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-livery",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
         1,
         0,
@@ -1958,13 +2020,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Livery",
-      "nodeName": "LOD0_Livery",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodePath": [
         0,
+        1,
         13
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -1987,7 +2050,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-mechanical",
+      "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -2007,13 +2070,14 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Mechanical",
-      "nodeName": "LOD0_Mechanical",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
       "nodePath": [
         0,
+        1,
         14
       ],
-      "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
+      "parentId": "sf.render.saucer-production-v1.node.motion-hull-core",
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
@@ -2036,7 +2100,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1.node.lod0-mechanicaldark",
+      "id": "sf.render.saucer-production-v1.node.motion-hull-core",
       "localTransform": [
         1,
         0,
@@ -2055,12 +2119,12 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MechanicalDark",
-      "nodeName": "LOD0_MechanicalDark",
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_HULL_CORE",
+      "nodeName": "MOTION_HULL_CORE",
       "nodePath": [
         0,
-        15
+        1
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2157,7 +2221,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        16
+        2
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2206,7 +2270,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        17
+        3
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2255,7 +2319,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        18
+        4
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2304,7 +2368,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        19
+        5
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2353,7 +2417,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        20
+        6
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2402,7 +2466,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        21
+        7
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2451,7 +2515,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        22
+        8
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2500,7 +2564,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        23
+        9
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2549,7 +2613,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        24
+        10
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2598,7 +2662,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        25
+        11
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2647,7 +2711,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        26
+        12
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2696,7 +2760,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        27
+        13
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2745,7 +2809,7 @@
       "nodeName": "SOCKET_Weapon_Port",
       "nodePath": [
         0,
-        28
+        14
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2794,7 +2858,7 @@
       "nodeName": "SOCKET_Weapon_Starboard",
       "nodePath": [
         0,
-        29
+        15
       ],
       "parentId": "sf.render.saucer-production-v1.node.saucer-lod0-root",
       "role": "immutable",
@@ -2821,22 +2885,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a0d9a449915adca0bcf92d3f213ea88c2f0474011ee48858ca1dbac965934168"
+      "sha256": "d48c975bd5a6ebecd12792d65b98707bc9ed3420310c2161ea46e01fda219561"
     },
     "sourceGlb": {
-      "bytes": 1160080,
-      "sha256": "43ce5fa1a7de9605c90c7f728bf133a0f55d601f33ae0bcf52225f940be14b66",
+      "bytes": 1160752,
+      "sha256": "2a66df79e05ff3af06c70c0460d9ce83ac96d5c4972c67078dcae279c4df93c5",
       "uri": "saucer_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2353372,
-    "sha256": "6c6251106d5c9685525bd35d8bd24f16064cffc503b1b7520d8cc9cfcbdaa61b",
+    "bytes": 2354780,
+    "sha256": "2c41d5de7bc03d599405b675b9f297758c88ecd107c0bcaef72d17a426207a19",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2844,22 +2908,22 @@
       "center": [
         0.7309346199035645,
         -0.21494531631469727,
-        -0.0001125335693359375
+        -0.00011348724365234375
       ],
       "max": [
         11.212445259094238,
-        3.5664725303649902,
+        3.5664727687835693,
         11.030397415161133
       ],
       "min": [
         -9.75057601928711,
-        -3.9963631629943848,
-        -11.030622482299805
+        -3.996363401412964,
+        -11.030624389648438
       ],
       "size": [
         20.963021278381348,
-        7.562835693359375,
-        22.061019897460938
+        7.562836170196533,
+        22.06102180480957
       ]
     },
     "hidden": [
@@ -2882,12 +2946,77 @@
           1,
           0,
           0,
+          0,
+          0,
+          1
+        ],
+        "name": "MOTION_HULL_CORE",
+        "planIndex": 3,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "hull_core",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_HULL_CORE",
+          "spaceface": {
+            "motionGroup": "hull_core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_HULL_CORE",
+            "recordIds": [
+              "sf.render.saucer-production-v1.node.motion-hull-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
           0.5,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2939,7 +3068,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2991,7 +3120,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3043,7 +3172,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3095,7 +3224,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3147,7 +3276,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3199,7 +3328,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3251,7 +3380,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3303,7 +3432,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3355,7 +3484,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3407,7 +3536,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3459,7 +3588,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3511,7 +3640,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Port",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3563,7 +3692,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Starboard",
-        "planIndex": 31,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3606,23 +3735,18 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 3,
+        "planIndex": 4,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 4,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 5,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "signal"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -3637,27 +3761,27 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3667,20 +3791,31 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 32,
+    "motionBank": {
+      "bytes": 6748,
+      "rigId": "hull",
+      "sha256": "e0338cdfa368ded7d27e22a11a29237b3ae66981c3594a2caeadb8c10f659621",
+      "uri": "assets/ships/motions/saucer-production-v1.motion.json"
+    },
+    "nodeCount": 33,
     "primitives": [
       {
         "canopy": false,
@@ -3702,11 +3837,12 @@
           0,
           1
         ],
-        "name": "LOD0_Armor",
-        "planIndex": 3,
+        "name": "LOD0_MOTION_HULL_CORE_Armor",
+        "planIndex": 4,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3729,11 +3865,12 @@
           0,
           1
         ],
-        "name": "LOD0_Beacon_Amber",
-        "planIndex": 4,
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 5,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3756,11 +3893,12 @@
           0,
           1
         ],
-        "name": "LOD0_CANOPY",
-        "planIndex": 5,
+        "name": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 6,
         "tags": {
           "canopy": true,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3783,8 +3921,8 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
-        "planIndex": 6,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -3806,7 +3944,8 @@
             0,
             1
           ],
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3829,12 +3968,13 @@
           -9.5,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 7,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3857,12 +3997,13 @@
           9.5,
           1
         ],
-        "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3885,12 +4026,13 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_SECONDARY_VANE_Mechanical",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3913,12 +4055,13 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_SENSOR_DOME_Beacon_Amber",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3941,39 +4084,13 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_SENSOR_DOME_Mechanical",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "damageRole": "sensor",
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Hull",
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
         "planIndex": 12,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -3996,11 +4113,12 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Cyan",
+        "name": "LOD0_MOTION_HULL_CORE_Hull",
         "planIndex": 13,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -4023,11 +4141,12 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
         "planIndex": 14,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -4050,11 +4169,12 @@
           0,
           1
         ],
-        "name": "LOD0_Livery",
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
         "planIndex": 15,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -4077,11 +4197,12 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_MOTION_HULL_CORE_Livery",
         "planIndex": 16,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
         }
       },
       {
@@ -4104,11 +4225,40 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_MOTION_HULL_CORE_Mechanical",
         "planIndex": 17,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
         }
       }
     ],
@@ -4116,40 +4266,41 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1.glb"
   },
-  "runtimeHash": "06753c8d6b82c30af8f4a3b6268841f2013f5e70155715271c0a85f4e205ba7e",
+  "runtimeHash": "c834a100fba670ae317b0a1ea0bfc9db4dcf6446490021a3ce7b5fcc66b7dcbb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           11.212445259094238,
-          3.5664725303649902,
+          3.5664727687835693,
           11.030397415161133
         ],
         "min": [
           -9.75057601928711,
-          -3.9963631629943848,
-          -11.030622482299805
+          -3.996363401412964,
+          -11.030624389648438
         ]
       },
       "id": "sf.render.saucer-production-v1.body",
       "nodeIds": [
         "sf.render.saucer-production-v1.node.collision-hull",
-        "sf.render.saucer-production-v1.node.lod0-armor",
-        "sf.render.saucer-production-v1.node.lod0-beacon-amber",
-        "sf.render.saucer-production-v1.node.lod0-canopy",
-        "sf.render.saucer-production-v1.node.lod0-hook-drive-core-mesh-lights-cyan",
-        "sf.render.saucer-production-v1.node.lod0-hook-nav-port",
-        "sf.render.saucer-production-v1.node.lod0-hook-nav-starboard",
-        "sf.render.saucer-production-v1.node.lod0-hook-secondary-vane-mechanical",
-        "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-beacon-amber",
-        "sf.render.saucer-production-v1.node.lod0-hook-sensor-dome-mechanical",
-        "sf.render.saucer-production-v1.node.lod0-hull",
-        "sf.render.saucer-production-v1.node.lod0-lights-cyan",
-        "sf.render.saucer-production-v1.node.lod0-lights-warm",
-        "sf.render.saucer-production-v1.node.lod0-livery",
-        "sf.render.saucer-production-v1.node.lod0-mechanical",
-        "sf.render.saucer-production-v1.node.lod0-mechanicaldark",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-armor",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-canopy",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-port",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hull",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-cyan",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-warm",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-livery",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanical",
+        "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanicaldark",
+        "sf.render.saucer-production-v1.node.motion-hull-core",
         "sf.render.saucer-production-v1.node.saucer-lod0-root",
         "sf.render.saucer-production-v1.node.socket-camera-focus",
         "sf.render.saucer-production-v1.node.socket-cargo-ventral",

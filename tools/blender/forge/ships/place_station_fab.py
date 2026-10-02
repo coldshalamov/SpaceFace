@@ -552,12 +552,14 @@ if __name__ == '__main__':
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                   '..', 'animations'))
     import ANI_13
+    import ANI_20
     ship = build().finish()
     live = '--live' in sys.argv
     spec = E.fleet_spec(SHIP_ID)
     # Author the clips onto the builder's motion groups before export so the MOTION_* pivot
     # empties and the bank come from one registration pass.
     ship.fab_bank = ANI_13.build(ship, {}, spec['asset_id'])
+    ANI_20.build(ship, None, source_asset_id=None, bank=ship.fab_bank)
     written = E.export_ship(ship, spec, preview=not live)
     if live:
         # Seal the bank against the exported release GLB; preview runs leave the rig in

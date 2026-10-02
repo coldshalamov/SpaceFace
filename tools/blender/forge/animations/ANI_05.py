@@ -39,6 +39,10 @@ EVENTS = {
     'ship:boostPreKick': 'irisPrime',
     'ship:boostStart': 'irisIgnite',
     'ship:boostStop': 'irisStow',
+    # The drive iris is the hull's visible power signature: stow folds it dark on
+    # cloak, prime flares it back when the field drops.
+    'cloak:engaged': 'irisStow',
+    'cloak:dropped': 'irisPrime',
 }
 
 

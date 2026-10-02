@@ -12,6 +12,9 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
 import claim_outpost_kit as K  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_26  # noqa: E402
 
 SHIP_ID = 'place_drill_platform'
 COLORS = dict(K.COLORS)
@@ -65,13 +68,16 @@ def build():
             chord=0.28, web=0.16)
     F.truss(s, 'DerrickD', (1.8, -1.8, 4.4), (0.5, -0.5, 11.0), 0.9, 4, material='paint2',
             chord=0.28, web=0.16)
-    F.box(s, 'Crown', (0, 0, 11.4), (2.0, 2.0, 1.0), material='hazard', bevel=0.06)
+    crown = F.box(s, 'Crown', (0, 0, 11.4), (2.0, 2.0, 1.0), material='hazard', bevel=0.06)
     F.beacon(s, 'CrownStrobe', (0, 0, 12.1), finish='glow_red', size=0.4)
     # drill string down through the moon pool
-    F.cylinder(s, 'DrillString', (0, 0, 10.6), (0, 0, -6.5), 0.45, material='gunmetal',
-               segments=12)
-    F.cylinder(s, 'DrillBit', (0, 0, -6.5), (0, 0, -8.4), 0.9, 0.3, material='bare',
-               segments=12)
+    drill_string = F.cylinder(s, 'DrillString', (0, 0, 10.6), (0, 0, -6.5), 0.45,
+                              material='gunmetal', segments=12)
+    drill_bit = F.cylinder(s, 'DrillBit', (0, 0, -6.5), (0, 0, -8.4), 0.9, 0.3,
+                           material='bare', segments=12)
+    # ANI-26: feed collar riding the string at deck level — ratchets the bore down.
+    collar = F.cylinder(s, 'FeedCollar', (0, 0, 4.2), (0, 0, 4.7), 0.8, 0.72,
+                        material='hazard', segments=12, bevel=0.02)
 
     # --- power house + pipe rack + mud tanks ----------------------------------------------------
     F.box(s, 'PowerHouse', (-4.6, -4.8, 6.0), (4.4, 3.8, 3.0), material='paint', bevel=0.15,
@@ -92,10 +98,17 @@ def build():
         F.cylinder(s, f'MudTank{e:+d}', (4.6, e * 4.9 - 1.4, 4.5), (4.6, e * 4.9 + 1.4, 4.5),
                    1.1, material='paint.aged', segments=14)
         F.light(s, f'MudLamp{e:+d}', (4.6, e * 4.9, 5.8), 'glow_amber', size=0.3)
+    s.ani26_bank = ANI_26.build(s, {'string': [drill_string, drill_bit], 'collar': collar,
+                                    'crown': crown},
+                                source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani26_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_26.motion_bank.MOTIONS_DIR,
+                                                   'drill-platform.motion.json'))

@@ -12,8 +12,15 @@ lines). Sockets (SOCKET_Structure_Core) and previewMount metadata are copied liv
 exporter; all three ship files export LOD0-only (the preview mounts every primitive).
 """
 import math
+import os
+import sys
 
 import forge as F  # noqa: E402  (imported after the ship file inserts the forge dir)
+import forge_export as E  # noqa: E402
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, 'animations'))
+import ANI_25  # noqa: E402
 
 FLOOR_Z = -3.44          # live previewMount floorLocalY — the deck walking surface
 WALL_X = 23.0            # right-hand wall plane (+x glTF)
@@ -265,6 +272,17 @@ def _variant_dressing(s, variant):
                    0.22, material='gunmetal', segments=8)
 
 
+def _umbilical(s):
+    """Dock-side service boom at the back-right of the pad: pedestal base, telescoping
+    arm and coupler head that reach toward the berthed ship's flank."""
+    F.box(s, 'UmbilBase', (10.0, 12.6, FLOOR_Z + 0.55), (1.3, 1.3, 1.5),
+          material='gunmetal', bevel=0.08)
+    F.cylinder(s, 'UmbilArm', (10.0, 12.0, FLOOR_Z + 0.85), (10.0, 9.2, FLOOR_Z + 0.85),
+               0.26, material='hazard', segments=8, bevel=0.02)
+    F.box(s, 'UmbilHead', (10.0, 9.0, FLOOR_Z + 0.85), (0.9, 0.9, 0.7),
+          material='paint2', bevel=0.05)
+
+
 def build_hangar(s, variant='standard'):
     _deck(s, variant)
     _back_wall(s, variant)
@@ -272,4 +290,11 @@ def build_hangar(s, variant='standard'):
     _gantry(s, variant)
     _front_trim(s, variant)
     _variant_dressing(s, variant)
+    _umbilical(s)
+    _o = {o.name: o for o in s.objects}
+    s.ani25_bank = ANI_25.build(s, {
+        'clampL': [_o['CradleArm-1'], _o['CradlePad-1']],
+        'clampR': [_o['CradleArm+1'], _o['CradlePad+1']],
+        'boom': [_o['UmbilArm'], _o['UmbilHead']],
+    }, source_asset_id=E.fleet_spec(s.id)['asset_id'])
     return s
