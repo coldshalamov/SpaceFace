@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
- "sourceGlbSha256": "cd3e624ef953ecd667c05172aca88f7fb1d400aa85c72c57d7f4235c6dc801fb",
+ "sourceGlbSha256": "d15e040d2efbfa5c32358c6b8f691eec152f08f2079e2d24001830c74d18c6d6",
  "fps": 60,
  "bindings": [
   {
