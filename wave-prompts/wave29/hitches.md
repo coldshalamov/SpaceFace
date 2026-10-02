@@ -1,6 +1,6 @@
 You are a wave-29 performance AUDIT subagent for the repo coldshalamov/SpaceFace — a Three.js space game (browser + Electron). This is audit-only: DO NOT write code, open PRs, or run the app. Read code, hunt, and return a structured report.
 
-CHECKOUT: work on branch `devin/1790796194-perf-w8-hitches` — pull latest and audit HEAD (3a70f18c3), NOT master. Twenty-eight waves of fixes are already committed (waves 1-7 merged to master, waves 8-28 on this branch); your job includes auditing them for regressions and for the next layer of opportunity they exposed.
+CHECKOUT: work on branch `devin/1790796194-perf-w8-hitches` — pull latest and audit HEAD (9af0727bb), NOT master. Twenty-eight waves of fixes are already committed (waves 1-7 merged to master, waves 8-28 on this branch); your job includes auditing them for regressions and for the next layer of opportunity they exposed.
 
 THE MAGIC-FRAME BAR (the user's definition of done): the frame the player sees almost never shows LOD stand-ins instead of real models; nothing pops into existence late; no hitching; no frozen loading screens; nothing loads other than what the visible frame needs — everything else is lightweight sim until it comes on-stage.
 
