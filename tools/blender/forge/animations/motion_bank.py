@@ -69,7 +69,10 @@ class Clip:
 
     def __init__(self, name, duration_s, loop=False, end_mode='rest', overlay=False):
         self.name = name
-        self.duration_s = float(duration_s)
+        # Keys land on the 60 fps grid and the bake closes every channel at the last frame, so the
+        # clip's own duration must sit on the grid too. A mass-scaled duration (7.409 s) otherwise
+        # ships a final key at 7.4167 s and the runtime validator rejects the whole bank.
+        self.duration_s = round(float(duration_s) * 60) / 60
         self.loop = bool(loop)
         if end_mode not in ('rest', 'hold'):
             raise ValueError(f'clip {name}: endMode must be rest or hold')
