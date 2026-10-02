@@ -297,6 +297,76 @@ test('a 404 store route is memoized for the session; other failures retry', asyn
   assert.equal(calls, 2, 'a network failure is transient: every call retries');
 });
 
+test('a hung mirror PUT carries its own deadline and settles false on abort', async (t) => {
+  // The PUT had no abort signal at all: a store route that accepts the connection but never
+  // answers kept isSharedStoreSyncPending() true forever, pinning Continue at "Checking saves…"
+  // despite durable local saves. Both store calls must run under the same finite deadline.
+  const realFetch = globalThis.fetch;
+  const realTimeout = AbortSignal.timeout;
+  const hadLocation = Object.hasOwn(globalThis, 'location');
+  const realLocation = globalThis.location;
+  globalThis.location = { protocol: 'http:' };
+  t.after(() => {
+    globalThis.fetch = realFetch;
+    AbortSignal.timeout = realTimeout;
+    if (hadLocation) globalThis.location = realLocation;
+    else delete globalThis.location;
+    resetSharedPlayerStoreMemoForTests();
+  });
+  resetSharedPlayerStoreMemoForTests();
+
+  const controller = new AbortController();
+  const deadlines = [];
+  AbortSignal.timeout = (ms) => { deadlines.push(ms); return controller.signal; };
+  globalThis.fetch = (url, opts = {}) => new Promise((_, reject) => {
+    const fail = () => reject(new Error('store mirror timed out'));
+    if (opts.signal && opts.signal.aborted) fail();
+    else if (opts.signal) opts.signal.addEventListener('abort', fail, { once: true });
+    // No signal → the request hangs forever, exactly like the unbounded PUT this fixes.
+  });
+
+  const put = pushSharedPlayerStore({ 'sf.save.auto': envelope('auto', '2026-08-14T00:00:00.000Z') });
+  // fetch is invoked before push's first await suspends, so the deadline request is visible now.
+  assert.deepEqual(deadlines, [10000], 'the mirror PUT must request the finite 10s deadline');
+  controller.abort();
+  assert.equal(await put, false, 'an aborted PUT reports failure instead of hanging forever');
+});
+
+test('keepalive is only requested when the UTF-8 body fits the Chromium budget', async (t) => {
+  const realFetch = globalThis.fetch;
+  const hadLocation = Object.hasOwn(globalThis, 'location');
+  const realLocation = globalThis.location;
+  globalThis.location = { protocol: 'http:' };
+  t.after(() => {
+    globalThis.fetch = realFetch;
+    if (hadLocation) globalThis.location = realLocation;
+    else delete globalThis.location;
+    resetSharedPlayerStoreMemoForTests();
+  });
+  resetSharedPlayerStoreMemoForTests();
+
+  const seen = [];
+  globalThis.fetch = async (url, opts) => {
+    seen.push(opts.keepalive);
+    return { ok: true, status: 200 };
+  };
+
+  assert.equal(await pushSharedPlayerStore({ 'sf.save.auto': 'x' }, { keepalive: true }), true);
+  assert.equal(seen.at(-1), true, 'a small ASCII body still earns keepalive');
+
+  await pushSharedPlayerStore({ 'sf.save.auto': 'x'.repeat(60100) }, { keepalive: true });
+  assert.equal(seen.at(-1), false, 'an oversized body goes as a plain PUT');
+
+  // A serialized string's .length counts UTF-16 units; the quota counts UTF-8 bytes. é is one
+  // unit but two bytes, so a body whose length admits keepalive can still exceed the cap.
+  const nonAscii = { 'sf.save.auto': 'é'.repeat(59900) };
+  const bodyLength = JSON.stringify({ keys: nonAscii }).length;
+  assert(bodyLength < 60000 && new TextEncoder().encode(JSON.stringify({ keys: nonAscii })).byteLength > 60000,
+    'fixture must sit below the budget in code units but above it in bytes');
+  await pushSharedPlayerStore(nonAscii, { keepalive: true });
+  assert.equal(seen.at(-1), false, 'non-ASCII save names must be measured in UTF-8 bytes');
+});
+
 test('two game servers sharing a store directory see the same slots', async (t) => {
   const dir = await mkdtemp(path.join(tmpdir(), 'spaceface-player-store-http-'));
   const web = await mkdtemp(path.join(tmpdir(), 'spaceface-player-store-web-'));

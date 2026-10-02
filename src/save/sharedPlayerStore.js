@@ -3,11 +3,17 @@
 export const SHARED_PLAYER_STORE_PATH = '/__spaceface_player_store';
 export const SHARED_PLAYER_STORE_INDEX_KEY = 'sf.save.index';
 
-// Chromium caps a keepalive request body at 64 KiB and fails anything larger without sending it.
-// A real save envelope measures ~205-224 KB, so the page-outliving guarantee is only requested
-// where the transport can actually honor it; larger mirrors go as a normal PUT, which still
-// reaches the store — the property the two shells depend on to share saves.
+// Chromium caps a keepalive request body at 64 KiB of UTF-8 — measured in encoded BYTES, not
+// string length — and fails anything larger without sending it. A real save envelope measures
+// ~205-224 KB, so the page-outliving guarantee is only requested where the transport can
+// actually honor it; larger mirrors go as a normal PUT, which still reaches the store — the
+// property the two shells depend on to share saves.
 const KEEPALIVE_BODY_BUDGET_BYTES = 60000;
+
+// Every store call gets its own deadline: a store that accepts the connection but never answers
+// must not pin isSharedStoreSyncPending() (Continue's "Checking saves…") forever. This module's
+// header already promises an absent store never breaks anything — a stalled one must not either.
+const SHARED_STORE_TIMEOUT_MS = 10000;
 
 const KEY_RE = /^(sf\.save\.[A-Za-z0-9._-]+|sf\.recovery\.[A-Za-z0-9._-]+|sf\.settings\.profile\.v1)$/;
 
@@ -226,7 +232,7 @@ export async function fetchSharedPlayerStore() {
     // No timeout here means isSharedStoreSyncPending() can stay true forever, which pins the main
     // menu's Continue button at "Checking saves..." with no way out. This module's own header says
     // an absent store must never break anything — a stalled one must not either.
-    const response = await fetch(SHARED_PLAYER_STORE_PATH, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+    const response = await fetch(SHARED_PLAYER_STORE_PATH, { cache: 'no-store', signal: AbortSignal.timeout(SHARED_STORE_TIMEOUT_MS) });
     if (response.status === 404) storeRouteAbsent = true;
     if (!response.ok) return null;
     const body = await response.json();
@@ -280,7 +286,10 @@ export async function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body,
-      keepalive: keepalive && body.length <= KEEPALIVE_BODY_BUDGET_BYTES,
+      signal: AbortSignal.timeout(SHARED_STORE_TIMEOUT_MS),
+      // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and
+      // the encoder only runs when the guarantee was actually requested.
+      keepalive: keepalive && new TextEncoder().encode(body).byteLength <= KEEPALIVE_BODY_BUDGET_BYTES,
     });
     if (response.status === 404) storeRouteAbsent = true;
     return response.ok;
