@@ -139,7 +139,9 @@ test('a released jet withers instead of snapping — coherence dies and the tail
   jets.update(1 / 60, [sock], env(0.05));
   const fading = jets._plumes[0].material.uniforms;
   assert.ok(fading.uCoherence.value < heldCoherence * 0.4, 'the column breaks up as it dies');
-  assert.ok(jets._shape.jetLength > heldLength, 'the tail keeps its drift while it dies');
+  // Slice 1 (thruster lifecycle): the old x1.22 "tail drift" lengthened the jet as it died and froze
+  // it near 64% of its held length before it was hidden. A dying jet frays and cools; it never grows.
+  assert.ok(jets._shape.jetLength <= heldLength, 'a dying jet never lengthens');
   assert.ok(fading.uWobble.value > heldWobble, 'fraying grows while it fades');
   jets.dispose();
 });

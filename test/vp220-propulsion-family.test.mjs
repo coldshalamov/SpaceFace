@@ -141,9 +141,19 @@ test('pool samples carry continuum mode without per-frame allocation', () => {
   const boostMode = boostResult.mode;
   const boostLength = boostResult.sample.length;
   const boostAlloc = boostResult.frameAllocations;
-  const reverseResult = pool.update(0.05, SOCKETS, A11Y_OFF, 1 / 60, 0, {
+  const firstReverse = pool.update(0.05, SOCKETS, A11Y_OFF, 1 / 60, 0, {
     reverse: 0.8, retroOnly: true, speedDrive: 0.5,
   });
+  // Slice 1: the structural mode CROSSFADES (MODE_BLEND_TAU) instead of stepping, so the very first
+  // reverse tick has not collapsed to the reverse residual yet...
+  assert.ok(firstReverse.sample.length > boostLength * 0.5, 'a mode flip is not a one-frame step');
+  // ...but it settles to it within a third of a second.
+  let reverseResult = firstReverse;
+  for (let i = 0; i < 20; i++) {
+    reverseResult = pool.update(0.05, SOCKETS, A11Y_OFF, 1 / 60, 0, {
+      reverse: 0.8, retroOnly: true, speedDrive: 0.5,
+    });
+  }
   const reverseMode = reverseResult.mode;
   const reverseLength = reverseResult.sample.length;
   assert.equal(pool.allocationCount, before, 'no allocations after construction');

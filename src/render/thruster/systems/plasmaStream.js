@@ -24,8 +24,10 @@ import {
   EMIT_FLOOR,
   createDriveEnvelope,
   integrateDriveEnvelope,
+  plumeBornRamp,
   resolvePlumeShape,
 } from '../ribbon/driveEnvelope.js';
+import { createPlumeSlug, resetPlumeSlug, stepPlumeSlug } from '../ribbon/plumeSlug.js';
 import { PLAYER_PLASMA_STREAM_RECIPE } from '../recipes/plasmaStreamRecipe.js';
 
 // Nozzle-interior glow: the hot throat INSIDE the bell (reference: engine cores are lit from
@@ -72,7 +74,10 @@ const THROAT_FRAG = /* glsl */`
     float mottle = 0.86 + 0.14 * sin(ang * 3.0 + uTime * 0.7 + r * 5.0);
     float rim = 1.0 - smoothstep(0.72, 1.0, r);
     float fl = 0.94 + 0.04 * sin(uTime * 37.0) + 0.03 * sin(uTime * 91.0 + 1.7);
-    float energy = 0.26 + uDrive * 0.62 + uBoost * 0.24;
+    // Lit from nothing: the lamp ramps in with the chamber heat instead of switching on at 30% of
+    // its brightness (and, symmetrically, dims away instead of being switched off at 30%).
+    float lit = smoothstep(0.0, 0.45, uDrive);
+    float energy = (0.26 + uDrive * 0.62 + uBoost * 0.24) * lit;
     float i = (core * 0.85 + ring + halo) * mottle * energy * fl * rim;
     vec3 col = mix(uColor, vec3(1.0, 0.99, 0.97), clamp(core * 1.35, 0.0, 1.0));
     col *= min(i * uRadiance, 1.45);
@@ -179,10 +184,11 @@ export class PlasmaStreamSystem {
     // recipe below so look stays authored in one place).
     this._shock = { amplitude: 0, freqPerWU: 0, decayPerWU: 0, boostGain: 0 };
     // Sustained event-light source, refreshed every update (the hull light the bell casts).
-    this._lightSource = { x: 0, y: 0, z: 0, drive: 0, boost: 0, on: false };
+    this._lightSource = { x: 0, y: 0, z: 0, drive: 0, boost: 0, on: false, ramp: 1 };
 
     const shockCfg = (this.recipe.jet || {}).shock || {};
     this._shock.amplitude = shockCfg.pinch != null ? shockCfg.pinch : 0;
+    this._shockBaseAmp = this._shock.amplitude;
     this._shock.freqPerWU = shockCfg.pitchWU > 1e-3 ? Math.PI * 2 / shockCfg.pitchWU : 0;
     this._shock.decayPerWU = shockCfg.decayWU > 1e-3 ? 1 / shockCfg.decayWU : 0;
     this._shock.boostGain = shockCfg.boostGain != null ? shockCfg.boostGain : 0;
@@ -197,6 +203,17 @@ export class PlasmaStreamSystem {
     this._contrail = this._trails[0];
     this._forge = this._forges[0];
     this._env = createDriveEnvelope();
+    // The visible gas of the live jet (head/tail), nozzle-local. See ribbon/plumeSlug.js: the
+    // jet is a slug that is emitted at the throat and detaches on release, not a mesh scaled
+    // toward the bell.
+    this._slug = createPlumeSlug();
+    // Chamber heat: lights with the spool, cools slower than the spool falls. Drives the throat
+    // lamp and the hull light so neither is switched by a boolean.
+    this._throatGlow = 0;
+    // What the ribbon plume actually reads (the slug-adjusted shape); `_ribbonShape` stays the
+    // envelope shape the recorded contrail, forge and jet/history handoff consume.
+    this._plumeShape = { live: false, drive: 0, boost: 0, dash: 0, jetLength: 0, throatRadius: 0,
+      spread: 0, radiance: 0, opacity: 0, centerTex: null, centerCount: 0, shock: null, clump: 0 };
     this._ribbonShape = {};
     this._ribbonNozzle = { x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 };
     const rib = this.recipe.ribbon || {};
@@ -294,8 +311,11 @@ export class PlasmaStreamSystem {
       for (let i = 0; i < this._trails.length; i++) this._trails[i].reset();
     }
     if (this._env) {
-      this._env.spool = 0; this._env.boost = 0; this._env.dash = 0; this._env.dashAge = -1;
+      this._env.spool = 0; this._env.spoolVel = 0; this._env.boost = 0; this._env.dash = 0;
+      this._env.dashAge = -1; this._env.target = 0;
     }
+    if (this._slug) resetPlumeSlug(this._slug);
+    this._throatGlow = 0;
     if (this.group) this.group.visible = false;
   }
 
@@ -353,6 +373,10 @@ export class PlasmaStreamSystem {
       alive: true,
     }, frameDt);
     const activeDrive = this._env.spool;
+    // Chamber heat: follows the spool up, cools on its own (slower) clock. The throat lamp and the
+    // hull light read THIS, so neither is a boolean that flips at a third of its brightness.
+    this._throatGlow = Math.max(activeDrive, this._throatGlow * Math.exp(-frameDt / 0.12));
+    if (this._throatGlow < 0.004) this._throatGlow = 0;
     this._time += frameDt;
     this._lastDrive = activeDrive;
 
@@ -379,6 +403,10 @@ export class PlasmaStreamSystem {
     // One authority for "is the drive actually firing". The recipe used to carry its own idleFloor of
     // 0.04, below the envelope's idle glow of 0.06, so a parked ship read as emitting forever.
     const emitting = activeDrive >= EMIT_FLOOR;
+    // The lamp is live while firing, or while the chamber is still cooling from a hotter state
+    // than the spool (below 0.03 the lamp's shader energy is under 1% - nothing to see). A merely
+    // idling spool (a tiny constant command) is not a lamp.
+    const throatLive = this._throatGlow > 0.03 && (emitting || this._throatGlow > activeDrive + 1e-6);
 
     const list = sockets && sockets.length ? sockets : null;
     // Production sockets (ContinuousPlume convention): ax points opposite exhaust;
@@ -418,7 +446,8 @@ export class PlasmaStreamSystem {
     // envelope, because `reset()` zeroes the envelope — gating on the envelope meant a drive spooling up
     // from cold got reset every frame before it could cross the firing threshold, and never lit at all.
     const commanded = Math.max(throttle, drive, boost) > 0.001;
-    if (!commanded && !emitting && !this.sampler.hasLive && this._trailLiveCount() < 2) {
+    if (!commanded && !emitting && !this.sampler.hasLive && this._trailLiveCount() < 2
+      && !this._slug.live && !throatLive) {
       this.reset();
       return { live: 0, pathPoints: 0, continuous: true };
     }
@@ -451,8 +480,11 @@ export class PlasmaStreamSystem {
     const lengthFloor = jetCfg.driveLengthFloor != null ? jetCfg.driveLengthFloor : 0.45;
     const baseLen = jetCfg.lengthWU != null ? jetCfg.lengthWU : 14;
     const driveLen = lengthFloor + (1 - lengthFloor) * Math.min(1.15, activeDrive);
-    const jetLen = Math.max(1.5, baseLen * driveLen * boostLenMul
-      * (1 + ignition * (ignCfg.lengthOvershoot != null ? ignCfg.lengthOvershoot : 0.24)));
+    // The reach the CURRENT drive supports. It goes to exactly zero at the dark threshold (the
+    // `born` ramp) instead of being floored at 1.5 WU, so there is no stub to snap out of existence;
+    // the plume slug (below) decides how much of that reach is actually drawn and where it starts.
+    const reachTarget = baseLen * driveLen * boostLenMul * plumeBornRamp(activeDrive)
+      * (1 + ignition * (ignCfg.lengthOvershoot != null ? ignCfg.lengthOvershoot : 0.24));
     const exitR = (jetCfg.exitRadiusWU != null ? jetCfg.exitRadiusWU : 1.32) * rootMul * boostW;
     const collimate = jetCfg.boostCollimate != null ? jetCfg.boostCollimate : 0.28;
 
@@ -490,6 +522,33 @@ export class PlasmaStreamSystem {
     // consumes the same shape). Silhouette, length, flow and opacity are untouched: the standard
     // forbids using alpha as a throttle channel.
     this._ribbonShape.radiance *= flashScale;
+
+    // THE SLUG. The throat lamp and the recorded contrail still follow the spool, but what the live
+    // jet DRAWS is a slug of gas with a head and a tail (ribbon/plumeSlug.js): it runs out of the
+    // throat on press and detaches from it on release, cooling as it goes. Radiance is limited
+    // before the flares (dash/boost) are applied so the ignition flare itself is not damped.
+    const rShape = this._ribbonShape;
+    const flareMul = 1 + this._env.boost * 0.45 + this._env.dash * 1.6;
+    const slug = this._slug;
+    stepPlumeSlug(
+      slug, activeDrive, this._env.target || 0, reachTarget,
+      rShape.radiance / (flareMul > 1e-6 ? flareMul : 1),
+      this._ribbonBase.radiance * flashScale, frameDt,
+    );
+    const jetLen = slug.length;
+    const pShape = this._plumeShape;
+    pShape.live = slug.live;
+    pShape.drive = rShape.drive;
+    pShape.boost = rShape.boost;
+    pShape.dash = rShape.dash;
+    pShape.jetLength = Math.max(jetLen, 1e-3);
+    pShape.throatRadius = rShape.throatRadius;
+    pShape.spread = rShape.spread;
+    pShape.radiance = slug.radiance * flareMul;
+    pShape.opacity = rShape.opacity;
+    // The shock-cell diamonds are standing waves AT THE LIP; a detached slug has left the lip.
+    this._shock.amplitude = this._shockBaseAmp
+      * (1 - Math.max(0, Math.min(1, slug.rootOffset / 3)));
     // The recorded burn shares the live engine's fury at the moment it is written: boost and the
     // ignition flare sear a hotter hole, which then cools on its own age clock like any sample.
     this._ribbonShape.trailRadiance = 2.1 * (1 + boostSm * 0.35 + ignition * 0.5) * flashScale;
@@ -512,7 +571,7 @@ export class PlasmaStreamSystem {
     const refSpeed = lagCfg.exhaustRefSpeedWU || 20;
     const tipAge = Math.max(
       lagCfg.minTipAgeS != null ? lagCfg.minTipAgeS : 0.12,
-      Math.min(lagCfg.maxMemoryS != null ? lagCfg.maxMemoryS : 0.85, jetLen / refSpeed),
+      Math.min(lagCfg.maxMemoryS != null ? lagCfg.maxMemoryS : 0.85, slug.head / refSpeed),
     );
     this._lagTipAgeS = tipAge;
     this._lagTipBend = this._lag.buildCenterline({
@@ -523,6 +582,7 @@ export class PlasmaStreamSystem {
       nowS: this._time,
       tipAgeS: tipAge,
       jetLength: jetLen,
+      rootOffset: slug.rootOffset,
       maxBendRad: lagCfg.maxBendRad != null ? lagCfg.maxBendRad : 1.4,
     });
     this._centerTex.needsUpdate = true;
@@ -530,11 +590,15 @@ export class PlasmaStreamSystem {
     this._ribbonShape.centerCount = this._centerCount;
     this._ribbonShape.shock = this._shock;
     this._ribbonShape.clump = this._clump;
+    pShape.centerTex = this._centerTex;
+    pShape.centerCount = this._centerCount;
+    pShape.shock = this._shock;
+    pShape.clump = this._clump;
 
     // The jet, standing off the bell. Short by construction. Reduced motion slows the sheet's own
     // flow clock (the same 0.12 rate the retro jets use); throttle response and length stay live.
     this._ribbons.setCamera(this._camObj);
-    this._ribbons.update(frameDt * motionScroll, nz2, this._ribbonShape);
+    this._ribbons.update(frameDt * motionScroll, nz2, pShape);
 
     // Leftover thruster light, one ghost per live bell, on the flown line only. Never advects along
     // the exhaust, so it cannot put a vertex anywhere that bell has not been.
@@ -570,17 +634,21 @@ export class PlasmaStreamSystem {
       forge.setCamera(this._camObj);
       forge.update(nz, null, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
     }
-    this._active = emitting || trailLive >= 2;
+    this._active = emitting || trailLive >= 2 || slug.live || throatLive;
 
     // Sustained event-light source: the lit bell itself, refreshed every live frame so vfx can
     // keep the player's hull light on the exact nozzle the jet is leaving. (The family-plume
     // light path never fires for the plasma stream — its fleet record's driveState stays zero.)
     const ls = this._lightSource;
-    ls.on = emitting;
+    ls.on = throatLive;
+    // Ramp: the hull light fades in/out with the chamber heat (vfx scales its intensity by this),
+    // instead of snapping on/off at about a quarter of its brightness.
+    ls.ramp = Math.max(0, Math.min(1, this._throatGlow / 0.35));
+    ls.ramp = ls.ramp * ls.ramp * (3 - 2 * ls.ramp);
     ls.x = nx;
     ls.y = ny;
     ls.z = nz;
-    ls.drive = activeDrive;
+    ls.drive = Math.max(activeDrive, this._throatGlow);
     ls.boost = boostSm;
 
     // Nozzle throat glows — one per live socket, camera-billboarded, depth-tested against hull.
@@ -593,7 +661,7 @@ export class PlasmaStreamSystem {
       * (1 + boostSm * 0.35 + ignition * 0.55) * flashScale;
     for (let ti = 0; ti < this._throats.length; ti++) {
       const throat = this._throats[ti];
-      const sock = emitting && list && ti < nSock ? list[ti] : null;
+      const sock = throatLive && list && ti < nSock ? list[ti] : null;
       if (!sock) { throat.visible = false; continue; }
       throat.visible = true;
       throat.position.set(sock.x || 0, sock.y || 0, sock.z || 0);
@@ -605,7 +673,7 @@ export class PlasmaStreamSystem {
       }
       const tu = throat.material.uniforms;
       tu.uTime.value = this._time;
-      tu.uDrive.value = activeDrive;
+      tu.uDrive.value = this._throatGlow;
       tu.uBoost.value = boostSm;
       tu.uOpacity.value = throatOpacity;
       tu.uRadiance.value = throatRadiance;
@@ -627,6 +695,18 @@ export class PlasmaStreamSystem {
       dash: this._env.dash,
       ignition,
     };
+  }
+
+  /**
+   * True while the live jet or the throat lamp is still dying out after the command has gone.
+   * The renderer's idle-sleep gate asks this so it does not `reset()` the stream (a hard hide) in
+   * the middle of a release taper just because the commanded drive has already reached zero.
+   * Deliberately NOT true for the recorded contrail: that fades on its own age clock.
+   */
+  isFading() {
+    return !this._disposed && !!this.group
+      && !((this._env.target || 0) > EMIT_FLOOR)
+      && (this._slug.live || (this._throatGlow > 0.03 && this._throatGlow > this._env.spool + 1e-6));
   }
 
   /**

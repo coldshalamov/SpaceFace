@@ -37,11 +37,37 @@ export const SPEED_SHARE = 0.25;
  * cools instead of clipping off in one frame. Boost remains the faster blast.
  */
 export const RATES = Object.freeze({
-  spoolRiseTau: 0.04,
+  spoolRiseTau: 0.05,
   spoolFallTau: 0.06,
   boostRiseTau: 0.018,
   boostFallTau: 0.26,
 });
+
+/**
+ * The spool is a CRITICALLY DAMPED SPRING, not a one-pole filter (slice 1, thruster lifecycle).
+ *
+ * A one-pole filter has its steepest slope on the very first frame, so a key press jumped the spool
+ * 0 -> 0.26 in 17 ms and the whole jet appeared two-thirds grown. A critically damped spring starts
+ * with zero slope, accelerates, then settles: the jet is born small and opens up. It also keeps its
+ * velocity when the target changes mid-flight, so a re-press during a release bends smoothly instead
+ * of kinking.
+ *
+ * `omega = SPRING_K / tau` keeps RATES the single source of timing (the G10 windows are expressed
+ * through it): with K = 1.9 the rise reaches 90% of its target in ~0.10 s and the fall passes the
+ * `PLUME_DARK` threshold in ~0.17 s from a full-speed hold, both inside the Wave G10 windows
+ * (grown 120 ms, dark 250 ms).
+ */
+export const SPRING_K = 1.9;
+
+/**
+ * Spool below which the plume is dark. Mirrors `THROTTLE_WINDOWS.plumeDark` (the Wave G10 contract).
+ * Everything that draws the live jet reaches zero CONTINUOUSLY as the spool approaches this value, so
+ * the later hard zero is never a visible pop.
+ */
+export const PLUME_DARK = 0.02;
+
+/** Spool span above `PLUME_DARK` over which length and radiance ramp in from nothing. */
+export const PLUME_BORN_SPAN = 0.20;
 
 /** One-shot dash flare: a bright supernova for about a second, then a long cooling tail. */
 export const DASH_ENVELOPE = Object.freeze({
@@ -55,11 +81,40 @@ const DASH_TOTAL_S = DASH_ENVELOPE.attackS + DASH_ENVELOPE.sustainS + DASH_ENVEL
 export function createDriveEnvelope() {
   return {
     spool: 0,
+    spoolVel: 0,
     boost: 0,
     dash: 0,
     dashAge: -1,
     lit: false,
   };
+}
+
+/**
+ * Exact critically damped spring step (no allocation). Returns the new position and writes the new
+ * velocity back onto `state.spoolVel`.
+ */
+function stepSpoolSpring(state, target, omega, d) {
+  const x0 = state.spool;
+  const v0 = Number.isFinite(state.spoolVel) ? state.spoolVel : 0;
+  const w = Math.max(1e-3, omega);
+  const dx = x0 - target;
+  const e = Math.exp(-w * d);
+  const j = v0 + w * dx;
+  let x = target + (dx + j * d) * e;
+  let v = (v0 - w * j * d) * e;
+  if (x < 0) { x = 0; if (v < 0) v = 0; }
+  if (x > 1.4) { x = 1.4; if (v > 0) v = 0; }
+  state.spoolVel = v;
+  return x;
+}
+
+/**
+ * Continuous "born" ramp for the live jet: 0 at `PLUME_DARK`, 1 by `PLUME_DARK + PLUME_BORN_SPAN`.
+ * Replaces the old 10% length / 45% radiance floors that made the jet appear and vanish at a third
+ * of its size.
+ */
+export function plumeBornRamp(spool) {
+  return smoothstep01(PLUME_DARK, PLUME_DARK + PLUME_BORN_SPAN, spool);
 }
 
 /**
@@ -112,8 +167,15 @@ export function integrateDriveEnvelope(state, input, dt) {
   const alive = input.alive !== false;
 
   const target = alive ? resolveDriveTarget(input.throttle, input.speedNorm) : 0;
+  // Published so the plume slug can tell "the source is commanded" from "the source is dying".
+  state.target = target;
   const spoolTau = target > state.spool ? RATES.spoolRiseTau : RATES.spoolFallTau;
-  state.spool += (target - state.spool) * (1 - Math.exp(-d / Math.max(spoolTau, 1e-4)));
+  state.spool = stepSpoolSpring(state, target, SPRING_K / Math.max(spoolTau, 1e-4), d);
+  // A settled cold drive is exactly zero so the cold-sleep gates can see it.
+  if (target === 0 && state.spool < 1e-4 && Math.abs(state.spoolVel) < 1e-3) {
+    state.spool = 0;
+    state.spoolVel = 0;
+  }
 
   const boostTarget = alive && input.boosting ? 1 : 0;
   const boostTau = boostTarget > state.boost ? RATES.boostRiseTau : RATES.boostFallTau;
@@ -157,7 +219,7 @@ export function resolvePlumeShape(state, base, out) {
 
   // Zero command has already settled: no stub, no glow. Opacity stays a material only while the
   // drive is actually lit; a dark engine is dark.
-  if (!(spool > 0.02)) {
+  if (!(spool > PLUME_DARK)) {
     out.jetLength = 0;
     out.throatRadius = base.throatRadius;
     out.spread = base.spread;
@@ -174,14 +236,18 @@ export function resolvePlumeShape(state, base, out) {
 
   const drive = Math.max(0, Math.min(1, (spool - IDLE_FLOOR) / (1 - IDLE_FLOOR)));
 
-  // Never quite zero while the drive is alive: a lit engine standing at idle still has a stub of hot
-  // gas in the bell. It just does not reach.
+  // BORN FROM NOTHING. The old 10% length / 45% radiance floors meant the jet was already a third
+  // of its size the instant it crossed the dark threshold, and snapped out of existence at that
+  // size on the way down. `born` takes length and radiance to exactly zero AT `PLUME_DARK`, so the
+  // hard zero above is continuous with this branch. Opacity stays a material (never a throttle).
+  const born = plumeBornRamp(spool);
   out.jetLength = base.jetLength
     * (0.10 + drive * 0.90)
+    * born
     * (1 + boost * 0.55 + dash * 1.15);
   out.throatRadius = base.throatRadius * (0.72 + drive * 0.28);
   out.spread = base.spread * (0.55 + drive * 0.45) * (1 - boost * 0.12);
-  out.radiance = base.radiance * (0.45 + drive * 0.55) * (1 + boost * 0.45 + dash * 1.6);
+  out.radiance = base.radiance * (0.45 + drive * 0.55) * born * (1 + boost * 0.45 + dash * 1.6);
   out.opacity = base.opacity;
   out.drive = drive;
   out.spool = spool;
