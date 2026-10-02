@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1637032f02b98dee246f82b515e3274f767cd17db8e9c8df37b7fe1082576148",
+  "contentHash": "cf115ff540a16da754068e6d124a8887bec67c0f22b64f60de14a399ec1b0cdb",
   "dynamicGroups": [
     {
       "id": "sf.render.hornet-production-v1.node.lod0-hook-drive-core.dynamic",
@@ -583,9 +583,9 @@
       "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-nav-starboard"
     },
     {
-      "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber.dynamic",
+      "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber"
+      "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon"
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-hook-armor-flap-armor.dynamic",
@@ -648,7 +648,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3592666f573efd246eff1862a3b24185a1b408b60ebf46cb23e8ac97c59781e7",
+      "geometryHash": "063f43b90f3c843a1996374f05d4a84d761ce3f020bb25fd96741c525880f7f4",
       "id": "sf.render.hornet-production-v1.node.lod0-armor.primitive.0",
       "indexCount": 6597,
       "indexed": true,
@@ -774,13 +774,13 @@
       },
       "drawMode": 4,
       "geometryHash": "32471204abf3b9a2f295e76dd8c0b0fe4fb170360f6fb52a284be5de0c3bad85",
-      "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber.primitive.0",
+      "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber",
+      "meshName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -923,7 +923,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3db514f80f97a9b3857846de8a98dd89aad3299272a227866c656a914d14391",
+      "geometryHash": "55ac66b80c5f83426556b3dd7abfbe939c5911cb021ee9de056552b3a496df67",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-p-armor.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -998,7 +998,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6d946e693f3a11d7b2e86b0ffa0b622554099c78ad87985b62bc31fd22c90e6",
+      "geometryHash": "617f18f208df9ae3bbf71a01dc4a83de0c74c2fd5f5382090e118bf434f3af31",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-hook-armor-flap-armor.primitive.0",
       "indexCount": 1020,
       "indexed": true,
@@ -1272,17 +1272,17 @@
       ]
     },
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1786,7 +1786,7 @@
       ]
     },
     {
-      "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber",
+      "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
       "localTransform": [
         0.05000000074505806,
         0,
@@ -1806,8 +1806,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
-      "nodeName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+      "nodeName": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
       "nodePath": [
         0,
         6
@@ -3614,22 +3614,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "081c023afc6c8e470f7e908834368b654ec0957cec41cadb3d7026c0b9eef9e0"
+      "sha256": "14e6adc64f62e4d928ba0deb04f8362fdc378577e2ebc44e5353b9e36c947b1c"
     },
     "sourceGlb": {
-      "bytes": 582396,
-      "sha256": "16d1254f032a510781b7012c136192aa774e7203f779ef9b4a89d2fe88644170",
+      "bytes": 582444,
+      "sha256": "a6d08cf8d0cdb7b38ebf41b6bd6eae5922920919f88c890f045ac211bbbcd682",
       "uri": "hornet_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214094,
-      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
+      "bytes": 218953,
+      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 852464,
-    "sha256": "bb96b334323a6df40a3fd4013c7db0d14b667cd5121d9d03b341d0add5b6a2c9",
+    "bytes": 852540,
+    "sha256": "3901104a71048e635b703be3fc4f6da71c3c603300d89179dcc842a3615a075d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4808,7 +4808,7 @@
     "motionBank": {
       "bytes": 14421,
       "rigId": "hornet",
-      "sha256": "bd441a2c1f9e9a1f37c96fc7b9467a1470b1d85b64de87cdd9ed94c4a2e136be",
+      "sha256": "5550f17d938b497455964e8445696430d7bf89d457dc7797fb827675f82a6efc",
       "uri": "assets/ships/motions/hornet-production-v1.motion.json"
     },
     "nodeCount": 45,
@@ -4989,7 +4989,7 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber",
+        "name": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -5505,7 +5505,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
   },
-  "runtimeHash": "cb8d693e33b8d28dbfb43230462e70b2f544c33fca67659d2c0d303a3f01d496",
+  "runtimeHash": "be7c1d85256d7224191fb812cf7b070c7047defd22023c3793f0a8a1ff176a32",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -5530,7 +5530,7 @@
         "sf.render.hornet-production-v1.node.lod0-hook-drive-core",
         "sf.render.hornet-production-v1.node.lod0-hook-nav-port",
         "sf.render.hornet-production-v1.node.lod0-hook-nav-starboard",
-        "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber",
+        "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
         "sf.render.hornet-production-v1.node.lod0-hull",
         "sf.render.hornet-production-v1.node.lod0-lights-cyan-jacket",
         "sf.render.hornet-production-v1.node.lod0-livery",

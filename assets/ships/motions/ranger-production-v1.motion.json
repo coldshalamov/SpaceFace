@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_RANGER_PRODUCTION_V1",
- "sourceGlbSha256": "c8a6c6d001f95deeaca8f1a194f89877aef528161ae38586f8e2f74494f5d257",
+ "sourceGlbSha256": "a931523a8b82a61bd3584187240eb982cf276de2b5ac06b11c75bef94a6552fe",
  "fps": 60,
  "bindings": [
   {

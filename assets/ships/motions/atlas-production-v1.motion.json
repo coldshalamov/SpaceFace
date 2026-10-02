@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_ATLAS_PRODUCTION_V1",
- "sourceGlbSha256": "c2c4d67cc51a58883df4a1595e8efdd9be1db1716412227b95d1457ac53c08fc",
+ "sourceGlbSha256": "ff1e26ffaa8302961712d2d5fcede128cf12c49e6a72bfb832a307f674daf909",
  "fps": 60,
  "bindings": [
   {

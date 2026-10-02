@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_MULE_PRODUCTION_V1",
- "sourceGlbSha256": "35b18527f02dd5a2ec74c81abb45909935cb417e0b85b014e2a22c4c2f536335",
+ "sourceGlbSha256": "7d9fa13ffde6135bf4b9d1b7fec8ac18024f41035e5978228c9e33372ee1591d",
  "fps": 60,
  "bindings": [
   {

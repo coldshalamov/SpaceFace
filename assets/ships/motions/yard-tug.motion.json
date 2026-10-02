@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "yard_tug_winch",
  "sourceAssetId": "SF_WHOLESHIP_YARD_TUG",
- "sourceGlbSha256": "3ba90539ca8118147e87d8cd6a26aad6a870148d99a9a26cc86fd02fa0b61f57",
+ "sourceGlbSha256": "4ceac593d5489242577fde8f0c1157c390c289be179832cb28bb5d5d63c383fa",
  "fps": 60,
  "bindings": [
   {

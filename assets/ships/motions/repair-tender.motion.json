@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_REPAIR_TENDER",
- "sourceGlbSha256": "d54e3ffca6f1107f833644ab6f1bd2c742dffc43d5b0cb1d76c2a076950438ce",
+ "sourceGlbSha256": "3d82bc6a473516c803c8fb0b8b13f3e54cc25f088497b30fd6dfb40d94b233a2",
  "fps": 60,
  "bindings": [
   {

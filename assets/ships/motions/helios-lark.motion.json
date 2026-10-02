@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_HELIOS_LARK",
- "sourceGlbSha256": "3acf47e03b4eef261d17b5cb55c25fc9635ad2d9971b276008f01699b180650f",
+ "sourceGlbSha256": "54fd8b8c6a0d3ae77b7946fc66569f8ba7aad0c9fc93aefd9e356fbffab94bfa",
  "fps": 60,
  "bindings": [
   {

@@ -151,6 +151,12 @@ const WHOLE_SHIP_ASSET_ID_BY_FILE = Object.freeze({
   'wholeships/wasp_free_militia.glb': 'SF_WASP_FREE_MILITIA',
   'wholeships/wasp_mts_escort.glb': 'SF_WASP_MTS_ESCORT',
   'wholeships/wasp_scn_patrol.glb': 'SF_WASP_SCN_PATROL',
+  'wholeships/hornet_scn_interdictor.glb': 'SF_HORNET_SCN_INTERDICTOR',
+  'wholeships/wasp_quiet_ghost.glb': 'SF_WASP_QUIET_GHOST',
+  'wholeships/ashline_dart_choir.glb': 'SF_WHOLESHIP_ASHLINE_DART_CHOIR',
+  'wholeships/ashline_lode_vael.glb': 'SF_WHOLESHIP_ASHLINE_LODE_VAEL',
+  'wholeships/ashline_rig_quiet.glb': 'SF_WHOLESHIP_ASHLINE_RIG_QUIET',
+  'wholeships/helios_cradle_dmc.glb': 'SF_WHOLESHIP_HELIOS_CRADLE_DMC',
   'wholeships/yard_tug.glb': 'SF_WHOLESHIP_YARD_TUG',
 });
 

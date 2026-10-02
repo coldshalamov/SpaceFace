@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
- "sourceGlbSha256": "e41038b014c97895c60bfa2641a0980670ad4948a663fc76c7bb0223e7a99deb",
+ "sourceGlbSha256": "23da99b0529a2e034875d157c35a532c08c1f445d7386f17b14d2fde5cca0aba",
  "fps": 60,
  "bindings": [
   {
