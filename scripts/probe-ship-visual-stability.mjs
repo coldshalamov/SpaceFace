@@ -762,6 +762,7 @@ async function sampleVisualStability(page, options) {
       let instanceProxyCount = 0;
       let boundsBad = false;
       let maxWorldPrimitiveRadius = 0;
+      let firstHiddenAncestor = null;
       const largePrimitives = [];
 
       root.traverse((object) => {
@@ -772,6 +773,27 @@ async function sampleVisualStability(page, options) {
         const materialVisible = materialIsVisible(object.material);
         const worldVisible = visibleThroughRoot(object, root);
         if (worldVisible && materialVisible) visibleRenderableCount++;
+        if (!worldVisible && !firstHiddenAncestor) {
+          const chain = [];
+          for (let current = object; current && current !== root; current = current.parent) {
+            if (current.visible === false) {
+              chain.push({
+                name: current.name || null,
+                type: current.type || null,
+                isMesh: !!current.isMesh,
+                partUrl: current.userData && (current.userData.spacefacePartUrl
+                  || (Array.isArray(current.userData.spacefacePartUrls) ? current.userData.spacefacePartUrls[0] : null)),
+                lodTag: current.userData && current.userData.lod ? current.userData.lod.level : null,
+                authoredReadableFallbackLayer: !!(current.userData && current.userData.authoredReadableFallbackLayer),
+                authoredSuppressedByReadableFallback: !!(current.userData && current.userData.authoredSuppressedByReadableFallback),
+                authoredReadableSilhouetteSuppressed: !!(current.userData && current.userData.authoredReadableSilhouetteSuppressed),
+                rosterPrewarm: current.userData && current.userData.rosterPrewarm || null,
+              });
+            }
+          }
+          if (root.visible === false) chain.push({ name: root.name || null, type: root.type || null, isRoot: true });
+          firstHiddenAncestor = chain;
+        }
 
         const isAuthoredSurface = !!(object.userData && (
           object.userData.spacefacePartUrl
@@ -880,6 +902,7 @@ async function sampleVisualStability(page, options) {
         screenRadiusPx,
         meshCount,
         visibleRenderableCount,
+        firstHiddenAncestor,
         authoredSurfaceCount,
         visibleAuthoredSurfaceCount,
         authoredBodySurfaceCount,
@@ -1002,6 +1025,7 @@ async function sampleVisualStability(page, options) {
         inView: ship.inView,
         meshCount: ship.meshCount,
         visibleRenderableCount: ship.visibleRenderableCount,
+        firstHiddenAncestor: ship.firstHiddenAncestor || null,
         authoredSurfaceCount: ship.authoredSurfaceCount,
         visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
         authoredBodySurfaceCount: ship.authoredBodySurfaceCount,
