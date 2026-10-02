@@ -82,6 +82,24 @@ export function resolveStationSideEventVfxProfile(kind) {
   return STATION_SIDE_EVENT_VFX_PROFILES[kind] || null;
 }
 
+/** One dish beat for a live broadcast tic. A quiet broadcaster produces none. */
+export function broadcastDishBeatRecord(payload) {
+  if (!payload || payload.quiet === true || payload.tic == null) return null;
+  const pos = payload.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  const profile = resolveStationSideEventVfxProfile('sensor_sweep');
+  if (!profile) return null;
+  return {
+    kind: 'dish-beat',
+    pattern: 'station:sideEvent',
+    profileId: profile.id,
+    trajectory: profile.trajectory,
+    stationId: payload.stationId || null,
+    tic: payload.tic,
+    pos: { x: pos.x, z: pos.z },
+  };
+}
+
 export function createStationSideEventVfxFrameScratch() {
   return {
     x: 0,

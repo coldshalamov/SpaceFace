@@ -379,11 +379,15 @@ export function tableTravelSpeed(state) {
     ? state.entities.get(state.playerId)
     : null;
   const vel = player && player.vel;
+  const vx = Number(vel && vel.x);
+  const vz = Number(vel && vel.z);
   const live = vel
-    ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0)
+    ? Math.hypot(Number.isFinite(vx) ? vx : 0, Number.isFinite(vz) ? vz : 0)
     : 0;
-  const maxSpeed = Number(player && player.maxSpeed) || 0;
-  return Math.max(TABLE_REFERENCE_SPEED_WU, live, maxSpeed);
+  const liveSpeed = Number.isFinite(live) ? live : 0;
+  const maxSpeed = Number(player && player.maxSpeed);
+  const ceiling = Number.isFinite(maxSpeed) && maxSpeed > 0 ? maxSpeed : 0;
+  return Math.max(TABLE_REFERENCE_SPEED_WU, liveSpeed, ceiling);
 }
 
 /**

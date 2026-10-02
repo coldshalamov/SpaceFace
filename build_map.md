@@ -54,10 +54,13 @@ wrong still starts at the fun loop (§1.7), then returns here.
    the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
    you own the named work still open there **and** the review and tuning of that area to the
    A-list bar; the queue units inside it are its checklist, not a script. The A2 actualize lane
-   (§23.4) is committed and closed. If this sitting is INFERENCE, take one OPEN catalog line.
-   Otherwise `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it
-   names under [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do
-   not shop around `--ready` for something you would rather do; the order is the plan (§1.2).
+   (§23.4) is committed and closed. If the owner said INFERENCE, take catalog lines
+   ([`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md)). Otherwise read the seam table
+   in [§1C](#1c-the-board--every-dispatchable-unit-numbered-refreshed-2026-09-27) and
+   `node scripts/board-chunks.mjs`. Claim a `free` seam and do its open rows. `program-dispatch
+   --next` still returns an old packet when one is actually ready; a drained result is this
+   board, not an empty game and not the inference catalog. Do not shop `--ready` for a smaller
+   packet. The seam you claimed is the plan.
 3. On a queue unit, read the packet's **How agents get this wrong** section before touching code.
    Then its Leaves row: the done-when is the definition of done, in player units. If a done-when is
    missing, unclear, or could be satisfied by something the owner would call thin, write the missing
@@ -122,8 +125,8 @@ preparation**: parked until there is a release to prepare, and never the dispatc
 work stays in scope only as a development instrument — finding and fixing what makes the game worse
 on a real, busy machine — not as a gate that waits on a quiet host. Until pre-release opens, game
 development runs through §27's lanes (THE MACHINE's development half, THE HAND, THE FIGHT, THE
-WORLD, THE LONG GAME, THE PICTURE, THE EAR); **a drained queue means take the next numbered row
-on the board (§1C) — or a lane for open-ended work — never stop.**
+WORLD, THE LONG GAME, THE PICTURE, THE EAR); **a drained queue means claim a free seam on the
+board (§1C) and do its open rows — never stop, and never switch to the inference catalog.**
 
 **§23 is the superpower front (owner, 2026-09-22).** The sequential lane is **A2** in the table
 above: [§23.4](#234-actualize-the-tools), `AQ-CAS` then `AQ-LOD` then `AQ-LIGHT` then `AQ-SURFACE`
@@ -355,21 +358,78 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
 
 ## 1C. The board — every dispatchable unit, numbered (refreshed 2026-09-27)
 
-`--next` reads `program-queue.json`; **that queue is drained** (0 claimable units — the one
-`ready` row is dep-gated, `PQ-210.08` is parked). The plans did not run out — the counting did.
-This board is the counted front door: **"take the next 10 tasks" means the next 10 numbered
-rows.** Each row points at the plan that owns its detail — do not restate specs here, and do not
-open a second list anywhere else.
+The old packet queue (`program-dispatch --next`) is drained. **That is not an empty plan.**
+An empty script result is this board. It is not permission to switch to
+`INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
+claimed, and it is the whole job only when the owner said INFERENCE.
 
-How to take a row:
+**"Do 10 tasks" means 10 open rows inside seams you claimed.** A row is already a chunk: a
+planbank batch, a next-wave build, or a fable batch. Do not split it into captions, and do
+not count a catalog line as one of the ten.
 
-1. Take the lowest-numbered **OPEN** row whose named paths are not in a live `NOW.md` row.
-   `CLAIMED <who>` rows are taken; `PARKED <blocker>` rows wait for the named blocker.
-2. Add your `NOW.md` row and flip this row to `CLAIMED <thread>` in the **same edit**.
-3. On landing, **delete the row** in the landing commit — this board lists open work only;
-   receipts live in git and `01_VERIFIED_DONE.md`.
-4. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
-5. New dispatchable work is appended at the bottom of its kind-group with the next number.
+### Seams — what is free, and what another agent has
+
+One seam is one set of files. Five agents take five different seams. Read the Claim cell
+and `node scripts/board-chunks.mjs` before you pick. `free` means nobody has it. A thread
+name means it is in flight — take a different seam. `done` means its rows are finished.
+
+1. Pick a seam that says `free` and whose files are not in a live `NOW.md` row or a dirty
+   foreign hunk.
+2. In the same edit as your NOW row, replace `free` with your thread name.
+3. Do the seam's still-OPEN rows in the order listed, up to the count you were given
+   (ten, unless the owner named another number). Skip a row whose status is no longer OPEN.
+4. If the seam runs out before your count, claim another `free` seam whose files do not
+   overlap the one you have.
+5. When you stop, set the cell back to `free` if any of its rows are still OPEN, or `done`
+   if none are. Delete a detail row only in the commit that finishes it.
+6. If two agents edit the same files, keep both changes and merge them. Do not revert the
+   other agent. A `PARKED` row waits for the blocker named on that row.
+7. Lanes `L-MACHINE`, `L-HAND`, `L-FIGHTWORLD`, `L-LONGGAME`, and `L-EAR` are area
+   ownership, not one of the ten rows. Claiming a lane claims the matching seam too.
+
+OPEN catalog lines whose files sit in your seam are part of the row you are already doing.
+Ship them or mark them already true inside that row. They are not an alternate queue.
+
+| Seam | Claim | Files — one agent | Rows, in order |
+|---|---|---|---|
+| picture | free | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
+| camera | free | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
+| boot | free | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
+| audio | free | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
+| save | free | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
+| economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
+| effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
+| swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
+| fight | free | enemies, bombs, countermeasures, squads | 96, 178, 179, 200, 202, 221, 231, 234 |
+| fields | free | fields | 94, 162 |
+| law | grok-15 | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
+| discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
+| industry | grok-15 | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
+| people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
+| ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
+| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 220, 229, 236, 238, 239 |
+| missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
+| world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
+| story | grok-15 | story | 192, 215, 216, 253 |
+| input | free | gamepad, input, settings behavior | 196, 237, 260, 262 |
+| ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
+| physics | free | physics clocks, manifest | 258 |
+| accept | free | judge work that is already built | 60, 63, 64 |
+| imports | free | doc imports only, after code seams | 30 |
+| art | free | one visible asset defect; skip if the graphics lane is live | 223 |
+
+`node scripts/board-chunks.mjs` prints which of those rows are still open, which seams are
+claimed, and any open row that is not in a seam. `--check` fails when the table and the
+detail rows drift.
+
+How to finish a row:
+
+1. Add your `NOW.md` row for the exact files before the first edit.
+2. On landing, **delete the detail row** in the landing commit — this board lists open work
+   only; receipts live in git and `01_VERIFIED_DONE.md`.
+3. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
+4. New dispatchable work is appended at the bottom of its kind-group with the next number,
+   and its number is added to the seam that owns its files.
 
 Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
@@ -425,8 +485,8 @@ and `src/core/coreSystem.js` are still dirty, those hunks are not this batch: on
 perception into the combat override, the other keeps measured skins off dynamic hulls. Do not
 revert them and do not fold them into an unrelated commit.
 
-**Next.** The lowest-numbered OPEN row below whose paths are not in a live `NOW.md` row.
-Inference continues at the first OPEN line in `INFERENCE_IDEAS.md` whose paths are free.
+**Next.** A `free` seam in the table above whose files are not already claimed. An OPEN
+inference line is folded into that seam. It is not the next task by itself.
 
 ### A. Recover — finished work stranded in the tree
 
@@ -613,7 +673,7 @@ This user-requested wave supplies pre-decided outcomes, not permission for a wea
 
 **One live board.** BUILD status is in this table; small-task status is in `design/program/INFERENCE_IDEAS.md`. The packet files and JSON are specifications, not a second mutable queue. `OPEN` means a named task may be taken after exact-path checks, not that it is free of all concurrent work. `WAITING <id>` means an actual missing capability; an equivalent verified implementation can satisfy it. Open dependent rows in the landing that supplies the capability. Do not infer DONE from a deleted row.
 
-**Do not dry-fire.** An empty legacy `program-dispatch` result does not authorize brainstorming while dependency-ready directed board/catalog work exists. Read this board or run `node scripts/next-wave-read.mjs --kind build --next` / `--kind inference --next`. The helper is read-only and uses canonical live rows, not frozen JSON statuses. It is advisory; inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
+**Do not dry-fire.** An empty legacy `program-dispatch` result means claim a free seam in §1C. It does not authorize brainstorming, and it does not switch the sitting to the inference catalog. `node scripts/board-chunks.mjs` lists the free seams. `next-wave-read.mjs` is advisory detail for a row you already took; `--kind inference` is only for an owner-said INFERENCE sitting. Inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
 
 **Reuse rather than duplicate.** Read the prior SF/PQ/PB owner named in each packet. Implement equivalent work once, then retire/match the duplicate row to its actual result. Existing SF packet bodies are under `design/planbank/SpaceFace_Planbank_300/plans/<domain>/` (not `packets/<domain>/`). Do not re-admit shipped slices or copy active PR #170/#174 work. Necessary functional UI follows ORRERY; no second redesign. Release-prep work remains parked.
 
@@ -621,7 +681,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 
 | # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
 |---|---|---|---|---|---|
-| 162 | BUILD | [NXB-010](design/program/next-wave-2026-09-28/build/NXB-010.md) | Overlapping fields produce a predictable net force without stealing the controls | Existing owners; SF-034, SF-038, SF-039, SF-040 | OPEN |
+| 162 | BUILD | [NXB-010](design/program/next-wave-2026-09-28/build/NXB-010.md) | Overlapping fields produce a predictable net force without stealing the controls | Existing owners; SF-034, SF-038, SF-039, SF-040 | SHIPPED |
 | 163 | BUILD | [NXB-014](design/program/next-wave-2026-09-28/build/NXB-014.md) | Lawful combat stands down when the specific surrender is accepted | Existing owners; SF-058, SF-151, SF-161, CR-WEIR-1 | OPEN |
 | 165 | BUILD | [NXB-025](design/program/next-wave-2026-09-28/build/NXB-025.md) | Sell your own units of a commodity while preserving its sealed contract units | Existing owners; SF-108, SF-111, SF-241, SF-273 | SHIPPED — quantity-aware seal (`sellableCargoQty`); 2026-10-01 |
 | 167 | BUILD | [NXB-035](design/program/next-wave-2026-09-28/build/NXB-035.md) | A claim raid has one outcome whether the player arrives or stays away | Existing owners; SF-101, SF-105, SF-165, PQ-170 | OPEN |
@@ -631,11 +691,11 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 175 | BUILD | [NXB-005](design/program/next-wave-2026-09-28/build/NXB-005.md) | A recovered tow reaches a receiver with its custody and value intact | Existing owners; SF-029, SF-111, SF-273, SF-286 | OPEN |
 | 176 | BUILD | [NXB-007](design/program/next-wave-2026-09-28/build/NXB-007.md) | One physical kill has one readable legal and salvage aftermath | Existing owners; SF-030, SF-042, SF-159, SF-292 | SHIPPED — already satisfied; route proof test/nxb-007-one-kill-one-aftermath.test.mjs 2026-10-01 |
 | 178 | BUILD | [NXB-012](design/program/next-wave-2026-09-28/build/NXB-012.md) | Countermeasures break a particular lock rather than erase every threat | Existing owners; SF-040, SF-050, SF-057 | SHIPPED — one lineage per deploy + generation-pinned reacquisition 2026-10-01 |
-| 179 | BUILD | [NXB-013](design/program/next-wave-2026-09-28/build/NXB-013.md) | A wounded squad withdraws through a usable corridor with one covering ship | Existing owners; SF-056, SF-057, SF-059 | OPEN |
+| 179 | BUILD | [NXB-013](design/program/next-wave-2026-09-28/build/NXB-013.md) | A wounded squad withdraws through a usable corridor with one covering ship | Existing owners; SF-056, SF-057, SF-059 | SHIPPED |
 | 180 | BUILD | [NXB-017](design/program/next-wave-2026-09-28/build/NXB-017.md) | Author one three-round act whose physical question changes each round | Existing owners; SF-061, SF-062, SF-064, SF-068, PQ-174 | OPEN |
 | 181 | BUILD | [NXB-018](design/program/next-wave-2026-09-28/build/NXB-018.md) | Draft offers remain useful for the actual build and transaction state | Existing owners; SF-065, SF-066, SF-072, SF-251 | SHIPPED — displaced fitting named (NXI-071); children closed 2026-10-01 |
 | 182 | BUILD | [NXB-021](design/program/next-wave-2026-09-28/build/NXB-021.md) | Deep-core mining makes the next commitment visible without revealing the whole rock | Existing owners; SF-095, SF-125, PQ-130 | OPEN |
-| 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | OPEN |
+| 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | SHIPPED |
 | 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack | NXB-009; SF-127, SF-128, SF-242, PQ-205 | OPEN |
 | 185 | BUILD | [NXB-030](design/program/next-wave-2026-09-28/build/NXB-030.md) | Prove three existing hull sidegrades through actual physical jobs | Existing owners; SF-121, SF-122, SF-123, SF-124, SF-130 | OPEN |
 | 186 | BUILD | [NXB-031](design/program/next-wave-2026-09-28/build/NXB-031.md) | A synergy explanation matches the live combined effect and its drawback | Existing owners; SF-126, SF-132, SF-133 | SHIPPED — scan-gated basis + named prerequisites 2026-10-01 |
@@ -644,15 +704,15 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 191 | BUILD | [NXB-044](design/program/next-wave-2026-09-28/build/NXB-044.md) | Tolls, warrants and restitution compose into one understandable consequence | Existing owners; SF-153, SF-158, SF-161, SF-164, SF-165 | OPEN |
 | 192 | BUILD | [NXB-046](design/program/next-wave-2026-09-28/build/NXB-046.md) | The story reaches a player who spends the first hour trading, fighting or salvaging | Existing owners; SF-121, SF-135, SF-149, SF-300, PQ-163 | OPEN |
 | 193 | BUILD | [NXB-049](design/program/next-wave-2026-09-28/build/NXB-049.md) | A three-verb collision stays readable without draining the spectacle | Existing owners; SF-196, SF-197, SF-200, SF-207 | OPEN |
-| 194 | BUILD | [NXB-052](design/program/next-wave-2026-09-28/build/NXB-052.md) | The crowded combat mix releases into real quiet after the last threat | Existing owners; SF-231, SF-234, SF-237, SF-240 | OPEN |
+| 194 | BUILD | [NXB-052](design/program/next-wave-2026-09-28/build/NXB-052.md) | The crowded combat mix releases into real quiet after the last threat | Existing owners; SF-231, SF-234, SF-237, SF-240 | SHIPPED |
 | 195 | BUILD | [NXB-054](design/program/next-wave-2026-09-28/build/NXB-054.md) | The map can manage two real destinations without confusing knowledge with a route | Existing owners; SF-244, SF-245, SF-246, SF-254 | OPEN |
 | 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules | Existing owners; SF-247, SF-248, SF-254, PQ-164 | OPEN |
 | 197 | BUILD | [NXB-056](design/program/next-wave-2026-09-28/build/NXB-056.md) | Dense instrument text survives long names, large text and narrow windows | Existing owners; SF-243, SF-249, SF-253, SF-255 | OPEN |
 | 198 | BUILD | [NXB-006](design/program/next-wave-2026-09-28/build/NXB-006.md) | Transfer a load across a moving industrial gap without scripted motion | Existing owners; SF-019, SF-024, SF-094, SF-100 | OPEN |
 | 199 | BUILD | [NXB-008](design/program/next-wave-2026-09-28/build/NXB-008.md) | Recover a volatile load by managing its physical exposure, not a scripted timer | Existing owners; SF-006, SF-021, SF-036, SF-096 | OPEN |
-| 200 | BUILD | [NXB-011](design/program/next-wave-2026-09-28/build/NXB-011.md) | A moving enemy bomb can be intercepted and disposed of using existing physical verbs | Existing owners; SF-031, SF-040, SF-041, SF-044 | OPEN |
+| 200 | BUILD | [NXB-011](design/program/next-wave-2026-09-28/build/NXB-011.md) | A moving enemy bomb can be intercepted and disposed of using existing physical verbs | Existing owners; SF-031, SF-040, SF-041, SF-044 | SHIPPED |
 | 201 | BUILD | [NXB-015](design/program/next-wave-2026-09-28/build/NXB-015.md) | Convoys negotiate a narrow obstruction instead of shoving every member through it | Existing owners; SF-048, SF-059, SF-080, SF-082 | OPEN |
-| 202 | BUILD | [NXB-016](design/program/next-wave-2026-09-28/build/NXB-016.md) | A capital opening follows a damaged physical subsystem rather than a health-bar phase | Existing owners; SF-020, SF-051, SF-068, PQ-140 | OPEN |
+| 202 | BUILD | [NXB-016](design/program/next-wave-2026-09-28/build/NXB-016.md) | A capital opening follows a damaged physical subsystem rather than a health-bar phase | Existing owners; SF-020, SF-051, SF-068, PQ-140 | SHIPPED |
 | 203 | BUILD | [NXB-019](design/program/next-wave-2026-09-28/build/NXB-019.md) | The arena carries useful physical history across preparation intervals | Existing owners; SF-067, SF-069, SF-073, PQ-133 | OPEN |
 | 204 | BUILD | [NXB-020](design/program/next-wave-2026-09-28/build/NXB-020.md) | A shared challenge code reproduces the rules, not just the random seed | Existing owners; SF-075, PQ-169, PQ-160 | SHIPPED — foreign codec/ruleset fail closed as non-comparable 2026-10-01 |
 | 205 | BUILD | [NXB-023](design/program/next-wave-2026-09-28/build/NXB-023.md) | A congested receiver offers a physical sorting job with a real throughput consequence | Existing owners; SF-091, SF-093, SF-098, SF-102 | OPEN |
@@ -664,7 +724,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 211 | BUILD | [NXB-040](design/program/next-wave-2026-09-28/build/NXB-040.md) | A heist handover is committed by actual custody, with one honest chance to withdraw | NXB-025; SF-137, SF-145, SF-147, CR-HOLLOW-1 | OPEN |
 | 212 | BUILD | [NXB-042](design/program/next-wave-2026-09-28/build/NXB-042.md) | A rescued named worker resumes a real job and remains the same person on return | Existing owners; SF-076, SF-077, SF-156, SF-175 | OPEN |
 | 213 | BUILD | [NXB-043](design/program/next-wave-2026-09-28/build/NXB-043.md) | One local shortage creates competing real jobs without multiplying the population | Existing owners; SF-084, SF-099, SF-116, SF-162 | OPEN |
-| 214 | BUILD | [NXB-045](design/program/next-wave-2026-09-28/build/NXB-045.md) | A useful clue can become stale or contradicted without revealing hidden truth | Existing owners; SF-168, SF-171, SF-178, SF-180, SF-245 | OPEN |
+| 214 | BUILD | [NXB-045](design/program/next-wave-2026-09-28/build/NXB-045.md) | A useful clue can become stale or contradicted without revealing hidden truth | Existing owners; SF-168, SF-171, SF-178, SF-180, SF-245 | SHIPPED |
 | 215 | BUILD | [NXB-047](design/program/next-wave-2026-09-28/build/NXB-047.md) | An existing ending changes a continuing working universe across three return visits | Existing owners; SF-149, SF-158, SF-294, PQ-032 | OPEN |
 | 216 | BUILD | [NXB-048](design/program/next-wave-2026-09-28/build/NXB-048.md) | New Game Plus carries declared knowledge but does not duplicate physical possessions | Existing owners; SF-131, SF-180, SF-280, PQ-032 | SHIPPED — residual children NXI-189/190/191/192 closed 2026-10-01 |
 | 217 | BUILD | [NXB-050](design/program/next-wave-2026-09-28/build/NXB-050.md) | A chain reaction can be followed across camera scale without commandeering the camera | Existing owners; SF-202, SF-208, SF-218, SF-219 | OPEN |
@@ -745,7 +805,7 @@ named in the status for the frontend lane to take alone):
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 228 | FB-070+FB-080 | Every refusal has one voice and one withdrawal shape; the verb cue table dispatches every row it authors | PB | OPEN — seam combatVerbCues.js |
+| 228 | FB-070+FB-080 | Every refusal has one voice and one withdrawal shape; the verb cue table dispatches every row it authors | PB | SHIPPED |
 | 229 | FB-009+FB-010+FB-013 | Thirteen massline receipts reach the picture; snare and seed have voices; every head announces itself | PB | OPEN — seam tetherGameplay.js |
 | 230 | FB-071+FB-021 | Weapon picture and voice agree on provenance; the four emergent weapons are drawn and drafted | PB | OPEN — seam vfxProfiles.js |
 | 231 | FB-016+FB-017+FB-121 | Every archetype telegraphs, variant pairs become distinct problems, every row declares its mass class | PB | OPEN — seam enemies.js |

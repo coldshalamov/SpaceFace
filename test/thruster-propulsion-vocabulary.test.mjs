@@ -440,13 +440,20 @@ test('the brake bites on engagement and relaxes into the held jet', () => {
 });
 
 test('the bite is heat and collimation, never reach: the jet-likeness contract holds', () => {
-  for (const drive of [0.05, 0.4, 1, 1.4]) {
+  // From the end of the born ramp (RETRO_BORN_SPAN, slice 1) up, every demand reads as a jet. Below
+  // it the jet is being BORN: it grows from nothing instead of appearing at 55-67% of its held
+  // length (the pop the owner rejected), so a drive of 0.05 is a short stub by design.
+  for (const drive of [0.5, 0.6, 1, 1.4]) {
     for (const bite of [0, 0.5, 1]) {
       const env = retroEnvelopeForDemand(drive, null, bite);
       assert.ok(retroEnvelopeIsJetLike(env),
         `retro at drive ${drive} bite ${bite} must still read as a jet`);
     }
   }
+  const born = retroEnvelopeForDemand(0.05, null, 0);
+  const held = retroEnvelopeForDemand(1, null, 0);
+  assert.ok(born.lengthWU < held.lengthWU * 0.15, 'a barely-spooled retro is a stub, not a 55% jet');
+  assert.ok(born.radiance < held.radiance * 0.15, 'and it is nearly dark, not 60% lit');
   const cold = retroEnvelopeForDemand(1, null, 0);
   const hot = retroEnvelopeForDemand(1, null, 1);
   assert.equal(hot.lengthWU, cold.lengthWU, 'the bite must not stretch the jet');

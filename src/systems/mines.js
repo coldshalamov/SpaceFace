@@ -88,7 +88,7 @@ export const mines = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return null;
     if (!opts.pos || !Number.isFinite(opts.pos.x) || !Number.isFinite(opts.pos.z)) return null;
-    const ownerId = opts.ownerId == null ? null : opts.ownerId;
+    const ownerId = opts.ownerId != null ? opts.ownerId : (state && state.playerId != null ? state.playerId : null);
     if (ownerId != null && countOwnerMines(state, ownerId) >= MINE_OWNER_CAP) {
       if (this.bus) this.bus.emit('mines:capReached', { ownerId, cap: MINE_OWNER_CAP });
       // FIGHT-07 — the player's refused press speaks through the voice floor and names the
@@ -271,14 +271,26 @@ export const mines = {
       packet,
       origin: { kind: 'mine', id: mine.id },
     };
-    this._routeDamage(request);
+    const pos = { x: mine.pos.x, z: mine.pos.z };
     if (this.bus) {
+      // The snap is the first receipt. Detonation follows on this same tick —
+      // the fuse length does not change.
       this.bus.emit('mines:triggered', {
         mineId: mine.id,
         ownerId: data.ownerId,
         targetId: victim.id,
         damage,
-        pos: { x: mine.pos.x, z: mine.pos.z },
+        pos,
+      });
+    }
+    this._routeDamage(request);
+    if (this.bus) {
+      this.bus.emit('mines:detonated', {
+        mineId: mine.id,
+        ownerId: data.ownerId,
+        targetId: victim.id,
+        damage,
+        pos,
       });
     }
     mine.alive = false;

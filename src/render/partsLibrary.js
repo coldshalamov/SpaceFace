@@ -24,19 +24,24 @@ import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packaged
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import {
   TABLE_BAND,
+  TABLE_DECODE_RUNWAY_SECONDS,
   TABLE_FRAME_SKIRT_WU,
+  authoredPrefetchRadius,
   classifyTableBand,
   glassHalfExtents,
   isCriticalHubInCurrentSector,
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
+  tableCameraEnvelope,
   tableInstanceFarCullWu,
   tableLookAtDelta,
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
+import { willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
@@ -88,7 +93,7 @@ import {
   isPlaceLayerBlockingFlightReady,
   selectPlacePackageLayer,
 } from './flightReadySet.js';
-import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { entityPresenceRadius, PRESENTATION_TIER } from '../world/activityClassification.js';
 import { ledgerAwarePos } from '../world/presentationSources.js';
 import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
@@ -883,6 +888,24 @@ function entityOnOpeningTable(entity, state) {
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
+function startupAuthoredContactOnRunway(entity, state) {
+  const distanceSq = playerPlanarDistanceSq(entity, state);
+  if (!Number.isFinite(distanceSq)) return false;
+  const radius = tableOpeningCompositionWu(state)
+    + authoredPrefetchRadius(tableTravelSpeed(state));
+  return Math.sqrt(distanceSq) - entityPresenceRadius(entity) <= radius;
+}
+
+function criticalHubWithinStartupRunway(entity, state) {
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  if (!isCriticalHubInCurrentSector(entity, currentSectorId)) return false;
+  if (!entity.pos) return true;
+  const distanceSq = playerPlanarDistanceSq(entity, state);
+  if (!Number.isFinite(distanceSq)) return false;
+  return Math.sqrt(distanceSq) - entityPresenceRadius(entity)
+    <= TABLE_DECODE_RUNWAY_SECONDS * tableTravelSpeed(state);
+}
+
 /**
  * Flight-gate membership. A Helios hub sitting a kilometer off the opening table is a streamable
  * place record and cannot hold the player in the loading shell; only its gameplay shell enters the
@@ -894,8 +917,7 @@ export function isOpeningFlightGateEntity(entity, state) {
   if (entity.id === state.playerId || entity.isPlayer === true) return true;
   if (isOpeningStoryActor(entity, state)) return true;
   if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) {
-    if (!entity.pos) return true;
-    return entityOnOpeningTable(entity, state);
+    return criticalHubWithinStartupRunway(entity, state);
   }
   return isInitialAuthoredCompositionEntity(entity, state);
 }
@@ -909,7 +931,7 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   // startup composition; far hub detail is a streamable package and must not trigger a full GLB
   // decode merely because its identity is `station_helios`.
   if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) {
-    return !entity.pos || entityOnOpeningTable(entity, state);
+    return criticalHubWithinStartupRunway(entity, state);
   }
   if (isOpeningStoryActor(entity, state)) return true;
   const player = state.entities && typeof state.entities.get === 'function'
@@ -920,7 +942,9 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
   const isPlace = (entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity);
-  if (entity.type !== 'ship' && !isPlace) return false;
+  const isPackagedContact = entity.type === 'wreck' || entity.type === 'drone';
+  if (entity.type !== 'ship' && !isPlace && !isPackagedContact) return false;
+  if (isPackagedContact) return startupAuthoredContactOnRunway(entity, state);
   const radius = tableOpeningCompositionWu(state);
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
@@ -5408,6 +5432,23 @@ function authoredRuntimeState() {
 // A complete NPC body can spend several seconds in decode and pipeline preparation. Start queued
 // runway ships before the contact reaches the glass instead of making the player watch that work.
 const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
+function firstFlightReadableContactKind(entity) {
+  const type = entity && entity.type;
+  if (type === 'ship' || type === 'station' || type === 'wreck'
+      || type === 'drone' || type === 'payload' || type === 'asteroid') return true;
+  return type === 'place' && placeFileForEntity(entity) !== null;
+}
+function firstFlightClosingToward(entity, player) {
+  const dx = Number(entity && entity.pos && entity.pos.x) - Number(player && player.pos && player.pos.x);
+  const dz = Number(entity && entity.pos && entity.pos.z) - Number(player && player.pos && player.pos.z);
+  const distance = Math.hypot(dx, dz);
+  if (!Number.isFinite(distance) || distance <= 0) return false;
+  const relativeX = (Number(player && player.vel && player.vel.x) || 0)
+    - (Number(entity && entity.vel && entity.vel.x) || 0);
+  const relativeZ = (Number(player && player.vel && player.vel.z) || 0)
+    - (Number(entity && entity.vel && entity.vel.z) || 0);
+  return (dx * relativeX + dz * relativeZ) / distance > 0;
+}
 function firstFlightReadableShipJob(job) {
   const live = authoredRuntimeState();
   const render = live && live.render;
@@ -5419,12 +5460,17 @@ function firstFlightReadableShipJob(job) {
   return !!(live && live.mode === 'flight' && render
     && Number.isFinite(render.firstPlayableFrameAt)
     && render.sectorShellAdmission !== true
-    && entity && entity.type === 'ship' && entity.alive !== false
+    && entity && firstFlightReadableContactKind(entity) && entity.alive !== false
     // Submission includes a ship whose outline intersects the glass even when its pivot does
     // not. The frustum center-point helper can say false while its marker is already drawn.
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
       || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
-        && runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)));
+        && ((runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)
+          || (firstFlightClosingToward(entity, player)
+            && willEntityEnterAuthoredUpgradeRunway(entity, live, {
+              radius: FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU,
+              horizonSeconds: TABLE_DECODE_RUNWAY_SECONDS,
+            }))))));
 }
 
 // Same readable-glass test as the ship variant but type-agnostic: during the handoff
@@ -5631,14 +5677,138 @@ function abortStalledUpgradeJob(state, job) {
   return true;
 }
 
-export function waitForOpeningGraphPublicationRelease() {
+export function cancelAuthoredUpgradeQueue(scene, reason = 'scene-retired') {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return false;
+  state.retired = true;
+  upgradeQueuesByScene.delete(scene);
+  invalidateScheduledUpgradeFrame(state);
+  if (state.heldShipWakeTimer != null) {
+    clearTimeout(state.heldShipWakeTimer);
+    state.heldShipWakeTimer = null;
+  }
+  if (state.stalledHogWakeTimer != null) {
+    clearTimeout(state.stalledHogWakeTimer);
+    state.stalledHogWakeTimer = null;
+  }
+  for (const job of [...state.jobs]) {
+    const index = state.jobs.indexOf(job);
+    if (index >= 0) state.jobs.splice(index, 1);
+    cancelQueuedJob(state, job);
+  }
+  for (const job of [...state.byBoundary.values()]) {
+    if (job && job.lifecycle === 'in-flight' && job.admission && !job.admission.signal.aborted) {
+      job.admission.abort(reason);
+    }
+  }
+  state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
+  publishUpgradeDiagnostics(state);
+  return true;
+}
+
+const _deadlineGlassDelta = { x: 0, z: 0 };
+
+function entityOnDeadlineGlass(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entity.activity && entity.activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  const frame = state.render && state.render.activityFrame;
+  const glassIds = frame && frame.renderGlassIds;
+  if (glassIds && typeof glassIds.has === 'function' ? glassIds.has(entity.id)
+      : Array.isArray(glassIds) && glassIds.includes(entity.id)) return true;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : (state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+  if (!player || !player.pos || !entity.pos) return false;
+  const cam = tableCameraEnvelope(state);
+  const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const delta = tableLookAtDelta(state, player.pos, entity.pos, _deadlineGlassDelta);
+  return classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: 0,
+    radius: entityPresenceRadius(entity),
+  }) === TABLE_BAND.GLASS;
+}
+
+export function waitForOpeningGraphPublicationRelease(options = {}) {
   const render = authoredRuntimeState()?.render;
   if (!render || render.openingGraphPublicationFrozen !== true) return null;
+  const entity = options && options.entity;
+  const postFirstPicture = Number.isFinite(render.firstPlayableFrameAt);
+  if (entity && postFirstPicture && entityOnDeadlineGlass(entity, authoredRuntimeState())) {
+    return null;
+  }
   const wait = render.waitForOpeningGraphPublicationRelease;
   if (typeof wait !== 'function') {
     return Promise.reject(new Error('Opening graph publication is frozen without a release boundary'));
   }
-  return Promise.resolve(wait());
+  const generation = render.admissionRunGeneration;
+  const nativeRenderer = render.renderer !== undefined ? render.renderer : undefined;
+  const assertGateOwnerCurrent = () => {
+    if (authoredRuntimeState()?.render !== render) {
+      const error = new Error('Opening graph publication gate owner became inactive');
+      error.name = 'AbortError';
+      throw error;
+    }
+    if (nativeRenderer !== undefined && render.renderer !== nativeRenderer) {
+      const error = new Error('Opening graph publication gate owner became inactive');
+      error.name = 'AbortError';
+      throw error;
+    }
+    if (generation !== undefined && render.admissionRunGeneration !== generation) {
+      const error = new Error('Opening graph publication gate outlived its renderer generation');
+      error.name = 'AbortError';
+      throw error;
+    }
+  };
+  const released = Promise.resolve(wait()).then((value) => {
+    assertGateOwnerCurrent();
+    return value;
+  });
+  if (!entity || !postFirstPicture) return released;
+  let settled = false;
+  return new Promise((resolve, reject) => {
+    const finish = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      fn(arg);
+    };
+    released.then((value) => {
+      if (settled) return;
+      try {
+        assertGateOwnerCurrent();
+      } catch (error) {
+        finish(reject, error);
+        return;
+      }
+      finish(resolve, value);
+    }, (error) => finish(reject, error));
+    const recheck = () => {
+      if (settled) return;
+      const live = authoredRuntimeState();
+      if (!live || live.render !== render) {
+        const error = new Error('Opening graph publication gate owner became inactive');
+        error.name = 'AbortError';
+        finish(reject, error);
+        return;
+      }
+      try {
+        assertGateOwnerCurrent();
+      } catch (error) {
+        finish(reject, error);
+        return;
+      }
+      if (render.openingGraphPublicationFrozen !== true
+          || entityOnDeadlineGlass(entity, authoredRuntimeState())) {
+        finish(resolve, undefined);
+        return;
+      }
+      armCallbackAfterPresent(recheck);
+    };
+    recheck();
+  });
 }
 
 /**
@@ -6578,30 +6748,6 @@ function finishUpgradeDiagnostic(state, job, diagnostic) {
   publishUpgradeDiagnostics(state, job.renderer);
 }
 
-export function cancelAuthoredUpgradeQueue(scene, reason = 'scene-retired') {
-  const state = scene && upgradeQueuesByScene.get(scene);
-  if (!state) return false;
-  state.retired = true;
-  upgradeQueuesByScene.delete(scene);
-  invalidateScheduledUpgradeFrame(state);
-  if (state.heldShipWakeTimer != null) {
-    clearTimeout(state.heldShipWakeTimer);
-    state.heldShipWakeTimer = null;
-  }
-  if (state.stalledHogWakeTimer != null) {
-    clearTimeout(state.stalledHogWakeTimer);
-    state.stalledHogWakeTimer = null;
-  }
-  for (const job of [...state.jobs]) {
-    const index = state.jobs.indexOf(job);
-    if (index >= 0) state.jobs.splice(index, 1);
-    cancelQueuedJob(state, job);
-  }
-  state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
-  publishUpgradeDiagnostics(state);
-  return true;
-}
-
 function recordUpgradeCancellation(state, job) {
   if (!state || !state.diagnostics || !job || job.diagnosticCancellationRecorded) return;
   job.diagnosticCancellationRecorded = true;
@@ -7076,6 +7222,10 @@ export function authoredCriticalVisualReadiness(state) {
       : null;
     const role = entity && (entity.flightReadyRole || data.flightReadyRole
       || data.renderFlightReadyRole || data.render && data.render.flightReadyRole
+      || (state && state.mode === 'loading'
+          && (entity.type === 'wreck' || entity.type === 'drone')
+          && startupAuthoredContactOnRunway(entity, state)
+          ? FLIGHT_READY_ROLE.GLASS_ACTORS : null)
       || ((isCurrentGlass || (allowRuntimeActivityGate
         && entity.activity?.presentationTier === PRESENTATION_TIER.R0_GLASS))
         ? autoGlassRole : null));

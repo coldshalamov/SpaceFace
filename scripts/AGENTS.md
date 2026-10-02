@@ -28,7 +28,7 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
 
 ## Routing
 
-- Program: `program-dispatch.mjs --next` / `--ready` / `--id PQ-XXX`.
+- Program: `board-chunks.mjs` for the live §1C seams. `program-dispatch.mjs --next` / `--ready` / `--id PQ-XXX` only for the old packet queue. A drained dispatch is the board, not an empty plan.
 - Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
 - Runtime liveness: `probe-runtime-witness.mjs` → `.devshots/runtime-witness/`.
 - Browser/Electron: launcher/probe scripts plus the shared game server and validation broker.

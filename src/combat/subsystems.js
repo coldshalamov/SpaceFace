@@ -1,5 +1,54 @@
 import { appendCombatTrace } from './trace.js';
 
+/** The capital opening follows this battery, not a hull-fraction act. */
+export const CAPITAL_OPENING_SUBSYSTEM_ID = 'subsystem_weapon';
+
+function subsystemBag(source) {
+  if (!source || typeof source !== 'object') return null;
+  if (source.subsystems && typeof source.subsystems === 'object') return source.subsystems;
+  const data = source.data;
+  if (data && data.subsystems && typeof data.subsystems === 'object') return data.subsystems;
+  if (data && data.combatRuntime && data.combatRuntime.subsystems) return data.combatRuntime.subsystems;
+  if (source.combatRuntime && source.combatRuntime.subsystems) return source.combatRuntime.subsystems;
+  return null;
+}
+
+export function capitalSubsystemDisabled(source, subsystemId = CAPITAL_OPENING_SUBSYSTEM_ID) {
+  const bag = subsystemBag(source);
+  const row = bag && bag[subsystemId];
+  if (row && (row.effectiveDisabled === true || row.destroyed === true)) return true;
+  const fractions = (source && source.subsystemFractions)
+    || (source && source.data && source.data.subsystemFractions)
+    || null;
+  const fraction = fractions && fractions[subsystemId];
+  return Number.isFinite(fraction) && fraction <= 0;
+}
+
+/**
+ * Open only after the weapon battery is actually disabled. Hull fraction is ignored,
+ * so a health-bar phase cannot open or close the window. Guns and collisions share
+ * this flag — no hidden equipment is required.
+ */
+export function resolveCapitalOpening(source) {
+  const open = capitalSubsystemDisabled(source, CAPITAL_OPENING_SUBSYSTEM_ID);
+  return {
+    open,
+    subsystemId: CAPITAL_OPENING_SUBSYSTEM_ID,
+    transitionId: open ? `opening:${CAPITAL_OPENING_SUBSYSTEM_ID}` : null,
+    reason: open ? 'subsystem_disabled' : 'subsystem_live',
+  };
+}
+
+/** One cue per real transition. Repeated damage while open announces nothing. */
+export function capitalOpeningAnnouncement(previousTransitionId, opening) {
+  const open = !!(opening && opening.open);
+  const id = open ? opening.transitionId : null;
+  if (open && previousTransitionId === id) return null;
+  if (!open && !previousTransitionId) return null;
+  if (!open) return { cue: 'combat.subsystem.restored', transitionId: null, close: true };
+  return { cue: 'combat.subsystem.weapon.disabled', transitionId: id, close: false };
+}
+
 // Subsystem id sets are fixed at ensureCombatant(); damage toggles destroyed flags but never
 // adds/removes keys. Cache the sorted id list on the runtime so applyPending + recompute skip
 // Object.keys().sort() every combat prePhysics (fresh profile: ~36 ms self).

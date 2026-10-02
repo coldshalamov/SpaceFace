@@ -57,6 +57,9 @@ const OFFLINE_CAP_DAYS = Math.max(1, Math.floor((OFFLINE_CAP_SEC * OFFLINE_EFF) 
 const SECURITY_MIN = 0.02, SECURITY_MAX = 0.99;
 const DENSITY_MIN = 0, DENSITY_MAX = 0.80;
 const MAX_IMPULSES = 256;
+// One field impulse may not move danger by more than this. Mining noise and every other
+// caller share the clamp in injectImpulse — a louder ask is cut down, never stored raw.
+export const SECTOR_IMPULSE_DANGER_CAP = 0.35;
 const MAX_INTEL_ALERTS = 3;
 const MAX_APPLIED_EMBODIMENT_IDS = 4096;
 
@@ -75,11 +78,6 @@ const FREIGHT_SPILL_DANGER_BASE = 0.007;    // cargo dumped under fire — the l
 const FREIGHT_SPILL_DANGER_PER_UNIT = 0.0002;
 const FREIGHT_SPILL_DANGER_MAX = 0.018;
 const FREIGHT_VOLATILE_DANGER_MULT = 1.6;   // volatile freight burning/loose on a lane is worse
-// WORLD-33 — sustained beam work is loud. One paid mining-noise episode marks the sector with a
-// danger blip the kernel decays like any other impulse; the emitter rate-limits the crossings, so
-// one mining session cannot dominate the field history.
-const MINING_NOISE_DANGER_IMPULSE = 0.05;
-
 const STATION_GOODS = Object.freeze({
   refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel_cells'],
   mine: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_scrap_metal'],
@@ -122,7 +120,6 @@ export const sectorSim = {
     // Event-to-field boundary. These are impulses, not random walks: player/NPC outcomes become
     // bounded sources which then diffuse/decay under the same deterministic kernel.
     this.bus.on('sectorsim:impulse', (p) => this.injectImpulse(p));
-    this.bus.on('danger:miningNoise', (p) => this._guard('danger:miningNoise', () => this._onMiningNoise(p)));
     this.bus.on('economy:tradeCompleted', (p) => this._onTradeCompleted(p));
     this.bus.on('interdiction:triggered', (p) => this.injectImpulse({
       kind: 'interdiction', sectorId: p && p.sectorId, danger: 0.035,
@@ -493,7 +490,7 @@ export const sectorSim = {
       seq: ss.meta.nextImpulseSeq++,
       kind: String(raw.kind || 'external'),
       sectorId: raw.sectorId,
-      danger: clamp(Number(raw.danger) || 0, -0.35, 0.35),
+      danger: clamp(Number(raw.danger) || 0, -SECTOR_IMPULSE_DANGER_CAP, SECTOR_IMPULSE_DANGER_CAP),
       pricePressure: clamp(Number(raw.pricePressure) || 0, -0.60, 0.60),
     };
     if (raw.influence && typeof raw.influence === 'object') {
@@ -609,19 +606,6 @@ export const sectorSim = {
       FREIGHT_SPILL_DANGER_MAX,
     );
     return this.injectImpulse({ kind: 'freight_spill', sectorId, danger });
-  },
-
-  /**
-   * Loud mining draws attention (WORLD-33): the meter's rate-limited crossing becomes one bounded
-   * danger impulse on the sector being worked. The payload names its sector; a payload-less emit
-   * from a legacy path falls back to the live sector, matching the freight handlers.
-   */
-  _onMiningNoise(p) {
-    const sectorId = (p && typeof p.sectorId === 'string' && p.sectorId)
-      || (this.state.world && this.state.world.currentSectorId)
-      || null;
-    if (!sectorId) return false;
-    return this.injectImpulse({ kind: 'mining_noise', sectorId, danger: MINING_NOISE_DANGER_IMPULSE });
   },
 
   // ------------------------------------------------------------------------------------------

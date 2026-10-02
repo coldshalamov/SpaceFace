@@ -12,6 +12,7 @@ import { barFrameHtml } from '../../views/stationFrames.js';
 // `.sx-choice[data-choice]`, `.sx-bar-offer*`, `[data-inspect]`, `[data-bigpic]` are hooks.
 import {
   generateContacts,
+  installGhostConvoyBarListener,
   getChoices,
   buildReply,
   emitBarContactChoice,
@@ -124,6 +125,7 @@ function offerWord(attrs, label) {
 }
 
 export function createBarScreen(ctx) {
+  installGhostConvoyBarListener(ctx && ctx.bus, ctx && ctx.state);
   const el = document.createElement('div');
   el.className = 'k-panel sx-bar';
   el.innerHTML = barFrameHtml();

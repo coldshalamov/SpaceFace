@@ -23,6 +23,19 @@ export const CUE_GAIN = Object.freeze({
   fallTau: THROTTLE_WINDOWS.cueFallTau,
 });
 
+/**
+ * One-shot cue spec for the undock idle breath — the engine answers leaving the pad at zero
+ * throttle, quiet but present (the loud cue belongs to commanded thrust, not this release).
+ * Returns `{ play, recipe, db }`; callers map `db` with `Math.pow(10, db / 20)`.
+ */
+export function engineIdleCue({ undockIdle = false, throttle = 0 } = {}) {
+  if (!undockIdle) return { play: false, recipe: null, db: 0 };
+  const cmd = Math.max(0, Math.min(1, Number(throttle) || 0));
+  // An already-commanded throttle does not breathe the idle cue — the thrust cue owns it.
+  const db = cmd > 0.02 ? -18 : -12;
+  return { play: true, recipe: 'sfx_engine_idle', db };
+}
+
 /** Advance engine-cue gain toward silence or the loud cue. Allocates nothing when `out` is passed. */
 export function stepCueGain(gain, throttle, dt, out = null) {
   const current = Number.isFinite(gain) ? gain : 0;

@@ -62,6 +62,34 @@ function isKurtzDeskChoice(payload = {}) {
 }
 
 /** Route Orrin's physical-evidence control outside generic station-contact memory. */
+export function ghostConvoyBarRumor(payload) {
+  if (!payload || !payload.line) return null;
+  return {
+    id: `ghost-convoy:${payload.laneKey || payload.sectorId || 'lane'}`,
+    text: String(payload.line),
+    sectorId: payload.sectorId || null,
+  };
+}
+
+export function rememberGhostConvoyRumor(state, payload) {
+  const rumor = ghostConvoyBarRumor(payload);
+  if (!state || !rumor) return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!Array.isArray(state.ui.barGhostConvoys)) state.ui.barGhostConvoys = [];
+  if (!state.ui.barGhostConvoys.some((row) => row && row.id === rumor.id)) {
+    state.ui.barGhostConvoys.push(rumor);
+  }
+  return rumor;
+}
+
+export function installGhostConvoyBarListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (state.ui && state.ui._ghostConvoyBarBound) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  state.ui._ghostConvoyBarBound = true;
+  return bus.on('rumor:ghostConvoy', (payload) => rememberGhostConvoyRumor(state, payload));
+}
+
 export function emitBarContactChoice(bus, payload = {}) {
   if (!bus || typeof bus.emit !== 'function') return null;
   if (isKurtzDeskChoice(payload)) {
@@ -837,6 +865,12 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
   // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
   // and the contact's normal canonical dialogue resumes.
+  const ghostRows = state.ui && state.ui.barGhostConvoys;
+  const ghost = role === 'barkeep' && choiceId === 'rumors' && Array.isArray(ghostRows)
+    ? ghostRows.find((row) => row && row.text && (!row.sectorId || !state.world || state.world.currentSectorId === row.sectorId))
+    : null;
+  if (ghost) return { text: ghost.text };
+
   const wreckRumor = role === 'barkeep'
     ? uniqueWreckBarRumor(state, stationId, choiceId)
     : null;

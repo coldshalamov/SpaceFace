@@ -12,6 +12,7 @@
 // pan to the pair midpoint and back, plus a zoom pump, twice per flyby, on top of bullet time.
 // The chase camera's own damped composition already frames player + attacker continuously.
 import { createTimeEffects } from '../core/timeEffects.js';
+import { handoffFlybyFocusToFollow } from '../render/cameraDirector.js';
 import { isHostileToPlayer } from './scanner.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
@@ -357,12 +358,16 @@ export const flybyFocus = {
     if (resetZoom) focus.zoom = 0;
     if (this.timeEffects) this.timeEffects.clear(TIME_EFFECT_SOURCE);
     if (wasActive && this.bus) {
-      this.bus.emit('flybyFocus:end', {
+      const payload = {
         targetId,
         endedAt: Number.isFinite(st.simTime) ? st.simTime : 0,
         reason,
-      });
+        seed: st.meta && Number.isInteger(st.meta.seed) ? st.meta.seed : null,
+      };
+      if (reason === 'cancelled') this.bus.emit('flybyFocus:cancel', payload);
+      this.bus.emit('flybyFocus:end', payload);
     }
+    if (wasActive) handoffFlybyFocusToFollow();
   },
 
   // Bounded memory: entries are only ever added on acquisition (at most one per COOLDOWN_S) and

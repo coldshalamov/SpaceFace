@@ -358,6 +358,11 @@ export function fieldBodyProfile(entity, state, out = null) {
     : 1;
   profile.fieldResponseMult = (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
   profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
+  // Same dynamic-body predicate the impulse loop already uses. Kinematic proxies drop
+  // out in the kernel; a heavy dynamic hull stays coupled and only shrugs by mass.
+  const dynamic = entity ? isDynamicPhysicsBodyEntity(entity) : true;
+  profile.dynamic = dynamic;
+  profile.kinematic = dynamic === false;
   profile.hitchedTo = null;
   if (entity && entity.id != null && state && state.fields && state.fields.hitches) {
     const hitch = state.fields.hitches[entity.id] || state.fields.hitches[String(entity.id)];

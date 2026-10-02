@@ -41,7 +41,32 @@ export const BINDINGS = Object.freeze({
   // sits on Delete — free in flight (the drill screen that owns it there is modal) and reads as
   // "clear this" without costing a letter key.
   dismissVoice: { key: 'Delete', code: 'Delete', label: 'DEL' },
+  // F6 is the second dismiss binding, matched from the voice arbiter's own keydown hook
+  // (voiceDismissBindingMatches/emitVoiceDismissFromBinding) rather than the UI key router —
+  // the router does not own function keys.
+  voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
 });
+
+/** True when this keydown is the floor-voice dismiss binding and not a chord. */
+export function voiceDismissBindingMatches(ev) {
+  const binding = BINDINGS.voiceDismiss;
+  if (!ev || !binding || binding.shift || binding.ctrl || binding.alt || binding.meta) return false;
+  if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return false;
+  const target = ev.target;
+  const tag = target && target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false;
+  if (target && target.isContentEditable) return false;
+  const key = ev.key != null ? String(ev.key) : '';
+  const code = ev.code != null ? String(ev.code) : '';
+  return key === binding.key || key.toLowerCase() === String(binding.key).toLowerCase() || code === binding.code;
+}
+
+/** Emit voice:dismiss once when the registered binding matches. Returns whether it emitted. */
+export function emitVoiceDismissFromBinding(bus, ev) {
+  if (!bus || typeof bus.emit !== 'function' || !voiceDismissBindingMatches(ev)) return false;
+  bus.emit('voice:dismiss', { source: 'binding', binding: 'voiceDismiss' });
+  return true;
+}
 
 // --- Device-aware prompt glyphs (PQ-164.01) ----------------------------------------------------
 // The bracket chip follows the last-used input device: ui/input.js owns device arbitration and

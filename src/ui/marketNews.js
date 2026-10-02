@@ -389,6 +389,26 @@ export function createMarketNews(ctx) {
   on('freight:loss', surfaceFreightLoss);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
+  on('npcjobs:minerRelocated', (p) => {
+    if (!p || !p.sectorId) return;
+    const here = state.world && state.world.currentSectorId;
+    if (here && p.sectorId !== here) return;
+    const eventId = `miner-relocated:${p.sectorId}:${Number(p.simTime) || state.simTime || 0}`;
+    commitHeadline(`Miners in ${p.sectorId} moved to a new seam.`, {
+      kind: 'miner_relocated',
+      sectorId: p.sectorId,
+      eventId,
+      source: 'npcjobs:minerRelocated',
+      sourceRef: eventId,
+    }, {
+      metadata: {
+        eventId,
+        source: 'npcjobs:minerRelocated',
+        sourceRef: eventId,
+        sectorId: p.sectorId,
+      },
+    });
+  });
   on('economy:eventStarted', (p) => {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });

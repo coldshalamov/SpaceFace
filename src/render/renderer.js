@@ -169,6 +169,7 @@ import {
   ledgerAwarePos,
   makeWaveHullDecodeStub,
   noteWaveHullRunwayKeys,
+  requestDecodeRunwayPromote,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import { NEMESIS_KITS } from '../data/nemesisRival.js';
@@ -290,14 +291,18 @@ import {
   survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
-import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
+import {
+  scheduleRealtimeShadowRefresh,
+  shouldRefreshRealtimeShadowMap,
+} from './shadowPresentCadence.js';
 import {
   armCallbackAfterPresent,
   collectCompileSubjects,
+  collectUniqueCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
   revealSubjectWithAncestors,
-  shouldSliceCompileAcrossPresents,
+  shouldSliceFlightAdmission,
   yieldAfterPresent,
 } from './compilePresentSlice.js';
 import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
@@ -312,6 +317,7 @@ import {
 import {
   armAdmissionShadows,
   compileShadowDepthPipelines,
+  disposeAdmissionShadowResources,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
@@ -1267,10 +1273,14 @@ export function openingCompileIssueKey(subject) {
   }
   const geometry = subject.geometry;
   const attributes = geometry && geometry.attributes
-    ? Object.keys(geometry.attributes).sort().join(',')
+    ? Object.keys(geometry.attributes).sort()
+      .map((name) => `${name}:${geometry.attributes[name] ? geometry.attributes[name].itemSize : ''}`)
+      .join(',')
     : '';
   const morphs = geometry && geometry.morphAttributes
-    ? Object.keys(geometry.morphAttributes).sort().join(',')
+    ? Object.keys(geometry.morphAttributes).sort()
+      .map((name) => `${name}:${geometry.morphAttributes[name] ? geometry.morphAttributes[name].length : ''}`)
+      .join(',')
     : '';
   const drawClass = (subject.isInstancedMesh === true ? 'I' : '')
     + (subject.isSkinnedMesh === true ? 'S' : '')
@@ -1281,6 +1291,9 @@ export function openingCompileIssueKey(subject) {
     + (subject.isMesh === true ? 'M' : '');
   return `${drawClass}|${attributes}|${morphs}`
     + `|${geometry && geometry.morphTargetsRelative === true ? 'rel' : ''}`
+    + `${subject.isInstancedMesh === true && subject.instanceColor != null ? '|ic' : ''}`
+    + `${subject.isInstancedMesh === true && subject.morphTexture != null ? '|im' : ''}`
+    + `${subject.isBatchedMesh === true && subject._colorsTexture != null ? '|bc' : ''}`
     + `|${parts.join('|')}`;
 }
 
@@ -1758,9 +1771,15 @@ function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGlass, adm
   // the hold even when spawn distance sits on the glass lip (~165 WU vs ~163 halfX).
   if (entityMatchesWaveHullRunway(entity, state)) return true;
   const env = admissionEnv();
-  const horizon = isPresentationLedgerRow(entity)
-    ? TABLE_COLLECT_HORIZON_SECONDS
-    : TABLE_RESIDENCY_PREFETCH_SECONDS;
+  const hull = entity.type === 'ship' || entity.type === 'wreck'
+    || entity.type === 'drone' || entity.type === 'payload';
+  const horizon = entity.type === 'station'
+    ? TABLE_DECODE_RUNWAY_SECONDS
+    : hull
+      ? TABLE_PROMOTE_HORIZON_SECONDS
+      : isPresentationLedgerRow(entity)
+        ? TABLE_COLLECT_HORIZON_SECONDS
+        : TABLE_RESIDENCY_PREFETCH_SECONDS;
   const tGlass = entityTimeToGlassSeconds(entity, env, state, horizon);
   return tGlass <= horizon;
 }
@@ -5608,6 +5627,25 @@ function stampCanonicalSurfaceProgramKeys(root) {
   return root;
 }
 
+export function compilePipelineSubject(tracker, subject, options = {}, urgent = false) {
+  if (urgent === true) return tracker.compile(subject, { ...options, urgent: true });
+  if (options && options.explicit === true) return tracker.compileExplicit(subject, options);
+  return tracker.compile(subject, options);
+}
+
+export function preparePipelineSubjectResidency(tracker, subject, admissionOptions = {}, urgent = false) {
+  const outstanding = tracker && typeof tracker.pendingFor === 'function'
+    ? tracker.pendingFor(subject)
+    : null;
+  if (outstanding) return outstanding;
+  return tracker.prepare(subject, {
+    isActive: typeof admissionOptions.isActive === 'function'
+      ? () => admissionOptions.isActive(subject) === true
+      : undefined,
+    unSliced: urgent === true,
+  });
+}
+
 function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
   const request = mesh && mesh.userData && mesh.userData.requestAuthoredUpgrade;
   if (typeof request !== 'function') return Promise.resolve({ status: 'no-authored-upgrade' });
@@ -6215,6 +6253,10 @@ export function disposeRendererOwnedResources(owner, options = {}) {
 
   // WebGLRenderer is deliberately last: every renderer-dependent subsystem and owned root has
   // released its resources or been abandoned before the context/cache owner is retired.
+  invokeRendererDisposer(
+    { dispose: () => disposeAdmissionShadowResources(owner.renderer, { disposeGpu }) },
+    'shadow depth admission',
+    true);
   invokeRendererDisposer(owner.renderer, 'WebGLRenderer', true);
   clearRendererStateReferences(owner);
 
@@ -7849,11 +7891,13 @@ export const render = {
           if (counters) counters.admissionSubject = priorSubject;
           restoreShadows();
         });
-      if (shouldSliceCompileAcrossPresents({
+      if (shouldSliceFlightAdmission({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
+        urgent: compileOptions && compileOptions.urgent === true,
+        rootCount: batch.length,
       })) {
-        const sliced = batch.flatMap((root) => collectCompileSubjects(root)
+        const sliced = batch.flatMap((root) => collectUniqueCompileSubjects(root, openingCompileIssueKey)
           .map((subject) => ({ subject, root })));
         return finish(compileSubjectsAcrossPresents(
           sliced,
@@ -8021,11 +8065,9 @@ export const render = {
           && admissionSubjectIsOnDeadlineGlass(subject, state));
       let compilation;
       try {
-        compilation = admissionOptions && admissionOptions.explicit === true
-          ? pipelineAdmissions.compileExplicit(subject, admissionOptions)
-          : (urgent
-            ? pipelineAdmissions.compile(subject, { ...admissionOptions, urgent: true })
-            : pipelineAdmissions.compile(subject, admissionOptions));
+        compilation = compilePipelineSubject(
+          pipelineAdmissions, subject, admissionOptions, urgent,
+        );
       } catch (error) {
         // A synchronous throw before the promise chain exists bypasses the finally below:
         // the hold would stick at +1 and the subject would stay latch-hidden forever.
@@ -8044,12 +8086,13 @@ export const render = {
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
             return result;
           }
-          const outstanding = gpuResidencyAdmissions.pendingFor(subject);
-          return (outstanding || gpuResidencyAdmissions.prepare(subject, {
-            isActive: typeof admissionOptions.isActive === 'function'
-              ? () => admissionOptions.isActive(subject) === true
-              : undefined,
-          })).then(
+          const residencyUrgent = urgent === true
+            || (state.mode === 'flight'
+              && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+              && admissionSubjectIsOnDeadlineGlass(subject, state));
+          return preparePipelineSubjectResidency(
+            gpuResidencyAdmissions, subject, admissionOptions, residencyUrgent,
+          ).then(
             () => result,
             () => result,
           );
@@ -8912,6 +8955,7 @@ export const render = {
         await yieldLiveSectorGpu();
       };
       flushPipelinesBehindShell();
+      if (!recook && this._simHelpers) requestDecodeRunwayPromote(state, this._simHelpers);
       const openingEntities = [];
       const openingSeen = new Set();
       const considerOpening = (entity) => {
@@ -8921,6 +8965,7 @@ export const render = {
       };
       for (const entity of indexedShipLikeScan(state)) considerOpening(entity);
       for (const entity of indexedTypeScan(state, 'stations')) considerOpening(entity);
+      for (const entity of indexedTypeScan(state, 'wrecks')) considerOpening(entity);
       enqueueMissingMeshBuilds(
         openingEntities,
         this._meshes,
@@ -14367,7 +14412,12 @@ export const render = {
       ? SUBMIT_LANE.TRANSPARENT
       : SUBMIT_LANE.OPAQUE;
     lanes.reserve(entity.id, lane);
-    return world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
+    const bound = world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
+    if (!bound) return false;
+    entity.mesh = mesh;
+    if (entity.view) entity.view.root = mesh;
+    else entity.view = { root: mesh };
+    return true;
   },
 
   _unbindPresentationMesh(entityId, mesh = null) {
@@ -16265,9 +16315,8 @@ export const render = {
       // resolved receiver tally is the remaining depth-pass/culling-camera work gate.
       const shadowMapActive = this._shadowSettingOn === true
         && this._shadowReceiverCount > 0;
-      this._keyLight.shadow.autoUpdate = false;
-      this._keyLight.shadow.needsUpdate = shadowMapActive;
-      this._shadowRefreshScheduled = shadowMapActive;
+      this._shadowRefreshScheduled = scheduleRealtimeShadowRefresh(
+        this.renderer, this._keyLight, shadowMapActive);
       this._activeShadowCamera = shadowMapActive
         ? prepareActiveShadowCamera(this.renderer, this._keyLight, this._shadowReceiverCount)
         : null;
@@ -16676,9 +16725,8 @@ export const render = {
         skippedLast: this._shadowPresentSkipped === true || refreshWasPending,
         dirty,
       });
-      this._keyLight.shadow.autoUpdate = false;
-      this._keyLight.shadow.needsUpdate = shadowMapActive && refreshShadow;
-      this._shadowRefreshScheduled = shadowMapActive && refreshShadow;
+      this._shadowRefreshScheduled = scheduleRealtimeShadowRefresh(
+        this.renderer, this._keyLight, shadowMapActive && refreshShadow);
       this._shadowPresentSkipped = dirty && !refreshShadow;
       if (this._shadowRefreshScheduled) this._updateShadowFollow(true);
       if (!shadowMapActive) this._activeShadowCamera = null;

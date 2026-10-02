@@ -153,7 +153,9 @@ export function getAsteroidFieldRock(state, id) {
 export function queryAsteroidField(state, pos, radius, out = []) {
   out.length = 0;
   const field = state && state.world && state.world.asteroidField;
-  if (!field || !pos || !(radius > 0)) return out;
+  if (!field || !pos || !Number.isFinite(radius) || !(radius > 0)) return out;
+  const grid = field.grid;
+  if (!grid || grid.size === 0) return out;
   const x = finite(pos.x);
   const z = finite(pos.z);
   const r = radius;
@@ -162,21 +164,36 @@ export function queryAsteroidField(state, pos, radius, out = []) {
   const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
   const maxR = Math.floor((z + r) / ASTEROID_FIELD_CELL);
+  const inspectBucket = (bucket) => {
+    if (!bucket) return;
+    for (let i = 0; i < bucket.length; i++) {
+      const rec = bucket[i];
+      if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+      const dx = rec.pos.x - x;
+      const dz = rec.pos.z - z;
+      const reach = r + finite(rec.radius);
+      if (dx * dx + dz * dz <= reach * reach || dx * dx + dz * dz <= r2) out.push(rec);
+    }
+  };
+  const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  if (!Number.isSafeInteger(minC) || !Number.isSafeInteger(maxC)
+      || !Number.isSafeInteger(minR) || !Number.isSafeInteger(maxR)
+      || !Number.isFinite(cellSpan) || cellSpan > grid.size) {
+    const keys = [];
+    for (const key of grid.keys()) {
+      const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+      const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+      if (cx >= minC && cx <= maxC && cz >= minR && cz <= maxR) keys.push(key);
+    }
+    keys.sort((a, b) => a - b);
+    for (let i = 0; i < keys.length; i++) inspectBucket(grid.get(keys[i]));
+    return out;
+  }
   for (let cx = minC; cx <= maxC; cx++) {
     // Numeric key, same encoding as cellKey(): (cx + OFFSET) * STRIDE + (cz + OFFSET).
     const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
     for (let cz = minR; cz <= maxR; cz++) {
-      const bucket = field.grid && field.grid.get(rowBase + cz);
-      if (!bucket) continue;
-      for (let i = 0; i < bucket.length; i++) {
-        const rec = bucket[i];
-        if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
-        const dx = rec.pos.x - x;
-        const dz = rec.pos.z - z;
-        const reach = r + finite(rec.radius);
-        const d2 = dx * dx + dz * dz;
-        if (d2 <= reach * reach || d2 <= r2) out.push(rec);
-      }
+      inspectBucket(grid.get(rowBase + cz));
     }
   }
   return out;

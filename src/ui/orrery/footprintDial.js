@@ -34,7 +34,7 @@ import { svg, polar, arcD, circularText } from './svg.js';
 import { createSpring, reducedMotion } from './motion.js';
 import { injectOrrery } from './tokens.js';
 import { rollTo } from './text.js';
-import { heatLevelFor, heatClearSecondsForLevel, heatRadiusForLevel, wantedTierInfo, THRESHOLD } from '../../systems/heat.js';
+import { heatLevelFor, heatClearSecondsForLevel, heatRadiusForLevel, heatZoneInCurrentSector, wantedTierInfo, THRESHOLD } from '../../systems/heat.js';
 
 const STYLE_ID = 'orr-footprint-dial-style';
 const BONE = '236 230 216';
@@ -86,7 +86,7 @@ export function heatReading(state) {
   const heat = clamp01(num(player.heat));
   const level = heatLevelFor(heat);
   const tier = wantedTierInfo(heat);
-  const zone = player.heatZone && typeof player.heatZone === 'object' ? player.heatZone : {};
+  const zone = heatZoneInCurrentSector(state) || {};
   const radius = num(zone.radius) || heatRadiusForLevel(level);
   const clearAfter = num(zone.clearAfterS) || heatClearSecondsForLevel(level);
   const outsideS = Math.max(0, num(zone.outsideS));

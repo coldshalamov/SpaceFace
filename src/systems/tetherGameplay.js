@@ -23,7 +23,7 @@ import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidF
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
-import { isMassSeedTetherEligible } from './massSeed.js';
+import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
 
@@ -165,6 +165,7 @@ export const tetherGameplay = {
     this._lastCutDenial = null;
     this._bridleSetup = null;
     this._bridleActive = null;
+    this._bridleShareKey = null;
     this._npcBridleCutTicks = new Map();
     this._monofilamentCutIds = new Set();
     this._monofilamentKickIds = new Set();
@@ -249,6 +250,7 @@ export const tetherGameplay = {
           this.bus.on('drill:approachRequested', (payload) => this._requestDrillApproach(payload)),
           this.bus.on('combat:tumbled', (payload) => this._shareHelmLoss(payload)),
           this.bus.on('ai:doctrinePhase', (payload) => this._handleNPCBridleCounterplay(payload)),
+          this.bus.on('pickup:collected', (payload) => this._onLatchedPayloadAcceptance(payload)),
         ]
       : [];
     this._resetPhaseMirror();
@@ -908,6 +910,44 @@ export const tetherGameplay = {
     mirror.load = computeTetherLoad(phase, strain);
     mirror.automaticBreakAllowed = automaticMasslineBreakAllowed(def, source, target);
     mirror.lastEndReason = null;
+    if (source && target) {
+      const emit = this._bridleShareKey !== attachment.id;
+      if (emit) this._bridleShareKey = attachment.id;
+      this._publishBridleLoadShare(state, source, target, attachment.id, emit);
+    }
+  },
+
+  // VERB-20 — the bolas already splits the clothesline as m_partner / (m + m_p) on each end.
+  // Those two fractions sum to 1. This only publishes them; the tumble law above is unchanged.
+  _publishBridleLoadShare(state, source, target, attachmentId, emit = true) {
+    if (!state || !source || !target) return null;
+    const shares = bridleEndpointShares(
+      positive(source.physicsBody && source.physicsBody.mass, positive(source.mass, 1)),
+      positive(target.physicsBody && target.physicsBody.mass, positive(target.mass, 1)),
+    );
+    const mirror = ensureRemoteMasslineMirror(state);
+    mirror.sourceShare = shares.source;
+    mirror.targetShare = shares.target;
+    mirror.shareSourceId = source.id;
+    mirror.shareTargetId = target.id;
+    const payload = {
+      schemaVersion: 1,
+      kind: 'twin_bridle',
+      attachmentId: attachmentId == null ? null : attachmentId,
+      sourceId: source.id,
+      targetId: target.id,
+      fromId: source.id,
+      toId: target.id,
+      sourceShare: shares.source,
+      targetShare: shares.target,
+      shares: [shares.source, shares.target],
+      share: shares.source,
+      tick: state.tick | 0,
+    };
+    if (emit && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('chain:tetherShare', payload);
+    }
+    return payload;
   },
 
   // NPC counterplay stays on the AI's existing phase-change seam. The specialist plan owns the
@@ -954,7 +994,12 @@ export const tetherGameplay = {
     mirror.restLength = 0;
     mirror.strain = 0;
     mirror.load = 0;
+    mirror.sourceShare = null;
+    mirror.targetShare = null;
+    mirror.shareSourceId = null;
+    mirror.shareTargetId = null;
     mirror.lastEndReason = reason || null;
+    this._bridleShareKey = null;
   },
 
   _resetTwinBridleRuntime(state, reason = null, adoptionPending = false) {
@@ -1848,6 +1893,60 @@ export const tetherGameplay = {
    * A SLACK LINE TRANSMITS NOTHING. The gate is the attachment authority's own phase, so the
    * rope's answer here and its answer in the solver cannot disagree.
    */
+  // NXI-017: a receiver that takes only part of a latched load leaves that same record
+  // selectable. Taking the last of it releases the line. This never mints a replacement pod.
+  _onLatchedPayloadAcceptance(payload) {
+    const state = this.state;
+    if (!state || !payload || !this._active) return null;
+    if (!(Math.floor(Number(payload.acceptedAmount) || 0) > 0)) return null;
+    if (payload.pickupId == null || payload.pickupId !== this._active.targetId) return null;
+    const target = state.entities && state.entities.get ? state.entities.get(payload.pickupId) : null;
+    if (!target || (target.type !== 'payload' && target.type !== 'pickup')) return null;
+    const accepted = Math.max(0, Math.floor(Number(payload.acceptedAmount) || 0));
+    // Mining emits this before it subtracts, so the live pool still includes the request.
+    const poolNow = latchedLoadRemaining(target);
+    const remaining = poolNow == null
+      ? Math.max(0, Math.floor(Number(payload.amount) || 0) - accepted)
+      : Math.max(0, poolNow - accepted);
+    if (remaining > 0) {
+      const data = target.data || (target.data = {});
+      if (!data.stableLoadId) data.stableLoadId = data.worldRecordId || `load:${target.id}`;
+      this._heldLoadId = target.id;
+      if (state.player && (state.player.targetId == null || state.player.targetId === target.id)) {
+        state.player.targetId = target.id;
+      }
+      return { heldId: target.id, released: false };
+    }
+    this._releaseAcceptedLoad(state, target.id);
+    return { heldId: null, released: true };
+  },
+
+  _releaseAcceptedLoad(state, targetId) {
+    if (!this._active || this._active.targetId !== targetId) return false;
+    const attachmentId = this._active.attachmentId;
+    const kernel = combatKernel(this);
+    const attachments = kernel && kernel.attachments;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    // Drop the gameplay latch before the authority cut. The cut notifies tether:broken, and
+    // reconcile would otherwise announce a second, reasonless break for the same load.
+    this._active = null;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this._heldLoadId = null;
+    if (attachments && player && typeof attachments.cut === 'function') {
+      attachments.cut(attachmentId, player.id, 'accepted');
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('tether:broke', { targetId, reason: 'accepted' });
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._resetPhaseMirror();
+    if (state.player && state.player.targetId === targetId) state.player.targetId = null;
+    this._mirror(state, null, 0);
+    return true;
+  },
+
   _shareHelmLoss(payload) {
     if (!payload || payload.victimId == null) return 0;
     // Loop guard: a shared tumble never shares again. One hit crosses each rope once.
@@ -2660,7 +2759,8 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
   const nextReady = snapshot.ranked.find((candidate) => candidate.id !== record.id && candidate.score > 0);
   const gap = record.score > 0 ? record.score - finite(nextReady && nextReady.score) : 0;
   const exact = snapshot.context.forceId != null && snapshot.context.forceId === record.id;
-  return {
+  const seedPreview = target && target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
+  const entry = {
     targetId: record.id,
     targetType: target && target.type || 'unknown',
     targetLabel: masslineTargetLabel(target),
@@ -2674,6 +2774,20 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
     reason: statusReason,
     reasons: record.reasons,
   };
+  // Eligible seeds already passed isAttachable. The flag is the same one the latch gate reads.
+  if (seedPreview) {
+    entry.isMassSeedTetherEligible = seedPreview.isMassSeedTetherEligible;
+    entry.seedStateWord = seedPreview.word;
+  }
+  return entry;
+}
+
+/** Each end of a bridle feels m_partner / (m + m_p). The two fractions sum to 1. */
+export function bridleEndpointShares(sourceMass, targetMass) {
+  const source = Math.max(0.1, finite(sourceMass, 1));
+  const target = Math.max(0.1, finite(targetMass, 1));
+  const sum = source + target;
+  return { source: target / sum, target: source / sum };
 }
 
 function reasonForScoringRecord(record) {
@@ -2780,17 +2894,45 @@ function masslineRouteTargetId(state) {
   return autopilotId != null ? autopilotId : null;
 }
 
+function latchedLoadRemaining(entity) {
+  const data = entity && entity.data;
+  if (!data) return null;
+  const pool = data.salvagePool;
+  if (pool && typeof pool === 'object') {
+    let total = 0;
+    let any = false;
+    for (const qty of Object.values(pool)) {
+      any = true;
+      const whole = Math.floor(Number(qty) || 0);
+      if (whole > 0) total += whole;
+    }
+    if (any) return total;
+  }
+  if (Number.isFinite(data.amount)) return Math.max(0, Math.floor(data.amount));
+  return null;
+}
+
+function selectedLoadSelectable(entity) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.data?.role === 'world_site_payload' && entity.data.worldSiteTargetable === true) {
+    const left = latchedLoadRemaining(entity);
+    return left == null || left > 0;
+  }
+  if ((entity.type === 'payload' || entity.type === 'pickup') && entity.data?.stableLoadId) {
+    const left = latchedLoadRemaining(entity);
+    return left == null || left > 0;
+  }
+  return false;
+}
+
 function masslineSelectedPayloadTargetId(state) {
   const selectedId = state && state.player && state.player.targetId;
   const selected = selectedId != null && state.entities?.get ? state.entities.get(selectedId) : null;
   // A released World Site payload is explicitly exposed through the scanner target cycle. Honor
   // that deliberate player selection ahead of an inactive/stale navigation receipt so Tab + Space
-  // is a complete public delivery interaction.
-  if (selected?.alive !== false
-      && selected?.data?.role === 'world_site_payload'
-      && selected.data.worldSiteTargetable === true) {
-    return selectedId;
-  }
+  // is a complete public delivery interaction. A partial unload keeps the same stable load
+  // selectable; an emptied load is not a target (NXI-017).
+  if (selectedLoadSelectable(selected)) return selectedId;
   return null;
 }
 

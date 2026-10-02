@@ -50,7 +50,7 @@ import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { addCargo, removeCargo, reservedCargoQty, sellableCargoQty } from './cargo.js';
+import { addCargo, removeCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
@@ -887,6 +887,336 @@ function priceStationForCargoKill(saleStationId, chain) {
   return others[0] || null;
 }
 
+function sealedSellFree(state, commodityId, qty) {
+  if (reservedCargoQuantity(state, commodityId) <= 0) return null;
+  const free = sellableCargoQuantity(state, commodityId);
+  const requested = Math.max(0, Math.floor(Number(qty) || 0));
+  if (requested <= free) return null;
+  return free;
+}
+
+function finiteTradePrice(value) {
+  const price = Number(value);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
+function knownPurchasableStock(value) {
+  if (value == null || value === '') return null;
+  const stock = Number(value);
+  if (!Number.isFinite(stock) || stock < 0) return null;
+  return Math.floor(stock);
+}
+
+let stationTollCache = null;
+function knownStationToll(stationId) {
+  if (!stationId) return 0;
+  if (!stationTollCache) {
+    stationTollCache = new Map();
+    for (const sector of SECTORS) {
+      const security = Number(sector && sector.security) || 0;
+      const toll = Math.round(DOCK_TOLL_BASE_CR + DOCK_TOLL_SECURITY_CR * security);
+      for (const station of (sector && sector.stations) || []) {
+        if (!station || !station.id) continue;
+        const services = Array.isArray(station.services) ? station.services : [];
+        stationTollCache.set(station.id, services.includes('toll') ? toll : 0);
+      }
+    }
+  }
+  return stationTollCache.get(stationId) || 0;
+}
+
+function legBuyCapacity({ credits, freeVolume, buy, stock, volume, qty }) {
+  if (buy == null || stock == null) {
+    return { units: 0, headroom: 0, limit: 'unknown', cost: null, volumeTied: 0 };
+  }
+  const vol = volume > 0 ? volume : 1;
+  const caps = [
+    { name: 'credits', units: Math.max(0, Math.floor(credits / buy)) },
+    { name: 'volume', units: Math.max(0, Math.floor(freeVolume / vol)) },
+    { name: 'stock', units: Math.max(0, stock) },
+  ];
+  let binding = caps[0];
+  for (const row of caps) if (row.units < binding.units) binding = row;
+  let units = binding.units;
+  let limit = binding.name;
+  if (qty != null && Number.isFinite(Number(qty))) {
+    const ask = Math.max(0, Math.floor(Number(qty)));
+    if (ask < units) {
+      units = ask;
+      limit = 'quantity';
+    }
+  }
+  return {
+    units,
+    headroom: binding.units,
+    limit,
+    cost: units * buy,
+    volumeTied: units * vol,
+  };
+}
+
+/**
+ * Compare one selected two-stop freight plan. Read-only: present dock prices stay quoted,
+ * later prices stay estimates, and a missing price is unknown rather than zero profit.
+ * Leg 1's cargo and capital stay tied up until that load is sold; the second buy is then
+ * capped by the credits, volume, and stock that remain. Known fees are subtracted once.
+ */
+export function compareTwoStopFreight(plan) {
+  const source = plan && typeof plan === 'object' ? plan : {};
+  const credits = Math.max(0, Number(source.credits) || 0);
+  const capVolume = Math.max(0, Number(source.capVolume) || 0);
+  const usedVolume = Math.max(0, Math.min(capVolume, Number(source.usedVolume) || 0));
+  const leg1In = source.leg1 || {};
+  const leg2In = source.leg2 || {};
+  const buy1 = finiteTradePrice(leg1In.buy);
+  const sell1 = finiteTradePrice(leg1In.sell);
+  const buy2 = finiteTradePrice(leg2In.buy);
+  const sell2 = finiteTradePrice(leg2In.sell);
+  const stock1 = knownPurchasableStock(leg1In.stock);
+  const stock2 = knownPurchasableStock(leg2In.stock);
+  const vol1 = Number(leg1In.volume) > 0 ? Number(leg1In.volume) : 1;
+  const vol2 = Number(leg2In.volume) > 0 ? Number(leg2In.volume) : 1;
+  const operatingCost = source.operatingCost != null
+    ? Math.max(0, Math.round(Number(source.operatingCost) || 0))
+    : knownStationToll(source.midStationId) + knownStationToll(source.destStationId);
+  const creditsAfterFee = Math.max(0, credits - operatingCost);
+  const freeVolume = Math.max(0, capVolume - usedVolume);
+  const first = legBuyCapacity({
+    credits: creditsAfterFee,
+    freeVolume,
+    buy: buy1,
+    stock: stock1,
+    volume: vol1,
+    qty: leg1In.qty,
+  });
+  const sale1 = sell1 == null ? null : first.units * sell1;
+  const creditsTied = creditsAfterFee - (first.cost || 0);
+  const beforeSale = {
+    credits: creditsTied,
+    freeVolume: Math.max(0, capVolume - usedVolume - first.volumeTied),
+    loadAboard: first.units,
+  };
+  const creditsAfterSale = sale1 == null ? null : creditsTied + sale1;
+  const freeAfterSale = Math.max(0, capVolume - usedVolume);
+  const second = legBuyCapacity({
+    credits: creditsAfterSale == null ? 0 : creditsAfterSale,
+    freeVolume: freeAfterSale,
+    buy: buy2,
+    stock: stock2,
+    volume: vol2,
+    qty: leg2In.qty,
+  });
+  if (sale1 == null || buy2 == null) {
+    second.units = 0;
+    second.cost = null;
+    second.volumeTied = 0;
+    second.headroom = 0;
+    second.limit = 'unknown';
+  }
+  const sale2 = sell2 == null || second.units <= 0 ? (sell2 == null ? null : 0) : second.units * sell2;
+  const priced = buy1 != null && sell1 != null && buy2 != null && sell2 != null
+    && first.cost != null && second.cost != null && sale1 != null && sale2 != null;
+  const net = priced ? sale1 + sale2 - first.cost - second.cost - operatingCost : null;
+  const limiting = second.headroom < first.headroom
+    ? { leg: 2, input: second.limit }
+    : { leg: 1, input: first.limit };
+  const directIn = source.direct || null;
+  let direct = null;
+  if (directIn) {
+    const units = Math.max(0, Math.floor(Number(directIn.units) || 0));
+    const sell = finiteTradePrice(directIn.sell);
+    direct = {
+      units,
+      proceeds: sell == null ? null : units * sell,
+      certainty: sell == null ? 'unknown' : (directIn.certainty || 'quoted'),
+      settled: false,
+    };
+  }
+  return {
+    settled: false,
+    guaranteed: false,
+    selectable: true,
+    boughtBeforeSale: false,
+    operatingCost,
+    feesCounted: 1,
+    carriedVolume: usedVolume,
+    uncertainty: leg1In.stale || leg2In.stale ? 'stale' : 'estimate',
+    basis: {
+      leg1Buy: buy1,
+      leg1Sell: sell1,
+      leg2Buy: buy2,
+      leg2Sell: sell2,
+      operatingCost,
+    },
+    direct,
+    beforeSale,
+    afterSale: {
+      credits: creditsAfterSale,
+      freeVolume: freeAfterSale,
+    },
+    leg1: {
+      units: first.units,
+      cost: first.cost,
+      proceeds: sale1,
+      limit: first.limit,
+      headroom: first.headroom,
+      volumeTied: first.volumeTied,
+      buyCertainty: leg1In.buyCertainty || (buy1 == null ? 'unknown' : 'quoted'),
+      sellCertainty: sell1 == null ? 'unknown' : (leg1In.sellCertainty || 'estimate'),
+    },
+    leg2: {
+      units: second.units,
+      cost: second.cost,
+      proceeds: sell2 == null ? null : sale2,
+      limit: second.limit,
+      headroom: second.headroom,
+      buyCertainty: buy2 == null ? 'unknown' : (leg2In.buyCertainty || 'estimate'),
+      sellCertainty: sell2 == null ? 'unknown' : (leg2In.sellCertainty || 'estimate'),
+    },
+    net,
+    profitText: net == null ? 'unknown' : String(Math.round(net)),
+    limitingLeg: limiting.leg,
+    limitingInput: limiting.input,
+  };
+}
+
+export function formatFreightComparison(result) {
+  if (!result) return '';
+  const direct = !result.direct ? ''
+    : result.direct.certainty === 'unknown' || result.direct.proceeds == null
+      ? 'direct sale unknown'
+      : `direct ${Math.round(result.direct.proceeds).toLocaleString('en-US')} cr quoted`;
+  const net = result.net == null
+    ? 'two-stop estimate unknown'
+    : `two-stop estimate ${result.net > 0 ? '+' : ''}${Math.round(result.net).toLocaleString('en-US')} cr`;
+  const leg = result.limitingLeg
+    ? `leg ${result.limitingLeg} limited by ${result.limitingInput}`
+    : '';
+  const fee = result.operatingCost > 0
+    ? `fees ${Math.round(result.operatingCost).toLocaleString('en-US')} cr once`
+    : '';
+  const age = result.uncertainty === 'stale' ? 'stale prices' : 'future prices are estimates';
+  return [direct, net, leg, fee, age, 'not guaranteed'].filter(Boolean).join(' · ');
+}
+
+function rememberedCommodityBooks(state) {
+  const books = new Map();
+  const put = (stationId, commodityId, row) => {
+    if (!stationId || !commodityId || !row) return;
+    let book = books.get(stationId);
+    if (!book) {
+      book = new Map();
+      books.set(stationId, book);
+    }
+    const prior = book.get(commodityId) || {};
+    book.set(commodityId, {
+      buy: row.buy != null ? row.buy : prior.buy,
+      sell: row.sell != null ? row.sell : prior.sell,
+      stock: row.stock != null ? row.stock : prior.stock,
+      seenAt: row.seenAt != null ? row.seenAt : prior.seenAt,
+    });
+  };
+  const intel = state && state.economy && state.economy.marketIntel;
+  if (intel && typeof intel === 'object') {
+    for (const stationId of Object.keys(intel)) {
+      const snapshot = intel[stationId] && intel[stationId].snapshot;
+      if (!snapshot) continue;
+      for (const commodityId of Object.keys(snapshot)) {
+        const row = snapshot[commodityId];
+        if (!row) continue;
+        put(stationId, commodityId, {
+          buy: row.buy,
+          sell: row.sell,
+          stock: row.stock,
+          seenAt: intel[stationId].seenAtT,
+        });
+      }
+    }
+  }
+  const memory = state && state.player && state.player.marketMemory;
+  if (memory && typeof memory === 'object' && !Array.isArray(memory)) {
+    for (const stationId of Object.keys(memory)) {
+      const station = memory[stationId];
+      if (!station || typeof station !== 'object') continue;
+      for (const commodityId of Object.keys(station)) {
+        const row = station[commodityId];
+        if (!row) continue;
+        put(stationId, commodityId, row);
+      }
+    }
+  }
+  return books;
+}
+
+function projectedPurchasableStock(state, stationId, commodityId, remembered) {
+  if (remembered && remembered.stock != null && Number.isFinite(Number(remembered.stock))) {
+    return Math.max(0, Math.floor(Number(remembered.stock)));
+  }
+  const live = state && state.economy && state.economy.markets
+    && state.economy.markets[stationId]
+    && state.economy.markets[stationId][commodityId];
+  if (!live || !Number.isFinite(Number(live.stock))) return null;
+  return Math.max(0, Math.floor(Number(live.stock) - 1));
+}
+
+/** One selected route from the market the player is standing in. Not an automatic trader. */
+export function compareDockedFreight(state, hereStationId, trade) {
+  if (!state || !hereStationId || !trade || !trade.cmdtyId || !trade.destStation) return null;
+  const books = rememberedCommodityBooks(state);
+  const farIds = [...books.keys()]
+    .filter((id) => id !== hereStationId && id !== trade.destStation)
+    .sort();
+  if (!farIds.length) return null;
+  const farId = farIds[0];
+  const midBook = books.get(trade.destStation) || new Map();
+  const farBook = books.get(farId) || new Map();
+  const commodityIds = [...new Set([...midBook.keys(), ...farBook.keys()])]
+    .filter((id) => id !== trade.cmdtyId)
+    .sort();
+  if (!commodityIds.length) return null;
+  const commodityId = commodityIds[0];
+  const mid = midBook.get(commodityId) || {};
+  const far = farBook.get(commodityId) || {};
+  const here = state.economy && state.economy.markets && state.economy.markets[hereStationId];
+  const hereEntry = here && here[trade.cmdtyId];
+  const cargo = state.player && state.player.cargo || {};
+  const held = Math.max(0, Math.floor(Number(cargo.items && cargo.items[trade.cmdtyId]) || 0));
+  const def1 = CMDTY_BY_ID.get(trade.cmdtyId);
+  const def2 = CMDTY_BY_ID.get(commodityId);
+  const seen = Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0;
+  const stale = Math.max(0, (Number(state.simTime) || 0) - seen) >= 900;
+  return compareTwoStopFreight({
+    credits: state.player && state.player.credits,
+    capVolume: cargo.capVolume,
+    usedVolume: cargo.usedVolume,
+    midStationId: trade.destStation,
+    destStationId: farId,
+    direct: {
+      units: held,
+      sell: hereEntry ? hereEntry.lastSell : null,
+      certainty: 'quoted',
+    },
+    leg1: {
+      buy: trade.buyHere != null ? trade.buyHere : (hereEntry && hereEntry.lastBuy),
+      sell: trade.sellThere,
+      stock: projectedPurchasableStock(state, hereStationId, trade.cmdtyId, null),
+      volume: def1 && def1.volPerU > 0 ? def1.volPerU : 1,
+      buyCertainty: 'quoted',
+      sellCertainty: 'estimate',
+      stale,
+    },
+    leg2: {
+      buy: mid.buy,
+      sell: far.sell,
+      stock: projectedPurchasableStock(state, trade.destStation, commodityId, mid),
+      volume: def2 && def2.volPerU > 0 ? def2.volPerU : 1,
+      buyCertainty: 'estimate',
+      sellCertainty: 'estimate',
+      stale,
+    },
+  });
+}
+
 function nextTradeSequence(player, ledger) {
   const persisted = Number.isSafeInteger(player.tradeReceiptSeq) && player.tradeReceiptSeq > 0
     ? player.tradeReceiptSeq
@@ -1492,6 +1822,7 @@ export const economy = {
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
     const allowContraband = toleratesContraband(info);
+    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
 
     const market = {};
     for (const def of COMMODITIES) {
@@ -1507,6 +1838,11 @@ export const economy = {
       // noMarketSeed goods exist only as player-brought stock (cradled specimens, one-off
       // recoveries): the station mints a neutral listing on first quote instead of seeding one.
       if (def.noMarketSeed === true) continue;
+      // High-tier commodities do not seed naturally at lower-tier stations: starter markets do not
+      // stock goods that only exist deeper in the world. If the player brings one, mintUnseededListing
+      // creates a liquidation listing so they can still sell it.
+      const marketTier = Math.max(0, Number(def.marketTier) || 0);
+      if (marketTier > stationTier) continue;
       // 'none'-role goods have no produce/consume pull, so drift them toward a neutral baseEq stock
       // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
       // role-driven surplus/shortage targets so A->B routes stay profitable.
@@ -1719,25 +2055,32 @@ export const economy = {
     let entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
     if (!def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+    const info = stationInfo(state, stationId);
+    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
+    const marketTier = Math.max(0, Number(def.marketTier) || 0);
     if (!entry) {
-      if (def.noMarketSeed !== true) {
+      if (def.noMarketSeed !== true && marketTier <= stationTier) {
+        return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+      }
+      // Liquidation minting honors the same legality gate as seeding: a lawful port does not
+      // conjure a narcotics book because a carrier happened to bring one.
+      if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
       entry = this.mintUnseededListing(stationId, def);
       if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
-    if (side === 'sell' && reservedCargoQty(state, commodityId) > 0) {
-      const sellable = sellableCargoQty(state, commodityId);
-      if (sellable <= 0) {
+    if (side === 'sell') {
+      const free = sealedSellFree(state, commodityId, qty);
+      if (free != null) {
         return {
-          ok: false, reason: 'mission_cargo_locked', unitAvg: entry.lastSell || 0, total: 0,
+          ok: false, reason: 'mission_cargo_locked',
+          ...(free > 0 ? { free } : {}),
+          unitAvg: entry.lastSell || 0, total: 0,
           priceImpactPct: 0, stockAfter: entry.stock,
         };
       }
-      // NXB-025 — the sealed units stay locked; the price still answers for the free ones.
-      qty = Math.min(qty, sellable);
     }
-    const info = stationInfo(state, stationId);
     // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
     // custody refusal, not a price. Recomputed listings still carry the policy driver as the
     // explanation; execution and automation intake both flow through this quote gate.
@@ -1756,8 +2099,6 @@ export const economy = {
       }
     }
     const standing = priceModForState(state, info && info.factionId);
-    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
-    const marketTier = Math.max(0, Number(def.marketTier) || 0);
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -1849,10 +2190,10 @@ export const economy = {
     const eff = Number(effectiveEq(entry, state, stationId, commodityId));
     const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
     const stock = entry.stock;
-    const sellable = reservedCargoQty(state, commodityId) > 0
-      ? sellableCargoQty(state, commodityId)
+    const sellable = reservedCargoQuantity(state, commodityId) > 0
+      ? sellableCargoQuantity(state, commodityId)
       : null;
-    if (sellable !== null && sellable <= 0) {
+    if (sellable !== null && (sellable <= 0 || requested > sellable)) {
       return refuse('mission_cargo_locked', stock, intakeTarget);
     }
     const headroom = Math.max(0, Math.floor(intakeTarget - stock));
@@ -1920,14 +2261,13 @@ export const economy = {
     try {
     // Enforce sealed-freight authority at execution as well as quote. This is the final shared
     // boundary for every station UI (legacy and Orbital Command) and keeps a stale or custom quote
-    // adapter from turning mission cargo into credits. NXB-025: the seal binds the reserved
-    // quantity — free units of the same commodity still sell.
+    // adapter from turning mission cargo into credits. NXB-025: a request that would touch the
+    // sealed reservation refuses and names the free count; free units still sell.
     if (side === 'sell') {
-      const sellable = sellableCargoQty(state, commodityId);
-      if (reservedCargoQty(state, commodityId) > 0 && sellable <= 0) {
-        return { ok: false, reason: 'mission_cargo_locked' };
+      const free = sealedSellFree(state, commodityId, qty);
+      if (free != null) {
+        return { ok: false, reason: 'mission_cargo_locked', ...(free > 0 ? { free } : {}) };
       }
-      if (qty > sellable) qty = sellable;
     }
     const q = this.quote(stationId, commodityId, side, qty);
     if (!q.ok) return { ok: false, reason: q.reason || 'invalid' };
@@ -2309,7 +2649,10 @@ export const economy = {
       const msg = res.reason === 'credits' ? 'Insufficient credits'
         : res.reason === 'cargo_full' ? 'Cargo hold full'
         : res.reason === 'no_cargo' ? 'Nothing to sell'
-        : res.reason === 'mission_cargo_locked' ? 'Sealed contract cargo cannot be sold'
+        : res.reason === 'mission_cargo_locked'
+          ? (res.free > 0
+            ? `Only ${res.free} units are yours to sell; the rest are sealed`
+            : 'Sealed contract cargo cannot be sold')
         : res.reason === 'black_market_locked' ? 'Smuggler Den requires the Quiet entrance delivery. Follow the Tethys contact.'
         : res.reason === 'no_stock' ? 'Station out of stock'
         : res.reason === 'price_changed'

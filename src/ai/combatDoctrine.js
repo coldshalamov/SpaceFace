@@ -13,6 +13,7 @@ import {
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
+import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/subsystems.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
@@ -369,6 +370,7 @@ export class CombatDoctrineRuntime {
 
 export function overrideDirectiveForCombatDoctrine(directive, doctrine, perception = null) {
   if (!directive || !doctrine || doctrine.targetId == null) return directive;
+  if (directive.objective && directive.objective.reason === 'wounded_corridor') return directive;
   let kind = ObjectiveKind.FOCUS;
   if (doctrine.doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
     kind = doctrine.phase === 'flank' || doctrine.phase === 'escape' || doctrine.phase === 'reform'
@@ -419,6 +421,9 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
   }
   const allowed = doctrine.allowedActionId;
   const actionId = allowed && selected.actionId === allowed ? selected.actionId : null;
+  const corridor = selected.maneuver && selected.maneuver.squadCorridor === true
+    ? selected.maneuver.flightPoint
+    : null;
   return {
     ...selected,
     actionId,
@@ -426,16 +431,17 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
     targetContact: actionId ? selected.targetContact : null,
     maneuver: {
       ...(selected.maneuver || {}),
-      kind: doctrine.maneuverKind,
+      kind: corridor ? ManeuverKind.RETREAT : doctrine.maneuverKind,
       targetId: doctrine.maneuverTargetId,
       preferredRange: doctrine.preferredRange,
       lateralSign: doctrine.lateralSign,
       faceTarget: doctrine.faceTarget === true,
       faceAngle: Number.isFinite(doctrine.faceAngle) ? doctrine.faceAngle : null,
       ramAuthorized: doctrine.ramAuthorized === true,
-      flightPoint: doctrine.flightPoint,
-      formationLocked: doctrine.formationLocked,
-      breakFormation: !doctrine.formationLocked,
+      flightPoint: corridor || doctrine.flightPoint,
+      squadCorridor: corridor ? true : selected.maneuver && selected.maneuver.squadCorridor === true,
+      formationLocked: corridor ? false : doctrine.formationLocked,
+      breakFormation: corridor ? true : !doctrine.formationLocked,
       attackLine: doctrine.attackLine || null,
       crossingLane: (doctrine.doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
           (doctrine.phase === 'engine_flare' || doctrine.phase === 'strike'))
@@ -817,6 +823,10 @@ function updateRanged(record, tick, self, target, distance) {
 function capitalStageFor(record, self) {
   const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
   const stages = (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
+  // Iron Maw's exploitable opening is a disabled battery (resolveCapitalOpening),
+  // not a hull-fraction act. The opening cadence stays live so a gun-only build
+  // can still kill the hull. Other capital choreographies keep their acts.
+  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return stages[0];
   const hull = self && Number.isFinite(self.hullFraction) ? self.hullFraction : 1;
   let stage = stages[0];
   for (const candidate of stages) {
@@ -1126,6 +1136,16 @@ function beginReform(record, tick) {
 function snapshot(record, target, directive, factionBehavior = null, self = null) {
   const phase = record.phase;
   const doctrineId = record.doctrineId;
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
+    const opening = resolveCapitalOpening(self);
+    const cue = capitalOpeningAnnouncement(record.openingTransitionId || null, opening);
+    record.openingOpen = opening.open;
+    record.openingCue = cue ? cue.cue : null;
+    record.openingTransitionId = opening.open ? opening.transitionId : null;
+    if (opening.open) record.fireWindow = false;
+  }
   // A CONTROL dispatch (security_response) or an ambush's marked prey is an authoritative
   // singleton assignment: the member must close on its named offender, not hold the squad's
   // formation anchor. Without this release, an ingress-locked member's breakFormation=false
@@ -1386,6 +1406,9 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     formationLocked,
     maneuverTargetId,
     flightPoint: record.flightPoint,
+    openingOpen: record.openingOpen === true,
+    openingCue: record.openingCue || null,
+    openingTransitionId: record.openingTransitionId || null,
     maneuverKind,
     preferredRange,
     allowedActionId,

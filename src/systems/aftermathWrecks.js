@@ -252,6 +252,23 @@ function serializeEcology(ecology) {
   return out;
 }
 
+// The cut sits on the wreck hull, toward the scavenger. Inside the hull the contact is
+// the scavenger; outside it is the near surface. Never a second marker.
+function scavengeCutContact(wreck, scavenger) {
+  const wx = wreck && wreck.pos && Number.isFinite(wreck.pos.x) ? wreck.pos.x : 0;
+  const wz = wreck && wreck.pos && Number.isFinite(wreck.pos.z) ? wreck.pos.z : 0;
+  const sx = scavenger && scavenger.pos && Number.isFinite(scavenger.pos.x) ? scavenger.pos.x : wx;
+  const sz = scavenger && scavenger.pos && Number.isFinite(scavenger.pos.z) ? scavenger.pos.z : wz;
+  const dx = sx - wx;
+  const dz = sz - wz;
+  const len = Math.hypot(dx, dz);
+  const radius = wreck && Number(wreck.radius) > 0 ? wreck.radius : 0;
+  const reach = len > 1e-6 ? Math.min(radius, len) : 0;
+  const ux = len > 1e-6 ? dx / len : 1;
+  const uz = len > 1e-6 ? dz / len : 0;
+  return { x: wx + ux * reach, z: wz + uz * reach, direction: { x: ux, z: uz } };
+}
+
 function seedOf(state) {
   return (state && state.meta && state.meta.seed >>> 0) || 1;
 }
@@ -1181,6 +1198,17 @@ export const aftermathWrecks = {
       markerId: wreck.data.markerId || null,
       taken,
       first,
+    });
+    // PIC-26: one cut record on the wreck at the scavenger's contact. The ecology budget,
+    // the roster, and the marker are unchanged — this is the torch mark, not a new body.
+    const contact = scavengeCutContact(wreck, entity);
+    this.bus.emit('presentation:cue', {
+      id: 'wreck.scavenge.cut',
+      sourceEvent: 'wreckEcology:scavenged',
+      sourceId: entity.id,
+      targetId: wreck.id,
+      position: { x: contact.x, z: contact.z },
+      direction: contact.direction,
     });
   },
 

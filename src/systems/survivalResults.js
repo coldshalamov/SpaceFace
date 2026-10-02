@@ -896,6 +896,9 @@ export const survivalResults = {
   _publish(outcome) {
     const run = this.state && this.state.run;
     if (!run || run.kind !== 'survival') return;
+    if (this._result && (run.phase === 'ended' || run.phase === 'victory')) {
+      return;
+    }
     const wave = Number.isInteger(run.wave) ? run.wave : 0;
     const liveMult = run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1;
     if (liveMult > this._stylePeak) this._stylePeak = liveMult;

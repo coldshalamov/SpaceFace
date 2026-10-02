@@ -16,7 +16,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 
 | Task | Start here |
 |---|---|
-| **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1** — `node scripts/program-dispatch.mjs --next` |
+| **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1C seams** — `node scripts/board-chunks.mjs`, claim a `free` seam, do its open rows. `program-dispatch --next` only when it returns a real packet. A drained queue is the board, not the inference catalog |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
 | Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
