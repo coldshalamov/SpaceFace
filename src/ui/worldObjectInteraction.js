@@ -81,22 +81,21 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   const unsubs = [];
   let destroyed = false;
 
+  // Canvas bounds are measured once per layout change, not once per pick: a live
+  // getBoundingClientRect forces layout after the previous frame's DOM writes. The record is
+  // refreshed when the observer or a resize/scroll marks it dirty; hosts where no observer can
+  // attach re-measure on every pick so the cached bounds can never go stale.
+  const viewport = { width: 1, height: 1, left: 0, top: 0 };
+  let viewportDirty = true;
+  let viewportObserved = false;
+  let viewportObserver = null;
+
   const picker = createWorldObjectPicker({
     state,
     getCamera: () => state.render && state.render.camera,
     getMeshes: () => state.render && state.render.meshes,
     getScene: () => state.render && state.render.scene,
-    getViewport: () => {
-      if (canvas && typeof canvas.getBoundingClientRect === 'function') {
-        const rect = canvas.getBoundingClientRect();
-        if (rect && rect.width > 0 && rect.height > 0) {
-          return { width: rect.width, height: rect.height, left: rect.left, top: rect.top };
-        }
-      }
-      const w = (typeof innerWidth === 'number' ? innerWidth : 1) || 1;
-      const h = (typeof innerHeight === 'number' ? innerHeight : 1) || 1;
-      return { width: w, height: h, left: 0, top: 0 };
-    },
+    getViewport: () => viewport,
   });
 
   const hoverPresentation = createWorldObjectHoverPresentation(state);
@@ -244,18 +243,32 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     hidePreview();
   }
 
-  function pickerViewportOffset() {
-    if (canvas && typeof canvas.getBoundingClientRect === 'function') {
-      const rect = canvas.getBoundingClientRect();
-      return { left: rect.left || 0, top: rect.top || 0 };
+  function refreshViewport() {
+    const rect = (canvas && typeof canvas.getBoundingClientRect === 'function')
+      ? canvas.getBoundingClientRect() : null;
+    if (rect && rect.width > 0 && rect.height > 0) {
+      viewport.width = rect.width;
+      viewport.height = rect.height;
+      viewport.left = rect.left || 0;
+      viewport.top = rect.top || 0;
+    } else {
+      viewport.width = (typeof innerWidth === 'number' ? innerWidth : 1) || 1;
+      viewport.height = (typeof innerHeight === 'number' ? innerHeight : 1) || 1;
+      viewport.left = 0;
+      viewport.top = 0;
     }
-    return { left: 0, top: 0 };
+    viewportDirty = false;
+  }
+
+  function markViewportDirty() {
+    if (destroyed) return;
+    viewportDirty = true;
   }
 
   function pickAt(pt) {
     if (!pt) return null;
-    const vp = pickerViewportOffset();
-    return picker.pick(pt.x - vp.left, pt.y - vp.top);
+    if (viewportDirty || !viewportObserved) refreshViewport();
+    return picker.pick(pt.x - viewport.left, pt.y - viewport.top);
   }
 
   function onRightDown(e) {
@@ -266,6 +279,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (pt) lastPoint = pt;
     const inp = state.input;
     if (!inp) return;
+    // A deliberate down must see a just-changed layout even before the observer delivers.
+    viewportDirty = true;
     const hit = pickAt(pt);
     inp.worldObjectTargetId = hit && hit.entity ? hit.entity.id : null;
     gestureActive = true;
@@ -322,6 +337,21 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   listen(windowTarget, usePointer ? 'pointerup' : 'mouseup', onButtonUp);
   listen(windowTarget, 'blur', onBlur);
   if (typeof document !== 'undefined') listen(document, 'visibilitychange', onVisibility);
+
+  try {
+    if (canvas && typeof ResizeObserver === 'function') {
+      viewportObserver = new ResizeObserver(markViewportDirty);
+      viewportObserver.observe(canvas);
+      viewportObserved = true;
+    }
+  } catch (_) {
+    try { if (viewportObserver) viewportObserver.disconnect(); } catch (_) {}
+    viewportObserver = null;
+    viewportObserved = false;
+  }
+  listen(windowTarget, 'resize', markViewportDirty);
+  // Scroll does not bubble — the captured listener catches offsets moved by nested scrollers.
+  if (typeof document !== 'undefined') listen(document, 'scroll', markViewportDirty, true);
 
   if (bus && typeof bus.on === 'function') {
     unsubs.push(bus.on('mining:start', (payload) => {
@@ -461,6 +491,10 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (destroyed) return;
     destroyed = true;
     cancelGesture('destroy');
+    if (viewportObserver) {
+      try { viewportObserver.disconnect(); } catch (_) {}
+      viewportObserver = null;
+    }
     for (const { target, type, fn, options } of listeners) {
       try { target.removeEventListener(type, fn, options); } catch (_) {}
     }
