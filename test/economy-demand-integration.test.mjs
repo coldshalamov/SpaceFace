@@ -50,6 +50,15 @@ function boot({ war = true } = {}) {
     conflicts: { 'faction_reach:faction_scn': { state: war ? 'war' : 'cold', tension: war ? 90 : 0 } },
     sectorSim: { field: sectorField() },
     world: { currentSectorId: 'sector_helios_prime', sectors: { sector_helios_prime: { owner: 'faction_scn' } } },
+    content: {
+      sectors: {
+        sector_helios_prime: {
+          id: 'sector_helios_prime',
+          tier: 3,
+          stations: [{ id: 'station_helios', type: 'trade_hub', size: 'L' }],
+        },
+      },
+    },
     ui: {}, nav: {}, entities: new Map(), entityList: [],
   };
   const econ = { ...economy };
