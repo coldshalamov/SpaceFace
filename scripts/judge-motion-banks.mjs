@@ -13,8 +13,8 @@
 //             sampled at 60 Hz scores about 2*pi*f/60 (0.1 for a 1 Hz motion); a linear ramp that
 //             starts or stops dead scores ~1.0 (a reversal can score up to 2).
 //   loopPop   (loop clips) pose and velocity mismatch between the last frame and the first.
-//   settle    (non-loop 'rest' clips) pose mismatch between the end and the start: the part must come
-//             back to where it began.
+//   settle    (non-loop 'rest' clips) distance of the END pose from rest (channels are rest-relative):
+//             the part must come to rest. A stow/close clip starts away from rest and that is fine.
 //   whip/dart peak angular speed (deg/s) and linear speed (WU/s) beyond what a heavy part can do.
 // Flags: snap, loop-pop, no-settle, whip, dart. Pure data in, numbers out: no GPU, no game boot.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -89,8 +89,11 @@ export function judgeSeries(pose, rot, loop, T = THRESHOLDS) {
   const visible = vmax >= (rot ? (T.visibleDegPerS * Math.PI) / 180 : T.visibleWuPerS);
   const kink = visible ? maxDv / vmax : 0;
   const endMisfit = rot ? angleBetween(pose[0], pose[n]) : dist(pose[0], pose[n]);
+  // Channels are rest-relative deltas, so rest is the zero translation / identity rotation. A stow,
+  // close or release clip legitimately STARTS away from rest; what it must do is END on it.
+  const endRest = rot ? angleBetween([0, 0, 0, 1], pose[n]) : dist([0, 0, 0], pose[n]);
   const loopVel = loop && visible ? Math.abs(v[0] - v[v.length - 1]) / vmax : 0;
-  return { vmax, kink, endMisfit, loopVel };
+  return { vmax, kink, endMisfit, endRest, loopVel };
 }
 
 /** Judge every clip of a bank: one row per clip. */
@@ -98,25 +101,33 @@ export function judgeBank(bank, T = THRESHOLDS) {
   const rows = [];
   for (const clip of bank.clips) {
     let worst = { kink: 0 }; let peakDeg = 0; let peakWu = 0; let endPos = 0; let endAng = 0; let loopVel = 0;
+    let restPos = 0; let restAng = 0;
     for (const [key, pose] of sampleClipSeries(bank, clip)) {
       const [group, path] = key.split('|');
       const rot = path === 'rotation';
       const j = judgeSeries(pose, rot, clip.loop, T);
-      if (rot) { peakDeg = Math.max(peakDeg, (j.vmax * 180) / Math.PI); endAng = Math.max(endAng, (j.endMisfit * 180) / Math.PI); }
-      else { peakWu = Math.max(peakWu, j.vmax); endPos = Math.max(endPos, j.endMisfit); }
+      if (rot) {
+        peakDeg = Math.max(peakDeg, (j.vmax * 180) / Math.PI);
+        endAng = Math.max(endAng, (j.endMisfit * 180) / Math.PI);
+        restAng = Math.max(restAng, (j.endRest * 180) / Math.PI);
+      } else {
+        peakWu = Math.max(peakWu, j.vmax);
+        endPos = Math.max(endPos, j.endMisfit);
+        restPos = Math.max(restPos, j.endRest);
+      }
       if (j.kink > worst.kink) worst = { ...j, group, path };
       loopVel = Math.max(loopVel, j.loopVel);
     }
     const flags = [];
     if (worst.kink > T.snapKink) flags.push('snap');
     if (clip.loop && (endPos > T.loopPosePop || endAng > T.loopAnglePopDeg || loopVel > T.loopVelPop)) flags.push('loop-pop');
-    if (!clip.loop && clip.endMode === 'rest' && (endPos > T.settlePos || endAng > T.settleAngleDeg)) flags.push('no-settle');
+    if (!clip.loop && clip.endMode === 'rest' && (restPos > T.settlePos || restAng > T.settleAngleDeg)) flags.push('no-settle');
     if (peakDeg > T.whipDegPerS) flags.push('whip');
     if (peakWu > T.dartWuPerS) flags.push('dart');
     rows.push({
       rig: bank.rigId, clip: clip.name, loop: !!clip.loop, durationS: clip.durationS, channels: clip.channels.length,
       kink: +worst.kink.toFixed(3), kinkAt: worst.group ? `${worst.group}.${worst.path}` : '', peakDegPerS: +peakDeg.toFixed(1),
-      peakWuPerS: +peakWu.toFixed(2), endPosErr: +endPos.toFixed(4), endAngErrDeg: +endAng.toFixed(2), loopVelPop: +loopVel.toFixed(3), flags,
+      peakWuPerS: +peakWu.toFixed(2), endPosErr: +endPos.toFixed(4), endAngErrDeg: +endAng.toFixed(2), restPosErr: +restPos.toFixed(4), restAngErrDeg: +restAng.toFixed(2), loopVelPop: +loopVel.toFixed(3), flags,
     });
   }
   return rows;
