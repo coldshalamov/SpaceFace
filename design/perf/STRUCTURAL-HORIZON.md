@@ -14,15 +14,28 @@ Scope rule: every lever must satisfy the two hard contracts — zero visible qua
 
 Status: revisit conditions live in the W4 report; the W-lane campaign keeps shrinking the blockers (index lanes are the SoA direction) but does not meet (a)/(b) yet.
 
-## S1. Worker-side RENDER — the inverted variant (highest ceiling)
+## S1. Whole-sim-in-worker — the transport is already built (highest ceiling)
 
-The ordering blocker that killed worker-sim does not bind its mirror: the render lane is a *downstream consumer* of sim state. A late or dropped snapshot just presents the previous frame — no authoritative ordering to violate. The codebase already has the consumption seam: `presentationRunner` drains `simulationRunner.consumeLatestCompletedTick()` + `interpolationAlpha()`, and `createRenderFrameMembrane(state)` exists as a render-side boundary object.
+**The ordering blocker that killed worker-sim does not apply to whole-sim placement.** W4 rejected moving *individual kernels* because their results must apply mid-tick at fixed points. But if the WHOLE tick runs in the worker end-to-end, intra-tick ordering never crosses the boundary: the tick executes deterministically in the worker, input enters via the existing `inputCommandSnapshot` command path, and results flow out as packed presentation frames — a direction with no authoritative ordering (a late frame just re-presents the previous one).
 
-- **What moves**: `renderer.render(scene,camera)` + the whole three.js submit path onto an `OffscreenCanvas` in a worker; main keeps sim + DOM/UI + input.
-- **What's hard (measured today)**: the render lane reads the live `state` object directly — ~60 `state.entities`/`entityList` touch sites in `renderer.js` alone, plus feel/ui/audio systems. Census of `src/render/*`'s `state.*` reads (measured, wave-26): the sim-owned surface is ~12 keys — `entities` (235 sites), `world` (118), `mode` (112), `simTime` (99), `player` (86), `combat` (28), `jobs` (44), `input` (12), `entityIndex`/`entityList` (46). Everything heavy in the top of the histogram (`render` 702, `settings` 237, `meshes` 66, `camera` 45, `pools` 15, `diagnostics`/`perfRuntime`/`stats`) is already render-local state that would move *with* the worker. The transport needs a per-frame read-model of those ~12 keys (the "active-set membership as an authoritative command stream" the phase-14 comment names as missing), or SAB columns for hot fields (pos/vel/alive/kind) plus object-identity events for mount/unmount.
-- **Why it pays under the bar**: every remaining hitch class — econTick spikes, restore slicing overshoot, decode drain, GC — stops dropping *frames*; the magic frame can't freeze because presentation no longer shares a thread with sim bursts.
-- **Effort**: XL (a dedicated spike: measure the render-lane read surface, prototype pose transport for ships only, scale out). **A/B**: identical gameplay probe driven by scripted inputs, sim on/off worker — bit-identical golden (headless path untouched), frame-time histogram diff, dropped-frame count under injected sim spikes.
-- **Risk**: highest of the list — UI/canvas interleave points and DOM-coupled render reads are the migration surface.
+**The machinery exists and is production-live today**:
+
+- `src/render/snapshotFence.js` — triple-buffered presentation snapshot fence; its own comment: *"Render reads the latest complete packed frame, never live entity objects. Required before a simulation Worker."* Readonly column facades + entityId index + sequence diagnostics.
+- `src/render/presentationSnapshot.js` — `spaceface.presentationSnapshot.v1`: SoA columns (position/quaternion/scale/tint/bank/pitch/entityId/archetype/flags), capacity-doubling zero-alloc steady state, ordered journal ring for spawn/destroy/visual events. Typed-array layout is already SAB/structured-clone friendly.
+- `renderer.js` consumes it live: `packPresentationWorldToFence` each frame (:15946-15958, :16264+), `_applyPresentationPose` reads `latestSnapshot()`+`previousSnapshot()` with pose-span interpolation alpha (:15107-15143), `_presentationPublisher` handles mesh bind/rebind.
+
+**What the spike actually has to build**:
+
+- **Packer placement**: the fence packs from `_presentationWorld` on the main thread today. Worker-sim moves the pack INTO the worker (it owns state) — main only transfers/reads. Cost: the pack is a linear scan already; the question is transport (SAB columns vs postMessage of the buffers).
+- **Input/commands IN**: `inputCommandSnapshot` exists; the other direction is synchronous *main→sim* calls — UI paths like `economy.quote()`/`execute()` that read sim state between ticks (the isolation failure from W4, but now as a *narrower* surface: only main-thread callers need a read-model or command queue, not same-tick sim internals).
+- **Non-pose state surface**: census of render-lane `state.*` reads = ~12 sim-owned keys (entities×235, world×118, mode×112, simTime×99, player×86, combat×28, jobs×44, input×12, entityIndex/entityList×46). The fence covers poses/identity today; the other keys need packed equivalents or main-side read-models.
+- **Save capture**: `serializeData` runs on sim state — inside the worker it's fine (it already runs as a generator there).
+
+- **Why it pays under the bar**: every remaining hitch class — econTick spikes (~19 ms), decode drain, restore slicing overshoot, GC — stops dropping *frames*; the magic frame can't freeze because presentation no longer shares a thread with sim bursts.
+- **Effort**: XL but decomposed — the spike is no longer "build a transport," it's "move the packer + command ring + read-model surface." **A/B**: identical scripted-input probe, sim on/off worker — bit-identical golden (headless path untouched), frame-time histogram diff, dropped-frame count under injected sim spikes.
+- **Risk**: highest of the list — the synchronous main→sim call surface (trade UI, mission accept, spawn commands) is the migration surface, not the render lane.
+
+_Alternate shape considered and parked_: render-in-worker (OffscreenCanvas submit off-thread, sim stays main). Also ordering-free, but migrates ~60 render-lane live-state reads instead of the narrower main→sim call surface, and DOM/canvas interleaving is its own risk class. Whole-sim-in-worker is the better shape because the fence was built for it.
 
 ## S2. SoA entity columns (PQ-067 precondition + direct GC win)
 
