@@ -13,6 +13,8 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_38  # noqa: E402
+import bpy  # noqa: E402
+from mathutils import Vector  # noqa: E402
 
 SHIP_ID = 'drifter'
 COLORS = {
@@ -27,6 +29,39 @@ COLORS = {
 }
 
 NY = 2.15  # nacelle centre lines
+
+
+# Close-zoom hero detail (Workflow C): every part is seated on the real skin of the part it sits on,
+# found by dropping a ray onto the built (pre-bevel) mesh, so nothing floats and nothing clips.
+def _hit(name, x, y, z=40.0):
+    o = bpy.data.objects.get(name)
+    ok, loc, nrm, _ = o.ray_cast(Vector((x, y, z)), Vector((0.0, 0.0, -1.0)))
+    return (loc, nrm) if ok else None
+
+
+def _studs(name, pts, nz=0.55, lift=0.05, sink=0.03):
+    """Fastener rods standing on part `name` at plan points, along the skin normal (one mesh via F.beams)."""
+    out = []
+    for x, y in pts:
+        h = _hit(name, x, y)
+        if h and h[1].z > nz:
+            out.append((tuple(h[0] - h[1] * sink), tuple(h[0] + h[1] * lift)))
+    return out
+
+
+def _run(name, pts, lift):
+    """A pipe/cable path hugging part `name`: plan points lifted `lift` above the skin."""
+    zs = [_hit(name, x, y) for x, y in pts]
+    return [(x, y, h[0].z + lift) for (x, y), h in zip(pts, zs) if h]
+
+
+def _rim(cx, cy, sx, sy, inset=0.12, pitch=0.45, skip=()):
+    """Rivet points round a patch plate: along its perimeter, `inset` in from the edge, minus obstacles."""
+    x0, x1, y0, y1 = cx - sx / 2 + inset, cx + sx / 2 - inset, cy - sy / 2 + inset, cy + sy / 2 - inset
+    nx, ny = max(1, round((x1 - x0) / pitch)), max(1, round((y1 - y0) / pitch))
+    pts = [(x0 + (x1 - x0) * i / nx, y) for i in range(nx + 1) for y in (y0, y1)]
+    pts += [(x, y0 + (y1 - y0) * j / ny) for j in range(1, ny) for x in (x0, x1)]
+    return [p for p in pts if all((p[0] - ox) ** 2 + (p[1] - oy) ** 2 > 0.35 ** 2 for ox, oy in skip)]
 
 
 def build():
@@ -147,7 +182,49 @@ def build():
     s.detail = 0
     F.light(s, 'NavPort', (-2.1, 3.52, 0.12), 'glow_red', size=0.14)
     F.light(s, 'NavStarboard', (-4.3, BY - 1.1, 0.5), 'glow_green', size=0.14)
-    F.light(s, 'Beacon', (-3.6, 0.0, 1.38), 'glow_amber', size=0.13)
+    F.light(s, 'Beacon', (-3.6, 0.0, 1.38), 'glow_amber.beacon', size=0.13)
+
+    # --- close-zoom hero detail layer (LOD0 only; gunmetal and dark, finishes this hull already draws) ----
+    bpy.context.view_layer.update()
+    s.detail = 2
+    studs = []
+    under_parts = ((-0.9, -0.35), (1.2, -0.6))   # scout dish post and sensor dome stand on the hull plates
+    # the patched plates are riveted down
+    for cx, cy, sx, sy in ((-3.2, 0.35, 1.7, 1.1), (0.9, -0.55, 1.3, 0.8), (-1.3, -0.4, 1.2, 0.9), (4.6, -0.45, 1.0, 0.6)):
+        studs += _studs('Hull', _rim(cx, cy, sx, sy, skip=under_parts))
+    studs += _studs('GunArm', _rim(-1.9, 2.4, 0.9, 1.3))
+    studs += _studs('Bay', _rim(-3.4, BY - 0.2, 1.1, 1.1))
+    # livery rings carry a stud row; the gun arm is fastened along its outer edge; the bay lid along its rim
+    studs += _studs('Hull', [(-5.2, y) for y in (-0.75, -0.35, 0.35, 0.75)] + [(7.3, y) for y in (-0.3, 0.3)], nz=0.4)
+    studs += _studs('GunArm', [(x, 3.22) for x in (-1.8, -1.25, 0.6, 1.0)])
+    studs += _studs('Bay', [(x, BY + dy) for x in (-2.35, -1.4, 0.15, 1.15) for dy in (-0.68, 0.68)])
+    for part, ny in (('Nacelle', NY), ('Nacelle_M', -NY)):
+        studs += _studs(part, [(x, ny + dy) for x in (-7.7, -4.9) for dy in (-0.3, 0.0, 0.3)], nz=0.5)
+    F.beams(s, 'HullStuds', studs, 0.11, material='gunmetal')
+
+    # cockpit: gunmetal frame arches over the canopy glass
+    for x in (3.3, 4.2, 5.0, 5.7):
+        zc = 1.3 - (x - 2.8) * 0.19 if x < 4.6 else 1.15 - (x - 4.6) * 0.17
+        path = [p for p in _run('Canopy', [(x, CY + dy / 10.0) for dy in range(-5, 6)], 0.02) if p[2] > zc + 0.06]
+        if len(path) > 2:
+            F.sweep(s, f'CanopyArch{x}', path, 0.1, 0.07, material='gunmetal', bevel=0.0)
+
+    # pipe runs: along the gun-arm root and along the cargo-bay seam, with dark brackets
+    pipe = _run('GunArm', [(x, 1.65) for x in (-2.4, -1.4, -0.4, 0.6, 1.6, 2.0)], 0.07)
+    F.beams(s, 'ArmPipe', [(pipe[i], pipe[i + 1]) for i in range(len(pipe) - 1)], 0.1, material='gunmetal')
+    F.boxes(s, 'ArmBrackets', [((x, 1.65, _hit('GunArm', x, 1.65)[0].z + 0.02), (0.2, 0.3, 0.04)) for x in (-2.0, -0.4, 1.2)],
+            material='dark')
+    pipe = _run('Bay', [(x, BY + 0.85) for x in (-4.1, -3.0, -1.9, -0.8, 0.3, 1.4, 1.6)], 0.07)
+    F.beams(s, 'BayPipe', [(pipe[i], pipe[i + 1]) for i in range(len(pipe) - 1)], 0.1, material='gunmetal')
+    F.boxes(s, 'BayBrackets', [((x, BY + 0.85, _hit('Bay', x, BY + 0.85)[0].z + 0.02), (0.2, 0.3, 0.04)) for x in (-3.5, -1.3, 0.9)],
+            material='dark')
+
+    # nacelle plate seams (thin dark rings, cut into the skin) and a handle on the dark hull hatch
+    for x in (-5.4, -7.0):
+        F.band(s, 'Nacelle', (x, NY, 0), (1, 0, 0), 0.05, 'dark', mirror=True)
+    hp = _run('Hull', [(2.35, -0.7), (2.85, -0.7)], 0.045)
+    F.beams(s, 'HatchHandle', [(hp[0], hp[1])], 0.05, material='gunmetal')
+    s.detail = 0
 
     # --- damage hooks: port turret + bay crane + mast shed, scout dish flickers, winglet lifts ---
     _dmg = {o.name: o for o in s.objects}

@@ -293,6 +293,11 @@ export const flightV3 = {
         && !(tether && tether.active === true)
         ? (vectoringSetting == null ? true : vectoringSetting)
         : false;
+      // The manual unvectored cruise governor still has to steer a held thrusting turn.
+      // Keep this player-only: a rope and the flight computer own their own turn contracts.
+      input.unvectoredCruiseSteering = vectoringSetting === false
+        && !(autopilot && autopilot.active)
+        && !(tether && tether.active === true);
       if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
         const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
         if (!(energyBefore > 0)) {
@@ -759,6 +764,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   // the packet, so a reused scratch must drop them before they can leak into the next craft.
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
+  o.unvectoredCruiseSteering = undefined;
   o.physicsEarnedMomentum = undefined;
   o.earnedMomentumDecayTauS = undefined;
   o.earnedMomentumAssistScale = undefined;

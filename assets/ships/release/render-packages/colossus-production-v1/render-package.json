@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cb19c2dd6d9f8867105817edda0e337058518700cbd484757a3c1cc39b7ac599",
+  "contentHash": "03b42a4ff728a652dc2b6c765a813c9c038c51ca19385392c17262a5c4cd80a8",
   "dynamicGroups": [
     {
       "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-hook-armor-port-armor.dynamic",
@@ -663,7 +663,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2a442fee32882f278870ca906dc547d99ae87a4566e0ae31667eee5c44d6cad",
+      "geometryHash": "9e69e8304fac8c38551c33723782cdec597b187d0fe62de246b0b88b2e8b5bfe",
       "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 35154,
       "indexed": true,
@@ -689,13 +689,13 @@
       },
       "drawMode": 4,
       "geometryHash": "953b3a96f42bf21faf4c0084e1c7a874372033a895a7e97e4d25cefe36067240",
-      "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -813,7 +813,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7dd1977847de2a7206ae2535a7ea5008c6d68aebd5aff78b7f4a0a3afc0e9bb",
+      "geometryHash": "6ea53da06d6560cd0266174c2f1832430114317a9bd48257ca88fcb587719fb4",
       "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1434,
       "indexed": true,
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8f3bb07be0986f42458da13995a9d27dd57e7432c669363b5541ad424ee680a",
+      "geometryHash": "ecab2bd4811611d60948f33a6f44ea451dd93b34fca337374fe1e05088195412",
       "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 28344,
       "indexed": true,
@@ -1063,7 +1063,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61a137fbb0021ce753bddaca9425450302c0d387b8cb87ba40b0514cdf250eee",
+      "geometryHash": "fad6a60ea9006c0bc80a9d7185a48f82a58ef3b524d69105ff75b2def573a19a",
       "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 51360,
       "indexed": true,
@@ -1130,9 +1130,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -1481,7 +1481,7 @@
       ]
     },
     {
-      "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1501,8 +1501,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3020,22 +3020,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6bf08377f6e6db5c86c62a409a33f1552e6e7d2c978d6783b9af99d8709fbd60"
+      "sha256": "7e33b9bbe8317c55d14eb1e5653616c97948f6408bdaebe3e7bf0d5af985a9cb"
     },
     "sourceGlb": {
-      "bytes": 1160564,
-      "sha256": "66315d638b612858d78876c56400cf7e0ce8781d49f3417a7f620fa4e98e357a",
+      "bytes": 1160636,
+      "sha256": "ae6b9e467d2a3459f358b29ee2728ced05212342ba648aaaaa8d40d25832ed90",
       "uri": "colossus_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2095172,
-    "sha256": "2f8d982258ae1399bf35d5d8da5ff2dd3e57dbdfbec943f174dc3a1dacf1e110",
+    "bytes": 2095224,
+    "sha256": "032ad4fa7b4d9e8eff8a438e08041d8ffd19b2082489dbfc668433a488e9af96",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3861,9 +3861,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6750,
+      "bytes": 7162,
       "rigId": "hull",
-      "sha256": "da491167973457d0ff1d208c873987449524c84047f6555d933d3441ec732762",
+      "sha256": "69d0621a61b93ccd849dc544201c362a290a4ea05fcfcfbba03eb3bfe1c3de0c",
       "uri": "assets/ships/motions/colossus-production-v1.motion.json"
     },
     "nodeCount": 35,
@@ -3916,7 +3916,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -4434,7 +4434,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1.glb"
   },
-  "runtimeHash": "54ee48019faee2197b3e86eb8890f14660d4ad9310db7c8ca10fbdc24f6a1d59",
+  "runtimeHash": "e47552c9d2ae8bb4bd84937518f58c64d86ebb553b717c76456c4353024f83be",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4455,7 +4455,7 @@
         "sf.render.colossus-production-v1.node.collision-hull",
         "sf.render.colossus-production-v1.node.colossus-lod0-root",
         "sf.render.colossus-production-v1.node.lod0-motion-hull-core-armor",
-        "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.colossus-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.colossus-production-v1.node.lod0-motion-hull-core-hook-armor-port-armor",
         "sf.render.colossus-production-v1.node.lod0-motion-hull-core-hook-drive-core",
         "sf.render.colossus-production-v1.node.lod0-motion-hull-core-hook-nav-port",

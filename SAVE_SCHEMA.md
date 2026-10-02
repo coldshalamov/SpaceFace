@@ -9,6 +9,7 @@ Current save version: `14`
 - `meta`
 - `player`
 - `cargo`
+- `morrow`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -235,6 +236,7 @@ Current save version: `14`
 | `$.missions.story.persistentCargo` | array | length 0 |
 | `$.missions.story.phase` | number | 1 |
 | `$.missions.story.seenComms` | object | {} |
+| `$.morrow` | object | {} |
 | `$.nav` | object | {} |
 | `$.nav.autopilot` | object | {} |
 | `$.nav.autopilot.active` | boolean | false |
@@ -342,11 +344,18 @@ Current save version: `14`
 | `$.settings.accessibility.motionPreference` | string | full |
 | `$.settings.accessibility.motionPrompted` | boolean | false |
 | `$.settings.audio` | object | {} |
+| `$.settings.audio.ambient` | number | 0.7 |
+| `$.settings.audio.combat` | number | 0.7 |
+| `$.settings.audio.comms` | number | 0.7 |
 | `$.settings.audio.defaultMuteVersion` | number | 2 |
+| `$.settings.audio.engine` | number | 0.7 |
 | `$.settings.audio.master` | number | 0.55 |
 | `$.settings.audio.music` | number | 0.32 |
 | `$.settings.audio.muted` | boolean | false |
+| `$.settings.audio.muteOnFocusLoss` | boolean | false |
 | `$.settings.audio.sfx` | number | 0.7 |
+| `$.settings.audio.ui` | number | 0.7 |
+| `$.settings.audio.voice` | number | 1 |
 | `$.settings.controls` | object | {} |
 | `$.settings.controls.bindings` | null | null |
 | `$.settings.controls.flightMode` | string | assisted |
@@ -364,13 +373,14 @@ Current save version: `14`
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
 | `$.settings.gameplay.difficulty` | string | standard |
 | `$.settings.gameplay.flightBackend` | string | v3 |
+| `$.settings.gameplay.hitPips` | boolean | true |
 | `$.settings.gameplay.masslineReleaseAssist` | string | snap |
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
+| `$.settings.gameplay.pauseOnFocusLoss` | boolean | true |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
 | `$.settings.gameplay.stuntMoments` | string | cinematic |
 | `$.settings.gameplay.targetAssistStrength` | string | full |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
-| `$.settings.keybinds` | object | {} |
 | `$.settings.showDamageNumbers` | boolean | true |
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
@@ -384,6 +394,8 @@ Current save version: `14`
 | `$.settings.video.engineTrails` | boolean | true |
 | `$.settings.video.fov` | number | 50 |
 | `$.settings.video.frameCap` | number | 0 |
+| `$.settings.video.hudOpacity` | number | 1 |
+| `$.settings.video.hudScale` | number | 1 |
 | `$.settings.video.motionReduce` | boolean | false |
 | `$.settings.video.particleQuality` | string | medium |
 | `$.settings.video.pixelRatioCap` | number | 2 |
@@ -391,6 +403,7 @@ Current save version: `14`
 | `$.settings.video.qualityPreset` | string | medium |
 | `$.settings.video.renderGraph` | boolean | false |
 | `$.settings.video.renderScale` | number | 1 |
+| `$.settings.video.screenShake` | number | 100 |
 | `$.settings.video.shadows` | boolean | false |
 | `$.settings.video.shadowsDefaultVersion` | number | 1 |
 | `$.settings.video.sharpen` | boolean | false |

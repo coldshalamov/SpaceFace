@@ -1404,7 +1404,11 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   grid-template-columns: minmax(520px, 36%) minmax(0, 1fr);
   column-gap: clamp(24px, 2.6vw, 56px);
 }
-#screens .sx-berth .sx-screen__body .sx-mkt__stage { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; }
+/* overflow:auto, not hidden: at the minimum 700px frame the console (~530px) is taller than the
+   stage and a hard clip destroyed the trade verb entirely — nothing could reach it. The element
+   is already the frame's scroll host (.dp-frame__scroll); letting it scroll only engages when the
+   console cannot fit, so the pinned-console layout at normal heights is unchanged. */
+#screens .sx-berth .sx-screen__body .sx-mkt__stage { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden auto; }
 #screens .sx-berth .sx-screen__body .sx-mkt__analysis {
   flex: 1 1 0; min-height: 0; overflow: auto; overscroll-behavior: contain;
   padding: 4px 6px 28px 0; scrollbar-gutter: stable;

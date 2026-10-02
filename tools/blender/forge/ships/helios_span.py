@@ -128,7 +128,7 @@ def build():
     s.hook_part('HOOK_SECONDARY_GUN', *pd)
     F.light(s, 'NavPort', (-12.1, 4.62, 0.31), 'glow_red', size=0.28)
     F.light(s, 'NavStarboard', (-12.1, -4.62, 0.31), 'glow_green', size=0.28)
-    F.light(s, 'Beacon', (-10.6, 0.0, 1.82), 'glow_amber', size=0.22)
+    F.light(s, 'Beacon', (-10.6, 0.0, 1.82), 'glow_amber.beacon', size=0.22)
     F.light(s, 'HeadLamp', (14.0, 0.75, -0.35), 'glow_warm', size=0.22, mirror=True)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s

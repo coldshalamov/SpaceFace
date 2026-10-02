@@ -29,6 +29,7 @@ import {
   BOMB_FIELD_LOOP_PREFIX,
   BOMB_STATUS_LOOP_PREFIX,
 } from './bombAudio.js';
+import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
@@ -41,6 +42,7 @@ import {
   legacyContinuousGain,
   readPublishedThrottle,
   readTetherLoad,
+  readDriveSpeed01,
   stepElementaryVoices,
 } from './elementaryVoices.js';
 import {
@@ -2404,6 +2406,7 @@ export const audio = {
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
     bindMinimalActionAudio(this, bus);
     bindBombAudio(this, bus);
+    bindFieldAudio(this, bus);
     installCombatVerbCueDispatch(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
@@ -3111,7 +3114,8 @@ export const audio = {
     };
 
     const masterVal = a.master == null ? 0.55 : a.master;
-    const masterTarget = muted ? 0 : linearGain(masterVal) * 0.501187;
+    const focusMuted = !!(this.state && this.state.render && this.state.render.focusLossMuted);
+    const masterTarget = (muted || focusMuted) ? 0 : linearGain(masterVal) * 0.501187;
     ramp('master', rt.masterGain.gain, masterTarget, true);
 
     const sfxVal = a.sfx == null ? 0.7 : a.sfx;
@@ -6125,7 +6129,8 @@ export const audio = {
     const rt = this.rt;
     if (!rt || !rt.loops) return;
     for (const key of Object.keys(rt.loops)) {
-      if (!key.startsWith(BOMB_FIELD_LOOP_PREFIX) && !key.startsWith(BOMB_STATUS_LOOP_PREFIX)) continue;
+      if (!key.startsWith(BOMB_FIELD_LOOP_PREFIX) && !key.startsWith(BOMB_STATUS_LOOP_PREFIX)
+        && !isFieldLoopKey(key)) continue;
       const voice = rt.loops[key];
       if (voice) this._endLoopVoice(voice);
       delete rt.loops[key];
@@ -6307,7 +6312,10 @@ export const audio = {
         // Docked quiet releases field loops; undock reconciles any field that is still live.
         // A dead field drops on this same pass even when no new one-shot arrives.
         if (this._combatMixDocked()) this._releaseDockedFieldLoops();
-        else this._syncBombAudio();
+        else {
+          this._syncBombAudio();
+          if (typeof this._syncFieldAudio === 'function') this._syncFieldAudio();
+        }
       }
       this._updateLoopPositions(now);
       rt._nextLoopPositionUpdate = now + LOOP_POSITION_UPDATE_S;
@@ -6931,6 +6939,8 @@ export const audio = {
       priorityDuck: rt._priorityDuckEngine,
       motionReduce: this._motionReduced(),
       tier: this.state ? this._resolveEngineTier(player) : 'idle',
+      speed01: readDriveSpeed01(player),
+      braking: !!(input.brake || (input.actions && input.actions.brake)),
       dt: stepDt,
       paused,
       flight: inFlight,

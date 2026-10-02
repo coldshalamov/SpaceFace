@@ -16,7 +16,7 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
-import { traumaFromContact } from './feel.js';
+import { screenShakeScale, traumaFromContact } from './feel.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import { laneWriteSetting } from '../core/simLaneCommands.js';
 import {
@@ -634,8 +634,11 @@ export function playerHasActiveAttackerFraming(state, player, sticky = null) {
   for (const e of cameraThreatCandidates(state)) {
     if (e === player) continue;
     if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
+    // Combat lock first: framing only cares about active attackers. Quiet Ceres traffic
+    // pays combatCanShootPlayer (cheap) and skips isHostileToPlayer for the non-lock majority.
+    if (!combatCanShootPlayer(state, e, player)) continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
-    if (combatCanShootPlayer(state, e, player)) return true;
+    return true;
   }
   return false;
 }
@@ -763,16 +766,21 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   let groupBaseZ = fz;
 
   // Combat composes player + nearest threat instead of only following the player.
+  // Distance + combat-lock before isHostileToPlayer: far non-attackers (the quiet majority)
+  // never pay the scanner hostility walk. Active locks and in-range ambient threats still do.
+  const composeRange2 = THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE;
+  const groupFitRange2 = GROUP_FIT_RANGE_WU * GROUP_FIT_RANGE_WU;
   for (const e of cameraThreatCandidates(state)) {
     if (e === player) continue;
     if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
-    if (!isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     const attacksPlayer = combatCanShootPlayer(state, e, player)
       || (leasedTargetId != null && e.id === leasedTargetId);
-    if (attacksPlayer && d2 <= GROUP_FIT_RANGE_WU * GROUP_FIT_RANGE_WU) {
+    if (!attacksPlayer && d2 >= composeRange2) continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    if (attacksPlayer && d2 <= groupFitRange2) {
       attackersInRange.push(e);
     }
     if (attacksPlayer && d2 < activeAttackerD2) {
@@ -782,7 +790,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     } else if (activeAttacker && attacksPlayer && d2 === activeAttackerD2) {
       activeAttackerTied = true;
     }
-    if (d2 < THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE) {
+    if (d2 < composeRange2) {
       nearbyEnemies++;
       if (d2 < nearestThreatD2) {
         nearestThreat = e;
@@ -803,12 +811,14 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     for (const e of state.entities.values()) {
       if (e === player) continue;
       if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
-      if (!isHostileToPlayer(e, player.team, state)) continue;
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       const d2 = dx * dx + dz * dz;
       const attacksPlayer = combatCanShootPlayer(state, e, player)
         || (leasedTargetId != null && e.id === leasedTargetId);
+      // Same prefilter as the primary scan: far non-attackers cannot be the tied winner.
+      if (!attacksPlayer && d2 !== nearestThreatD2 && d2 !== activeAttackerD2) continue;
+      if (!isHostileToPlayer(e, player.team, state)) continue;
       if (activeAttackerTied && !resolvedActive && attacksPlayer && d2 === activeAttackerD2) {
         resolvedActive = e;
       }
@@ -1818,7 +1828,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const motionScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
         const vl = readVelocityLanguage(state);
         const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
-        const shakeScale = motionScale * bandShake;
+        const shakeScale = motionScale * bandShake * screenShakeScale(state && state.settings);
         // Resample the shake noise on a FIXED-RATE accumulator, not once per rendered frame. The
         // amplitude was already frame-rate independent (trauma decays against frameDt above), but the
         // *frequency* was the display refresh rate: the same trauma read as a fast buzz at 144 Hz and

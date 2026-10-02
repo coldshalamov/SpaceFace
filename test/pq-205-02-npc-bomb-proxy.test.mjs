@@ -5,7 +5,7 @@ import { CombatDoctrineRuntime, CombatDoctrineId } from '../src/ai/combatDoctrin
 import { applyNpcBombMirror, NPC_BOMB_PAYLOAD_ID } from '../src/ai/npcBombMirror.js';
 import { ContactKind, ObjectiveKind } from '../src/ai/contracts.js';
 import { ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
-import { ENEMY_DOCTRINE_OVERRIDES } from '../src/data/combatDefs.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { Masks } from '../src/core/entity.js';
 import { physics } from '../src/core/physics.js';
 import { shouldSyncPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
@@ -95,7 +95,9 @@ test('the wake telegraph still precedes the drop line', () => {
   const drop = run(31);
   assert.equal(drop.phase, 'mine_drop');
   assert.equal(drop.allowedActionId, 'action_drop_bomb');
-  assert.equal(ENEMY_DOCTRINE_OVERRIDES.mine_layer_jackal, 'mine_layer_wake');
+  // The jackal's wake doctrine lives on its enemy row (spawn stamps ai.combatDoctrineId
+  // through combat.js def.combatDoctrineId) — ENEMY_DOCTRINE_OVERRIDES deliberately omits it.
+  assert.equal(ENEMY_TYPES.find((e) => e.id === 'mine_layer_jackal')?.combatDoctrineId, 'mine_layer_wake');
 });
 
 test('the NPC mirror drops one frag through bombs.drop, then commands after arming', () => {

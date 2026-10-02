@@ -259,6 +259,18 @@ import {
   writeMasslineSwingTraceGeometry,
 } from './masslineSwingTrace.js';
 import {
+  createMasslineChainReadout,
+  createMasslineChainReadoutGeometry,
+  resetMasslineChainReadout,
+  resolveMasslineChainReadoutPlan,
+  masslineChainNoteRelease,
+  masslineChainNoteContact,
+  masslineChainNoteAftermath,
+  masslineChainBindMarker,
+  masslineChainBindWreckEntity,
+  writeMasslineChainReadoutGeometry,
+} from './masslineChainReadout.js';
+import {
   createDockingCradle,
   createDockingCradleGeometry,
   resetDockingCradle,
@@ -971,6 +983,7 @@ function emptyVfxSubsystemDiag() {
     tetherCable: 0,
     masslineReleaseArc: 0,
     swingTrace: 0,      // attached-body swept-path ribbon (luminous arc of the flail's travel)
+    masslineChainReadout: 0, // thrown mass's accepted release→contact→kill ancestry trace
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
     apexFlare: 0,       // chromatic apex-release flare around the ship
@@ -1694,6 +1707,7 @@ export const vfx = {
     this._selectionSigil = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
     disposeVfxRoot(this._masslineSwingTrace && this._masslineSwingTrace.mesh, disposeState);
+    disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
@@ -1809,6 +1823,7 @@ export const vfx = {
     this._apexFlare = null;
     this._monofilamentBlade = null;
     this._masslineSwingTrace = null;
+    this._masslineChainReadout = null;
     this._dockingCradle = null;
     this._selectionSigil = null;
     this._lights = [];
@@ -2073,6 +2088,7 @@ export const vfx = {
     this._initArcPreview();
     this._initMasslineReleaseArc();
     this._initMasslineSwingTrace();
+    this._initMasslineChainReadout();
     this._initMonofilamentBlade();
     this._initDockingCradle();
     this._initApexFlare();
@@ -2409,7 +2425,7 @@ export const vfx = {
     add('combat:bounceContinued', (p) => this._onArcadeBankShot(p, 'combat:bounceContinued'));
     add('combat:damage', (p) => this._onDamage(p));
     add('combat:weakPointHit', (p) => this._onWeakPointHit(p));
-    add('physics:impact', (p) => this._onPhysicsImpact(p));
+    add('physics:impact', (p) => { this._onPhysicsImpact(p); this._onChainPhysicsImpact(p); });
     add('collision', (p) => this._onCollision(p));
     // SF-10: the PQ-009 collision-consequence receipts (a hull slammed into terrain — the concussion
     // cannon's kill move) had no renderer. Wire the wall-impact payoff on pooled substrates: consumes
@@ -2431,14 +2447,25 @@ export const vfx = {
     // Kill/despawn bursts fan out to these tails inside one emit — the per-kill structural
     // spawn + spall compose is the single heaviest tail — so they ride the presentation
     // tier's per-frame drain instead of the sim tick.
-    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); }, { presentation: true });
+    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); this._onChainEntityKilled(p); }, { presentation: true });
     add('entity:destroyed', (p) => {
       clearTumbleCadenceFor(p);
       this._forgetMomentumSinkEntity(p);
       this._markEntityCacheDirtyIfTrailType(p);
       this._onDestroyed(p);
     }, { presentation: true });
-    add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
+    add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); });
+    // NXB-050 chain readout — accepted ancestry of one thrown body. Whip/sweep contacts
+    // carry the real contact point on the record; kills and wreck markers close the chain.
+    add('tether:whipImpact', (p) => this._onChainContactPayload(p, 'victimId'));
+    add('massline:sweepImpact', (p) => this._onChainContactPayload(p, 'victimId'));
+    add('aftermathWreck:recorded', (p) => this._onChainWreckRecorded(p));
+    add('sector:enter', () => this._resetMasslineChainReadout());
+    add('sector:exit', () => this._resetMasslineChainReadout());
+    add('game:new', () => this._resetMasslineChainReadout());
+    add('game:newGame', () => this._resetMasslineChainReadout());
+    add('save:restoring', () => this._resetMasslineChainReadout());
+    add('save:loaded', () => this._resetMasslineChainReadout());
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._resetRibbonTrails(p && p.id); this._markEntityCacheDirty(); });
     add(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresJobActionReceipt(p));
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
@@ -8985,6 +9012,206 @@ export const vfx = {
     return true;
   },
 
+  // -------------------------------------------------------------------------
+  // Massline chain readout — one thrown body's accepted ancestry (release -> contacts ->
+  // resolving kill) as a bounded world-anchored trace. Follows a physical chain across
+  // camera scale without touching the camera: nodes are captured world points, marker
+  // size is zoom-compensated, and the aftermath rides the resolved wreck entity.
+  // -------------------------------------------------------------------------
+  _masslineChainReadout: null,
+
+  _initMasslineChainReadout() {
+    if (!this._scene || this._masslineChainReadout) return;
+    const record = createMasslineChainReadout();
+    const scratch = createMasslineChainReadoutGeometry(record.capacity);
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1, 1, 1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-massline-chain-readout';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 7;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._masslineChainReadout = {
+      mesh,
+      record,
+      scratch,
+      plan: {
+        visible: false, phase: 'idle', fade: 0, markerWu: 0, segWidthWu: 0, y: 0,
+        nodeCount: 0, resolved: false, hasAftermath: false,
+        wreckEntityId: null, aftermathX: NaN, aftermathZ: NaN,
+      },
+      wreckPos: { x: 0, z: 0 },
+    };
+  },
+
+  _resetMasslineChainReadout() {
+    const chain = this._masslineChainReadout;
+    if (!chain) return;
+    resetMasslineChainReadout(chain.record);
+    chain.mesh.visible = false;
+    chain.mesh.geometry.setDrawRange(0, 0);
+  },
+
+  _updateMasslineChainReadout(dt) {
+    const chain = this._masslineChainReadout;
+    if (!chain) return false;
+    const record = chain.record;
+    if (!record.active && !chain.mesh.visible) return false;
+
+    const state = this.state;
+    // The aftermath marker rides the resolved wreck entity — the usable body the
+    // aftermath system bound to the kill — never a stale pin at a prior position.
+    let wreckPos = null;
+    if (record.wreckEntityId != null) {
+      const wreck = this._ent(record.wreckEntityId);
+      if (wreck && wreck.alive !== false && wreck.pos) {
+        wreckPos = presentedAnchorXZ(wreck, this._renderInterpolationAlpha(), chain.wreckPos);
+      }
+    }
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    // Zoom compensation sizes the glyph only — node origins stay on their captured
+    // world points at every camera scale.
+    const markerWu = Math.min(9, Math.max(1.4, drawWu * 0.011));
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+
+    const plan = resolveMasslineChainReadoutPlan(record, {
+      nowS: this._t,
+      selectedId: state && state.player ? state.player.targetId : null,
+      wreckPos,
+      markerWu,
+      y: 1.32,
+      fadeScale: accessibility.flashOpacityScale,
+    }, chain.plan);
+    const geometry = writeMasslineChainReadoutGeometry(chain.scratch, record, plan);
+    if (!(geometry.indexCount > 0)) {
+      if (chain.mesh.visible) {
+        chain.mesh.visible = false;
+        chain.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = geometry.positions;
+    const vertexCount = (geometry.indexCount / 6) * 4;
+    for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    chain.mesh.geometry.setDrawRange(0, geometry.indexCount);
+    chain.mesh.geometry.attributes.position.needsUpdate = true;
+    chain.mesh.geometry.attributes.color.needsUpdate = true;
+    chain.mesh.visible = true;
+    return true;
+  },
+
+  _onChainContactPayload(p, victimIdField) {
+    const chain = this._masslineChainReadout;
+    const record = chain && chain.record;
+    if (!record || !record.active || record.phase === 'resolved' || !p) return false;
+    if (record.thrownId == null || p.targetId !== record.thrownId) return false;
+    const pos = p.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    // The accepted contact point anchors the node; the record's incoming approach
+    // (unit vector, else normalized relative velocity) orients its tick.
+    const approach = p.approach;
+    let dirX = 0;
+    let dirZ = 0;
+    if (approach && Number.isFinite(approach.x) && Number.isFinite(approach.z)) {
+      dirX = approach.x;
+      dirZ = approach.z;
+    } else {
+      const vel = p.vel;
+      const speed = vel && Math.hypot(Number(vel.x), Number(vel.z));
+      if (speed > 1e-6) { dirX = vel.x / speed; dirZ = vel.z / speed; }
+    }
+    return masslineChainNoteContact(record, {
+      victimId: p[victimIdField],
+      x: pos.x,
+      z: pos.z,
+      dirX,
+      dirZ,
+      nowS: this._t,
+    }) >= 0;
+  },
+
+  _onChainPhysicsImpact(p) {
+    const chain = this._masslineChainReadout;
+    const record = chain && chain.record;
+    if (!record || !record.active || record.phase === 'resolved' || !p) return false;
+    if (record.thrownId == null) return false;
+    const pos = p.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    let victimId = null;
+    if (p.aId === record.thrownId) victimId = p.bId;
+    else if (p.bId === record.thrownId) victimId = p.aId;
+    else return false;
+    const n = p.normal;
+    return masslineChainNoteContact(record, {
+      victimId,
+      x: pos.x,
+      z: pos.z,
+      dirX: n && Number.isFinite(n.x) ? n.x : 0,
+      dirZ: n && Number.isFinite(n.z) ? n.z : 0,
+      nowS: this._t,
+    }) >= 0;
+  },
+
+  _onChainEntityKilled(p) {
+    const chain = this._masslineChainReadout;
+    const record = chain && chain.record;
+    if (!record || !record.active || record.phase === 'resolved' || !p) return false;
+    // The thrown body dying unresolved ends the ancestry without an aftermath node.
+    if (p.id === record.thrownId) {
+      record.phase = 'resolved';
+      record.resolvedS = this._t;
+      return true;
+    }
+    const pos = p.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    return masslineChainNoteAftermath(record, {
+      victimId: p.id,
+      x: pos.x,
+      z: pos.z,
+      nowS: this._t,
+    });
+  },
+
+  _onChainWreckRecorded(marker) {
+    const chain = this._masslineChainReadout;
+    const record = chain && chain.record;
+    if (!record || !marker) return false;
+    return masslineChainBindMarker(record, marker.markerId, marker.victimId);
+  },
+
+  _onChainEntitySpawned(p) {
+    const chain = this._masslineChainReadout;
+    const record = chain && chain.record;
+    if (!record || !record.active || record.aftermathMarkerId == null) return false;
+    const entity = p && (p.entity || (p.id != null ? this._ent(p.id) : null));
+    return masslineChainBindWreckEntity(record, entity);
+  },
+
   // Monofilament blade — the taut sweep itself, drawn beside the swing trace. One world-XZ
   // segment along the chord. Slack, break, and release drop it this frame; it does not fade.
   _initMonofilamentBlade() {
@@ -9862,6 +10089,11 @@ export const vfx = {
         postTarget.kind = captured.kind || (captured.targetId != null ? 'entity' : 'point');
         postTarget.source = captured.source || 'release-target';
         postTarget.targetId = captured.targetId;
+        // Freeze the accepted release frame: stamp where the target entity was at the
+        // moment of release, so the post-release annulus stays anchored to that
+        // historical point instead of following the still-moving entity (NXI-197).
+        postTarget.pos.x = capturedEntity.pos.x;
+        postTarget.pos.z = capturedEntity.pos.z;
         postTarget.radius = Number.isFinite(captured.radius)
           ? Math.max(0, captured.radius)
           : Math.max(0, Number.isFinite(capturedEntity.radius) ? capturedEntity.radius : 0);
@@ -9900,6 +10132,21 @@ export const vfx = {
     const classification = releaseClassification(p.classification);
     const axisX = speed > 1e-6 ? target.vel.x / speed : 0;
     const axisZ = speed > 1e-6 ? target.vel.z / speed : 0;
+
+    // NXB-050 chain readout: the accepted release opens one bounded ancestry. The node
+    // sits on the thrown body's real release position — a captured world point that
+    // never drifts with the live entity after the cut.
+    const chain = this._masslineChainReadout;
+    if (chain) {
+      masslineChainNoteRelease(chain.record, {
+        thrownId: target.id,
+        x: target.pos.x,
+        z: target.pos.z,
+        dirX: axisX,
+        dirZ: axisZ,
+        nowS: this._t,
+      });
+    }
 
     if (speed > 1e-6) {
       const reduced = this._isReduced();
@@ -11594,6 +11841,7 @@ export const vfx = {
       sub.tetherCable = 0;
     }
     sub.swingTrace = this._updateMasslineSwingTrace(dt) ? 1 : 0;
+    sub.masslineChainReadout = this._updateMasslineChainReadout(dt) ? 1 : 0;
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;

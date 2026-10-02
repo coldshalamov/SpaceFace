@@ -1069,6 +1069,13 @@ export const input = {
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault(); // no autoscroll cursor
     });
     listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }));
+    listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
+    const pointerLockTarget = typeof document !== 'undefined' ? document : null;
+    listen(pointerLockTarget, 'pointerlockchange', () => {
+      if (!pointerLockTarget || !pointerLockTarget.pointerLockElement) {
+        this.releaseHeldControls('pointerlock-released');
+      }
+    });
     listen(pointerSurface, 'contextmenu', (e) => e.preventDefault());
   },
 
@@ -1164,6 +1171,14 @@ export const input = {
     if (committedInput?.autoFire || committedInput?.drawFlight) resetAutoTargetPath(this);
     if (committedInput && committedInput.pointerScreen) {
       committedInput.pointerScreen.active = false;
+    }
+    if (committedInput) {
+      committedInput.moveX = 0;
+      committedInput.moveZ = 0;
+      committedInput.turnIntent = 0;
+      committedInput.fire = false;
+      committedInput.boost = false;
+      committedInput.brake = false;
     }
     if (committedInput
       && Object.prototype.hasOwnProperty.call(committedInput, 'aimIntentActive')) {

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        42
+        45
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        43
+        46
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        44
+        47
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        45
+        48
       ],
       "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0e00239df54555a2f1497a1cfcc15f986c473666147e0e6276406f249ebcb276",
+  "contentHash": "c6971a99016b59be3c31e55d3e367f9332440257eebfb2e7c109b7c6db11512d",
   "dynamicGroups": [
     {
       "id": "sf.render.military.node.lod0-hook-nav-port.dynamic",
@@ -260,26 +260,26 @@
       "bounds": {
         "max": [
           36,
-          38.651039123535156,
+          33.59995651245117,
           16.665925979614258
         ],
         "min": [
           -39.798797607421875,
-          -35.001041412353516,
+          -34.99995803833008,
           -16.665925979614258
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a898751a02bc8f7863dad8a1aa427a17fb9f3b409670ce0f5ad3eed4fe33053",
+      "geometryHash": "607be1abd21cac08b1599f56033d6f7f5808f83f14eec2656b12b829e35482f6",
       "id": "sf.render.military.node.lod0-armor.primitive.0",
-      "indexCount": 58275,
+      "indexCount": 57711,
       "indexed": true,
       "materialHash": "012be1ec9225ae4791fabb8b9dfc968aed78e67b7773d5808246680ec5839815",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.military.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 17808
+      "vertexCount": 17640
     },
     {
       "bounds": {
@@ -420,16 +420,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "589d0d4179a4f80508d5ceb849cec3d81bd92ab42e8b82b3c74c0a9ca4baf6bd",
+      "geometryHash": "6719f5afa15300c0ae372e9a8b6c3a9d90064dd417275e2d1b62c5be2c8336ab",
       "id": "sf.render.military.node.lod0-hull.primitive.0",
-      "indexCount": 23091,
+      "indexCount": 21759,
       "indexed": true,
       "materialHash": "080b1b24120712116ccfe9f221abf6439bd3f5f15677a105543f63ca321b2671",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.military.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6955
+      "vertexCount": 6587
     },
     {
       "bounds": {
@@ -459,27 +459,27 @@
     {
       "bounds": {
         "max": [
-          26.600378036499023,
-          38.52499771118164,
-          4.151481628417969
+          26.599822998046875,
+          34.68775177001953,
+          4.147987365722656
         ],
         "min": [
-          -29.096378326416016,
+          -29.095823287963867,
           -36.547630310058594,
-          -4.151481628417969
+          -4.147987365722656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c28896fad57e86d23e2ca998ebd9b77ffbb673d85f6d47cc0c1df0cdcb4e5d23",
+      "geometryHash": "02e51553b28b308ac3581c79f32593b0b9d97cb43fea6175dc5ae4fd4097cd67",
       "id": "sf.render.military.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 1008,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.military.node.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 672
+      "vertexCount": 576
     },
     {
       "bounds": {
@@ -545,41 +545,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d63418183d9d87e6217bed9cddb9f3efb5149e007b63dafc061f88dde8bfba89",
+      "geometryHash": "7dd95cea35a9fe7576413066c38ea896ae5cfbeaf91504aa4bf07b488958dc4e",
       "id": "sf.render.military.node.lod0-mechanical.primitive.0",
-      "indexCount": 33780,
+      "indexCount": 30072,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.military.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 12331
+      "vertexCount": 11256
     },
     {
       "bounds": {
         "max": [
           32.94900131225586,
-          33.121368408203125,
+          32.77521896362305,
           21.292741775512695
         ],
         "min": [
           -36.79999923706055,
-          -35.972015380859375,
+          -35.96907043457031,
           -21.292741775512695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d13d7e553fbc22c42900a95851f1a619419521c8dd3dd6b4561892c34a16e171",
+      "geometryHash": "c7d8f8c616d0c90776fc5737b09b8c37e11fd007067fc8f3a0c5baa99fafc05c",
       "id": "sf.render.military.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 10200,
+      "indexCount": 8700,
       "indexed": true,
       "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.military.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3767
+      "vertexCount": 3352
+    },
+    {
+      "bounds": {
+        "max": [
+          15.630000114440918,
+          19.169917583465576,
+          2.069950580596924
+        ],
+        "min": [
+          10.40999984741211,
+          17.46007964015007,
+          -2.069950580596924
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3031b7b43a88709dee98b3914507198868556dac8c78502d3c55ec14cc780869",
+      "id": "sf.render.military.node.lod0-motion-military-battery-hull.primitive.0",
+      "indexCount": 1332,
+      "indexed": true,
+      "materialHash": "080b1b24120712116ccfe9f221abf6439bd3f5f15677a105543f63ca321b2671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_BATTERY_Hull",
+      "nodeId": "sf.render.military.node.lod0-motion-military-battery-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 368
+    },
+    {
+      "bounds": {
+        "max": [
+          12.048111915588379,
+          19.439968824386597,
+          2.5199999809265137
+        ],
+        "min": [
+          11.651888847351074,
+          19.15203022956848,
+          -2.5199999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db3af712a6aeed727c013d5f2ee3b147041ed80982c586102d0b0170181b9e9a",
+      "id": "sf.render.military.node.lod0-motion-military-battery-lights-cyan.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod0-motion-military-battery-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          23.459999084472656,
+          19.529723167419434,
+          2.4300575256347656
+        ],
+        "min": [
+          11.579999923706055,
+          17.721274435520172,
+          -2.4300575256347656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f85c92acee68aaedef7b8935bb572949053c642ae437afdaca3a7b5ca3bad4cb",
+      "id": "sf.render.military.node.lod0-motion-military-battery-mechanical.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodeId": "sf.render.military.node.lod0-motion-military-battery-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 312
+    },
+    {
+      "bounds": {
+        "max": [
+          23.676024436950684,
+          18.449971556663513,
+          0.9900000095367432
+        ],
+        "min": [
+          23.099976539611816,
+          17.98202759027481,
+          -0.9900000095367432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc465879da34d08b57753fcfdf7ec0325844e5328b61e9048733f50fc3f27fcc",
+      "id": "sf.render.military.node.lod0-motion-military-battery-mechanicaldark.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodeId": "sf.render.military.node.lod0-motion-military-battery-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.250053390860558,
+          38.649924486875534,
+          3.5
+        ],
+        "min": [
+          -16.749946609139442,
+          37.95007398724556,
+          -3.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b752826ab2738a9a0c886133e6330d5719732c8a89de9ec1ab2901430e8e8d70",
+      "id": "sf.render.military.node.lod0-motion-military-sweep-armor.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "012be1ec9225ae4791fabb8b9dfc968aed78e67b7773d5808246680ec5839815",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_SWEEP_Armor",
+      "nodeId": "sf.render.military.node.lod0-motion-military-sweep-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.189920276403427,
+          38.52500610053539,
+          3.200000047683716
+        ],
+        "min": [
+          -16.250078350305557,
+          38.0749923735857,
+          -3.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f0251ffd0d2ce30ae6a5d9a3d7e2afd6e0673569da28765484beb367d7fc25d",
+      "id": "sf.render.military.node.lod0-motion-military-sweep-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod0-motion-military-sweep-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.19391369819641,
+          33.117942690849304,
+          -3.4404518604278564
+        ],
+        "min": [
+          -18.397913694381714,
+          32.975135922431946,
+          -3.644451856613159
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18e7d5190cc6f43983a650e3b459f665b865f8501750f2f61a2de3ad697e1874",
+      "id": "sf.render.military.node.lod0-motion-military-track-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod0-motion-military-track-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.346088647842407,
+          33.1634167432785,
+          -1.481286883354187
+        ],
+        "min": [
+          -20.447822332382202,
+          31.006329655647278,
+          -4.882368087768555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e498639b24a35b51e46a63c9d4ebb80e778fc3b1bac8122dc3cf3de667767ad9",
+      "id": "sf.render.military.node.lod0-motion-military-track-mechanical.primitive.0",
+      "indexCount": 3060,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_TRACK_Mechanical",
+      "nodeId": "sf.render.military.node.lod0-motion-military-track-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 763
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.430615663528442,
+          33.119351744651794,
+          -1.5622649192810059
+        ],
+        "min": [
+          -20.363295316696167,
+          31.087126433849335,
+          -4.801389694213867
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c08d60394c17e1d7c86237b44c70fd9ec7418a1911a6980a29e551cc9da96380",
+      "id": "sf.render.military.node.lod0-motion-military-track-mechanicaldark.primitive.0",
+      "indexCount": 1248,
+      "indexed": true,
+      "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodeId": "sf.render.military.node.lod0-motion-military-track-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 295
     },
     {
       "bounds": {
@@ -610,26 +835,26 @@
       "bounds": {
         "max": [
           35.99624252319336,
-          38.64413070678711,
+          33.592952728271484,
           16.665491104125977
         ],
         "min": [
           -39.79352951049805,
-          -34.98992919921875,
+          -34.989540100097656,
           -16.67164421081543
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f98048f66b7ffaaf1a7dfe7657624e0f7e32e652d14ae357533cf8d3a1761940",
+      "geometryHash": "cb0f7d82038e4ada743369109207bc5467013271b015206d7bb94232ff82c5e7",
       "id": "sf.render.military.node.lod1-armor.primitive.0",
-      "indexCount": 12846,
+      "indexCount": 12786,
       "indexed": true,
       "materialHash": "012be1ec9225ae4791fabb8b9dfc968aed78e67b7773d5808246680ec5839815",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.military.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 5064
+      "vertexCount": 5031
     },
     {
       "bounds": {
@@ -770,16 +995,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39b4c7a7b2403812135d81a2804fb203a514830cab28fad1441dd2c4aad043bf",
+      "geometryHash": "8b443fbde40a6adefc2f32a69470fe858c22b92188e2579bd2f68083b61fdcb8",
       "id": "sf.render.military.node.lod1-hull.primitive.0",
-      "indexCount": 2691,
+      "indexCount": 2583,
       "indexed": true,
       "materialHash": "080b1b24120712116ccfe9f221abf6439bd3f5f15677a105543f63ca321b2671",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.military.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1110
+      "vertexCount": 1061
     },
     {
       "bounds": {
@@ -795,41 +1020,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cac93d2037b60bf4f121b98b417f3cc596df87ff934045bc4421271d69147f8a",
+      "geometryHash": "944c8a88e7b660241603d6aff3429d88abd35389b55ac4a042847a8f8633ae33",
       "id": "sf.render.military.node.lod1-lights-cyan-warning.primitive.0",
-      "indexCount": 66,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "7a196f93b95a19de3ae2870c6bed4fef0ccc9e164979a13969bee81f81900494",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan_warning",
       "nodeId": "sf.render.military.node.lod1-lights-cyan-warning",
       "primitiveIndex": 0,
-      "vertexCount": 40
+      "vertexCount": 44
     },
     {
       "bounds": {
         "max": [
-          26.600378036499023,
-          38.52499771118164,
-          4.151481628417969
+          26.599822998046875,
+          34.68775177001953,
+          4.147987365722656
         ],
         "min": [
-          -29.096378326416016,
+          -29.095823287963867,
           -36.547630310058594,
-          -4.151481628417969
+          -4.147987365722656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f66e7ed5908a039ffae5f5f6abe85bace87cc9de75e1782a26727e60955ce52",
+      "geometryHash": "50980ea348ac77977159c831d4ea6f5f21a0904caec4a90902df23c83b92f172",
       "id": "sf.render.military.node.lod1-lights-cyan.primitive.0",
-      "indexCount": 1008,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.military.node.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 672
+      "vertexCount": 576
     },
     {
       "bounds": {
@@ -845,16 +1070,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c793699b2fc193ef3cb0f7b57a4308f1e357a09c24f170efdb029405223c394f",
+      "geometryHash": "5e60eaeb39b8b0189c9449c75aa1b67db5371415c0feb272272782c1e9fcc6b8",
       "id": "sf.render.military.node.lod1-lights-warm.primitive.0",
-      "indexCount": 14460,
+      "indexCount": 14472,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.military.node.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 9237
+      "vertexCount": 9240
     },
     {
       "bounds": {
@@ -895,41 +1120,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aee83d8635207d909dff093b374c47f7d457c2097ae51b012ecd5ee660ffa134",
+      "geometryHash": "6c90d967457cb372b2caee6a07c015639a269fa81ba8ff031fefdd1d005f2173",
       "id": "sf.render.military.node.lod1-mechanical.primitive.0",
-      "indexCount": 16281,
+      "indexCount": 14304,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.military.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 7309
+      "vertexCount": 6627
     },
     {
       "bounds": {
         "max": [
           32.94900131225586,
-          33.11838150024414,
+          32.77804946899414,
           21.292741775512695
         ],
         "min": [
           -36.79999923706055,
-          -35.96648406982422,
+          -35.96623992919922,
           -21.292741775512695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8d37b15edcd9fa8129dd2b635881007b2f1b40b627518873e9d123a6b7dd91b",
+      "geometryHash": "c24615ec34afc6bbd917910c906aa59da904fe79786d9cdc3a7e298a770b02de",
       "id": "sf.render.military.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 7185,
+      "indexCount": 6558,
       "indexed": true,
       "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.military.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3071
+      "vertexCount": 2855
+    },
+    {
+      "bounds": {
+        "max": [
+          15.626443862915039,
+          19.16268253326416,
+          2.0659520626068115
+        ],
+        "min": [
+          10.413372993469238,
+          17.468478202819824,
+          -2.065908432006836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "61ed38cb5065088cf9c6013cba7cda0ce99f3bed6e7a6bf0daf6ba28deafb7d7",
+      "id": "sf.render.military.node.lod1-motion-military-battery-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "080b1b24120712116ccfe9f221abf6439bd3f5f15677a105543f63ca321b2671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_BATTERY_Hull",
+      "nodeId": "sf.render.military.node.lod1-motion-military-battery-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 52
+    },
+    {
+      "bounds": {
+        "max": [
+          12.048111915588379,
+          19.439968824386597,
+          2.5199999809265137
+        ],
+        "min": [
+          11.651888847351074,
+          19.15203022956848,
+          -2.5199999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41690117b94bce966dfe2f7e58f3ec3dae8bf2b770211b7d6fd0902f64614d57",
+      "id": "sf.render.military.node.lod1-motion-military-battery-lights-cyan.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod1-motion-military-battery-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          23.46002197265625,
+          19.529724836349487,
+          2.4300622940063477
+        ],
+        "min": [
+          11.579999923706055,
+          17.721272706985474,
+          -2.4300622940063477
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a73c0d07ed265097f9c3571ec45e641877c19b5e005a8d356c5185a13de0c86b",
+      "id": "sf.render.military.node.lod1-motion-military-battery-mechanical.primitive.0",
+      "indexCount": 462,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodeId": "sf.render.military.node.lod1-motion-military-battery-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 250
+    },
+    {
+      "bounds": {
+        "max": [
+          23.676024436950684,
+          18.449971556663513,
+          0.9900000095367432
+        ],
+        "min": [
+          23.099976539611816,
+          17.98202759027481,
+          -0.9900000095367432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e5b605db50f14678c53678dbe6c24657cf46062fbd1b7f49d6236d5683e7c83",
+      "id": "sf.render.military.node.lod1-motion-military-battery-mechanicaldark.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodeId": "sf.render.military.node.lod1-motion-military-battery-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.25225068628788,
+          38.64775267243385,
+          3.497185707092285
+        ],
+        "min": [
+          -16.747472748160362,
+          37.95273408293724,
+          -3.497185707092285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee12c04631ddada581d4845853badde84b6b7644d0938011d51e52b421d9be0c",
+      "id": "sf.render.military.node.lod1-motion-military-sweep-armor.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "012be1ec9225ae4791fabb8b9dfc968aed78e67b7773d5808246680ec5839815",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_SWEEP_Armor",
+      "nodeId": "sf.render.military.node.lod1-motion-military-sweep-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 68
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.189920276403427,
+          38.52500610053539,
+          3.200000047683716
+        ],
+        "min": [
+          -16.250078350305557,
+          38.0749923735857,
+          -3.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff5741e923f56645c73495257b54f949306c5e9b7792fce4e5f35530acd936a6",
+      "id": "sf.render.military.node.lod1-motion-military-sweep-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod1-motion-military-sweep-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.19391369819641,
+          33.117942690849304,
+          -3.4404518604278564
+        ],
+        "min": [
+          -18.397913694381714,
+          32.975135922431946,
+          -3.644451856613159
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8cabf48ad004b00a2d2ca94567eb9929cd37812125d6d824e1ecb201db5a01ff",
+      "id": "sf.render.military.node.lod1-motion-military-track-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod1-motion-military-track-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.34999108314514,
+          33.1675066947937,
+          -1.4816118478775024
+        ],
+        "min": [
+          -20.448989629745483,
+          30.9983429312706,
+          -4.889272689819336
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c5281c956075c19a12ae36d4f84a34d3a7e627035254f96ed06b414c4020ae5f",
+      "id": "sf.render.military.node.lod1-motion-military-track-mechanical.primitive.0",
+      "indexCount": 1278,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_TRACK_Mechanical",
+      "nodeId": "sf.render.military.node.lod1-motion-military-track-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 399
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.433858036994934,
+          33.119508028030396,
+          -1.5572986602783203
+        ],
+        "min": [
+          -20.36601150035858,
+          31.094139754772186,
+          -4.806355953216553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e656f0e8e719d6f7be3ad7319ebfa45006595d12c5c125dca0cbb68afb34b208",
+      "id": "sf.render.military.node.lod1-motion-military-track-mechanicaldark.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodeId": "sf.render.military.node.lod1-motion-military-track-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 123
     },
     {
       "bounds": {
@@ -960,42 +1410,42 @@
       "bounds": {
         "max": [
           35.99624252319336,
-          38.632266998291016,
+          33.592315673828125,
           16.652278900146484
         ],
         "min": [
           -39.76150894165039,
-          -34.933692932128906,
+          -34.9334602355957,
           -16.652278900146484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "026f1ec9648e917a5503a60476507fc5e2aaba7b8894c2c76e551f6cedc0c752",
+      "geometryHash": "7bd497e1548d921dbc3a2c2b26c5dbbebbf071015152969d9ac17ca2b4808739",
       "id": "sf.render.military.node.lod2-armor.primitive.0",
-      "indexCount": 4641,
+      "indexCount": 4605,
       "indexed": true,
       "materialHash": "012be1ec9225ae4791fabb8b9dfc968aed78e67b7773d5808246680ec5839815",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.military.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2517
+      "vertexCount": 2493
     },
     {
       "bounds": {
         "max": [
           34.400001525878906,
-          36.560386657714844,
-          5.499457359313965
+          36.56039047241211,
+          5.499457836151123
         ],
         "min": [
-          -6.812285423278809,
-          -3.5400586128234863,
-          -5.499457359313965
+          -6.812287330627441,
+          -3.5400593280792236,
+          -5.499457836151123
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d45346c4e43f53f0c21cdcd883025d816071a8b860455dc481c7992c218c235b",
+      "geometryHash": "54a09ca4b046f12dde432deb4de35586e92e4994790237a1854df5d494000471",
       "id": "sf.render.military.node.lod2-beacon-amber.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -1095,7 +1545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f94c3fd8f88f0fbe0266803ba6aac8ccfdea6165ce702bfcdbadf29fb6f2be0b",
+      "geometryHash": "28f690014e40fe7ed9bf69b32dd044dd9befab035e8bcdb46d971730e3c49773",
       "id": "sf.render.military.node.lod2-hull-pale.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1120,16 +1570,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d049ab3b46cfbae48f0aefe9a7d7a4f61d9738a5b8081c7badb0b6a13779684f",
+      "geometryHash": "69daa96cbaab10852ef31b8c031e41aa3fb279c464f924f1eaaa3b5b0b93cb96",
       "id": "sf.render.military.node.lod2-hull.primitive.0",
-      "indexCount": 2070,
+      "indexCount": 1938,
       "indexed": true,
       "materialHash": "080b1b24120712116ccfe9f221abf6439bd3f5f15677a105543f63ca321b2671",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.military.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 902
+      "vertexCount": 849
     },
     {
       "bounds": {
@@ -1159,27 +1609,27 @@
     {
       "bounds": {
         "max": [
-          26.598539352416992,
-          38.525001525878906,
-          4.1491594314575195
+          26.600788116455078,
+          34.68775177001953,
+          4.149887561798096
         ],
         "min": [
-          -29.09453773498535,
+          -29.096786499023438,
           -36.50563049316406,
-          -4.1491594314575195
+          -4.149887561798096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c45cc5532512f25cedf93ec56ae6bab5e534b544b948c49bb66ecd77bf40e6a2",
+      "geometryHash": "e5a3f7f1a1812174ef320e7517ea3cd6c58085fac05a651f29002c1961e791fb",
       "id": "sf.render.military.node.lod2-lights-cyan.primitive.0",
-      "indexCount": 342,
+      "indexCount": 294,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Cyan",
       "nodeId": "sf.render.military.node.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 230
+      "vertexCount": 198
     },
     {
       "bounds": {
@@ -1195,16 +1645,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47a1e5e19c47c22d7e14425cd2da1e980bcc47644f8ce5daf54aee664c2c7d9f",
+      "geometryHash": "bcf715f4df5bcf3cdb49b95916670721ce06601721afed248363c1c611b19131",
       "id": "sf.render.military.node.lod2-lights-warm.primitive.0",
-      "indexCount": 8400,
+      "indexCount": 8268,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.military.node.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 5860
+      "vertexCount": 5734
     },
     {
       "bounds": {
@@ -1245,41 +1695,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbfb19611b7a2cfc9151ac9cf5e3c4dab4187b9ff96c76d6351eecd7d4393415",
+      "geometryHash": "aa96b7bd00b3062999fb09f663a430be249341ea1d835695f416cd9bafd6464e",
       "id": "sf.render.military.node.lod2-mechanical.primitive.0",
-      "indexCount": 5199,
+      "indexCount": 4524,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.military.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3189
+      "vertexCount": 2810
     },
     {
       "bounds": {
         "max": [
           32.94900131225586,
-          33.078121185302734,
+          32.77189636230469,
           21.29167938232422
         ],
         "min": [
           -36.202003479003906,
-          -35.9547004699707,
+          -35.95703125,
           -21.29167938232422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "511516c55a88dba23d27877333853a5fc1d4d00eb80bbb2b21b613422fa9fb37",
+      "geometryHash": "7aec9ee295c910e78c82f9fa32a098a130c8e26ca440973cba7414c77a26f5e5",
       "id": "sf.render.military.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 2067,
+      "indexCount": 1791,
       "indexed": true,
       "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.military.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1157
+      "vertexCount": 1023
+    },
+    {
+      "bounds": {
+        "max": [
+          15.626443862915039,
+          19.16268253326416,
+          2.0659520626068115
+        ],
+        "min": [
+          10.413372993469238,
+          17.468478202819824,
+          -2.065908432006836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "61ed38cb5065088cf9c6013cba7cda0ce99f3bed6e7a6bf0daf6ba28deafb7d7",
+      "id": "sf.render.military.node.lod2-motion-military-battery-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "080b1b24120712116ccfe9f221abf6439bd3f5f15677a105543f63ca321b2671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_BATTERY_Hull",
+      "nodeId": "sf.render.military.node.lod2-motion-military-battery-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 52
+    },
+    {
+      "bounds": {
+        "max": [
+          12.04801082611084,
+          19.44003462791443,
+          2.4839999675750732
+        ],
+        "min": [
+          11.651989936828613,
+          19.15196442604065,
+          -2.4839999675750732
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98c3db3d0f911030b95e0d3b8a716f7ae71daa8e995d75bc1ba98dce6c36b7a8",
+      "id": "sf.render.military.node.lod2-motion-military-battery-lights-cyan.primitive.0",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod2-motion-military-battery-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 6
+    },
+    {
+      "bounds": {
+        "max": [
+          23.46019744873047,
+          19.529738187789917,
+          2.430098056793213
+        ],
+        "min": [
+          11.579999923706055,
+          17.721259355545044,
+          -2.430098056793213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ecc2ad52288c2a26573b795188902038a7ff5615c1554c88fd109884c7b24283",
+      "id": "sf.render.military.node.lod2-motion-military-battery-mechanical.primitive.0",
+      "indexCount": 210,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodeId": "sf.render.military.node.lod2-motion-military-battery-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 154
+    },
+    {
+      "bounds": {
+        "max": [
+          23.67605495452881,
+          18.449108600616455,
+          1.0108857154846191
+        ],
+        "min": [
+          23.099947929382324,
+          17.9828924536705,
+          -1.0108857154846191
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b258e940bfff425765b3f2b6f0ef28e2fb5b8bc009553bc5b26c649ad1681f79",
+      "id": "sf.render.military.node.lod2-motion-military-battery-mechanicaldark.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodeId": "sf.render.military.node.lod2-motion-military-battery-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 44
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.255309149622917,
+          38.63708248734474,
+          3.4923641681671143
+        ],
+        "min": [
+          -16.742176964879036,
+          37.96262988448143,
+          -3.4923980236053467
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37db85a0d50b2b62779377414671ed30a5378b92560421c16dbe0ee7a4354fc7",
+      "id": "sf.render.military.node.lod2-motion-military-sweep-armor.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "012be1ec9225ae4791fabb8b9dfc968aed78e67b7773d5808246680ec5839815",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_SWEEP_Armor",
+      "nodeId": "sf.render.military.node.lod2-motion-military-sweep-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.189920276403427,
+          38.52500803768635,
+          3.200000286102295
+        ],
+        "min": [
+          -16.25007836520672,
+          38.07499425113201,
+          -3.200000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c33d7859144f33b1be706cae9a9972b2fd3ea64c010c9207131379888865bcc8",
+      "id": "sf.render.military.node.lod2-motion-military-sweep-lights-cyan.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod2-motion-military-sweep-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.19391441345215,
+          33.07033622264862,
+          -3.440451741218567
+        ],
+        "min": [
+          -18.39791488647461,
+          33.022746205329895,
+          -3.644452214241028
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "35e947f31469ba9bccfcd1cc37415e5c27ca8d90d0c17de249752030404bf152",
+      "id": "sf.render.military.node.lod2-motion-military-track-lights-cyan.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodeId": "sf.render.military.node.lod2-motion-military-track-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.364456057548523,
+          33.18593609333038,
+          -1.4763622283935547
+        ],
+        "min": [
+          -20.46205723285675,
+          31.00498378276825,
+          -4.882943630218506
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f32dda7ee4d5cdafab257a6605d37c4911e1efcd140eef900d1f9b796edc9cc8",
+      "id": "sf.render.military.node.lod2-motion-military-track-mechanical.primitive.0",
+      "indexCount": 561,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_TRACK_Mechanical",
+      "nodeId": "sf.render.military.node.lod2-motion-military-track-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 233
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.40831232070923,
+          33.108331084251404,
+          -1.5441142320632935
+        ],
+        "min": [
+          -20.342010021209717,
+          31.084301590919495,
+          -4.806355953216553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c89ecb0e453c8de0d5ef8c5abdc90a9cf73eb06b20bff57270c24e0413c7142c",
+      "id": "sf.render.military.node.lod2-motion-military-track-mechanicaldark.primitive.0",
+      "indexCount": 207,
+      "indexed": true,
+      "materialHash": "908e8640300f7332ad2071d159e78f6c8ce077dcf3ba934ba681deafb43588c2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodeId": "sf.render.military.node.lod2-motion-military-track-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 71
     }
   ],
   "hlods": [],
@@ -2248,6 +2923,456 @@
       ]
     },
     {
+      "id": "sf.render.military.node.lod0-motion-military-battery-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_BATTERY_Hull",
+      "nodeName": "LOD0_MOTION_MILITARY_BATTERY_Hull",
+      "nodePath": [
+        0,
+        42,
+        0
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-battery-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodePath": [
+        0,
+        42,
+        1
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-battery-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodeName": "LOD0_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodePath": [
+        0,
+        42,
+        2
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-battery-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodeName": "LOD0_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodePath": [
+        0,
+        42,
+        3
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-sweep-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_SWEEP_Armor",
+      "nodeName": "LOD0_MOTION_MILITARY_SWEEP_Armor",
+      "nodePath": [
+        0,
+        43,
+        0
+      ],
+      "parentId": "sf.render.military.node.motion-military-sweep",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-sweep-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodePath": [
+        0,
+        43,
+        1
+      ],
+      "parentId": "sf.render.military.node.motion-military-sweep",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-track-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodePath": [
+        0,
+        44,
+        0
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-track-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_TRACK_Mechanical",
+      "nodeName": "LOD0_MOTION_MILITARY_TRACK_Mechanical",
+      "nodePath": [
+        0,
+        44,
+        1
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-motion-military-track-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodeName": "LOD0_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodePath": [
+        0,
+        44,
+        2
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
       "id": "sf.render.military.node.lod0-warning",
       "localTransform": [
         1,
@@ -2930,6 +4055,456 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-battery-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_BATTERY_Hull",
+      "nodeName": "LOD1_MOTION_MILITARY_BATTERY_Hull",
+      "nodePath": [
+        0,
+        42,
+        4
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-battery-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodePath": [
+        0,
+        42,
+        5
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-battery-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodeName": "LOD1_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodePath": [
+        0,
+        42,
+        6
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-battery-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodeName": "LOD1_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodePath": [
+        0,
+        42,
+        7
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-sweep-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_SWEEP_Armor",
+      "nodeName": "LOD1_MOTION_MILITARY_SWEEP_Armor",
+      "nodePath": [
+        0,
+        43,
+        2
+      ],
+      "parentId": "sf.render.military.node.motion-military-sweep",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-sweep-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodePath": [
+        0,
+        43,
+        3
+      ],
+      "parentId": "sf.render.military.node.motion-military-sweep",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-track-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodePath": [
+        0,
+        44,
+        3
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-track-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_TRACK_Mechanical",
+      "nodeName": "LOD1_MOTION_MILITARY_TRACK_Mechanical",
+      "nodePath": [
+        0,
+        44,
+        4
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-motion-military-track-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodeName": "LOD1_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodePath": [
+        0,
+        44,
+        5
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
         1
       ]
     },
@@ -3620,6 +5195,603 @@
       ]
     },
     {
+      "id": "sf.render.military.node.lod2-motion-military-battery-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_BATTERY_Hull",
+      "nodeName": "LOD2_MOTION_MILITARY_BATTERY_Hull",
+      "nodePath": [
+        0,
+        42,
+        8
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-battery-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_MILITARY_BATTERY_Lights_Cyan",
+      "nodePath": [
+        0,
+        42,
+        9
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-battery-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodeName": "LOD2_MOTION_MILITARY_BATTERY_Mechanical",
+      "nodePath": [
+        0,
+        42,
+        10
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-battery-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodeName": "LOD2_MOTION_MILITARY_BATTERY_MechanicalDark",
+      "nodePath": [
+        0,
+        42,
+        11
+      ],
+      "parentId": "sf.render.military.node.motion-military-battery",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-sweep-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_SWEEP_Armor",
+      "nodeName": "LOD2_MOTION_MILITARY_SWEEP_Armor",
+      "nodePath": [
+        0,
+        43,
+        4
+      ],
+      "parentId": "sf.render.military.node.motion-military-sweep",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-sweep-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_MILITARY_SWEEP_Lights_Cyan",
+      "nodePath": [
+        0,
+        43,
+        5
+      ],
+      "parentId": "sf.render.military.node.motion-military-sweep",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-track-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_MILITARY_TRACK_Lights_Cyan",
+      "nodePath": [
+        0,
+        44,
+        6
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-track-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_TRACK_Mechanical",
+      "nodeName": "LOD2_MOTION_MILITARY_TRACK_Mechanical",
+      "nodePath": [
+        0,
+        44,
+        7
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-motion-military-track-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodeName": "LOD2_MOTION_MILITARY_TRACK_MechanicalDark",
+      "nodePath": [
+        0,
+        44,
+        8
+      ],
+      "parentId": "sf.render.military.node.motion-military-track",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.motion-military-battery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_MILITARY_BATTERY",
+      "nodeName": "MOTION_MILITARY_BATTERY",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.199999809265137,
+        17.100000381469727,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.motion-military-sweep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_MILITARY_SWEEP",
+      "nodeName": "MOTION_MILITARY_SWEEP",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5,
+        38.29999923706055,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.motion-military-track",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_MILITARY_TRACK",
+      "nodeName": "MOTION_MILITARY_TRACK",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -19.200000762939453,
+        31.600000381469727,
+        -3,
+        1
+      ]
+    },
+    {
       "id": "sf.render.military.node.sf-place-station-military-root",
       "localTransform": [
         1,
@@ -3692,7 +5864,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        42
+        45
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3741,7 +5913,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        43
+        46
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3790,7 +5962,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        44
+        47
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3839,7 +6011,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        45
+        48
       ],
       "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
@@ -3866,22 +6038,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6ce7f3fa8376e1ed1544db570fdd5656a43919d21f4fc9239f71f5a7a70c6382"
+      "sha256": "e6ac668b935b5f9b630d1f9977730297b544662e587e5d3ac1d5463bba204060"
     },
     "sourceGlb": {
-      "bytes": 1616236,
-      "sha256": "558c181bc03e3348b43c7810324e71dfae43363d0a9693c42caa1e2ef2f5074c",
+      "bytes": 1667124,
+      "sha256": "df033400ae5b9e6cb8c923a532c2f5bdce89e2b517af94f3ba5b2b4d8de3af36",
       "uri": "place_station_military.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3094316,
-    "sha256": "a4b56adb6dde35199a47a915087503493d1c49d881b2adbbc5733068faf89ce5",
+    "bytes": 3152512,
+    "sha256": "7dda2ad77dc4b5752e4090a9c5c767e1492f53bc1f866417decd535eb14cd5e8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3926,13 +6098,208 @@
           0,
           1,
           0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "MOTION_MILITARY_BATTERY",
+        "planIndex": 44,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "military_battery",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              13.199999809265137
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              17.100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_MILITARY_BATTERY",
+          "spaceface": {
+            "motionGroup": "military_battery"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_MILITARY_BATTERY",
+            "recordIds": [
+              "sf.render.military.node.motion-military-battery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "MOTION_MILITARY_SWEEP",
+        "planIndex": 57,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "military_sweep",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -16.5
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              38.29999923706055
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_MILITARY_SWEEP",
+          "spaceface": {
+            "motionGroup": "military_sweep"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_MILITARY_SWEEP",
+            "recordIds": [
+              "sf.render.military.node.motion-military-sweep"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "MOTION_MILITARY_TRACK",
+        "planIndex": 64,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "military_track",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -19.200000762939453
+            ],
+            [
+              0,
+              1,
+              0,
+              3
+            ],
+            [
+              0,
+              0,
+              1,
+              31.600000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_MILITARY_TRACK",
+          "spaceface": {
+            "motionGroup": "military_track"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_MILITARY_TRACK",
+            "recordIds": [
+              "sf.render.military.node.motion-military-track"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -3.7750000953674316,
           2.4317190647125244,
           -4.375516891479492,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 44,
+        "planIndex": 74,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -3969,7 +6336,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 45,
+        "planIndex": 75,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4007,7 +6374,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 46,
+        "planIndex": 76,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4045,7 +6412,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 47,
+        "planIndex": 77,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4067,9 +6434,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 10,
-      "mechanical": 6,
-      "signal": 18,
+      "hull": 16,
+      "mechanical": 18,
+      "signal": 27,
       "warning": 2
     },
     "materialProfiles": [
@@ -4282,9 +6649,150 @@
         "allowTextures": true,
         "planIndex": 43,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 48,
+    "motionBank": {
+      "bytes": 18369,
+      "rigId": "station_military",
+      "sha256": "6fd67251e0bfc2f6ca311ff94eec00ca8d5b0673efe81b0ff3acd14c82d8b581",
+      "uri": "assets/ships/motions/military.motion.json"
+    },
+    "nodeCount": 78,
     "primitives": [
       {
         "canopy": false,
@@ -5398,13 +7906,769 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_BATTERY_Hull",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_BATTERY_Lights_Cyan",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_BATTERY_Mechanical",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_BATTERY_MechanicalDark",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_BATTERY_Hull",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_BATTERY_Lights_Cyan",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_BATTERY_Mechanical",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_BATTERY_MechanicalDark",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_BATTERY_Hull",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_BATTERY_Lights_Cyan",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_BATTERY_Mechanical",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.199999809265137,
+          17.100000381469727,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_BATTERY_MechanicalDark",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_SWEEP_Armor",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_SWEEP_Lights_Cyan",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_SWEEP_Armor",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_SWEEP_Lights_Cyan",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_SWEEP_Armor",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5,
+          38.29999923706055,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_SWEEP_Lights_Cyan",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_TRACK_Lights_Cyan",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_TRACK_Mechanical",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD0_MOTION_MILITARY_TRACK_MechanicalDark",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_TRACK_Lights_Cyan",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_TRACK_Mechanical",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD1_MOTION_MILITARY_TRACK_MechanicalDark",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_TRACK_Lights_Cyan",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_TRACK_Mechanical",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -19.200000762939453,
+          31.600000381469727,
+          -3,
+          1
+        ],
+        "name": "LOD2_MOTION_MILITARY_TRACK_MechanicalDark",
+        "planIndex": 73,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_military.glb"
   },
-  "runtimeHash": "d3fda95210a818702c669659c0a719cd2f041d53ea0309f287ddccab60c48d40",
+  "runtimeHash": "57790b7c7a4acb980094d8c0a91ee92b632939c989fbceca62510cb39c6daec6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -5436,6 +8700,15 @@
         "sf.render.military.node.lod0-livery",
         "sf.render.military.node.lod0-mechanical",
         "sf.render.military.node.lod0-mechanicaldark",
+        "sf.render.military.node.lod0-motion-military-battery-hull",
+        "sf.render.military.node.lod0-motion-military-battery-lights-cyan",
+        "sf.render.military.node.lod0-motion-military-battery-mechanical",
+        "sf.render.military.node.lod0-motion-military-battery-mechanicaldark",
+        "sf.render.military.node.lod0-motion-military-sweep-armor",
+        "sf.render.military.node.lod0-motion-military-sweep-lights-cyan",
+        "sf.render.military.node.lod0-motion-military-track-lights-cyan",
+        "sf.render.military.node.lod0-motion-military-track-mechanical",
+        "sf.render.military.node.lod0-motion-military-track-mechanicaldark",
         "sf.render.military.node.lod0-warning",
         "sf.render.military.node.lod1-armor",
         "sf.render.military.node.lod1-beacon-amber",
@@ -5450,6 +8723,15 @@
         "sf.render.military.node.lod1-livery",
         "sf.render.military.node.lod1-mechanical",
         "sf.render.military.node.lod1-mechanicaldark",
+        "sf.render.military.node.lod1-motion-military-battery-hull",
+        "sf.render.military.node.lod1-motion-military-battery-lights-cyan",
+        "sf.render.military.node.lod1-motion-military-battery-mechanical",
+        "sf.render.military.node.lod1-motion-military-battery-mechanicaldark",
+        "sf.render.military.node.lod1-motion-military-sweep-armor",
+        "sf.render.military.node.lod1-motion-military-sweep-lights-cyan",
+        "sf.render.military.node.lod1-motion-military-track-lights-cyan",
+        "sf.render.military.node.lod1-motion-military-track-mechanical",
+        "sf.render.military.node.lod1-motion-military-track-mechanicaldark",
         "sf.render.military.node.lod1-warning",
         "sf.render.military.node.lod2-armor",
         "sf.render.military.node.lod2-beacon-amber",
@@ -5464,6 +8746,18 @@
         "sf.render.military.node.lod2-livery",
         "sf.render.military.node.lod2-mechanical",
         "sf.render.military.node.lod2-mechanicaldark",
+        "sf.render.military.node.lod2-motion-military-battery-hull",
+        "sf.render.military.node.lod2-motion-military-battery-lights-cyan",
+        "sf.render.military.node.lod2-motion-military-battery-mechanical",
+        "sf.render.military.node.lod2-motion-military-battery-mechanicaldark",
+        "sf.render.military.node.lod2-motion-military-sweep-armor",
+        "sf.render.military.node.lod2-motion-military-sweep-lights-cyan",
+        "sf.render.military.node.lod2-motion-military-track-lights-cyan",
+        "sf.render.military.node.lod2-motion-military-track-mechanical",
+        "sf.render.military.node.lod2-motion-military-track-mechanicaldark",
+        "sf.render.military.node.motion-military-battery",
+        "sf.render.military.node.motion-military-sweep",
+        "sf.render.military.node.motion-military-track",
         "sf.render.military.node.sf-place-station-military-root",
         "sf.render.military.node.socket-camera-focus",
         "sf.render.military.node.socket-dock-approach",

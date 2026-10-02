@@ -19,7 +19,12 @@ export const MOTION_GROUP_KIND = 'moving-part';
 export const MOTION_FPS = 60;
 
 const CHANNEL_PATHS = new Set(['translation', 'rotation']);
-const INTERPOLATIONS = new Set(['linear', 'slerp']);
+const INTERPOLATIONS = new Set(['linear', 'slerp', 'cubic']);
+// A channel keyed sparser than this (mean key spacing, seconds) is a hand-keyed pose list, not a
+// dense bake: piecewise-linear evaluation would put a velocity corner on every key, so the
+// sampler evaluates it as a C1 'cubic' curve instead (see buildCubicPlan). Dense 60 fps bakes
+// keep the exact old linear/slerp path.
+export const MOTION_SPARSE_SPACING_S = 1 / 15;
 const END_MODES = new Set(['rest', 'hold']);
 const LOD_LEVELS = new Set([0, 1, 2]);
 // Group ids that may never own a motion channel: they belong to the scene, the camera rig,
@@ -323,18 +328,148 @@ function quatMulInto(out, ax, ay, az, aw, bx, by, bz, bw) {
   return out;
 }
 
-function sampleChannel(channel, t) {
-  const stride = channel.path === 'translation' ? 3 : 4;
-  const out = new Array(stride);
-  return sampleChannelInto(channel, t, out);
+// ---- smooth ('cubic') evaluation -------------------------------------------------------------
+//
+// Hand-keyed banks are sparse linear pose lists, so piecewise evaluation puts a velocity corner on
+// every key (the "a scripted move just got called" look). A sparse channel is therefore evaluated
+// as a C1 cubic Hermite curve that passes exactly through every key:
+//   translation  monotone cubic Hermite per component (Fritsch-Butland tangents): no overshoot
+//                between keys, and a key that is a local extremum (a reversal) or sits on a flat
+//                run gets tangent 0, so the part eases in and out of reversals and holds.
+//   rotation     the tangent at each key is a body-frame angular velocity built from the geodesic
+//                (axis-angle) secants with the same per-axis rule, so a constant spin keyed in
+//                coarse steps stays a constant spin; the quaternion derivative is 0.5*q*(w,0), the
+//                curve is a Hermite on the hemisphere-aligned key quaternions, normalised.
+//   ends         non-loop clips start and end at rest (tangent 0). A loop clip whose keys span the
+//                whole [0, duration] period gets PERIODIC tangents (antiperiodic for a rotation
+//                that closes on -q0), so a loop has no pop in pose or velocity at its seam.
+// The plan (aligned keys + tangents) is built once per channel and cached in a WeakMap, so frozen
+// banks are never mutated and the per-frame sampler allocates nothing. Dense channels keep the
+// exact old linear/slerp path.
+
+const NO_CUBIC = Object.freeze({ cubic: false });
+const cubicPlans = new WeakMap();
+
+/** Weighted harmonic mean of two adjacent secants (Fritsch-Butland); 0 on an extremum or a flat. */
+function pchipTangent(a, b, hPrev, hNext) {
+  if (a * b <= 0) return 0;
+  const w1 = 2 * hNext + hPrev;
+  const w2 = hNext + 2 * hPrev;
+  return (w1 + w2) / (w1 / a + w2 / b);
 }
 
-/** sampleChannel writing into `out` — the per-frame path allocates nothing. */
-function sampleChannelInto(channel, t, out) {
+/** Rotation vector (axis * angle, short arc) of the relative rotation conj(a) * b, into out[o..o+2]. */
+function relativeRotationVector(vals, ia, ib, out, o) {
+  const ax = vals[ia]; const ay = vals[ia + 1]; const az = vals[ia + 2]; const aw = vals[ia + 3];
+  const bx = vals[ib]; const by = vals[ib + 1]; const bz = vals[ib + 2]; const bw = vals[ib + 3];
+  // conj(a) * b
+  let x = aw * bx - ax * bw - ay * bz + az * by;
+  let y = aw * by + ax * bz - ay * bw - az * bx;
+  let z = aw * bz - ax * by + ay * bx - az * bw;
+  let w = aw * bw + ax * bx + ay * by + az * bz;
+  if (w < 0) { x = -x; y = -y; z = -z; w = -w; }
+  const s = Math.hypot(x, y, z);
+  const k = s < 1e-9 ? 2 / (w || 1) : (2 * Math.atan2(s, w)) / s;
+  out[o] = x * k; out[o + 1] = y * k; out[o + 2] = z * k;
+}
+
+function buildCubicPlan(channel, period) {
   const times = channel.times;
-  const values = channel.values;
+  const n = times.length;
+  if (n < 2) return NO_CUBIC;
+  const declared = channel.interpolation;
+  const sparse = (times[n - 1] - times[0]) / (n - 1) > MOTION_SPARSE_SPACING_S;
+  if (declared !== 'cubic' && !sparse) return NO_CUBIC;
+  const rot = channel.path === 'rotation';
+  const stride = rot ? 4 : 3;
+  const val = Float64Array.from(channel.values);
+  if (rot) {
+    // Hemisphere-align every key to its predecessor so the Hermite takes the short arc.
+    for (let k = 1; k < n; k++) {
+      const o = k * 4; const p = o - 4;
+      if (val[o] * val[p] + val[o + 1] * val[p + 1] + val[o + 2] * val[p + 2] + val[o + 3] * val[p + 3] < 0) {
+        val[o] = -val[o]; val[o + 1] = -val[o + 1]; val[o + 2] = -val[o + 2]; val[o + 3] = -val[o + 3];
+      }
+    }
+  }
+  const segs = n - 1;
+  const h = new Float64Array(segs);
+  const sec = new Float64Array(segs * 3); // secant velocity per segment: WU/s, or body rad/s
+  for (let k = 0; k < segs; k++) {
+    h[k] = times[k + 1] - times[k];
+    if (rot) {
+      relativeRotationVector(val, k * 4, (k + 1) * 4, sec, k * 3);
+      sec[k * 3] /= h[k]; sec[k * 3 + 1] /= h[k]; sec[k * 3 + 2] /= h[k];
+    } else {
+      for (let c = 0; c < 3; c++) sec[k * 3 + c] = (val[(k + 1) * 3 + c] - val[k * 3 + c]) / h[k];
+    }
+  }
+  const periodic = period > 0 && times[0] <= 1e-6 && times[n - 1] >= period - 1e-6;
+  const vel = new Float64Array(n * 3); // per-key tangent velocity (zero at non-periodic ends)
+  for (let k = 1; k < n - 1; k++) {
+    for (let c = 0; c < 3; c++) {
+      vel[k * 3 + c] = pchipTangent(sec[(k - 1) * 3 + c], sec[k * 3 + c], h[k - 1], h[k]);
+    }
+  }
+  if (periodic) {
+    // Key 0 and key n-1 are the same moment of the loop: one tangent from the last and first
+    // segments serves both, so velocity is continuous across the seam.
+    for (let c = 0; c < 3; c++) {
+      const v = pchipTangent(sec[(segs - 1) * 3 + c], sec[c], h[segs - 1], h[0]);
+      vel[c] = v; vel[(n - 1) * 3 + c] = v;
+    }
+  }
+  const tan = new Float64Array(n * stride);
+  if (rot) {
+    const tmp = [0, 0, 0, 0];
+    for (let k = 0; k < n; k++) {
+      const o = k * 4;
+      // q' = 0.5 * q * (omega, 0), omega in the key's own (body) frame.
+      quatMulInto(tmp, val[o], val[o + 1], val[o + 2], val[o + 3],
+        vel[k * 3], vel[k * 3 + 1], vel[k * 3 + 2], 0);
+      tan[o] = 0.5 * tmp[0]; tan[o + 1] = 0.5 * tmp[1]; tan[o + 2] = 0.5 * tmp[2]; tan[o + 3] = 0.5 * tmp[3];
+    }
+  } else {
+    tan.set(vel);
+  }
+  return { cubic: true, period, val, tan };
+}
+
+function cubicPlanFor(channel, period) {
+  let plan = cubicPlans.get(channel);
+  if (plan === undefined || (plan.cubic && plan.period !== period)) {
+    plan = buildCubicPlan(channel, period);
+    cubicPlans.set(channel, plan);
+  }
+  return plan;
+}
+
+/**
+ * The interpolation a channel is actually evaluated with: 'cubic' for a declared-cubic or sparse
+ * linear/slerp channel, else its declared (or default) 'linear'/'slerp'. `period` is the clip
+ * duration for a loop clip and 0 otherwise.
+ */
+export function motionChannelInterpolation(channel, period = 0) {
+  if (cubicPlanFor(channel, period).cubic) return 'cubic';
+  return channel.interpolation || (channel.path === 'rotation' ? 'slerp' : 'linear');
+}
+
+function sampleChannel(channel, t, period) {
+  const stride = channel.path === 'translation' ? 3 : 4;
+  const out = new Array(stride);
+  return sampleChannelInto(channel, t, out, period);
+}
+
+/**
+ * sampleChannel writing into `out` — the per-frame path allocates nothing. `period` is the clip
+ * duration for a loop clip (periodic end tangents) and 0 for a one-shot (rest-to-rest ends).
+ */
+export function sampleChannelInto(channel, t, out, period = 0) {
+  const times = channel.times;
   const stride = channel.path === 'translation' ? 3 : 4;
   const last = times.length - 1;
+  const plan = last > 0 ? cubicPlanFor(channel, period) : NO_CUBIC;
+  const values = plan.cubic ? plan.val : channel.values;
   if (t <= times[0]) {
     for (let i = 0; i < stride; i++) out[i] = values[i];
     return out;
@@ -350,6 +485,23 @@ function sampleChannelInto(channel, t, out) {
   }
   const span = times[hi] - times[lo];
   const f = span > 0 ? (t - times[lo]) / span : 0;
+  if (plan.cubic) {
+    const tan = plan.tan;
+    const f2 = f * f; const f3 = f2 * f;
+    const h00 = 2 * f3 - 3 * f2 + 1;
+    const h10 = (f3 - 2 * f2 + f) * span;
+    const h01 = -2 * f3 + 3 * f2;
+    const h11 = (f3 - f2) * span;
+    const a = lo * stride; const b = hi * stride;
+    for (let i = 0; i < stride; i++) {
+      out[i] = h00 * values[a + i] + h10 * tan[a + i] + h01 * values[b + i] + h11 * tan[b + i];
+    }
+    if (stride === 4) {
+      const n = Math.hypot(out[0], out[1], out[2], out[3]) || 1;
+      out[0] /= n; out[1] /= n; out[2] /= n; out[3] /= n;
+    }
+    return out;
+  }
   if (channel.path === 'rotation' && (channel.interpolation || 'slerp') === 'slerp') {
     return slerpInto(values, lo * stride, values, hi * stride, f, out);
   }
@@ -365,9 +517,11 @@ function sampleChannelInto(channel, t, out) {
  * left-multiplied onto the rest quaternion.
  */
 export function evaluateMotionClip(bank, clip, t) {
-  const local = clip.loop === true
+  const looping = clip.loop === true;
+  const local = looping
     ? ((t % clip.durationS) + clip.durationS) % clip.durationS
     : Math.min(Math.max(t, 0), clip.durationS);
+  const period = looping ? clip.durationS : 0;
   const deltas = new Map();
   for (const channel of clip.channels) {
     let entry = deltas.get(channel.group);
@@ -375,7 +529,7 @@ export function evaluateMotionClip(bank, clip, t) {
       entry = {};
       deltas.set(channel.group, entry);
     }
-    entry[channel.path] = sampleChannel(channel, local);
+    entry[channel.path] = sampleChannel(channel, local, period);
   }
   return deltas;
 }
@@ -1022,6 +1176,9 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         const local = clip.loop === true
           ? ((t % clip.durationS) + clip.durationS) % clip.durationS
           : Math.min(Math.max(t, 0), clip.durationS);
+        // Loop clips hand their period to the sampler so smooth (cubic) channels get periodic
+        // tangents at the seam; one-shots ease from and to rest.
+        const period = clip.loop === true ? clip.durationS : 0;
         // Write channel samples straight into each group's stamped delta slot — latest-started
         // wins a shared group, and groups a newer clip permanently claimed stay suppressed.
         for (const channel of clip.channels) {
@@ -1035,13 +1192,13 @@ export function bindAuthoredMotion(root, bank, options = {}) {
             delta.hasR = false;
           }
           if (channel.path === 'translation') {
-            sampleChannelInto(channel, local, delta.t);
+            sampleChannelInto(channel, local, delta.t, period);
             if (dampen !== 1) {
               delta.t[0] *= dampen; delta.t[1] *= dampen; delta.t[2] *= dampen;
             }
             delta.hasT = true;
           } else {
-            sampleChannelInto(channel, local, delta.q);
+            sampleChannelInto(channel, local, delta.q, period);
             if (dampen !== 1) dampQuat(delta.q, dampen);
             delta.hasR = true;
           }
@@ -1088,6 +1245,16 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           this.setState({ state: ambientClip, startTimeS: timeS });
         }
       }
+    },
+
+    /**
+     * The clip a bank-declared event would start, or null. Read-only view of the bank's own event map, so
+     * a bus gate can ask "is this event's verb already playing?" (`clipActive(eventClip(type))`) without
+     * hard-coding clip names per rig.
+     */
+    eventClip(type) {
+      const name = (checked.events || {})[type];
+      return typeof name === 'string' ? name : null;
     },
 
     /**

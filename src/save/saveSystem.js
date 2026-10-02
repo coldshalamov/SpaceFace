@@ -25,6 +25,8 @@ import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
+import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
+import { stampIronmanLatch } from './ironmanChoice.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
@@ -613,6 +615,7 @@ export const save = {
       ['cargo', () => this._serializeCargo()],
       // Salvage must restore before world enterSector rematerializes an authored wreck. Its own
       // serializer owns the bounded source ledger; save only preserves the dependency order.
+      ['morrow', () => this._callSerialize('morrow') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -701,6 +704,7 @@ export const save = {
     yield 'serialize:player';
     data.cargo = this._serializeCargo();
     yield 'serialize:cargo';
+    data.morrow = this._callSerialize('morrow') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -1041,6 +1045,7 @@ export const save = {
     if (settings && settings.gameplay && Object.prototype.hasOwnProperty.call(settings.gameplay, 'runtimeProfile')) {
       delete settings.gameplay.runtimeProfile;
     }
+    stampIronmanLatch(settings, this.state && this.state.simTime);
     return settings;
   },
 
@@ -1170,10 +1175,19 @@ export const save = {
     }
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
+    // SFQ-B223: a write inside the restore window would serialize half-restored live state over
+    // the very slot being loaded. requestAutosave already refuses while _restoring; the direct
+    // path must refuse too, before it can supersede a queued autosave or touch a journal.
+    if (this._restoring) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
+      this._recordSaveTiming(timing);
+      this.bus.emit('save:error', timing);
+      return false;
+    }
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
     // the old token and becomes a no-op, so the player never pays two back-to-back full writes.
     if (!autosave && this._autosavePending) this._autosavePending = null;
-    const started = nowMs();
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
       this._recordSaveTiming(timing);
@@ -1184,6 +1198,8 @@ export const save = {
     // Establish the save boundary before any serializer reads live state. Manual saves are
     // synchronous; autosaves use the same boundary in their chunked capture below. The journal
     // remains pending until the write succeeds, so a failed save can retry the same facts.
+    beginFocusLossSaveWrite(this.state);
+    try {
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
     let envelope;
     let serializeMs = 0;
@@ -1222,6 +1238,9 @@ export const save = {
     const ok = this._publishSaveResult(slot, envelope, write, timing);
     if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
     return ok;
+    } finally {
+      endFocusLossSaveWrite(this.state);
+    }
   },
 
   _writeSlot(slot, envelope, options = {}) {
@@ -3619,6 +3638,10 @@ export const save = {
     // proves nothing drifted since it read.
     const specByteHit = !specHit && spec && spec.slot === slot
       && typeof raw === 'string' && spec.raw === raw;
+    // NXI-234: capture the load generation before the worker roundtrip. A restore that
+    // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
+    // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
+    const acceptSeq = this._restoreSequence;
     const primaryPromise = ((specHit || specByteHit) ? spec.promise : Promise.resolve(null))
       .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit ? spec.raw : raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
@@ -3642,6 +3665,7 @@ export const save = {
       }
       return this._restorePreparedEnvelopeAsync(primary, slot, {
         ...(skippedNewer ? { skippedNewer } : null),
+        acceptSeq,
         rollbackSnapshot,
         rollbackSnapshotError,
       });
@@ -3658,7 +3682,7 @@ export const save = {
       const restored = await this._restorePreparedEnvelopeAsync(backup, slot, Object.assign(
         { emitError: false, recovered: true },
         skippedNewer ? { skippedNewer } : null,
-        { rollbackSnapshot, rollbackSnapshotError }));
+        { acceptSeq, rollbackSnapshot, rollbackSnapshotError }));
       if (restored) {
         let promoted = false;
         try {
@@ -3918,6 +3942,30 @@ export const save = {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
 
+    // NXI-234: a request stamped before a newer restore committed is stale — it resolves
+    // handled without touching the newer world. Checked on every entry, including the
+    // deferred re-run below, because the queue only survives until a session closes.
+    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return true;
+    }
+
+    // SFQ-B223: a load arriving inside the restore window defers whole — the deferred call
+    // re-runs this full path, so its rollback snapshot reads the now-restored world instead
+    // of being captured half-restored here and discarded. Rollback restores are internal and
+    // must never defer.
+    if (this._restoring && !rollbackAttempt) {
+      this.deferRunTransition(() => {
+        try {
+          return this._restorePreparedEnvelope(prepared, slot, options);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return true;
+    }
+
     let rollbackSnapshot = null;
     if (!rollbackAttempt && this._hasPlayerEntity()) {
       try {
@@ -4074,6 +4122,12 @@ export const save = {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
 
+    // NXI-234: the worker prepare is the slow leg — a newer load may have committed while it
+    // ran. Bail before capturing a rollback snapshot over a world this load must not touch.
+    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return true;
+    }
+
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (!rollbackAttempt) {
@@ -4207,7 +4261,7 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot);
+          return this._restore(data, slot, options);
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -4215,6 +4269,12 @@ export const save = {
         }
       });
       return marker;
+    }
+
+    // NXI-234: last gate before the destructive session — a request whose captured generation
+    // no longer matches was superseded by a newer committed restore while it waited.
+    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return { restored: false, superseded: true, stale: true, slot };
     }
 
     const s = this._openRestoreSession(data, slot, options);
@@ -4237,7 +4297,7 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot);
+          return this._restore(data, slot, options);
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -4245,6 +4305,12 @@ export const save = {
         }
       });
       return marker;
+    }
+
+    // NXI-234: last gate before the destructive session — a request whose captured generation
+    // no longer matches was superseded by a newer committed restore while it waited.
+    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return { restored: false, superseded: true, stale: true, slot };
     }
 
     const s = this._openRestoreSession(data, slot, options);
@@ -4384,6 +4450,7 @@ export const save = {
       yield 'player-restored';
       this._restoreCargo(data.cargo);
       yield 'cargo-restored';
+      this._callDeserialize('morrow', data.morrow);
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -6470,6 +6537,10 @@ function sanitizeRestoredSettings(settings) {
   // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
   // old save pin Off forever.
   if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  s.gameplay.pauseOnFocusLoss = s.gameplay.pauseOnFocusLoss !== false;
+  if (s.gameplay.ironmanChoiceLocked !== true) delete s.gameplay.ironmanChoiceLocked;
+  if (!s.audio || typeof s.audio !== 'object' || Array.isArray(s.audio)) s.audio = {};
+  s.audio.muteOnFocusLoss = s.audio.muteOnFocusLoss === true;
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
@@ -6501,6 +6572,14 @@ function sanitizeRestoredSettings(settings) {
   }
   const tc = s.controls.touch;
   if (tc.enabled !== true && tc.enabled !== false) tc.enabled = null;
+  // PRO-08: the overlay's own size and thumb placement ride along in the same object. Sanitizing
+  // them here (rather than letting the builder clamp) is what makes the choice survive a reload,
+  // and it keeps a hand-edited save from writing CSS it should not.
+  if (typeof tc.scale !== 'number' || !Number.isFinite(tc.scale) || tc.scale <= 0) delete tc.scale;
+  // Clamp in the slider's own units first, then snap by scaling by 20 and rounding an integer:
+  // 0.05 is not exactly representable, so dividing by it would persist 1.2500000000000002.
+  else tc.scale = Math.round(Math.min(1.6, Math.max(0.8, tc.scale)) * 20) / 20;
+  if (tc.layout !== 'standard' && tc.layout !== 'lefty' && tc.layout !== 'compact') delete tc.layout;
   return s;
 }
 
@@ -6527,6 +6606,7 @@ function profileSettingsSnapshot(settings) {
       damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
+      pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
     },
   };
 }

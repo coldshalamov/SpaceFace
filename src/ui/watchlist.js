@@ -174,6 +174,7 @@ export function resolveWatchPin(state, pin) {
     const ace = aceById(id);
     const mem = state.aceMemory && state.aceMemory[id];
     if (!ace) return { ...base, detail: 'off the books' };
+    if (mem && mem.defeated === true) return { ...base, detail: 'defeated', tone: 'calm' };
     if (mem && mem.status) return { ...base, detail: String(mem.status).replace(/_/g, ' '), tone: 'foe' };
     if (mem && Number(mem.kills) > 0) return { ...base, detail: `downed you ×${Number(mem.kills)}`, tone: 'foe' };
     if (mem && Number(mem.defeats) > 0) return { ...base, detail: `downed ×${Number(mem.defeats)}`, tone: 'you' };
@@ -202,6 +203,28 @@ export function resolveWatchPin(state, pin) {
 }
 
 /** The rendered list: resolved pins, capped at the watch max, in pin order. */
+/** A search view. It does not rewrite pins or the active route. */
+export function filterWatchPins(pins, query) {
+  const list = Array.isArray(pins) ? pins : [];
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return list.slice();
+  return list.filter((pin) => String(pin.label || pin.ref || '').toLowerCase().includes(q));
+}
+
+/**
+ * Navigation is a separate act from tracking. Rumored or unknown access is refused.
+ * Filtering is not this function and must not be passed a query.
+ */
+export function engageKnownDestination(nav, destination) {
+  if (!nav || typeof nav !== 'object') return { ok: false, reason: 'no_nav' };
+  const access = destination && destination.access;
+  if (!destination || destination.known === false || access === 'rumored' || access === 'unknown') {
+    return { ok: false, reason: 'unknown', route: nav.route || null };
+  }
+  nav.route = { ref: destination.ref, label: destination.label || destination.ref };
+  return { ok: true, route: nav.route };
+}
+
 export function resolveWatchlist(state) {
   return watchlistPins(state).slice(0, WATCHLIST_MAX).map((pin) => resolveWatchPin(state, pin));
 }

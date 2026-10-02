@@ -12,7 +12,7 @@ import { SHIPS } from '../data/ships.js';
 import { modelTruthMountFractions, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import { placeDrawScaleFromRow } from '../data/modelTruthMounts.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
-import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
+import { SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
@@ -23,8 +23,10 @@ import { dropWedgedAuthoredTasks, invalidateFailedAuthoredAssets, loadAuthoredPa
 import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
+import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
+import { createAsyncAdmission, AUTHORED_ASYNC_DEADLINE_MS } from './asyncAdmission.js';
 import {
   TABLE_BAND,
   TABLE_DECODE_RUNWAY_SECONDS,
@@ -217,6 +219,9 @@ const sharedReadabilityShellVariants = new Map();
 const ownerReleaseState = new WeakMap();
 const compositionPrimitiveCache = new WeakMap();
 const upgradeQueuesByScene = new WeakMap();
+// Kept boundaries can be reused by a new queue after save/load retires the old one. A late
+// continuation must only release or publish resources belonging to its own admission.
+const upgradeTokensByBoundary = new WeakMap();
 const bootstrapResidencyOwnersByRenderer = new WeakMap();
 const authoredInstancedMeshDisposeRegistrationByRenderer = new WeakMap();
 const authoredInstancedMeshDisposeProbeByRenderer = new WeakMap();
@@ -1587,11 +1592,21 @@ function packagedLiveWholeShipFile(file) {
   return PACKAGED_LIVE_WHOLE_SHIP_FILES.has(relative) ? relative : null;
 }
 
+// S6 faction hulls: palette + lit-trim variants of the hull the enemy already renders (same
+// geometry, collider fit and sockets; tools/blender/forge/variant.py). Enemy-id keyed on purpose:
+// the live entity's factionId is whatever zone or encounter fielded it, the enemy id is not.
+//   patrol_lawman, customs_cutter  Concord navy Hornet interdictor (was the player's yellow Hornet)
+//   quiet_ghost                    The Quiet's ink-violet Wasp (lancer_sniper and the pirate Wasp stay put)
+//   choir_zealot                   Ascendant Choir plum/magenta dart (the Reach dart keeps its sodium)
+//   warden_escort                  Vael teal lode (the Reach bruisers keep the oxide lode)
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'wholeships/ashline_dart.glb',
-  choir_zealot: 'wholeships/ashline_dart.glb',
+  choir_zealot: 'wholeships/ashline_dart_choir.glb',
   lancer_sniper: 'wholeships/wasp_production_v1.glb',
-  quiet_ghost: 'wholeships/wasp_production_v1.glb',
+  quiet_ghost: 'wholeships/wasp_quiet_ghost.glb',
+  patrol_lawman: 'wholeships/hornet_scn_interdictor.glb',
+  customs_cutter: 'wholeships/hornet_scn_interdictor.glb',
+  warden_escort: 'wholeships/ashline_lode_vael.glb',
   bruiser_brawler: 'wholeships/ashline_lode.glb',
   pd_screen_escort: 'wholeships/ashline_lode.glb',
   field_anchor_controller: 'wholeships/ashline_lode.glb',
@@ -1603,9 +1618,12 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
-  choir_zealot: 'SF_WHOLESHIP_ASHLINE_DART',
+  choir_zealot: 'SF_WHOLESHIP_ASHLINE_DART_CHOIR',
   lancer_sniper: 'SF_WASP_PRODUCTION_V1',
-  quiet_ghost: 'SF_WASP_PRODUCTION_V1',
+  quiet_ghost: 'SF_WASP_QUIET_GHOST',
+  patrol_lawman: 'SF_HORNET_SCN_INTERDICTOR',
+  customs_cutter: 'SF_HORNET_SCN_INTERDICTOR',
+  warden_escort: 'SF_WHOLESHIP_ASHLINE_LODE_VAEL',
   bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
   pd_screen_escort: 'SF_WHOLESHIP_ASHLINE_LODE',
   field_anchor_controller: 'SF_WHOLESHIP_ASHLINE_LODE',
@@ -1724,8 +1742,20 @@ const WASP_FACTION_KIT_BY_FACTION = Object.freeze({
   faction_scn: Object.freeze({ file: 'wholeships/wasp_scn_patrol.glb', assetId: 'SF_WASP_SCN_PATROL' }),
 });
 const WASP_FACTION_KIT_ROLES = Object.freeze(new Set(['patrol', 'escort']));
+// S6: faction-fielded hulls whose enemy id / role is shared across factions, so the body follows the
+// entity's factionId like the Span and Wasp kits. Rig hostiles fielded under the Quiet (the smuggler
+// zones of Tethys Junction and Pallas Drift) and miner barges flying for the Drift Miners Collective
+// (Ceres, Vesta, Charon traffic) wear their operator's paint; every other faction keeps the base hull.
+const RIG_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_quiet: Object.freeze({ file: 'wholeships/ashline_rig_quiet.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG_QUIET' }),
+});
+const CRADLE_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_dmc: Object.freeze({ file: 'wholeships/helios_cradle_dmc.glb', assetId: 'SF_WHOLESHIP_HELIOS_CRADLE_DMC' }),
+});
 const LIVE_SPAN_FILE = 'wholeships/helios_span.glb';
 const LIVE_WASP_FILE = 'wholeships/wasp_production_v1.glb';
+const LIVE_RIG_FILE = 'wholeships/ashline_rig.glb';
+const LIVE_CRADLE_FILE = 'wholeships/helios_cradle.glb';
 const LIVE_TRADE_HUB_FILE = 'places/place_station_trade_hub.glb';
 /** Helios / Kessler opening-flyby NPC slots. Each must resolve a packaged complete hull. */
 export const OPENING_FLYBY_NPC_SLOTS = Object.freeze([
@@ -1747,6 +1777,8 @@ const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
   ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
   ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(RIG_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(CRADLE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
 ]);
 // Retail-routable release paths so check:asset-reachability counts the kits as live.
 const FACTION_KIT_RELEASE_URLS = Object.freeze([
@@ -1756,6 +1788,12 @@ const FACTION_KIT_RELEASE_URLS = Object.freeze([
   'assets/ships/release/parts/wholeships/wasp_free_militia.glb',
   'assets/ships/release/parts/wholeships/wasp_mts_escort.glb',
   'assets/ships/release/parts/wholeships/wasp_scn_patrol.glb',
+  'assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb',
+  'assets/ships/release/parts/wholeships/wasp_quiet_ghost.glb',
+  'assets/ships/release/parts/wholeships/ashline_dart_choir.glb',
+  'assets/ships/release/parts/wholeships/ashline_lode_vael.glb',
+  'assets/ships/release/parts/wholeships/ashline_rig_quiet.glb',
+  'assets/ships/release/parts/wholeships/helios_cradle_dmc.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb',
   'assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb',
@@ -1815,6 +1853,14 @@ function applyFactionWholeShipKit(entity, selection) {
     const role = String(entity && entity.data && entity.data.trafficRole || '');
     if (!WASP_FACTION_KIT_ROLES.has(role)) return selection;
     const kit = WASP_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_RIG_FILE) {
+    const kit = RIG_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  if (selection.file === LIVE_CRADLE_FILE) {
+    const kit = CRADLE_FACTION_KIT_BY_FACTION[factionId];
     if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
   }
   return selection;
@@ -2152,6 +2198,32 @@ export function liveSolidGlbCatalog() {
       packagedLive: isPackagedLiveWholeShipFile(kit.file),
     });
   }
+  for (const [faction, kit] of Object.entries(RIG_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `rig:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 18,
+      colliderKind: 'capsule',
+      proportionsKey: 'pirate_swoop',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(CRADLE_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `cradle:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 14,
+      colliderKind: 'capsule',
+      proportionsKey: 'miner',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
 
   for (const file of PLACE_FILES) {
     if (STATION_ARCHETYPE_FILES.includes(file)) continue;
@@ -2296,6 +2368,8 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
     ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(RIG_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(CRADLE_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
     // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
     // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp
@@ -2506,6 +2580,14 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
   // The orphaned job's publish hook survives its own settle — drop it too, or the abandoned
   // body's staged publish suppresses the replacement admission the re-request starts.
   delete boundary.userData.__publishPreparedAuthoredBoundary;
+  // A lifecycle re-arm is a new admission episode: restore the retry budget the last one may
+  // have spent, or a boundary that once exhausted its retries would strand 'unavailable' the
+  // moment a post-restore admission failed. Only the poll's own re-arm keeps counting, so the
+  // per-episode cap still bounds churn on a genuinely missing asset.
+  if (reason !== 'transient-admission-retry') {
+    delete boundary.userData.authoredAdmissionRetryCount;
+    delete boundary.userData.authoredAdmissionNextRetryAt;
+  }
   return true;
 }
 
@@ -2821,7 +2903,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       scene,
       assetUrls: [`${partRoot}${authoredPayloadFileForEntity(entity)}`],
       options: upgradeOptions,
-      run: () => upgradeAuthoredCargoCapsuleBoundary(
+      run: ({ options: admittedOptions }) => upgradeAuthoredCargoCapsuleBoundary(
         boundary,
         // Whatever interior root is live at request time is the one a commit removes — not the
         // original param, which would pin the detached substrate via this closure.
@@ -2829,7 +2911,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
         liveEntity,
         renderer,
         scene,
-        upgradeOptions,
+        admittedOptions,
         setActiveRoot,
       ),
     });
@@ -2884,7 +2966,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     : loadAuthoredPart;
   let record = null;
   try {
-    record = await loadPart(`${partRoot}${authoredPayloadFileForEntity(entity)}`, {
+    record = await waitForAuthoredAdmission(loadPart(`${partRoot}${authoredPayloadFileForEntity(entity)}`, {
       renderer,
       slot: authoredPayloadSlotForEntity(entity),
       optional: true,
@@ -2894,8 +2976,11 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       residencyRole: options.residencyRole,
       sectorId: options.sectorId,
       isResidencyOwnerActive: options.isResidencyOwnerActive,
-    });
+      signal: options.signal,
+    }), options);
+    assertQueuedAuthoredAdmissionActive(options, 'after-payload-load');
   } catch (error) {
+    assertQueuedAuthoredAdmissionActive(options, 'after-payload-load-error');
     return failAuthoredCargoCapsuleAdmission(
       boundary,
       fallbackRoot,
@@ -2958,7 +3043,11 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   try {
     await prepareAuthoredVisualPipelines(authored.root, options);
   } catch (error) {
-    await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedCargoCapsule()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+    await ((installedPreparedDisposer ? installedPreparedDisposer()
+      : (isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+        || disposePreparedCargoCapsule())
+      || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+    assertQueuedAuthoredAdmissionActive(options, 'after-payload-pipeline-error');
     return failAuthoredCargoCapsuleAdmission(
       boundary,
       fallbackRoot,
@@ -2975,10 +3064,17 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
   }
-  const publicationWait = waitForOpeningGraphPublicationRelease();
-  if (publicationWait) {
-    boundary.userData.authoredPreparePhase = 'awaiting-publication';
-    await publicationWait;
+  try {
+    const publicationWait = waitForOpeningGraphPublicationRelease(options);
+    if (publicationWait) {
+      boundary.userData.authoredPreparePhase = 'awaiting-publication';
+      await waitForAuthoredAdmission(publicationWait, options);
+    }
+    assertQueuedAuthoredAdmissionActive(options, 'before-payload-publication');
+  } catch (error) {
+    await ((isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+      || disposePreparedCargoCapsule());
+    throw error;
   }
   if (!boundary.parent) {
     await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedCargoCapsule()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
@@ -3402,10 +3498,10 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: liveEntity,
-      run: () => upgradePlaceBoundary(
+      run: ({ options: admittedOptions }) => upgradePlaceBoundary(
         // Whatever interior root is live at request time is the one a commit removes — not the
         // original param, which would pin the detached substrate via this closure.
-        boundary, activeRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        boundary, activeRoot, liveEntity, placeFile, renderer, scene, admittedOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -3554,10 +3650,10 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: liveEntity,
-      run: () => upgradePlaceBoundary(
+      run: ({ options: admittedOptions }) => upgradePlaceBoundary(
         // Whatever interior root is live at request time is the one a commit removes — not the
         // original param, which would pin the detached substrate via this closure.
-        boundary, activeRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        boundary, activeRoot, liveEntity, placeFile, renderer, scene, admittedOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -3604,7 +3700,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     : loadAuthoredPart;
   let record = null;
   try {
-    record = await loadPart(`${partRoot}${placeFile}`, {
+    record = await waitForAuthoredAdmission(loadPart(`${partRoot}${placeFile}`, {
       renderer,
       slot: 'place',
       optional: true,
@@ -3614,8 +3710,11 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       isResidencyOwnerActive: options.isResidencyOwnerActive,
       admissionDeadline: true,
       admissionVisible: options.admissionVisible,
-    });
+      signal: options.signal,
+    }), options);
+    assertQueuedAuthoredAdmissionActive(options, 'after-place-load');
   } catch (error) {
+    assertQueuedAuthoredAdmissionActive(options, 'after-place-load-error');
     handoffBootstrapIfCovered(renderer);
     if (!boundary.parent) {
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-load-error', options.admissionEpoch);
@@ -3666,7 +3765,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const overlayFile = tradeHubOverlayFileForEntity(options.admissionEntity || entity);
   if (overlayFile) {
     try {
-      overlayRecord = await loadPart(`${partRoot}${overlayFile}`, {
+      overlayRecord = await waitForAuthoredAdmission(loadPart(`${partRoot}${overlayFile}`, {
         renderer,
         slot: 'place',
         optional: true,
@@ -3676,8 +3775,11 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
         isResidencyOwnerActive: options.isResidencyOwnerActive,
         admissionDeadline: true,
         admissionVisible: options.admissionVisible,
-      });
+        signal: options.signal,
+      }), options);
+      assertQueuedAuthoredAdmissionActive(options, 'after-place-overlay-load');
     } catch (error) {
+      assertQueuedAuthoredAdmissionActive(options, 'after-place-overlay-error');
       overlayRecord = null;
       console.warn('[partsLibrary] trade-hub overlay unavailable; hub still publishes', error);
     }
@@ -3742,7 +3844,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await prepareAuthoredVisualPipelines(authored.root, options);
     } catch (error) {
       try {
-        await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedPlace()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+        await ((installedPreparedDisposer ? installedPreparedDisposer()
+          : (isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+            || disposePreparedPlace())
+          || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       } catch (cleanupError) {
         throw new AggregateError(
           [error, cleanupError],
@@ -3750,6 +3855,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
           { cause: error },
         );
       }
+      assertQueuedAuthoredAdmissionActive(options, 'after-place-pipeline-error');
       return failAuthoredPlaceAdmission(
         boundary, fallbackRoot, entity, renderer, options, setActive,
         'place-pipeline-compile-failed', error,
@@ -3760,10 +3866,17 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile', options.admissionEpoch);
       return false;
     }
-    const publicationWait = waitForOpeningGraphPublicationRelease();
-    if (publicationWait) {
-      boundary.userData.authoredPreparePhase = 'awaiting-publication';
-      await publicationWait;
+    try {
+      const publicationWait = waitForOpeningGraphPublicationRelease(options);
+      if (publicationWait) {
+        boundary.userData.authoredPreparePhase = 'awaiting-publication';
+        await waitForAuthoredAdmission(publicationWait, options);
+      }
+      assertQueuedAuthoredAdmissionActive(options, 'before-place-publication');
+    } catch (error) {
+      await ((isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+        || disposePreparedPlace());
+      throw error;
     }
     if (!boundary.parent) {
       await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedPlace()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
@@ -3808,6 +3921,8 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
 function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
+  assertQueuedAuthoredAdmissionActive(options, 'before-place-failure');
+  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
   const admissionEntity = options.admissionEntity || entity;
   // A stale run's fail legs are bookkeeping-only: the epoch-scoped release frees its own pins,
   // but every verdict write — readmission mark, same-semantic-fallback settle, 'unavailable' —
@@ -5169,6 +5284,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
     resolveCompletion,
     completionSettled: false,
     lifecycle: 'queued',
+    boundaryToken: {},
   };
   const keyedJob = state.byKey.get(queuedJob.key);
   if (keyedJob) {
@@ -5209,6 +5325,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
   else state.jobs.splice(insertionIndex, 0, queuedJob);
   state.byBoundary.set(queuedJob.boundary, queuedJob);
   state.byKey.set(queuedJob.key, queuedJob);
+  upgradeTokensByBoundary.set(queuedJob.boundary, queuedJob.boundaryToken);
   if (state.firstFlightHandoffHold === true && firstFlightReadableShipJob(queuedJob)) {
     primeNextAuthoredAssetPlan(state);
   }
@@ -5487,7 +5604,7 @@ function firstFlightReadableGlassJob(job) {
 }
 
 function scheduleHeldShipWake(state) {
-  if (!state || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
+  if (!state || state.retired || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
   state.heldShipWakeTimer = setTimeout(() => {
     state.heldShipWakeTimer = null;
     scheduleNextUpgradeFrame(state);
@@ -5544,7 +5661,7 @@ function steadyFlightShipCanPassBusyPlace(state) {
 // lane for the rest of the session. Past this bound the same one-extra-slot escape the
 // first-flight hold grants applies in steady flight too — for every in-flight job, ship or not,
 // that has outlived any plausible upload window.
-const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
+const AUTHORED_UPGRADE_NONSHIP_STALL_MS = AUTHORED_ASYNC_DEADLINE_MS;
 // The bypass feeds on-glass holes only: a body already drawn as a marker cannot wait the
 // ambient stall bound behind a wedged job. The serial-slot invariant still only yields to
 // dead lanes — this tightens how long 'plausibly alive' lasts when the picture is missing.
@@ -5591,66 +5708,67 @@ function stalledHogsCanPassShip(state) {
 function armStalledHogWake(state) {
   // Owns its own timer field: scheduleHeldShipWake's 100ms wake must never wait behind this
   // slow poll, and either callback re-arms what it still needs via scheduleNextUpgradeFrame.
-  if (!state || state.stalledHogWakeTimer != null) return;
-  // Poll only while an in-flight job still has work the wake can do: an open diagnostic to
-  // close, or a held serial slot a ship may need to pass. A GPU-detached job whose record the
-  // watchdog already closed can park forever without keeping this timer (and through it the
-  // queue state) alive.
+  if (!state || state.retired) return;
+  // Overlap releases only the CPU slot. Its detached GPU work still needs owner/deadline
+  // cancellation until the admission actually settles.
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight'
     && (job.serialSlotReleased !== true || job.upgradeDiagnostic?.endedAtMs == null));
-  if (!active.length) return;
+  if (!active.length) {
+    if (state.stalledHogWakeTimer != null) clearTimeout(state.stalledHogWakeTimer);
+    state.stalledHogWakeTimer = null;
+    return;
+  }
+  if (state.stalledHogWakeTimer != null) return;
   state.stalledHogWakeTimer = setTimeout(() => {
     state.stalledHogWakeTimer = null;
-    settleStalledUpgradeDiagnostics(state);
+    abortStalledOrInactiveUpgradeJobs(state);
     scheduleNextUpgradeFrame(state);
   }, STALLED_HOG_WAKE_MS);
   state.stalledHogWakeTimer.unref?.();
 }
 
 /**
- * Close the 'running' diagnostic of any job whose inner await has outlived the stall bound,
- * then end dead lanes: a job stalled past the glass bound while its owner sits on the readable
- * glass — or past the non-ship bound anywhere — is abandoned (its decode/transcode wedged, a
- * lane that can otherwise block for the session, ledger D48's 11-minute critical-hub). Aborting
- * marks the boundary for readmission so the ordinary relevance poll re-requests it at its
- * natural rung; url::slot decode dedupe makes the re-entry share whatever the wedged attempt
- * already decoded, and a late settle of the abandoned promise is a bookkeeping no-op —
- * the job is already out of byBoundary/byKey and its completion is settled.
+ * Abort the actual admission, rather than only closing its diagnostic. The admission race
+ * settles the completion and releases its serial slot even when the underlying await wedges.
+ * The poll also notices owners that leave while no decode/compile promise makes progress.
+ * A job stalled past the glass bound while its owner sits on the readable glass — or past the
+ * non-ship bound anywhere — is abandoned (its decode/transcode wedged, a lane that can
+ * otherwise block for the session, ledger D48's 11-minute critical-hub). Aborting marks the
+ * boundary for readmission so the ordinary relevance poll re-requests it at its natural rung;
+ * url::slot decode dedupe makes the re-entry share whatever the wedged attempt already decoded,
+ * and a late settle of the abandoned promise is a bookkeeping no-op — the job is already out
+ * of byBoundary/byKey and its completion is settled.
  */
-function settleStalledUpgradeDiagnostics(state) {
+function abortStalledOrInactiveUpgradeJobs(state) {
   const now = monotonicNow();
   for (const job of state.byBoundary.values()) {
-    if (!jobIsStalledInFlight(job, now)) continue;
+    if (job.lifecycle !== 'in-flight' || !job.admission || job.admission.signal.aborted) continue;
+    if (!job.isAdmissionOwnerActive()) {
+      job.admission.abort('Authored visual preparation owner became inactive');
+      continue;
+    }
+    const bound = entityIsOnReadableGlass(job.entity)
+      ? AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS
+      : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+    if (!jobIsStalledInFlight(job, now, bound)) continue;
     if (job.upgradeDiagnostic && job.upgradeDiagnostic.status === 'running') {
       job.upgradeDiagnostic.status = 'stalled-slot-released';
     }
     finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
-    const bound = entityIsOnReadableGlass(job.entity)
-      ? AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS
-      : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
-    // A job whose serial slot already released is parked in detached GPU prep — aborting it
-    // rescues nothing (the slot is free) and would re-mark its 'authored-prepared' boundary
-    // 'awaiting-authored-admission', duplicating the whole compose+compile+upload it already
-    // paid. Only unreleased slots get the abort.
-    if (job.serialSlotReleased !== true && jobIsStalledInFlight(job, now, bound)) {
-      abortStalledUpgradeJob(state, job);
-    }
+    const error = new Error('Authored upgrade exceeded its admission deadline');
+    error.name = 'TimeoutError';
+    error.code = 'AUTHORED_ADMISSION_TIMEOUT';
+    job.abortedStalled = true;
+    job.admission.abort(error);
+    settleAbortedStalledBoundary(job);
   }
 }
 
-function abortStalledUpgradeJob(state, job) {
-  if (!job || job.lifecycle !== 'in-flight') return false;
-  job.lifecycle = 'aborted-stalled';
-  job.abortedStalled = true;
-  // The promise's own finally skips the serial decrement once serialSlotReleased reads true —
-  // single accounting, even though the abandoned run settles whenever it unwinds.
-  job.serialSlotReleased = true;
-  state.inFlight = Math.max(0, state.inFlight - 1);
-  cleanupQueuedJob(state, job);
-  // The abandoned run may sit on a decoder task that will never settle — every later request
-  // deduping onto it wedges identically. Drop the unfinished task entries (and the boundary's
-  // pending requests on them) so the readmission decodes fresh.
+// The admission race owns lifecycle/serial bookkeeping for an aborted job; this only does
+// what the admission cannot know: drop the wedged decode task a readmission would dedupe
+// onto, and bound the stall-abort retry loop on the boundary itself.
+function settleAbortedStalledBoundary(job) {
   dropWedgedAuthoredTasks(job.renderer, authoredUpgradeAssetUrls(job), job.boundary);
   const abortCount = (Number(job.boundary && job.boundary.userData.stallAbortCount) || 0) + 1;
   if (job.boundary && job.boundary.userData) job.boundary.userData.stallAbortCount = abortCount;
@@ -5670,9 +5788,6 @@ function abortStalledUpgradeJob(state, job) {
     job.boundary.userData.authoredAssetState = 'awaiting-authored-admission';
     job.boundary.userData.authoredReadmissionReason = 'upgrade-stall-abort-detached';
   }
-  settleUpgradeJob(job, 'aborted-stalled');
-  scheduleNextUpgradeFrame(state);
-  return true;
 }
 
 export function cancelAuthoredUpgradeQueue(scene, reason = 'scene-retired') {
@@ -5732,6 +5847,14 @@ function entityOnDeadlineGlass(entity, state) {
 
 export function waitForOpeningGraphPublicationRelease(options = {}) {
   const render = authoredRuntimeState()?.render;
+  if (options.expectedRender && options.expectedRender !== render) {
+    const error = new Error('Opening graph publication gate owner became inactive');
+    error.name = 'AbortError';
+    return Promise.reject(error);
+  }
+  if (options.asyncAdmission?.signal.aborted) {
+    return Promise.reject(options.asyncAdmission.signal.reason);
+  }
   if (!render || render.openingGraphPublicationFrozen !== true) return null;
   const entity = options && options.entity;
   const postFirstPicture = Number.isFinite(render.firstPlayableFrameAt);
@@ -5745,6 +5868,7 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
   const generation = render.admissionRunGeneration;
   const nativeRenderer = render.renderer !== undefined ? render.renderer : undefined;
   const assertGateOwnerCurrent = () => {
+    assertQueuedAuthoredAdmissionActive(options, 'during-opening-publication');
     if (authoredRuntimeState()?.render !== render) {
       const error = new Error('Opening graph publication gate owner became inactive');
       error.name = 'AbortError';
@@ -5761,10 +5885,10 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
       throw error;
     }
   };
-  const released = Promise.resolve(wait()).then((value) => {
+  const released = waitForAuthoredAdmission(Promise.resolve(wait.call(render)).then((value) => {
     assertGateOwnerCurrent();
     return value;
-  });
+  }), options);
   if (!entity || !postFirstPicture) return released;
   let settled = false;
   return new Promise((resolve, reject) => {
@@ -5903,6 +6027,39 @@ export function settleAuthoredShipToProceduralFallback(
 
 export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const liveState = authoredRuntimeState();
+  const render = liveState && liveState.render;
+  const nativeRenderer = render && render.renderer;
+  const generation = render && render.admissionRunGeneration;
+  const ownerActive = () => !!boundary && !!entity && entity.alive !== false
+    && (!render || (authoredRuntimeState() === liveState && liveState.render === render
+      && render.renderer === nativeRenderer && render.admissionRunGeneration === generation));
+  // A save/load or teardown can replace these ports while a decoded body is still waiting.
+  // Keep the original owner and cancel its continuation instead of invoking the new renderer
+  // or throwing a TypeError because the old port has been removed.
+  const capturePort = (name) => {
+    const port = render && render[name];
+    if (typeof port !== 'function') return null;
+    const isActive = () => ownerActive() && render[name] === port;
+    const assertActive = () => {
+      if (isActive()) return;
+      const error = new Error(`Authored ${name} owner became inactive`);
+      error.name = 'AbortError';
+      throw error;
+    };
+    return { isActive, call(...args) {
+      assertActive();
+      const result = port.apply(render, args);
+      if (result && typeof result.then === 'function') {
+        return result.then((value) => { assertActive(); return value; });
+      }
+      assertActive();
+      return result;
+    } };
+  };
+  const compile = capturePort('compileObjectPipelines');
+  const touch = capturePort('touchSubjectExactTarget');
+  const residency = capturePort('prepareAuthoredGpuResidency');
+  const present = capturePort('yieldToNextPresent');
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
     || liveState && liveState.world && liveState.world.currentSectorId
@@ -5926,49 +6083,44 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
       ? (Number(boundary.userData.admissionEpoch) || 0) : 0,
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
-    isResidencyOwnerActive: () => !!boundary && entity && entity.alive !== false,
-    prepareAuthoredPipelines: liveState && liveState.render
-      && typeof liveState.render.compileObjectPipelines === 'function'
+    isResidencyOwnerActive: ownerActive,
+    prepareAuthoredPipelines: compile
       // A boundary whose owner sits on the readable glass when its compile is
       // finally admitted is deadline work — it rides the urgent lane ahead of
       // queued runway/prefetch compiles instead of joining the ambient FIFO
       // behind them (D38). Evaluated at call time so a body that crossed the
       // glass while its job waited still promotes; loading-mode admissions keep
       // the ambient lane because the opening submission plan owns that order.
-      ? (root) => {
+      ? async (root) => {
           const st = authoredRuntimeState();
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return liveState.render.compileObjectPipelines(
-            root,
-            onGlass ? { urgent: true } : undefined,
-          );
+          return compile.call(root, { urgent: onGlass, isActive: compile.isActive });
         }
       : null,
-    touchAuthoredExactTarget: liveState && liveState.render
-      && typeof liveState.render.touchSubjectExactTarget === 'function'
-      ? (root) => liveState.render.touchSubjectExactTarget(root)
+    touchAuthoredExactTarget: touch
+      ? (root) => touch.call(root)
       : null,
-    prepareAuthoredGpuResidency: liveState && liveState.render
-      && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
-      ? (root, admissionOptions = {}) => {
+    prepareAuthoredGpuResidency: residency
+      ? async (root, admissionOptions = {}) => {
           const st = authoredRuntimeState();
           // Same lane rule for the texture/geometry upload pass: unSliced puts
           // the uploads on the urgent residency chain instead of behind ambient
           // uploads already queued there.
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return liveState.render.prepareAuthoredGpuResidency(root, {
-            isActive: admissionOptions.isResidencyOwnerActive,
+          return residency.call(root, {
+            isActive: () => residency.isActive()
+              && (typeof admissionOptions.isResidencyOwnerActive !== 'function'
+                || admissionOptions.isResidencyOwnerActive()),
             unSliced: admissionOptions.unSliced === true || onGlass,
           });
         }
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
     yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
-    yieldToNextPresent: liveState && liveState.render
-      && typeof liveState.render.yieldToNextPresent === 'function'
-      ? () => liveState.render.yieldToNextPresent()
+    yieldToNextPresent: present
+      ? async () => present.call()
       : null,
   };
 }
@@ -6297,7 +6449,7 @@ function processUpgradeQueue(state) {
 }
 
 function scheduleNextUpgradeFrame(state) {
-  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
+  if (!state || state.retired || state.frameScheduled || state.openingHandoffHold === true) return;
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
@@ -6329,7 +6481,7 @@ function scheduleNextUpgradeFrame(state) {
   const token = (Number(state.frameScheduleToken) || 0) + 1;
   state.frameScheduleToken = token;
   scheduleUpgradeFrame(() => {
-    if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
+    if (state.retired || state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
         && !state.jobs.some(firstFlightReadableGlassJob)) {
       state.frameScheduled = false;
@@ -6342,6 +6494,7 @@ function scheduleNextUpgradeFrame(state) {
 }
 
 function admitNextUpgradeJob(state) {
+  if (state.retired) return null;
   state.frameScheduled = false;
   const stallBypassShipPass = state.stallBypassShipPass === true;
   state.stallBypassShipPass = false;
@@ -6436,7 +6589,28 @@ function admitNextUpgradeJob(state) {
   job.lifecycle = 'in-flight';
   job.serialSlotReleased = false;
   job.inFlightAtMs = monotonicNow();
-  if (job.options && Object.isExtensible(job.options)
+  const requestedOptions = job.options || {};
+  const requestedOwnerActive = requestedOptions.isResidencyOwnerActive;
+  job.admission = createAsyncAdmission({
+    label: `authored-upgrade:${String(job.key)}`,
+    signal: requestedOptions.signal,
+  });
+  const admission = job.admission;
+  const owner = { boundary: job.boundary, entity: job.entity };
+  const boundaryToken = job.boundaryToken;
+  const isBoundaryCurrent = () => upgradeTokensByBoundary.get(owner.boundary) === boundaryToken;
+  const isOwnerActive = () => !state.retired && isBoundaryCurrent()
+    && jobStillNeeded(state, owner)
+    && (typeof requestedOwnerActive !== 'function' || requestedOwnerActive() === true);
+  job.isAdmissionOwnerActive = isOwnerActive;
+  job.options = {
+    ...requestedOptions,
+    asyncAdmission: job.admission,
+    signal: job.admission.signal,
+    isAdmissionBoundaryCurrent: isBoundaryCurrent,
+    isResidencyOwnerActive: () => !admission.signal.aborted && isOwnerActive(),
+  };
+  if (Object.isExtensible(job.options)
       && typeof job.options.isAbortedStalledAdmission !== 'function') {
     job.options.isAbortedStalledAdmission = () => job.abortedStalled === true;
   }
@@ -6445,10 +6619,8 @@ function admitNextUpgradeJob(state) {
   }
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
-  let serialSlotReleased = false;
   const releaseSerialSlotAfterPipelineStaging = () => {
-    if (serialSlotReleased || job.lifecycle !== 'in-flight') return false;
-    serialSlotReleased = true;
+    if (job.serialSlotReleased || job.lifecycle !== 'in-flight') return false;
     job.serialSlotReleased = true;
     state.inFlight = Math.max(0, state.inFlight - 1);
     scheduleNextUpgradeFrame(state);
@@ -6478,7 +6650,7 @@ function admitNextUpgradeJob(state) {
   // an authored overlap branch keep the original single-flight semantics; loading authored jobs
   // release only this internal slot once their detached root reaches the exact pipeline/GPU gate.
   const run = typeof job.run === 'function'
-    ? job.run
+    ? () => job.run({ options: job.options, admission: job.admission, boundary: job.boundary })
     : () => upgradeBoundary(
       job.boundary,
       job.fallbackRoot,
@@ -6491,10 +6663,13 @@ function admitNextUpgradeJob(state) {
     );
   let result = null;
   let failure = null;
-  Promise.resolve().then(run).then((value) => {
+  const work = Promise.resolve().then(() => {
+    assertAuthoredVisualPreparationActive(job.options, 'before-queued-upgrade');
+    return run();
+  });
+  job.admission.wait(work).then((value) => {
+    assertAuthoredVisualPreparationActive(job.options, 'after-queued-upgrade');
     result = value;
-    // A stall-released diagnostic keeps its verdict — the boundary's own state may sit at a
-    // mid-admission stage long after the watchdog closed the record.
     if (diagnostic.endedAtMs == null) {
       diagnostic.status = job.boundary && job.boundary.userData
         ? job.boundary.userData.authoredAssetState || 'completed'
@@ -6502,36 +6677,42 @@ function admitNextUpgradeJob(state) {
     }
   }).catch((error) => {
     failure = error;
-    // A stall-released record keeps its verdict; the boundary recovery below still runs — only
-    // the closed diagnostic is immutable.
-    if (diagnostic.endedAtMs == null) {
-      diagnostic.status = 'fallback-after-error';
-      diagnostic.error = error && error.message ? error.message : String(error);
+    const timedOut = error && error.name === 'TimeoutError';
+    const cancelled = job.admission.signal.aborted || error && error.name === 'AbortError';
+    job.admission.abort(error);
+    diagnostic.status = timedOut ? 'stalled-slot-released'
+      : cancelled ? 'awaiting-authored-admission' : 'fallback-after-error';
+    diagnostic.error = error && error.message ? error.message : String(error);
+    // A retired queue may already have a fresh job for this same mounted boundary. Its old
+    // failure cannot release the new owner's residency or overwrite the new publication.
+    // A stall-aborted job's boundary already readmitted — releasing residency would mark the
+    // boundary a dead owner forever (the released-owner set has no un-release), killing the
+    // replacement job's requests mid-decode.
+    if (job.options.isAdmissionBoundaryCurrent() && job.abortedStalled !== true) {
+      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
+      if (timedOut) {
+        job.boundary.userData.authoredAssetState = 'unavailable';
+        job.boundary.userData.authoredFailureReason = 'admission-deadline';
+        setPresentationAdmission(job.entity, PRESENTATION_ADMISSION.unavailable);
+      } else if (cancelled || job.entity && job.entity.alive === false) {
+        markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
+      } else {
+        job.boundary.userData.authoredAssetState = 'fallback-after-error';
+      }
     }
-    if (job.abortedStalled === true) {
-      // A stall-aborted job's boundary already readmitted — the abandoned run's late verdict
-      // must not stomp the fresh 'awaiting-authored-admission' state its replacement rides on.
-      // Releasing residency here would mark the boundary a dead owner forever (the released-
-      // owner set has no un-release), killing the replacement job's requests mid-decode.
-    } else if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
-      // The job's owner died under a kept boundary (save recook) — a terminal verdict would
-      // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
-      markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
-      if (diagnostic.endedAtMs == null) diagnostic.status = 'awaiting-authored-admission';
-      console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
-    } else {
-      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed',
-        job.options && job.options.admissionEpoch);
-      job.boundary.userData.authoredAssetState = 'fallback-after-error';
+    if (!cancelled && !timedOut) {
       console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
     }
   })
     .finally(() => {
-      if (!serialSlotReleased && job.serialSlotReleased !== true) state.inFlight = Math.max(0, state.inFlight - 1);
-      if (job.lifecycle === 'in-flight') job.lifecycle = 'settled';
+      releaseSerialSlotAfterPipelineStaging();
+      job.lifecycle = 'settled';
+      job.admission.finish();
       finishUpgradeDiagnostic(state, job, diagnostic);
       cleanupQueuedJob(state, job);
       settleUpgradeJob(job, diagnostic.status, result, failure);
+      state.running = state.inFlight > 0 || state.jobs.length > 0 || state.diagnostics.activeJobs > 0;
+      armStalledHogWake(state);
       scheduleNextUpgradeFrame(state);
     });
   scheduleNextUpgradeFrame(state);
@@ -6711,12 +6892,12 @@ function beginUpgradeDiagnostic(state, job) {
 }
 
 function finishUpgradeDiagnostic(state, job, diagnostic) {
-  // A stalled hog's diagnostic is settled by the stall watchdog before its inner promise ever
-  // resolves; when the job's own chain finally unwinds, this must not double-count the release.
+  // Pipeline overlap and cancellation may both settle; diagnostic accounting is idempotent.
   if (!diagnostic || diagnostic.endedAtMs != null) return;
   diagnostic.endedAtMs = monotonicNow();
   diagnostic.durationMs = Math.max(0, diagnostic.endedAtMs - diagnostic.startedAtMs);
-  const boundaryTimings = job.boundary && job.boundary.userData
+  const boundaryTimings = upgradeTokensByBoundary.get(job.boundary) === job.boundaryToken
+    && job.boundary && job.boundary.userData
     ? job.boundary.userData.__admissionPhaseTimings
     : null;
   if (boundaryTimings) {
@@ -6787,7 +6968,9 @@ function publishUpgradeDiagnostics(state, renderer = null) {
     // The renderer admission lane is serial by construction even when a custom probe job bypasses it.
     state.diagnostics.maxConcurrentDecode = Math.max(state.diagnostics.maxConcurrentDecode, 1);
   }
-  if (state.scene && state.scene.userData) state.scene.userData.authoredUpgradeDiagnostics = state.diagnostics;
+  if (!state.retired && state.scene && state.scene.userData) {
+    state.scene.userData.authoredUpgradeDiagnostics = state.diagnostics;
+  }
 }
 
 function jobStillNeeded(state, job) {
@@ -7317,6 +7500,7 @@ export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
  * publish that object until both preparations settle. Preview/test harnesses without live GPU
  * preparation hooks remain supported. */
 export async function prepareAuthoredVisualPipelines(root, options = {}) {
+  assertAuthoredVisualPreparationActive(options, 'before-gpu-preparation');
   const preparePipelines = options && options.prepareAuthoredPipelines;
   const prepareResidency = options && options.prepareAuthoredGpuResidency;
   if (typeof preparePipelines !== 'function' && typeof prepareResidency !== 'function') {
@@ -7344,7 +7528,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   let pipelines;
   try {
     pipelines = typeof preparePipelines === 'function'
-      ? await preparePipelines(root)
+      ? await waitForAuthoredAdmission(preparePipelines(root), options)
       : { skipped: true, reason: 'pipeline compiler unavailable' };
   } finally {
     settleCanonicalProgramSpecimens(root, programSpecimenMount);
@@ -7352,14 +7536,14 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
   if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-    await options.yieldToNextPresent();
+    await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
     assertAuthoredVisualPreparationActive(options, 'after-present-yield');
   }
   const residencyStartedAtMs = monotonicNow();
   const gpuResidency = typeof prepareResidency === 'function'
-    ? await prepareResidency(root, {
+    ? await waitForAuthoredAdmission(prepareResidency(root, {
         isResidencyOwnerActive: options.isResidencyOwnerActive,
-      })
+      }), options)
     : { skipped: true, reason: 'GPU residency uploader unavailable' };
   const residencyMs = Math.max(0, monotonicNow() - residencyStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
@@ -7375,10 +7559,26 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
 }
 
 function assertAuthoredVisualPreparationActive(options, phase) {
+  if (options && options.asyncAdmission) options.asyncAdmission.assertActive();
   const isActive = options && options.isResidencyOwnerActive;
   if (typeof isActive === 'function' && isActive() !== true) {
-    throw new Error(`Authored visual preparation owner became inactive ${phase}`);
+    const error = new Error(`Authored visual preparation owner became inactive ${phase}`);
+    error.name = 'AbortError';
+    throw error;
   }
+}
+
+function waitForAuthoredAdmission(work, options) {
+  return options && options.asyncAdmission ? options.asyncAdmission.wait(work) : work;
+}
+
+function assertQueuedAuthoredAdmissionActive(options, phase) {
+  if (options && options.asyncAdmission) assertAuthoredVisualPreparationActive(options, phase);
+}
+
+function isAuthoredAdmissionBoundaryCurrent(options) {
+  return !options || typeof options.isAdmissionBoundaryCurrent !== 'function'
+    || options.isAdmissionBoundaryCurrent();
 }
 
 async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
@@ -7450,7 +7650,8 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     const phaseTimings = beginAdmissionPhaseTimings(boundary);
     const decodeStartedAtMs = monotonicNow();
     if (prefetchedLibrary) {
-      try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
+      try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
+      catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
     }
     // Decode runs at deadline floor; admissionVisible must stay live — a mid-run promotion
     // stamped on the job bag by a join or an on-glass trigger has to reach the remaining
@@ -7460,7 +7661,8 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       enumerable: true,
       get: () => options.admissionVisible === true,
     });
-    const library = await preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions);
+    const library = await waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options);
+    assertQueuedAuthoredAdmissionActive(options, 'before-ship-composition');
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
@@ -7555,6 +7757,12 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
 
 async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null, options = {}, installedDisposer = null) {
   const admissionEpoch = options && options.admissionEpoch;
+  // A queued cancellation settles outside this underlying continuation. Dispose only this
+  // detached result; boundary-owned slots/disposers may now belong to a replacement admission.
+  if (!isAuthoredAdmissionBoundaryCurrent(options) || options.asyncAdmission?.signal.aborted) {
+    if (!swapped && authored) await disposePreparedAuthoredShip(authored);
+    return;
+  }
   // A stall-aborted run keeps executing — promises cannot cancel — and its abandoned
   // continuation can throw after a fresh epoch committed the boundary. Cleanup legs are
   // already epoch/identity-guarded; the verdict writes were not: an unguarded mark or
@@ -7575,6 +7783,7 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         try { await disposePreparedAuthoredShip(authored); } catch (cleanupError) { cleanupErrors.push(cleanupError); }
       }
     }
+    if (!isAuthoredAdmissionBoundaryCurrent(options) || options.asyncAdmission?.signal.aborted) return;
     const failureCauses = error && Array.isArray(error.errors) && error.errors.length
       ? error.errors
       : [error];
@@ -8039,6 +8248,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
 async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
+  assertQueuedAuthoredAdmissionActive(options, 'before-ship-publication');
   // A readable ship admitted after first paint has already passed the exact compile/upload gate.
   // The global publication freeze only fences leftover opening work; making this ship wait on it
   // would put the resolving marker back on the glass for the full first-flight hold.
@@ -8047,11 +8257,12 @@ async function commitAuthoredBoundary(
     && live && live.mode === 'flight'
     && Number.isFinite(live.render && live.render.firstPlayableFrameAt)
     && live.render.sectorShellAdmission !== true;
-  const publicationWait = urgentFlightShip ? null : waitForOpeningGraphPublicationRelease();
+  const publicationWait = urgentFlightShip ? null : waitForOpeningGraphPublicationRelease(options);
   if (publicationWait) {
     boundary.userData.authoredPreparePhase = 'awaiting-publication';
-    await publicationWait;
+    await waitForAuthoredAdmission(publicationWait, options);
   }
+  assertQueuedAuthoredAdmissionActive(options, 'after-ship-publication-wait');
   if (!boundary.parent) {
     if (preparedAuthored) {
       await disposePreparedShipBoundaryResources(boundary, preparedAuthored, options.admissionEpoch);
@@ -8255,6 +8466,9 @@ function loadCanonicalLibrary(renderer, options = {}) {
       residencyRole: 'bootstrap',
       sectorId: 'sector_helios_prime',
       isResidencyOwnerActive: () => true,
+      // The cached bootstrap belongs to the renderer, not the first boundary that asks for it.
+      asyncAdmission: null,
+      signal: null,
     }, new Map(), bootstrapPlan)
       .then((loaded) => {
         const library = assertLibraryPlanUsable(loaded, bootstrapPlan, options.libraryScope);
@@ -8276,7 +8490,8 @@ function loadCanonicalLibrary(renderer, options = {}) {
 }
 
 async function ensureEntityLibrary(renderer, entity, options = {}) {
-  const library = await loadCanonicalLibrary(renderer, options);
+  const library = await waitForAuthoredAdmission(loadCanonicalLibrary(renderer, options), options);
+  assertQueuedAuthoredAdmissionActive(options, 'after-canonical-library');
   let plan = authoredPreloadPlanForEntity(entity, options);
   // Combat/traffic identity can land while a captured plan's GLB is still decoding. Keep admitting
   // until the live selector's records are in the library Map — sector prewarm residency is not
@@ -8308,7 +8523,8 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
       throw new Error('Authored visual preparation owner became inactive during entity preload');
     }
     retainLibraryPlan(renderer, library, plan, options);
-    await admitEntityPlan(renderer, options, library, plan);
+    await waitForAuthoredAdmission(admitEntityPlan(renderer, options, library, plan), options);
+    assertQueuedAuthoredAdmissionActive(options, 'after-entity-plan');
     if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
       throw new Error('Authored visual preparation owner became inactive during entity admission');
     }
@@ -8319,7 +8535,11 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
     }
     plan = currentPlan;
   }
-  throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
+  const missing = missingAuthoredPreloadEntries(library, plan);
+  throw new Error(
+    `Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}`
+    + (missing.length ? `: missing ${missing.join(', ')}` : '.'),
+  );
 }
 
 function admitEntityPlan(renderer, options, library, plan) {
@@ -8342,6 +8562,7 @@ function admitEntityPlan(renderer, options, library, plan) {
       get deadline() { return !!(options && (options.admissionDeadline === true || options.admissionVisible === true)); },
       get visible() { return !!(options && options.admissionVisible === true); },
       run: async () => {
+        assertQueuedAuthoredAdmissionActive(options, 'before-entity-plan');
         // Re-check only after earlier demand has committed its records. Checking before joining
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
         // last-writer data loss.
@@ -8431,7 +8652,7 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
     const diagnostic = beginDecodeAdmission(renderer, url, slot);
     let record;
     try {
-      record = await loadPart(url, {
+      record = await waitForAuthoredAdmission(loadPart(url, {
         renderer,
         slot,
         optional: true,
@@ -8441,7 +8662,9 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
         isResidencyOwnerActive: options.isResidencyOwnerActive,
         admissionDeadline: options.admissionDeadline,
         admissionVisible: options.admissionVisible,
-      });
+        signal: options.signal,
+      }), options);
+      assertQueuedAuthoredAdmissionActive(options, 'after-plan-file');
     } finally {
       finishDecodeAdmission(renderer, diagnostic);
     }
@@ -8452,7 +8675,8 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
     if (i < pendingFiles.length - 1
         && options.yieldBetweenGpuStages === true
         && typeof options.yieldToNextPresent === 'function') {
-      try { await options.yieldToNextPresent(); } catch (_) { /* pacing only */ }
+      try { await waitForAuthoredAdmission(options.yieldToNextPresent(), options); }
+      catch { assertQueuedAuthoredAdmissionActive(options, 'after-plan-present'); }
     }
   }
   for (const [slot, records] of recordsBySlot) library.set(slot, records);
@@ -8610,9 +8834,36 @@ function libraryCacheKey(partRoot, options = {}, bootstrapPlan = bootstrapPlanFo
   return `${partRoot}#${scope}#${planKey}`;
 }
 
+// Diagnostic for the AUTHORED_LIBRARY_UNAVAILABLE gate: name which plan entries never became
+// usable instead of failing closed with a bare "incomplete". A record whose URL is in the slot
+// but whose residency is not 'resident' was decoded then dropped (owner cancellation, residency
+// churn); a slot/URL with no record at all never arrived (decode failure or a plan/map drift).
+export function missingAuthoredPreloadEntries(library, plan, limit = 12) {
+  const missing = [];
+  for (const [slot, files] of Object.entries(plan || {})) {
+    const records = library instanceof Map ? library.get(slot) : null;
+    for (const file of files || []) {
+      if (Array.isArray(records) && records.some((record) => recordUrlEndsWith(record, file))) continue;
+      const arrived = Array.isArray(records) && records.some(
+        (record) => record && typeof record.url === 'string' && normalizePartUrl(record.url).endsWith(file),
+      );
+      missing.push(`${slot}:${file}${arrived ? ' (not resident)' : ''}`);
+      if (missing.length >= limit) {
+        missing.push('…');
+        return missing;
+      }
+    }
+  }
+  return missing;
+}
+
 function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
-  if (!libraryHasPreloadPlan(library, plan)) {
-    throw new Error(`Authored ${scope || 'canonical'} library is incomplete for its required preload plan.`);
+  const missing = missingAuthoredPreloadEntries(library, plan);
+  if (missing.length) {
+    throw new Error(
+      `Authored ${scope || 'canonical'} library is incomplete for its required preload plan: `
+      + `missing ${missing.join(', ')}`,
+    );
   }
   return library;
 }
@@ -11705,7 +11956,7 @@ function swarmRosterEnemyDefs() {
     if (entry && entry.enemyId) ids.add(entry.enemyId);
   }
   for (const boss of SWARM_BOSS_ROTATION || []) {
-    for (const pkg of (boss && boss.packages) || []) {
+    for (const pkg of bossPackagesFor(boss)) {
       if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
     }
   }
@@ -13096,6 +13347,27 @@ function createInstanceCullContext() {
   };
 }
 
+// Chase follow damping moves the camera every frame by <<1 WU. Exact matrix equality
+// marked cameraDirty continuously, forcing every active authored-instance owner through
+// syncOwnerSlots (frustum + matrix compare) under prepareFrame. Quantize translation to
+// 0.25 WU and basis/projection to 1e-3 so micro-moves reuse the stable owner path; real
+// pans/zooms still dirty.
+const CAMERA_CULL_POS_QUANT_WU = 0.25;
+const CAMERA_CULL_BASIS_EPS = 1e-3;
+// Bench-only: force exact matrix compare (pre-quantize residual).
+let _cameraCullExactCompare = false;
+export function setAuthoredInstanceCameraCullExactCompare(enabled) {
+  _cameraCullExactCompare = enabled === true;
+}
+
+function quantizeCullCameraValue(value, index) {
+  const n = Number(value) || 0;
+  if (index === 12 || index === 13 || index === 14) {
+    return Math.round(n / CAMERA_CULL_POS_QUANT_WU) * CAMERA_CULL_POS_QUANT_WU;
+  }
+  return Math.round(n / CAMERA_CULL_BASIS_EPS) * CAMERA_CULL_BASIS_EPS;
+}
+
 function captureCullCameraState(camera, snapshot) {
   const present = !!camera;
   let changed = !snapshot.initialized || snapshot.present !== present;
@@ -13104,13 +13376,16 @@ function captureCullCameraState(camera, snapshot) {
   if (!camera) return changed;
   const world = camera.matrixWorld && camera.matrixWorld.elements;
   const projection = camera.projectionMatrix && camera.projectionMatrix.elements;
+  const exact = _cameraCullExactCompare;
   for (let index = 0; index < 16; index++) {
-    const value = world ? Number(world[index]) || 0 : 0;
+    const raw = world ? Number(world[index]) || 0 : 0;
+    const value = exact ? raw : quantizeCullCameraValue(raw, index);
     if (snapshot.values[index] !== value) changed = true;
     snapshot.values[index] = value;
   }
   for (let index = 0; index < 16; index++) {
-    const value = projection ? Number(projection[index]) || 0 : 0;
+    const raw = projection ? Number(projection[index]) || 0 : 0;
+    const value = exact ? raw : quantizeCullCameraValue(raw, -1);
     if (snapshot.values[index + 16] !== value) changed = true;
     snapshot.values[index + 16] = value;
   }
@@ -13212,6 +13487,91 @@ function drainOwnerReleaseCallbacks(state, expectedEpoch = null) {
  * the same private allocator, release listeners, visibility logic, InstancedMesh attribute, and
  * fallback sync as live authored ships; only the two tiny geometry proxies are synthetic.
  */
+export function runAuthoredInstanceCameraDirtyMicrobench(options = {}) {
+  const ownerCount = Math.max(2, Math.floor(Number(options.ownerCount) || 80));
+  const frames = Math.max(10, Math.floor(Number(options.frames) || 2000));
+  const jitterWu = Number.isFinite(Number(options.jitterWu)) ? Number(options.jitterWu) : 0.05;
+  const exact = options.exactCameraDirty === true;
+  const scene = new THREE.Scene();
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const material = new THREE.MeshStandardMaterial();
+  const owners = [];
+  for (let i = 0; i < ownerCount; i++) {
+    const owner = new THREE.Group();
+    const proxy = new THREE.Object3D();
+    owner.position.set((i % 20) * 40, 0, Math.floor(i / 20) * 40);
+    owner.add(proxy);
+    scene.add(owner);
+    allocateInstance(scene, owner, proxy, geometry, material, 'CameraDirtyMicrobench');
+    owners.push(owner);
+  }
+  const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 8000);
+  camera.position.set(0, 120, 180);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  camera.updateProjectionMatrix();
+  const poolState = sceneStates.get(scene);
+  const frameFor = (frameId) => ({
+    frameId,
+    authored: owners.map((mesh) => ({
+      mesh,
+      visible: true,
+      viewCulled: false,
+      renderDirty: false,
+    })),
+  });
+  const priorExact = _cameraCullExactCompare;
+  _cameraCullExactCompare = exact;
+  try {
+    // Reset camera snapshot so the first capture matches the compare mode.
+    if (poolState && poolState.cameraState) {
+      poolState.cameraState.initialized = false;
+      poolState.cameraState.values.fill(0);
+    }
+    const prime = frameFor(0);
+    syncAuthoredInstancePools(scene, {
+      entityFrame: prime,
+      authoredRecords: prime.authored,
+      camera,
+    });
+    let dirtyFrames = 0;
+    let ownersVisited = 0;
+    const t0 = performance.now();
+    for (let f = 0; f < frames; f++) {
+      camera.position.x += jitterWu * Math.sin(f * 0.17);
+      camera.position.z += jitterWu * 0.5 * Math.cos(f * 0.13);
+      camera.updateMatrixWorld(true);
+      const entry = frameFor(f + 1);
+      const stats = syncAuthoredInstancePools(scene, {
+        entityFrame: entry,
+        authoredRecords: entry.authored,
+        camera,
+      });
+      if (poolState && poolState.cullContext && poolState.cullContext.cameraDirty) dirtyFrames++;
+      ownersVisited += stats && Number(stats.ownersVisited) || 0;
+    }
+    const ms = performance.now() - t0;
+    return {
+      ownerCount,
+      frames,
+      jitterWu,
+      exact,
+      ms,
+      dirtyFrames,
+      dirtyRate: dirtyFrames / frames,
+      ownersVisited,
+    };
+  } finally {
+    _cameraCullExactCompare = priorExact;
+    for (const owner of owners) {
+      scene.remove(owner);
+      releaseOwnerInstances(owner);
+    }
+    geometry.dispose();
+    material.dispose();
+  }
+}
+
 export function runAuthoredInstanceFrameContractProbe() {
   const scene = new THREE.Scene();
   const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -13408,7 +13768,7 @@ function sharedMaterialFor(base, tags, palette) {
   // Instance key still includes tint so faction colors remain distinct material.color uniforms.
   // Program-family identity (name + spacefaceProgramFamily) deliberately omits tint: color is a
   // per-instance uniform, not a distinct compiled program.
-  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}`;
+  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}${lampShareToken(base)}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
     material = applyAppearanceFinish(
@@ -14155,6 +14515,15 @@ function hashString(value) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+/** Test seams: the two ways an authored primitive's material resolves (shared cache / ship-local clone). */
+export function sharedMaterialForProbe(base, tags, palette) {
+  return sharedMaterialFor(base, tags, palette);
+}
+
+export function dedicatedMaterialForProbe(base, tags, palette, cache, instanceKey) {
+  return dedicatedMaterialFor(base, tags, palette, cache, instanceKey);
 }
 
 /** Contract/CI probe: immutable hull share keys must canonicalize negligible emissive deltas. */

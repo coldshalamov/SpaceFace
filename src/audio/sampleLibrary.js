@@ -249,6 +249,7 @@ export function createSampleRuntime(options = {}) {
   const resident = new Map(); // id -> AudioBuffer (insertion order = LRU order)
   const pending = new Map();  // id -> Promise
   const pinned = new Set();   // tier-0 ids: never evicted
+  const failed = new Map();   // id -> { cause, timestamp }
   let residentBytes = 0;
   let inFlight = 0;
   let disposed = false;
@@ -256,13 +257,16 @@ export function createSampleRuntime(options = {}) {
   const queued = new Set();   // queue membership — prefetchTier/acquire must not double-enqueue
 
   function enqueue(id) {
-    if (resident.has(id) || pending.has(id) || queued.has(id)) return;
+    if (resident.has(id) || pending.has(id) || queued.has(id) || failed.has(id)) return;
     queued.add(id);
     queue.push(id);
   }
   const stats = {
     requests: 0, hits: 0, misses: 0, fetches: 0, decodes: 0,
     decodeFailures: 0, evictions: 0, workOps: 0,
+    lastFailedId: null,
+    lastFailureCause: null,
+    get failedCount() { return failed.size; },
     get residentCount() { return resident.size; },
     get residentBytes() { return residentBytes; },
   };
@@ -320,8 +324,14 @@ export function createSampleRuntime(options = {}) {
         pinned.add(id); // re-pin if tier 0 (also refreshes LRU position)
         if (SAMPLE_MANIFEST.get(id)?.tier !== SAMPLE_TIER.CORE) pinned.delete(id);
         evictLRU();
-      }).catch(() => {
-        if (!disposed) stats.decodeFailures++;
+      }).catch((err) => {
+        if (!disposed) {
+          stats.decodeFailures++;
+          const cause = err && err.message ? err.message : String(err);
+          stats.lastFailedId = id;
+          stats.lastFailureCause = cause;
+          failed.set(id, { cause, time: Date.now() });
+        }
       }).finally(() => {
         pending.delete(id);
         inFlight--;
@@ -353,12 +363,14 @@ export function createSampleRuntime(options = {}) {
         return buf;
       }
       stats.misses++;
-      if (SAMPLE_MANIFEST.has(id)) {
+      if (SAMPLE_MANIFEST.has(id) && !failed.has(id)) {
         enqueue(id);
         pump();
       }
       return null;
     },
+    getFailure(id) { return failed.get(id) || null; },
+    hasFailed(id) { return failed.has(id); },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -367,6 +379,7 @@ export function createSampleRuntime(options = {}) {
       pending.clear();
       resident.clear();
       pinned.clear();
+      failed.clear();
       residentBytes = 0;
     },
   };

@@ -26,7 +26,7 @@ export function fakeDom() {
       querySelectorAll() { return []; },
       closest() { return null; },
       focus() {},
-      click() { for (const fn of this.listeners.click || []) fn({ target: this }); },
+      click() { for (const fn of this.listeners.click || []) fn({ target: this, preventDefault() {}, stopPropagation() {} }); },
     };
     node.classList = {
       add(...names) { node.className = [...node.className.split(/\s+/), ...names].filter(Boolean).join(' '); },

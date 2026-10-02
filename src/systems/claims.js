@@ -307,6 +307,19 @@ export function claimDefenseRating(body, bodies = []) {
   return rating;
 }
 
+/** Departed freight is sold, returned, recovered, or explicitly lost. Nothing is invented. */
+export function listedMarketSell(entry) {
+  const listed = Number(entry && entry.lastSell);
+  return Number.isFinite(listed) && listed > 0 ? listed : null;
+}
+
+export function relayFreightLedger(departed, aboard, recoverable = 0) {
+  const left = Math.max(0, Math.floor(Number(departed) || 0));
+  const onHull = Math.max(0, Math.min(left, Math.floor(Number(aboard) || 0)));
+  const recovered = Math.max(0, Math.min(left - onHull, Math.floor(Number(recoverable) || 0)));
+  return { departed: left, aboard: onHull, recoverable: recovered, lost: left - onHull - recovered };
+}
+
 export const claims = {
   name: 'claims',
   // serialize() deep-copies every field it returns — the owned flag keeps saveSystem from
@@ -1174,16 +1187,28 @@ export const claims = {
     if (convoy.saleSettled === true) return;
     convoy.saleSettled = true;
     const economy = this._economyPeer();
-    const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
-    if (!(unit > 0)) {
+    const markets = this.state && this.state.economy && this.state.economy.markets;
+    const stationMarket = markets && markets[convoy.destStationId];
+    const entry = stationMarket && stationMarket[convoy.goodId];
+    const listed = listedMarketSell(entry);
+    const unit = listed != null && economy && economy.priceOf
+      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell')
+      : null;
+    if (!(listed > 0) || !(unit > 0)) {
       spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
-      this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
-        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId });
+      if (convoy.qtyLedger) convoy.qtyLedger.returned = qty;
+      this._receipt(
+        body,
+        'convoy_returned',
+        listed > 0 ? 'No buyer found — freight returned' : 'No market price — freight held',
+        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, missingPrice: !(listed > 0) },
+      );
       return;
     }
     // PQ-170.01: a station the player's freight grew keeps less of the sale.
     const saleFee = this._relaySaleFee(def, convoy.destStationId);
     const revenue = Math.round(qty * unit * (1 - saleFee));
+    if (convoy.qtyLedger) convoy.qtyLedger.sold = qty;
     this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
     this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: qty });
     spec.totals.soldTotalCr += revenue;
@@ -1218,12 +1243,25 @@ export const claims = {
     if (!convoy || convoy.convoyId !== payload.convoyId) return;
     if (payload.stationId && convoy.destStationId !== payload.stationId) return;
     spec.convoy = null;
-    const aboard = Math.max(0, Math.min(convoy.qty, Math.floor(Number(payload.qty) || 0)));
+    const ledger = relayFreightLedger(convoy.qty, payload.qty, payload.recoverableQty);
+    const departed = ledger.departed;
+    const aboard = ledger.aboard;
+    const recoverable = ledger.recoverable;
+    const spilled = ledger.lost;
+    if (recoverable > 0) {
+      spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + recoverable;
+      this._receipt(body, 'convoy_recovered', 'Recovered freight returned to the relay',
+        { goodId: convoy.goodId, qty: recoverable, destStationId: convoy.destStationId });
+    }
+    if (spilled > 0) {
+      spec.totals.lostU += spilled;
+      this._receipt(body, 'convoy_partial_loss', 'Freight that did not arrive and was not recovered is lost',
+        { goodId: convoy.goodId, qty: spilled, destStationId: convoy.destStationId });
+    }
+    convoy.qtyLedger = { departed, sold: 0, returned: 0, recoverable, lost: spilled };
     if (aboard <= 0) {
-      // Berthed with an empty hold — the cargo spilled to pods en route and nobody recovered it.
-      spec.totals.lostU += convoy.qty;
       this._receipt(body, 'convoy_lost', 'Convoy berthed empty — cargo spilled en route',
-        { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+        { goodId: convoy.goodId, qty: spilled, destStationId: convoy.destStationId });
       this.bus.emit('toast', { text: 'Relay convoy arrived empty near ' + body.name, kind: 'warn', ttl: 4 });
       return;
     }
@@ -1489,6 +1527,10 @@ export const claims = {
     const spec = body && body.spec;
     const defense = spec && spec.defense;
     if (!defense) return false;
+    if (!Array.isArray(spec.settledDefenseIds)) spec.settledDefenseIds = [];
+    const defenseKey = String(defense.id || defense.encounterId || '');
+    if (!defenseKey || spec.settledDefenseIds.includes(defenseKey)) return false;
+    spec.settledDefenseIds.push(defenseKey);
     const outcome = ['defended', 'partial', 'retreated', 'timeout', 'destroyed', 'ignored'].includes(rawOutcome)
       ? rawOutcome : 'timeout';
     const settlement = {

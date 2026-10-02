@@ -127,3 +127,48 @@ const restoredCycleState = { economy: { cycles: {} } };
 deserializeCycles(restoredCycleState, packedCycles);
 assert.equal(restoredCycleState.economy.cycles.station_test[commodityId].family, 'turbulent');
 assert.equal(restoredCycleState.economy.cycles.station_test[commodityId].amp3, 0.04);
+
+// Saving between economy pulses must preserve the public quote the player sees.
+// Recomputing the time-varying curve during load advances that quote without a simulation tick.
+economy.state = makeState(history, { knownStation: false });
+economy._installRngFunction();
+const quoted = economy.state.economy.markets.station_test[commodityId];
+Object.assign(quoted, { lastMid: 400, lastBuy: 420, lastSell: 380 });
+const visibleQuote = [economy.priceOf('station_test', commodityId, 'buy'),
+  economy.priceOf('station_test', commodityId, 'sell')];
+const quoteSave = JSON.parse(JSON.stringify(economy.serialize()));
+economy.state = makeState([], { knownStation: false });
+economy._installRngFunction();
+economy.deserialize(quoteSave);
+assert.deepEqual([economy.priceOf('station_test', commodityId, 'buy'),
+  economy.priceOf('station_test', commodityId, 'sell')], visibleQuote,
+  'Continue between market pulses must retain both public buy and sell quotes');
+assert.equal(economy.state.economy.markets.station_test[commodityId].lastMid, 400,
+  'the midpoint used by charts and snapshots remains the saved quote too');
+assert.equal(quoteSave.markets.station_test[0][6], null,
+  'preserving the current quote must not persist an unvisited market history');
+
+const withoutQuote = structuredClone(quoteSave);
+withoutQuote.markets.station_test[0].length = 6;
+economy.deserialize(withoutQuote);
+const repriced = economy.state.economy.markets.station_test[commodityId];
+const freshQuote = [repriced.lastMid, repriced.lastBuy, repriced.lastSell];
+assert.ok(freshQuote.every((price) => Number.isSafeInteger(price) && price > 0),
+  'older compact saves without quotes still reconstruct usable prices');
+
+for (const payload of [
+  { ...structuredClone(quoteSave), balanceVersion: -1 },
+  (() => { const data = structuredClone(quoteSave); data.markets.station_test[0][8] = -1; return data; })(),
+]) {
+  const withoutSavedQuote = structuredClone(payload);
+  withoutSavedQuote.markets.station_test[0].length = 6;
+  economy.deserialize(withoutSavedQuote);
+  const expected = economy.state.economy.markets.station_test[commodityId];
+  const expectedQuote = [expected.lastMid, expected.lastBuy, expected.lastSell];
+  economy.deserialize(payload);
+  const entry = economy.state.economy.markets.station_test[commodityId];
+  assert.deepEqual([entry.lastMid, entry.lastBuy, entry.lastSell], expectedQuote,
+    'changed balance or malformed saved quotes must recompute the complete price tuple');
+}
+
+console.log('economy-save-quotes: PASS');

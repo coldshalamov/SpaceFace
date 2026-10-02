@@ -657,7 +657,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "08013186917b606128d0b7619856ae6bb65e180ce502f4d1541db2f9e637087a",
+  "contentHash": "f503d6a92ebd3ff520bc8368b632df2823f72bcea7d8894c8f244e931b451475",
   "dynamicGroups": [
     {
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.dynamic",
@@ -680,9 +680,9 @@
       "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical"
     },
     {
-      "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber.dynamic",
+      "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon.dynamic",
       "kind": "moving-part",
-      "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber"
+      "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon"
     },
     {
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.dynamic",
@@ -719,18 +719,18 @@
     {
       "bounds": {
         "max": [
-          9.877826690673828,
-          1.4599120616912842,
-          9.86946964263916
+          9.877816200256348,
+          1.4599099159240723,
+          9.869446754455566
         ],
         "min": [
-          -9.750300407409668,
-          -3.9960601329803467,
-          -9.869499206542969
+          -9.75029468536377,
+          -3.9960579872131348,
+          -9.8695068359375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51fbefd295d9420df82237f5b2091d50253e5521e99808b893ed2fe72629ce91",
+      "geometryHash": "87260715b4aa94ca9319f90b6dc852312b6c72c0f0649dc57a108bc6f220c528",
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 16581,
       "indexed": true,
@@ -906,13 +906,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a2d96b03fb6d98bc17df8d7223c2c5041df0831ea71a3570fdd2002042108fd9",
-      "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber.primitive.0",
+      "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon.primitive.0",
       "indexCount": 186,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber.001",
-      "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon.001",
+      "nodeId": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 65
     },
@@ -1080,7 +1080,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6abc2b43dbf75fbd6770487d1fba76db13dc6dee3435bb08a2f273d5724774c6",
+      "geometryHash": "9acb7659b9a23c34d5ab4778f93eca03e6daf83e9f276af712319afe73a01ea0",
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 18381,
       "indexed": true,
@@ -1127,6 +1127,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
@@ -1700,7 +1707,7 @@
       ]
     },
     {
-      "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber",
+      "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon",
       "localTransform": [
         0.09933340176939964,
         0,
@@ -1720,8 +1727,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -2885,28 +2892,28 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "76104dc159db4170d7aa13474cdbebd50fb50985b53d534e2161e2b6fa7a911e"
+      "sha256": "b0cee0c1e5f64fe03771bc2a75fdcace1c86642b6d9b35e6b029789a6fd00a6b"
     },
     "sourceGlb": {
-      "bytes": 735128,
-      "sha256": "44e38aefb723187a0eaab81bc6cefd43bf659d0e50342ea7db014690d4de439f",
+      "bytes": 735748,
+      "sha256": "e83c703ba8c4e6d3498a3ef20a2f6b9df20fbf5fefe57674bbd38bead6446922",
       "uri": "saucer_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1277336,
-    "sha256": "f9beaaa5d62c548657754b35f2392fa6b13d3d5357e56dfc5d3de10285d1ec1f",
+    "bytes": 1278192,
+    "sha256": "29beba821d61a5a2ac7d55cd659af0598a7d7b34b0d07f963aa0deb45b14ccbc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.7310724258422852,
+        0.7310752868652344,
         -0.21492552757263184,
         -0.00009632110595703125
       ],
@@ -2916,12 +2923,12 @@
         11.030397415161133
       ],
       "min": [
-        -9.750300407409668,
+        -9.75029468536377,
         -3.996337890625,
         -11.030590057373047
       ],
       "size": [
-        20.962745666503906,
+        20.962739944458008,
         7.562824726104736,
         22.06098747253418
       ]
@@ -3810,9 +3817,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6748,
+      "bytes": 6814,
       "rigId": "hull",
-      "sha256": "e0338cdfa368ded7d27e22a11a29237b3ae66981c3594a2caeadb8c10f659621",
+      "sha256": "89a3afbd8cd828c56f26775eeed24fb7472a278fb0937b39397184d01d10ece4",
       "uri": "assets/ships/motions/saucer-production-v1.motion.json"
     },
     "nodeCount": 33,
@@ -4055,7 +4062,7 @@
           -0.00008225813508033752,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -4266,7 +4273,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb"
   },
-  "runtimeHash": "c440ba9ae2b61b7492c62d075a4cbbf123f8476a3c866b597ff8c7863561f8e6",
+  "runtimeHash": "c34575d401b12342e49531cf6061d469e1aa8734f815643f8d61d399536770d0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4277,7 +4284,7 @@
           11.030397415161133
         ],
         "min": [
-          -9.750300407409668,
+          -9.75029468536377,
           -3.996337890625,
           -11.030590057373047
         ]
@@ -4292,7 +4299,7 @@
         "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-port",
         "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-starboard",
         "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical",
-        "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber",
+        "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon",
         "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical",
         "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hull",
         "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-lights-cyan",

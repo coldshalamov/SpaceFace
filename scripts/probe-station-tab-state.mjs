@@ -5,9 +5,10 @@
 // dark active-fill block, so fill alone lied and only the thin underline was honest. A control that
 // lies about state is not a styling nit — it is the shell misreporting where the player is.
 //
-// For every tab, this records each nav item's selected state and the three channels that signal it
-// (background fill, underline, label colour), then reports any item that is painted active while
-// not selected, or selected while not painted.
+// For every tab, this records each nav item's selected state and the channels that can signal it
+// (background fill, the ::after lamp bar, label ink, and the rail's is-chosen marker), then reports
+// any item that is painted active while not selected, selected while not painted, or out-signalled
+// by a quiet tile — and whether the rail marker agrees with aria-selected.
 //
 // Usage: node scripts/probe-station-tab-state.mjs
 import { spawn } from 'node:child_process';
@@ -107,9 +108,17 @@ try {
           id,
           selected: el.getAttribute('aria-selected') === 'true' || el.classList.contains('is-active'),
           classes: [...el.classList].join(' '),
+          // A NEXT suggestion is allowed to share the bright ink — it carries its own bead above
+          // the word, so a tied label is a designed second mark, not a strip lying about location.
+          next: el.hasAttribute('data-dp-next'),
           filled: opaque(cs.backgroundColor) || cs.backgroundImage !== 'none',
           bg: cs.backgroundColor,
-          underline: before.content !== 'none' && (parseFloat(before.height) || 0) > 0.5 && (parseFloat(before.opacity) || 1) > 0.05,
+          // The lamp bar is a 2px-tall ::after that exists on EVERY tile at width:0 — height alone
+          // cannot tell quiet from lit, so the bar only counts when it is actually drawn wide —
+          // and not at all when the orrery sheet sets the pseudo-element display:none.
+          underline: before.content !== 'none' && before.display !== 'none'
+            && (parseFloat(before.height) || 0) > 0.5
+            && (parseFloat(before.width) || 0) > 4 && (parseFloat(before.opacity) || 1) > 0.05,
           color: cs.color,
         };
       });
@@ -173,16 +182,78 @@ try {
         const dc = Math.sqrt((over.r - ground.r) ** 2 + (over.g - ground.g) ** 2 + (over.b - ground.b) ** 2);
         return +(dl + dc).toFixed(2);
       };
+      // The strip no longer signals with tile fills — the lamp bar (::after) is the paint channel:
+      // width 0 on a quiet tile, 100% amber on the current one, 34% bone on hover. Score it with
+      // the same ground-distance metric, weighted by how much of the tile the bar actually paints
+      // and its opacity, so a collapsed bar contributes nothing and the lit bar dominates.
+      const lampSalience = (el) => {
+        const a = getComputedStyle(el, '::after');
+        if (a.display === 'none') return 0;
+        const w = parseFloat(a.width) || 0;
+        const o = a.opacity === '' ? 1 : parseFloat(a.opacity);
+        const c = parseC(a.backgroundColor);
+        if (!c || c.a <= 0.02 || w < 2 || o <= 0.02) return 0;
+        const over = {
+          r: c.a * c.r + (1 - c.a) * ground.r,
+          g: c.a * c.g + (1 - c.a) * ground.g,
+          b: c.a * c.b + (1 - c.a) * ground.b,
+        };
+        const dl = Math.abs(lum(over) - lum(ground));
+        const dc = Math.sqrt((over.r - ground.r) ** 2 + (over.g - ground.g) ** 2 + (over.b - ground.b) ** 2);
+        const box = el.getBoundingClientRect();
+        const coverage = box.width > 0 ? Math.min(1, w / box.width) : 0;
+        return +((dl + dc) * o * coverage).toFixed(2);
+      };
+      // The third channel is the word itself: the current tab's label burns at full bone while the
+      // quiet ones sit at half alpha. Same ground-distance metric, read off `color`.
+      const inkSalience = (el) => {
+        const c = parseC(getComputedStyle(el).color);
+        if (!c) return 0;
+        const over = {
+          r: c.a * c.r + (1 - c.a) * ground.r,
+          g: c.a * c.g + (1 - c.a) * ground.g,
+          b: c.a * c.b + (1 - c.a) * ground.b,
+        };
+        const dl = Math.abs(lum(over) - lum(ground));
+        const dc = Math.sqrt((over.r - ground.r) ** 2 + (over.g - ground.g) ** 2 + (over.b - ground.b) ** 2);
+        return +(dl + dc).toFixed(2);
+      };
       const salienceById = {};
-      for (const el of items) salienceById[el.getAttribute('data-nav')] = salience(el);
+      const lampById = {};
+      const fillById = {};
+      const inkById = {};
+      for (const el of items) {
+        const id = el.getAttribute('data-nav');
+        fillById[id] = salience(el);
+        lampById[id] = lampSalience(el);
+        inkById[id] = inkSalience(el);
+        // A tab's signal is whichever channel paints it hardest: the legacy fill, the lamp bar, or
+        // the word's own ink.
+        salienceById[id] = Math.max(fillById[id], lampById[id], inkById[id]);
+      }
 
       const sel = read.filter((x) => x.selected).map((x) => x.id);
       // "painted active but not selected" is the lie the review found.
       const liars = read.filter((x) => !x.selected && x.filled).map((x) => x.id);
-      const unpainted = read.filter((x) => x.selected && !x.filled && !x.underline).map((x) => x.id);
+      // Unpainted means nothing distinguishes the current tile at all: no fill, no lit lamp bar,
+      // and an ink no brighter than the dimmest quiet neighbour.
+      const quietInks = read.filter((x) => !x.selected).map((x) => inkById[x.id]);
+      const quietInk = quietInks.length ? Math.min(...quietInks) : -Infinity;
+      const unpainted = read.filter((x) => x.selected && !x.filled && !x.underline
+        && inkById[x.id] <= quietInk + 4).map((x) => x.id);
+      // The ruled rail under the strip carries the binary truth: its is-chosen tick must sit under
+      // the aria-selected tile. Ticks are built one per button in order, so indices align. Scoped
+      // to the nav group — other station rows can carry the same rail furniture.
+      const navRow = root.querySelector('.sx-dock__group--nav');
+      const railTicks = navRow ? [...navRow.querySelectorAll('.orr-stationrow__tick')] : [];
+      const selIdx = items.findIndex((el) => el.getAttribute('aria-selected') === 'true' || el.classList.contains('is-active'));
+      const chosenIdx = railTicks.findIndex((t) => t.classList.contains('is-chosen'));
+      const markerId = chosenIdx >= 0 && items[chosenIdx] ? items[chosenIdx].getAttribute('data-nav') : null;
+      const markerMatches = railTicks.length ? (chosenIdx === selIdx) : null;
       return { expected, selectedIds: sel, filledLiars: liars, selectedButUnpainted: unpainted, read,
         activeBgRules: activeEl ? matchedBg(activeEl) : [], attentionBgRules: attnEl ? matchedBg(attnEl) : [],
-        salienceById,
+        salienceById, fillById, lampById, inkById,
+        markerMatches, markerId,
         // RANKING IS NOT ENOUGH, and finding that out cost a wrong claim. The broken version put
         // selection at 37.1 and attention at 31.4 — selection still ranked first, so a
         // "selection is the most salient" rule passed on the very layout it was written to catch.
@@ -190,10 +261,17 @@ try {
         // the weaker fill is the more saturated hue. Require real separation.
         activeSalience: sel.length === 1 ? salienceById[sel[0]] : null,
         runnerUpSalience: sel.length === 1
-          ? Math.max(0, ...Object.entries(salienceById).filter(([id]) => id !== sel[0]).map(([, v]) => v))
+          ? Math.max(0, ...Object.entries(salienceById)
+            .filter(([id]) => id !== sel[0] && !read.find((x) => x.id === id && x.next)).map(([, v]) => v))
           : null,
         activeIsMostSalient: sel.length === 1 && Object.entries(salienceById)
-          .every(([id, v]) => id === sel[0] || v < salienceById[sel[0]]),
+          .every(([id, v]) => {
+            if (id === sel[0]) return true;
+            if (v < salienceById[sel[0]]) return true;
+            // a NEXT suggestion may tie the bright word; it may never out-burn it
+            const nextTile = read.find((x) => x.id === id);
+            return !!(nextTile && nextTile.next && v <= salienceById[sel[0]]);
+          }),
         // The selected tab must wear the SELECTION colour. When the attention tab was also the
         // selected tab it wore the attention colour instead, and no ranking rule could see it
         // because that colour still outscored every quiet neighbour.
@@ -206,6 +284,7 @@ try {
     r.margin = Number.isFinite(margin) ? +margin.toFixed(2) : null;
     console.log(`${tab.padEnd(10)} selected=[${r.selectedIds.join(',')}]  `
       + `salience ${r.activeSalience} vs ${r.runnerUpSalience}  margin ${r.margin === null ? 'inf' : r.margin + 'x'}`
+      + `  marker ${r.markerMatches === null ? 'none' : (r.markerMatches ? 'on selection' : 'at ' + r.markerId)}`
       + `${r.activeIsAlsoAttention ? '  (also the attention tab)' : ''}`);
   }
   writeFileSync(join(OUT, 'tab-state.json'), JSON.stringify(results, null, 2));
@@ -218,10 +297,16 @@ try {
   const failures = [];
   for (const r of results) {
     for (const id of r.selectedButUnpainted) failures.push(`${r.expected}: ${id} is selected but unpainted`);
-    if (!r.activeIsMostSalient) failures.push(`${r.expected}: selection is not the most salient fill`);
-    else if (r.margin !== null && r.margin < MIN_MARGIN) {
-      failures.push(`${r.expected}: selection only ${r.margin}x the next fill (needs ${MIN_MARGIN}x)`
-        + ' — a margin the eye cannot use when the weaker fill is the more saturated hue');
+    if (!r.activeIsMostSalient) failures.push(`${r.expected}: selection is not the most salient signal on the strip`);
+    // The rail marker is the binary truth channel — when it exists it must sit under the selected
+    // tab, and its agreement is what separates the bright word from a merely loud neighbour. Only
+    // when there is NO marker does the margin law hold alone: a strip with nothing but paint
+    // between "current" and "loudest quiet" needs real separation the eye can use.
+    if (r.markerMatches === false) {
+      failures.push(`${r.expected}: the rail's chosen tick sits under ${r.markerId}, not the selected tab`);
+    } else if (r.markerMatches === null && r.margin !== null && r.margin < MIN_MARGIN) {
+      failures.push(`${r.expected}: selection only ${r.margin}x the next signal (needs ${MIN_MARGIN}x)`
+        + ' — a margin the eye cannot use when the weaker signal is the more saturated hue');
     }
     if (selectionFill && r.activeFill && r.activeFill !== selectionFill) {
       failures.push(`${r.expected}: selected tab wears ${r.activeFill}, not the selection fill ${selectionFill}`);

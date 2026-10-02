@@ -4,6 +4,7 @@ import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { ENCOUNTER_COMMAND_RING_CAPACITY } from './aiPorts.js';
+import { turretLossCount } from '../combat/turretSubsystems.js';
 
 
 /** Bench A/B: production default ON. Quiet latch skips shipLike reinforcement-author
@@ -304,7 +305,12 @@ export const aiEncounter = {
       const ai = data.ai || (data.ai = {});
       const authored = data.reinforcements;
       if (!authored || !authored.packageId || ai._calledReinforcements === true) continue;
-      if (!(entity.hullMax > 0) || entity.hull / entity.hullMax >= finite(authored.hullThreshold, 0.3)) continue;
+      // FB-020: a caller may author the call on physical mount loss (`turretsLostAtLeast`) —
+      // the vent/readable beat — in addition to the hull-fraction trigger. Either admits it.
+      const turretEdge = finite(authored.turretsLostAtLeast, 0) > 0
+        && turretLossCount(state.combat && state.combat.entities && state.combat.entities[String(entity.id)]) >= authored.turretsLostAtLeast;
+      if (!turretEdge
+        && (!(entity.hullMax > 0) || entity.hull / entity.hullMax >= finite(authored.hullThreshold, 0.3))) continue;
       // SF-053: never announce a call whose squad cannot be reserved — the caller holds its
       // latch and retries when a slot frees, so the banner only runs when help can actually come.
       // The survival-run refusal mirrors spawnBudget.request's own gate: a Crucible round owns

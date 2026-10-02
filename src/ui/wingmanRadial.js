@@ -33,6 +33,7 @@ const R_OUT = 166;
 const HALF_SPAN = (44 * Math.PI) / 180;   // 88-degree keys, 2-degree hairline seams
 const R_FACE = 120;                       // where each key's legend sits
 const R_LAMP = 178;                       // the bezel lamps, one per key
+const R_RECEIPT = 70;                     // the receipt word, between hub rim and key inner edge
 const POS_ANGLE = { top: -Math.PI / 2, right: 0, bottom: Math.PI / 2, left: Math.PI };
 
 function polarX(r, a) { return C + r * Math.cos(a); }
@@ -88,6 +89,7 @@ export function createWingmanRadial(ctx) {
   hub.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); cycleScope(); });
 
   const wedgeEls = [];
+  const receiptEls = {};
   for (const opt of OPTIONS) {
     const wedge = document.createElement('button');
     wedge.type = 'button';
@@ -110,6 +112,16 @@ export function createWingmanRadial(ctx) {
     lamp.style.left = `${polarX(R_LAMP, a).toFixed(1)}px`;
     lamp.style.top = `${polarY(R_LAMP, a).toFixed(1)}px`;
     overlay.appendChild(lamp);
+    // The order receipt line (FB-138): a real node so a blocked/converted/status event can
+    // write its word onto the slot the pilot picked. Appended to the overlay — the wedge's
+    // clip-path would cut anything outside the arc — seated between hub rim and key inner edge.
+    const receipt = document.createElement('span');
+    receipt.className = 'sf-wradial__receipt mono';
+    receipt.setAttribute('aria-live', 'polite');
+    receipt.style.left = `${polarX(R_RECEIPT, a).toFixed(1)}px`;
+    receipt.style.top = `${polarY(R_RECEIPT, a).toFixed(1)}px`;
+    overlay.appendChild(receipt);
+    receiptEls[opt.order] = receipt;
     wedge.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); issue(opt); });
     overlay.appendChild(wedge);
     wedgeEls.push(wedge);
@@ -121,6 +133,62 @@ export function createWingmanRadial(ctx) {
   let scope = 'all';
   let selectedIndex = 0;
   let previousFocus = null;
+
+  // ── Order receipts (FB-138) ──────────────────────────────────────────────────
+  // automation.js answers ui:wingOrder with wingOrder:blocked / :converted / :status.
+  // The word lands on the slot it names: a blocked order shows the refusal reason,
+  // a converted one shows what it became, a partial status shows the count. A
+  // receipt on the just-issued order holds the dial open to be read; one that
+  // arrives with the dial closed (an attack silently degrading to regroup) flashes
+  // the dial non-interactively for the same window.
+  const RECEIPT_MS = 2000;
+  const REASON_WORDS = {
+    recipient_missing: 'NO WING',
+    not_deployed: 'NOT DEPLOYED',
+    target_missing: 'NO TARGET',
+    target_not_hostile: 'NOT HOSTILE',
+  };
+  let receiptTimer = 0;      // pending end-of-receipt timeout
+  let receiptFlash = false;  // overlay is up only to show a receipt (non-interactive)
+  let receiptHold = false;   // dial stays open an extra beat so a receipt can be read
+  let issuing = false;       // inside issue()'s synchronous emit
+  let issueReceipt = false;  // a receipt landed on the order being issued
+
+  function showReceipt(order, word) {
+    const el = order != null ? receiptEls[order] : null;
+    if (!el || !word) return;
+    if (issuing && el.textContent) return; // the blocked reason outranks the status line
+    for (const key of Object.keys(receiptEls)) if (receiptEls[key] !== el) receiptEls[key].textContent = '';
+    el.textContent = word;
+    if (issuing) { issueReceipt = true; return; }  // issue() decides whether to hold
+    if (open) { receiptHold = true; scheduleReceiptEnd(); }
+    else flashReceipt();
+  }
+
+  function flashReceipt() {
+    receiptFlash = true;
+    overlay.hidden = false;
+    overlay.classList.remove('sf-wradial--in'); void overlay.offsetWidth;
+    overlay.classList.add('sf-wradial--in', 'sf-wradial--receipt');
+    scheduleReceiptEnd();
+  }
+
+  function scheduleReceiptEnd() {
+    clearTimeout(receiptTimer);
+    receiptTimer = setTimeout(endReceipt, RECEIPT_MS);
+  }
+
+  function endReceipt() {
+    receiptTimer = 0;
+    for (const el of Object.values(receiptEls)) el.textContent = '';
+    if (receiptHold) { receiptHold = false; close(); }
+    if (receiptFlash) {
+      receiptFlash = false;
+      if (open) return;                       // the pilot opened the dial mid-flash
+      overlay.classList.remove('sf-wradial--in', 'sf-wradial--receipt');
+      setTimeout(() => { if (!open && !receiptFlash) overlay.hidden = true; }, 160);
+    }
+  }
 
   function fleet() {
     return (state.automation && state.automation.fleet) || [];
@@ -140,6 +208,7 @@ export function createWingmanRadial(ctx) {
 
   function openRadial(count) {
     open = true;
+    receiptFlash = false;
     previousFocus = document.activeElement;
     if (state.ui) state.ui.wingmanRadialOpen = true;
     selectedIndex = Math.min(selectedIndex, Math.max(0, count - 1));
@@ -160,6 +229,9 @@ export function createWingmanRadial(ctx) {
   function close() {
     if (!open) return;
     open = false;
+    clearTimeout(receiptTimer);
+    receiptTimer = 0;
+    receiptHold = false;
     if (state.ui) state.ui.wingmanRadialOpen = false;
     overlay.classList.remove('sf-wradial--in');
     document.removeEventListener('keydown', onKey, true);
@@ -179,12 +251,23 @@ export function createWingmanRadial(ctx) {
       return; // keep the radial open so the player can pick another order
     }
     const selected = f[selectedIndex] || null;
+    issuing = true;
+    issueReceipt = false;
     bus.emit('ui:wingOrder', {
       order: opt.order,
       scope,
       selectedWingmanId: scope === 'selected' && selected ? selected.id : null,
       targetId: opt.order === 'attack' ? (state.player && state.player.targetId) : null,
     });
+    issuing = false;
+    // A blocked/partial receipt on the issued slot holds the dial for one beat
+    // (FB-138) — the refusal is the thing the pilot needs to read before it closes.
+    if (issueReceipt) {
+      issueReceipt = false;
+      receiptHold = true;
+      scheduleReceiptEnd();
+      return;
+    }
     close();
   }
 
@@ -245,6 +328,27 @@ export function createWingmanRadial(ctx) {
   // Close if flight is left (dock / menu / death) so it can't linger over a modal.
   bus.on('mode:changed', () => { if (open && state.mode !== 'flight') close(); });
   bus.on('dock:docked', () => close());
+
+  // FB-138 — the order receipt. The refused slot says why; a converted order shows
+  // what it became on the slot that was issued; a partial status shows the count.
+  bus.on('wingOrder:blocked', (p) => {
+    if (!p || p.order == null) return;
+    const reasons = Array.isArray(p.blockedRecipients) ? p.blockedRecipients : [];
+    const reason = reasons.length ? reasons[0].reason : null;
+    showReceipt(p.order, REASON_WORDS[reason] || String(reason || 'blocked').replace(/_/g, ' ').toUpperCase());
+  });
+  bus.on('wingOrder:converted', (p) => {
+    if (!p || p.to == null) return;
+    showReceipt(p.from != null ? p.from : p.to, String(p.to).toUpperCase());
+  });
+  bus.on('wingOrder:status', (p) => {
+    if (!p || p.order == null) return;
+    const blocked = Array.isArray(p.blockedRecipients) ? p.blockedRecipients.length : 0;
+    const accepted = Array.isArray(p.acceptedRecipientIds) ? p.acceptedRecipientIds.length : 0;
+    if (!blocked) return;          // a clean accept already has its voice acknowledgement
+    if (accepted) showReceipt(p.order, `EXEC ${accepted}/${accepted + blocked}`);
+    else showReceipt(p.order, 'BLOCKED');
+  });
 
   return { toggle, open: openRadial, close, get isOpen() { return open; } };
 }
@@ -320,6 +424,15 @@ function injectCss() {
   .sf-wradial:has(.sf-wradial__wedge--left:is(:hover, :focus-visible)) .sf-wradial__lamp--left {
     background:linear-gradient(var(--dp-lamp) 0 0);
     box-shadow:0 0 7px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), 0 0 16px var(--dp-lamp-bloom-soft, rgb(242 185 80 / .16)); }
+  /* the order receipt: a word seated between hub rim and key inner edge on the slot it names */
+  .sf-wradial__receipt { position:absolute; transform:translate(-50%,-50%); max-width:120px; pointer-events:none;
+    font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 800, "wdth" 72; font-size:var(--wr-type);
+    letter-spacing:.1em; text-transform:uppercase; text-align:center; line-height:1.2; white-space:nowrap;
+    color:var(--dp-lamp-hot, #ffd98c); text-shadow:0 1px 0 rgb(0 0 0 / .8), 0 0 9px rgb(242 185 80 / .3); }
+  .sf-wradial__receipt:empty { display:none; }
+  /* receipt-only flash: visible, but the keys cannot be pressed */
+  .sf-wradial--receipt .sf-wradial__wedge, .sf-wradial--receipt .sf-wradial__hub { pointer-events:none; }
+
   .sf-wradial--in .sf-wradial__wedge--disabled { opacity:.4; cursor:not-allowed; }
   .sf-wradial__wedge--disabled:hover { color:var(--dp-ink-dim, #b7b4a6); }
   .sf-wradial__wedge--disabled:hover .sf-wradial__glyph, .sf-wradial__wedge--disabled:hover .sf-wradial__key { color:var(--dp-ink, #e8e2d4); }

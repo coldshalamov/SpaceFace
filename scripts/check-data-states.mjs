@@ -161,7 +161,11 @@ const blockStart = css.indexOf('/* 13 ─ sf-state');
 if (blockStart < 0) {
   fail('D/css', `${CSS} has no sf-state block (section 13)`);
 } else {
-  const block = css.slice(blockStart);
+  // The block ends at the next numbered section header (`/* N ─ …`). Slicing to EOF swept every
+  // later component into the sf-state grammar — `.orr-replay__pulse` (a JS-driven playhead, not an
+  // sf-state class) tripped D/naming the day the replay Tape landed after section 14.
+  const nextSection = css.slice(blockStart + 1).search(/\/\*\s*\d+\s*─/);
+  const block = nextSection < 0 ? css.slice(blockStart) : css.slice(blockStart, blockStart + 1 + nextSection);
   for (const banned of ['pulse', 'blink', 'flash']) {
     // Only class NAMES matter — sf-reduce-flash matches [class*="…"].
     if (new RegExp(`\\.[\\w-]*${banned}[\\w-]*`, 'i').test(block)) {

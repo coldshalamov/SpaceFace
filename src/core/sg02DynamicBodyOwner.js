@@ -27,6 +27,7 @@ import { observeAppliedImpulse, observeConstraint, observeRelease, observeContac
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { combatFlag } from '../data/featureFlags.js';
+import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -793,6 +794,13 @@ export class Sg02DynamicBodyOwner {
       }
     }
     for (const rec of this.dynamicRecords) {
+      // The post-step sleep verdict is authoritative for the rest of the step: world.step is
+      // the only sleeper (a body Rapier reports asleep here cannot wake until the next step
+      // except via an explicit wake path, and _wakeSleepingBody clears this flag). A sleeping
+      // island's kinematics did not move, so neither the WASM readback nor the give pass — which
+      // would only compare that frozen pose against a stale prediction — has anything to do.
+      rec._postStepSleepSkip = this._sleepingRecordSkipsCpu(rec, true);
+      if (rec._postStepSleepSkip) continue;
       this._readPostStepKinematics(rec);
       this._applyStructuralGive(rec);
     }
@@ -823,12 +831,16 @@ export class Sg02DynamicBodyOwner {
     }
 
     for (const rec of this.dynamicRecords) {
-      if (this._sleepingRecordSkipsCpu(rec, true)) {
+      if (rec._postStepSleepSkip === true) {
         rec._skippedSleepKinematics = true;
         this._stampIslandSleep(rec, true);
         continue;
       }
       rec._skippedSleepKinematics = false;
+      // A body woken after the verdict was cached (a receipt endpoint roused by
+      // _wakeSleepingBody) skipped the post-step read; its scratch must be fresh before
+      // _enforcePlane/_clampSpeed consult it, not residue from an earlier step.
+      if (rec._postStepReadTick !== this.tick) this._readPostStepKinematics(rec);
       const kinematics = this._enforcePlane(rec);
       this._clampSpeed(rec, kinematics);
       if (this._sleepReeled.has(rec)) this._canonicalizeManualSpringBody(rec, kinematics);
@@ -849,6 +861,8 @@ export class Sg02DynamicBodyOwner {
 
   _wakeSleepingBody(rec) {
     if (!rec || !rec.body) return;
+    // Explicit wakes between the post-step passes invalidate the cached skip verdict.
+    rec._postStepSleepSkip = false;
     if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
     if (typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(false);
     if (rec.entity) rec.entity.physicsSleeping = false;
@@ -1009,6 +1023,7 @@ export class Sg02DynamicBodyOwner {
   // per-record object absorbs the per-tick allocation; dirty flags mark components a give pass
   // rewrote so _enforcePlane re-reads the authoritative WASM value.
   _readPostStepKinematics(rec) {
+    rec._postStepReadTick = this.tick;
     const post = rec.postStep || (rec.postStep = {
       v: { x: 0, y: 0, z: 0 },
       w: { x: 0, y: 0, z: 0 },
@@ -1066,6 +1081,23 @@ export class Sg02DynamicBodyOwner {
     return (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV) + slack;
   }
 
+  _playerContactClosingFraction(rec) {
+    const receipts = this._stepContactReceipts;
+    if (!receipts || !receipts.length) return 0;
+    const own = rec.entity && rec.entity.id;
+    let maxClosing = 0;
+    for (let i = 0; i < receipts.length; i++) {
+      const r = receipts[i];
+      if (r.aId === own || r.bId === own) {
+        if (Number.isFinite(r.preSolveClosingSpeed) && r.preSolveClosingSpeed > maxClosing) {
+          maxClosing = r.preSolveClosingSpeed;
+        }
+      }
+    }
+    const incomingSpeed = Math.hypot(finite(rec.expected && rec.expected.vx), finite(rec.expected && rec.expected.vz));
+    return incomingSpeed > 1e-3 ? maxClosing / incomingSpeed : 0;
+  }
+
   // PQ-137.11: player contact structural give.
   // The player is not ammunition: the solver's planar velocity response is REAL and passes
   // through untouched, but contact may never spin or kick the hull — yaw pose and rate restore
@@ -1099,14 +1131,41 @@ export class Sg02DynamicBodyOwner {
     const rawDvx = Number(v.x) - e.vx;
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
-    const contactDvBudget = (!Number.isFinite(rawDv)
-        || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
-      ? this._contactResponseDvBudget(rec)
-      : Infinity;
+
+    const isActive = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
+    if (isActive) {
+      const lastTick = rec._playerContactLastTick;
+      const gap = Number.isFinite(lastTick) ? tickNow - lastTick : Infinity;
+      if (gap > PLAYER_CONTACT_EVENT_BRIDGE_TICKS) {
+        rec._playerContactCumulativeDeltaV = 0;
+      }
+      rec._playerContactLastTick = tickNow;
+    }
+
+    const cumulative = rec._playerContactCumulativeDeltaV || 0;
+    const isDirectSlam = rec._tumbling === true || this._playerContactClosingFraction(rec) > 0.55;
+    let contactDvBudget;
+    if (isDirectSlam) {
+      contactDvBudget = (!Number.isFinite(rawDv)
+          || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+        ? this._contactResponseDvBudget(rec)
+        : Infinity;
+    } else {
+      const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
+      const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
+      const eventBudget = (Number.isFinite(cruise) && cruise > 0)
+        ? PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise
+        : MAX_CONTACT_DV;
+      const remainingBudget = Math.max(0, eventBudget - cumulative);
+      contactDvBudget = (!Number.isFinite(rawDv) || rawDv > remainingBudget)
+        ? remainingBudget
+        : Infinity;
+    }
     let acceptedVx = vx;
     let acceptedVz = vz;
     if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
-      if (Number.isFinite(rawDv) && rawDv > 0) {
+      if (Number.isFinite(rawDv) && rawDv > 0 && contactDvBudget > 0) {
         const scale = contactDvBudget / rawDv;
         acceptedVx = e.vx + rawDvx * scale;
         acceptedVz = e.vz + rawDvz * scale;
@@ -1145,6 +1204,9 @@ export class Sg02DynamicBodyOwner {
     // last-contact tick, and no tethered-traffic scan survive on the record — contact is just
     // contact now.
     const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
+    if (isActive && !isDirectSlam) {
+      rec._playerContactCumulativeDeltaV = cumulative + actualPlayerDeltaV;
+    }
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
@@ -1460,6 +1522,8 @@ export class Sg02DynamicBodyOwner {
       // collider-local offsets and axes never change on a live record.
       coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
+      _postStepSleepSkip: false,
+      _postStepReadTick: -1,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
       appliedForce: zero3(),

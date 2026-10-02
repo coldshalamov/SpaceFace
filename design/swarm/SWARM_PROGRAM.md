@@ -4,6 +4,10 @@
 demoed. It has to be the most polished thing in the game. This document is the gap list
 between what the mode is and what it needs to be, and the build order it ships in.
 
+**Next layer (owner, 2026-10-02): [`SWARM_ARCADE.md`](./SWARM_ARCADE.md)** — Swarm as its own
+arcade game: banked currency and a permanent Hangar, Swarm-only juice, a curated ladder, and
+crossover unlocks into Adventure. It reverses several laws below for Swarm (its §1.1).
+
 ## The dream, in the owner's words
 
 - Fight waves for credits; **choose a difficulty that sets the starting purse** ("pick easy,

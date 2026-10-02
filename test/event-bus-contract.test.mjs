@@ -51,6 +51,74 @@ test('once() fires exactly once even when the payload handler re-emits', () => {
   assert.deepEqual(seen, ['first'], 'the re-entrant emit sees no listener: it already ran once');
 });
 
+test('once() fires once even when an EARLIER listener recursively re-emits the event', () => {
+  // The wrapper used to unsubscribe inside its own invocation — after the nested emit had
+  // already snapshotted it — so the outer dispatch's captured copy ran fn a second time.
+  const bus = createBus();
+  const seen = [];
+  bus.on('e', (p) => { if (p === 'outer') bus.emit('e', 'inner'); });
+  bus.once('e', (p) => seen.push(p));
+  bus.emit('e', 'outer');
+  assert.deepEqual(seen, ['inner'],
+    'the nested emit consumes the once; the outer snapshot\'s copy must be inert');
+});
+
+test('a once() listener that throws still runs exactly once', () => {
+  const bus = createBus();
+  let calls = 0;
+  bus.once('e', () => { calls += 1; throw new Error('listener fault'); });
+  assert.doesNotThrow(() => bus.emit('e'));
+  bus.emit('e');
+  assert.equal(calls, 1, 'throwing must not re-arm or duplicate the registration');
+});
+
+test('clear() mid-flush aborts the rest of the captured batch; only post-clear work survives', () => {
+  // flush() captures the whole batch up front: without a generation check, an event that
+  // clears the bus and rebinds listeners still receives the pre-clear remainder.
+  const bus = createBus();
+  const seen = [];
+  bus.on('reset', () => {
+    seen.push('reset');
+    bus.clear();
+    bus.on('work', (p) => seen.push(`new:${p}`));
+    bus.queue('work', 'fresh');
+  });
+  bus.on('work', (p) => seen.push(`old:${p}`));
+  bus.queue('reset');
+  bus.queue('work', 'stale');
+  bus.flush();
+  assert.deepEqual(seen, ['reset'],
+    'the stale batch item must not reach the fresh (post-clear) listener');
+  bus.flush();
+  assert.deepEqual(seen, ['reset', 'new:fresh'],
+    'work queued after clear lands on the next flush, in the new bus');
+});
+
+test('clear() inside a nested flush aborts the outer batch as well', () => {
+  // A nested flush delivering an event whose listener clears — and rebinds on — the bus must
+  // invalidate the captured batch of every flush still on the stack, not just its own.
+  const bus = createBus();
+  const seen = [];
+  bus.on('a', () => {
+    seen.push('a');
+    bus.queue('inner');
+    bus.flush(); // nested flush delivers 'inner', which clears and rebinds
+  });
+  bus.on('inner', () => {
+    seen.push('inner');
+    bus.clear();
+    bus.on('b', () => seen.push('b-post-clear'));
+  });
+  bus.on('b', () => seen.push('b-old'));
+  bus.queue('a');
+  bus.queue('b');
+  bus.flush();
+  assert.deepEqual(seen, ['a', 'inner'],
+    'the outer batch\'s stale b must not reach the listener bound after clear');
+  bus.flush();
+  assert.deepEqual(seen, ['a', 'inner'], 'nothing stale is left to deliver');
+});
+
 test('queue() defers past the current emit and flush() delivers in queue order', () => {
   const bus = createBus();
   const seen = [];

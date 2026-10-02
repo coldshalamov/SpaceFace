@@ -121,6 +121,8 @@ export function outcomeSentence(outcome, context = {}) {
 export const TELEGRAPH_WORDS = Object.freeze({
   weapon_charge: 'Weapon charge',
   broadside_charge: 'Broadside charge',
+  swarmer_vent: 'Swarmer vent',
+  broadside_desperation: 'Desperation battery',
   attach_spool: 'Attack spool-up',
   field_spool: 'Drag-field spool',
   wake_mines: 'Mine wake',
@@ -530,6 +532,7 @@ export const survivalResults = {
   newGame() {
     this._reset();
     this._result = null;
+    this._resultEnded = false;
   },
 
   /** The finished run's summary, or null before one has ended. Read by the results surface. */
@@ -551,6 +554,7 @@ export const survivalResults = {
     this._planFailure = null;
     this._stopReason = null;
     this._result = null;
+    this._resultEnded = false;
     this._resultSeq = (this._resultSeq || 0) + 1;
     this._kills = 0;
     this._bestChain = 0;
@@ -896,7 +900,12 @@ export const survivalResults = {
   _publish(outcome) {
     const run = this.state && this.state.run;
     if (!run || run.kind !== 'survival') return;
-    if (this._result && (run.phase === 'ended' || run.phase === 'victory')) {
+    // A terminal record is locked: redundant run:ended/transition receipts while the run sits
+    // ended cannot rewrite it. A publish that ran while the run was still live — a raw abort
+    // receipt landing in loadout — is not a terminal record: the same run may still reach a
+    // real end, and that end must publish.
+    if (this._result && this._resultEnded === true
+      && (run.phase === 'ended' || run.phase === 'victory')) {
       return;
     }
     const wave = Number.isInteger(run.wave) ? run.wave : 0;
@@ -1050,6 +1059,7 @@ export const survivalResults = {
       result.moments = [{ text: rematch.line }, ...result.moments].slice(0, DEATH_MOMENT_LIMIT + 1);
     }
     this._result = result;
+    this._resultEnded = run.phase === 'ended' || run.phase === 'victory';
     this._resultSeq = (this._resultSeq || 0) + 1;
     this._emit('run:resultsReady', result);
   },

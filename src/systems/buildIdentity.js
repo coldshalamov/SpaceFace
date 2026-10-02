@@ -5,7 +5,7 @@
 // can render the badge without scanner, target-panel, combat, or module-stat edits.
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
-import { compactSynergy, synergiesForFittings } from '../data/synergies.js';
+import { compactSynergy, explainSynergy, synergiesForFittings } from '../data/synergies.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
@@ -60,7 +60,10 @@ function hasModValue(defs, key) {
   return defs.some((def) => def.mods && def.mods[key] != null);
 }
 
-function makeIdentity(def, basis, synergies = []) {
+function makeIdentity(def, basis, synergies = [], scanned = true) {
+  const notes = synergies
+    .map((row) => explainSynergy(row, basis.modules, { scanned }))
+    .filter(Boolean);
   return Object.freeze({
     id: def.id,
     label: def.label,
@@ -74,6 +77,7 @@ function makeIdentity(def, basis, synergies = []) {
       matched: Object.freeze((def.matched || []).slice()),
     }),
     synergies: Object.freeze(synergies.map(compactSynergy).filter(Boolean)),
+    synergyNotes: Object.freeze(notes),
   });
 }
 
@@ -260,7 +264,8 @@ export function classifyBuildIdentity(input, options = {}) {
     def = roleFallback(role);
   }
 
-  return makeIdentity(def, basis, synergiesForFittings(ids));
+  const scanned = !reveal || reveal.fittingsKnown !== false;
+  return makeIdentity(def, basis, synergiesForFittings(ids), scanned);
 }
 
 function sameIdentity(a, b) {

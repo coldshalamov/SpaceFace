@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de113c55377f5e01106dd1e863c3b1606d8b544078b403333089460365e94b93",
+  "contentHash": "e01d37e5d10ed05ba5361a5f2c4c4d1c679206c151ef868b219f9877087c20bf",
   "dynamicGroups": [
     {
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
@@ -608,9 +608,9 @@
       "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanicaldark"
     },
     {
-      "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber.dynamic",
+      "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon.dynamic",
       "kind": "moving-part",
-      "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber"
+      "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon"
     },
     {
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical.dynamic",
@@ -638,7 +638,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e642e134aac9b3853fa7cbe8c71c6dd260687ef04f9440e5695a3de0cc11eff",
+      "geometryHash": "3e87f284faa321eddc2f3058bcdd2e84f851ad3ad8c2a3ca575c2375d0148fcd",
       "id": "sf.render.bastion-production-v1-lod1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -653,17 +653,17 @@
       "bounds": {
         "max": [
           10.18411636352539,
-          2.420356035232544,
+          2.420386552810669,
           3.696561574935913
         ],
         "min": [
           -9.900001525878906,
-          -1.1003559827804565,
+          -1.1003254652023315,
           -3.1003010272979736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2a51deede0e569615d782a853273ec47d29edd69e11d4a88f40ad9ef01e2945",
+      "geometryHash": "0275128e2334289781a6f6ea25181d28095ab84e3895348ec01f1f1da2f489db",
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 3300,
       "indexed": true,
@@ -672,7 +672,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Armor.001",
       "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 993
+      "vertexCount": 994
     },
     {
       "bounds": {
@@ -702,18 +702,18 @@
     {
       "bounds": {
         "max": [
-          -2.5027756690979004,
-          0.40378660424280916,
-          -2.6127345045663493
+          -2.5028069019317627,
+          0.40378612310906686,
+          -2.6127406205337005
         ],
         "min": [
-          -5.597964286804199,
-          -0.5571605013184622,
-          -3.399496368541561
+          -5.597992420196533,
+          -0.55716002018472,
+          -3.3995016966660065
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10746d74054f5b1ab4904b61c84cedd46180f624b9b15c5d152357599de8d6a8",
+      "geometryHash": "3b1ee11d993b7de79e8bc62a52227f4fc5b483edfdb008f719308d3c1705bcf6",
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-port-hull.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -914,13 +914,13 @@
       },
       "drawMode": 4,
       "geometryHash": "02f02cb0ec3a4e10bb5969ee7c946ff3329ebc02d652943ae318c9a4a6e1d1ed",
-      "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber.primitive.0",
+      "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber.001",
-      "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon.001",
+      "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb350e7a779bdcaecfd76d5f7aa143d3ae9fd7dc29421ae4cce2d19cc99bdd29",
+      "geometryHash": "389c1b8e311aa08eb3aef7f448b72ac4430c1c67de110957bc217eedf18af6f7",
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hull-upper.primitive.0",
       "indexCount": 3036,
       "indexed": true,
@@ -1002,27 +1002,27 @@
     {
       "bounds": {
         "max": [
-          9.599446296691895,
-          1.9735583066940308,
-          3.399259328842163
+          9.599447250366211,
+          1.9735584259033203,
+          3.3992600440979004
         ],
         "min": [
-          -9.399881362915039,
-          -0.5568249225616455,
-          -3.3992607593536377
+          -9.399882316589355,
+          -0.5568250417709351,
+          -3.399260997772217
         ]
       },
       "drawMode": 4,
-      "geometryHash": "185a558ebf3bbb7ffff7aae64017c372b1e40a5621ed50edd9c3200415726b26",
+      "geometryHash": "ef68e2972d86fa73c757e016e0fb081db7dc5d7be141765206ce3c10532708b1",
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 3954,
+      "indexCount": 3957,
       "indexed": true,
       "materialHash": "6c70722c524d651879531c380dd93a942d0b1afdbb70f25ac034925f2d4b7b9c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull.001",
       "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1555
+      "vertexCount": 1556
     },
     {
       "bounds": {
@@ -1063,41 +1063,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "412ed0ea1153a7754118fd047920eed26411ba8e29fb6f6f7d5ab4c52d9a41cb",
+      "geometryHash": "d3beba9ecc96e84a85d62ed6fd673245f7426342d5be97a45f214ce7f40b26b1",
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-lights-warm.primitive.0",
-      "indexCount": 300,
+      "indexCount": 294,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm.001",
       "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 200
+      "vertexCount": 198
     },
     {
       "bounds": {
         "max": [
-          9.599325180053711,
-          2.3241117000579834,
-          3.390704870223999
+          9.599313735961914,
+          2.324110746383667,
+          3.390702486038208
         ],
         "min": [
           -7.546168804168701,
-          -0.5642554759979248,
-          -3.391202211380005
+          -0.5642545223236084,
+          -3.391199827194214
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89da43deb4f3732ed6e0b39ab9400332d68e1d8027941651cbe50cc91aa39c53",
+      "geometryHash": "a30466c5163916601ce9a9167a94866f3e6a044e36833c9b63d7a8307cc3a276",
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-livery.primitive.0",
-      "indexCount": 4059,
+      "indexCount": 4062,
       "indexed": true,
       "materialHash": "22b833ce092f23048dad04bddaf85f13c40cf81a8cf5f84bd3da896dd42e078f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Livery.001",
       "nodeId": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1730
+      "vertexCount": 1731
     },
     {
       "bounds": {
@@ -1185,6 +1185,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "16d67b82adc6c42a6c24b9786e80a3167275d24a8fded9269b0cbb6bf2937452",
@@ -1590,21 +1597,21 @@
     {
       "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-port-hull",
       "localTransform": [
-        1.5475943088531494,
+        1.5475927591323853,
         0,
         0,
         0,
         0,
-        1.5475943088531494,
+        1.5475927591323853,
         0,
         0,
         0,
         0,
-        1.5475943088531494,
+        1.5475927591323853,
         0,
-        -4.05036997795105,
+        -4.050399661064148,
         -0.07668694853782654,
-        -3.006115436553955,
+        -3.0061211585998535,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1619,21 +1626,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.bastion-production-v1-lod1.body",
       "worldTransform": [
-        1.5475943088531494,
+        1.5475927591323853,
         0,
         0,
         0,
         0,
-        1.5475943088531494,
+        1.5475927591323853,
         0,
         0,
         0,
         0,
-        1.5475943088531494,
+        1.5475927591323853,
         0,
-        -4.05036997795105,
+        -4.050399661064148,
         -0.07668694853782654,
-        -3.006115436553955,
+        -3.0061211585998535,
         1
       ]
     },
@@ -1988,7 +1995,7 @@
       ]
     },
     {
-      "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber",
+      "id": "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
       "localTransform": [
         0.07000000029802322,
         0,
@@ -2008,8 +2015,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3127,29 +3134,29 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "e725f4050ddc5837a590fb2d0206074ca5f60c5d545fbe9e6fa03e3fd05b4ffb"
+      "sha256": "56faf597af0e17f5e5e6cc2e631a979957be509e5c6de8c4d933b1f887be4937"
     },
     "sourceGlb": {
-      "bytes": 558216,
-      "sha256": "a00e4c8dee0739fbe4c779ce4d1724f5983f4c0c31b97bd4981599d55e179de8",
+      "bytes": 558884,
+      "sha256": "2aa9d7d14d6b087e20ad38092c9d9941471819c1225e1e6a76fc5993edd9cb41",
       "uri": "bastion_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 829532,
-    "sha256": "48540581f964f99b5e7b6877d682bf3a8da421054880d5a59bad70c5c9b26d9f",
+    "bytes": 830260,
+    "sha256": "3896bcd10358a061b1411157ed3099f64ccdc35a5f7d80e7a65966e00d6e2bed",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.36795854568481445,
-        1.4393232170553008,
+        1.4393384758443633,
         0.00009703636169433594
       ],
       "max": [
@@ -3159,12 +3166,12 @@
       ],
       "min": [
         -10.92003345489502,
-        -1.1003559827804565,
+        -1.1003254652023315,
         -4.29995059967041
       ],
       "size": [
         21.10414981842041,
-        5.079358399671515,
+        5.07932788209339,
         8.600095272064209
       ]
     },
@@ -3973,9 +3980,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6749,
+      "bytes": 7279,
       "rigId": "hull",
-      "sha256": "67e1e53deb07a3d1f32cbe8369e384a677dcae638857d46264c1c5cb33667f36",
+      "sha256": "5d6255a23e68b737a0477c6fd110258de60fad3edfa24619fa9f2edb56ab22fa",
       "uri": "assets/ships/motions/bastion-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4039,21 +4046,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.5475943088531494,
+          1.5475927591323853,
           0,
           0,
           0,
           0,
-          1.5475943088531494,
+          1.5475927591323853,
           0,
           0,
           0,
           0,
-          1.5475943088531494,
+          1.5475927591323853,
           0,
-          -4.05036997795105,
+          -4.050399661064148,
           -0.07668694853782654,
-          -3.006115436553955,
+          -3.0061211585998535,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
@@ -4306,7 +4313,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -4574,7 +4581,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb"
   },
-  "runtimeHash": "da276447f62f3fb32aace2347de6bcc6b4c0c9ae886bfbe8dc6af053589fad2b",
+  "runtimeHash": "1a78fc6d74a594b67b5479b4a6d296594c3da5a243a62cd75820f962f3e8c6d1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4586,7 +4593,7 @@
         ],
         "min": [
           -10.92003345489502,
-          -1.1003559827804565,
+          -1.1003254652023315,
           -4.29995059967041
         ]
       },
@@ -4604,7 +4611,7 @@
         "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-casemate-armor",
         "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanical",
         "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanicaldark",
-        "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber",
+        "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
         "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical",
         "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-mechanicaldark",
         "sf.render.bastion-production-v1-lod1.node.lod0-motion-hull-core-hull",

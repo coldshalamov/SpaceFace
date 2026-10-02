@@ -371,8 +371,10 @@ function roundFinite(v) {
 
 function quoteView(stationId, commodityId, quote, nowS) {
   if (!isPlainObject(quote)) return null;
-  const buy = Number.isFinite(Number(quote.buy)) ? Math.round(Number(quote.buy)) : null;
-  const sell = Number.isFinite(Number(quote.sell)) ? Math.round(Number(quote.sell)) : null;
+  const buyN = Number(quote.buy);
+  const sellN = Number(quote.sell);
+  const buy = Number.isFinite(buyN) && buyN > 0 ? Math.round(buyN) : null;
+  const sell = Number.isFinite(sellN) && sellN > 0 ? Math.round(sellN) : null;
   if (buy == null && sell == null) return null;
   // Provenance must resolve — unknown tags fail closed (excluded from intelligence).
   const provenance = quoteProvenance(quote);

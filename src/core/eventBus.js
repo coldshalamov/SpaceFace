@@ -42,6 +42,9 @@ export function createBus() {
   const deferredPool = [];
   const sliceBudgets = new Map();
   let emitSlice = null;
+  // Bumped by clear(): a flush mid-stack that captured its batch pre-teardown must not deliver
+  // the rest of it into listeners bound on the new bus.
+  let generation = 0;
 
   function invalidateSnapshot(snaps, event) {
     const snap = snaps.get(event);
@@ -69,7 +72,17 @@ export function createBus() {
   }
 
   function once(event, fn) {
-    const unsub = on(event, (p, e) => { unsub(); fn(p, e); });
+    // The fired guard must be set BEFORE unsubscribing: an earlier listener that recursively
+    // re-emits snapshots this wrapper while it is still subscribed, and the outer dispatch's
+    // captured copy must find it already spent. Snapshot semantics are preserved — the wrapper
+    // may still be invoked by an in-flight array, it just no-ops.
+    let fired = false;
+    const unsub = on(event, (p, e) => {
+      if (fired) return;
+      fired = true;
+      unsub();
+      fn(p, e);
+    });
     return unsub;
   }
 
@@ -248,8 +261,18 @@ export function createBus() {
     if (!deferred.length) return;
     const batch = deferred;
     deferred = [];
+    const batchGeneration = generation;
     for (let i = 0; i < batch.length; i++) {
       const item = batch[i];
+      if (generation !== batchGeneration) {
+        // clear() ran while this batch was on the stack: everything still in it predates the
+        // teardown and must not reach listeners (re)bound on the new bus. Recycle the slot;
+        // events queued after clear() live in the new deferred array and flush normally.
+        item.event = null;
+        item.payload = null;
+        deferredPool.push(item);
+        continue;
+      }
       emitAll(item.event, item.payload);
       item.event = null;
       item.payload = null;
@@ -270,6 +293,7 @@ export function createBus() {
     deferredPool.length = 0;
     sliceBudgets.clear();
     emitSlice = null;
+    generation += 1;
   }
 
   return {

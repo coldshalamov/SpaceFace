@@ -422,7 +422,15 @@ function settleMoralReturn(d, live, state, choiceId) {
     const ai = entity.data && entity.data.ai;
     if (ai) { ai.passive = false; ai.forcePlayerTarget = true; ai.hostileTeams = [0]; }
   }
-  d.emit('moralMemory:vengefulReturn', { id: debt.id, name: debt.name, encounterId: live.id });
+  d.emit('moralMemory:vengefulReturn', {
+    id: debt.id,
+    name: debt.name,
+    encounterId: live.id,
+    // the mercy it answers, so the announcement can cite it (FB-139)
+    cause: debt.cause,
+    mercyOrdinal: debt.mercyOrdinal,
+    factionId: debt.factionId,
+  });
   return finish(d, live, state, 'vengeful', flags);
 }
 

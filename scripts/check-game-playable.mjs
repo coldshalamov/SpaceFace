@@ -376,13 +376,33 @@ try {
       phase = 'flight';
       record('LAUNCH', true, 'flight mode entered');
     } catch (err) {
-      const detail = await page.evaluate(() => ({
-        mode: window.SF?.state?.mode,
-        start: window.__playableStart,
-        screens: [...document.querySelectorAll('[data-screen]')]
-          .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
-        lane: window.SF?.simLaneDiag?.() || window.SF?.laneDiag || null,
-      })).catch(() => null);
+      const detail = await page.evaluate(async (verbose) => {
+        const state = window.SF?.state;
+        const detail = {
+          mode: state?.mode,
+          start: window.__playableStart,
+          screens: [...document.querySelectorAll('[data-screen]')]
+            .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
+          lane: window.SF?.simLaneDiag?.() || window.SF?.laneDiag || null,
+        };
+        if (!verbose || !state) return detail;
+        const { authoredCriticalVisualReadiness, describeAuthoredUpgradeQueue } =
+          await import('/src/render/partsLibrary.js');
+        detail.readiness = authoredCriticalVisualReadiness(state);
+        const scene = state.render?.scene;
+        detail.queue = describeAuthoredUpgradeQueue(scene);
+        detail.jobs = scene?.userData?.authoredUpgradeDiagnostics?.jobs || [];
+        detail.critical = [detail.readiness.playerId, detail.readiness.startingHubId]
+          .map((id) => {
+            const entity = state.entities.get(id);
+            const data = entity?.mesh?.userData || {};
+            return { id, name: entity?.mesh?.name,
+              status: data.authoredAssetState, failure: data.authoredFailureReason,
+              readmission: data.authoredReadmissionReason, phase: data.authoredPreparePhase,
+              upgrading: !!data.authoredUpgradePromise };
+          });
+        return detail;
+      }, VERBOSE).catch(() => null);
       record('LAUNCH', false, `never entered flight — ${err.message} — ${JSON.stringify(detail)}`);
     }
   } else {

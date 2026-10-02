@@ -137,6 +137,22 @@ assert.equal(cargoRow.before, beforeLive.cargoCap);
 assert.equal(cargoRow.after, afterLive.cargoCap);
 ok('loadout delta rows are live getDerivedStats before/after');
 
+// ---- NXI-118: worse-is-lower stats never tone 'better' when they rise ----
+const massRow = delta.rows.find((r) => r.higherIsBetter === false && r.delta > 0);
+assert.ok(massRow, 'fitting a cargo pod must raise a lower-is-better stat (mass or draw)');
+assert.equal(massRow.tone, 'worse',
+  `rising ${massRow.key} must read worse, got ${massRow.tone}`);
+assert.equal(cargoRow.tone, 'better', 'rising cargo cap is the neighboring legitimate gain');
+ok('lower-is-better stats tone worse when they rise');
+
+// ---- NXI-222: a signed delta never wraps its sign or unit ----
+const neg = formatPreviewDelta({ delta: -3.2, label: 'Max speed' });
+assert.equal(neg.replace(/\u00A0/g, ' '), '-3.2 max speed');
+assert.ok(!neg.includes(' '), 'signed delta must carry no breakable space');
+const pos = formatPreviewDelta({ delta: 12, label: 'Shield' });
+assert.equal(pos.replace(/\u00A0/g, ' '), '+12 shield');
+ok('signed deltas glue amount and unit (NBSP, unbreakable)');
+
 // ---- module fit preview: install, replace, unavailable reasons ----
 const install = presentModuleFitPreview({
   defId: 'ship_mule',

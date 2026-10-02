@@ -131,6 +131,7 @@ import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
 import { pirateRumor } from '../systems/pirateRumor.js';
 import { ambushSignatures } from '../systems/ambushSignatures.js';
 import { bountyHunt } from '../systems/bountyHunt.js';
+import { morrow } from '../systems/morrow.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -295,6 +296,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['stationContacts', stationContacts],
     ['stationContactLoadBoundary', stationContactLoadBoundary],
     ['gateControlDirector', gateControlDirector],
+    ['morrow', morrow],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

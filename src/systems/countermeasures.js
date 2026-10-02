@@ -31,9 +31,15 @@
 // state — the VFX (chaff puff / ECM shimmer) is emitted via bus events for the renderer to pick up.
 
 import { MODULES } from '../data/modules.js';
+import { WEAPONS } from '../data/weapons.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { suppressDefeatedLock, targetIdentityGeneration } from '../ai/perception.js';
+import {
+  isPdScreenActor, ensurePdSaturation, pdSaturationAllows, beginPdIntercept,
+} from '../ai/pdScreen.js';
+
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 
 /** A broken lock cannot be rebuilt on the same contact until this observation window passes. */
 export const LOCK_REACQUIRE_S = 1.2;
@@ -81,6 +87,46 @@ function equippedPointDefense(fittings) {
     if (pds) return { moduleId: id, def, cfg: pds };
   }
   return null;
+}
+
+// FB-018: a fitted weapon carrying `intercepts: true` is a PD source too — the flak turret's
+// flag is real. The hull's intercept-capable guns answer as ONE battery (the mounts volley
+// together), one shot per the authored cadence, chance per shot, inside the turret arc. The
+// kill charges the weapon's energyCost — the same field the gun spends when it fires. Enemies
+// carry their mounts on data.weapons, not data.fittings, which is why the PD-screen escort's
+// curtain was decorative before this pass.
+function interceptWeaponChannel(data) {
+  const mounts = data && Array.isArray(data.weapons) ? data.weapons : null;
+  if (!mounts || !mounts.length) return null;
+  let best = null;
+  for (const w of mounts) {
+    // Resolved mount records carry the def fields verbatim (`...base` in resolveEnemyWeapon);
+    // a bare {id} entry falls back to the catalog row.
+    const rec = w.intercepts === true ? w : WEAPON_BY_ID.get(w.defId || w.id);
+    if (!rec || rec.intercepts !== true) continue;
+    if (!best || (Number(rec.interceptChance) || 0) > (Number(best.interceptChance) || 0)) best = rec;
+  }
+  if (!best) return null;
+  return {
+    radius: Math.max(1, Number(best.range) || 0),
+    cooldownS: Math.max(0.1, Number(best.interceptCooldownS) || 0.5),
+    chance: Math.min(1, Math.max(0, Number(best.interceptChance) || 0)),
+    arcRad: (Number(best.turretArcDeg) || 360) * Math.PI / 180,
+    energyCost: Math.max(0, Number(best.energyCost) || 0),
+    weaponId: best.defId || best.id,
+  };
+}
+
+// Projectiles inside the forward hemisphere only: the turret arc is the honest coverage — a
+// shot crossing behind the beam line is safe. Arc 360 covers everything (module servo ring).
+function projectileInArc(projectile, ship, arcRad) {
+  if (!arcRad || arcRad >= Math.PI * 2 - 1e-6) return true;
+  const rot = Number.isFinite(ship.rot) ? ship.rot : 0;
+  const bearing = Math.atan2(projectile.pos.z - ship.pos.z, projectile.pos.x - ship.pos.x);
+  let d = bearing - rot;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return Math.abs(d) <= arcRad / 2;
 }
 
 const CM_KIND_WORD = Object.freeze({ chaff: 'Chaff deployed', ecm: 'ECM jamming active', decoy: 'Decoy buoy broadcasting' });
@@ -132,6 +178,9 @@ function shipHasCountermeasureInterest(e) {
   if (cm && ((cm.cooldownT > 0) || (cm.effectT > 0) || cm.effect)) return true;
   const pds = data.pds;
   if (pds && pds.cooldownT > 0) return true;
+  // FB-018: an intercept-capable gun is point-defense interest even with no utility modules —
+  // escorts carry flak on data.weapons, not fittings.
+  if (interceptWeaponChannel(data)) return true;
   const fittings = data.fittings;
   if (!fittings) return false;
   if (equippedCountermeasure(fittings)) return true;
@@ -320,46 +369,87 @@ export const countermeasures = {
         }
       }
     }
-    // 5. Point-defense servos (mod_pds_servo_s): an autonomous intercept verb. Each armed servo
-    //    watches its ring and kills the nearest hostile projectile inside it — missiles first,
-    //    then the closest slug — on its cooldown. No lock/permission is asked; the module owns
-    //    the trigger and the player owns the positioning. Scan only runs when the servo is ready,
-    //    so an idle fleet with no servos pays nothing here.
+    // 5. Point-defense channels: an autonomous intercept verb. A fitted servo module
+    //    (mod_pds_servo_s) watches its ring and kills the nearest hostile projectile inside it
+    //    on its cooldown; a fitted `intercepts` weapon (wpn_flak_turret_s) answers as a second,
+    //    battery-wide channel — authored chance, authored cadence, turret-arc coverage, and the
+    //    weapon's own energyCost charged per kill. No lock/permission is asked; the hardware owns
+    //    the trigger and positioning stays the pilot's problem. A PD-screen actor's channel is
+    //    additionally saturation-capped so a screen can be flooded, never perfected. Scan only
+    //    runs when a channel is ready, so an idle fleet pays nothing here.
     for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive) continue;
-      const eq = equippedPointDefense(e.data && e.data.fittings);
-      if (!eq) continue;
-      const pds = e.data.pds || (e.data.pds = { cooldownT: 0 });
-      if (pds.cooldownT > 0) {
+      const data = e.data;
+      const eq = data && equippedPointDefense(data.fittings);
+      const gun = data && interceptWeaponChannel(data);
+      if (!eq && !gun) continue;
+      const pds = data.pds || (data.pds = { cooldownT: 0 });
+      // The servo module keeps its own slot; the gun battery keeps `weaponCooldownT`.
+      if (eq && pds.cooldownT > 0) {
         pds.cooldownT = Math.max(0, pds.cooldownT - dt);
-        continue;
       }
-      const cfg = eq.cfg;
-      const radius = Math.max(1, Number(cfg.radius) || 0);
-      if (!(radius > 0)) continue;
-      const projectiles = projectilesNear(state, e.pos, radius, this._projectileScratch);
+      if (gun && (pds.weaponCooldownT || 0) > 0) {
+        pds.weaponCooldownT = Math.max(0, pds.weaponCooldownT - dt);
+      }
+      const channels = [];
+      if (eq && pds.cooldownT <= 0) {
+        channels.push({
+          radius: Math.max(1, Number(eq.cfg.radius) || 0),
+          chance: 1, arcRad: Math.PI * 2, energyCost: 0,
+          commit: () => { pds.cooldownT = Math.max(0.1, Number(eq.cfg.cooldownS) || 1); },
+          source: 'servo',
+        });
+      }
+      if (gun && !(pds.weaponCooldownT > 0)) {
+        channels.push({
+          radius: gun.radius,
+          chance: gun.chance, arcRad: gun.arcRad, energyCost: gun.energyCost,
+          commit: () => { pds.weaponCooldownT = gun.cooldownS; },
+          source: 'weapon', weaponId: gun.weaponId,
+        });
+      }
+      if (!channels.length) continue;
+      // A real screen can be saturated, not perfect: PD-role actors spend from the recovery
+      // ledger so a missile wave that outlasts two charges leaks through.
+      const sat = isPdScreenActor(e) ? ensurePdSaturation(e) : null;
+      if (sat && !pdSaturationAllows(sat, state.tick)) continue;
+      const scanRadius = Math.max(channels[0].radius, channels[1] ? channels[1].radius : 0);
+      const projectiles = projectilesNear(state, e.pos, scanRadius, this._projectileScratch);
       if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
       this._diag.projectileCandidates += projectiles.length;
-      const target = nearestInterceptableProjectile(projectiles, e, radius);
-      if (!target) continue;
-      // The receipt owns the missile's own point (and motion) — the target is about to be
-      // retired, so listeners must never have to reach back through the entity index.
-      const interceptPos = { x: target.pos.x, z: target.pos.z };
-      const tv = target.vel;
-      const interceptDir = tv && Number.isFinite(tv.x) && Number.isFinite(tv.z)
-        ? { x: tv.x, z: tv.z } : undefined;
-      target.alive = false;
-      pds.cooldownT = Math.max(0.1, Number(cfg.cooldownS) || 1);
-      this.bus.emit('pds:intercept', {
-        schemaVersion: 1,
-        shipId: e.id,
-        projectileId: target.id,
-        missile: !!(target.data && target.data.kind === 'missile'),
-        radius,
-        tick: state.tick,
-        pos: interceptPos,
-        dir: interceptDir,
-      });
+      for (const ch of channels) {
+        if (!(ch.radius > 0)) continue;
+        // Gun batteries spend the shot even when it misses — the chance roll happens at fire
+        // time, same as a real gun's spread. Cheap energy keeps flak honest instead of free.
+        if (ch.energyCost > 0 && (e.cap || 0) < ch.energyCost) continue;
+        const target = nearestInterceptableProjectile(projectiles, e, ch.radius);
+        if (!target || !projectileInArc(target, e, ch.arcRad)) continue;
+        ch.commit();
+        if (ch.energyCost > 0) e.cap = Math.max(0, (e.cap || 0) - ch.energyCost);
+        if (ch.chance < 1 && !(state.rng && state.rng() < ch.chance)) continue;
+        if (sat) {
+          if (!beginPdIntercept(sat, state.tick)) continue;
+        }
+        // The receipt owns the missile's own point (and motion) — the target is about to be
+        // retired, so listeners must never have to reach back through the entity index.
+        const interceptPos = { x: target.pos.x, z: target.pos.z };
+        const tv = target.vel;
+        const interceptDir = tv && Number.isFinite(tv.x) && Number.isFinite(tv.z)
+          ? { x: tv.x, z: tv.z } : undefined;
+        target.alive = false;
+        this.bus.emit('pds:intercept', {
+          schemaVersion: 1,
+          shipId: e.id,
+          projectileId: target.id,
+          missile: !!(target.data && target.data.kind === 'missile'),
+          radius: ch.radius,
+          source: ch.source,
+          weaponId: ch.weaponId || null,
+          tick: state.tick,
+          pos: interceptPos,
+          dir: interceptDir,
+        });
+      }
     }
     state.countermeasureRuntime = state.countermeasureRuntime || {};
     state.countermeasureRuntime.diagnostics = this._diag;

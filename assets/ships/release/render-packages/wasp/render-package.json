@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "eb63d9a3319d3bfc33530fe21a8b125ac107bd5e3cb464f0c44d75b51e8b5291",
+  "contentHash": "1745c987ee0a61128cd7bf01d260528a33e78bca815942aadbffdbd33b8f77db",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp.node.lod0-hook-armor-flap-armor.dynamic",
@@ -674,13 +674,13 @@
       },
       "drawMode": 4,
       "geometryHash": "f5149e437007fd5ce351e886ee119c4260918422aceb603df1ca6fe663cb4b07",
-      "id": "sf.render.wasp.node.lod0-beacon-amber.primitive.0",
+      "id": "sf.render.wasp.node.lod0-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber",
-      "nodeId": "sf.render.wasp.node.lod0-beacon-amber",
+      "meshName": "LOD0_Beacon_Amber_beacon",
+      "nodeId": "sf.render.wasp.node.lod0-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -948,7 +948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e4ea0b4b53c48545b5a8c8308e17f604411dc6485773f1e08f0c941f3909da8",
+      "geometryHash": "d491d33984f59ba86954f2491fecf28c423abd1f910b8a569c1e774ec51a0dc5",
       "id": "sf.render.wasp.node.lod0-mechanical.primitive.0",
       "indexCount": 12051,
       "indexed": true,
@@ -1190,6 +1190,13 @@
   "lods": [],
   "materials": [
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -1227,13 +1234,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -1460,7 +1460,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp.node.lod0-beacon-amber",
+      "id": "sf.render.wasp.node.lod0-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1480,8 +1480,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
+      "mergeBoundary": "LOD0_Beacon_Amber_beacon",
+      "nodeName": "LOD0_Beacon_Amber_beacon",
       "nodePath": [
         0,
         2
@@ -3282,22 +3282,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "4eb414342e9a4faaa181578758c15a18fb5fddc78f45dd8e906be0b4fc23ee09"
+      "sha256": "9b312771d6043d95db5085e3486e82cc61269ad075e809127ef533031c342b6e"
     },
     "sourceGlb": {
-      "bytes": 799748,
-      "sha256": "97a430c7825a0075682b2c939df6e4b0aa460257c2dc619674ada4c948477dd6",
+      "bytes": 799804,
+      "sha256": "2f5a0dce2673ea802046b6d5950f2e48c70e0de32609765aa2f3a3c4a5be0b5d",
       "uri": "wasp_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1427876,
-    "sha256": "9e1edb1283f706f782ef74eb8654235c0772f67e3d343152b2cf5c50bbed3e4a",
+    "bytes": 1427948,
+    "sha256": "0d992157463efcddc394912ae70d735fffebfcea925328a4567361d96be81185",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4275,7 +4275,7 @@
     "motionBank": {
       "bytes": 8378,
       "rigId": "wasp",
-      "sha256": "b62538c381d24be3de52e639cc774a80cfd65d6f59ea79f3e0a7eeca08d36621",
+      "sha256": "321e73794dc52d9bfacc4a0ddc3eb11cf5d5ce8709c0351d9f3034425daedb45",
       "uri": "assets/ships/motions/wasp.motion.json"
     },
     "nodeCount": 40,
@@ -4327,7 +4327,7 @@
           0,
           1
         ],
-        "name": "LOD0_Beacon_Amber",
+        "name": "LOD0_Beacon_Amber_beacon",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -4913,7 +4913,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1.glb"
   },
-  "runtimeHash": "578c7dcc9f2f9006c3a270421896b53de04b455f07f657bfe2e8bfe065a2e2e6",
+  "runtimeHash": "c7ad389027a0de909ab763e38ef22fb5cbf75ad381e8f526eba7a699d47e314b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4933,7 +4933,7 @@
       "nodeIds": [
         "sf.render.wasp.node.collision-hull",
         "sf.render.wasp.node.lod0-armor",
-        "sf.render.wasp.node.lod0-beacon-amber",
+        "sf.render.wasp.node.lod0-beacon-amber-beacon",
         "sf.render.wasp.node.lod0-canopy",
         "sf.render.wasp.node.lod0-hook-armor-flap-armor",
         "sf.render.wasp.node.lod0-hook-drive-core",

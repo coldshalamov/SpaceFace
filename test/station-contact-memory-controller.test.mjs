@@ -96,6 +96,6 @@ test('restore boundary clears stale runs and normalizes loaded contact records',
   bus.emit('save:loaded', {});
   assert.equal(state.player.stationContacts.loaded.talkCount, 2);
   assert.equal(state.player.stationContacts.loaded.standing, 3);
-  assert.deepEqual(state.stationLife, { traffic: [] });
+  assert.deepEqual(state.stationLife, { traffic: [], rescueNotices: {} });
   stationContactLoadBoundary.destroy();
 });

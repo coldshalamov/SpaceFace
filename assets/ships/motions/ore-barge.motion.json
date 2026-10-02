@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "ore_barge",
  "sourceAssetId": "SF_WHOLESHIP_ORE_BARGE",
- "sourceGlbSha256": "f33769cf5ef0a1658c8326487025bcf5a2dbfffa2d25aa2628441d75ea4219e8",
+ "sourceGlbSha256": "cf2650ec9dfe29a78ef60e1a2b8e35f6fc03b2ea7138327f5c08c82ec5f53546",
  "fps": 60,
  "bindings": [
   {

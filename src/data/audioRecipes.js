@@ -1,14 +1,17 @@
 // src/data/audioRecipes.js – audio synthesis recipes and music stem definitions.
 // RECIPES: SFX synthesis parameter sets for runtime AudioContext nodes.
 // MUSIC_STEMS: adaptive music stem layer definitions.
-// Pure data, no imports, no three/DOM deps.
+// Pure data, no three/DOM deps.
 //
 // Distortion: a recipe that sets distortionAmount must also set distortionCurve.
 //   'softclip' — pre-QoL cheap clip (amounts authored against that formula)
 //   'tanh'     — analog saturation (amounts authored against the QoL curve)
 // Amounts are not interchangeable across curves.
 
+import { MORROW_AUDIO_RECIPES } from './morrow.js';
+
 export const RECIPES = [
+  ...MORROW_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',
@@ -1973,6 +1976,41 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.18 },
     filterType: 'bandpass', filterFreq: 700, filterQ: 2.0,
     transientClick: { gain: 0.4 },
+  },
+
+  // --- Field sustain loops (SF-230) — while a field is live it is heard from the source its
+  // force leans toward. Continuous voices; gain/pitch ride the kernel's lifecycle envelope.
+  {
+    // WELL — sustained inward pull: the deploy drop's landing tone held, warbling.
+    id: 'sfx_field_loop_well',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 46, freqSweep: [46, 40], sweepTimeS: 3.0,
+    gainEnvelope: { attack: 0.25, sustain: 1.0, release: 0.4, peak: 0.3 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.8,
+    lfoRate: 0.7, lfoDepth: 0.16,
+  },
+  {
+    // REPULSOR — sustained outward press: a low filtered pressure bed.
+    id: 'sfx_field_loop_repulsor',
+    category: 'weapon', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.2, sustain: 1.0, release: 0.35, peak: 0.26 },
+    filterType: 'bandpass', filterFreq: 480, filterQ: 0.9,
+  },
+  {
+    // CONE — the Sluice held open: the deploy gust sustained as a forward shear.
+    id: 'sfx_field_loop_cone',
+    category: 'weapon', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.3, peak: 0.2 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 1.2,
+  },
+  {
+    // SHEET — the scoop sheet sustained: a high thin shimmer along the flight line.
+    id: 'sfx_field_loop_sheet',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 520], sweepTimeS: 2.2,
+    gainEnvelope: { attack: 0.2, sustain: 1.0, release: 0.35, peak: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+    lfoRate: 0.5, lfoDepth: 0.1,
   },
 
   // --- Stunt chain voices (CV-EAR slice 3) — the combo the ear can follow.

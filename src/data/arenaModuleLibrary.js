@@ -36,6 +36,9 @@ import { validateArenaModule } from '../contracts/contentFactory.js';
 
 export const ARENA_TOY_KINDS = Object.freeze([
   'shutter', 'plate', 'crusher', 'relay', 'current', 'furnace', 'gate',
+  // FB-022: a movable fixture (cryo coolant tank / heat manifold) — verb-less like a gate;
+  // the pocket it anchors does the work, not the body.
+  'prop',
 ]);
 export const ARENA_TOY_VERBS = Object.freeze({
   shutter: 'cut',

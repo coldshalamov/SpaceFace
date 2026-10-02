@@ -49,6 +49,49 @@ export function capitalOpeningAnnouncement(previousTransitionId, opening) {
   return { cue: 'combat.subsystem.weapon.disabled', transitionId: id, close: false };
 }
 
+/**
+ * Count destroyed/disabled turrets on an entity (e.g. dreadnought capital).
+ * Supports both entity.subsystems and entity.data.subsystems.turrets.
+ */
+export function countTurretsLost(source) {
+  if (!source || typeof source !== 'object') return 0;
+  const bag = (source.data && source.data.subsystems && source.data.subsystems.turrets) || subsystemBag(source);
+  if (!bag) return 0;
+  let lost = 0;
+  for (const [id, sub] of Object.entries(bag)) {
+    if (id.startsWith('turret_') || (sub && sub.isTurret)) {
+      if (sub.destroyed === true || sub.effectiveDisabled === true || (Number.isFinite(sub.health) && sub.health <= 0)) {
+        lost++;
+      }
+    }
+  }
+  return lost;
+}
+
+/**
+ * Scripted or direct turret disable on an entity.
+ */
+export function destroyTurret(source, turretId) {
+  if (!source || typeof source !== 'object') return false;
+  const dataTurrets = source.data && source.data.subsystems && source.data.subsystems.turrets;
+  const bag = dataTurrets || subsystemBag(source);
+  if (!bag) return false;
+  const key = typeof turretId === 'number' ? `turret_${turretId}` : turretId;
+  const sub = bag[key];
+  if (sub) {
+    sub.health = 0;
+    sub.destroyed = true;
+    sub.effectiveDisabled = true;
+    if (source.subsystems && source.subsystems[key]) {
+      source.subsystems[key].health = 0;
+      source.subsystems[key].destroyed = true;
+      source.subsystems[key].effectiveDisabled = true;
+    }
+    return true;
+  }
+  return false;
+}
+
 // Subsystem id sets are fixed at ensureCombatant(); damage toggles destroyed flags but never
 // adds/removes keys. Cache the sorted id list on the runtime so applyPending + recompute skip
 // Object.keys().sort() every combat prePhysics (fresh profile: ~36 ms self).
@@ -133,7 +176,8 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
     progress = false;
     for (const id of sortedSubsystemIds(runtime)) {
       if (disabled.has(id)) continue;
-      const def = catalog.subsystems.get(id);
+      // Per-mount defs (turret subsystems) ride on the row — the shared catalog never learned them.
+      const def = catalog.subsystems.get(id) || runtime.subsystems[id].def;
       if (!def) continue;
       if ((def.dependencies || []).some((dependencyId) => disabled.has(dependencyId))) {
         disabled.add(id);
@@ -149,10 +193,11 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
 
   for (const id of sortedSubsystemIds(runtime)) {
     const subsystem = runtime.subsystems[id];
+    const rowDef = catalog.subsystems.get(id) || subsystem.def;
     subsystem.effectiveDisabled = disabled.has(id);
-    if (subsystem.effectiveDisabled) applyEffects(runtime, blocked, catalog.subsystems.get(id)?.disabledBehavior, 1);
+    if (subsystem.effectiveDisabled) applyEffects(runtime, blocked, rowDef?.disabledBehavior, 1);
     if (emitTransitions && previousEffective[id] !== subsystem.effectiveDisabled) {
-      const def = catalog.subsystems.get(id);
+      const def = rowDef;
       appendCombatTrace(state.combat, state.tick, subsystem.effectiveDisabled ? 'subsystem.disabled' : 'subsystem.enabled', {
         targetId: entity.id,
         subsystemId: id,
@@ -191,7 +236,7 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
 export function damageSubsystem(context, entity, runtime, subsystemId, incomingDamage, channelWeights, penetration = 0) {
   const { state, catalog } = context;
   const subsystem = runtime && runtime.subsystems && runtime.subsystems[subsystemId];
-  const def = subsystem && catalog.subsystems.get(subsystemId);
+  const def = subsystem && (catalog.subsystems.get(subsystemId) || subsystem.def);
   if (!subsystem || !def || !(incomingDamage > 0)) {
     return { subsystemId: subsystemId || null, applied: 0, overflow: Math.max(0, incomingDamage || 0), before: subsystem ? subsystem.health : 0, after: subsystem ? subsystem.health : 0 };
   }

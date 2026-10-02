@@ -81,8 +81,11 @@ function keyFromFileName(name) {
 
 function readPlayerStoreKeysSync(dir) {
   const keys = {};
-  const root = path.resolve(String(dir || ''));
-  if (!root) return keys;
+  // path.resolve('') is the cwd — validate the raw dir before resolving or an empty/blank
+  // override silently reads (and in the writer, creates) save files in the working directory.
+  const raw = String(dir || '').trim();
+  if (!raw) return keys;
+  const root = path.resolve(raw);
   let entries;
   try { entries = fs.readdirSync(root); }
   catch { return keys; }
@@ -108,18 +111,23 @@ function playerStoreHasSaves(dir) {
 
 function writeAtomicSync(file, contents) {
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tmp, contents, 'utf8');
   try {
+    fs.writeFileSync(tmp, contents, 'utf8');
     fs.renameSync(tmp, file);
-  } catch {
-    try { fs.rmSync(file, { force: true }); } catch { /* replace below */ }
-    fs.renameSync(tmp, file);
+  } catch (err) {
+    // A failed write or promote must never cost the previous save: do NOT delete the
+    // known-good primary to retry — that turns a transient failure into data loss. Clean up
+    // only the temp this attempt created (a torn write may leave real bytes), best-effort,
+    // and let the original error through.
+    try { fs.rmSync(tmp, { force: true }); } catch { /* stray temp is recoverable; the save is not */ }
+    throw err;
   }
 }
 
 function writePlayerStoreKeysSync(dir, patch) {
-  const root = path.resolve(String(dir || ''));
-  if (!root) throw new Error('player store directory is required');
+  const raw = String(dir || '').trim();
+  if (!raw) throw new Error('player store directory is required');
+  const root = path.resolve(raw);
   fs.mkdirSync(root, { recursive: true });
   const entries = patch && typeof patch === 'object' ? Object.entries(patch) : [];
   if (entries.length > MAX_KEYS) throw new Error('player store patch has too many keys');

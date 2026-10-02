@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bb75bb245f5af1cbfc682beadbd892a6203d7b6706e3b45a88b70c26f8952014",
+  "contentHash": "91b903c468147920610c017ed47c748dcf3b8b45732bfaff54b993b538afaf6e",
   "dynamicGroups": [
     {
       "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -653,7 +653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cefc964fe24d2c2ff88b3d76147c36989ca961eaf89af25d78f78d9799162a53",
+      "geometryHash": "9175f1959de49d61242ea08eaae6a1060fba369d9a4d52d3b4ef4b29d3891b47",
       "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 20484,
       "indexed": true,
@@ -679,13 +679,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1671d1ad72f1b6cf797a2c4b5e831d4b876b98344ab91c8676c5f27338d6dc83",
-      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1043,26 +1043,26 @@
       "bounds": {
         "max": [
           6.198428630828857,
-          1.4799494743347168,
-          2.479923963546753
+          1.4799530506134033,
+          2.479931354522705
         ],
         "min": [
-          -7.091238021850586,
-          -0.8999987840652466,
-          -2.479923963546753
+          -7.091278076171875,
+          -0.9000023603439331,
+          -2.479931354522705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af0e0d84d702a358618d4b9e6f906d24b5c3d881d846ed28bc9c9afb96e13a2d",
+      "geometryHash": "ecc9485177ca38dae835d7a9a27c8d4907cf33e2680a7418932897a46d21eb69",
       "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-armor.primitive.0",
-      "indexCount": 6057,
+      "indexCount": 6069,
       "indexed": true,
       "materialHash": "f743a384b8452c02b70e3caf5ec2be940ec08ae87ec1778617ff0a7e84c59aaa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1853
+      "vertexCount": 1857
     },
     {
       "bounds": {
@@ -1079,13 +1079,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ce2d684610bb5f605fa8e97dffc7860d1d2612a7dee436e452fafdfcc488468c",
-      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber",
+      "meshName": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1268,17 +1268,17 @@
       "bounds": {
         "max": [
           6.199878692626953,
-          2.2197153568267822,
-          2.4802205562591553
+          2.2196686267852783,
+          2.4801368713378906
         ],
         "min": [
-          -7.087031364440918,
-          -0.5587478876113892,
-          -2.4802205562591553
+          -7.086583614349365,
+          -0.5587010383605957,
+          -2.4801368713378906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9cf8fe26d6536a3816f143d1cd6f25abac63e183d433eda82502e412808adcc",
+      "geometryHash": "6839c620408fbc2f011647815757ddfa20b1777e40df5a00240a8a2a95a18bf0",
       "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 5283,
       "indexed": true,
@@ -1378,16 +1378,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f6d1ca3768f1bc5568a104fb83c1799d3d2cee6e8e94de8318e814141ad6aec",
+      "geometryHash": "c0f292b0f5a3dde13e54a4b4ea8490de881e7a17892b3b7544094fd5006a3bcf",
       "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 5901,
+      "indexCount": 5889,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2116
+      "vertexCount": 2112
     },
     {
       "bounds": {
@@ -1453,16 +1453,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e9bf6d469b6282bf5a7cc638bdb8e945eabdbe614462c1db77104832e1c4483",
+      "geometryHash": "632b5b9ee345df72b3c1c2da3435c2a0cf94d075cc6aa21975bc87edfabf6006",
       "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-armor.primitive.0",
-      "indexCount": 2736,
+      "indexCount": 2733,
       "indexed": true,
       "materialHash": "f743a384b8452c02b70e3caf5ec2be940ec08ae87ec1778617ff0a7e84c59aaa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.prospector-skiff.node.lod2-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 938
+      "vertexCount": 940
     },
     {
       "bounds": {
@@ -1479,13 +1479,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ce2d684610bb5f605fa8e97dffc7860d1d2612a7dee436e452fafdfcc488468c",
-      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber",
+      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1668,26 +1668,26 @@
       "bounds": {
         "max": [
           6.199536323547363,
-          2.217829465866089,
-          2.479593515396118
+          2.217924118041992,
+          2.4797616004943848
         ],
         "min": [
-          -7.079568386077881,
-          -0.5735911726951599,
-          -2.4795544147491455
+          -7.080469131469727,
+          -0.5736858248710632,
+          -2.479722499847412
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d801e3cb1a8f7eca8251d439f9fbc8031801d8f506503421f116cd81c186cfa9",
+      "geometryHash": "7615843d64be8deae216c92f3c7320028f2c61bf92ba6cf4c41ae5f830a8beb2",
       "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-hull.primitive.0",
-      "indexCount": 2484,
+      "indexCount": 2487,
       "indexed": true,
       "materialHash": "ca33c3d92306339b803b8d627a3876bcde37eb20b44be3c58ce1ae44c3f685a5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.prospector-skiff.node.lod2-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 883
+      "vertexCount": 884
     },
     {
       "bounds": {
@@ -1820,17 +1820,17 @@
   "lods": [],
   "materials": [
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -2233,7 +2233,7 @@
       ]
     },
     {
-      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -2253,8 +2253,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3033,7 +3033,7 @@
       ]
     },
     {
-      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber",
+      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -3053,8 +3053,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3833,7 +3833,7 @@
       ]
     },
     {
-      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber",
+      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -3853,8 +3853,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -5220,22 +5220,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "efa8d95cc36379364e6d8a26ee4788cf3e5c79a9a3850e6da978c5cda2dbca54"
+      "sha256": "92545ee0b1c355959bfb4ccba109ee1ef660509e4f40131b09eeac071c29b5df"
     },
     "sourceGlb": {
-      "bytes": 915576,
-      "sha256": "ccc8ea31f852ba6b53af45da12aafa31ff3d47623cd49f5f899d72789524cffe",
+      "bytes": 915728,
+      "sha256": "ccb1120f2bb1090eb9a3cefdc9123c92d9e419579d68cdf40a392e66ecda8218",
       "uri": "prospector_skiff.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1653896,
-    "sha256": "e12259b45507ef78d7b7c137a9b8d50fdeb4a4e8ca20d194c5ec9487de3e7cd5",
+    "bytes": 1654084,
+    "sha256": "da3f412670c4f924ccc9522ec5b150816b29a6346a4dd8e8a45b1a6d12e2873d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6208,9 +6208,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6740,
+      "bytes": 7239,
       "rigId": "hull",
-      "sha256": "c6442b9bbd2db3f82c60e8cb8a0eb556c9d710ffd2d4ab6d29e927f1e24561fb",
+      "sha256": "ed081334d2a7f46b6af976d805e19cf677ed3c2ad8f8b70b6405993dd1a460c1",
       "uri": "assets/ships/motions/prospector-skiff.motion.json"
     },
     "nodeCount": 63,
@@ -6263,7 +6263,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -6732,7 +6732,7 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -7201,7 +7201,7 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 37,
         "tags": {
           "canopy": false,
@@ -7599,7 +7599,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
-  "runtimeHash": "ddb027ce081ad0b442355c6ab4db7d989c366c3aa6771f426abb9f5ac7afcb91",
+  "runtimeHash": "67daf45293b287afc183a57314299ee8c561773779ae6326e6ed5fdf56305195",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -7619,7 +7619,7 @@
       "nodeIds": [
         "sf.render.prospector-skiff.node.collision-hull",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-armor",
-        "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.prospector-skiff.node.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-brushedmetal",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-canopy",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-ceramic",
@@ -7635,7 +7635,7 @@
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-mechanicaldark",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-warning",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-armor",
-        "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber",
+        "sf.render.prospector-skiff.node.lod1-motion-hull-core-beacon-amber-beacon",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-brushedmetal",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-canopy",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-ceramic",
@@ -7651,7 +7651,7 @@
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-mechanicaldark",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-warning",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-armor",
-        "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber",
+        "sf.render.prospector-skiff.node.lod2-motion-hull-core-beacon-amber-beacon",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-brushedmetal",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-canopy",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-ceramic",

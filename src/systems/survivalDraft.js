@@ -175,7 +175,12 @@ export const survivalDraft = {
     const run = liveSurvivalRun(this.state);
     const held = heldDefIds(this.state);
     const offers = (this._offers ? this._offers.slice() : [])
-      .filter((offer) => !isNoOpDuplicateOffer(offer, held, run && run.ruleset));
+      // A demoed row stays on the shelf though its defId now reads "held" — the trial copy is
+      // not owned, and this card is the only way to buy it before the armory closes.
+      .filter((offer) => !isNoOpDuplicateOffer(offer, held, run && run.ruleset)
+        || (Number.isInteger(offer.slotIndex)
+          && this._trials instanceof Map
+          && this._trials.get(offer.slotIndex)?.defId === offer.defId));
     if (!run || !isSwarmRuleset(run.ruleset) || !this._draftInput) return offers;
     // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
     // initially want the same empty slot; the second purchase must see the new loadout.
@@ -502,12 +507,28 @@ export const survivalDraft = {
       }
       this._purchased.add(pending.id);
       this._notice = `${pending.name} fitted. Buy again or launch the next round.`;
-      this._noteModifier({
-        kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
-        slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
-      }, {
-        wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id,
-      });
+      // Shelf rows carry a stock word ('Gun', 'Launcher', …), not an authored verb — the note
+      // would die in the validator and the buy would vanish from the run's memory. Record it
+      // verbatim the same way hull rows do, so results/buildCode/SF-072's buildSummary see it.
+      if (pending.catalog === true) {
+        this._emit('run:modifierRecordRequested', {
+          record: {
+            kind: 'catalog', offerId: pending.id, defId: pending.defId,
+            slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
+          },
+          draft: {
+            wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+          },
+          wave: this._wave,
+        });
+      } else {
+        this._noteModifier({
+          kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
+          slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
+        }, {
+          wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id,
+        });
+      }
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }
@@ -1202,6 +1223,15 @@ export const survivalDraft = {
    * Combat Lab setup take; there is no Survival-only fitting path.
    */
   _applyOffer(offer) {
+    const run = liveSurvivalRun(this.state);
+    if (isNoOpDuplicateOffer(offer, heldDefIds(this.state), run && run.ruleset)) {
+      return { ok: false, reason: 'duplicate' };
+    }
+    const drawn = this._draftInput && Array.isArray(this._draftInput.fittings) ? this._draftInput.fittings : null;
+    const live = this._activeLoadout();
+    if (drawn && live && JSON.stringify(drawn) !== JSON.stringify(live.fittings || [])) {
+      return { ok: false, reason: 'stale_fit' };
+    }
     const ships = this._ships();
     if (!ships || typeof ships.grantModule !== 'function' || typeof ships.fitModule !== 'function') {
       return { ok: false, reason: 'no_ships_owner' };

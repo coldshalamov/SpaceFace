@@ -172,7 +172,7 @@ test('Cathedral course arrival is all-hull safe while pocket-center transit stay
   const hulls = SHIPS.map((ship) => ({ id: ship.id, radius: ship.collisionRadius }))
     .sort((a, b) => b.radius - a.radius || a.id.localeCompare(b.id));
   assert.deepEqual(hulls[0], { id: 'ship_leviathan', radius: 45 });
-  assert.equal(hulls.length, 14, 'every canonical player-selectable hull participates');
+  assert.equal(hulls.length, 15, 'every canonical player-selectable hull participates');
   const envelopes = hulls.map((hull) => {
     const effectiveArrivalRadius = resolveAutopilotArrivalRadius(
       { radius: hull.radius },
@@ -563,7 +563,7 @@ test('Cathedral chase-read corridor transits every roster hull to a 25%-frame br
   // Every leg keeps every roster hull clear of the wreck envelope: small hulls keep 20 WU,
   // every hull keeps positive clearance (mirrors the arrival all-hull / transit Hornet split).
   const hulls = SHIPS.map((ship) => ({ id: ship.id, radius: ship.collisionRadius }));
-  assert.equal(hulls.length, 14, 'every canonical player-selectable hull participates');
+  assert.equal(hulls.length, 15, 'every canonical player-selectable hull participates');
   const barFor = (hull) => (hull.radius <= corridor.smallHullMaxRadius
     ? corridor.minSmallHullClearanceWu
     : corridor.minAllHullClearanceWu);

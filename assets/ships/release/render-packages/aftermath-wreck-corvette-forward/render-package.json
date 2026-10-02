@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8b9b57a83715a785ff6a9f4c572ebf26e6fccbd5672c3d0ab6d2ae5f56cbb981",
+  "contentHash": "ea33ffa12f3dcd19016098eaaeee6d91f37520dd0b172522a1596afcf6c5129c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -6089,8 +6089,8 @@
       "uri": "place_aftermath_wreck_corvette_forward.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -9266,7 +9266,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward.glb"
   },
-  "runtimeHash": "30f5132759bacc31e37c17ec15285de810df117ad6847987c8a07c3456c65c6b",
+  "runtimeHash": "e6f9eb437fd869dcb8e96b28f85f6760588f5e9606451a428d2defb5d808fd57",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

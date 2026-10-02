@@ -263,6 +263,7 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
 import { beginLookMood, updateLook } from './look.js';
+import { tickLampBus } from './lampBus.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { SWARM_RULESET, swarmEligibleEnemyIds } from '../data/swarmMode.js';
@@ -6894,6 +6895,12 @@ export const render = {
         // not in _meshes: they must re-skin too or the warmed program stays the bare variant
         // while live rocks draw the PBR one.
         for (const root of this._rosterPrewarmRoots || []) count += upgradeBareRockMaterials(root);
+        parallaxLayers.seatReadyRockSurfaceTextures();
+        if (state && state.render && typeof state.render.compileObjectPipelines === 'function') {
+          for (const group of parallaxLayers.activeGroups()) {
+            try { state.render.compileObjectPipelines(group, { explicit: true }); } catch (_) { /* best effort */ }
+          }
+        }
         // Pool chunks warmed while leaves were bare bind the bare material; empty buckets may
         // rebind to the real leaf pair so the first registration matches.
         try {
@@ -8268,6 +8275,7 @@ export const render = {
       // Parallax layers are production scene roots, not speculative VFX. Near speed motes normally
       // remain dormant, but Continue can restore nonzero motion; admit them when their real draw
       // range is already active instead of relying on the New Game zero-speed assumption.
+      parallaxLayers.seatReadyRockSurfaceTextures();
       for (const child of scene.children || []) {
         if (!child || !(
           child.name === 'Parallax_FarDust'
@@ -15044,8 +15052,7 @@ export const render = {
       } else {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       }
-      const linkOnGlass = this.state.mode === 'flight' && entityIsOnReadableGlass(e, this.state);
-      const compileAsteroid = e.type === 'asteroid';
+      const linkOnGlass = this.state.mode === 'flight' && entityIsOnDeadlineGlass(e, this.state);
       // Do not compile or 1x1-upload held first-flight rocks during the live
       // frame. That was the leftover Intel context-loss: several residency
       // prepares stacked on the first present. Cooked roots are stamped behind
@@ -15060,13 +15067,26 @@ export const render = {
           const data = m.userData || (m.userData = {});
           data.pipelinesPending = true;
           const subject = m;
+          const capturedState = this.state;
+          const capturedRender = capturedState.render;
+          const capturedRenderer = capturedRender.renderer;
+          const capturedGeneration = capturedRender.admissionRunGeneration;
+          const isActive = () => this.state === capturedState
+            && capturedState.render === capturedRender
+            && capturedRender.renderer === capturedRenderer
+            && capturedRender.admissionRunGeneration === capturedGeneration
+            && capturedRender.compileObjectPipelines === compileFn
+            && e.alive !== false && e.mesh === subject && !!subject.parent;
           void yieldAfterPresent().then(() => {
-            const compile = this.state && this.state.render
-              && this.state.render.compileObjectPipelines;
-            if (typeof compile === 'function' && subject && subject.parent) {
-              return compile(subject);
+            if (!isActive()) {
+              if (subject && subject.userData) subject.userData.pipelinesPending = false;
+              return null;
             }
-            if (subject && subject.userData) subject.userData.pipelinesPending = false;
+            // A freshly built on-camera body has the same deadline as an authored
+            // upgrade. Ambient FIFO priority here left its root hidden for seconds.
+            return compileFn(subject, {
+              urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
+            });
           }).catch(() => null);
         } else {
           void compileFn(m);
@@ -15319,6 +15339,9 @@ export const render = {
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
+    // The Lamp Bus: one shared clock for every blinking lamp (src/render/lampBus.js). Same clock the
+    // authored motion runs on, so a docked ship's lamps keep their rhythm; reduced-flash holds them steady.
+    tickLampBus(authoredNow, _worldSiteA11y.reducedFlash || !!(settings.video && settings.video.flashReduce));
     // PQ-133.08: law-arena room machinery animates once per frame on the sim clock — never per
     // entity, and never on wall time (a hard freeze holds the room's pose with the world).
     globalLawArenaDressing.updateRoom(simNow, presFrameDt, _worldSiteA11y);

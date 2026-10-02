@@ -81,7 +81,9 @@ test(`seed ${SEED}: a live corsair-blade spool + taut sweep names the cutter; a 
   const other = ENEMY_TYPES.find((row) => row.id === 'corsair_raider');
   assert.equal(hull.silhouette, 'corsair_blade');
   assert.equal(other.silhouette, 'corsair_blade', 'shared blade hull must not steal the sentence');
-  assert.equal(other.telegraph, undefined);
+  // FB-016 gave every row a telegraph — the pin that matters is the plain corsair's cue is not
+  // the cutter's spool, so the cutter read still belongs to the live taut-sweep silhouette.
+  assert.notEqual(other.telegraph && other.telegraph.cue, 'attach_spool');
 
   const slack = visibleReadFromLiveCutter(raider, { taut: false });
   assert.equal(nameThreatFromVisibleRead(slack), null, 'hull without taut sweep is not the threat');

@@ -54,6 +54,15 @@ export function npcCounterplayBark(payload) {
 }
 
 /** At most one contest bark per ambient gap. */
+/** One departing line per disengage. Null when the event has no attacker. */
+export function harasserDepartingBark(payload) {
+  if (!payload || payload.attackerId == null) return null;
+  return {
+    attackerId: payload.attackerId,
+    text: 'Breaking off. This chase is going nowhere.',
+  };
+}
+
 export function admitNpcCounterplayBark(host, payload, now) {
   const bark = npcCounterplayBark(payload);
   if (!bark || !host) return null;
@@ -297,6 +306,12 @@ export const barkDirector = {
     this._barkWakeSeq = 0;
     this._onEntitySpawnedBark = (payload) => {
       const entity = payload && payload.entity;
+      // core recycles entity ids; a new occupant must not inherit the previous actor's
+      // said/lastSituation receipt cache or its first warnings go silently deduped.
+      const id = entity && entity.id != null ? entity.id : payload && payload.id;
+      const cache = id != null && this.state && this.state.barkDirector
+        && this.state.barkDirector.entities;
+      if (cache && cache[String(id)]) delete cache[String(id)];
       if (!isBarkQuietWakeCandidate(entity)) return;
       this.noteBarkWake();
     };
@@ -380,13 +395,33 @@ export const barkDirector = {
         }
       };
       this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
+      this._onHarasserDisengaged = (payload) => {
+        const bark = harasserDepartingBark(payload);
+        if (!bark) return;
+        const voice = this.helpers && this.helpers.voice;
+        if (voice && typeof voice.say === 'function') {
+          voice.say({ channel: 'bark', text: bark.text, kind: 'departing', ttl: 3, id: bark.attackerId });
+        }
+        if (!Array.isArray(this._harasserDepartures)) this._harasserDepartures = [];
+        this._harasserDepartures.push(bark);
+      };
+      this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       this.bus.on('physics:impact', this._onBodyImpact, { presentation: true });
     }
   },
 
   newGame() {
-    if (this.state) this.state.barkDirector = freshState();
+    if (this.state) {
+      this.state.barkDirector = freshState();
+      // Ephemeral absolute-simTime deadlines must not carry into the fresh clock — the
+      // save-load path already runs this same reset for near-miss bodies and voice/danger.
+      this._onStuntLoad?.();
+    }
+    this._npcCounterplayAt = null;
+    if (Array.isArray(this._npcCounterplayBarks)) this._npcCounterplayBarks.length = 0;
+    if (Array.isArray(this._harasserDepartures)) this._harasserDepartures.length = 0;
+    this.noteBarkWake();
   },
 
   /** External wake when bark-relevant activity is stamped without a membership bump. */
@@ -509,12 +544,8 @@ export const barkDirector = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
-    rec.lastSituation = situation;
-    rec.said[situation] = true;
-    rec.lastSpokenAt = state.simTime || 0;
-    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
-    if (rec.history.length > 8) rec.history.shift();
-
+    // A refused voice request must not consume the situation — mark the slot only
+    // after acceptance, the same carve-out _speakEventLine already uses.
     const accepted = voice.say({
       channel: 'bark',
       text,
@@ -523,18 +554,22 @@ export const barkDirector = {
       id: `barkDirector:${entityId}:${situation}`,
       factionId,
     });
-    if (accepted) {
-      this._emit('barkDirector:voice', {
-        entityId: entity.id,
-        situation,
-        reason,
-        text,
-        factionId,
-        t: rec.lastSpokenAt,
-        ...(extra ? { source: extra.sourceEvent || null } : {}),
-      });
-    }
-    return !!accepted;
+    if (!accepted) return false;
+    rec.lastSituation = situation;
+    rec.said[situation] = true;
+    rec.lastSpokenAt = state.simTime || 0;
+    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id,
+      situation,
+      reason,
+      text,
+      factionId,
+      t: rec.lastSpokenAt,
+      ...(extra ? { source: extra.sourceEvent || null } : {}),
+    });
+    return true;
   },
 
   // ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
@@ -1330,6 +1365,7 @@ export const barkDirector = {
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onNpcCounterplay) this.bus.off('massline:npcCounterplay', this._onNpcCounterplay);
+      if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
     }

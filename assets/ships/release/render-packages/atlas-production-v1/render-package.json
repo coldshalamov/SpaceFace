@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e29cc0b59c19f405f7e2bf8613b26c149e59f9f33b5c140efd4e54e5b02d9bef",
+  "contentHash": "a06aa4f997e9ee05b1586cfa7ad48c89167ff1d9761de415595f37778780255d",
   "dynamicGroups": [
     {
       "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -608,9 +608,9 @@
       "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-secondary-crane-warning"
     },
     {
-      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber.dynamic",
+      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon.dynamic",
       "kind": "moving-part",
-      "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber"
+      "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon"
     },
     {
       "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical.dynamic",
@@ -623,17 +623,17 @@
       "bounds": {
         "max": [
           11.700323104858398,
-          2.9865853786468506,
-          3.790645122528076
+          2.986586809158325,
+          3.790647268295288
         ],
         "min": [
-          -12.02005386352539,
-          -1.4987643957138062,
-          -3.79086971282959
+          -12.02006721496582,
+          -1.4987653493881226,
+          -3.7908718585968018
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68c151635f0d7e2e033820aba188a154536b38973ed89c650a72707985c1c4c2",
+      "geometryHash": "f510b40037008a8d7e84d5cdecc37d4af198dfceb04a94b0137b9d087c3465df",
       "id": "sf.render.atlas-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -642,7 +642,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.atlas-production-v1.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 802
+      "vertexCount": 817
     },
     {
       "bounds": {
@@ -734,13 +734,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5dae10be9d58d5bac5071f5256ca52f77868fc068b1c7ac0fd52b5f44c5650f7",
-      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -748,26 +748,26 @@
       "bounds": {
         "max": [
           6.300000190734863,
-          1.219804048538208,
-          0.6898526549339294
+          1.580057978630066,
+          3.216153383255005
         ],
         "min": [
           -7.5,
-          1.1001958847045898,
-          -0.6898526549339294
+          1.0999407768249512,
+          -3.216153383255005
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b151fbbbb5343a1f7b4cc9b18ad1610ec01e5e166242ab9cdd11b70121329b7",
+      "geometryHash": "d2726b1f41e6aea33debbeeadb9877e3770c1db7a258c4d236a903fabba73e6b",
       "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-brushedmetal.primitive.0",
-      "indexCount": 1128,
+      "indexCount": 2424,
       "indexed": true,
       "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
       "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 352
+      "vertexCount": 1216
     },
     {
       "bounds": {
@@ -1009,13 +1009,13 @@
       },
       "drawMode": 4,
       "geometryHash": "6e281f4c6bfaf9474bf0547e58f96ee2f3832657c2ede4a0e7685daeb78877c1",
-      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber.primitive.0",
+      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
-      "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+      "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1133,7 +1133,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "869565352ee39861de63460352dcc015be544e39a0a6fc3436d98bd63c82b9a1",
+      "geometryHash": "7d7150a6d96a5cedee2a4aa6ff0dea4cfb8e9a90ae1074c3e72a90f2752faeff",
       "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 16734,
       "indexed": true,
@@ -1147,52 +1147,52 @@
     {
       "bounds": {
         "max": [
-          10.199999809265137,
-          2.7996444702148438,
-          3.781543493270874
+          11.52157211303711,
+          2.7996134757995605,
+          3.78086256980896
         ],
         "min": [
           -12.020000457763672,
-          -1.4996445178985596,
-          -3.781543493270874
+          -1.4996135234832764,
+          -3.78086256980896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e286cde20e7330d2e6c3a80480d61502e031fdeeee7b2e47233566da0c49048c",
+      "geometryHash": "0a9407ac3421aeacd0140d3479aac261ed9d3ac763ad3bc6334683caff2d703f",
       "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 36576,
+      "indexCount": 38544,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 11888
+      "vertexCount": 12912
     },
     {
       "bounds": {
         "max": [
           11.59999942779541,
-          1.6253126859664917,
+          1.826529622077942,
           3.3796920776367188
         ],
         "min": [
           -12.020000457763672,
-          -1.4253127574920654,
+          -1.4259328842163086,
           -3.3796920776367188
         ]
       },
       "drawMode": 4,
-      "geometryHash": "799d0242aea29d0662d2cb0d23afc5f9f340fd0ce278ed1ff9126ca36a8bec48",
+      "geometryHash": "35e799fe07d1c01136bfc692fd96a6765209f3e70ec677f6a5b94448b1ef0382",
       "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 22590,
+      "indexCount": 23742,
       "indexed": true,
       "materialHash": "622daa7c06922a5530af26b14d3a4a75daafe432c198272db69c64480b15458e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
       "nodeId": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 7142
+      "vertexCount": 7910
     },
     {
       "bounds": {
@@ -1289,17 +1289,17 @@
       ]
     },
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1811,7 +1811,7 @@
       ]
     },
     {
-      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1831,8 +1831,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -2361,7 +2361,7 @@
       ]
     },
     {
-      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber",
+      "id": "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
       "localTransform": [
         0.07999999821186066,
         0,
@@ -2381,8 +2381,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3450,45 +3450,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a051a7e72bed51df783fae6938e399a81663e2fc913389ee6ff7fdecca67d883"
+      "sha256": "f18ec3b59720df36b6d1c422ce8432f6c878a137651fcb707f3fb8317e1f6e11"
     },
     "sourceGlb": {
-      "bytes": 863944,
-      "sha256": "c30225577d83006d8e6530832d6f3663807968e0d0bbf9423b179129b703df86",
+      "bytes": 894364,
+      "sha256": "69bdccbf77ffce01b5cb0fcb957107c7b515c83e8579879ed202fbbb5d383472",
       "uri": "atlas_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1508000,
-    "sha256": "c3def7c8ef2029b45c58cb6f16e98d29dc878294f7660e26f88034973c4a00c0",
+    "bytes": 1555432,
+    "sha256": "fcfb9c1e24860003f905ccceb2b0590207085f3369f43b1ce5471a0a1017296f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.1598653793334961,
-        0.7434704303741455,
+        -0.15987205505371094,
+        0.7434866428375244,
         -0.00011229515075683594
       ],
       "max": [
         11.700323104858398,
-        2.9865853786468506,
-        3.790645122528076
+        2.986586809158325,
+        3.790647268295288
       ],
       "min": [
-        -12.02005386352539,
-        -1.4996445178985596,
-        -3.79086971282959
+        -12.02006721496582,
+        -1.4996135234832764,
+        -3.7908718585968018
       ],
       "size": [
-        23.72037696838379,
-        4.48622989654541,
-        7.581514835357666
+        23.72039031982422,
+        4.486200332641602,
+        7.58151912689209
       ]
     },
     "hidden": [
@@ -4313,9 +4313,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6747,
+      "bytes": 7157,
       "rigId": "hull",
-      "sha256": "01251a2d722a8f8990734f9c3518b96296a7cacf7be37792c54f8291072f357f",
+      "sha256": "dfd97115815b31651f194acb6388d42c72afb6e0ddc58b803fad36bb8574b496",
       "uri": "assets/ships/motions/atlas-production-v1.motion.json"
     },
     "nodeCount": 39,
@@ -4424,7 +4424,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -4758,7 +4758,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -4997,20 +4997,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1.glb"
   },
-  "runtimeHash": "b9c9ff13aa475f8e977236e15d4b84a60397d3685550fef1b9f1e81d8473e3dd",
+  "runtimeHash": "0019decd75ac927fa9b643ac21af6ec927a8749331cf1a6bc0b738dae514bcc9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           11.700323104858398,
-          2.9865853786468506,
-          3.790645122528076
+          2.986586809158325,
+          3.790647268295288
         ],
         "min": [
-          -12.02005386352539,
-          -1.4996445178985596,
-          -3.79086971282959
+          -12.02006721496582,
+          -1.4996135234832764,
+          -3.7908718585968018
         ]
       },
       "id": "sf.render.atlas-production-v1.body",
@@ -5020,7 +5020,7 @@
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-armor",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-armor-navy",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-armor-orange",
-        "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.atlas-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-brushedmetal",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-canopy",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-drive-core",
@@ -5031,7 +5031,7 @@
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-secondary-crane-mechanical",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-secondary-crane-mechanicaldark",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-secondary-crane-warning",
-        "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber",
+        "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-hull",
         "sf.render.atlas-production-v1.node.lod0-motion-hull-core-lights-cyan-orange",

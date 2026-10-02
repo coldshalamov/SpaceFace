@@ -30,6 +30,10 @@ function state({ capVolume = 20, usedVolume = 0, credits = 1000, onboarding = nu
     player: {
       credits,
       cargo: { items: {}, usedVolume, usedMass: 0, capVolume, capMass: 100 },
+      // NXB-039 (963e11a1c): the deadline window answers for the FITTED ship — an unfitted
+      // hull's unknown transit speed is an honest 'caution' estimate. These fixtures are
+      // fitted ships; the caution contract is exercised separately below.
+      maxSpeed: 140,
     },
     missions: {
       active: [],

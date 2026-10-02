@@ -446,9 +446,13 @@ test('hitch compile waits for leftover sim and sleeping islands skip extra WASM'
   // One loop order: the sim always runs before the picture, and compile only after both. Every
   // callback offers the drain what truly remains of it (sim included), never the nominal budget.
   assert.match(runner, /advanceSimulation\(frameDt, false, stepCap, perf\);[\s\S]*presentLastCompletedSnapshot\(frameDt, restoring, perf, fixedDt\)/);
-  assert.match(runner, /const remainMs = Math\.max\(0, frameBudgetMs - \(measureNow\(\) - callbackStart\)\);\s*diagnostics\.lastLeftoverMs = remainMs;\s*drainAfterPresentCompile\(remainMs\)/);
+  assert.match(runner, /const remainMs = Math\.max\(0, frameBudgetMs - \(measureNow\(\) - callbackStart\)\);\s*diagnostics\.lastLeftoverMs = remainMs;/);
+  // The drain reads a scratch arg now (alloc-free): the contract is leftoverMs carries remainMs,
+  // and a cap-skipped or sub-slice frame never feeds the compile drain.
+  assert.match(runner, /!skipPresentation && !capSkip && remainMs >= 2[\s\S]*?_drainCompileArg\.leftoverMs = remainMs;/);
   assert.doesNotMatch(runner, /drainAfterPresentCompile\(diagnostics\.lastLeftoverMs\)/);
-  assert.match(runner, /drainArrivalSlices\(\)/);
+  // Arrival slices now drain through the bus's emit-slice budget rather than a bespoke call.
+  assert.match(runner, /sliceBus\.drainEmitSlice\(SECTOR_ENTER_DRAIN_BUDGET\)/);
   const owner = fs.readFileSync(path.join(ROOT, 'src/core/sg02DynamicBodyOwner.js'), 'utf8');
   // Ledger D78 close, 2026-09-27: the sleeping-island CPU skip this pin awaited IS LANDED —
   // `_sleepingRecordSkipsCpu` guards the commandless step-through (the vm patch's mechanism,
@@ -457,6 +461,10 @@ test('hitch compile waits for leftover sim and sleeping islands skip extra WASM'
   // not the patch's exact bytes.
   assert.match(owner, /if \(!command &&[^;]*this\._sleepingRecordSkipsCpu\(rec, false\)\) continue/);
   assert.match(owner, /rec\._sleepAllowed !== allow/);
+  // The post-step verdict is cached once per record per step: a sleeping island skips the
+  // WASM kinematics readback and the give pass (a no-op on a body that did not move), and the
+  // finalize loop reuses the verdict instead of a second isSleeping() crossing.
+  assert.match(owner, /rec\._postStepSleepSkip = this\._sleepingRecordSkipsCpu\(rec, true\)/);
   const weapons = fs.readFileSync(path.join(ROOT, 'src/systems/weapons.js'), 'utf8');
   assert.match(weapons, /physicsSleeping === true && !firing/);
   const coreSrc = fs.readFileSync(path.join(ROOT, 'src/core/coreSystem.js'), 'utf8');

@@ -18,6 +18,8 @@ test('velocity vectoring on the real path: the band keeps B1/B2 and redirects so
   const off = rows.find((r) => r.variant === 'off');
   const band = rows.find((r) => r.variant === '1.6/0.9');
   assert.ok(off && band, 'the off row and the band row must both be measured');
+  assert.ok(off.redirect90.timeS != null,
+    'the unvectored ship must complete the held W+strafe+turn sweep instead of stalling');
 
   // B1 — zero above the cap, tick for tick (sector fence removed for these arms; see the harness).
   for (const r of rows) {
@@ -46,8 +48,7 @@ test('velocity vectoring on the real path: the band keeps B1/B2 and redirects so
     `${B2} — turn radius must not regress beyond 5% (${band.turnRadius.radiusScreenDepths} vs ${off.turnRadius.radiusScreenDepths} screens)`);
 
   // The packet's metric and the felt case: sooner, and at speed.
-  assert.ok(band.redirect90.timeS != null && off.redirect90.timeS != null
-    && band.redirect90.timeS < off.redirect90.timeS,
+  assert.ok(band.redirect90.timeS != null && (off.redirect90.timeS == null || band.redirect90.timeS < off.redirect90.timeS),
   `${TWITCH} — redirect90 must get sooner (${band.redirect90.timeS} vs ${off.redirect90.timeS} s)`);
   assert.ok(band.twitch90.timeS != null && off.twitch90.timeS != null
     && band.twitch90.timeS <= off.twitch90.timeS * 0.75,

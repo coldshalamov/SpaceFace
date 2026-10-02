@@ -146,3 +146,22 @@ test('TEACH-06: outside every field there is nothing to escape', () => {
     h.restore();
   }
 });
+
+test('TEACH-06: a skim sheet records by volume kind but still teaches its power', () => {
+  // The kernel registers the skim collector's field with kind 'sheet' (its volume shape), while
+  // FIELD_ESCAPES keys the power id 'skim' — without the mapping this power would never teach.
+  const sheet = {
+    kind: 'sheet', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 },
+    radius: 300, halfWidth: 80, filters: { excludeId: 99 },
+  };
+  const h = drive({ fields: [sheet], playerPos: { x: 100, z: 0 } });
+  try {
+    h.tick();
+    const hints = h.escapeHints();
+    assert.equal(hints.length, 1, 'the sheet still earns its lesson');
+    assert.equal(hints[0].payload.verbId, 'fieldEscape:skim', 'volume kind resolves to the skim power');
+    assert.match(hints[0].payload.text, /mass/i);
+  } finally {
+    h.restore();
+  }
+});

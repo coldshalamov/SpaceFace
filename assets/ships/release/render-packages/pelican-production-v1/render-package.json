@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0ad0f4360bd0cc5d3cfb89b6c491ac7e3332ccba3ddac79a752098f6e001c74a",
+  "contentHash": "e5282fc3d0c9aef15448958e3b5a878065a9cef34bd530bfb46eb52723f78cfa",
   "dynamicGroups": [
     {
       "id": "sf.render.pelican-production-v1.node.lod0-motion-hull-core-hook-armor-hip-hull.dynamic",
@@ -618,17 +618,17 @@
       "bounds": {
         "max": [
           7.389173984527588,
-          2.5247108936309814,
+          2.525106430053711,
           3.1317741870880127
         ],
         "min": [
           -7.320041656494141,
-          -2.1102161407470703,
+          -2.10982084274292,
           -3.1317741870880127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38f1b079f158c772c4ac0b3b298415f224beab8db88adc411fb5bca1cd0e3703",
+      "geometryHash": "e1081522e2033ba037c3021b3469af478b76912d4e5d9032981e16d9c70bbfcc",
       "id": "sf.render.pelican-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -637,7 +637,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.pelican-production-v1.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 834
+      "vertexCount": 846
     },
     {
       "bounds": {
@@ -778,7 +778,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0021b78718b257d6bf24bb0bf4f21c8e88bd38fabb8eba0589260928294f81b5",
+      "geometryHash": "c52551bd2f5d904b09e9de167edb49bc0cda02c21481c7262afc0f78ce969600",
       "id": "sf.render.pelican-production-v1.node.lod0-motion-hull-core-hook-armor-hip-mechanical.primitive.0",
       "indexCount": 303,
       "indexed": true,
@@ -1068,51 +1068,51 @@
       "bounds": {
         "max": [
           7.389999866485596,
-          1.3994078636169434,
+          1.760338544845581,
           3.050236463546753
         ],
         "min": [
           -7.320000171661377,
-          -2.109407901763916,
+          -2.10986328125,
           -3.050236463546753
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2215ed7818c73453944d4441397f1cf40ef3a099b3682d67a6872cf7089106f7",
+      "geometryHash": "d32f2b13f854e8123c3bf3b0f4d6ac509f5fb803454cce256a9fbfb030153b8a",
       "id": "sf.render.pelican-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 9933,
+      "indexCount": 14655,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.pelican-production-v1.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3520
+      "vertexCount": 6532
     },
     {
       "bounds": {
         "max": [
           7.096547603607178,
-          1.3798871040344238,
+          1.5876110792160034,
           3.0078654289245605
         ],
         "min": [
           -7.320000171661377,
-          -2.0483713150024414,
+          -2.0487537384033203,
           -3.0078654289245605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "621639266edc2d6379e0fc04ea7fca53cfb5f6ac9f720d9afbbd7d3b8d188a92",
+      "geometryHash": "28595900a49a69f9cc4f267fe814d582f6c60bb8ee2a1ab4634a1da578f3f25e",
       "id": "sf.render.pelican-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 15159,
+      "indexCount": 16449,
       "indexed": true,
       "materialHash": "857cde1496b806bb55ff9ff02283a860edaef089770c2359b39cddcb49c13c02",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
       "nodeId": "sf.render.pelican-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 4724
+      "vertexCount": 5576
     },
     {
       "bounds": {
@@ -3166,41 +3166,41 @@
       "sha256": "1dbf907738b7b689a855e6cdd283b2139d261a3d0001e3f500bb7efdd0956aa5"
     },
     "sourceGlb": {
-      "bytes": 670244,
-      "sha256": "c16e8dc9a9c2ede6385903fef7b984bc6de4ce861c75c22628f5346d5c6d06a6",
+      "bytes": 717404,
+      "sha256": "9f63067946508c39a35dad451a7f592ede7326cea042e695bd54820c95684d9f",
       "uri": "pelican_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1094900,
-    "sha256": "5dd408c60fe9aa66d472b554ac2716968ec057bba213a84c6fbb461d50d57b58",
+    "bytes": 1171188,
+    "sha256": "2c2e5ae2d8cf83a12cbb9d5e30fa252661f73e2c30e0fa0d23856acddee049e2",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.03497910499572754,
-        0.20724737644195557,
+        0.20762157440185547,
         0
       ],
       "max": [
         7.389999866485596,
-        2.5247108936309814,
+        2.525106430053711,
         3.1317741870880127
       ],
       "min": [
         -7.320041656494141,
-        -2.1102161407470703,
+        -2.10986328125,
         -3.1317741870880127
       ],
       "size": [
         14.710041522979736,
-        4.634927034378052,
+        4.634969711303711,
         6.263548374176025
       ]
     },
@@ -4016,9 +4016,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6749,
+      "bytes": 7161,
       "rigId": "hull",
-      "sha256": "89e19547249d33e403946a7a2447ba897399c573a2f1090d80398cf5a35033e8",
+      "sha256": "df8809187b02ab2e5fa4c5351a14eb4f469983bf9eb3234380d63541ffd13cdf",
       "uri": "assets/ships/motions/pelican-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4615,19 +4615,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
   },
-  "runtimeHash": "7b6bef47bb2aa1e2908e9e321893f9cc2854e25d56c50a49f2b02ebed0b7aec9",
+  "runtimeHash": "55d43d3fb162afcfb03976a75516e056520b355da1bfb5ad9b18c33cef6abbd2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           7.389999866485596,
-          2.5247108936309814,
+          2.525106430053711,
           3.1317741870880127
         ],
         "min": [
           -7.320041656494141,
-          -2.1102161407470703,
+          -2.10986328125,
           -3.1317741870880127
         ]
       },

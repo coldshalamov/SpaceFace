@@ -23,13 +23,13 @@ const CATHEDRAL_ASSET_ID = 'SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL';
 const CATHEDRAL_CONTRACT = Object.freeze({
   source: Object.freeze({
     path: 'assets/ships/parts/places/place_landmark_wreck_cathedral.glb',
-    sha256: '7c2f3fcd82235b8a44463320b83d3ee18d377049fe63995d8ebf7b896733ee0e',
-    bytes: 18890576,
+    sha256: 'da8f79004a261bcf9907b46d025528b031a1612ea1d945d2e9c501e14146f23c',
+    bytes: 18890564,
   }),
   release: Object.freeze({
     path: 'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
-    sha256: '32094bcd6df7671e9e2d93ae491a6aab33aa1ca9bd2a32cc3548cb7532eedcca',
-    bytes: 7563260,
+    sha256: '6de8743a60209ce6ce62c12d93832956e85351b1e2fb2025aa474bff7b9e6313',
+    bytes: 7563264,
   }),
 });
 const CATHEDRAL_SEMANTIC_NODES = Object.freeze({
@@ -150,10 +150,10 @@ test('every World Site stage binding is exact in source, release, and release ma
       const metadata = assetMetadata(json);
       assert.equal(metadata.assetId, binding.assetId);
       assert.equal(metadata.partId, binding.partId);
-      if (binding.partId !== CATHEDRAL_PART_ID) {
-        assert.equal(json.asset?.extras?.assetId, binding.assetId, `${binding.partId}/${kind}: legacy assetId`);
-        assert.equal(json.asset?.extras?.partId, binding.partId, `${binding.partId}/${kind}: legacy partId`);
-      }
+      const nested = json.asset?.extras?.spacefaceAsset;
+      assert.ok(nested && typeof nested === 'object', `${binding.partId}/${kind}: spacefaceAsset metadata`);
+      assert.equal(nested.assetId, binding.assetId, `${binding.partId}/${kind}: nested assetId`);
+      assert.equal(nested.partId, binding.partId, `${binding.partId}/${kind}: nested partId`);
       assert.equal(releaseEntry[`${kind}Sha256`], contract.sha256);
       assert.equal(releaseEntry[`${kind}Bytes`], contract.bytes);
       const nodes = new Map(json.nodes.map((node) => [node.name, node]));

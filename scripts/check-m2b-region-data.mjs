@@ -14,9 +14,9 @@ const STORY_IDS = Object.freeze([
   'sector_pallas_drift', 'sector_io_reach', 'sector_charon_expanse', 'sector_sker_haven',
   'sector_veil_nebula', 'sector_ashfall_reach',
 ]);
-// 2766ef05…: ashfall's anchor pois gained the authored landmark poi_vault_maw (INFERENCE 10/10,
-// 752da2f6) — the first story-anchor pois change since the guard was introduced in f4ba6a91.
-const EXPECTED_STORY_ANCHOR_HASH = '2766ef056fab48722e98549df4e0245b74971b1e5616b758d16cd8934295e248';
+// 5deb04e6…: helios's anchor pois gained the authored cache poi_helios_bay7 (Helios Bay 7,
+// 023131944). Previous pin 2766ef05… covered ashfall's poi_vault_maw (INFERENCE 10/10, 752da2f6).
+const EXPECTED_STORY_ANCHOR_HASH = '5deb04e6cbc69b76de03a9335744b8b3df0860d2cb35ffcf27806cec377c5b8f';
 const REQUIRED_FRONTIER_IDS = new Set(FRONTIER_SECTOR_IDS);
 const FACTIONS = new Set(FACTION_META.map((entry) => entry.id));
 const ZONES = new Set(Object.keys(ZONE_TYPES));
@@ -66,7 +66,10 @@ function main() {
 
     assert.ok(sector.stations?.length >= 1 && sector.stations.every((station) => hasXZ(station.pos)), `${sector.id}: stations`);
     assert.ok(sector.fields?.length >= 1 && sector.fields.every((field) => hasXZ(field.center)), `${sector.id}: fields`);
-    assert.ok(sector.pois?.length >= 1 && sector.pois.every((poi) => hasXZ(poi.pos)), `${sector.id}: POIs`);
+    // runtimeOwner pois are positioned by their owning program at runtime — poi_helios_choir_tender
+    // deliberately carries no pos so _spawnPOIs cannot mint a decoy beside the unique wreck.
+    assert.ok(sector.pois?.length >= 1 && sector.pois.every((poi) => hasXZ(poi.pos) || poi.runtimeOwner),
+      `${sector.id}: POIs`);
     assert.ok(sector.gates?.length >= 1 && sector.gates.every((gate) => hasXZ(gate.pos)), `${sector.id}: gates`);
     const zones = SECTOR_ZONES[sector.id];
     assert.ok(zones?.length >= 1, `${sector.id}: zones`);

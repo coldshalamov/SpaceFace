@@ -546,6 +546,11 @@ export function formatRouteCard(trade) {
   };
 }
 
+function positiveQuote(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function knownMarketSnapshots(state) {
   const econ = state && state.economy;
   const out = Object.create(null);
@@ -560,8 +565,8 @@ function knownMarketSnapshots(state) {
         const q = station[cid];
         if (!q) continue;
         snapshot[cid] = {
-          buy: q.buy || 0,
-          sell: q.sell || 0,
+          buy: positiveQuote(q.buy),
+          sell: positiveQuote(q.sell),
           demandMult: Number(q.demandMult) || 1,
           demandDrivers: Array.isArray(q.demandDrivers) ? q.demandDrivers.map((driver) => ({ ...driver })) : [],
         };
@@ -588,7 +593,11 @@ function knownMarketSnapshots(state) {
         const e = market[cid];
         if (!e) continue;
         snapshot[cid] = {
-          mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role,
+          mid: e.lastMid,
+          buy: positiveQuote(e.lastBuy),
+          sell: positiveQuote(e.lastSell),
+          stock: e.stock,
+          role: e.role,
           demandMult: Number(e.demandMult) || 1,
           demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
         };
@@ -630,7 +639,7 @@ export function computeBestTrades(state, hereStationId) {
   const out = [];
   for (const cmdtyId in hereMarket) {
     const entry = hereMarket[cmdtyId];
-    if (!entry || entry.lastBuy == null) continue;
+    if (!entry || !(Number(entry.lastBuy) > 0)) continue;
     const def = COMMODITY_BY_ID.get(cmdtyId);
     if (!def) continue;
     const vol = def.volPerU > 0 ? def.volPerU : 1;
@@ -641,7 +650,7 @@ export function computeBestTrades(state, hereStationId) {
       const known = knownMarkets[sid];
       const snap = known.snapshot || {};
       const s = snap[cmdtyId];
-      if (!s || s.sell == null) continue;
+      if (!s || !(Number(s.sell) > 0)) continue;
       if (s.sell > bestSell) {
         bestSell = s.sell;
         bestStation = sid;

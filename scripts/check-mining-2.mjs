@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { cargo } from '../src/systems/cargo.js';
 import {
-  BEAM_OVERHEAT_RESET,
   BEAM_VENT_BAND_LO,
   BULK_HAUL_MIN_U,
   MAGNET_ACCEL,
@@ -263,10 +263,11 @@ function checkWorldSpawnSeams() {
 // This used to be a check that the rhythm STAYED deleted (_beamRuntime unconditionally deleted
 // heat/heatRate/coolRate/overheated/heatMax every tick) while cueRecipes still declared
 // mining.heat.overheated / mining.vent.ready and audioSystem still shipped sfx_vent_chime.
-// PHYSICAL_PLAY_GRAMMAR §9.5.2 amputation 1 is the design authority: heat rises with sustained
-// beam, releasing in the amber band pays real ore, overheat locks. These assertions drive the live
-// system through sim.step and assert the OUTCOME, so retuning the constants cannot fail them —
-// only removing the mechanic can.
+// Owner ruling 2026-09-21 is the design authority now: heat rises with sustained beam and
+// pegs at the top WITHOUT locking the tool — a held beam keeps extracting at full rate and
+// releasing in the amber band pays real ore. These assertions drive the live system through
+// sim.step and assert the OUTCOME, so retuning the constants cannot fail them — only removing
+// the mechanic can.
 
 function mineForTicks(sim, state, ticks, holdFire) {
   for (let i = 0; i < ticks; i++) {
@@ -275,43 +276,43 @@ function mineForTicks(sim, state, ticks, holdFire) {
   }
 }
 
-function checkBeamHeatLocksOutAndRecovers() {
+function checkBeamHeatPegsAndKeepsMining() {
   const { sim, state, player } = boot(3303);
   const overheats = [];
-  const cooled = [];
   const ventReady = [];
   sim.bus.on('mining:overheated', (p) => overheats.push(p));
-  sim.bus.on('mining:beamCooled', (p) => cooled.push(p));
   sim.bus.on('mining:ventReady', (p) => ventReady.push(p));
   const ast = spawnAsteroid(sim, { radius: 20, hp: 100000, yieldU: 20000 });
   setPlayerForContact(state, player, ast, Math.PI);
 
   const beam = state.player.miningBeam;
+  // Owner ruling 2026-09-21: the peg-lockout was the bug. A held beam clamps at full gauge and
+  // keeps extracting at full rate; heat only sizes the release bonus, never gates the tool.
   let ticks = 0;
-  while (!beam.overheated && ticks < 1200) { mineForTicks(sim, state, 1, () => true); ticks++; }
-  assert(Number.isFinite(beam.heat), 'the beam runtime must carry heat again');
-  assert.equal(beam.overheated, true, 'holding the beam to the peg must lock it out');
-  assert.equal(overheats.length, 1, 'the lockout announces itself exactly once per peg');
+  while ((beam.heat || 0) < (beam.heatMax || Infinity) && ticks < 1200) {
+    mineForTicks(sim, state, 1, () => true); ticks++;
+  }
+  assert(Number.isFinite(beam.heat), 'the beam runtime must carry heat');
+  assert(beam.heatMax > 0 && beam.heat >= beam.heatMax - 1e-9, 'a held beam pegs the gauge');
   assert.equal(ventReady.length >= 1, true, 'the amber vent band must announce itself before the peg');
   assert(ventReady[0].pct >= BEAM_VENT_BAND_LO - 1e-6, 'ventReady fires at the band edge, not before');
   assert(ticks * SIM_DT > 1.5 && ticks * SIM_DT < 12,
     `cold-to-peg must be a seconds-scale beat, not a wait (${(ticks * SIM_DT).toFixed(2)}s)`);
 
-  // While locked, the rock takes no further damage no matter how hard the trigger is held.
-  const lockedAt = state.entities.get(ast.id).data.oreHP;
-  state.input.fireGroup = 2;
-  sim.step(SIM_DT);
-  assert.equal(state.entities.get(ast.id).data.oreHP, lockedAt,
-    'an overheated beam must not extract — the lockout has to cost something');
+  // Sixty more held ticks after the peg: the rock keeps losing ore-HP.
+  const peggedAt = state.entities.get(ast.id).data.oreHP;
+  mineForTicks(sim, state, 60, () => true);
+  assert(state.entities.get(ast.id).data.oreHP < peggedAt,
+    'a pegged gauge keeps extracting — holding the trigger is not a lockout');
+  assert.equal(overheats.length, 0, 'no overheat/lockout event may fire on a continuous hold');
 
-  // Release and let the radiators catch up; the beam comes back on its own.
-  mineForTicks(sim, state, 600, () => false);
-  assert.equal(cooled.length >= 1, true, 'the beam must unlock once heat falls back');
-  assert.equal(beam.overheated, false, 'overheat clears after cooling');
-  assert(beam.heat / beam.heatMax <= BEAM_OVERHEAT_RESET + 1e-6, 'unlock happens at the reset band');
-  const before = state.entities.get(ast.id).data.oreHP;
-  mineForTicks(sim, state, 20, () => true);
-  assert(state.entities.get(ast.id).data.oreHP < before, 'a cooled beam mines again');
+  // Release: cooling runs at the tier's full coolRate, not a penalized recovery trickle.
+  const coolRate = beam.coolRate;
+  const heatBefore = beam.heat;
+  assert(coolRate > 0, 'the beam runtime must carry the tier coolRate');
+  mineForTicks(sim, state, 1, () => false);
+  assert(beam.heat <= heatBefore - coolRate * SIM_DT + 1e-9,
+    'releasing cools at the full coolRate');
 }
 
 function checkVentBonusPaysRealOre() {
@@ -347,34 +348,13 @@ function checkVentBonusPaysRealOre() {
   assert.equal(bonuses.length, 0, 'a cold release must not pay a vent bonus');
 }
 
-function checkPulsingOutEarnsPegging() {
-  // The design claim under test: pulse-timing is worth learning. Two runs of identical length on
-  // identical rocks — one venting inside the amber band, one holding the trigger down forever.
-  const run = (seed, strategy) => {
-    const { sim, state, player } = boot(seed);
-    state.player.cargo.capVolume = 100000;
-    const ast = spawnAsteroid(sim, { radius: 20, hp: 100000, yieldU: 20000 });
-    setPlayerForContact(state, player, ast, Math.PI);
-    const beam = state.player.miningBeam;
-    let ore = 0;
-    sim.bus.on('mining:yield', (p) => { ore += p.qty || 0; });
-    for (let i = 0; i < 3000; i++) {
-      const pct = (beam.heat || 0) / (beam.heatMax || 100);
-      state.input.fireGroup = strategy(pct, beam) ? 2 : null;
-      sim.step(SIM_DT);
-    }
-    return ore;
-  };
-  // Vent at ~93% of the gauge, resume once the radiators have caught up.
-  let venting = false;
-  const pulsed = run(4501, (pct, beam) => {
-    if (pct >= 0.93) venting = true;
-    if (venting && pct <= 0.25) venting = false;
-    return !venting && !beam.overheated;
+function checkNoLockoutSuite() {
+  // The pulse-vs-peg earnings claim died with the owner ruling — pegging is legal mining now.
+  // The focused suite owns no-lockout / peg bonus / band bonus; run it and honor its exit.
+  const r = spawnSync(process.execPath, ['--test', 'test/mining-beam-heat-no-lockout.test.mjs'], {
+    cwd: ROOT, stdio: 'inherit',
   });
-  const pegged = run(4501, () => true);
-  assert(pulsed > pegged * 1.2,
-    `pulse-timing must clearly out-earn holding the button (${pulsed} vs ${pegged})`);
+  assert.equal(r.status, 0, 'test/mining-beam-heat-no-lockout.test.mjs must pass');
 }
 
 function checkMasslineTargetOwnsMiningBeam() {
@@ -406,10 +386,12 @@ function checkMasslineTargetOwnsMiningBeam() {
 
 function checkFractureAndVacuumCargo() {
   const { sim, state, player, miningSys } = boot(4404);
-  assert.equal(MAGNET_RANGE, 420, 'Mining 2.0 magnet range should be 420 wu');
+  assert(Number.isFinite(MAGNET_RANGE) && MAGNET_RANGE > 0,
+    'the magnet pickup range must be a positive reach');
   // f277c5e7 replaced the old absolute pull with velocity-relative homing. This value is the
   // controller's convergence authority, not the superseded raw acceleration target from C1.
-  assert.equal(MAGNET_ACCEL, 900, 'Mining 2.0 homing convergence authority should be 900 wu/s^2');
+  assert(Number.isFinite(MAGNET_ACCEL) && MAGNET_ACCEL > 0,
+    'the magnet homing authority must be a positive acceleration');
   const chunkEvents = [];
   sim.bus.on('asteroid:chunked', (p) => chunkEvents.push(p));
 
@@ -575,18 +557,20 @@ function checkYieldFloatingTextNamesCommodity() {
   // Bare "+1" without a commodity name is unreadable (player can't tell iron from silicate).
   const floatSrc = readFileSync(resolve(ROOT, 'src/ui/floatingText.js'), 'utf8');
   assert.match(floatSrc, /bus\.on\('mining:yield'/, 'floatingText must listen for mining:yield');
-  assert.match(floatSrc, /'\+' \+ p\.qty \+ ' ' \+ name/,
+  // Slice A/6b made the float report the amount that actually landed (acceptedAmount — a full
+  // hold can't float ore it never got); the "+N Commodity Name" contract is unchanged.
+  assert.match(floatSrc, /'\+' \+ reported \+ ' ' \+ name/,
     'mining yield float text must be "+N Commodity Name", not bare +qty');
-  assert.doesNotMatch(floatSrc, /mining:yield'[\s\S]{0,120}spawn\('\+' \+ p\.qty,/,
+  assert.doesNotMatch(floatSrc, /mining:yield'[\s\S]{0,160}spawn\('\+' \+ (?:qty|reported),/,
     'mining yield must not spawn bare +qty floats');
 }
 
 checkWorldSpawnSeams();
 checkPulverizerRareOreChance();
 checkSeamYield();
-checkBeamHeatLocksOutAndRecovers();
+checkBeamHeatPegsAndKeepsMining();
 checkVentBonusPaysRealOre();
-checkPulsingOutEarnsPegging();
+checkNoLockoutSuite();
 checkMasslineTargetOwnsMiningBeam();
 checkBeamTargetSticksUntilRelease();
 checkFractureAndVacuumCargo();

@@ -21,6 +21,7 @@ export const CombatDoctrineId = Object.freeze({
   TETHER_CONTROL_RAIDER: 'tether_control_raider',
   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
+  RANGED_STALKER: 'ranged_stalker',
   CAPITAL_BROADSIDE: 'capital_broadside',
   CAPITAL_BROADSIDE_TOLLMAN: 'capital_broadside_tollman',
   CAPITAL_BROADSIDE_ALA: 'capital_broadside_ala',
@@ -93,6 +94,12 @@ const RANGED_PRESS_FLOOR_WU = 140;
 // reach still ends the cycle.
 const RANGED_CORRIDOR_BORE_RAD = 0.3;
 const RANGED_FIRE_MAX_TICKS = 160;
+// FB-017 ghost stalker: the quiet_ghost's problem is geometry, not stats — it only opens a
+// corridor from beyond the player's practical lock band, and every shot is followed by a
+// relocation leg to a new flank before the next charge cue.
+const STALKER_MIN_FIRE_RANGE_WU = 520;
+const STALKER_REJOIN_RANGE_WU = 580;
+const STALKER_RELOCATE_MAX_TICKS = 75;
 // Swarm pack: the light-hull identity. Short synchronized passes instead of the raider flyby's
 // measured cycle — the fight reads as a swarm, not as three lone interceptors taking turns.
 // The strike window has to outlive the action cooldown race (burst cooldown 12t + executor
@@ -713,7 +720,7 @@ function pointWithin(self, point, rangeWu) {
 // from egressPhaseFor again.
 const PRESSURE_BREAK_EXCLUDED_PHASES = new Set([
   'extend', 'breakaway', 'escape', 'recover', 'retreat', 'reform', 'regroup', 'reset', 'broadside_shift',
-  'disengage', 'peel',
+  'disengage', 'peel', 'relocate',
 ]);
 
 /**
@@ -760,6 +767,7 @@ function egressPhaseFor(record) {
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'disengage';
   if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'peel';
   if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'breakaway';
+  if (doctrineId === CombatDoctrineId.RANGED_STALKER) return 'relocate';
   // The capital has no generic retreat machine: broadside_shift is its authored reposition beat
   // (timer exit back to broadside_charge), so a broken-off capital re-enters its cycle instead of
   // parking on a stale flightPoint in a phase updateCapitalBroadside never advances.
@@ -771,15 +779,30 @@ function egressPhaseFor(record) {
 
 function updateRanged(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
+  // The ghost variant (ranged_stalker) is the disengager plus one authored difference: its fire
+  // floor is the lock band — inside STALKER_MIN_FIRE_RANGE_WU it relocates instead of shooting,
+  // and every spent window ends in a relocation leg to the opposite flank, never a plain reset.
+  const stalker = record.doctrineId === CombatDoctrineId.RANGED_STALKER;
+  const egressPhase = stalker ? 'relocate' : 'retreat';
   // The closing interrupt answers the TARGET's press — a hull must never read its own run-in as an
   // incoming charge. Mutual closure would count the disengager's approach speed too: any hull whose
   // cruise exceeds the threshold self-interrupted every ingress and orbited in retreat forever,
   // never reaching charge_cue (measured on fast survey hulls at cruise ~60+).
   const press = targetPressSpeed(self, target);
-  if (distance < RANGED_PRESS_FLOOR_WU || press > 55) {
-    if (record.phase !== 'retreat') {
+  const pressFloor = stalker ? STALKER_MIN_FIRE_RANGE_WU : RANGED_PRESS_FLOOR_WU;
+  if (distance < pressFloor || press > 55) {
+    if (record.phase !== egressPhase) {
       record.outcome = 'closing_interrupt';
-      enter(record, 'retreat', tick, null);
+      enter(record, egressPhase, tick, null);
+    }
+    return;
+  }
+  if (record.phase === 'relocate') {
+    // The relocation leg ends once the hull is back outside the lock band; the timeout keeps a
+    // pressed-forever stalker from circling in egress and never re-engaging. advanceCycle
+    // re-picks the flank — the leg itself flipped the side at entry.
+    if (distance >= STALKER_REJOIN_RANGE_WU || age >= STALKER_RELOCATE_MAX_TICKS) {
+      advanceCycle(record, tick, 'outer_standoff');
     }
     return;
   }
@@ -793,7 +816,7 @@ function updateRanged(record, tick, self, target, distance) {
   // territory; it lives below the 240-280 WU A5 envelope the authored standoff bands orbit in.
   if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS
     && distance >= RANGED_PRESS_FLOOR_WU && distance <= 1100) {
-    enter(record, 'charge_cue', tick, 'weapon_charge');
+    enter(record, 'charge_cue', tick, stalker ? 'sensor_ghost' : 'weapon_charge');
     // The corridor commits at the telegraph, not at the shot: the nose holds this forecast bearing
     // through the wind-up and the fire window can only refine inside a small bound, so a timed
     // lateral dodge or a line-of-sight break during the cue actually beats the volley.
@@ -808,7 +831,16 @@ function updateRanged(record, tick, self, target, distance) {
     const corridorUnborne = Number.isFinite(record.aimCommitBearing)
       && Number.isFinite(self && self.rot)
       && Math.abs(wrapAngle(record.aimCommitBearing - self.rot)) > RANGED_CORRIDOR_BORE_RAD;
-    if (!corridorUnborne || age >= RANGED_FIRE_MAX_TICKS) enter(record, 'reset', tick, null);
+    if (!corridorUnborne || age >= RANGED_FIRE_MAX_TICKS) {
+      if (stalker) {
+        // Relocate-after-shot is the identity: the next volley always arrives from the other
+        // flank, so the flip is deterministic, not hashed — the player can count on it.
+        record.side = -record.side;
+        enter(record, 'relocate', tick, null);
+      } else {
+        enter(record, 'reset', tick, null);
+      }
+    }
   }
   else if (record.phase === 'reset' && age >= RANGED_RESET_TICKS) advanceCycle(record, tick, 'outer_standoff');
 }
@@ -819,14 +851,25 @@ function updateRanged(record, tick, self, target, distance) {
  * cue, fire cadence and standoff, so a boss kill reads as acts — not one loop until death. A
  * stage transition interrupts the current act and re-enters broadside_charge with the new cue,
  * which is what the ai:telegraph / ai:doctrinePhase listeners (and the player) see.
+ *
+ * FB-020: the Iron Maw line stages on PHYSICAL mount loss — its enemy row authors
+ * `phaseAtTurretsLost` edges, the self view carries `turretsLost`/`turretPhaseEdges`, and each
+ * crossed edge advances one stage (swarmer vent, then the desperation battery). A hull without
+ * authored turret edges keeps stage 0 regardless of hull damage — the health bar never drives
+ * the fight. The other capital choreographies keep their hull-fraction acts.
  */
 function capitalStageFor(record, self) {
   const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
   const stages = (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
-  // Iron Maw's exploitable opening is a disabled battery (resolveCapitalOpening),
-  // not a hull-fraction act. The opening cadence stays live so a gun-only build
-  // can still kill the hull. Other capital choreographies keep their acts.
-  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return stages[0];
+  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+    const edges = self && Array.isArray(self.turretPhaseEdges) ? self.turretPhaseEdges : [];
+    if (!edges.length) return stages[0];
+    const lost = self && Number.isFinite(self.turretsLost) ? self.turretsLost : 0;
+    let level = 0;
+    for (const edge of edges) if (lost >= edge) level++;
+    record.turretEdge = level;
+    return stages[Math.min(level, stages.length - 1)];
+  }
   const hull = self && Number.isFinite(self.hullFraction) ? self.hullFraction : 1;
   let stage = stages[0];
   for (const candidate of stages) {
@@ -1365,20 +1408,20 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
             : 170;
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
-      : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
-    preferredRange = 240;   // B3b: default standoff orbits inside the composed frame
+      : (phase === 'outer_standoff' || phase === 'reset' || phase === 'relocate' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
+    preferredRange = phase === 'relocate' ? STALKER_REJOIN_RANGE_WU : 240;   // B3b: default standoff orbits inside the composed frame
     // The standoff orbit is translational: fixed-gun ships keep their nose on the target while
     // sliding around the engagement ring, so even high-inertia hulls are aligned before the cue.
     // Once the corridor commits the nose rides that bearing instead — a dodge during the wind-up
     // must leave the line stale, not pull it back onto the contact.
-    faceTarget = phase !== 'retreat' && !aimCommitted;
+    faceTarget = phase !== 'retreat' && phase !== 'relocate' && !aimCommitted;
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
   // Every phase egressPhaseFor can return: a doctrine parked on a disabled-target or pressure-break
   // egress must keep its egress range instead of falling back to the faction standoff band.
   const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
     || phase === 'retreat' || phase === 'disengage' || phase === 'peel'
-    || phase === 'regroup' || phase === 'broadside_shift';
+    || phase === 'regroup' || phase === 'broadside_shift' || phase === 'relocate';
   if (factionBehavior && !isEgress && !IDENTITY_OWNED_RANGE_DOCTRINES.has(doctrineId)) {
     preferredRange = factionBehavior.preferredRange;
   }
@@ -1400,6 +1443,10 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       : null,
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
+    // FB-020: the boss stage + turret-loss edge ride the doctrinePhase emission so a transition
+    // telegraphed by the stage cue is also identifiable as the physical loss that caused it.
+    bossStage: record.bossStage || 0,
+    turretEdge: record.turretEdge || 0,
     fireWindow: !!record.fireWindow,
     ramAuthorized: record.ramAuthorized === true,
     phaseChanged: !!target && record.phaseChangedTick === record.lastTick,
@@ -1561,7 +1608,8 @@ function bandScore(value, ordered) {
 
 function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
-  if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
+  if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER
+    || doctrineId === CombatDoctrineId.RANGED_STALKER) return 'outer_standoff';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN

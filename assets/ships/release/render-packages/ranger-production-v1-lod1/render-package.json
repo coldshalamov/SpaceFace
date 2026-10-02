@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d1eca391e95e052b8112cb0b5662ca94daffa568d615228b374ac912fad211d2",
+  "contentHash": "4dd340775bb95e8f377b552aa0baf14eb7d08976e9bf2417dabb541471a811cc",
   "dynamicGroups": [
     {
       "id": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -684,13 +684,13 @@
       },
       "drawMode": 4,
       "geometryHash": "6739372eafdbe76297e5fa2f980e93e0cc67e7b6b60e3e7071050786b52937b1",
-      "id": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber.001",
-      "nodeId": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon.001",
+      "nodeId": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1100,6 +1100,13 @@
   "lods": [],
   "materials": [
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -1137,13 +1144,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -1378,7 +1378,7 @@
       ]
     },
     {
-      "id": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1398,8 +1398,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -2327,22 +2327,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "762fe56633c8abf6a0f6eeeaa25e7df19a0ad26b8717aa75c5f4fc41c8b3c133"
+      "sha256": "fa8cb27c0e25280777ef28305762a18e5ff3eeea66ad11f0e73d6b1db1799d2c"
     },
     "sourceGlb": {
-      "bytes": 503348,
-      "sha256": "7a460bdc491e821352a290e10bd47028a4c990b573920548d05996777ae13ca7",
+      "bytes": 503396,
+      "sha256": "72ff529c7b436f8ce2e37d8198798d827c35129646bc09962afe0cc56d4a3824",
       "uri": "ranger_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 699488,
-    "sha256": "0cd236b7be9767b3e81b5ec044afa14137abcad64d25892436b75383aea6b53d",
+    "bytes": 699552,
+    "sha256": "69fc55c9af1881286a86b38a51a0cc03fcef433ca157dd8a9c2ca40576d69bc4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3151,9 +3151,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6748,
+      "bytes": 7157,
       "rigId": "hull",
-      "sha256": "99123766ea1823e2ffb1f670291a2dd890f16bbcc4f9ab05397269ac1f4d8474",
+      "sha256": "65be9322dcc0a579f452f9cb7ff65235c4ad459b41d138e22aaf2b86649c6281",
       "uri": "assets/ships/motions/ranger-production-v1.motion.json"
     },
     "nodeCount": 34,
@@ -3206,7 +3206,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -3695,7 +3695,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb"
   },
-  "runtimeHash": "eec7fcf924a83cac6aa1f4c0bdd66dbe8b026a8cb72c57ca453d8c151b996a0b",
+  "runtimeHash": "2b4c81c6470ae9aa6c5f4853139e0f96269209dfb3cfa102ca53fa32903b8479",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3715,7 +3715,7 @@
       "nodeIds": [
         "sf.render.ranger-production-v1-lod1.mesh.collision-hull",
         "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-armor",
-        "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber",
+        "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-canopy",
         "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-hook-drive-core",
         "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-hook-nav-port",

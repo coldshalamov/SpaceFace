@@ -45,6 +45,12 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'lossInvestigation',
   'careerContracts',
   'cloak',
+  // Scanner pulse cooldown keys on absolute simTime and signal investigation state persists
+  // on state.signalInvestigation — both must clear before the fresh run's clock restarts.
+  'scanner',
+  // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
+  // inherit the previous run's said-latches on recycled ids.
+  'barkDirector',
   // Session-scoped advisory watches hold per-entry latches keyed on entity ids that New Game
   // recycles — a stale latch could suppress the first legitimate bark of the next run.
   'noFireAdvisory',

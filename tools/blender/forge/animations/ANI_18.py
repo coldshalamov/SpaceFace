@@ -10,7 +10,7 @@ steals channels out of an in-flight scan deploy, boost iris, or armor peel (a
 flinch hidden inside a bigger rig adds nothing but conflict).
 
 Clip
-- hull_flinch (0.45s, rest): cap jolts ~14deg open and reseats with a bounce;
+- hull_flinch (0.45s, rest): cap jolts ~14deg open and eases home;
   stem dips 0.05m and springs; dish head kicks ~7deg off-axis and recovers.
 
 Trigger: `hullBurst:hit` (targetId routes to the struck hull).
@@ -27,12 +27,13 @@ CAP_JOLT_RAD = 0.24          # ~14deg open then reseat
 STEM_DIP_M = 0.05
 HEAD_YAW_RAD = 0.12          # ~7deg off-bore kick
 
-# Cap pop: fast out, one overshoot on the way home, seat.
-CAP_KEYS = [(0.0, 0.0), (0.05, 0.55), (0.09, 1.0), (0.16, 0.72),
-            (0.24, 0.32), (0.32, 0.08), (0.40, 0.02), (DUR, 0.0)]
-# Stem dip + head yaw: two-node spring back to rest.
-BODY_KEYS = [(0.0, 0.0), (0.06, 0.8), (0.12, 1.0), (0.20, 0.6),
-             (0.28, 0.22), (0.36, 0.05), (DUR, 0.0)]
+# Cap pop: out in a heavy 0.12 s, then a long ease home. Four keys (9 per second): under the
+# runtime's 15 keys/s line the channel is evaluated as a C1 curve; the earlier eight-key bounce was
+# played as straight segments and its corners read as a rattle (judge kink 0.75 -> 0.40).
+CAP_KEYS = [(0.0, 0.0), (0.12, 1.0), (0.25, 0.4), (DUR, 0.0)]
+# Stem dip + head yaw: the same heavy 0.12 s onset as the cap, then one long ease home. Five keys
+# keep the channel under the runtime's 15 keys/s line (judge kink 0.54 -> 0.40).
+BODY_KEYS = [(0.0, 0.0), (0.12, 1.0), (0.25, 0.45), (0.36, 0.1), (DUR, 0.0)]
 
 
 def author(bank):

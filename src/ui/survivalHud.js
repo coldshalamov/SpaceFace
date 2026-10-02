@@ -14,6 +14,7 @@
 // every figure carries its own word. No animation at all, so reduced-motion needs no variant.
 
 import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
+import { waveOpeningLine } from '../systems/survivalAnnounce.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import {
   deathCauseText,
@@ -192,6 +193,7 @@ export const survivalHud = {
     this._earn = null;
     this._earnUntil = -1;
     this._objective = null;
+    this._plan = null;
     this._chain = 0;
     this._chainBest = 0;
     this._chainCause = null;
@@ -278,6 +280,15 @@ export const survivalHud = {
     this._setText(dom.phase, phase);
     // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
     this._setClass(dom.phase, 'sf-crun__phase' + (fighting && this._objective ? ' sf-crun__phase--hot' : ''));
+
+    // FB-025 — the wave intro is a real window: the opening line sits on the glass for the
+    // whole of it, then clears with the phase. Same pure function the announce voice speaks,
+    // so the readout and the voice can never disagree about what is coming.
+    const intro = run.phase === 'wave_intro' && this._plan
+      ? waveOpeningLine(run.wave, this._plan)
+      : null;
+    this._setHidden(dom.intro, !intro);
+    if (intro) this._setText(dom.intro, intro);
 
     // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
     // colour-blind reader lose nothing.
@@ -454,6 +465,9 @@ export const survivalHud = {
 
   _onWavePlanned(payload) {
     const plan = payload && payload.plan;
+    // The plan is cached so the intro window can render its own opening line — the same pure
+    // function the voice speaks — for exactly as long as wave_intro lasts.
+    this._plan = plan || null;
     this._roundBased = !!plan?.swarm?.killTarget;
     const kind = plan && plan.objective && plan.objective.kind;
     this._objective = objectiveWord(kind);
@@ -500,6 +514,7 @@ export const survivalHud = {
     this._earn = null;
     this._earnUntil = -1;
     this._objective = null;
+    this._plan = null;
     this._chain = 0;
     this._chainBest = 0;
     this._chainCause = null;
@@ -591,6 +606,11 @@ export const survivalHud = {
     const waveN = make('span', 'sf-crun__wave', waveRow);
     const phase = make('span', 'sf-crun__phase', waveRow);
 
+    // FB-025: the intro window's line — the wave's own words, on the glass only while
+    // wave_intro lasts, then cleared.
+    const intro = make('div', 'sf-crun__intro', root);
+    intro.hidden = true;
+
     const threat = make('div', 'sf-crun__threat', root);
     threat.setAttribute('role', 'meter');
     threat.setAttribute('aria-valuemin', '0');
@@ -660,7 +680,7 @@ export const survivalHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
+      root, label, waveN, phase, intro, threat, threatWord, threatFill, threatFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };
@@ -693,6 +713,10 @@ export const survivalHud = {
     font-weight:700; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); margin-left:auto; }
   .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); text-shadow:0 0 10px var(--dp-danger-bloom, transparent); }
+  /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
+     figure and not a word-pair, so it cannot be mistaken for a live gauge. */
+  .sf-crun__intro { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__threat { display:flex; align-items:center; gap:7px; }
   .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
     font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;

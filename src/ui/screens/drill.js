@@ -2836,6 +2836,11 @@ export const drillScreen = {
         commitmentPath = commitment && Array.isArray(commitment.returnPath) ? commitment.returnPath : [];
         let html = escapeHtml(formatDrillCommitment(commitment));
         const facing = commitment && commitment.facing;
+        if (facing && facing.evidence === 'known' && facing.ore) {
+          // Every mention is a door: the facing vein's ore name opens its dossier.
+          const veinName = escapeHtml(commodityName(facing.ore));
+          html = html.replace(`Known ore ${veinName}`, `Known ore ${entitySpanHtml('commodity:' + facing.ore, veinName)}`);
+        }
         if (facing && facing.evidence === 'known' && facing.type && facing.type !== 'empty') {
           const telemetry = drillSys.getTargetTelemetry(facing.col, facing.row);
           if (telemetry && telemetry.hardness > 0) {

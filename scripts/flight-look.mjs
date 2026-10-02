@@ -139,6 +139,7 @@ try {
         const THREE = await import('three');
         const s = window.SF.state;
         let tx, tz, ty = 0;
+        let targetEntity = null;
         if (token.startsWith('pos:')) {
           const [x, z] = token.slice(4).split('~').map(Number);
           tx = x; tz = z;
@@ -163,13 +164,12 @@ try {
               || e.placeId === token || (e.data && e.data.placeId) === token
               || e.id === token || e.id === `${token}/root`;
           };
-          let t = null;
-          for (const e of s.entities.values()) if (matches(e)) { t = e; break; }
-          if (!t) for (const row of s.world?.dressing?.rows || []) {
-            if (row && row.alive !== false && matches(row)) { t = row; break; }
+          for (const e of s.entities.values()) if (matches(e)) { targetEntity = e; break; }
+          if (!targetEntity) for (const row of s.world?.dressing?.rows || []) {
+            if (row && row.alive !== false && matches(row)) { targetEntity = row; break; }
           }
-          if (!t) return 'no match ' + token;
-          tx = t.pos.x; tz = t.pos.z; ty = t.pos.y || 0;
+          if (!targetEntity) return 'no match ' + token;
+          tx = targetEntity.pos.x; tz = targetEntity.pos.z; ty = targetEntity.pos.y || 0;
         }
         const cam = s.render && s.render.camera;
         if (!cam || !cam.projectionMatrix) return 'no camera';
@@ -185,6 +185,7 @@ try {
         let fit = null;
         try {
           const scene = s.render && s.render.scene;
+          const t = targetEntity;
           let root = (t && (t.data?.authoredVisualRoot || t.object3d)) || null;
           if (!root && scene && t) {
             root = scene.getObjectByName(`station:${t.id}`)
@@ -227,10 +228,10 @@ try {
           }
         } catch { /* fit is best-effort evidence */ }
         const centre = new THREE.Vector3(0, 0, 0.5).unproject(cam).sub(camPos);
-        const t = centre.y ? (ty - camPos.y) / centre.y : 0;
+        const planeT = centre.y ? (ty - camPos.y) / centre.y : 0;
         // camPos is frame-local too — lift the screen-centre ground point back to global
         // before differencing against global tx/tz.
-        const c0x = camPos.x + centre.x * t + fo.x, c0z = camPos.z + centre.z * t + fo.z;
+        const c0x = camPos.x + centre.x * planeT + fo.x, c0z = camPos.z + centre.z * planeT + fo.z;
         const dx = tx - c0x, dz = tz - c0z;
         const p = s.entities.get(s.playerId);
         const world = window.SF.registry?.get?.('world');
@@ -250,6 +251,7 @@ try {
         return { ndcX: +ndc.x.toFixed(3), ndcY: +ndc.y.toFixed(3), dx: +dx.toFixed(1), dz: +dz.toFixed(1), moved, fit };
       }, String(token));
       if (typeof r === 'string') { console.log('centre', token, r); return r; }
+      console.log('centre', token, `pass ${i}: ndc=(${r.ndcX},${r.ndcY}) d=(${r.dx},${r.dz}) moved=${r.moved}`);
       if (Math.abs(r.ndcX) < 0.03 && Math.abs(r.ndcY) < 0.03) { console.log('centre', token, 'ok', JSON.stringify(r)); return r; }
       if (i === 3) console.log('centre', token, 'last', JSON.stringify(r));
       await page.waitForTimeout(1600);

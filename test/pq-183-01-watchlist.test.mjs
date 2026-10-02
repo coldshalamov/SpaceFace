@@ -71,6 +71,23 @@ test('resolveWatchPin reads live values for each kind', () => {
   assert.equal(rival.detail, 'wounded');
   assert.equal(rival.tone, 'foe');
 
+  // NXI-214: a destroyed captain keeps its actual disposition instead of falling back to a
+  // live-looking status or a "downed" tally — distinct from 'no contact yet' (offscreen).
+  state.aceMemory.ace_cade_haltred.defeated = true;
+  const dead = resolveWatchPin(state, {
+    ref: 'captain:ace_cade_haltred', kind: 'rival', label: 'Cade Haltred',
+  });
+  assert.equal(dead.detail, 'defeated');
+  assert.equal(dead.tone, 'calm');
+  delete state.aceMemory.ace_cade_haltred.defeated;
+  delete state.aceMemory.ace_cade_haltred.status;
+  delete state.aceMemory.ace_cade_haltred.kills;
+  delete state.aceMemory.ace_cade_haltred.defeats;
+  const unknown = resolveWatchPin(state, {
+    ref: 'captain:ace_cade_haltred', kind: 'rival', label: 'Cade Haltred',
+  });
+  assert.equal(unknown.detail, 'no contact yet');
+
   const deadline = resolveWatchPin(state, {
     ref: 'contract:msn_ferry_1', kind: 'deadline', label: 'Ferry run',
   });

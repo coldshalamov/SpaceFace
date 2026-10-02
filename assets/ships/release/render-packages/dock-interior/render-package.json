@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8ade1ad6ab60edbf9d773be7bc26addcfeea640860612448c1fb271062b8044a",
+  "contentHash": "eaad80e7a9d5b43a94b9aa541573a388119f85feedc320279be554808b0150b5",
   "dynamicGroups": [
     {
       "id": "sf.render.dock-interior.node.lod0-hook-nav-port.dynamic",
@@ -76,41 +76,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b64b06f460e339e7936627c9cf05e37f40b4a3477e14bcde910d6d1a33d037f3",
+      "geometryHash": "44ec34ddc7f43044090420336ddce26e12669005eaa4b8a44e034b81c64b91fe",
       "id": "sf.render.dock-interior.node.lod0-armor.primitive.0",
-      "indexCount": 10152,
+      "indexCount": 10716,
       "indexed": true,
       "materialHash": "3caf91851ac6e79671b4a6f7152f337d3e462e40c741303a89b80767a0003d2c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.dock-interior.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3038
+      "vertexCount": 3206
     },
     {
       "bounds": {
         "max": [
           16.149999618530273,
-          8.505041122436523,
-          -11.650867462158203
+          8.505515098571777,
+          0.10081470757722855
         ],
         "min": [
-          -16.149999618530273,
-          5.259958744049072,
-          -14.39913272857666
+          -24.979999542236328,
+          -3.4505157470703125,
+          -14.400814056396484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "432bbf844edad78a7a01718f27ccac4e801537f95050a2bde95f0cc1e708754b",
+      "geometryHash": "19cdccd58a2731b065969e632dfda86abf35517d3d5a1ae1dce77c3d395227e2",
       "id": "sf.render.dock-interior.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 144,
+      "indexCount": 432,
       "indexed": true,
       "materialHash": "5482a3c3fe335f54f6b2aafe42a3ac878eb03027048b91b8f425ca98e44830b6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.dock-interior.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 288
     },
     {
       "bounds": {
@@ -216,51 +216,51 @@
       "bounds": {
         "max": [
           20.110000610351562,
-          -2.364159107208252,
+          -2.364377737045288,
           17.909482955932617
         ],
         "min": [
           -25.90999984741211,
-          -2.515841007232666,
+          -3.448622465133667,
           -12.10948371887207
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b262bde0f36cb0ddcb7edf46fc514c641f0e9961177dd34e02ad812ad28b0b34",
+      "geometryHash": "e83a0463cbaf152db7e5da3f95a2f80e786d21978d8ecff20c63e0c263567fa2",
       "id": "sf.render.dock-interior.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 360,
+      "indexCount": 648,
       "indexed": true,
       "materialHash": "74c484f7407f5c70bb62529d834e850af38ba4f249d7223720b411f0cfc40ae5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.dock-interior.node.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 240
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
           22.899999618530273,
-          9.950959205627441,
-          8.125958442687988
+          9.950231552124023,
+          8.125836372375488
         ],
         "min": [
-          -22.200000762939453,
-          -3.6380879878997803,
-          -14.900958061218262
+          -25.700000762939453,
+          -3.637359619140625,
+          -14.900835990905762
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2f7988d61dff751660914abed4c4c4868161e58d21057e4419cb2f5b49a9321",
+      "geometryHash": "d0ee785f8586556eff48cc77a3f8aab9533c85539421a851e207c9ec013d693c",
       "id": "sf.render.dock-interior.node.lod0-lights-warm.primitive.0",
-      "indexCount": 2088,
+      "indexCount": 2124,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.dock-interior.node.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 912
+      "vertexCount": 936
     },
     {
       "bounds": {
@@ -1941,19 +1941,19 @@
       "sha256": "cbe3efd2f4d1632142504bedb3bfaccc7553ee6b2a87f41f22d25b0b24d665c2"
     },
     "sourceGlb": {
-      "bytes": 333124,
-      "sha256": "67198f42be2abd1c8bb70ffe0f04a7475e0651784bdfb1ed0c683e3732486081",
+      "bytes": 341144,
+      "sha256": "f0e2b67356160408a41fb1b1a5f3f05762416927e6a472777e465eea0669e800",
       "uri": "place_dock_interior.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 537144,
-    "sha256": "3219b6f2cd7cfcbeb0099ce38988cedfe4ad101886158f67cf98e606ec9f7688",
+    "bytes": 549288,
+    "sha256": "f597f2e95d4c79d56677a9bde8c3797b6da5127b9c0a89abcaaeb66fc32f77c8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2329,7 +2329,7 @@
     "motionBank": {
       "bytes": 10153,
       "rigId": "dock_interior",
-      "sha256": "4f9156535e008b14e34bbd0c01242a8f4fecc3f56c6883831b6425bb7b665243",
+      "sha256": "306aea403b5eaa5fd2e664f61af2947872b926fd9e00e37d541d6f7005d5b637",
       "uri": "assets/ships/motions/dock-interior.motion.json"
     },
     "nodeCount": 24,
@@ -2832,7 +2832,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior.glb"
   },
-  "runtimeHash": "8448f17217cea0f72ddb7efbcb5441d96d967d600b786ff3337f2b38b516361a",
+  "runtimeHash": "0c33399b6be86b1cd8d474db938c750394686ed9c65b00a7b6e492f0cffbb944",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

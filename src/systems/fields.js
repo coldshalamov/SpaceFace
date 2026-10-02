@@ -105,7 +105,9 @@ function fieldsMembershipVersion(state) {
   return lane === -1 ? entityIndexVersion(state) : lane;
 }
 
-function fieldsIdleSnapshot(rt, kernel) {
+function fieldsIdleSnapshot(rt, kernel, state) {
+  const ms = state && state.massSeed;
+  if (ms && (ms.phase === 'active' || ms.phase === 'warning')) return false;
   const kernelCount = kernel && typeof kernel.list === 'function'
     ? kernel.list().length
     : 0;
@@ -846,13 +848,14 @@ export const fields = {
     // quiet-path producers for up to 0.5 s while membership is stable; wake on entity-index
     // bump, rescan, or leaving idle (input/skim already ran above and clear idle when the
     // player deploys). Unlatched idle still runs every quiet-path producer each tick.
-    let idle = fieldsIdleSnapshot(rt, this._kernel);
+    let idle = fieldsIdleSnapshot(rt, this._kernel, state);
     if (idle) {
       if (FIELDS_IDLE_QUIET_LATCH !== false) {
         const membership = fieldsMembershipVersion(state);
         const tick = state.tick | 0;
         const quiet = this._fieldsIdleQuiet;
         if (quiet
+          && membership !== null
           && quiet.membership === membership
           && ((tick - (quiet.armedTick | 0)) < FIELDS_IDLE_QUIET_RESCAN_TICKS)
           && (!this._wellBodies || this._wellBodies.size === 0)) {
@@ -862,7 +865,8 @@ export const fields = {
         }
         // Refuse latch while any awake scavenger/sweeper/salvor/anchor role exists — those
         // still need the cadenced discover walk so loose-mass cones can arm (PQ-147.01).
-        const refuseLatch = anyNpcFieldRoleInterest(state);
+        // Also refuse if entity index is absent (membership is null) so fallback stays truthful.
+        const refuseLatch = membership == null || anyNpcFieldRoleInterest(state);
         if (refuseLatch) this._fieldsIdleQuiet = null;
         // Producers must stay live while unlatched-idle: a mass-seed ring or a newly
         // orbit-capable host has to bootstrap out of an empty kernel, the cadenced
@@ -878,7 +882,7 @@ export const fields = {
         // ring matches the non-idle order.
         this._syncHitches(state, rt);
         this._flushEndedWells(state);
-        idle = fieldsIdleSnapshot(rt, this._kernel);
+        idle = fieldsIdleSnapshot(rt, this._kernel, state);
         if (idle) {
           if (!refuseLatch) this._fieldsIdleQuiet = { membership, armedTick: tick };
           this._publish(state, rt, 0, 0, 0);

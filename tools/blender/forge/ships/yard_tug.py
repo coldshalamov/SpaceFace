@@ -171,8 +171,8 @@ def build():
     F.light(s, 'NavStarboard', (-11.6, -NY - 1.18, 0.2), 'glow_green', size=0.2)
     F.light(s, 'NavPortFwd', (10.1, 3.83, 0.6), 'glow_red', size=0.16)
     F.light(s, 'NavStarboardFwd', (10.1, -3.83, 0.6), 'glow_green', size=0.16)
-    F.light(s, 'Beacon', (5.9, 0.0, 3.58), 'glow_amber', size=0.3)
-    F.light(s, 'BeaconAft', (-10.35, 0.0, 2.16), 'glow_amber', size=0.18)
+    F.light(s, 'Beacon', (5.9, 0.0, 3.58), 'glow_amber.beacon', size=0.3)
+    F.light(s, 'BeaconAft', (-10.35, 0.0, 2.16), 'glow_amber.beacon', size=0.18)
 
     # --- damage hooks: mast + tow gear shed, beacons strobe, port winch cheek lifts ----------------
     _dmg = {o.name: o for o in s.objects}

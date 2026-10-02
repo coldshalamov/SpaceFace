@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5d1f719b314ec0cbf390f2477d19f8122064a450fbdfdea347daf94259f26cd7",
+  "contentHash": "e96793ecacdb886d488f0e32dd62319291b66870b3ca19891f28bfc3c8bc14d5",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -643,7 +643,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3737495ccf9893a9ee8713a6491d0bf61ac19e428409ec440006bd3a71be3ea",
+      "geometryHash": "ba5aeb86e722d2a5fb840a96ba40cbec6c94ef2b1e90f9cac3a7882a36882e20",
       "id": "sf.render.mule-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -652,7 +652,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.mule-production-v1.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 802
+      "vertexCount": 810
     },
     {
       "bounds": {
@@ -694,13 +694,13 @@
       },
       "drawMode": 4,
       "geometryHash": "36c0a06f1a0fd02cc067104f30017de164d8d22cf2e6412d3054f517cc7cf9f6",
-      "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1133,26 +1133,26 @@
       "bounds": {
         "max": [
           7.7992753982543945,
-          1.2201882600784302,
+          1.5193257331848145,
           3.4370224475860596
         ],
         "min": [
           -8.119999885559082,
-          -1.0301882028579712,
+          -1.0303235054016113,
           -3.4370224475860596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "beecce9ff20e41174f5279855b4cf615d022dce67431158077c7aea7919e6fcd",
+      "geometryHash": "a4f34748283a48eb1e7e1d08e3fe426ca846e5e24dcc2f9bc7a7e6fdb593acde",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 19812,
+      "indexCount": 25068,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 6395
+      "vertexCount": 9707
     },
     {
       "bounds": {
@@ -1193,7 +1193,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f8f256ee78e73768d462d4f9f290c7b8ac4dfb8755167fed0028a6edefeb366",
+      "geometryHash": "c495e3154c421e12f87a200c6ba344f98887965c9a860073256ec7b0462367f8",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 8016,
       "indexed": true,
@@ -1242,6 +1242,13 @@
       ]
     },
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -1279,13 +1286,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -1559,7 +1559,7 @@
       ]
     },
     {
-      "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1579,8 +1579,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
       "nodePath": [
         0,
         1,
@@ -3296,22 +3296,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "7823e1b0807741c5418f806650c1ea5191519492d6a4939754da83d5bbdc3fa6"
+      "sha256": "4aaa6d626a86e6a66eea54666794f1d825bfd322b1078f80acff018489fb8eb3"
     },
     "sourceGlb": {
-      "bytes": 672804,
-      "sha256": "7e41d26079e11bc8e08537c213a1b1155dc2812c44e5adcaa22e16cd4f80bbd0",
+      "bytes": 713092,
+      "sha256": "47440cb2d6a17ebac5e12684808fc529b8b0ecd3d7c4afb658c7a9793ba68a54",
       "uri": "mule_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1070688,
-    "sha256": "e9102243a4cac65685b5ca1d8b79277d2b529f4d3da0b3b8340cf3042bb0263c",
+    "bytes": 1129104,
+    "sha256": "d91f871dc2439ffbd70c2e8b0241a64b890e0dc084c1970d52218942454994a5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4154,9 +4154,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6746,
+      "bytes": 7217,
       "rigId": "hull",
-      "sha256": "67d16e034aebbf1ab237e97e8a74bdd5fb98660f2fae92535a1030d0c6cc42a4",
+      "sha256": "59213634b03cf547c78694c26d6c989637802f31a3533878280462defb1957d3",
       "uri": "assets/ships/motions/mule-production-v1.motion.json"
     },
     "nodeCount": 38,
@@ -4209,7 +4209,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -4812,7 +4812,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
-  "runtimeHash": "9f48f8850baaa97dff733e18f2aeaf5f3eb48e39f154d746b4f15e0b8621886d",
+  "runtimeHash": "f608336820c68a23251f6b7926e11ed19b9607fcba35bd0fc551b56180ae73eb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4832,7 +4832,7 @@
       "nodeIds": [
         "sf.render.mule-production-v1.node.collision-hull",
         "sf.render.mule-production-v1.node.lod0-motion-hull-core-armor",
-        "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
         "sf.render.mule-production-v1.node.lod0-motion-hull-core-canopy",
         "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical",
         "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-warning",

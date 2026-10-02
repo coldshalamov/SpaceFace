@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        49
+        52
       ],
       "parentNodeId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        50
+        53
       ],
       "parentNodeId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        51
+        54
       ],
       "parentNodeId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        52
+        55
       ],
       "parentNodeId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "worldTransform": [
@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5903b1b64dd930abe7dbddb1ffb2ae2e15aa893bd7b4bcc7c242d33cef4ffcf6",
+  "contentHash": "08d4bebbe2ce94be5e50bd37b3300effef16fa22c072d521a161c68880027369",
   "dynamicGroups": [
     {
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.dynamic",
@@ -234,18 +234,18 @@
     {
       "bounds": {
         "max": [
-          43.06810760498047,
+          43.068115234375,
           60.974998474121094,
           16.242345809936523
         ],
         "min": [
-          -62.70574951171875,
+          -62.705745697021484,
           -63.415489196777344,
           -16.575910568237305
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec26df0cc916768a3c4d89a633307a7be4412138f23b603b568e73f9b1fa313c",
+      "geometryHash": "dcb40106177b2745efddd07c371ce69b8c00e8c1c1c333daba9b371d363b5844",
       "id": "sf.render.blackmarket.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -254,7 +254,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.blackmarket.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 818
+      "vertexCount": 816
     },
     {
       "bounds": {
@@ -274,7 +274,7 @@
       "id": "sf.render.blackmarket.node.lod0-armor.primitive.0",
       "indexCount": 20112,
       "indexed": true,
-      "materialHash": "fe0890c090c7cf4dce2dcc4893a829de6587317ce2b1e7dd971e1c277ff2f7ad",
+      "materialHash": "390eb92a99a90b12de979461ffa39c47c190218d13ce359705e00e71f6404111",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.blackmarket.node.lod0-armor",
@@ -284,27 +284,27 @@
     {
       "bounds": {
         "max": [
-          42.89999771118164,
-          55.5200080871582,
-          8.4867525100708
+          30.687057495117188,
+          55.52000045776367,
+          8.488090515136719
         ],
         "min": [
-          -51.40608215332031,
-          -29.13874626159668,
-          -12.500213623046875
+          -51.40869140625,
+          -29.13873863220215,
+          -12.501551628112793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5abe60579ea8b4922567b4352ff8f5a5504df940075dd7f5ed542bd3337518e7",
+      "geometryHash": "85f985cc032f28fcb473ab5b7746a1601e1441a0363823a7ca313c5a88a27b45",
       "id": "sf.render.blackmarket.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 1332,
+      "indexCount": 1260,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.blackmarket.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 704
+      "vertexCount": 656
     },
     {
       "bounds": {
@@ -324,7 +324,7 @@
       "id": "sf.render.blackmarket.node.lod0-ceramic-cut.primitive.0",
       "indexCount": 117,
       "indexed": true,
-      "materialHash": "04ff699ba08ae05c976a4bd81afbdf6b342d7a013f1e12dd18dbda85ce5c17cc",
+      "materialHash": "5f4067c5c2fc57ec6f17b46e67bdbfdcc49259bfb7911eaa648cd65fc9154fd0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic_cut",
       "nodeId": "sf.render.blackmarket.node.lod0-ceramic-cut",
@@ -349,7 +349,7 @@
       "id": "sf.render.blackmarket.node.lod0-ceramic-shadow.primitive.0",
       "indexCount": 477,
       "indexed": true,
-      "materialHash": "0757e2db9fd9cb9d88410c58520130d1de628fefd6895578adcdd8c39f065b69",
+      "materialHash": "332392141b4e3613b8df8f27defc98082d9b71587c6407e891e2b561d98a5ba2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic_shadow",
       "nodeId": "sf.render.blackmarket.node.lod0-ceramic-shadow",
@@ -374,7 +374,7 @@
       "id": "sf.render.blackmarket.node.lod0-ceramic.primitive.0",
       "indexCount": 1086,
       "indexed": true,
-      "materialHash": "778eafdda9b14934a7e0108afeec877dbbd61913d43a6a3939e6a681a19912de",
+      "materialHash": "a731c8dde7e46cd2056cf57b19bf2aff6cc144e7ad7cdc234af7130239df3ef6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic",
       "nodeId": "sf.render.blackmarket.node.lod0-ceramic",
@@ -449,7 +449,7 @@
       "id": "sf.render.blackmarket.node.lod0-hull-ivory.primitive.0",
       "indexCount": 16560,
       "indexed": true,
-      "materialHash": "a0ef52c7fcfec3f3ff6c0047835f77c84925322f537fccd9738c9b97f60bed05",
+      "materialHash": "200986b8eca4d189a856afebddfab3b20a76c328605a63c5bca899a9792ad705",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_ivory",
       "nodeId": "sf.render.blackmarket.node.lod0-hull-ivory",
@@ -474,7 +474,7 @@
       "id": "sf.render.blackmarket.node.lod0-hull-olive.primitive.0",
       "indexCount": 17484,
       "indexed": true,
-      "materialHash": "f483edc27b68448e62ffbcdc45b2e609d9211c4c7a721a6406d4deb2b6813d98",
+      "materialHash": "72e6fc590fffa6d4b7f955732978aa21c0f17ff4131792d81994ba84fa8736da",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_olive",
       "nodeId": "sf.render.blackmarket.node.lod0-hull-olive",
@@ -499,7 +499,7 @@
       "id": "sf.render.blackmarket.node.lod0-hull.primitive.0",
       "indexCount": 18048,
       "indexed": true,
-      "materialHash": "8275dd7a228667db4e31c5f62f2c98ea41b16086be60380fab548ce959f5b75f",
+      "materialHash": "44a5cf0514ed6ed6f009f668506c0712c5c0a5f983c87607aa2c3c83f7a03ebe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.blackmarket.node.lod0-hull",
@@ -574,7 +574,7 @@
       "id": "sf.render.blackmarket.node.lod0-livery.primitive.0",
       "indexCount": 18048,
       "indexed": true,
-      "materialHash": "904821093b5ef7371377c1555bbb7c7b7bc6eb8cf9129e32acb82bb4b94e5661",
+      "materialHash": "8969e549b0fc2dbab1456c29c4ee1baa6b85b90c1c592ef3f51b88533467c26f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.blackmarket.node.lod0-livery",
@@ -599,7 +599,7 @@
       "id": "sf.render.blackmarket.node.lod0-mechanical.primitive.0",
       "indexCount": 28860,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.blackmarket.node.lod0-mechanical",
@@ -609,52 +609,277 @@
     {
       "bounds": {
         "max": [
-          43.055397033691406,
-          46.19888687133789,
-          11.307076454162598
+          30.497949600219727,
+          46.20000076293945,
+          11.30712890625
         ],
         "min": [
-          -52.205284118652344,
-          -44.44513702392578,
-          -10.392369270324707
+          -52.20323181152344,
+          -44.446250915527344,
+          -10.39242172241211
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2921b0f794384af3c050add2d46dcbf7805fea94b54a2030ef408e9775e98955",
+      "geometryHash": "02258eb8fe66b11ed697cf2f7cd92075defafbb786dab8228942eddc76b218f7",
       "id": "sf.render.blackmarket.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 9372,
+      "indexCount": 8244,
       "indexed": true,
-      "materialHash": "595f36e3f330a470e5091c2d9388c43968bf8ac82b07a0dc9f6bcda6e7397374",
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.blackmarket.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3758
+      "vertexCount": 3406
+    },
+    {
+      "bounds": {
+        "max": [
+          42.89999866485596,
+          -2.5899897813796997,
+          -5.5
+        ],
+        "min": [
+          42.29999828338623,
+          -3.0100101232528687,
+          -6.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac8e723389f92ed7cfd53061356fd6a3329ba002d13d56b38ce512178db32f5d",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.05536508560181,
+          -3.5,
+          -3.8144593238830566
+        ],
+        "min": [
+          42.14463186264038,
+          -5.5,
+          -4.585540056228638
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f38887dbf914a7fc054b2161c41a2160c2276d0b60e790b13ad84d463999cbd",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-mechanicaldark.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
           43.06789016723633,
-          9.099565505981445,
-          9.099565505981445
+          -3.300048589706421,
+          -3.997605323791504
         ],
         "min": [
-          22.366987228393555,
-          -9.099565505981445,
-          -9.099565505981445
+          39.732112884521484,
+          -5.699951171875,
+          -6.402394592761993
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4d38fd076544f2786adc13c52eaa94b0767c865f39bdf96fb2d9a74d5c248be",
-      "id": "sf.render.blackmarket.node.lod0-warning.primitive.0",
-      "indexCount": 1416,
+      "geometryHash": "468af181ef2a01a661b67d4aae6e968d0ffd4c9b7c098a5b9c9de52effa637af",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-warning.primitive.0",
+      "indexCount": 564,
       "indexed": true,
-      "materialHash": "4af8b0f120d2275f324fe85fc91aaf04df2cba0a78508419827b09ada48d214f",
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          42.89999866485596,
+          -2.5899897813796997,
+          6.100000381469727
+        ],
+        "min": [
+          42.29999828338623,
+          -3.0100101232528687,
+          5.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5f4b5e312d0fffb718ffcc936bd3ad003ce1eab547c36d092f6bca4364ca2b4",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.05536508560181,
+          -3.5,
+          4.585540056228638
+        ],
+        "min": [
+          42.14463186264038,
+          -5.5,
+          3.8144593238830566
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "56c988f0e47b5e181c44e1570ec3a86d6dacb16176e14711c1f38e6ad5d6066f",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-mechanicaldark.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          43.06789016723633,
+          -3.300048589706421,
+          6.402394592761993
+        ],
+        "min": [
+          39.732112884521484,
+          -5.699951171875,
+          3.997605323791504
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d84da48d4427f9db61a0bd4a8ba1f69ae33583e7a593abf937d36fea40807cb",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.199999809265137,
+          58.71001020073891,
+          2.8000001907348633
+        ],
+        "min": [
+          -13.800000190734863,
+          58.28998979926109,
+          2.1999998092651367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6447e01257d8687f14d53f7b70e1f59c31c247b5d8f4f87141bccd03eb59c47",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.200000047683716,
+          58.710010036826134,
+          2.799999952316284
+        ],
+        "min": [
+          -18.799999952316284,
+          58.289989963173866,
+          2.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd058eaf0c82ebabe4df043f714c9d681da88d1a5c8091aa9144e7e8449764a5",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.5,
+          58.85004732012749,
+          2.9998931884765625
+        ],
+        "min": [
+          -18.5,
+          58.14995267987251,
+          2.0001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1031a66275050e6883325633cb01ddfcf40fada696e8a69410f9f2d260293ddb",
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-mechanical.primitive.0",
+      "indexCount": 600,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodeId": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          23.233240127563477,
+          9.100000381469727,
+          9.100000381469727
+        ],
+        "min": [
+          22.366758346557617,
+          -9.100000381469727,
+          -9.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "74c3a0147cedd934adf8f29c97209a52c3c205fb8b74014b0690f950b0ab0dfa",
+      "id": "sf.render.blackmarket.node.lod0-warning.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.blackmarket.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 456
+      "vertexCount": 104
     },
     {
       "bounds": {
@@ -670,41 +895,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d686248c56f4d4bf92a7aad15254bd4e6840bdd037142d7584ca0ead1f6b59f6",
+      "geometryHash": "65d14b09d55e663288fa10e402df00b25ec1f662932c108f3692eb277cc7626f",
       "id": "sf.render.blackmarket.node.lod1-armor.primitive.0",
-      "indexCount": 4620,
+      "indexCount": 4554,
       "indexed": true,
-      "materialHash": "fe0890c090c7cf4dce2dcc4893a829de6587317ce2b1e7dd971e1c277ff2f7ad",
+      "materialHash": "390eb92a99a90b12de979461ffa39c47c190218d13ce359705e00e71f6404111",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.blackmarket.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2061
+      "vertexCount": 2041
     },
     {
       "bounds": {
         "max": [
-          42.89999771118164,
-          55.517513275146484,
-          8.4867525100708
+          30.68463706970215,
+          55.51500701904297,
+          8.487471580505371
         ],
         "min": [
-          -51.40608215332031,
-          -29.14124298095703,
-          -12.500213623046875
+          -51.40626907348633,
+          -29.13873863220215,
+          -12.500932693481445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03a8fa2ddd672e3d21b46b5ac890b37cc43ea50e9b3dccd7b6cbf3727a67c884",
+      "geometryHash": "c1ebed6ce42072b8883da86b940872530691efe8f2ebb0d6c694a4afee452ab5",
       "id": "sf.render.blackmarket.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 966,
+      "indexCount": 894,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.blackmarket.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 619
+      "vertexCount": 571
     },
     {
       "bounds": {
@@ -724,7 +949,7 @@
       "id": "sf.render.blackmarket.node.lod1-ceramic-cut.primitive.0",
       "indexCount": 81,
       "indexed": true,
-      "materialHash": "04ff699ba08ae05c976a4bd81afbdf6b342d7a013f1e12dd18dbda85ce5c17cc",
+      "materialHash": "5f4067c5c2fc57ec6f17b46e67bdbfdcc49259bfb7911eaa648cd65fc9154fd0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic_cut",
       "nodeId": "sf.render.blackmarket.node.lod1-ceramic-cut",
@@ -749,7 +974,7 @@
       "id": "sf.render.blackmarket.node.lod1-ceramic-shadow.primitive.0",
       "indexCount": 477,
       "indexed": true,
-      "materialHash": "0757e2db9fd9cb9d88410c58520130d1de628fefd6895578adcdd8c39f065b69",
+      "materialHash": "332392141b4e3613b8df8f27defc98082d9b71587c6407e891e2b561d98a5ba2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic_shadow",
       "nodeId": "sf.render.blackmarket.node.lod1-ceramic-shadow",
@@ -774,7 +999,7 @@
       "id": "sf.render.blackmarket.node.lod1-ceramic.primitive.0",
       "indexCount": 1086,
       "indexed": true,
-      "materialHash": "778eafdda9b14934a7e0108afeec877dbbd61913d43a6a3939e6a681a19912de",
+      "materialHash": "a731c8dde7e46cd2056cf57b19bf2aff6cc144e7ad7cdc234af7130239df3ef6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic",
       "nodeId": "sf.render.blackmarket.node.lod1-ceramic",
@@ -845,16 +1070,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3df5b8f006a3746975ce1c9e948fe051be0b97bd6b4eb5d8e027d2081b3775ec",
+      "geometryHash": "6a5aadd3dd9c93ae60e29d83a723ccc2605935c16ac0bf6272e658cc0393f0f3",
       "id": "sf.render.blackmarket.node.lod1-hull-ivory.primitive.0",
-      "indexCount": 4326,
+      "indexCount": 4212,
       "indexed": true,
-      "materialHash": "a0ef52c7fcfec3f3ff6c0047835f77c84925322f537fccd9738c9b97f60bed05",
+      "materialHash": "200986b8eca4d189a856afebddfab3b20a76c328605a63c5bca899a9792ad705",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_ivory",
       "nodeId": "sf.render.blackmarket.node.lod1-hull-ivory",
       "primitiveIndex": 0,
-      "vertexCount": 1839
+      "vertexCount": 1802
     },
     {
       "bounds": {
@@ -870,41 +1095,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba02e50e15b6f1e059c130de68444f28c19242fc447a695a1c97ea7e4b0c730b",
+      "geometryHash": "80fba57480096a60e1649cd048ee93f8ef764aedc21abdd04117dd2c4247080d",
       "id": "sf.render.blackmarket.node.lod1-hull-olive.primitive.0",
-      "indexCount": 3546,
+      "indexCount": 3462,
       "indexed": true,
-      "materialHash": "f483edc27b68448e62ffbcdc45b2e609d9211c4c7a721a6406d4deb2b6813d98",
+      "materialHash": "72e6fc590fffa6d4b7f955732978aa21c0f17ff4131792d81994ba84fa8736da",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_olive",
       "nodeId": "sf.render.blackmarket.node.lod1-hull-olive",
       "primitiveIndex": 0,
-      "vertexCount": 1552
+      "vertexCount": 1526
     },
     {
       "bounds": {
         "max": [
-          37.43471908569336,
+          37.433990478515625,
           45.793827056884766,
-          12.514824867248535
+          12.514613151550293
         ],
         "min": [
-          -58.233009338378906,
-          -49.979129791259766,
-          -15.290225982666016
+          -58.23228073120117,
+          -49.97766876220703,
+          -15.290014266967773
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b8993d6502fd9b0068c57a47b3c0effc0163b935e365226cc785060013df0f1",
+      "geometryHash": "b64ff0933d11f8ee1775892e11ccfe59b32214471765c09983ebc715c284e588",
       "id": "sf.render.blackmarket.node.lod1-hull.primitive.0",
-      "indexCount": 3744,
+      "indexCount": 3642,
       "indexed": true,
-      "materialHash": "8275dd7a228667db4e31c5f62f2c98ea41b16086be60380fab548ce959f5b75f",
+      "materialHash": "44a5cf0514ed6ed6f009f668506c0712c5c0a5f983c87607aa2c3c83f7a03ebe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.blackmarket.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1623
+      "vertexCount": 1591
     },
     {
       "bounds": {
@@ -959,27 +1184,27 @@
     {
       "bounds": {
         "max": [
-          32.879478454589844,
+          32.883846282958984,
           48.9896240234375,
-          14.634795188903809
+          14.640279769897461
         ],
         "min": [
-          -57.57232666015625,
-          -49.54537582397461,
-          -14.561538696289062
+          -57.57669448852539,
+          -49.54179382324219,
+          -14.567023277282715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41167fc7f761004f0470aac08098394e4e7dc96b33893f6e217e8528a457dcdc",
+      "geometryHash": "bd375990fb0387d9a24a229676bc40bfbd75e889c42ec40dfa21ba1a48bd8de0",
       "id": "sf.render.blackmarket.node.lod1-livery.primitive.0",
-      "indexCount": 3474,
+      "indexCount": 3360,
       "indexed": true,
-      "materialHash": "904821093b5ef7371377c1555bbb7c7b7bc6eb8cf9129e32acb82bb4b94e5661",
+      "materialHash": "8969e549b0fc2dbab1456c29c4ee1baa6b85b90c1c592ef3f51b88533467c26f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.blackmarket.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1539
+      "vertexCount": 1503
     },
     {
       "bounds": {
@@ -995,66 +1220,291 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fa1683e2db1fa4029bf9d756f5f7b44828b78f868479996a8ac31087cbac4c6",
+      "geometryHash": "bf7812b9a0dddc2460f38157026f6101f5de4df2550dd97041db6c0b168c1525",
       "id": "sf.render.blackmarket.node.lod1-mechanical.primitive.0",
-      "indexCount": 6009,
+      "indexCount": 5982,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.blackmarket.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2934
+      "vertexCount": 2929
     },
     {
       "bounds": {
         "max": [
-          43.05149459838867,
-          46.192176818847656,
-          11.306632041931152
+          30.48876953125,
+          46.19029235839844,
+          11.31149959564209
         ],
         "min": [
-          -52.205284118652344,
-          -44.44813537597656,
-          -10.391924858093262
+          -52.203556060791016,
+          -44.446250915527344,
+          -10.3967924118042
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0ced5b7c55d46770ad08b0a9e7af56c6140020d9998288389dd000c00bfaf11",
+      "geometryHash": "39a4a08b5d5a26213375ae51224de5374077c35ca2b5b4b335fd6aaf018dae68",
       "id": "sf.render.blackmarket.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 3909,
+      "indexCount": 3822,
       "indexed": true,
-      "materialHash": "595f36e3f330a470e5091c2d9388c43968bf8ac82b07a0dc9f6bcda6e7397374",
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.blackmarket.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2243
+      "vertexCount": 2188
     },
     {
       "bounds": {
         "max": [
-          43.06425476074219,
-          9.100493431091309,
-          9.100493431091309
+          42.89999866485596,
+          -2.5899897813796997,
+          -5.5
         ],
         "min": [
-          22.366987228393555,
-          -9.100493431091309,
-          -9.100493431091309
+          42.29999828338623,
+          -3.0100101232528687,
+          -6.100000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a1073c434e6c20ee70620f39bb6a21da0c385d15eb735d87cad83ac792bf2ff",
-      "id": "sf.render.blackmarket.node.lod1-warning.primitive.0",
-      "indexCount": 552,
+      "geometryHash": "26bf269e503dc7e9d27aad42f565ede7cd64eccb3a24dc9e1914d66157089d95",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-beacon-amber.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "4af8b0f120d2275f324fe85fc91aaf04df2cba0a78508419827b09ada48d214f",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.05419969558716,
+          -3.5035133361816406,
+          -3.8158884048461914
+        ],
+        "min": [
+          42.146262645721436,
+          -5.496303558349609,
+          -4.583216309547424
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dfb2ae01c5e721c513940db4296dbd7233936681a2af2ab5dd0e01a32b70641c",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-mechanicaldark.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          43.06936264038086,
+          -3.3046568632125854,
+          -3.9975244998931885
+        ],
+        "min": [
+          39.73063278198242,
+          -5.694864392280579,
+          -6.404034793376923
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee5ab2accae20f4bb1ad2a2a218e7a737eeaeea7c6e7d0580b562b0e832815aa",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-warning.primitive.0",
+      "indexCount": 294,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 116
+    },
+    {
+      "bounds": {
+        "max": [
+          42.89999866485596,
+          -2.5899897813796997,
+          6.100000381469727
+        ],
+        "min": [
+          42.29999828338623,
+          -3.0100101232528687,
+          5.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08784db6048ca5a207c304f7e42e722e4a09f40e625d619e7f7db3fd2f926725",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.05401086807251,
+          -3.5036962032318115,
+          4.583827972412109
+        ],
+        "min": [
+          42.14635610580444,
+          -5.496401309967041,
+          3.815803050994873
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e26d49ff4fadc350144590b4362715d1ae7cbc0db07afc198aaeaf0a51710b4",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-mechanicaldark.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          43.069358825683594,
+          -3.3053213357925415,
+          6.404033422470093
+        ],
+        "min": [
+          39.73063278198242,
+          -5.694710850715637,
+          3.997525930404663
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30a2ef57437646181685ebb6713b0b0dbf067c07c51d73968ec412c5b4313bd1",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-warning.primitive.0",
+      "indexCount": 294,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 112
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.199999809265137,
+          58.71001020073891,
+          2.8000001907348633
+        ],
+        "min": [
+          -13.800000190734863,
+          58.28998979926109,
+          2.1999998092651367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a4586f6561ca87fca2a1d14664a917dd6cee7f17eb3ca1281c386ea95c86ee3",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.200000047683716,
+          58.710010036826134,
+          2.799999952316284
+        ],
+        "min": [
+          -18.799999952316284,
+          58.289989963173866,
+          2.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a2d35c25de0b6fcf275466614a04298a0e09685069fcf07bfc01a935135c292e",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.5,
+          58.8494388461113,
+          2.997123062610626
+        ],
+        "min": [
+          -18.5,
+          58.15056496858597,
+          2.0009989142417908
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d0cbce899ca52996e91fdf7bcf32d48c0072be3c169605f3096cef0807b81bc",
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-mechanical.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodeId": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          23.233240127563477,
+          9.100000381469727,
+          9.100000381469727
+        ],
+        "min": [
+          22.366758346557617,
+          -9.100000381469727,
+          -9.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91c203e0331e07fa74494439d88d738bc51110f13f9cfa824fed91dd8b279c5e",
+      "id": "sf.render.blackmarket.node.lod1-warning.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.blackmarket.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 104
     },
     {
       "bounds": {
@@ -1074,7 +1524,7 @@
       "id": "sf.render.blackmarket.node.lod2-armor.primitive.0",
       "indexCount": 2448,
       "indexed": true,
-      "materialHash": "fe0890c090c7cf4dce2dcc4893a829de6587317ce2b1e7dd971e1c277ff2f7ad",
+      "materialHash": "390eb92a99a90b12de979461ffa39c47c190218d13ce359705e00e71f6404111",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.blackmarket.node.lod2-armor",
@@ -1084,27 +1534,27 @@
     {
       "bounds": {
         "max": [
-          42.89999771118164,
-          55.513240814208984,
-          8.48603630065918
+          30.686546325683594,
+          55.51500701904297,
+          8.489532470703125
         ],
         "min": [
-          -51.34794616699219,
-          -29.070308685302734,
-          -12.499497413635254
+          -51.350040435791016,
+          -29.072072982788086,
+          -12.5029935836792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fe8518b43f13bdf55697fed1896f4193fdf66b176681656adfc889780672b6f",
+      "geometryHash": "3dd5aff4780e0a6d0196b033c135b521ef44c59a431719ccf53d055c7c787010",
       "id": "sf.render.blackmarket.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 702,
+      "indexCount": 630,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.blackmarket.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 493
+      "vertexCount": 445
     },
     {
       "bounds": {
@@ -1124,7 +1574,7 @@
       "id": "sf.render.blackmarket.node.lod2-ceramic-cut.primitive.0",
       "indexCount": 75,
       "indexed": true,
-      "materialHash": "04ff699ba08ae05c976a4bd81afbdf6b342d7a013f1e12dd18dbda85ce5c17cc",
+      "materialHash": "5f4067c5c2fc57ec6f17b46e67bdbfdcc49259bfb7911eaa648cd65fc9154fd0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Ceramic_cut",
       "nodeId": "sf.render.blackmarket.node.lod2-ceramic-cut",
@@ -1149,7 +1599,7 @@
       "id": "sf.render.blackmarket.node.lod2-ceramic-shadow.primitive.0",
       "indexCount": 477,
       "indexed": true,
-      "materialHash": "0757e2db9fd9cb9d88410c58520130d1de628fefd6895578adcdd8c39f065b69",
+      "materialHash": "332392141b4e3613b8df8f27defc98082d9b71587c6407e891e2b561d98a5ba2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Ceramic_shadow",
       "nodeId": "sf.render.blackmarket.node.lod2-ceramic-shadow",
@@ -1174,7 +1624,7 @@
       "id": "sf.render.blackmarket.node.lod2-ceramic.primitive.0",
       "indexCount": 1080,
       "indexed": true,
-      "materialHash": "778eafdda9b14934a7e0108afeec877dbbd61913d43a6a3939e6a681a19912de",
+      "materialHash": "a731c8dde7e46cd2056cf57b19bf2aff6cc144e7ad7cdc234af7130239df3ef6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Ceramic",
       "nodeId": "sf.render.blackmarket.node.lod2-ceramic",
@@ -1249,7 +1699,7 @@
       "id": "sf.render.blackmarket.node.lod2-hull-ivory.primitive.0",
       "indexCount": 1518,
       "indexed": true,
-      "materialHash": "a0ef52c7fcfec3f3ff6c0047835f77c84925322f537fccd9738c9b97f60bed05",
+      "materialHash": "200986b8eca4d189a856afebddfab3b20a76c328605a63c5bca899a9792ad705",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_ivory",
       "nodeId": "sf.render.blackmarket.node.lod2-hull-ivory",
@@ -1274,7 +1724,7 @@
       "id": "sf.render.blackmarket.node.lod2-hull-olive.primitive.0",
       "indexCount": 1116,
       "indexed": true,
-      "materialHash": "f483edc27b68448e62ffbcdc45b2e609d9211c4c7a721a6406d4deb2b6813d98",
+      "materialHash": "72e6fc590fffa6d4b7f955732978aa21c0f17ff4131792d81994ba84fa8736da",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_olive",
       "nodeId": "sf.render.blackmarket.node.lod2-hull-olive",
@@ -1299,7 +1749,7 @@
       "id": "sf.render.blackmarket.node.lod2-hull.primitive.0",
       "indexCount": 1152,
       "indexed": true,
-      "materialHash": "8275dd7a228667db4e31c5f62f2c98ea41b16086be60380fab548ce959f5b75f",
+      "materialHash": "44a5cf0514ed6ed6f009f668506c0712c5c0a5f983c87607aa2c3c83f7a03ebe",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.blackmarket.node.lod2-hull",
@@ -1320,16 +1770,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a5cf004517f7672e7f44d41e01a2ac44e7972186f91ba5376e5b6b89fc1339b",
+      "geometryHash": "46ada1b2070efc706050ad6c24fe6606dc173ff9b4a34639482dbce7b44cbe21",
       "id": "sf.render.blackmarket.node.lod2-lights-cyan.primitive.0",
-      "indexCount": 396,
+      "indexCount": 378,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Cyan",
       "nodeId": "sf.render.blackmarket.node.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 300
+      "vertexCount": 286
     },
     {
       "bounds": {
@@ -1345,16 +1795,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26566f6272e73fda0be63b0d43398de88f10fbc56e6d492af912be8eb11056cb",
+      "geometryHash": "e80eaa4dc4cd9439ee8e4a0ff1574907f1be17878a317fdad8b9922bdfde59a0",
       "id": "sf.render.blackmarket.node.lod2-lights-warm.primitive.0",
-      "indexCount": 12234,
+      "indexCount": 12048,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.blackmarket.node.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 8170
+      "vertexCount": 8038
     },
     {
       "bounds": {
@@ -1374,7 +1824,7 @@
       "id": "sf.render.blackmarket.node.lod2-livery.primitive.0",
       "indexCount": 1152,
       "indexed": true,
-      "materialHash": "904821093b5ef7371377c1555bbb7c7b7bc6eb8cf9129e32acb82bb4b94e5661",
+      "materialHash": "8969e549b0fc2dbab1456c29c4ee1baa6b85b90c1c592ef3f51b88533467c26f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.blackmarket.node.lod2-livery",
@@ -1399,7 +1849,7 @@
       "id": "sf.render.blackmarket.node.lod2-mechanical.primitive.0",
       "indexCount": 3270,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.blackmarket.node.lod2-mechanical",
@@ -1409,52 +1859,277 @@
     {
       "bounds": {
         "max": [
-          43.05149459838867,
-          46.188804626464844,
-          11.303322792053223
+          30.489126205444336,
+          46.19029235839844,
+          11.300931930541992
         ],
         "min": [
-          -51.3913688659668,
-          -44.42642593383789,
-          -10.394296646118164
+          -51.38999938964844,
+          -44.427913665771484,
+          -10.391905784606934
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5bca08407ef2658da4619d06455c8645e46ec97c5c06b9ca558bdfda8ef3f93",
+      "geometryHash": "49da4be4de7d337902773c1cad1f4278e800ae92063db70459d805e99f71b5de",
       "id": "sf.render.blackmarket.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1740,
+      "indexCount": 1668,
       "indexed": true,
-      "materialHash": "595f36e3f330a470e5091c2d9388c43968bf8ac82b07a0dc9f6bcda6e7397374",
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.blackmarket.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1384
+      "vertexCount": 1336
     },
     {
       "bounds": {
         "max": [
-          43.058128356933594,
-          9.100325584411621,
-          9.100325584411621
+          42.89999866485596,
+          -2.5899897813796997,
+          -5.5
         ],
         "min": [
-          22.366987228393555,
-          -9.100325584411621,
-          -9.100325584411621
+          42.29999828338623,
+          -3.0100101232528687,
+          -6.100000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95b4fdce4af53fa7e3dc8b097123393f963c1b0a940df3450e192880bd2132db",
-      "id": "sf.render.blackmarket.node.lod2-warning.primitive.0",
-      "indexCount": 360,
+      "geometryHash": "26bf269e503dc7e9d27aad42f565ede7cd64eccb3a24dc9e1914d66157089d95",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-beacon-amber.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "4af8b0f120d2275f324fe85fc91aaf04df2cba0a78508419827b09ada48d214f",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.051514625549316,
+          -3.5129542350769043,
+          -3.8187310695648193
+        ],
+        "min": [
+          42.14848232269287,
+          -5.487045764923096,
+          -4.581269025802612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c07a1db2b7792d1b4d59737955ee45a8fcc4054c91aace9a88e225f1a5ea413",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-mechanicaldark.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.06425476074219,
+          -3.310308814048767,
+          -4.0005645751953125
+        ],
+        "min": [
+          39.73575210571289,
+          -5.687912344932556,
+          -6.398890525102615
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "26370a6b6a8ed9b8aea4ed63175be093bb298cdaacf9e88699e483c799e3bc01",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-warning.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          42.89999866485596,
+          -2.5899897813796997,
+          6.100000381469727
+        ],
+        "min": [
+          42.29999828338623,
+          -3.0100101232528687,
+          5.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08784db6048ca5a207c304f7e42e722e4a09f40e625d619e7f7db3fd2f926725",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.051514625549316,
+          -3.5129542350769043,
+          4.581269145011902
+        ],
+        "min": [
+          42.14848232269287,
+          -5.487045764923096,
+          3.8187313079833984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ff8c7fa616f6c5936b11b8d56498fdc80aae1d6edec40f703ec5b658fcd0ca7",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-mechanicaldark.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          43.06425476074219,
+          -3.312045931816101,
+          6.398821383714676
+        ],
+        "min": [
+          39.73575210571289,
+          -5.689243197441101,
+          4.000495433807373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "79011414de41e1fb45f6788de45a637d08d719af43d3056a91d32664ce415787",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-warning.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.199999809265137,
+          58.71001052856445,
+          2.800000786781311
+        ],
+        "min": [
+          -13.80000114440918,
+          58.28998947143555,
+          2.199999451637268
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e25c03f5786999f4178109d84195b6e9565c6a4d6eb0f7eda4283e755cde85d",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-beacon-amber.primitive.0",
+      "indexCount": 18,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 14
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.200000286102295,
+          58.71000994741917,
+          2.799999952316284
+        ],
+        "min": [
+          -18.799999713897705,
+          58.28999005258083,
+          2.200000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0132b39ce4f7fa7dfd484eac927170230033af6e7b5087e5635225e022cfa2e",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-lights-cyan.primitive.0",
+      "indexCount": 18,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 14
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.5,
+          58.84852331876755,
+          2.9951175451278687
+        ],
+        "min": [
+          -18.5,
+          58.15148049592972,
+          2.0050970315933228
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "752fbdab41247250ff66872a3e99655cedaa1d058824c7838287f77a6c6fe368",
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-mechanical.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodeId": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 44
+    },
+    {
+      "bounds": {
+        "max": [
+          23.233240127563477,
+          9.100000381469727,
+          9.100000381469727
+        ],
+        "min": [
+          22.366758346557617,
+          -9.100000381469727,
+          -9.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91c203e0331e07fa74494439d88d738bc51110f13f9cfa824fed91dd8b279c5e",
+      "id": "sf.render.blackmarket.node.lod2-warning.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.blackmarket.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 152
+      "vertexCount": 104
     }
   ],
   "hlods": [],
@@ -1462,40 +2137,40 @@
   "lods": [],
   "materials": [
     {
-      "hash": "04ff699ba08ae05c976a4bd81afbdf6b342d7a013f1e12dd18dbda85ce5c17cc",
-      "id": "material:04ff699ba08ae05c976a4bd8",
-      "name": "Material_Ceramic_cut",
+      "hash": "200986b8eca4d189a856afebddfab3b20a76c328605a63c5bca899a9792ad705",
+      "id": "material:200986b8eca4d189a856afeb",
+      "name": "Material_Hull_ivory",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "0757e2db9fd9cb9d88410c58520130d1de628fefd6895578adcdd8c39f065b69",
-      "id": "material:0757e2db9fd9cb9d88410c58",
+      "hash": "332392141b4e3613b8df8f27defc98082d9b71587c6407e891e2b561d98a5ba2",
+      "id": "material:332392141b4e3613b8df8f27",
       "name": "Material_Ceramic_shadow",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1533,9 +2208,9 @@
       "textures": []
     },
     {
-      "hash": "4af8b0f120d2275f324fe85fc91aaf04df2cba0a78508419827b09ada48d214f",
-      "id": "material:4af8b0f120d2275f324fe85f",
-      "name": "Material_Warning",
+      "hash": "390eb92a99a90b12de979461ffa39c47c190218d13ce359705e00e71f6404111",
+      "id": "material:390eb92a99a90b12de979461",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1565,9 +2240,41 @@
       ]
     },
     {
-      "hash": "595f36e3f330a470e5091c2d9388c43968bf8ac82b07a0dc9f6bcda6e7397374",
-      "id": "material:595f36e3f330a470e5091c2d",
-      "name": "Material_MechanicalDark",
+      "hash": "44a5cf0514ed6ed6f009f668506c0712c5c0a5f983c87607aa2c3c83f7a03ebe",
+      "id": "material:44a5cf0514ed6ed6f009f668",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5f4067c5c2fc57ec6f17b46e67bdbfdcc49259bfb7911eaa648cd65fc9154fd0",
+      "id": "material:5f4067c5c2fc57ec6f17b46e",
+      "name": "Material_Ceramic_cut",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1604,73 +2311,9 @@
       "textures": []
     },
     {
-      "hash": "778eafdda9b14934a7e0108afeec877dbbd61913d43a6a3939e6a681a19912de",
-      "id": "material:778eafdda9b14934a7e0108a",
-      "name": "Material_Ceramic",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8275dd7a228667db4e31c5f62f2c98ea41b16086be60380fab548ce959f5b75f",
-      "id": "material:8275dd7a228667db4e31c5f6",
-      "name": "Material_Hull",
+      "hash": "72e6fc590fffa6d4b7f955732978aa21c0f17ff4131792d81994ba84fa8736da",
+      "id": "material:72e6fc590fffa6d4b7f95573",
+      "name": "Material_Hull_olive",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1707,8 +2350,8 @@
       "textures": []
     },
     {
-      "hash": "904821093b5ef7371377c1555bbb7c7b7bc6eb8cf9129e32acb82bb4b94e5661",
-      "id": "material:904821093b5ef7371377c155",
+      "hash": "8969e549b0fc2dbab1456c29c4ee1baa6b85b90c1c592ef3f51b88533467c26f",
+      "id": "material:8969e549b0fc2dbab1456c29",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1746,32 +2389,64 @@
       "textures": []
     },
     {
-      "hash": "a0ef52c7fcfec3f3ff6c0047835f77c84925322f537fccd9738c9b97f60bed05",
-      "id": "material:a0ef52c7fcfec3f3ff6c0047",
-      "name": "Material_Hull_ivory",
+      "hash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
+      "id": "material:9cc378267eef4326a9a0f08b",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a731c8dde7e46cd2056cf57b19bf2aff6cc144e7ad7cdc234af7130239df3ef6",
+      "id": "material:a731c8dde7e46cd2056cf57b",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1785,9 +2460,9 @@
       "textures": []
     },
     {
-      "hash": "f483edc27b68448e62ffbcdc45b2e609d9211c4c7a721a6406d4deb2b6813d98",
-      "id": "material:f483edc27b68448e62ffbcdc",
-      "name": "Material_Hull_olive",
+      "hash": "e1b3aab35425f8930a18d2e192d4281dd7f7dca061e5c7d48e4b92f7c200c827",
+      "id": "material:e1b3aab35425f8930a18d2e1",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1817,32 +2492,32 @@
       ]
     },
     {
-      "hash": "fe0890c090c7cf4dce2dcc4893a829de6587317ce2b1e7dd971e1c277ff2f7ad",
-      "id": "material:fe0890c090c7cf4dce2dcc48",
-      "name": "Material_Armor",
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_panel_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -2635,6 +3310,456 @@
       ]
     },
     {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodePath": [
+        0,
+        49,
+        0
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodePath": [
+        0,
+        49,
+        1
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodePath": [
+        0,
+        49,
+        2
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodePath": [
+        0,
+        50,
+        0
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodePath": [
+        0,
+        50,
+        1
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodePath": [
+        0,
+        50,
+        2
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodePath": [
+        0,
+        51,
+        0
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodePath": [
+        0,
+        51,
+        1
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodeName": "LOD0_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        2
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.blackmarket.node.lod0-warning",
       "localTransform": [
         1,
@@ -3415,6 +4540,456 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodePath": [
+        0,
+        49,
+        3
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodePath": [
+        0,
+        49,
+        4
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodePath": [
+        0,
+        49,
+        5
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodePath": [
+        0,
+        50,
+        3
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodePath": [
+        0,
+        50,
+        4
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodePath": [
+        0,
+        50,
+        5
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodePath": [
+        0,
+        51,
+        3
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodePath": [
+        0,
+        51,
+        4
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodeName": "LOD1_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        5
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
         1
       ]
     },
@@ -4203,6 +5778,456 @@
       ]
     },
     {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+      "nodePath": [
+        0,
+        49,
+        6
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+      "nodePath": [
+        0,
+        49,
+        7
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_JAW_P_Warning",
+      "nodePath": [
+        0,
+        49,
+        8
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+      "nodePath": [
+        0,
+        50,
+        6
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+      "nodePath": [
+        0,
+        50,
+        7
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_JAW_S_Warning",
+      "nodePath": [
+        0,
+        50,
+        8
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+      "nodePath": [
+        0,
+        51,
+        6
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+      "nodePath": [
+        0,
+        51,
+        7
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodeName": "LOD2_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+      "nodePath": [
+        0,
+        51,
+        8
+      ],
+      "parentId": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.blackmarket.node.lod2-warning",
       "localTransform": [
         1,
@@ -4248,6 +6273,153 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BLACKMARKET_JAW_P",
+      "nodeName": "MOTION_BLACKMARKET_JAW_P",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        -5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BLACKMARKET_JAW_S",
+      "nodeName": "MOTION_BLACKMARKET_JAW_S",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40,
+        -4.5,
+        5.900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.node.motion-blackmarket-signal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BLACKMARKET_SIGNAL",
+      "nodeName": "MOTION_BLACKMARKET_SIGNAL",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16,
+        58.5,
+        2.5,
         1
       ]
     },
@@ -4324,7 +6496,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        49
+        52
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -4373,7 +6545,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        50
+        53
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -4422,7 +6594,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        51
+        54
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -4471,7 +6643,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        52
+        55
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -4498,43 +6670,43 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "1c4ab1d67109fe0512e3fc1cb5fd16dfe315fb169543565b9073a458eef678f2"
+      "sha256": "070030185ee273eb139db495d4f066331495475311ef9967e899787015107190"
     },
     "sourceGlb": {
-      "bytes": 2118640,
-      "sha256": "3f94602bdc95696b6b324916261d9685f4fe26915bd2469623fa49286cc19561",
+      "bytes": 1988400,
+      "sha256": "e31153ffbae6c9f36b86c3d2937fb493ba3f0a151d5c8443b5a2f3c0ad5e0e1f",
       "uri": "place_station_blackmarket.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4044464,
-    "sha256": "2bf7e762564c24ab0209ec2e9c022350b8aca0abf9f6e9ffdaa9af3fe4bb7a79",
+    "bytes": 3946080,
+    "sha256": "d00395a58d3d63237a2602c443a36c2b52ec5de21f3057e30074701a9c2797a0",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -9.81882095336914,
+        -9.818191528320312,
         -1.2206954956054688,
         -0.1664419174194336
       ],
       "max": [
-        43.06810760498047,
+        43.06936264038086,
         60.974998474121094,
         16.24331283569336
       ],
       "min": [
-        -62.70574951171875,
+        -62.705745697021484,
         -63.41638946533203,
         -16.576196670532227
       ],
       "size": [
-        105.77385711669922,
+        105.77510833740234,
         124.39138793945312,
         32.819509506225586
       ]
@@ -4558,13 +6730,208 @@
           0,
           1,
           0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "MOTION_BLACKMARKET_JAW_P",
+        "planIndex": 51,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "blackmarket_jaw_p",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              40
+            ],
+            [
+              0,
+              1,
+              0,
+              5.900000095367432
+            ],
+            [
+              0,
+              0,
+              1,
+              -4.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BLACKMARKET_JAW_P",
+          "spaceface": {
+            "motionGroup": "blackmarket_jaw_p"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BLACKMARKET_JAW_P",
+            "recordIds": [
+              "sf.render.blackmarket.node.motion-blackmarket-jaw-p"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "MOTION_BLACKMARKET_JAW_S",
+        "planIndex": 61,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "blackmarket_jaw_s",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              40
+            ],
+            [
+              0,
+              1,
+              0,
+              -5.900000095367432
+            ],
+            [
+              0,
+              0,
+              1,
+              -4.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BLACKMARKET_JAW_S",
+          "spaceface": {
+            "motionGroup": "blackmarket_jaw_s"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BLACKMARKET_JAW_S",
+            "recordIds": [
+              "sf.render.blackmarket.node.motion-blackmarket-jaw-s"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "MOTION_BLACKMARKET_SIGNAL",
+        "planIndex": 71,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "blackmarket_signal",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -16
+            ],
+            [
+              0,
+              1,
+              0,
+              -2.5
+            ],
+            [
+              0,
+              0,
+              1,
+              58.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BLACKMARKET_SIGNAL",
+          "spaceface": {
+            "motionGroup": "blackmarket_signal"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BLACKMARKET_SIGNAL",
+            "recordIds": [
+              "sf.render.blackmarket.node.motion-blackmarket-signal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -4.829827785491943,
           0,
           -1.5589109659194946,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 51,
+        "planIndex": 81,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -4601,7 +6968,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 52,
+        "planIndex": 82,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4639,7 +7006,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 53,
+        "planIndex": 83,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4677,7 +7044,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 54,
+        "planIndex": 84,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -4700,9 +7067,9 @@
       "accent": 3,
       "ceramic": 9,
       "hull": 13,
-      "mechanical": 6,
-      "signal": 15,
-      "warning": 3
+      "mechanical": 15,
+      "signal": 27,
+      "warning": 9
     },
     "materialProfiles": [
       {
@@ -4949,9 +7316,150 @@
         "allowTextures": true,
         "planIndex": 50,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 77,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 79,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 80,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 55,
+    "motionBank": {
+      "bytes": 25940,
+      "rigId": "station_blackmarket",
+      "sha256": "f6e46be796bcff1c8f11519868270db99d8778266829dbab6a4d8d8f97c7adc0",
+      "uri": "assets/ships/motions/blackmarket.motion.json"
+    },
+    "nodeCount": 85,
     "primitives": [
       {
         "canopy": false,
@@ -6254,24 +8762,780 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_JAW_P_Warning",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_JAW_P_Warning",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_JAW_P_Beacon_Amber",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_JAW_P_MechanicalDark",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          -5.900000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_JAW_P_Warning",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_JAW_S_Warning",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_JAW_S_Warning",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_JAW_S_Beacon_Amber",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_JAW_S_MechanicalDark",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40,
+          -4.5,
+          5.900000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_JAW_S_Warning",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+        "planIndex": 73,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD0_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+        "planIndex": 74,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+        "planIndex": 75,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+        "planIndex": 76,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD1_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+        "planIndex": 77,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_SIGNAL_Beacon_Amber",
+        "planIndex": 78,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_SIGNAL_Lights_Cyan",
+        "planIndex": 79,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16,
+          58.5,
+          2.5,
+          1
+        ],
+        "name": "LOD2_MOTION_BLACKMARKET_SIGNAL_Mechanical",
+        "planIndex": 80,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-  "runtimeHash": "4695e9013ca4a0b403215cd9f6a3760e6ba5c5c5a0f16c8403c55467d44adda9",
+  "runtimeHash": "80cc1b521c6c381c9eab028f3229de53b11cdbd00abbe0e27660af3accafb6d1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          43.06810760498047,
+          43.06936264038086,
           60.974998474121094,
           16.24331283569336
         ],
         "min": [
-          -62.70574951171875,
+          -62.705745697021484,
           -63.41638946533203,
           -16.576196670532227
         ]
@@ -6294,6 +9558,15 @@
         "sf.render.blackmarket.node.lod0-livery",
         "sf.render.blackmarket.node.lod0-mechanical",
         "sf.render.blackmarket.node.lod0-mechanicaldark",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-beacon-amber",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-mechanicaldark",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-warning",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-beacon-amber",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-mechanicaldark",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-warning",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-beacon-amber",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-lights-cyan",
+        "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-mechanical",
         "sf.render.blackmarket.node.lod0-warning",
         "sf.render.blackmarket.node.lod1-armor",
         "sf.render.blackmarket.node.lod1-beacon-amber",
@@ -6310,6 +9583,15 @@
         "sf.render.blackmarket.node.lod1-livery",
         "sf.render.blackmarket.node.lod1-mechanical",
         "sf.render.blackmarket.node.lod1-mechanicaldark",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-beacon-amber",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-mechanicaldark",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-warning",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-beacon-amber",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-mechanicaldark",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-warning",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-beacon-amber",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-lights-cyan",
+        "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-mechanical",
         "sf.render.blackmarket.node.lod1-warning",
         "sf.render.blackmarket.node.lod2-armor",
         "sf.render.blackmarket.node.lod2-beacon-amber",
@@ -6326,7 +9608,19 @@
         "sf.render.blackmarket.node.lod2-livery",
         "sf.render.blackmarket.node.lod2-mechanical",
         "sf.render.blackmarket.node.lod2-mechanicaldark",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-beacon-amber",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-mechanicaldark",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-p-warning",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-beacon-amber",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-mechanicaldark",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-jaw-s-warning",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-beacon-amber",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-lights-cyan",
+        "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-mechanical",
         "sf.render.blackmarket.node.lod2-warning",
+        "sf.render.blackmarket.node.motion-blackmarket-jaw-p",
+        "sf.render.blackmarket.node.motion-blackmarket-jaw-s",
+        "sf.render.blackmarket.node.motion-blackmarket-signal",
         "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
         "sf.render.blackmarket.node.socket-camera-focus",
         "sf.render.blackmarket.node.socket-dock-approach",

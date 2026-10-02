@@ -165,7 +165,9 @@ test('PQ-152.02 catalog stays eleven authored pieces and adds its own capital ty
   // INF-082 added the Frame Coupler heavy_tow as a legitimate 11th authored row; the capital
   // boss must still be its own type, never an authored row.
   assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES must stay exactly 11');
-  assert.equal(SET_PIECE_MISSIONS.length, 5, 'SP1 chains stay five');
+  // WF-08's Lung Run chain (e7cf3bb8b) legitimately grew the chains to six; the pin exists to
+  // stop the CAPITAL row from becoming an SP chain, not to freeze the family count.
+  assert.equal(SET_PIECE_MISSIONS.length, 6, 'SP1 chains stay six');
   const ids = MISSION_TYPES.map((row) => row.type);
   assert.ok(ids.includes(CAPITAL_BOSS_TYPE));
   assert.equal(ids[ids.length - 1], 'heist_intercept', 'heist stays last / structural zero');

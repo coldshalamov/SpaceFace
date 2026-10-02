@@ -659,14 +659,24 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   const dockInteriorId = (payload) => (payload && payload.stationId != null
     && typeof entityForStationId === 'function'
     ? entityForStationId(payload.stationId) : null);
+  // A bank-declared event whose clip is already driving this rig is a RETRIGGER. setState would
+  // auto-bridge the live pose back to that clip's first key (rest, for the station sweeps) and replay the
+  // whole clip: a dish 40% through its sweep visibly snapped back toward rest and started over. The
+  // verb-busy gates above (jawBusy, clawBusy, ...) name their clips; this one reads the bank's own event
+  // map so every rig that answers the event is covered, and a finished clip plays again as before.
+  const eventClipBusy = (controller, type) => {
+    const name = controller.eventClip?.(type);
+    return !!name && !!controller.clipActive?.(name);
+  };
   const onDockRange = (payload) => {
     const id = playerId();
     if (payload && payload.inRange) {
+      const rangeIdle = (c) => !eventClipBusy(c, 'dock:range');
       // ANI-25: the berth's ready stance only fires on approach-in.
-      dispatch('dock:range', dockInteriorId(payload), payload, () => true);
+      dispatch('dock:range', dockInteriorId(payload), payload, rangeIdle);
       if (id != null) {
         strutsDown.add(id);
-        dispatch('dock:range', id, payload, () => true);
+        dispatch('dock:range', id, payload, rangeIdle);
       }
     } else if (id != null && strutsLive(id)) {
       // Left range without docking — the bus event only covers 'in', so the stow rides a
@@ -701,8 +711,10 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     dispatch('dock:undocked', id, payload, () => true);
   };
   const onDockDenied = (payload) => {
+    // The berth's clamp_denied_flare and the military station's track_sweep (the same clip dock:range
+    // plays) must not restart mid-play; every other bank's denied verb is read from its own event map.
     dispatch('dock:denied', dockInteriorId(payload), payload,
-      (c) => !c.clipActive?.('clamp_denied_flare'));
+      (c) => !eventClipBusy(c, 'dock:denied'));
   };
   const onRepairCompleted = (payload) => {
     if (!payload || payload.type !== 'repair') return;

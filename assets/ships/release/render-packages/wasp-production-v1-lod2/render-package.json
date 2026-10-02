@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f533686987fe844e66731c0a378aa8b6f216771116d4c8ae22b4ef7bf3312b2a",
+  "contentHash": "2774bba09ac2c6e5f98583886133a3f1cf5eb752dfe38d5f82987c88e8057f36",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.dynamic",
@@ -659,13 +659,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ac391e16d99412d081d2c476f9e375b013fd381de8f41bea0029952dd2929f80",
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber.primitive.0",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber.002",
-      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber",
+      "meshName": "LOD0_Beacon_Amber_beacon.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -697,18 +697,18 @@
     {
       "bounds": {
         "max": [
-          -7.368180793722246,
-          0.03445316560626227,
-          -1.5019906759262085
+          -7.368184234034602,
+          0.034450873609667615,
+          -1.5020532608032227
         ],
         "min": [
-          -9.092042404214766,
-          -0.13740310527444083,
+          -9.091999863255438,
+          -0.13740081327784617,
           -3.848330020904541
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85131bafa6c826c527287925fd774de534330d80c120cac0c84cf76aee53c37f",
+      "geometryHash": "9a6812ed835b0058c701b703c0d98828947c456cebb758550270ebdb5e253efb",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -808,16 +808,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5b036340d2563f77ce7efd6072c9890dda597ae12b82e53e26577a4fa57c1d2",
+      "geometryHash": "dd9a4cf2524b580448112d213f54a93121db20760df640017999e9e12b69210c",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hull.primitive.0",
-      "indexCount": 5556,
+      "indexCount": 5559,
       "indexed": true,
       "materialHash": "da148cbaefaecb6182128472d62bfd3ca2b38aa103bde95ec1258e32c644a71a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1538
+      "vertexCount": 1541
     },
     {
       "bounds": {
@@ -833,7 +833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fba70b54e4485cf0ab110989b515b47ec3f1ed42c85a7cc572f423f2b4bda262",
+      "geometryHash": "b85901d3d5dce7572dfad6265b31b1f321b739730cc902d8e011bbe3893560d1",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan.primitive.0",
       "indexCount": 705,
       "indexed": true,
@@ -858,9 +858,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54832a53b0b12343f8817d132360739b9966a15c9e328d3c52974f618255fcdb",
+      "geometryHash": "bd6679e3836a5cd82b1786f9ec458781e4a69916a18d9a6cb6200077775c88de",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical.primitive.0",
-      "indexCount": 3642,
+      "indexCount": 3639,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
@@ -973,17 +973,17 @@
       "bounds": {
         "max": [
           -5.313957691192627,
-          0.07689336687326431,
-          -5.001276530558243
+          0.07689188420772552,
+          -5.001017265603878
         ],
         "min": [
-          -9.99474811553955,
-          -0.11681224405765533,
-          -7.898004055023193
+          -9.99467658996582,
+          -0.11681075394153595,
+          -7.898271799087524
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d3094b6f2fa888f2cc04a93f01de08ff5b263d8b0ac8b99a9fbc43c7932f380",
+      "geometryHash": "25a141df97f3a8ca46c6a118d6ea17288831d7cb754ef136fdcebd734a7f53b1",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -1048,17 +1048,17 @@
       "bounds": {
         "max": [
           -5.314978122711182,
-          1.746362641453743,
-          7.89752721786499
+          1.7463529855012894,
+          7.897491931915283
         ],
         "min": [
-          -9.994998931884766,
-          -0.11739026010036469,
-          4.3321303725242615
+          -9.994950294494629,
+          -0.11738057434558868,
+          4.3321322202682495
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cfb66c364e9a0e4f15a4904301867127b8fd875c14a0ca9ef80f5f3656b2792",
+      "geometryHash": "15d72fc77d6e32c2fef44fa58d98e020eb57c1ef7492423d303b57fcc373a31f",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -1100,6 +1100,13 @@
   "lods": [],
   "materials": [
     {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
@@ -1137,13 +1144,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -1370,7 +1370,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1390,8 +1390,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
+      "mergeBoundary": "LOD0_Beacon_Amber_beacon",
+      "nodeName": "LOD0_Beacon_Amber_beacon",
       "nodePath": [
         0,
         2
@@ -1470,21 +1470,21 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor",
       "localTransform": [
-        1.1731696724891663,
+        1.1731383800506592,
         0,
         0,
         0,
         0,
-        1.1731696724891663,
+        1.1731383800506592,
         0,
         0,
         0,
         0,
-        1.1731696724891663,
+        1.1731383800506592,
         0,
-        -8.230111598968506,
+        -8.23009204864502,
         -0.05147496983408928,
-        -2.6751603484153748,
+        -2.675191640853882,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1498,21 +1498,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        1.1731696724891663,
+        1.1731383800506592,
         0,
         0,
         0,
         0,
-        1.1731696724891663,
+        1.1731383800506592,
         0,
         0,
         0,
         0,
-        1.1731696724891663,
+        1.1731383800506592,
         0,
-        -8.230111598968506,
+        -8.23009204864502,
         -0.05147496983408928,
-        -2.6751603484153748,
+        -2.675191640853882,
         1
       ]
     },
@@ -3045,22 +3045,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "9c262128ed14cc97dbd3ed17af7fdc4327d7ef96c4e172c29ab0fefba51080ff"
+      "sha256": "ac04d30f45e51dda623d4e3b1757c182e8d75445d5786bbbea728c353bd95042"
     },
     "sourceGlb": {
-      "bytes": 450180,
-      "sha256": "0fd96f92a1b7a29194c838a5a4ab2079cba6bdc3aaa1087d9f4e45e95ceda6ce",
+      "bytes": 450256,
+      "sha256": "842c0ec53ef32c6a8a7243937c57014a7383a372f6b653608887e3e8e30b4667",
       "uri": "wasp_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 607392,
-    "sha256": "8add36ac927ee27049020177dd9cd69a88bf1896a01fadbf65c57083ba684367",
+    "bytes": 607792,
+    "sha256": "362567c9a2ca859a7985c786e37df4a804d0619193f6950d909348739ad5a882",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4075,7 +4075,7 @@
           0,
           1
         ],
-        "name": "LOD0_Beacon_Amber",
+        "name": "LOD0_Beacon_Amber_beacon",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -4112,21 +4112,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.1731696724891663,
+          1.1731383800506592,
           0,
           0,
           0,
           0,
-          1.1731696724891663,
+          1.1731383800506592,
           0,
           0,
           0,
           0,
-          1.1731696724891663,
+          1.1731383800506592,
           0,
-          -8.230111598968506,
+          -8.23009204864502,
           -0.05147496983408928,
-          -2.6751603484153748,
+          -2.675191640853882,
           1
         ],
         "name": "LOD0_HOOK_ARMOR_FLAP_Armor",
@@ -4577,7 +4577,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
-  "runtimeHash": "4d0110035c7ab93211d123ae4a805a19e39c03be5ebcc5b24fa022e6ab091895",
+  "runtimeHash": "0ea995576237843ea13c82f82ee063b9fd9953a307b3435a013d227c2c648f56",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4597,7 +4597,7 @@
       "nodeIds": [
         "sf.render.wasp-production-v1-lod2.node.collision-hull",
         "sf.render.wasp-production-v1-lod2.node.lod0-armor",
-        "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber",
+        "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon",
         "sf.render.wasp-production-v1-lod2.node.lod0-canopy",
         "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor",
         "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core",

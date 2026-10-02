@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6fdb0c2a2300e2380563de008ba13996ec44b20526c1dcfbb74e4c977eb15b34",
+  "contentHash": "9ea79274b8d4f9126386a3160763394e3e9b9bff0342c5b3cf80422a7f5efbb4",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07e7d1660598ed9e13803011d1d61ffd99af63e6b2525ba73cc54aac11dc5a86",
+      "geometryHash": "64cdfdd14ebb3ee48c0fd39f576c5cd6f81ce712cefd06186a8d4a2d52b8db6e",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 3804,
       "indexed": true,
@@ -828,7 +828,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88255401c678710d7343361dd8625d33bd9202393e4f118a967fee561eee3ef4",
+      "geometryHash": "089af39b911b77aeac6b5b4d32f0515d6b11dc98b7557e1466866f1c416f5eb4",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 8214,
       "indexed": true,
@@ -928,7 +928,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6f99debbd8c2d568ac523b9698f09b2debf675ff0111c42bc43b58d26ac3f93",
+      "geometryHash": "a07bca4c7cac827aaeb013e9c29469f8adba5fd120cf35d91a048404667ca3a5",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 24816,
       "indexed": true,
@@ -937,7 +937,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.ashline-dart.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8012
+      "vertexCount": 8008
     },
     {
       "bounds": {
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4899886dd902b1d14a6864a85807f7f638dea6a7719dae42ba0c04104eb88aca",
+      "geometryHash": "839a3e14bc4c4177b15abfe1d85d5c76d41fc6f9a79b0e59aef264254c7008b4",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 846,
       "indexed": true,
@@ -1168,17 +1168,17 @@
       "bounds": {
         "max": [
           8.199884414672852,
-          1.2447320222854614,
-          3.445387840270996
+          1.244736671447754,
+          3.4454119205474854
         ],
         "min": [
-          -6.086092948913574,
-          -0.09985111653804779,
-          -3.4453823566436768
+          -6.086192607879639,
+          -0.09985580295324326,
+          -3.445406436920166
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd704f7332965f5c7c811808e4d249657b588c34eb06cbbb73514b2e69935fb0",
+      "geometryHash": "a82f4626a40b68ef46c8b678d6c369419d2cece70adf2420e752920d09870f9c",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 1743,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd261d6a4168a3c65f79eeb6be75e6657dd1c6537fb9b32a616f7a5d15ea4475",
+      "geometryHash": "4c79c3698acb62b8caffc60a6f4ef4b5e20606ca14a9ef0994c0b820c842c96b",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 11817,
       "indexed": true,
@@ -1403,7 +1403,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5510ee8bf208a3564a475d66f5de78fb461d49dcd3317b7b4908735d409eb025",
+      "geometryHash": "f8673eae49d071f9c5e33b5d885311ae56ec44f3c135c3b543bb2c9dee01b313",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1518,17 +1518,17 @@
       "bounds": {
         "max": [
           8.200047492980957,
-          1.244354009628296,
-          3.4462149143218994
+          1.2443015575408936,
+          3.4462554454803467
         ],
         "min": [
-          -6.087596416473389,
-          -0.0986417606472969,
-          -3.445359230041504
+          -6.087764263153076,
+          -0.09871003776788712,
+          -3.445399761199951
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73650e1e3db1b05d3dc2891b5beebb82437604fc782e7bca56a4ea9f73721307",
+      "geometryHash": "a966f118699b2d9d74b0f945ff769e875b5295d64905f7381c2b3d11b3480a6a",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 807,
       "indexed": true,
@@ -1628,7 +1628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "242b9a066c3c10a6fb29497b2c684c2d295fe2a7ae4ab92ef8142d0d7a4cfdaa",
+      "geometryHash": "ff25abdbbda96f3d9cfda6bc1d9cf9bb5fef8318b23b84cf97388a1458f7217d",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 5076,
       "indexed": true,
@@ -4809,19 +4809,19 @@
       "sha256": "3ecaf5e191a6b762b413c50390e1accec159cac5f8a0b90c80158025bef6b52a"
     },
     "sourceGlb": {
-      "bytes": 896524,
-      "sha256": "13c823788d699e4ed38c7aafda34fdc9a1730992eb1afa97f9a26dcf118b64db",
+      "bytes": 896216,
+      "sha256": "5bed5388e0e3b9802b01648a8150700b520071a63cb67850b6fd9349dd80ed07",
       "uri": "ashline_dart.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 218953,
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1588004,
-    "sha256": "d75d7c732670b161f8143b02b0dab8eea519db961fbd6032b76453ec8285fb9c",
+    "bytes": 1587988,
+    "sha256": "25b6ed54e16d671bcc70bf7d8c674c8f419c1e0d621dfe8719ba305763de4eee",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5769,9 +5769,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6736,
+      "bytes": 7249,
       "rigId": "hull",
-      "sha256": "db48ccacfc6518fd4d382587f1e00c43ceeeafef7a892e150f3bdc1eb46d35f0",
+      "sha256": "89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e",
       "uri": "assets/ships/motions/ashline-dart.motion.json"
     },
     "nodeCount": 58,
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
-  "runtimeHash": "c56a2b6d9343dde113eb24b0daf132ed22d84cdb8dfdeba3aa0050f3d2697edf",
+  "runtimeHash": "5e848157ff3b786e951923fe8caf84d04393d8d42d263f30e1b173c82625de47",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

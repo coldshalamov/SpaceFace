@@ -16,6 +16,7 @@ import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 import { createMedalOrrery, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
 import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
 import { decrypt, rollTo } from '../orrery/text.js';
+import ACHIEVEMENT_MEDALS_MANIFEST from '../../../assets/ui/generated/achievements/manifest.json' with { type: 'json' };
 
 export const ACHIEVEMENT_SECTIONS = Object.freeze([
   Object.freeze({ id: 'all', label: 'All' }),
@@ -93,21 +94,15 @@ function emblemSvg(id) {
   return `<svg class="con-medal__emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path class="con-emblem__bloom" d="${d}"></path><path class="con-emblem__core" d="${d}"></path>${extra}</svg>`;
 }
 
-// The generated set covers the deeds listed in assets/ui/generated/achievements/manifest.json;
-// deeds added since that sheet was cut have no medal art and take the plain medallion + glyph.
-const MEDAL_ART = new Set([
-  'berth_assigned', 'rock_has_a_price', 'paper_trail', 'signed_and_delivered', 'out_of_the_pocket',
-  'made_contact', 'light_ships_are_ammunition', 'razor_release', 'keep_the_speed', 'into_the_crucible',
-  'tenth_wave', 'better_than_last_time', 'same_seed_same_day', 'walked_out', 'paperwork_filed',
-  'six_figures',
-]);
 function medalArt(row) {
   if (!row || !row.id) return null;
   if (DRAWN_EMBLEM[row.id]) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
   // a hidden deed is a plain medallion: scrambled telemetry until it is earned, then its glyph
   if (row.hidden) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
-  if (!MEDAL_ART.has(row.id)) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
-  return { url: MEDAL_ROOT + 'medal-' + String(row.id).replace(/_/g, '-') + '.webp', glyph: false };
+  // A deed the sheet never produced a medal for takes the plain medallion with its glyph — asking
+  // for medal-<id>.webp that was never cut is a 404 and an empty face (has-art hides the glyph).
+  const file = ACHIEVEMENT_MEDALS_MANIFEST.medals && ACHIEVEMENT_MEDALS_MANIFEST.medals[row.id];
+  return { url: MEDAL_ROOT + (file || 'medal-base.webp'), glyph: !file };
 }
 
 function glyphFor(row, size = 30) {

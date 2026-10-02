@@ -40,6 +40,14 @@ import {
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
 /**
+ * The opening lesson's pack hold is a ceiling, not a sentence. The tick the board has nothing
+ * left to fight — the lone hull dead or disabled — the held schedule advances to this far out,
+ * and the wave clock shrinks by the same shift, so the pack still gets its full minute measured
+ * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
+ */
+export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+
+/**
  * SWARM REINFORCEMENT (PQ-135).
  *
  * The arc names its batches up front. Swarm fills a finite round quota in paced groups,
@@ -131,6 +139,10 @@ export const survivalWave = {
     this._unsubs.push(this.bus.on('run:ended', () => this._teardown()));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    // FB-024 — a capital score's wing members spawn through the score's own port, mid-wave and
+    // outside the schedule. Joining them here keeps the cohort honest: they still have to be
+    // defeated before the round clears, and their deaths resolve like any other member's.
+    this._unsubs.push(this.bus.on('survivalWave:cohortJoined', (p) => this._onCohortJoined(p)));
   },
 
   destroy() {
@@ -156,6 +168,7 @@ export const survivalWave = {
     if (!this._active) return;
 
     this._cursor += 1;
+    this._maybeReleaseOpeningLesson();
     this._dispatchDue();
     this._reinforceSwarm(run);
     this._publishWaveProgress();
@@ -261,6 +274,21 @@ export const survivalWave = {
     // Leaving `active` stops dispatch. Live bodies keep their bound budget slots and release
     // themselves through entity:destroyed; this owner is not the entity lifecycle owner.
     this._active = false;
+  },
+
+  /** Late joins outside the schedule — today, a capital score's wing screen. */
+  _onCohortJoined(payload) {
+    if (!payload || payload.wave !== this._wave || !Array.isArray(payload.ids)) return;
+    if (!this._active || !this._cohort) return;
+    for (const id of payload.ids) {
+      if (id == null || this._cohort.has(id)) continue;
+      this._cohort.set(id, {
+        role: 'wing',
+        entity: this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(id) || null
+          : null,
+      });
+    }
   },
 
   _onEntityDestroyed(payload) {
@@ -385,6 +413,11 @@ export const survivalWave = {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
         if (count <= 0) continue;
       }
+      const capitalChampion = this._swarm
+        && entry.champion === true
+        && typeof this._swarm.bossScoreId === 'string'
+        && this._swarm.bossScoreId
+        && entry.enemyId === this._swarm.bossEnemyId;
       const receipt = materializeWaveBatch(this.ctx, {
         ownerId,
         enemyId: entry.enemyId,
@@ -401,6 +434,15 @@ export const survivalWave = {
         distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
         // PQ-133.08: law arenas stamp their wave-10 boss's dressing kind off this id.
         arenaId: run && run.arenaId,
+        // FB-024: the capital champion's single hull runs the authored score. FB-027: a
+        // compositional champion's bodies carry the row's hunter trick.
+        capitalBoss: capitalChampion,
+        trickId: this._swarm && entry.champion === true && this._swarm.bossTrickId
+          ? this._swarm.bossTrickId
+          : null,
+        trickContractId: this._swarm && entry.champion === true && this._swarm.bossTrickId
+          ? `swarm:champion:w${this._wave}`
+          : null,
       });
       this._requestedTotal += receipt.requested;
       this._admittedTotal += receipt.admitted;
@@ -419,9 +461,23 @@ export const survivalWave = {
         // of three raiders exactly as easily as it owes one Dreadnought.
         if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
       }
+      // FB-024 — the capital champion lands as an ordinary cohort body first (budget, gate,
+      // cohort stamp, `requireBoss` debt all unchanged); only then is its hull handed to the
+      // score system. Emitted once per wave — a refused/re-materialized boss rebinds the same
+      // fight id instead of minting a second fight.
+      if (capitalChampion && receipt.spawnedIds.length > 0 && !this._capitalFightId) {
+        this._capitalFightId = `swarm:w${this._wave}`;
+        this._emit('capitalBoss:start', {
+          encounterId: this._swarm.bossScoreId,
+          fightId: this._capitalFightId,
+          bossId: receipt.spawnedIds[0],
+          targetId: this.state && this.state.playerId != null ? this.state.playerId : null,
+        });
+      }
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
-      // The same is true of a staged debut or a wall's heavies: a staged body must land, not vanish.
-      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true)
+      // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
+      // staged body must land, not vanish.
+      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true)
         && receipt.admitted < count) {
         this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted } };
       }
@@ -447,13 +503,44 @@ export const survivalWave = {
   },
 
   /**
+   * The opening lesson's hold ends the tick the board runs out of fight — the lone hull dead or
+   * disabled — rather than at the authored ceiling. Every held entry advances to one short beat
+   * out and the wave clock shrinks by the same shift. A lesson hull the budget refused to admit
+   * releases on the same rule: an empty lesson is already over.
+   */
+  _maybeReleaseOpeningLesson() {
+    const lesson = this._plan && this._plan.openingLesson;
+    if (!lesson || this._lessonReleased) return;
+    if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
+    if (this._actionableCohortCount() > 0) return;
+    this._lessonReleased = true;
+    const shift = lesson.holdTicks - (this._cursor + OPENING_LESSON_RELEASE_TICKS);
+    if (shift > 0) {
+      for (const item of this._pending) {
+        const entry = item && item.entry;
+        if (entry && Number.isInteger(entry.atTick) && entry.atTick > this._cursor) {
+          entry.atTick -= shift;
+        }
+      }
+      if (Number.isInteger(this._durationTicks) && this._durationTicks > shift) {
+        this._durationTicks -= shift;
+      }
+      if (this._swarm && Number.isInteger(this._swarm.durationTicks) && this._swarm.durationTicks > shift) {
+        this._swarm.durationTicks -= shift;
+      }
+    }
+    this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
+  },
+
+  /**
    * Hold the room at strength. Runs only for a swarm wave; a no-op everywhere else, including on
    * ticks where the room is already full — the common case, and the cheap one.
    */
   _reinforceSwarm(run, opts = {}) {
     if (!this._swarm || !this._plan) return;
     const lesson = this._plan.openingLesson;
-    if (lesson && Number.isFinite(lesson.holdTicks) && this._cursor < lesson.holdTicks) return;
+    if (lesson && !this._lessonReleased && Number.isFinite(lesson.holdTicks)
+      && this._cursor < lesson.holdTicks) return;
     const emergencyOnly = opts.emergencyOnly === true;
     if (!emergencyOnly && (this._cleared || !this._active)) return;
     if (!emergencyOnly && this._cursor < 0) return;
@@ -694,7 +781,14 @@ export const survivalWave = {
     this._reinforceBatch = 3;
     this._reinforceIndex = 0;
     this._lastReinforceTick = -9999;
+    this._lessonReleased = false;
     this._bossIds = new Set();
+    // A capital champion's fight record never outlives its wave: terminal, surviving or
+    // run-ended, the next wave (or teardown) starts from an empty fight ledger.
+    if (this._capitalFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._capitalFightId });
+      this._capitalFightId = null;
+    }
   },
 
   _teardown() {

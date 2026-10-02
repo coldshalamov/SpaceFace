@@ -184,7 +184,7 @@ def build():
            segments=40, sides=8)
     F.ring(s, 'GlassCollar', (0, 0, 2.05), 1.08, 0.05, axis=(0, 0, 1), material='dark',
            segments=24, sides=5)
-    F.beacon(s, 'ApexBeacon', (0, 0, 3.42), 'glow_amber', size=0.16)
+    F.beacon(s, 'ApexBeacon', (0, 0, 3.42), 'glow_amber.beacon', size=0.16)
     F.antenna(s, 'MastAntenna', (1.15, 0, 2.55), 0.85, tip='glow_cyan')
 
     # Dorsal sensor blisters — low domes flanking the crown, lenses looking forward.

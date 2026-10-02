@@ -126,6 +126,29 @@ export function createHudDragController({ state, bus, element, key, documentRef,
   return { apply, destroy };
 }
 
+// FB-100: HUD presentation keys live on settings.video so they persist with the profile and
+// ride the same settings:changed apply path as --ui-scale. hudLayout owns turning them into
+// the two CSS variables #hud consumes — scale composes with --ui-scale, opacity is the HUD's
+// own multiplier so it never fights the pause-dim or blowout animations on other surfaces.
+export const HUD_SCALE_MIN = 0.75;
+export const HUD_SCALE_MAX = 1.5;
+export const HUD_OPACITY_MIN = 0.3;
+export const HUD_OPACITY_MAX = 1;
+
+export function applyHudPresentationFromSettings(settings, root) {
+  const video = settings && settings.video && typeof settings.video === 'object' ? settings.video : {};
+  const hudScale = Number.isFinite(Number(video.hudScale))
+    ? Math.min(HUD_SCALE_MAX, Math.max(HUD_SCALE_MIN, Number(video.hudScale))) : 1;
+  const hudOpacity = Number.isFinite(Number(video.hudOpacity))
+    ? Math.min(HUD_OPACITY_MAX, Math.max(HUD_OPACITY_MIN, Number(video.hudOpacity))) : 1;
+  const el = root && root.style && typeof root.style.setProperty === 'function' ? root : null;
+  if (el) {
+    el.style.setProperty('--sf-hud-scale', String(hudScale));
+    el.style.setProperty('--sf-hud-opacity', String(hudOpacity));
+  }
+  return { hudScale, hudOpacity };
+}
+
 export function readHudLayout(state, key) {
   const slot = state && state.settings && state.settings.ui && state.settings.ui[LAYOUT_KEY];
   const placement = slot && slot[key];
