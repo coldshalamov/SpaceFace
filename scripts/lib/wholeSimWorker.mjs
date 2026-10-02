@@ -26,9 +26,12 @@ parentPort.on('message', (msg) => {
         reply.seq = msg.seq;
         reply.sendNs = Number(process.hrtime.bigint());
         const transfers = [];
-        if (reply.pack.scalars.byteLength) transfers.push(reply.pack.scalars.buffer);
-        if (reply.pack.kinds.byteLength) transfers.push(reply.pack.kinds.buffer);
-        if (reply.pack.typeIndex.byteLength) transfers.push(reply.pack.typeIndex.buffer);
+        // Stage-7 item C: SAB-backed pack columns post as shared memory — the
+        // SAB itself must never hit the transfer list (it isn't transferable
+        // and transferring it would detach the arena).
+        for (const col of [reply.pack.scalars, reply.pack.kinds, reply.pack.typeIndex]) {
+          if (col.byteLength && !(col.buffer instanceof SharedArrayBuffer)) transfers.push(col.buffer);
+        }
         parentPort.postMessage(reply, transfers);
       } else if (msg.kind === 'finalize') {
         const result = await finalize();

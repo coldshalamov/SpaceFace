@@ -39,7 +39,9 @@ import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 
 import { advanceFixedTimestep, LOOP_FIXED_DT, MAX_CATCHUP_STEPS } from '../src/core/simulationRunner.js';
-import { createSimHost } from './lib/simWorkerHost.mjs';
+import {
+  createSimHost, createSabJournalArena, sabFeatureAvailable, sabFreePackSlot,
+} from './lib/simWorkerHost.mjs';
 
 import { createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../src/core/presentationJournal.js';
 import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
@@ -117,11 +119,14 @@ const OPT = {
   consumeBatch: Math.max(0, argInt('--consume-batch', 0)),
   journalCapacity: argInt('--journal-capacity', null),
   ringBound: Math.max(0, argInt('--ring-bound', COMPLETED_TICK_RING_DEPTH)),
-  // Stage-7 item B: 'commodity' mirrors economy.markets at commodity-row
-  // granularity with the 64-point history rings projected off the wire (the
-  // 'marketHistory' rpc backfills them on demand); 'station' is the stage-6
-  // whole-station shape — byte-identical revert.
+  // Stage-7 item B: 'commodity' (default) mirrors economy.markets/cycles at
+  // commodity-row granularity keeping every render-consumed path; 'station' is
+  // the stage-6 whole-station shape — byte-identical revert; 'commodity-nohist'
+  // is the drop-history ceiling measurement (needs UI readers on marketHistory
+  // rpc before it can ship).
   marketWire: argValue('--market-wire', 'commodity'),
+  // Stage-7 item C: opt-in SAB journal arena (--sab or SIM_SAB=1).
+  sab: argv.includes('--sab') || process.env.SIM_SAB === '1',
   ackStall: argv.includes('--ack-stall'),
   probe: argValue('--probe', null),
   simLane: argValue('--sim-lane', process.env.SIM_LANE || 'worker'),
@@ -149,7 +154,7 @@ function normalizeTape(tape) {
 // ---------------------------------------------------------------------------
 const KIND_NAMES = [null, 'spawn', 'destroy', 'transform', 'visual'];
 
-function createTransportJournal() {
+function createTransportJournal(sabHeader = null) {
   const packs = new Map(); // start -> pack
   const scratch = createPresentationJournalRecord();
   let lastEnd = 0;
@@ -161,6 +166,9 @@ function createTransportJournal() {
     packsDroppedByAck: 0,
     recordsTransported: 0,
     bytesTransported: 0,
+    sabPacks: 0,
+    sabBytesShared: 0,
+    sabFallbacks: 0,
   };
 
   function coveringPack(sequence) {
@@ -200,16 +208,28 @@ function createTransportJournal() {
   return {
     push(pack, { fullRebuild = false, generation = 0 } = {}) {
       if (fullRebuild) {
+        for (const held of packs.values()) sabFreePackSlot(sabHeader, held);
         packs.clear();
         rebuildGeneration = generation >>> 0;
       }
-      if (pack && pack.end > pack.start) packs.set(pack.start, pack);
+      if (pack && pack.end > pack.start) {
+        const displaced = packs.get(pack.start);
+        if (displaced && displaced !== pack) sabFreePackSlot(sabHeader, displaced);
+        packs.set(pack.start, pack);
+      } else sabFreePackSlot(sabHeader, pack);
       if (pack) {
         lastEnd = Math.max(lastEnd, pack.end);
         diagnostics.packsReceived++;
         diagnostics.recordsTransported += pack.count;
         diagnostics.bytesTransported += pack.scalars.byteLength
           + pack.kinds.byteLength + pack.typeIndex.byteLength;
+        if (pack.sab) {
+          diagnostics.sabPacks++;
+          diagnostics.sabBytesShared += pack.scalars.byteLength
+            + pack.kinds.byteLength + pack.typeIndex.byteLength;
+        } else if (sabHeader && pack.count > 0) {
+          diagnostics.sabFallbacks++;
+        }
       }
     },
     hasRange(start, end) {
@@ -233,6 +253,7 @@ function createTransportJournal() {
     discardThrough(sequence) {
       for (const [start, pack] of packs) {
         if (pack.end <= sequence) {
+          sabFreePackSlot(sabHeader, pack);
           packs.delete(start);
           diagnostics.packsDroppedByAck++;
         }
@@ -384,7 +405,15 @@ async function runOnce(options = {}) {
 }
 
 async function runBody(client, frames, options = {}) {
-  const journal = createTransportJournal();
+  // Stage-7 item C: opt-in SAB journal arena. Main allocates, worker claims
+  // slots via Atomics; shared memory replaces the pack columns' structured
+  // clone. Feature-detected — never assumed (browsers need COOP/COEP).
+  const sabLane = options.lane || OPT.simLane; // same expression as flipLane below
+  const sabArena = OPT.sab && sabLane === 'worker' && sabFeatureAvailable()
+    ? createSabJournalArena({ slotCount: 8, recordCap: 4096 })
+    : null;
+  const sabHeader = sabArena ? sabArena.header : null;
+  const journal = createTransportJournal(sabHeader);
   const readModel = createReadModel();
   // Item B wire profile — installed in THIS realm before the facade probe
   // exists, and shipped on init so the worker realm's differ signs/projects
@@ -531,6 +560,9 @@ async function runBody(client, frames, options = {}) {
     auxVerify: OPT.probe === 'aux',
     domainProbe: OPT.probe === 'domains',
     domainMirroring: marketWireProfile,
+    sabArena: sabArena
+      ? { sab: sabArena.sab, slotCount: sabArena.slotCount, recordCap: sabArena.recordCap }
+      : null,
     crashAt: Number.isSafeInteger(options.crashAt) ? options.crashAt : null,
   });
   assert.equal(init.kind, 'ready');
@@ -1046,6 +1078,7 @@ async function runBody(client, frames, options = {}) {
   }
 
   const fin = await client.send({ kind: 'finalize' });
+  const journalDiagTransport = journal.getDiagnostics();
   assert.equal(fin.kind, 'done');
 
   return {
@@ -1074,6 +1107,15 @@ async function runBody(client, frames, options = {}) {
     dropSamples: fin.dropSamples,
     emittedEventCounts: fin.emittedEventCounts,
     unbridgeable: fin.unbridgeable,
+    sab: {
+      requested: OPT.sab,
+      active: sabArena != null,
+      slotCount: sabArena ? sabArena.slotCount : 0,
+      recordCap: sabArena ? sabArena.recordCap : 0,
+      packsShared: journalDiagTransport.sabPacks,
+      bytesShared: journalDiagTransport.sabBytesShared,
+      fallbacks: (journalDiagTransport.sabFallbacks || 0) + (fin.sabFallbacks || 0),
+    },
     receivedByType,
     presentationDrained,
     presentationQueueDepth: presentationQueue.length,
@@ -1122,7 +1164,7 @@ async function runBody(client, frames, options = {}) {
     outstandingCompletedTicksMax,
     completedTickOverflows,
     ackedJournalEnd,
-    transportDiag: journal.getDiagnostics(),
+    transportDiag: journalDiagTransport,
     requestRebuildCount: journal.getRequestRebuildCount(),
     requestRebuildReasons: journal.getRequestRebuildReasons(),
     publisherDiag: publisher.getDiagnostics(),
@@ -1603,6 +1645,7 @@ async function main() {
       avgPackMs: round(run.avgPackMs),
       workerHeapMb: round((run.workerHeapUsedBytes || 0) / 1e6, 1),
       journalRebuildCount: run.journalRebuildCount,
+      sab: run.sab,
     },
   };
 
@@ -1615,6 +1658,9 @@ async function main() {
     console.log(`GATE B transport   : ${gateB.pass ? 'PASS' : 'FAIL'}  <0.5ms/tick  ` +
       `mean=${gateB.transport.mean} p95=${gateB.transport.p95} max=${gateB.transport.max}`);
     console.log(`                     pack mean=${gateB.pack.mean} p95=${gateB.pack.p95} | wire mean=${gateB.wire.mean} p95=${gateB.wire.p95} | consume mean=${gateB.consume.mean} p95=${gateB.consume.p95}`);
+    if (run.sab && run.sab.requested) {
+      console.log(`                     SAB ${run.sab.active ? 'active' : 'INACTIVE'} slots=${run.sab.slotCount}x${run.sab.recordCap}rec packsShared=${run.sab.packsShared} bytesShared=${run.sab.bytesShared} fallbacks=${run.sab.fallbacks}`);
+    }
     console.log(`                     >0.5ms ticks: ${gateB.overThresholdCount}  ${JSON.stringify(gateB.overThresholdTicks)}`);
     console.log(`GATE C rings       : ${gateC.pass ? 'PASS' : 'FAIL'}  completedTick hw=${gateC.completedTickHighWater}/8  outstandingMax=${gateC.completedTickOutstandingMax}/${gateC.ringBound} overflows=${gateC.completedTickOverflows} journalRebuilds=${gateC.journalRebuilds}`);
     console.log(`                     journalDiag.pending=${gateC.journalDiag && gateC.journalDiag.pending} capacity=${gateC.journalDiag && gateC.journalDiag.capacity} published=${gateC.journalDiag && gateC.journalDiag.publishedCount} coalesced=${gateC.journalDiag && gateC.journalDiag.transformCoalesceCount} suppressed=${gateC.journalDiag && gateC.journalDiag.suppressedCount} rebuildReqs=${gateC.journalDiag && gateC.journalDiag.rebuildRequestCount} failures=${gateC.journalDiag && gateC.journalDiag.rebuildFailureCount} discarded=${gateC.journalDiag && gateC.journalDiag.discardCount}`);

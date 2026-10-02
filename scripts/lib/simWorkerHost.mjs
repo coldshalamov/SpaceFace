@@ -90,11 +90,12 @@ const KIND_CODES = Object.freeze({
   [PRESENTATION_JOURNAL_KINDS.VISUAL]: 4,
 });
 
-function packJournalRange(journal, start, end, scratch) {
+function packJournalRange(journal, start, end, scratch, arena = null) {
   const count = Math.max(0, end - start);
-  const scalars = new Float64Array(count * JOURNAL_SCALAR_STRIDE);
-  const kinds = new Uint8Array(count);
-  const typeIndex = new Uint16Array(count);
+  const alloc = sabPackAlloc(arena, count);
+  const scalars = alloc ? alloc.scalars : new Float64Array(count * JOURNAL_SCALAR_STRIDE);
+  const kinds = alloc ? alloc.kinds : new Uint8Array(count);
+  const typeIndex = alloc ? alloc.typeIndex : new Uint16Array(count);
   const typeTable = [];
   const typeIds = new Map();
   const spawnEntityIds = [];
@@ -131,7 +132,90 @@ function packJournalRange(journal, start, end, scratch) {
     if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN) spawnEntityIds.push(record.entityId);
     i++;
   });
-  return { count, scalars, kinds, typeIndex, typeTable, spawnEntityIds, start, end };
+  return { count, scalars, kinds, typeIndex, typeTable, spawnEntityIds, start, end, sab: alloc != null, sabSlot: alloc ? alloc.slot : null };
+}
+
+// ---------------------------------------------------------------------------
+// SAB journal arena (stage-7 item C — opt-in via --sab / SIM_SAB=1).
+// The main lane allocates one shared arena; the worker writes pack columns into
+// claimed slots and the reply's typed-array views post as shared memory instead
+// of cloned bytes. A slot stays busy until the main lane evicts the pack from
+// its retained map (discardThrough / rebuild clear) — packs can outlive their
+// reply, so eviction (not reply consume) is the release point. Any claim
+// failure (arena full, oversized pack, SAB unavailable) falls back to fresh
+// arrays + the normal transfer list — the wire shape is unchanged either way.
+// ---------------------------------------------------------------------------
+
+export const SAB_JOURNAL_MAGIC = 0x53414a31; // 'SAJ1'
+export const SAB_SLOT_BUSY_BASE = 4;         // Int32 header slots [4..4+slotCount)
+const SAB_HEADER_BYTES = 64;
+// Per slot: scalars f64x18/record, kinds u8/record, typeIndex u16/record.
+const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
+
+// SAB needs crossOriginIsolated in browsers (COOP/COEP — the dev server does
+// not send them today, so a renderer flip detects 'unavailable' and stays on
+// cloned arrays). Node worker_threads has no such gate: SharedArrayBuffer +
+// Atomics existing is sufficient.
+export function sabFeatureAvailable() {
+  return typeof SharedArrayBuffer === 'function' && typeof Atomics === 'object'
+    && (typeof globalThis.crossOriginIsolated === 'undefined' || globalThis.crossOriginIsolated === true);
+}
+
+export function createSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
+  const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
+  const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes);
+  const header = new Int32Array(sab, 0, 16);
+  header[0] = SAB_JOURNAL_MAGIC;
+  header[1] = 1;                       // layout version
+  header[2] = slotCount;
+  header[3] = recordCap;
+  return { sab, header, slotCount, recordCap, slotBytes };
+}
+
+// Re-wrap an arena descriptor received over postMessage into per-slot column
+// views. Returns null on any shape mismatch — caller falls back to fresh arrays.
+export function bindSabJournalArena(desc) {
+  if (!desc || !(desc.sab instanceof SharedArrayBuffer)) return null;
+  const { sab, slotCount, recordCap } = desc;
+  if (!(slotCount > 0) || !(recordCap > 0)) return null;
+  const header = new Int32Array(sab, 0, 16);
+  if (header[0] !== SAB_JOURNAL_MAGIC || header[2] !== slotCount || header[3] !== recordCap) return null;
+  const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
+  const slots = [];
+  for (let s = 0; s < slotCount; s++) {
+    const base = SAB_HEADER_BYTES + s * slotBytes;
+    slots.push({
+      scalars: new Float64Array(sab, base, recordCap * 18),
+      kinds: new Uint8Array(sab, base + recordCap * 18 * 8, recordCap),
+      typeIndex: new Uint16Array(sab, base + recordCap * (18 * 8 + 1), recordCap),
+    });
+  }
+  return { sab, header, slotCount, recordCap, slots };
+}
+
+// Claim a free slot and return count-length column views over it, or null.
+function sabPackAlloc(arena, count) {
+  if (!arena || count <= 0 || count > arena.recordCap) return null;
+  for (let s = 0; s < arena.slotCount; s++) {
+    if (Atomics.compareExchange(arena.header, SAB_SLOT_BUSY_BASE + s, 0, 1) === 0) {
+      const v = arena.slots[s];
+      return {
+        slot: s,
+        scalars: v.scalars.subarray(0, count * 18),
+        kinds: v.kinds.subarray(0, count),
+        typeIndex: v.typeIndex.subarray(0, count),
+      };
+    }
+  }
+  return null;
+}
+
+// Main-lane release: called when a SAB-backed pack is evicted from the retained
+// map. Safe on any pack shape — no-ops for array-backed packs.
+export function sabFreePackSlot(header, pack) {
+  if (header && pack && pack.sab === true && Number.isSafeInteger(pack.sabSlot)) {
+    Atomics.store(header, SAB_SLOT_BUSY_BASE + pack.sabSlot, 0);
+  }
 }
 
 // Versioned entity-info projection — the read-model payload a main-side resolver
@@ -521,6 +605,10 @@ export function createSimHost() {
     // probe (module-local state — realms stay in lockstep via the directive).
     configureDomainMirroring(msg.domainMirroring || {});
     host.domainDiffer = createDomainDiffer({ probe: host.domainProbeEnabled });
+    // Stage-7 item C: SAB journal arena shared by the main lane on init.
+    // null when the flag is off, SAB unavailable, or the descriptor mismatched.
+    host.sabArena = bindSabJournalArena(msg.sabArena);
+    host.sabFallbacks = 0;
 
     const scenarioContract = loadScenarioContract(msg.scenarioContractPath || 'src/data/scenarios/47a.scenario.json');
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
@@ -788,7 +876,7 @@ export function createSimHost() {
 
     const initRebuild = rebuildJournalIfNeeded();
     if (initRebuild && !initRebuild.failed && initRebuild.end > initRebuild.start) {
-      initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch);
+      initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
       initRebuild.spawnInfos = [];
       for (const entityId of initRebuild.pack.spawnEntityIds) {
         const info = entityInfoBlock(state, entityId);
@@ -983,8 +1071,9 @@ export function createSimHost() {
     let pack;
     try {
       pack = journalStart < journalEnd
-        ? packJournalRange(journal, journalStart, journalEnd, scratch)
-        : { count: 0, scalars: new Float64Array(0), kinds: new Uint8Array(0), typeIndex: new Uint16Array(0), typeTable: [], spawnEntityIds: [], start: journalStart, end: journalEnd };
+        ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena)
+        : { count: 0, scalars: new Float64Array(0), kinds: new Uint8Array(0), typeIndex: new Uint16Array(0), typeTable: [], spawnEntityIds: [], start: journalStart, end: journalEnd, sab: false, sabSlot: null };
+      if (host.sabArena && !pack.sab && pack.count > 0) host.sabFallbacks++;
     } catch (error) {
       const diag = journal.getDiagnostics ? journal.getDiagnostics() : {};
       throw new Error(`journal pack failed for (${journalStart}, ${journalEnd}] tick=${msg.tick}: ${error.message} ` +
@@ -1073,6 +1162,7 @@ export function createSimHost() {
       emittedEventCounts: host.emittedEventCounts,
       unbridgeable: host.unbridgeable,
       commandDropped: host.commandDropped,
+      sabFallbacks: host.sabFallbacks || 0,
       inputTape: host.inputHistory ? host.inputHistory.toTape() : null,
       tickCount: host.tickCount,
       auxRowsShipped: host.auxShipped.size,
