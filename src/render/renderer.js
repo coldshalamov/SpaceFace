@@ -3345,13 +3345,16 @@ function warmWantedTierDecode(owner) {
 }
 
 /**
- * The seeded modular pick — hull + cockpit + fin + greeble keyed off the future entity id —
- * cannot be enumerated pre-spawn, but the contract pool is closed: 10 class hulls,
- * 3 cockpits, 6 fins, 7 greebles. Any arm that announces a modular-kit spawn (intervention
- * guard/jumper, an ecology scavenger's ship_corsair pick, a wanted-tier post) can decode the
- * whole bounded set so whichever parts the seed selects arrive resident. The slot argument
- * rides with each file: the authored cache keys url::slot, so a mismatched slot decodes a
- * second blueprint the production attach never reuses. Deduped once per sector across arms.
+ * The seeded modular pick — hull + cockpit + engine + fin + weapon + greeble + gear + pod
+ * keyed off the future entity id — cannot be enumerated pre-spawn, but the contract ship-kit
+ * pool is closed: 43 files across the eight modular slots (the modular plan mounts
+ * engine/gear unconditionally and weapon/pod by spec). Any arm that announces a modular-kit
+ * spawn (intervention guard/jumper, an ecology scavenger's ship_corsair pick, a wanted-tier
+ * post, a staged bounty pair) can decode the whole bounded set so whichever parts the seed
+ * selects arrive resident. The slot argument rides with each file: the authored cache keys
+ * url::slot, so a mismatched slot decodes a second blueprint the production attach never
+ * reuses. Deduped once per sector across arms. 'place' is not a ship-kit slot — the prop
+ * set stays out of this pool.
  */
 function warmSeededModularPool(owner, sectorId, residencyRole) {
   const renderer = owner && owner.renderer;
@@ -3365,9 +3368,9 @@ function warmSeededModularPool(owner, sectorId, residencyRole) {
   const slots = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.slots) || {};
   const files = [];
   for (const file of REGULAR_HULL_FILES) files.push([file, 'hull']);
-  for (const file of slots.cockpit || []) files.push([file, 'cockpit']);
-  for (const file of slots.fin || []) files.push([file, 'fin']);
-  for (const file of slots.greeble || []) files.push([file, 'greeble']);
+  for (const slot of ['cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod']) {
+    for (const file of slots[slot] || []) files.push([file, slot]);
+  }
   for (const [file, slot] of files) {
     Promise.resolve(loadAuthoredPart(`${releaseRoot}${file}`, {
       renderer,
@@ -3569,6 +3572,26 @@ function warmCultureIntroDecode(owner) {
  * that bypasses dir.pending, and the identical aceId → escalated style → boss+escort
  * resolution. Poll the queue once per residency pass with the culture-intro shape.
  */
+/**
+ * The bounty-hunt staged pair — quarry + hunter crossing the view at 1650 WU — is the one
+ * committed countdown spawn family with no warm arm: `own.nextStageAt` is published on
+ * state.bountyHunt, but `bountyHunt:staged` emits only after the spawn, so both kits decode at
+ * fire time inside the reveal. Neither spec carries data.defId → seeded-modular plan. Poll the
+ * published countdown and warm the closed kit pool inside the runway; a gate re-defer just
+ * leaves a lease to expire. Dedupe rides the modular pool's per-sector latch — a re-armed
+ * countdown re-warms only on a new sector.
+ */
+function warmBountyStagedDecode(owner) {
+  const state = owner && owner.state;
+  const own = state && state.bountyHunt;
+  if (!own || typeof own !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  if (!currentSectorId || !Number.isFinite(own.nextStageAt)) return;
+  if (own.nextStageAt - now > TABLE_DECODE_RUNWAY_SECONDS) return;
+  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway');
+}
+
 function warmPlanetChallengeDecode(owner) {
   const state = owner && owner.state;
   const memory = state && state.aceMemory;
@@ -3818,7 +3841,7 @@ function warmLaneAmbushDecode(owner, payload) {
     zoneRadius: payload.zoneRadius,
     force: true,
     data: payload.data,
-  }, 'lane-ambush-decode-runway', currentSectorId);
+  }, 'lane-ambush-decode-runway', payload.sectorId);
 }
 
 /**
@@ -15655,6 +15678,7 @@ export const render = {
     warmAceReturnDecode(this);
     warmCultureIntroDecode(this);
     warmPlanetChallengeDecode(this);
+    warmBountyStagedDecode(this);
     warmUniqueWreckComplicationDecode(this);
     warmDepotWatchDecode(this);
     warmDepotPatrolDecode(this);
