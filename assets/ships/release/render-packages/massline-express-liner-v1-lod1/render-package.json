@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "09b20e547dde79dcef25e35f3c85d57ca40c6a48e29d33c49922af1c516a7285",
+  "contentHash": "935eef3a06bff55349fe70721c0a08d33c0d793872be7ba3f9da6a4995f22bd4",
   "dynamicGroups": [
     {
       "id": "sf.render.massline-express-liner-v1-lod1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -1036,7 +1036,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb82bb2f0bdcb2f43cd34402bc40f71a7cc8d9be4f2fbd0b7c1103faa9de2f70",
+      "geometryHash": "4425b280f03db1275e191528a11195cd09d73c59c892f76f8bd1a5036ed3fd07",
       "id": "sf.render.massline-express-liner-v1-lod1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 4416,
       "indexed": true,
@@ -2857,19 +2857,19 @@
       "sha256": "08293edd6a949f48dbac450cad14dcba250a33b8b95dc65965aa264459f4ed22"
     },
     "sourceGlb": {
-      "bytes": 548236,
-      "sha256": "bc849cd9aac6a9b89b0eb41829ee950eb58cc6b3354e0b2741bd7398fb41bc78",
+      "bytes": 548256,
+      "sha256": "6500f0297ae9c8bebd0128750e2a4ebd8eb361742ac81880c70d27b8fd83edcb",
       "uri": "massline_express_liner_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 214094,
+      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 798624,
-    "sha256": "6941bd2b866437447253971820bb082f7b97dd8054be23bf589d2079cc22c69e",
+    "bytes": 798644,
+    "sha256": "1f73d3584f5062eb8d6d4e4a5de952a9ebe47e685d08adc44ab4146691f87906",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3829,7 +3829,7 @@
     "motionBank": {
       "bytes": 6763,
       "rigId": "hull",
-      "sha256": "5c70bb4b9e51bfc26aa7154ebad83440ca7320d9e137d22a33e02f3724ba7e9a",
+      "sha256": "c54152876289a14c6219f6bfb06e8cd66115c8ddcf0464c7b38f7379df180964",
       "uri": "assets/ships/motions/massline-express-liner-v1.motion.json"
     },
     "nodeCount": 32,
@@ -4224,7 +4224,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb"
   },
-  "runtimeHash": "f342e1269bdf3c45128ad9a78037afbc99b3cb5d79487b28688b5c7192eb0ad2",
+  "runtimeHash": "179569a3f33230bb5ca9a2643730bf1d42bbbae2747c4ee4cd47f4a7b85431a9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

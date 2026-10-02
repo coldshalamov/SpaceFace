@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6073e0c764224df6a4f29b154b840bea8562fd143e73437018fab7da18c4245e",
+  "contentHash": "752c2f22d09856df6b2f263ee686eb7431716474f81e38f678d90f9a2f1a0727",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -1163,7 +1163,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c57387426367edad01e7bc96a11cf8aff4d8904ed8e936d5df2668261db1104d",
+      "geometryHash": "10e5630b7c4a861cf8fcb3a6af2224278ceeaa1beeeef4e216ca2ed8386443e8",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 888,
       "indexed": true,
@@ -3219,19 +3219,19 @@
       "sha256": "b3d985f55c4e01a4515b07c154b58ee1b511f63d7de07504587064b28de56af2"
     },
     "sourceGlb": {
-      "bytes": 506792,
-      "sha256": "e52fd413928bf4f41eed832475f9e3c6b569bd4e0a72048d1d885423756a0567",
+      "bytes": 506768,
+      "sha256": "abc1244c8dbfa6d1c4b0edb55f3cb8825ddc13a961496704b229e6281bce1e9d",
       "uri": "mule_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 214094,
+      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 704092,
-    "sha256": "2839b756dc4a961091e200787aec65b918f324f7ee5e596a1a51d0ae783c0594",
+    "bytes": 704096,
+    "sha256": "da561d4cc21f5b6f951d1b3a19f6ab90a7390b09c016ac7f0b72c99ed5a0aaa9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4071,7 +4071,7 @@
     "motionBank": {
       "bytes": 6746,
       "rigId": "hull",
-      "sha256": "67d16e034aebbf1ab237e97e8a74bdd5fb98660f2fae92535a1030d0c6cc42a4",
+      "sha256": "bb264065205b155095b150d7b218508df3d9d04b10a3e5e7e9692a1f527e26dc",
       "uri": "assets/ships/motions/mule-production-v1.motion.json"
     },
     "nodeCount": 37,
@@ -4698,7 +4698,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb"
   },
-  "runtimeHash": "28198a8b7b6eb7f2ee88aa79b3d29e7140b8e0ebb5a420f822a8eb25540d6139",
+  "runtimeHash": "7bc0ea70afa9fed8ebe58c7e4431cfb3c83ba7579c079667019dc7cecf7f3bc6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

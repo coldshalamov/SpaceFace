@@ -57,7 +57,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MAX_FILE_BYTES: '8388608'       # 8 MiB per tracked file
-          MAX_SOURCE_BYTES: '209715200'   # 200 MiB raw selected-source ceiling
+          MAX_SOURCE_BYTES: '268435456'   # 256 MiB raw selected-source ceiling (tracked source grew past 200 MiB on 2026-09-30: 218.4 MB selected)
         run: |
           set -euo pipefail
 

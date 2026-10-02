@@ -83,8 +83,11 @@ def build():
                material='gunmetal', segments=12)
     F.ring(s, 'HazardBand', (12.0, 0.0, -9.6), 1.66, 0.3, axis=(1, 0, 0),
            material='hazard', segments=12, sides=6)
-    F.light(s, 'HazardGlow', (12.0, 0.0, -8.6), 'glow_amber', size=0.7)
-    F.light(s, 'BayLamp', (6.0, 6.0, -10.0), 'glow_red', size=0.35)
+    # the glow rides the core's curved flank on the camera (+y) side, clear of the hazard band,
+    # the spine truss's shadow and the x = 13 frame hoop, and the bay lamp stands on the mouth's
+    # top face (both were buried inside their solids before)
+    F.light(s, 'HazardGlow', (11.3, 1.0, -8.4), 'glow_amber', size=0.7)
+    F.light(s, 'BayLamp', (6.0, 6.0, -9.035), 'glow_red', size=0.35)
 
     # === snapped spine trailing aft — frames and a keel truss, hull skin gone =================
     F.truss(s, 'SpineKeel', (4.0, 0, -3.0), (30.0, 2.0, -4.0), 1.6, 8, material='bare',
@@ -120,9 +123,10 @@ def build():
                material='gunmetal', segments=8)
     F.box(s, 'BlackBox', (-30.0, 0.0, 9.4), (1.0, 1.0, 1.0), material='paint2', bevel=0.08)
     F.beacon(s, 'BoxPing', (-30.0, 0.0, 10.2), 'glow_red', size=0.4)
-    # dying lamps scattered along the spine
-    F.light(s, 'EmerA', (-4.0, 10.0, 8.0), 'glow_red', size=0.3)
-    F.light(s, 'EmerB', (22.0, -2.0, -8.0), 'glow_amber', size=0.3)
+    # dying lamps: EmerA on the dorsal skin (same bearing as before, now at the hull radius),
+    # EmerB on the spine truss's top chord (both floated in mid-air before)
+    F.light(s, 'EmerA', (-4.0, 9.37, 7.50), 'glow_red', size=0.3)
+    F.light(s, 'EmerB', (22.0, 0.587, -2.577), 'glow_amber', size=0.3)
     return s
 
 

@@ -78,7 +78,7 @@ def build():
     for i in range(6):
         x = -W / 2 + 0.8 + i * (W - 1.6) / 5
         stat.append(((x, -D / 2 - 0.42, H * 0.55), (0.22, 0.1, 0.3), 0.0))
-    F.boxes(s, 'StatusRun', stat, 'glow_cyan')
+    F.boxes(s, 'StatusRun', stat, 'glow_cyan', mirror=True)
     s.detail = 0
     # the customs lock on the lid — a sealed clasp box with one amber lamp
     F.box(s, 'Lock', (1.8, -1.0, H + 0.35), (1.6, 1.4, 0.7), material='gunmetal', bevel=0.08)

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "16d2d4701ab05c1edc662391026344c9092b81a788d941dbe5f6836f5e32ad76",
+  "contentHash": "d673b9d7488f5a9849a00381faa313b424f1e90e3e8b161f138ecc2c766ae682",
   "dynamicGroups": [
     {
       "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.dynamic",
@@ -81,66 +81,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b64b06f460e339e7936627c9cf05e37f40b4a3477e14bcde910d6d1a33d037f3",
+      "geometryHash": "44ec34ddc7f43044090420336ddce26e12669005eaa4b8a44e034b81c64b91fe",
       "id": "sf.render.dock-interior-military.mesh.lod0-armor.primitive.0",
-      "indexCount": 10152,
+      "indexCount": 10716,
       "indexed": true,
       "materialHash": "4a028330fd07f6e8a391948934b1e839a51ac74d59c42c2ac944f64200dfe310",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.dock-interior-military.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3038
+      "vertexCount": 3206
     },
     {
       "bounds": {
         "max": [
           16.149999618530273,
-          8.505041122436523,
-          -11.650867462158203
+          8.504847526550293,
+          0.0993068590760231
         ],
         "min": [
-          -16.149999618530273,
-          5.259958744049072,
-          -14.39913272857666
+          -24.079999923706055,
+          -3.449847936630249,
+          -14.399306297302246
         ]
       },
       "drawMode": 4,
-      "geometryHash": "432bbf844edad78a7a01718f27ccac4e801537f95050a2bde95f0cc1e708754b",
+      "geometryHash": "3d47e56d0d89ca89e85072fd56b58f774aece0f97f50049d58e78cfa73331a60",
       "id": "sf.render.dock-interior-military.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 144,
+      "indexCount": 432,
       "indexed": true,
       "materialHash": "5482a3c3fe335f54f6b2aafe42a3ac878eb03027048b91b8f425ca98e44830b6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.dock-interior-military.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 288
     },
     {
       "bounds": {
         "max": [
           24.24799919128418,
-          13.96109270568544,
-          -14.151355796888124
+          13.959735056073146,
+          3.400846313861967
         ],
         "min": [
-          -24.24799919128418,
-          7.898907904666123,
-          -14.64864439384674
+          -25.700000762939453,
+          -3.4497350656098895,
+          -14.648845981983305
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a05a410fe558ca7aba78962edc6a91603183988297382c7ec8aeaedb11125a98",
+      "geometryHash": "5fc7fcb700ec51c79332b7a1ee167e722ba3d131c31087a1b7b895f45454f71e",
       "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.primitive.0",
-      "indexCount": 1008,
+      "indexCount": 1332,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 304
+      "vertexCount": 520
     },
     {
       "bounds": {
@@ -1055,21 +1055,21 @@
     {
       "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port",
       "localTransform": [
-        24.24799919128418,
+        24.973999977111816,
         0,
         0,
         0,
         0,
-        24.24799919128418,
+        24.973999977111816,
         0,
         0,
         0,
         0,
-        24.24799919128418,
+        24.973999977111816,
         0,
-        0,
-        10.930000305175781,
-        -14.400000095367432,
+        -0.7260007858276367,
+        5.254999995231628,
+        -5.623999834060669,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1083,21 +1083,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.dock-interior-military.body",
       "worldTransform": [
-        24.24799919128418,
+        24.973999977111816,
         0,
         0,
         0,
         0,
-        24.24799919128418,
+        24.973999977111816,
         0,
         0,
         0,
         0,
-        24.24799919128418,
+        24.973999977111816,
         0,
-        0,
-        10.930000305175781,
-        -14.400000095367432,
+        -0.7260007858276367,
+        5.254999995231628,
+        -5.623999834060669,
         1
       ]
     },
@@ -2190,31 +2190,31 @@
       "sha256": "9b2becc6a4b4fcff413894d8b5c9dba7d7b91db02cfecfc1253c9c85a19a26a1"
     },
     "sourceGlb": {
-      "bytes": 362552,
-      "sha256": "1182f9bf4217f97eb439a2ba5fc5e05e048280be7cdbbf011d8575c8d7acf722",
+      "bytes": 370336,
+      "sha256": "95441b07e5c62120f9d0f6d4bd2b5bb6c3ef1433b2aa6c9869dfe865f1cfbcfc",
       "uri": "place_dock_interior_military.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 214094,
+      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 600248,
-    "sha256": "a1197518b6b899d6cf109ac60361ee6f673d7f3430e3d4a8b651e4b54cc0c576",
+    "bytes": 611228,
+    "sha256": "f0086bf290d0896b5aca491b94a4c49d0a881fedbc2856c4054528d427406f9b",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        4.759806272962959,
+        4.759127448156812,
         0
       ],
       "max": [
         26,
-        13.96109270568544,
+        13.959735056073146,
         18.00091552734375
       ],
       "min": [
@@ -2224,7 +2224,7 @@
       ],
       "size": [
         52,
-        18.40257286544496,
+        18.401215215832668,
         36.0018310546875
       ]
     },
@@ -2580,7 +2580,7 @@
     "motionBank": {
       "bytes": 10165,
       "rigId": "dock_interior",
-      "sha256": "349f787e25782f1a728557ed61d90054e1f0781a4c662f52ea847990b6907109",
+      "sha256": "5748dadf837ed5a58714d0b633205409b5e202b0e6a3b2c937677bf8b1c523d2",
       "uri": "assets/ships/motions/dock-interior-military.motion.json"
     },
     "nodeCount": 27,
@@ -2642,21 +2642,21 @@
       {
         "canopy": false,
         "matrix": [
-          24.24799919128418,
+          24.973999977111816,
           0,
           0,
           0,
           0,
-          24.24799919128418,
+          24.973999977111816,
           0,
           0,
           0,
           0,
-          24.24799919128418,
+          24.973999977111816,
           0,
-          0,
-          10.930000305175781,
-          -14.400000095367432,
+          -0.7260007858276367,
+          5.254999995231628,
+          -5.623999834060669,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
@@ -3165,14 +3165,14 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior_military.glb"
   },
-  "runtimeHash": "720493ecbf8d75a65f96802883f66654145c92d72aa1cb46c1e8c40dabbbf4e1",
+  "runtimeHash": "4548578855c97c52dbc20308327b193db674377140a31d085ba7b06d82ab8f31",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           26,
-          13.96109270568544,
+          13.959735056073146,
           18.00091552734375
         ],
         "min": [

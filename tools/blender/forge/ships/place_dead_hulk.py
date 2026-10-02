@@ -128,9 +128,11 @@ def build():
         teeth.append(((AFT_X0 - 0.3, 4.6 - 0.3 * i, 2.2 + 0.5 * ((i + 1) % 3)), (0.9, 0.3, 0.2), 0.0))
     F.boxes(s, 'RimTeeth', teeth, 'bare')
     s.detail = 0
-    # two red emergency lamps burning in the gap — emergency circuits, not navigation
-    F.light(s, 'EmergencyLampGap', (-1.0, -1.5, 3.4), 'glow_red', size=0.3)
-    F.light(s, 'EmergencyLampStern', (4.6, 2.0, -3.2), 'glow_red', size=0.26)
+    # two red emergency lamps burning in the gap — emergency circuits, not navigation. Each is
+    # seated on the top chord of a gap truss, in a column between two frame hoops (the old
+    # spots hung in mid-air behind a hoop / the aft rim and never showed to the top camera)
+    F.light(s, 'EmergencyLampGap', (0.5, 0.017, 5.39), 'glow_red', size=0.3)
+    F.light(s, 'EmergencyLampStern', (2.7, 4.75, 1.2), 'glow_red', size=0.26)
 
     # === AFT SECTION — slewed off-axis, cold drive block ========================
     # the aft hull sits rotated ~3.5 deg about the break point so the silhouette kinks

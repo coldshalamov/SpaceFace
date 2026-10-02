@@ -43,7 +43,10 @@ assert.match(localizedCoreCopy, /continueSummary:\s*\{\s*label:\s*'Continue: \{s
   'localized core copy must explicitly label what Continue will load');
 assert.match(menu, /coreText\('continueSummary',\s*\{\s*summary\s*\}\)/,
   'mainMenu must render the localized Continue summary with the selected save metadata');
-assert.match(menu, /const latest = latestSave\(readSaveIndex\(ctx\)\);[\s\S]*ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*latest\.slot\s*\}\)/,
+// 2026-09-30 cb8320ea7 (perf wave 7 restore guards): the click frame reads the summary's cached
+// `this._latestSave` first and only falls back to a fresh scan — the slot it loads is still the
+// one the title summary displays, which is the contract this pin guards.
+assert.match(menu, /const latest = (?:this\._latestSave !== undefined\s*\?\s*this\._latestSave\s*:\s*)?latestSave\(readSaveIndex\(ctx\)\);[\s\S]*ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*latest\.slot\s*\}\)/,
   'Continue should load the exact latest slot displayed in the title summary');
 assert.doesNotMatch(menu, /slot:\s*'latest'/,
   'Continue must not ask a second latest resolver to reinterpret the player-visible summary');
@@ -54,7 +57,9 @@ assert.doesNotMatch(menu, /boots straight into flight/,
 for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName', 'objectiveSummary', 'version']) {
   assert.match(save, new RegExp(field), `save index should include ${field} metadata`);
 }
-assert.match(save, /idx\[slot\]\s*=\s*fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\)/,
+// 2026-09-30 cb8320ea7 (perf wave 7) split the write into a local card so the blob hash can be
+// stamped before it lands in the index; the prefer-frozen-envelope-then-live contract is unchanged.
+assert.match(save, /const card = fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\);[\s\S]{0,600}?idx\[slot\]\s*=\s*card;/,
   'save index write should prefer the card frozen from the written envelope, with live state as fallback');
 assert.match(save, /slotCardFromEnvelopeData\(slot,\s*envelope/,
   'save index card should be built from the envelope that was just written, not post-encode live state');
@@ -106,7 +111,8 @@ assert.match(save, /if \(!options\.force && now - this\._lastAutosaveAt < AUTOSA
   'forced autosaves should bypass only the debounce gate');
 assert.match(save, /_slotIndexWithFallback\(\)/,
   'save system must recover slot metadata from stored envelopes when sf.save.index is missing or corrupt');
-assert.match(save, /_scanStoredSlots\(\)/,
+// cb8320ea7 (wave 7) gave _scanStoredSlots an (indexed, raws) signature for the blob-hash trust path.
+assert.match(save, /_scanStoredSlots\(/,
   'save system must scan stored slot envelopes as a best-effort index recovery path');
 
 const previousLocalStorage = globalThis.localStorage;

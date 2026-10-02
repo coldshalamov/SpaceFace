@@ -1334,6 +1334,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   const materialProfile = configureAuthoredMaterialProfiles(scene, {
     assetId: metadata.assetId || fileStem(url),
     bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
+    slot: expectedSlot || metadata.slot || null,
   });
   canonicalizeObjectSurfaceProgramKeys(scene);
 
@@ -1533,7 +1534,9 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     const materials = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
     for (const material of materials) {
       if (!material || profiled.has(material)) continue;
-      if (!applyAuthoredMaterialProfile(material, entry.role, { assetId, bounds: table.bounds, allowTextures: entry.allowTextures })) continue;
+      if (!applyAuthoredMaterialProfile(material, entry.role, {
+        assetId, bounds: table.bounds, slot: expectedSlot || metadata.slot || null, allowTextures: entry.allowTextures,
+      })) continue;
       profiled.add(material);
       const effectiveRole = material.userData.spacefaceMaterialRole || entry.role;
       profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
