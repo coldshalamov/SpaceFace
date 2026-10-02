@@ -148,7 +148,12 @@ const RAW_SURFACES = Object.freeze([
     title: 'The Power Rail',
     archetype: 'OVERLAY',
     ownerFile: 'src/ui/powerRail.js',
-    root: ['.sf-prail'],
+    // The ORRERY flight HUD (landed 594dfc7a9, hotbar c177d4377) keeps the .sf-prail element
+    // mounted but deliberately visibility:hidden under #hud[data-hud="orrery"]
+    // (src/ui/orrery/hudAdapter.js) — the Cluster reads the same model sources and now owns the
+    // bottom-left ordnance shelf the pilot actually presses. Photograph THAT; waiting on the
+    // hidden .sf-prail made this surface unreachable in every mode (D117 diagnosis, 2026-10-02).
+    root: ['.orr-hud-cluster'],
     entry: { kind: 'default', evidence: 'public-route', detail: 'always mounted in the flight HUD' },
     // Photographed as an ELEMENT crop, not a full viewport: it lives inside the flight frame, and
     // PQ-180 .03 says every surface gets frames — "it is part of the HUD" is not an exemption.
