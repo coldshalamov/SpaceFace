@@ -363,6 +363,46 @@ export function runTrackpadFirstTenMinutes(touch, inputHost, state) {
   return report;
 }
 
+// PRO-08: the overlay reads its size and thumb placement from `controls.touch`, so a phone can
+// grow the sticks without a rebuild and a left-handed pilot can mirror them. Both are additive to
+// the existing { enabled } tri-state; a legacy save that has neither key keeps the authored layout.
+export const TOUCH_SCALE_DEFAULT = 1;
+export const TOUCH_SCALE_MIN = 0.8;
+export const TOUCH_SCALE_MAX = 1.6;
+/** `lefty` mirrors the sticks for a left-handed pilot; `compact` tightens them for short thumbs. */
+export const TOUCH_LAYOUTS = Object.freeze(['standard', 'lefty', 'compact']);
+export const TOUCH_LAYOUT_DEFAULT = 'standard';
+
+/**
+ * Clamp an authored or hostile scale onto the slider's own range and snap it to the step.
+ *
+ * The snap is done in integer hundredths rather than by dividing by 0.05: 0.05 is not exactly
+ * representable in binary floating point, so `Math.round(1.234 / 0.05) * 0.05` returns
+ * 1.2500000000000002 and that value would be written straight into a CSS custom property and a
+ * save file. Scaling by 20 and rounding an integer keeps every legal value exact.
+ */
+export function normalizeTouchScale(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return TOUCH_SCALE_DEFAULT;
+  const hundredths = Math.round(n * 20);
+  const clamped = Math.min(TOUCH_SCALE_MAX * 20, Math.max(TOUCH_SCALE_MIN * 20, hundredths));
+  return Math.round(clamped) / 20;
+}
+
+export function normalizeTouchLayout(value) {
+  const key = String(value || '').trim();
+  return TOUCH_LAYOUTS.includes(key) ? key : TOUCH_LAYOUT_DEFAULT;
+}
+
+/** Read the live overlay config out of settings. Pure — settings.js uses it to render rows. */
+export function readTouchOverlayConfig(settings) {
+  const tc = (settings && settings.controls && settings.controls.touch) || null;
+  return {
+    scale: normalizeTouchScale(tc && tc.scale),
+    layout: normalizeTouchLayout(tc && tc.layout),
+  };
+}
+
 export function createTouch(ctx) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
@@ -443,37 +483,54 @@ export function createTouch(ctx) {
 
     _buildOverlay() {
       if (typeof document === 'undefined') return;
+      const cfg = readTouchOverlayConfig(state && state.settings);
       if (!document.getElementById(STYLE_ID)) {
         const s = document.createElement('style');
         s.id = STYLE_ID;
         s.textContent = `
         #${OVERLAY_ID} { position:fixed; inset:0; pointer-events:none; z-index:60; touch-action:none;
-          user-select:none; -webkit-user-select:none; }
+          user-select:none; -webkit-user-select:none; --sf-touch-scale:${cfg.scale}; }
         #${OVERLAY_ID} .sf-touch-stick { position:absolute; bottom:18px; width:140px; height:140px;
           border-radius:50%; border:2px solid rgba(120,160,200,.25); background:rgba(8,14,24,.30);
-          pointer-events:auto; }
+          pointer-events:auto;
+          width:calc(140px * var(--sf-touch-scale)); height:calc(140px * var(--sf-touch-scale)); }
         #${OVERLAY_ID} .sf-touch-stick.left { left:18px; }
         #${OVERLAY_ID} .sf-touch-stick.right { right:18px; }
         #${OVERLAY_ID} .sf-touch-stick .sf-touch-knob { position:absolute; left:50%; top:50%;
           width:54px; height:54px; margin:-27px 0 0 -27px; border-radius:50%;
           background:rgba(57,208,255,.35); border:1px solid rgba(57,208,255,.6);
-          transition:transform .06s linear; }
+          transition:transform .06s linear;
+          width:calc(54px * var(--sf-touch-scale)); height:calc(54px * var(--sf-touch-scale));
+          margin:calc(-27px * var(--sf-touch-scale)) 0 0 calc(-27px * var(--sf-touch-scale)); }
         #${OVERLAY_ID} .sf-touch-btn { position:absolute; bottom:24px; right:18px; pointer-events:auto;
           border-radius:50%; border:2px solid rgba(120,160,200,.3); background:rgba(8,14,24,.45);
           color:var(--ink,#d7e6ff); font-family:var(--mono,monospace); font-size:11px; letter-spacing:.08em;
           display:flex; align-items:center; justify-content:center; text-transform:uppercase;
           transition:background .08s, transform .08s; }
         #${OVERLAY_ID} .sf-touch-btn.held { background:rgba(57,208,255,.30); transform:scale(.94); }
-        #${OVERLAY_ID} .sf-touch-fire { width:84px; height:84px; right:170px; }
-        #${OVERLAY_ID} .sf-touch-mine { width:68px; height:68px; right:96px; bottom:30px; }
-        #${OVERLAY_ID} .sf-touch-boost { width:68px; height:68px; bottom:108px; right:30px; }
-        #${OVERLAY_ID} .sf-touch-menu { position:absolute; right:18px; top:112px; display:grid;
+        #${OVERLAY_ID} .sf-touch-fire { width:calc(84px * var(--sf-touch-scale)); height:calc(84px * var(--sf-touch-scale)); right:calc(170px * var(--sf-touch-scale)); }
+        #${OVERLAY_ID} .sf-touch-mine { width:calc(68px * var(--sf-touch-scale)); height:calc(68px * var(--sf-touch-scale)); right:calc(96px * var(--sf-touch-scale)); bottom:30px; }
+        #${OVERLAY_ID} .sf-touch-boost { width:calc(68px * var(--sf-touch-scale)); height:calc(68px * var(--sf-touch-scale)); bottom:calc(108px * var(--sf-touch-scale)); right:30px; }
+        #${OVERLAY_ID} .sf-touch-menu { position:absolute; right:18px; top:calc(112px * var(--sf-touch-scale)); display:grid;
           grid-template-columns:repeat(2,58px); gap:8px; pointer-events:auto; }
         #${OVERLAY_ID} .sf-touch-menu .sf-touch-btn { position:static; width:58px; height:42px;
           border-radius:8px; font-size:10px; line-height:1.05; }
+        /* PRO-08 lefty: mirror the whole hand layout. The pilot's left thumb flies, so the sticks
+           swap sides and the action cluster follows. Authored defaults are untouched. */
+        #${OVERLAY_ID}[data-sf-touch-layout="lefty"] .sf-touch-stick.left { left:auto; right:18px; }
+        #${OVERLAY_ID}[data-sf-touch-layout="lefty"] .sf-touch-stick.right { right:auto; left:18px; }
+        #${OVERLAY_ID}[data-sf-touch-layout="lefty"] .sf-touch-fire { right:auto; left:calc(170px * var(--sf-touch-scale)); }
+        #${OVERLAY_ID}[data-sf-touch-layout="lefty"] .sf-touch-mine { right:auto; left:calc(96px * var(--sf-touch-scale)); }
+        #${OVERLAY_ID}[data-sf-touch-layout="lefty"] .sf-touch-boost { right:auto; left:30px; }
+        #${OVERLAY_ID}[data-sf-touch-layout="lefty"] .sf-touch-menu { right:auto; left:18px; }
+        /* compact: pull the sticks in off the bezel so short thumbs reach the whole pad. */
+        #${OVERLAY_ID}[data-sf-touch-layout="compact"] .sf-touch-stick { bottom:6px; }
+        #${OVERLAY_ID}[data-sf-touch-layout="compact"] .sf-touch-stick.left { left:6px; }
+        #${OVERLAY_ID}[data-sf-touch-layout="compact"] .sf-touch-stick.right { right:6px; }
+        #${OVERLAY_ID}[data-sf-touch-layout="compact"] .sf-touch-menu { top:calc(96px * var(--sf-touch-scale)); }
         @media (max-width: 760px) {
-          #${OVERLAY_ID} .sf-touch-stick { width:110px; height:110px; }
-          #${OVERLAY_ID} .sf-touch-menu { top:92px; right:12px; gap:6px; }
+          #${OVERLAY_ID} .sf-touch-stick { width:calc(110px * var(--sf-touch-scale)); height:calc(110px * var(--sf-touch-scale)); }
+          #${OVERLAY_ID} .sf-touch-menu { top:calc(92px * var(--sf-touch-scale)); right:12px; gap:6px; }
           #${OVERLAY_ID} .sf-touch-menu .sf-touch-btn { width:52px; height:38px; font-size:9px; }
         }
         `;
@@ -481,6 +538,8 @@ export function createTouch(ctx) {
       }
       const ov = document.createElement('div');
       ov.id = OVERLAY_ID;
+      ov.setAttribute('data-sf-touch-scale', String(cfg.scale));
+      ov.setAttribute('data-sf-touch-layout', cfg.layout);
       ov.innerHTML =
         '<div class="sf-touch-stick left"><div class="sf-touch-knob"></div></div>' +
         '<div class="sf-touch-stick right"><div class="sf-touch-knob"></div></div>' +
@@ -613,6 +672,21 @@ export function createTouch(ctx) {
         this.actions[act] = { held, pressed: pulse || (held && !prev), released: !held && prev, value: held ? 1 : 0 };
         this._btnPulse[act] = false;
       }
+    },
+
+    // PRO-08: re-read scale/layout onto a live overlay. Settings calls this so moving the slider
+    // resizes the pads under the pilot's thumb instead of waiting for a disable/enable cycle.
+    applyOverlayConfig() {
+      const cfg = readTouchOverlayConfig(state && state.settings);
+      if (this._overlay && typeof this._overlay.setAttribute === 'function') {
+        this._overlay.setAttribute('data-sf-touch-scale', String(cfg.scale));
+        this._overlay.setAttribute('data-sf-touch-layout', cfg.layout);
+        const styleEl = typeof document !== 'undefined' ? document.getElementById(STYLE_ID) : null;
+        if (styleEl && styleEl.style && typeof styleEl.style.setProperty === 'function') {
+          styleEl.style.setProperty('--sf-touch-scale', String(cfg.scale));
+        }
+      }
+      return cfg;
     },
 
     // Called by Settings when the player toggles touch: persist the explicit choice so autoDetect

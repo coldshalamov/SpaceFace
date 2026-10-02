@@ -4891,6 +4891,14 @@ function sanitizeRestoredSettings(settings) {
   }
   const tc = s.controls.touch;
   if (tc.enabled !== true && tc.enabled !== false) tc.enabled = null;
+  // PRO-08: the overlay's own size and thumb placement ride along in the same object. Sanitizing
+  // them here (rather than letting the builder clamp) is what makes the choice survive a reload,
+  // and it keeps a hand-edited save from writing CSS it should not.
+  if (typeof tc.scale !== 'number' || !Number.isFinite(tc.scale) || tc.scale <= 0) delete tc.scale;
+  // Clamp in the slider's own units first, then snap by scaling by 20 and rounding an integer:
+  // 0.05 is not exactly representable, so dividing by it would persist 1.2500000000000002.
+  else tc.scale = Math.round(Math.min(1.6, Math.max(0.8, tc.scale)) * 20) / 20;
+  if (tc.layout !== 'standard' && tc.layout !== 'lefty' && tc.layout !== 'compact') delete tc.layout;
   return s;
 }
 

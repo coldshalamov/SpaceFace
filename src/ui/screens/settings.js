@@ -46,6 +46,22 @@ import { el, words, settle, cue } from '../kit/index.js';
 // graduated Scales, and a live preview of what the focused row changes beside the list.
 import { injectOrrerySettings, dressSettingsPane, attachSpotlight } from '../orrery/settingsLayouts.js';
 import { createSettingsPreview } from '../orrery/settingsPreview.js';
+// PRO-08: the touch overlay's own vocabulary lives with the overlay, so the Settings rows and the
+// DOM builder can never disagree about what a legal scale or layout is.
+import {
+  TOUCH_LAYOUTS,
+  TOUCH_SCALE_MAX,
+  TOUCH_SCALE_MIN,
+  normalizeTouchLayout,
+  normalizeTouchScale,
+  readTouchOverlayConfig,
+} from '../../systems/touch.js';
+
+const TOUCH_LAYOUT_LABELS = Object.freeze({
+  standard: 'Standard — sticks at both bottom corners',
+  lefty: 'Left-handed — mirrored for a left thumb',
+  compact: 'Compact — pads pulled in for short thumbs',
+});
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
 
@@ -780,6 +796,29 @@ export const settingsScreen = {
     };
     build.choice('Touch controls', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], touchMode,
       (mode) => commitTouchValue(mode === 'auto' ? null : mode === 'on'));
+    // PRO-08: size and thumb placement. Both write into the same `controls.touch` object as the
+    // tri-state above and re-apply to a live overlay, so a phone can grow the sticks mid-flight.
+    const commitTouchOverlay = (patch) => {
+      const next = { ...(s.controls.touch || {}), ...patch };
+      const tp = ctx.touch;
+      if (tp && typeof tp.applyOverlayConfig === 'function') {
+        // applyOverlayConfig reads state.settings, so write first and then let the overlay re-read.
+        s.controls.touch = next;
+        tp.applyOverlayConfig();
+      } else {
+        s.controls.touch = next;
+      }
+      ctx.bus.emit('settings:changed', { section: 'controls', key: 'touch', value: next });
+    };
+    build.slider('Touch overlay size',
+      () => readTouchOverlayConfig(s).scale,
+      TOUCH_SCALE_MIN, TOUCH_SCALE_MAX, 0.05,
+      (x) => Math.round(x * 100) + '%',
+      (value) => commitTouchOverlay({ scale: normalizeTouchScale(value) }));
+    build.choice('Touch layout',
+      TOUCH_LAYOUTS.map((id) => [id, TOUCH_LAYOUT_LABELS[id]]),
+      () => readTouchOverlayConfig(s).layout,
+      (mode) => commitTouchOverlay({ layout: normalizeTouchLayout(mode) }));
     // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
     build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
     // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams
