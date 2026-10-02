@@ -128,9 +128,9 @@ export function captureWorldSitePayloadState({
         // duplicated worldRecordId): only let a failed-predicate hit suppress the walk when
         // the row is provably unique — otherwise the walk may still find the live carrier.
         const twins = index.byWorldRecordIdCount instanceof Map
-          ? (index.byWorldRecordIdCount.get(payload.worldObjectId) || 0)
-          : 1;
-        indexAnswered = twins <= 1;
+          ? index.byWorldRecordIdCount.get(payload.worldObjectId)
+          : undefined;
+        indexAnswered = twins === 1;
         if (holder.alive !== false && holder.data
             && holder.data.worldSiteId === manifest.id
             && holder.data.worldSitePayloadId === payload.id) live = holder;

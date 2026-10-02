@@ -112,24 +112,26 @@ test('releaseScreen clears the painted stamp so the screen can warm again', () =
     mount(el) { mounts++; els.push(el); el.appendChild(document.createElement('div')); },
   });
 
-  mgr.prewarm('newGame');
+  const firstRec = mgr.prewarm('newGame');
   mgr.paintWarm('newGame');
   const first = els[0];
-  assert.equal(first.style.visibility, 'hidden', 'first warm hides the laid-out root');
-
-  // The warm's restore callback is queued behind rAF — drain it so the stamp settles
-  // the way a real frame would.
-  dom.runRaf();
+  assert.equal(firstRec.painted, true, 'first warm stamps the record painted');
+  // The warm is same-task now (an rAF-spanned hidden window raced modal-semantics probes):
+  // visibility flips hidden for the forced layout pass and is restored before paintWarm returns.
+  assert.equal(first.style.visibility, '', 'same-task warm restores visibility before returning');
 
   mgr.releaseScreen('newGame');
   assert.equal(first.parentNode, null, 'release drops the element');
+  assert.equal(firstRec.painted, false, 'release clears the warm stamp');
 
   mgr.prewarm('newGame');
   assert.equal(mounts, 2, 'prewarm remounts the released screen');
   const second = els[1];
+  assert.equal(firstRec.painted, false);
   mgr.paintWarm('newGame');
-  assert.equal(second.style.visibility, 'hidden',
+  assert.equal(firstRec.painted, true,
     'a released screen must warm again — a stale painted stamp skips the pass forever');
+  assert.equal(second.style.visibility, '', 'second warm also restores in the same task');
 });
 
 // ── catchUpFarRecord entrant stamp ───────────────────────────────────────────
