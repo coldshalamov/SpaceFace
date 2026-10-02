@@ -138,12 +138,6 @@ const BOOT_SCREEN_EXPORTS = new Set([
   'crucibleScreen', 'crucibleResultsScreen', 'demoEndScreen',
 ]);
 
-// Screens whose mounts stay deferred even during menu dwell: 'station' is a whole app whose
-// open is already masked by the dock ceremony, and 'ship' mounts the shared stage (the second
-// GL context) which is itself shared with the dock shipworks host. 'achievements' mounts eager
-// medal-art fetches that page-error preflight checks when generated art is absent.
-const SCREEN_PREWARM_DEFER = new Set(['station', 'ship', 'achievements']);
-
 function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
     // A hidden or occluded tab never fires rAF; without a timeout the deferred registration waves
@@ -478,7 +472,6 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
-    this._screenPrewarmQueue = [];
 
     // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
     // door onto that entity's dossier. Mounted after the screen manager because it reads which
@@ -633,20 +626,20 @@ export const ui = {
         if (payload.targetId === this.state?.playerId) return;
         const isShield = !!(payload.shieldHit && payload.shieldDamage > 0);
         triggerHitTick(isShield ? 'shield' : 'hull');
-      }, { presentation: true });
+      });
 
       this.bus.on('entity:killed', (payload) => {
         if (!payload || payload.killerId !== this.state?.playerId) return;
         if (payload.id === this.state?.playerId) return;
         triggerHitTick('kill');
-      }, { presentation: true });
+      });
 
       // INF-053: when the LOCKED target dies, say DESTROYED in the lock's own voice, whatever
       // else the kill pays. Any killer counts — the lock's subject is a corpse either way.
       this.bus.on('entity:killed', (payload) => {
         const toast = destroyedLockToast(this.state, payload);
         if (toast) this.bus.emit('toast', toast);
-      }, { presentation: true });
+      });
     }
     const autoTargetFlightStick = document.createElement('div');
     autoTargetFlightStick.id = 'auto-target-flight-stick';
@@ -891,10 +884,10 @@ export const ui = {
       // The baked clip is a bonus layer over the .cine-bg still: drop the
       // element on any failure and the Ken-Burns still simply remains.
       const cineVideo = cinematic.querySelector('.cine-video');
-      // Function scope, not the `if (cineVideo)` block: mountCinematic's play() error paths call
-      // this too, and a ReferenceError escaping the catch would leave the fence/auto-dismiss
-      // uninstalled — the cinematic could never dismiss.
-      const dropVideo = () => { try { cineVideo && cineVideo.remove(); } catch (_) {} };
+      // Hoisted beside cineVideo: mountCinematic's play() fallback calls this, and a nested
+      // declaration here left it out of scope there (ReferenceError on every autoplay
+      // rejection, which also stranded the clip and its fetch pipeline).
+      const dropVideo = () => { try { if (cineVideo) cineVideo.remove(); } catch (_) {} };
       if (cineVideo) {
         cineVideo.addEventListener('error', dropVideo);
         const cineSource = cineVideo.querySelector('source');
@@ -1175,12 +1168,6 @@ export const ui = {
       // Phase 1: fade to dark
       showDockFade('dock');
 
-      // The station hub mounts under the veil: build + one style/layout pass now so the
-      // Phase-2 swap flips visibility instead of paying a whole-app mount inside it.
-      if (this._registeredScreens && this._registeredScreens.has('station')) {
-        try { this._warmScreen('station'); } catch (e) { console.error(e); }
-      }
-
       // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
       // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
       // pushZoom widens the view ~25% over the fade so the approach reads as a committed fly-in,
@@ -1359,15 +1346,6 @@ export const ui = {
         }
         if (!this._registeredScreens) this._registeredScreens = new Set();
         this._registeredScreens.add(def.id);
-        // Mount + paint-warm on the serialized drain — one screen per yielded frame, in
-        // menu dwell AND on flight-idle slices (a fast embark used to strand the whole
-        // rest-wave behind the mode==='menu' gate). station (a whole app — it warms under
-        // the dock veil instead) and ship (the shared stage owns the second GL context)
-        // keep their owner-scheduled mounts.
-        if (!SCREEN_PREWARM_DEFER.has(def.id)) {
-          (this._screenPrewarmQueue || (this._screenPrewarmQueue = [])).push(def.id);
-          this._drainScreenPrewarmQueue(registrationCycle);
-        }
         if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
           try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
         }
@@ -1410,52 +1388,6 @@ export const ui = {
   // Push a screen that may still be in a deferred registration wave: retry until it registers or
   // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
   // game-over) so an early lifecycle event never becomes a dead press.
-  _warmScreen(id) {
-    if (this.screenManager && typeof this.screenManager.prewarm === 'function') {
-      this.screenManager.prewarm(id);
-    }
-    if (this.screenManager && typeof this.screenManager.paintWarm === 'function') {
-      this.screenManager.paintWarm(id);
-    }
-  },
-
-  // One queued screen mount+paint-warm per yielded frame; exits early if the registration
-  // cycle that populated the queue is superseded (the next cycle re-fills it).
-  _drainScreenPrewarmQueue(registrationCycle) {
-    if (this._screenPrewarmDraining) return;
-    const queue = this._screenPrewarmQueue;
-    if (!queue || !queue.length) return;
-    this._screenPrewarmDraining = true;
-    (async () => {
-      try {
-        while (queue.length) {
-          const id = queue.shift();
-          try {
-            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
-            try { this.screenManager.prewarm(id); }
-            catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
-            // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
-            // its own frame before the hidden layout pass — the two costs never share a
-            // flight-idle frame even when the mount alone exceeds the budget.
-            const mountedMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - t0 : 0;
-            if (mountedMs > 6) {
-              await yieldPresentationFrame();
-              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
-            }
-            try { this.screenManager.paintWarm(id); }
-            catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
-          }
-          catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
-          await yieldPresentationFrame();
-          if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
-        }
-      } finally {
-        this._screenPrewarmDraining = false;
-        if (queue.length) this._drainScreenPrewarmQueue(registrationCycle);
-      }
-    })();
-  },
-
   _pushScreenWhenRegistered(id, maxAttempts = 60) {
     const tryOpen = (attempts) => {
       if (this._registeredScreens && this._registeredScreens.has(id)) {

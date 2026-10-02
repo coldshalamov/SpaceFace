@@ -3424,7 +3424,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             ? `The rack is short ${prepPlan.unmetNeed} units — restock fee plus ammunition exceed the balance`
             : 'Rack is already prepared';
       if (prepReady && prepPlan.limitingReason === 'credits') prepNote = prepareHint;
-      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock title="${escapeHtml(prepareHint)}" ${availability.outfitEnabled && prepReady ? '' : `disabled aria-label="${escapeHtml(prepareHint)}"`}>${escapeHtml(prepareLabel)}</button></li>`);
+      // No native title: the hint prints in visible type (prepNote) and the disabled state
+      // carries the aria-label — matching the upgrade verb below (check-ui-native-titles).
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && prepReady ? '' : `disabled aria-label="${escapeHtml(prepareHint)}"`}>${escapeHtml(prepareLabel)}</button></li>`);
     }
     if (rack.sockets < BOMB_RACK.socketsMax) {
       const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;

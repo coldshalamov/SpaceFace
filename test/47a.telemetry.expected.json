@@ -43,18 +43,18 @@
     "audio:cue"
   ],
   "phase0ObservedTraceCounts": {
-    "audio:cue": 3,
-    "camera:shake": 1,
+    "audio:cue": 4,
+    "camera:shake": 2,
     "combat:damage": 6,
     "combat:fire": 17,
     "economy:tick": 2,
-    "presentation:audioCue": 2,
-    "presentation:cameraCue": 1,
-    "presentation:caption": 2,
-    "presentation:cue": 8,
-    "presentation:cueApplied": 8,
-    "presentation:uiCue": 2,
-    "presentation:vfxCue": 2,
+    "presentation:audioCue": 3,
+    "presentation:cameraCue": 2,
+    "presentation:caption": 3,
+    "presentation:cue": 9,
+    "presentation:cueApplied": 9,
+    "presentation:uiCue": 3,
+    "presentation:vfxCue": 3,
     "projectile:hit": 6,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
@@ -201,6 +201,10 @@
     "Hit sanity: identical hit at ref and HEAD (tick 234, wasp id 3, shield absorb 10.10) — aim-stream decay, not tunneling; the wreck is immovable by the Package-E landmark/>90WU rule.",
     "Verified by archive exports only: 6a3ae3265 reproduces e78bc4ee + all recorded counts; 99d1c7ea8 produces ac5abcf2 + hit 1; HEAD produces this record.",
     "2026-10-02 merge re-record on af79f0ddb: golden-diff vs origin/master CONTENT_ONLY (zero motion fields merge-attributable); the motion delta vs the prior pin lives inside origin's ANI phase-2 line.",
-    "Trace deltas: +ship:thrust (flight verb), +alert (no colon, unpinnable), hits/damage up on merged combat line, audio:cue down one (dedup fix), presentation cue consolidation."
+    "Trace deltas: +ship:thrust (flight verb), +alert (no colon, unpinnable), hits/damage up on merged combat line, audio:cue down one (dedup fix), presentation cue consolidation.",
+    "2026-10-02 count re-derivation on this record: the LEGACY_47A_MASSLINE_BREAK envelope was",
+    "re-bracketed to the solid-contact measured peak (attachments.js; warn fires at t234), which",
+    "adds exactly one tether.near_break presentation cue fanout to each family above.",
+    "authoritativeHash unchanged (f589bdd5): a threshold move is presentation state only."
   ]
 }

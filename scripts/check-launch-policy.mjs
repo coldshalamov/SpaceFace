@@ -187,7 +187,10 @@ assert.match(
 );
 assert.match(
   main,
-  /helpers\.finalizeLoadedGame\s*=\s*\(payload\)\s*=>\s*finalizeLoadedGame\(\s*state,\s*bus,\s*registry,\s*runTransitionGuard,\s*payload\s*\|\|\s*\{\},?\s*\);/,
+  // 2026-09-30 1c762988d (perf wave 4 restore guards) grew the helper body: it now inherits an
+  // early-continue physics prep into the payload before delegating. The contract it must keep is
+  // the same-authored-visual-gate delegation with state/bus/registry/runTransitionGuard intact.
+  /helpers\.finalizeLoadedGame\s*=\s*\(payload\)\s*=>\s*\{[\s\S]{0,300}?finalizeLoadedGame\(\s*state,\s*bus,\s*registry,\s*runTransitionGuard,\s*\{[\s\S]{0,300}?\}\s*,?\s*\);/,
   'Browser/Electron save-load must use the same authored visual gate before returning to flight'
 );
 assert.match(

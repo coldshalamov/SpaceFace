@@ -392,8 +392,8 @@
       "slot": "place",
       "releaseAssetId": "place_dead_hulk",
       "sourceUrl": "assets/ships/release/parts/places/place_dead_hulk.glb",
-      "releaseSha256": "a2cd980874445fa4c2929265be5a660dce2c5baff86a1c6ea29d07c20f86b423",
-      "releaseBytes": 671868,
+      "releaseSha256": "2c1113cf9cf92072565e8f2606fe82e6d24ea71bd9047a705cbbba6a22c34634",
+      "releaseBytes": 497996,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -413,8 +413,8 @@
       "slot": "place",
       "releaseAssetId": "place_debris_chunk",
       "sourceUrl": "assets/ships/release/parts/places/place_debris_chunk.glb",
-      "releaseSha256": "4ea1e04c4b1763fd48a4ef9f267834b08cdfecfa844e22701f493523eb2d6e3a",
-      "releaseBytes": 484204,
+      "releaseSha256": "b8f5af68d85f21971220d8f4270d049202e95f8e5eb479a02ca7dd8e27df6344",
+      "releaseBytes": 310332,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

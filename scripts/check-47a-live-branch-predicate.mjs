@@ -30,14 +30,16 @@ const LIVE_CASES = [
     ],
     // resolution_branch only unlocks ~t36000 (beat 600s), so the live predicate evaluates in a
     // ~120-tick window there; the tug relocates to (815,95) at recovery_tug entry ~t16250. The
-    // ferry times the spindle's passage for t36000: turn to the measured ~-0.55 rad bearing,
-    // then a 5.5% throttle tow. Full throttle snaps the Massline and outruns the 960-mass
-    // payload; the fractional moveZ holds ~6 WU/s so the tug's own winch finishes the pull and
-    // the spindle sits ~19-38 WU out through the window (2026-09-29).
+    // ferry times the spindle's passage for the window: a short +1 turn onto the measured
+    // bearing from the post-contact drift position (~+0.16 rad from (481,41)), then a 4.6%
+    // throttle tow. Full throttle snaps the Massline and outruns the 960-mass payload; the
+    // fractional moveZ keeps the tow at ~5 WU/s so the spindle sits ~90-99 WU out across the
+    // whole window. Retuned 2026-09-30: eb1869826's solid contacts changed the scripted
+    // approach drift, and the previous 2026-09-29 bearing/throttle pair ended ~220 WU out.
     inputFrames: [
-      inputFrame(31980, { turnIntent: -1 }),
-      inputFrame(31994, { turnIntent: 0 }),
-      inputFrame(32010, { moveZ: 0.055 }),
+      inputFrame(31980, { turnIntent: 1 }),
+      inputFrame(31984, { turnIntent: 0 }),
+      inputFrame(32010, { moveZ: 0.046 }),
     ],
     requiredActionId: 'action_reel',
     distanceTargetActorId: 'official_recovery_tug',
@@ -55,12 +57,15 @@ const LIVE_CASES = [
       frameCommand(1020, combatAction('action_reel', { attachment: 'latestOwned' })),
     ],
     // Ferry to the handoff beacon (160 WU window at (780,320), open only when
-    // resolution_branch enters ~t36000): turn ~+0.36 rad, then the same fractional-throttle
-    // tow so the spindle crosses the window at ~t36000 sitting ~35-41 WU out (2026-09-29).
+    // resolution_branch enters ~t36000): an 18-tick +1 turn onto the measured ~0.75 rad
+    // bearing from the post-contact park position (481,39), then a 7.5% fractional-throttle
+    // tow. The spindle crosses into the window ~35 WU out from the parked tow and sits
+    // 125-142 WU from the beacon across the whole window. Retuned 2026-09-30: eb1869826's
+    // solid contacts moved the scripted park position and the 2026-09-29 pair fell ~180 out.
     inputFrames: [
       inputFrame(33080, { turnIntent: 1 }),
-      inputFrame(33089, { turnIntent: 0 }),
-      inputFrame(33100, { moveZ: 0.055 }),
+      inputFrame(33098, { turnIntent: 0 }),
+      inputFrame(33100, { moveZ: 0.075 }),
     ],
     requiredActionId: 'action_sling',
     distanceTargetActorId: 'kessler_handoff_beacon',

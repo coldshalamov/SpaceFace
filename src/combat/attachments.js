@@ -7,11 +7,16 @@ import { massline2Flag } from '../data/featureFlags.js';
 
 // Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
-// The 140/90 tuning is the authored 47-A contract: the scenario's measured peak tension (~119)
-// must cross the 75% near-break warning (105) without reaching the break (140), so the line
-// groans under the false mass and holds. The +25% production-def retune (175/112.5) pushed the
-// warning band above the authored load and silently removed tether.near_break from the trace.
-const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 140, maxImpulse: 90, graceTicks: 1 });
+// The tuning is the authored 47-A contract: the scenario's measured peak tension must cross the
+// 75% near-break warning without reaching the break, so the line groans under the false mass and
+// holds. The original 140/90 envelope bracketed the 2026-07 measured peak (~119, ratio 0.85);
+// the +25% production-def retune (175/112.5) pushed the warning band above the authored load and
+// silently removed tether.near_break from the trace, which is why 140 was restored.
+// 2026-09-30 eb1869826 (per-object physics materials, solid contacts) reshaped the tow and the
+// measured peak dropped to ~69 (ratio unchanged in kind, load halved). The envelope is
+// re-derived to the new measured peak at the same 0.85 proportion: 81 breaks where the old
+// physics needed 140, the 75% warning (60.75) fires again, and the line still holds (69 < 81).
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 81, maxImpulse: 90, graceTicks: 1 });
 const STANDARD_TETHER_STRENGTH_REVISION = 2;
 const STANDARD_TETHER_PAYOUT_REVISION = 1;
 const BROKEN_ATTACHMENT_HISTORY_LIMIT = 128;
