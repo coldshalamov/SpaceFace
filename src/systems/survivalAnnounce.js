@@ -305,6 +305,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveMaterialized', (p) => this._onWaveMaterialized(p)));
+    this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
@@ -424,6 +425,16 @@ export const survivalAnnounce = {
 
     if (this._tryBossArrival(wave, enemyId)) return;
     this._tryCounterHint(enemyId);
+  },
+
+  _onPressureTelegraph(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
+    const countText = stored > 0 ? `${capitalize(countWord(stored))} hostiles` : 'Hostile reinforcement';
+    this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
   },
 
   /**
