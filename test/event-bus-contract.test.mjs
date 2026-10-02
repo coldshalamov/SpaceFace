@@ -327,3 +327,31 @@ test('clear() drops the presentation queue; a claimed bus keeps slicing after cl
   bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
   assert.deepEqual(seen, ['fresh'], 'the claim survives clear(): the runner still owns the frame pump');
 });
+
+test('clear() also drops the lifecycle priority queue', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:destroyed', () => seen.push('gone'), { presentation: true });
+  bus.emit('entity:destroyed', { id: 1 });
+  bus.clear();
+  assert.equal(bus.pendingPresentationCount(), 0, 'clear() aborts queued priority tails');
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen, [], 'no phantom lifecycle presents after clear');
+});
+
+test('kill-burst overflow cannot evict the cosmetic floor of once-only spawn tails', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:destroyed', (p) => seen.push(`d:${p.id}`), { presentation: true });
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  // 20 spawn tails armed, then a 100-destroy clump: combined 120 > 64-cap → 56 must shed.
+  for (let i = 0; i < 20; i++) bus.emit('entity:spawned', { id: i });
+  for (let i = 0; i < 100; i++) bus.emit('entity:destroyed', { id: 1000 + i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:')).length;
+  assert.equal(spawned, 16, 'cosmetic slices shed only down to the 16-slice floor');
+  const destroyed = seen.filter((s) => s.startsWith('d:')).length;
+  assert.equal(destroyed, 48, 'the priority lane sheds its own oldest past the floor');
+});

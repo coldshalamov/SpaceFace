@@ -3830,6 +3830,10 @@ export const audio = {
 
   _onDestroyed(p) {
     if (!p) return;
+    // Roster clears (prepareRun / discardPreparedNewGameScene) emit one destroyed per entity for
+    // teardown bookkeeping — they are not deaths: skip the explosion voices + station hush that
+    // would otherwise burst behind the loading veil against the old player position.
+    if (p.reason === 'run_reset') return;
     // Only ships/drones/wrecks get an explosion here; asteroids handled via asteroid:destroyed,
     // projectiles/pickups/fx are silent. entity:killed already covered combat kills, so keep this
     // to non-ship physical destructions to avoid doubling.

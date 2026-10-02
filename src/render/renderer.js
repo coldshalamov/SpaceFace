@@ -2113,7 +2113,10 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
         reordered = true;
         verdicts = new Uint8Array(tail).fill(2);
         for (let j = 0; j < firstNonGlassIdx - head; j++) verdicts[j] = 1;
-        verdicts[firstNonGlassIdx - head] = 0;
+        // (firstNonGlassIdx, i) is provably non-glass — a glass element in that range would
+        // have tripped this same branch earlier — so stamp it 0 instead of letting pass 2
+        // re-evaluate predicates it can only confirm.
+        verdicts.fill(0, firstNonGlassIdx - head, i - head);
         verdicts[i - head] = 1;
       }
     } else if (!seenNonGlass) {
@@ -3237,6 +3240,41 @@ function warmPursuitInterventionDecode(owner) {
     warmEnemyRosterDecode(owner, [
       { archetype: 'patrol_lawman', factionId: 'faction_scn' },
     ], 'pursuit-intervention-decode-runway',
+      state.world && state.world.currentSectorId);
+  }
+}
+
+/**
+ * A law incident announces its patrol ETA, then _dispatchIncident mints reserve
+ * patrol_lawman hulls at dispatchAt with only the spawn-kick warm — they decode cold at the
+ * incident ring the player just heard the countdown for. Poll state.lawSecurity.incidents
+ * once per residency pass; while a distress/responding incident's dispatchAt sits inside the
+ * decode runway, warm the responder hull (same archetype + factionId the dispatch mints).
+ * Resolved/cleared incidents just let the lease expire; the WeakMap dedupes per record.
+ */
+function warmLawIncidentDispatchDecode(owner) {
+  const state = owner && owner.state;
+  const law = state && state.lawSecurity;
+  const incidents = law && law.incidents;
+  if (!incidents || typeof incidents !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const warmedAt = owner._lawIncidentWarmAt || (owner._lawIncidentWarmAt = new WeakMap());
+  const roster = [];
+  for (const key in incidents) {
+    const incident = incidents[key];
+    if (!incident || typeof incident !== 'object') continue;
+    if (incident.status !== 'distress' && incident.status !== 'responding') continue;
+    if (!Number.isFinite(incident.dispatchAt)) continue;
+    if (incident.dispatchAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    if (warmedAt.get(incident) === incident.dispatchAt) continue;
+    warmedAt.set(incident, incident.dispatchAt);
+    roster.push({
+      archetype: 'patrol_lawman',
+      factionId: incident.factionId || 'faction_scn',
+    });
+  }
+  if (roster.length) {
+    warmEnemyRosterDecode(owner, roster, 'law-incident-decode-runway',
       state.world && state.world.currentSectorId);
   }
 }
@@ -12855,6 +12893,16 @@ export const render = {
       : null;
     if (!sectorId) return;
     const seed = Number.isFinite(payload.seed) ? payload.seed : null;
+    // Every emitter path (seed keystrokes, starter re-picks, onShow, sandbox card hover)
+    // re-posts the full enumeration + ~60–100 warm requests; a same-signature arm inside the
+    // re-pin window is pure repeat work. 2 s preserves spaced re-arms whose real purpose is
+    // re-pinning evicted warms while collapsing gesture-burst duplicates.
+    const sig = `${sectorId}|${seed == null ? '' : seed}|${typeof payload.shipDefId === 'string' ? payload.shipDefId : ''}`;
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const latch = this._embarkSpecLatch || (this._embarkSpecLatch = { sig: null, at: -Infinity });
+    if (latch.sig === sig && now - latch.at < 2000) return;
+    latch.sig = sig;
+    latch.at = now;
     const data = {
       world: { currentSectorId: sectorId, records: { byId: {} } },
       meta: seed == null ? {} : { seed },
@@ -15102,6 +15150,7 @@ export const render = {
     warmAceReturnDecode(this);
     warmCultureIntroDecode(this);
     warmPursuitInterventionDecode(this);
+    warmLawIncidentDispatchDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute

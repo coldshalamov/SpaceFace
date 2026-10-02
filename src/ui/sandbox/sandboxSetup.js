@@ -15,6 +15,7 @@
 //      applied once; repeated launches reuse the listeners.
 //   3. applySandboxSetup(ctx, config) runs the writers in dependency-safe order.
 
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { MODULES } from '../../data/modules.js';
 import { TECH_NODES } from '../../data/tech.js';
@@ -359,10 +360,31 @@ function gameNewOptionsForSandboxConfig(config) {
     : {};
 }
 
+/**
+ * The sandbox front door used to emit no embark speculation: the picker spent menu dwell
+ * warming nothing, so launch paid a wasted helios bootstrap plus the scenario's sector +
+ * packages inside the loading window. Arm the renderer's embark warm with the config's
+ * target — cfg.sectorId when the scenario retargets the sector, else the NEW_GAME default;
+ * the same payload works for picker hover (real dwell warm) and request time (backstop).
+ */
+export function emitSandboxEmbarkSpeculation(bus, config) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  const cfg = config && typeof config === 'object' ? config : {};
+  const opts = gameNewOptionsForSandboxConfig(cfg);
+  bus.emit('game:embarkSpeculation', {
+    sectorId: typeof cfg.sectorId === 'string' && cfg.sectorId
+      ? cfg.sectorId
+      : (NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime'),
+    seed: Number.isSafeInteger(opts.seed) ? opts.seed : null,
+    shipDefId: typeof cfg.shipId === 'string' ? cfg.shipId : null,
+  });
+}
+
 /** Stash config, then trigger the standard new-game pipeline. The real NEW_GAME world boots with
  *  only a validated deterministic seed; applySandboxSetup mutates it on game:started. */
 export function requestSandboxGame(bus, config) {
   pendingConfig = config || {};
+  emitSandboxEmbarkSpeculation(bus, config);
   bus.emit('game:new', gameNewOptionsForSandboxConfig(config));
 }
 

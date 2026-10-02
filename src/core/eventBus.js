@@ -119,11 +119,17 @@ export function createBus() {
     // A claimed-but-unpumped drain (hidden tab, suspended shell) must not accumulate
     // unboundedly: drop the oldest slices past the cap — losing a mid-burst visual tail is
     // cheaper than minutes of deferred drain when the pump resumes. Cosmetic slices drop
-    // first; the lifecycle lane only sheds when nothing cosmetic remains.
+    // first, but only down to a floor: spawn tails carry once-only stamps (materializeT0,
+    // spiralDone) whose loss is a permanent pop-in, while a dropped lifecycle slice leaves a
+    // dead hull the residency poll self-heals. Below the floor the priority lane sheds its
+    // own oldest instead of evicting the last cosmetics.
+    const COSMETIC_OVERFLOW_FLOOR = 16;
     let overflow = presentationQueue.length + presentationPriorityQueue.length - 64;
     while (overflow-- > 0) {
+      const dropCosmetic = presentationPriorityQueue.length === 0
+        || presentationQueue.length > COSMETIC_OVERFLOW_FLOOR;
       recyclePresentationSlice(
-        presentationQueue.length ? presentationQueue.shift() : presentationPriorityQueue.shift());
+        (dropCosmetic ? presentationQueue : presentationPriorityQueue).shift());
     }
   }
 
@@ -280,6 +286,7 @@ export function createBus() {
     presentationSets.clear();
     presentationSnaps.clear();
     presentationQueue.length = 0;
+    presentationPriorityQueue.length = 0;
     presentationSlicePool.length = 0;
     payloadSnapshots.clear();
     deferred = [];

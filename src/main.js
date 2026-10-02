@@ -557,7 +557,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       let cleared = 0;
       for (const e of [...state.entityList]) {
         clearEntityRuntime(e);
-        bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
+        bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId, reason: 'run_reset' });
         if (!runTransitionGuard.isCurrent(transitionToken)) return;
         if (++cleared % 16 === 0) {
           await nextPaintSliced();
@@ -836,6 +836,7 @@ function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionT
       pos: { x: entity.pos.x, z: entity.pos.z },
       radius: entity.radius,
       factionId: entity.factionId,
+      reason: 'run_reset',
     });
     if (!runTransitionGuard.isCurrent(transitionToken)) return false;
   }

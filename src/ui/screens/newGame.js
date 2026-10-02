@@ -248,11 +248,10 @@ export function parseUniverseSeed(value) {
   return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
 }
 
-function randomSeedText(ctx) {
+function randomSeedText() {
   // A fresh seed for the "New seed" word. Cosmetic UI randomness (the run's seed is whatever the
   // field says when Launch is pressed), so Math.random is fine here; state.rng belongs to the sim.
-  const rng = ctx && ctx.state && typeof ctx.state.rng === 'function' ? ctx.state.rng : Math.random;
-  return String(1 + Math.floor(rng() * 0xfffffffe));
+  return String(1 + Math.floor(Math.random() * 0xfffffffe));
 }
 
 function readNewGamePlusCandidateAsync(ctx) {
@@ -858,12 +857,22 @@ export const newGameScreen = {
   // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
   _emitEmbarkSpec() {
     if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
-    const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
-    refs.ctx.bus.emit('game:embarkSpeculation', {
-      sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
-      seed: typed == null ? refs.specSeedRoll : typed,
-      shipDefId: refs.starter && refs.starter.shipId,
-    });
+    // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
+    // requests — running it inside the gesture task drops a menu frame per keystroke.
+    // Coalesce to one deferred emit that reads the field at fire time (not queueMicrotask,
+    // which drains pre-paint): a typed burst arms once, after the gesture.
+    if (this._embarkSpecQueued) return;
+    this._embarkSpecQueued = true;
+    setTimeout(() => {
+      this._embarkSpecQueued = false;
+      if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+      const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
+      refs.ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: typed == null ? refs.specSeedRoll : typed,
+        shipDefId: refs.starter && refs.starter.shipId,
+      });
+    }, 0);
   },
 
   _setStarter(id, { silent = false } = {}) {

@@ -404,15 +404,21 @@ export function applySpecialistCounterplay({
       && Array.isArray(index.shipLike);
     const pool = indexed ? null : shipsOf(state);
     const lanes = indexed ? [index.shipLike] : [pool];
+    // Pick the lowest entity id among valid screeners, not first-in-lane: the shipLike lane's
+    // append order and entityList's swap-pop order diverge, and a replay/test pinning a
+    // targetId must observe the same pick on both paths.
+    let best = null;
     for (const lane of lanes) {
       for (const ent of lane) {
         if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
         if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
+        if (best !== null && ent.id >= best) continue;
         const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
-        if (blocked && blocked.id === specialist.id) return { verb: 'ward_screen', ok: true, targetId: ent.id };
+        if (blocked && blocked.id === specialist.id) best = ent.id;
       }
     }
-    return null;
+    if (best === null) return null;
+    return { verb: 'ward_screen', ok: true, targetId: best };
   }
   return null;
 }
