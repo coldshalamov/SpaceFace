@@ -476,7 +476,9 @@ export function formatPreviewDelta(row) {
     : (Number.isInteger(d)
       ? sign + d
       : sign + (Math.round(d * 10) / 10));
-  return shown + ' ' + String(row.label || row.key).toLowerCase();
+  // NBSP, not a breakable space: in the narrow callout a signed amount must never
+  // wrap away from its unit and read as a separate item (NXI-222).
+  return (shown + ' ' + String(row.label || row.key).toLowerCase()).replace(/ /g, '\u00A0');
 }
 
 /**
