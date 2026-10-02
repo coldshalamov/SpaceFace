@@ -961,7 +961,10 @@ export async function loadMotionBank(ref, fetchImpl) {
   if (!response || !response.ok) {
     throw new Error(`motion bank fetch failed: HTTP ${response && response.status} ${ref.uri}`);
   }
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  // Banks are text JSON; checkouts translate them per core.autocrlf (CRLF on Windows, LF on
+  // Linux). Refs attest canonical LF bytes, so normalize before enforcing the pin.
+  const fetched = new TextDecoder().decode(await response.arrayBuffer());
+  const bytes = new TextEncoder().encode(fetched.replace(/\r\n/g, '\n'));
   if (Number.isFinite(ref.bytes) && bytes.byteLength !== ref.bytes) {
     throw new Error(`motion bank byte length mismatch for ${ref.uri}: ${bytes.byteLength} != ${ref.bytes}.`);
   }

@@ -286,7 +286,9 @@ class MotionBank:
         }
         if self.events:
             bank['events'] = dict(self.events)
-        with open(out_path, 'w') as f:
+        # newline='' keeps json.dump's \n literal — text mode would emit CRLF on Windows and
+        # desync the byte/sha seals the render-package attests (canonical LF).
+        with open(out_path, 'w', newline='') as f:
             json.dump(bank, f, indent=1)
             f.write('\n')
         size = os.path.getsize(out_path)
