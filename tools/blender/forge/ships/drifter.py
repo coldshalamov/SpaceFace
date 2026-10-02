@@ -182,7 +182,7 @@ def build():
     s.detail = 0
     F.light(s, 'NavPort', (-2.1, 3.52, 0.12), 'glow_red', size=0.14)
     F.light(s, 'NavStarboard', (-4.3, BY - 1.1, 0.5), 'glow_green', size=0.14)
-    F.light(s, 'Beacon', (-3.6, 0.0, 1.38), 'glow_amber', size=0.13)
+    F.light(s, 'Beacon', (-3.6, 0.0, 1.38), 'glow_amber.beacon', size=0.13)
 
     # --- close-zoom hero detail layer (LOD0 only; gunmetal and dark, finishes this hull already draws) ----
     bpy.context.view_layer.update()
