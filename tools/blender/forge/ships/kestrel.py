@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
+import stencil  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_01  # noqa: E402
 import ANI_02  # noqa: E402
@@ -114,6 +115,14 @@ def build():
     # Replaceable armour courses: three raised teal plates with dark gaps between them.
     F.panel(s, 'Sponson', (-5.6, 4.55), (3.6, 2.3), 'paint', inset=0.06, depth=0.06, mirror=True)
     F.panel(s, 'Sponson', (3.1, 4.4), (2.4, 1.9), 'paint', inset=0.06, depth=0.06, mirror=True)
+    # The hero marking: DIE LAUGHING, hand-cut through a stencil in warm-ivory lacquer across the aft
+    # port armour course (the raised teal plate above). Two lines, bridges in the counters, chipped
+    # edges, a little overspray; conformal to the plate, LOD0 only (design: TOP_FIVE_MATERIAL_TRUTH
+    # §1 — not a label, not a raised plaque). Reads toward the nose, tops to port.
+    s.detail = 2
+    stencil.stamp(s, 'HeroMark_DieLaughing', [('DIE', 0.86, 0.30), ('LAUGHING', 0.72, 0.12)], (-5.6, 4.55),
+                  'Sponson', finish='paint2.ivory')
+    s.detail = 0
     # Load braces between hull and sponsons.
     for x in (3.0, -1.5, -6.5):
         F.box(s, f'Brace{x}', (x, 2.9, 0.1), (0.9, 1.4, 0.55), material='gunmetal', mirror=True, bevel=0.03)
@@ -212,7 +221,6 @@ def build():
     F.windows(s, 'Ports', 1.2, 4.8, 1.92, 0.75, 4, size=(0.4, 0.2), finish='glow_warm', mirror=True)
     F.box(s, 'Skid', (-4.0, 1.6, -2.15), (4.0, 0.25, 0.25), material='dark', mirror=True, bevel=0.03)
     F.box(s, 'NoseSkid', (4.6, 0.0, -1.9), (1.4, 0.28, 0.24), material='dark', bevel=0.03)
-    F.box(s, 'NameBoard', (-7.0, 0.0, 2.33), (1.6, 0.5, 0.04), material='paint2.ivory', bevel=0.0)
     s.detail = 0
     F.light(s, 'NavPort', (-9.2, 6.3, 0.75), 'glow_red', size=0.16)
     F.light(s, 'NavStarboard', (-9.2, -6.3, 0.75), 'glow_green', size=0.16)
