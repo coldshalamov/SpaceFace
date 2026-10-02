@@ -7,7 +7,7 @@
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
-import { bodyLife, evidenceForConsequence, evidenceForConsequenceLive } from '../combat/stuntEvidence.js';
+import { bodyLife, evidenceForConsequenceLive } from '../combat/stuntEvidence.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
@@ -354,9 +354,18 @@ export const collisionConsequences = {
     _traceArg.provenance = receipt.provenance.tag;
     appendCombatTrace(state.combat, tick, 'collision.consequence', _traceArg);
     if (this.bus && typeof this.bus.emit === 'function') {
+      // Every consumer registered today reads stuntEvidence synchronously and drops it, so
+      // the emit ships the live journal record — the structuredClone's per-contact cost was
+      // buying protection nobody used. The armed snapshot is the contract boundary: any
+      // future presentation/deferred tail still receives the emit-time deep freeze (journal
+      // nodes/paths append across ticks). Invariant: no inline listener may retain or
+      // mutate payload.stuntEvidence past the synchronous dispatch.
+      if (this.bus.setPayloadSnapshot) {
+        this.bus.setPayloadSnapshot('combat:collisionConsequence', snapshotCollisionConsequencePayload);
+      }
       this.bus.emit('combat:collisionConsequence', Object.freeze({
         ...receipt,
-        stuntEvidence: evidenceForConsequence(receipt, state),
+        stuntEvidence: evidenceForConsequenceLive(receipt, state),
         targetName: life?.name,
         victimLife: { lifeId: target.data?.stuntThreat?.lifeId ?? life?.id,
           threatClass: target.data?.stuntThreat?.threatClass ?? 'none', dead: target.alive === false },
@@ -518,8 +527,13 @@ function helmLossFromTumbleStatus(status, tick) {
 
 // Sync-read scratch args for the per-contact consequence path. The callees either copy the
 // fields into their own frozen payload (publishHitstunImpulse, normalizeProvenance), spread
-// them (appendCombatTrace), or read synchronously (evidenceForConsequence, notePendingSlam,
+// them (appendCombatTrace), or read synchronously (evidenceForConsequenceLive, notePendingSlam,
 // resolveCollisionConsequence) — nothing retains these wrappers, so storms pay zero literals.
+function snapshotCollisionConsequencePayload(p) {
+  return p && p.stuntEvidence
+    ? { ...p, stuntEvidence: structuredClone(p.stuntEvidence) }
+    : { ...p };
+}
 const _evidenceArg = { tick: 0, targetId: null, otherId: null, surface: null, otherMass: 0 };
 const _provenanceScratch = { actorId: null, weaponId: null, tag: null, tick: 0, rootId: null };
 const _consequenceArgs = {

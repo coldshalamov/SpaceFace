@@ -983,9 +983,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (sliceBus && typeof sliceBus.drainPresentationTail === 'function') {
         // Fresh measure again (the emit slice spent too): remainMs=0 must not hand the tail
         // an unbounded window — a scaled backlog would drain unbounded inside the frame that
-        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener.
+        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener —
+        // but a kill clump or sector teardown enqueues ~10+ tails per entity at 1–4 ms each,
+        // so a spent frame at the floor trails real choreography for tens of frames. Scale
+        // the floor (not the ceiling) with the backlog, bounded at 2 ms: the queue drains
+        // ~4x faster while an overrun never spends more than that bounded fraction extra.
         const tailMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
-        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(0.5, tailMs)));
+        const tailPending = typeof sliceBus.pendingPresentationCount === 'function'
+          ? sliceBus.pendingPresentationCount() : 0;
+        const tailFloorMs = Math.min(2, 0.5 + Math.max(0, tailPending - 32) / 64);
+        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(tailFloorMs, tailMs)));
       }
       _stepCapArgs.frameDt = 0;
       _stepCapArgs.fixedDt = LOOP_FIXED_DT;
