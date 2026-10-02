@@ -6095,7 +6095,7 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
           return liveState.render.compileObjectPipelines(
             root,
-            onGlass ? { urgent: true } : undefined,
+            onGlass ? { urgent: true, debugBy: 'authored-prepare' } : { debugBy: 'authored-prepare' },
           );
         }
       : null,

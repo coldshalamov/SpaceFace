@@ -7883,7 +7883,7 @@ export const render = {
       // New variant InstancedMeshes carry a never-linked instanced program. Route each through
       // the admission latch — the 771 ms bloomScene brick was one uncompiled SF_CommonRock
       // instanced variant linking inside the presented pass on first live draw.
-      onMeshCreated: (mesh) => { void admitSubjectPipelines(mesh); },
+      onMeshCreated: (mesh) => { void admitSubjectPipelines(mesh, { debugBy: 'on-mesh-created' }); },
     });
     this._entityFrame = createRenderEntityFrame();
     this._cameraOccluderState = createCameraOccluderState();
@@ -8723,16 +8723,18 @@ export const render = {
       // this lane so a missed admission hides + queues instead of linking
       // inside the presented frame.
       rendererData.spacefaceQueuePipelineAdmission = (subject) => (
-        subject ? admitSubjectPipelines(subject) : Promise.resolve({ skipped: true })
+        subject ? admitSubjectPipelines(subject, { debugBy: 'bloom-unready', joinOutstanding: true }) : Promise.resolve({ skipped: true })
       );
     }
     const pendingSubjectHolds = new Map();
-    const markSubjectPipelinesPending = (subject, pending) => {
+    const markSubjectPipelinesPending = (subject, pending, debugBy = null) => {
       if (!subject) return;
       const data = subject.userData || (subject.userData = {});
       if (pending === true) {
         pendingSubjectHolds.set(subject, (pendingSubjectHolds.get(subject) || 0) + 1);
         data.pipelinesPending = true;
+        if (debugBy) data.pipelinesPendingBy = debugBy;
+        data.pipelinesPendingHolds = pendingSubjectHolds.get(subject);
         pendingPipelineSubjects.add(subject);
         return;
       }
@@ -8741,10 +8743,13 @@ export const render = {
         // Another admission lane still holds this root (e.g. residency queued
         // while its pipeline compile is outstanding) — keep it hidden.
         pendingSubjectHolds.set(subject, holds);
+        data.pipelinesPendingHolds = holds;
         return;
       }
       pendingSubjectHolds.delete(subject);
       data.pipelinesPending = false;
+      data.pipelinesPendingBy = null;
+      data.pipelinesPendingHolds = 0;
       pendingPipelineSubjects.delete(subject);
     };
     const admissionSubjectLabel = (root) => {
@@ -8760,8 +8765,33 @@ export const render = {
         || (root && root.type) || 'unnamed';
       return (typeof raw === 'string' || typeof raw === 'number') ? String(raw) : 'unnamed';
     };
+    // Per-subject join for opt-in re-fire lanes: the contact picker and bloom's
+    // unready pass re-fire for a still-latched root every frame the queue reads
+    // empty, and each call queued its own entry + counted hold — the hold stacked
+    // hundreds deep across a sliced-batch wait, keeping an already-authored
+    // boundary hidden for ~20+ frames while the pile drained (the measured
+    // whole-ship hide flake). Opt-in joiners reuse the outstanding admission's
+    // compile → residency → touch chain instead of queueing a duplicate; other
+    // callers keep their own admission (a stale chain's compile may not cover
+    // content mounted after it ran). Urgent joiners only join an urgent
+    // admission — an ambient wait must not demote deadline work into the FIFO.
+    const inFlightSubjectAdmissions = new Map();
     const admitSubjectPipelines = (subject, admissionOptions = {}) => {
-      markSubjectPipelinesPending(subject, true);
+      const urgent = (admissionOptions && admissionOptions.urgent === true)
+        || (state.mode === 'flight'
+          && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+          && admissionSubjectIsOnDeadlineGlass(subject, state));
+      if (admissionOptions && admissionOptions.joinOutstanding === true) {
+        const existing = inFlightSubjectAdmissions.get(subject);
+        if (existing && existing.size > 0) {
+          if (!urgent) return existing.values().next().value.admission;
+          for (const rec of existing) {
+            if (rec.urgent) return rec.admission;
+          }
+        }
+      }
+      markSubjectPipelinesPending(subject, true,
+        (admissionOptions && admissionOptions.debugBy) || 'subject-compile');
       // Label the whole chain — compile, residency, exact-target touch — so a link that lands in
       // any continuation is attributed to the subject that produced it, not just its frame index.
       const counters = (state && state.perfRuntime && state.perfRuntime.tier1) || null;
@@ -8779,10 +8809,6 @@ export const render = {
       // queued, instead of joining the ambient FIFO behind runway/prefetch
       // compiles (D38). The classification is evaluated here, at compile time,
       // so a subject that drifted off the glass while waiting stays ambient.
-      const urgent = (admissionOptions && admissionOptions.urgent === true)
-        || (state.mode === 'flight'
-          && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
-          && admissionSubjectIsOnDeadlineGlass(subject, state));
       let compilation;
       try {
         compilation = compilePipelineSubject(
@@ -8797,6 +8823,17 @@ export const render = {
       }
       const admission = compilation
         .then((result) => {
+          // Once a subject's programs have linked it can keep drawing through any
+          // later re-admission: the pending latch's hide exists to keep a never-
+          // compiled root out of bloomScene, and an already-linked root has
+          // bloom's per-material draw guard as its residual protection. Stamping
+          // the first completed compile lets the submit gate distinguish a first
+          // admission (hide) from a re-admission (stay drawn — hiding a live
+          // authored hull behind a background recompile was the whole-ship
+          // hide flake).
+          if (result && result.contextLost !== true && subject && subject.userData) {
+            subject.userData.sfAdmittedOnce = true;
+          }
           // A linked program still stalls inside the presented frame while its
           // textures/geometry upload. Run the residency pass behind the same
           // pending latch; the mode check runs at settle time so entries queued
@@ -8879,7 +8916,19 @@ export const render = {
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
           markSubjectPipelinesPending(subject, false);
+          const outstanding = inFlightSubjectAdmissions.get(subject);
+          if (outstanding) {
+            outstanding.delete(admissionRecord);
+            if (outstanding.size === 0) inFlightSubjectAdmissions.delete(subject);
+          }
         });
+      let subjectAdmissions = inFlightSubjectAdmissions.get(subject);
+      if (!subjectAdmissions) {
+        subjectAdmissions = new Set();
+        inFlightSubjectAdmissions.set(subject, subjectAdmissions);
+      }
+      const admissionRecord = { admission, urgent };
+      subjectAdmissions.add(admissionRecord);
       observePipelineAdmission(admission,
         (error) => console.warn('[render] background pipeline admission failed', error));
       return admission;
@@ -8896,14 +8945,14 @@ export const render = {
           if (state.render.liveSectorGpuAdmission === true) {
             return subject ? admitSubjectPipelines(subject) : Promise.resolve({ skipped: true });
           }
-          if (subject) void admitSubjectPipelines(subject);
+          if (subject) void admitSubjectPipelines(subject, { debugBy: 'late-opening-loading' });
           return Promise.resolve({
             skipped: true,
             reason: 'opening-submission-plan-owns-first-picture',
           });
         }
         if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
-          if (subject) void admitSubjectPipelines(subject);
+          if (subject) void admitSubjectPipelines(subject, { debugBy: 'late-opening-cohort' });
           return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
         }
       }
@@ -8962,7 +9011,7 @@ export const render = {
         // geometry upload inside the measured pass. Queue the upload on the residency
         // lane and hold the pending latch so the subject stays hidden until resident.
         if (subject) {
-          markSubjectPipelinesPending(subject, true);
+          markSubjectPipelinesPending(subject, true, 'late-opening-residency');
           const outstanding = gpuResidencyAdmissions.pendingFor(subject);
           observePipelineAdmission((outstanding || gpuResidencyAdmissions.prepare(subject, {
             isActive: options.isActive,
@@ -8990,7 +9039,7 @@ export const render = {
       if ((pipelineAdmissions.queuedCount | 0) === 0) {
         const next = pickNextContactCompileSubject(state, this._meshes);
         if (next && typeof state.render.compileObjectPipelines === 'function') {
-          state.render.compileObjectPipelines(next);
+          state.render.compileObjectPipelines(next, { debugBy: 'contact-pick', joinOutstanding: true });
         }
       }
       return flushed;
@@ -16064,6 +16113,7 @@ export const render = {
         if (sliceInFlight || linkOnGlass) {
           const data = m.userData || (m.userData = {});
           data.pipelinesPending = true;
+          data.pipelinesPendingBy = 'mesh-build-compile';
           const subject = m;
           void yieldAfterPresent().then(() => {
             const compile = this.state && this.state.render
@@ -16141,7 +16191,7 @@ export const render = {
       (m.userData || (m.userData = {})).geometryPending = true;
     }
     if (this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
-      void this.state.render.compileObjectPipelines(m);
+      void this.state.render.compileObjectPipelines(m, { debugBy: 'entity-mesh-mount' });
     }
     if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
       queueOrRequestAuthoredUpgrade(this, e, m, this.state);
@@ -16402,6 +16452,7 @@ export const render = {
       _submitVisibilityOptions.hidden = true;
       _submitVisibilityOptions.snapshotMissing = !posed;
       _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
+      _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
       _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
         && !authoredPendingBoundarySubmitsStandIn(mesh);
       _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
@@ -16608,6 +16659,7 @@ export const render = {
       _submitVisibilityOptions.allowShadowCast = false;
       _submitVisibilityOptions.snapshotMissing = !posed;
       _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
+      _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
       _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
         && !authoredPendingBoundarySubmitsStandIn(mesh);
       _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);

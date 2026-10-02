@@ -21,8 +21,11 @@ export function shouldSubmitEntityMesh(options = {}) {
   if (options.snapshotMissing === true && !protectedRoot) return false;
   if (protectedRoot) return true;
   // First draw of an uncompiled material links the driver program inside bloomScene.
-  // Hold ordinary roots until compileObjectPipelines has actually linked them.
-  if (options.pipelinesPending === true) return false;
+  // Hold ordinary roots until compileObjectPipelines has actually linked them —
+  // once they have, a re-admission re-links variants behind the scenes and the
+  // already-linked root keeps drawing (bloom's per-material guard skips any
+  // still-unlinked drawable instead of the whole root disappearing).
+  if (options.pipelinesPending === true && options.sfAdmittedOnce !== true) return false;
   // Nearby opening extras that are still decoding must not enter bloomScene.
   // Their first authored draw is the 100 ms+ Intel compile brick. A resolving marker is exempt:
   // it draws from the shared, already-linked Standard family and is the only drawable in the
