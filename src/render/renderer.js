@@ -3240,6 +3240,98 @@ function clearEntityMeshReference(entity, mesh) {
  * record's own census takes over the same decode work). Released files land back in the
  * soft package cache they would have come from anyway — prefetch earlier, never load less.
  */
+// The second hop of declared route intent — the only source that can name a sector two
+// jumps out deterministically. Engaged executors advance `legIndex` (their plot stays
+// untrimmed), unengaged plots trim `nav.route.legs` at each sector:enter — mirror
+// predictNextSector's own read of both shapes. Kinematic intent never yields a second hop.
+function predictedSecondHopSectorId(state) {
+  const nav = state && state.nav;
+  const currentSectorId = String((state.world && state.world.currentSectorId) || '');
+  const executor = nav && nav.executor;
+  if (executor && executor.engaged === true && executor.status !== 'arrived') {
+    const legs = Array.isArray(executor.legs) ? executor.legs : [];
+    const legIndex = Number.isInteger(executor.legIndex) ? executor.legIndex : 0;
+    const next = legs[legIndex + 1];
+    return next && typeof next.toSectorId === 'string' && next.toSectorId !== currentSectorId
+      ? next.toSectorId : null;
+  }
+  const route = nav && nav.route;
+  const legs = route && Array.isArray(route.legs) ? route.legs : null;
+  if (legs) {
+    for (let i = 0; i < legs.length - 1; i++) {
+      const leg = legs[i];
+      if (leg && String(leg.from) === currentSectorId) {
+        const next = legs[i + 1];
+        return next && typeof next.to === 'string' && next.to !== currentSectorId ? next.to : null;
+      }
+    }
+  }
+  return null;
+}
+
+function sectorPrewarmRecordOwns(owner, sectorId) {
+  const exact = String(sectorId || '');
+  if (!exact) return false;
+  const incoming = owner._incomingSectorPrewarm;
+  if (incoming && incoming.active === true && incoming.sectorId === exact) return true;
+  const pending = owner._authoredSectorPrewarmPending;
+  if (pending && pending.active === true && pending.sectorId === exact) return true;
+  const current = owner._currentSectorPrewarm;
+  return !!(current && current.active === true && current.sectorId === exact);
+}
+
+// Route-weighted 2-deep residency: the leg AFTER the predicted hop decodes during the
+// current hop's flight+charge, so a multi-hop route never starts a charge on a cold
+// census. Same warm-owner/soft-lease machinery as the depth-1 predicted warm — byte
+// pressure evicts it first, so it can never starve live owners. Reconciles against the
+// freshly computed second hop every poll: a replot, an arrive, or an authored record
+// taking the same sector retires the arm exactly like the depth-1 lane.
+function updateRouteDeepSectorWarm(owner, state, census, releaseOwner) {
+  const recordOwns = (sectorId) => sectorPrewarmRecordOwns(owner, sectorId);
+  const deep = owner._routeDeepSectorWarm && owner._routeDeepSectorWarm.active === true
+    ? owner._routeDeepSectorWarm : null;
+  const deepSectorId = predictedSecondHopSectorId(state);
+  const predicted = owner._predictedSectorWarm && owner._predictedSectorWarm.active === true
+    ? owner._predictedSectorWarm : null;
+  if (deep) {
+    // An authored record or the depth-1 warm covering the same sector makes this arm
+    // redundant — its decoded files stay resident under that owner.
+    const absorbed = recordOwns(deep.sectorId) || (predicted && predicted.sectorId === deep.sectorId);
+    if (absorbed || deepSectorId !== deep.sectorId) {
+      deep.active = false;
+      releaseOwner(deep.owner, absorbed
+        ? 'route-deep-sector-warm-absorbed'
+        : 'route-deep-sector-warm-retracted');
+      owner._routeDeepSectorWarm = null;
+    }
+  }
+  if (!deepSectorId || recordOwns(deepSectorId)
+    || (predicted && predicted.sectorId === deepSectorId)
+    || (owner._routeDeepSectorWarm && owner._routeDeepSectorWarm.sectorId === deepSectorId)) return;
+  const requests = census(deepSectorId);
+  if (!requests || !requests.length) return;
+  const warmOwner = { type: 'route-deep-sector-warm', sectorId: deepSectorId };
+  const nextWarm = {
+    sectorId: deepSectorId,
+    owner: warmOwner,
+    active: true,
+    settled: null,
+    requestCount: requests.length,
+    source: 'route-deep',
+  };
+  const isActive = () => nextWarm.active === true && owner._routeDeepSectorWarm === nextWarm;
+  owner._routeDeepSectorWarm = nextWarm;
+  preloadAuthoredParts(requests.map((request) => ({
+    ...request,
+    residencyOwner: warmOwner,
+    residencyRole: 'sector-predicted',
+    sectorId: deepSectorId,
+    isResidencyOwnerActive: isActive,
+  })), owner.renderer)
+    .then((settled) => { nextWarm.settled = settled; })
+    .catch(() => {});
+}
+
 export function updatePredictedSectorPrewarm(owner) {
   const state = owner && owner.state;
   if (!state || state.mode !== 'flight') return;
@@ -3248,16 +3340,8 @@ export function updatePredictedSectorPrewarm(owner) {
   const releaseOwner = residency && typeof residency.releaseOwner === 'function'
     ? residency.releaseOwner.bind(residency) : null;
   if (!census || !releaseOwner) return;
-  const recordOwns = (sectorId) => {
-    const exact = String(sectorId || '');
-    if (!exact) return false;
-    const incoming = owner._incomingSectorPrewarm;
-    if (incoming && incoming.active === true && incoming.sectorId === exact) return true;
-    const pending = owner._authoredSectorPrewarmPending;
-    if (pending && pending.active === true && pending.sectorId === exact) return true;
-    const current = owner._currentSectorPrewarm;
-    return !!(current && current.active === true && current.sectorId === exact);
-  };
+  updateRouteDeepSectorWarm(owner, state, census, releaseOwner);
+  const recordOwns = (sectorId) => sectorPrewarmRecordOwns(owner, sectorId);
   const warm = owner._predictedSectorWarm && owner._predictedSectorWarm.active === true
     ? owner._predictedSectorWarm : null;
   const prediction = predictNextSector(state, {
@@ -6091,6 +6175,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._authoredSectorPrewarmPending = null;
   owner._authoredSectorPrewarmPendingId = null;
   owner._predictedSectorWarm = null;
+  owner._routeDeepSectorWarm = null;
   owner._hazardVisuals = [];
   owner._meshBuildQueue = [];
   owner._meshBuildQueuedIds = null;
@@ -7214,6 +7299,13 @@ export const render = {
         this._assetResidency.releaseOwner(this._predictedSectorWarm.owner, 'predicted-sector-warm-reset');
       }
       this._predictedSectorWarm = null;
+    }
+    if (this._routeDeepSectorWarm) {
+      this._routeDeepSectorWarm.active = false;
+      if (this._assetResidency) {
+        this._assetResidency.releaseOwner(this._routeDeepSectorWarm.owner, 'route-deep-sector-warm-reset');
+      }
+      this._routeDeepSectorWarm = null;
     }
     this._sectorPrewarmGeneration = 0;
     this._authoredPreparationEpoch = 0;

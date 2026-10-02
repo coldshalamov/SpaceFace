@@ -738,9 +738,6 @@ export const physics = {
     const out = this._scratch;
     const wake = this._projectileWake || (this._projectileWake = []);
     wake.length = 0;
-    this._syncProjectileBroadphase(state);
-    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
-    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
     const extra = this._sweepExtraCandidates || (this._sweepExtraCandidates = []);
     // Dormant-body admit pre-pass: every live projectile used to run a field query plus a
@@ -751,11 +748,13 @@ export const physics = {
     // A rec promoted by an earlier projectile already self-skips: promote marks rec.alive
     // false, and the per-projectile filters below test exactly that.
     let unionMinX = Infinity, unionMinZ = Infinity, unionMaxX = -Infinity, unionMaxZ = -Infinity;
+    let sweepCandidate = false;
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
       const limit = this._projectileSweepLimitScratch;
       if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) continue;
+      sweepCandidate = true;
       const reach = Math.hypot(proj.pos.x - start.x, proj.pos.z - start.z) * 0.5 + (proj.radius || 0) + 120;
       if (!(reach > 0)) continue;
       const cx = (start.x + proj.pos.x) * 0.5;
@@ -785,6 +784,11 @@ export const physics = {
     this._sweepUnionBoundsZ1 = unionMaxZ;
     this._sweepUnionRocksLive = unionRocks;
     this._sweepUnionActorsLive = unionActors;
+    // The broadphase is only consulted by a segment that survived the sweep limit — a
+    // projectile-free tick (plain cruise) needs no sector-wide dynamic-layer resync.
+    if (sweepCandidate) this._syncProjectileBroadphase(state);
+    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
+    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);

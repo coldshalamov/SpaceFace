@@ -970,47 +970,44 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
     }
   }
 
-  // Enemies + boss spawn only when the bag has no combat presence at all. The zone-intent
-  // union plus the ambient pool covers every hull either spawn path can mount; the boss hull
-  // warms when a boss POI exists, is undefeated, and no boss record rematerializes to claim it.
-  const hostileFree = !(active.enemies && active.enemies.length)
-    && !(active.dressing && active.dressing.length);
-  if (hostileFree) {
-    const hadCombatHistory = sectorRecords.concat(intentRecords).some((rec) => rec
-      && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
-    // _spawnEnemies sizes off the DRIFTED density — the gate must read the same effective
-    // value or a 0→positive drift skips the ambient warm while ambient rolls still spawn.
-    if (!hadCombatHistory && effectiveSectorDensityFor(state, sector.id, sector) > 0) {
-      for (const zone of zonesForSector(sector.id)) {
-        const presence = zone && zone.presence;
-        if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;
-        const factionId = presence.factionId || zone.factionId || null;
-        for (const archetype of presence.archetypes) {
-          out.roster.push({
-            archetype,
-            factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), factionId),
-          });
-        }
-      }
-      for (const archetype of liveEnemyPoolFor(sector)) {
+  // Mirror _ensureSectorMaterializedChunks exactly: ambient combatants re-roll only with no
+  // durable combat history (a NON-combat record like MISSION_TARGET still rematerializes into
+  // active.enemies, so a bag-content test would starve both rosters), and the boss spawn is
+  // not conditioned on combat history at all — only on an unclaimed, undefeated claim.
+  const hadCombatHistory = sectorRecords.concat(intentRecords).some((rec) => rec
+    && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss === true));
+  // _spawnEnemies sizes off the DRIFTED density — the gate must read the same effective
+  // value or a 0→positive drift skips the ambient warm while ambient rolls still spawn.
+  if (!hadCombatHistory && effectiveSectorDensityFor(state, sector.id, sector) > 0) {
+    for (const zone of zonesForSector(sector.id)) {
+      const presence = zone && zone.presence;
+      if (!presence || presence.hostile === undefined || !Array.isArray(presence.archetypes)) continue;
+      const factionId = presence.factionId || zone.factionId || null;
+      for (const archetype of presence.archetypes) {
         out.roster.push({
           archetype,
-          factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+          factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), factionId),
         });
       }
     }
-    const bossPoi = (sector.pois || []).find((p) => p && p.type === 'anomaly' && p.id === 'poi_boss');
-    if (bossPoi) {
-      const disc = world.discovery && world.discovery[sector.id];
-      const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
-      const liveBoss = active.boss && state.entities && state.entities.get(active.boss.entityId);
-      // Suppress only for a record that will actually mount the boss — the rematerialize
-      // enumeration already covers it with a shipStub. A merely-held record (live carrier
-      // elsewhere or a farActor row) is no coverage at all: _spawnBossIfDue ignores records,
-      // so gating on it starved the fresh spawn's decode.
-      if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !bossRecordRematerializes) {
-        out.roster.push({ archetype: 'dreadnought_boss' });
-      }
+    for (const archetype of liveEnemyPoolFor(sector)) {
+      out.roster.push({
+        archetype,
+        factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+      });
+    }
+  }
+  const bossPoi = (sector.pois || []).find((p) => p && p.type === 'anomaly' && p.id === 'poi_boss');
+  if (bossPoi) {
+    const disc = world.discovery && world.discovery[sector.id];
+    const bossDefeated = !!(disc && disc.pois && disc.pois[bossPoi.id] && disc.pois[bossPoi.id].bossDefeated);
+    const liveBoss = active.boss && state.entities && state.entities.get(active.boss.entityId);
+    // Suppress only for a record that will actually mount the boss — the rematerialize
+    // enumeration already covers it with a shipStub. A merely-held record (live carrier
+    // elsewhere or a farActor row) is no coverage at all: _spawnBossIfDue ignores records,
+    // so gating on it starved the fresh spawn's decode.
+    if (!bossDefeated && !(liveBoss && liveBoss.alive !== false) && !bossRecordRematerializes) {
+      out.roster.push({ archetype: 'dreadnought_boss' });
     }
   }
 
