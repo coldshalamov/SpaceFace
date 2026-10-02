@@ -8855,7 +8855,12 @@ export const render = {
         markSubjectPipelinesPending(subject, false);
         throw error;
       }
-      const admission = compilation
+      // The chain construction itself sits inside the same release path: a non-thenable
+      // compile result (or a throw while building continuations) would otherwise leak the
+      // counted hold and leave the subject latch-hidden forever.
+      let admission;
+      try {
+        admission = compilation
         .then((result) => {
           // Once a subject's programs have linked it can keep drawing through any
           // later re-admission: the pending latch's hide exists to keep a never-
@@ -8956,6 +8961,11 @@ export const render = {
             if (outstanding.size === 0) inFlightSubjectAdmissions.delete(subject);
           }
         });
+      } catch (error) {
+        if (counters) counters.admissionSubject = priorSubject;
+        markSubjectPipelinesPending(subject, false);
+        throw error;
+      }
       let subjectAdmissions = inFlightSubjectAdmissions.get(subject);
       if (!subjectAdmissions) {
         subjectAdmissions = new Set();
@@ -9086,7 +9096,7 @@ export const render = {
       if (typeof pipelineAdmissions.flushOneAfterPresent !== 'function') return null;
       const flushed = pipelineAdmissions.flushOneAfterPresent();
       if ((pipelineAdmissions.queuedCount | 0) === 0) {
-        const next = pickNextContactCompileSubject(state, this._meshes);
+        const next = pickNextContactCompileSubject(state, this._meshes, pendingPipelineSubjects);
         if (next && typeof state.render.compileObjectPipelines === 'function') {
           state.render.compileObjectPipelines(next, { debugBy: 'contact-pick', joinOutstanding: true });
         }

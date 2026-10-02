@@ -1192,7 +1192,9 @@ export function createUnreadyDrawableGuard(renderer) {
         || (sceneSetChanged && drainRoots === null) || !drainRoots) {
       // Program-level trigger, pending-subject trigger, or the uninstrumented-mutation
       // failsafe: any existing drawable could hold the unready program — full traverse.
-      scene.traverse(hideOneUnreadySceneDrawable);
+      // traverseVisible prunes invisible subtrees for free: the callback no-ops on
+      // invisible objects and descendants of an invisible root can't draw anyway.
+      scene.traverseVisible(hideOneUnreadySceneDrawable);
     } else {
       for (let i = 0; i < drainRoots.length; i++) {
         if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
