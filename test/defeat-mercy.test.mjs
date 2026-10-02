@@ -159,7 +159,9 @@ test('a live survival run keeps its own tuning even with a hot streak', () => {
   const state = makeState({ simTime: 10 });
   state.player.defeatStreak = { count: 4, lastDefeatSimTime: 9 };
   state.run = { kind: 'survival', phase: 'active' };
-  assert.equal(difficultyDamageScale(state, 9, 1), 0.5);
+  // FB-026: inside a run the whole damage scale is exempt — the arena's difficulty is wave
+  // composition, so neither the mercy streak nor the profile's 0.50 incoming reach it.
+  assert.equal(difficultyDamageScale(state, 9, 1), 1);
   state.run.phase = 'inactive';
   assert.equal(difficultyDamageScale(state, 9, 1), 0.5 * DEFEAT_STREAK_MERCY_SCALE);
 });

@@ -41,8 +41,11 @@ import {
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
-export const SURVIVAL_ARENA_INTRO_TICKS = 1;
-export const SURVIVAL_WAVE_INTRO_TICKS = 1;
+// FB-025 — real intro beats: two seconds for the arena, a second and a half for each wave.
+// survivalAnnounce owns the completion emit at window end; these constants are the machine's
+// floor AND its backstop when the announce voice is muted or absent. Never freezes the player.
+export const SURVIVAL_ARENA_INTRO_TICKS = 120;
+export const SURVIVAL_WAVE_INTRO_TICKS = 90;
 export const SURVIVAL_CLEANUP_TICKS = 180;
 
 // PQ-133.04 R4 — the bounded public block (CRU-030/027). One authored ten-wave block — the

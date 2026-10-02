@@ -7,7 +7,9 @@
 // or says plainly when the spawn cap starved a wave so the player never mistakes it for a clear.
 //
 // It is READ-ONLY over the run. It never writes state.run (runSession owns that), never spawns,
-// never ticks, and uses no RNG at all — every line is a pure function of the plan and the receipts.
+// and uses no RNG at all — every line is a pure function of the plan and the receipts. FB-025
+// added the one tick it keeps: update() counts the intro windows down and emits
+// run:arenaIntroComplete / run:waveIntroComplete when the beat it spoke has played.
 //
 // Seams used, all pre-existing and public:
 //   voice:say    src/ui/voiceArbiter.js:316 — the one-voice authority. Channels/priorities at :38.
@@ -29,6 +31,10 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
 import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
 import { validateRunState } from '../core/runState.js';
+import {
+  SURVIVAL_ARENA_INTRO_TICKS,
+  SURVIVAL_WAVE_INTRO_TICKS,
+} from './survivalRun.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -335,6 +341,8 @@ export const survivalAnnounce = {
     this._plan = null;
     this._planWave = 0;
     this._muted = false;
+    this._arenaIntroArmed = false;
+    this._arenaIntroTicks = 0;
     this._resetWave(0);
   },
 
@@ -345,6 +353,8 @@ export const survivalAnnounce = {
     this._openedWave = 0;
     this._bossAnnouncedWave = 0;
     this._closedWave = 0;
+    this._waveIntroArmed = 0;
+    this._waveIntroTicks = 0;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -383,6 +393,46 @@ export const survivalAnnounce = {
 
   // ── run events ────────────────────────────────────────────────────────────────────────────────
 
+  /**
+   * FB-025 — the intro window's one timed job: count the beat the machine authored and emit the
+   * completion when it has played. Everything else in this voice stays event-driven. The phase
+   * machine's own tick floor is the same constant, so a muted or absent announce can never stall
+   * a wave; the emit is the announce's receipt that the line went out inside the window.
+   */
+  update() {
+    if (this._muted) return;
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    if (run.phase === 'arena_intro') {
+      if (this._arenaIntroArmed) {
+        this._arenaIntroTicks += 1;
+        if (this._arenaIntroTicks >= SURVIVAL_ARENA_INTRO_TICKS) {
+          this._arenaIntroArmed = false;
+          this._emitComplete('run:arenaIntroComplete', {});
+        }
+      }
+    } else {
+      this._arenaIntroArmed = false;
+    }
+    if (run.phase === 'wave_intro') {
+      if (this._waveIntroArmed > 0) {
+        this._waveIntroTicks += 1;
+        if (this._waveIntroTicks >= SURVIVAL_WAVE_INTRO_TICKS) {
+          const wave = this._waveIntroArmed;
+          this._waveIntroArmed = 0;
+          this._emitComplete('run:waveIntroComplete', { wave });
+        }
+      }
+    } else {
+      this._waveIntroArmed = 0;
+    }
+  },
+
+  _emitComplete(event, payload) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit(event, payload);
+  },
+
   _onWavePlanned(payload) {
     if (this._muted) return;
     if (!liveSurvivalRun(this.state)) return;
@@ -392,19 +442,19 @@ export const survivalAnnounce = {
     // allowed to describe the wrong wave.
     this._plan = payload.plan || null;
     this._planWave = wave;
+    // FB-025 — the opening line IS the intro window's content: it is spoken when the plan lands
+    // (window start), so it has already been read by the time the first body spawns. The window's
+    // completion emit is armed at the same moment.
+    if (this._openedWave !== wave) {
+      this._resetWave(wave);
+      this._openedWave = wave;
+      this._speakOpening(wave);
+    }
+    this._waveIntroTicks = 0;
+    this._waveIntroArmed = wave;
   },
 
-  _onWaveStarted(payload) {
-    if (this._muted) return;
-    if (!liveSurvivalRun(this.state)) return;
-    const wave = payload && payload.wave;
-    if (!Number.isInteger(wave) || wave < 1) return;
-    if (this._openedWave === wave) return;
-
-    this._resetWave(wave);
-    this._openedWave = wave;
-    if (this._planWave !== wave) return;
-
+  _speakOpening(wave) {
     const line = waveOpeningLine(wave, this._plan);
     // 'objective' (60) — this IS the objective nudge: it yields to danger and story, and outranks
     // enemy chatter. voiceArbiter.js:41.
@@ -417,6 +467,21 @@ export const survivalAnnounce = {
       const question = questionClauseFor(wave, this._plan, arenaId);
       if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
     }
+  },
+
+  _onWaveStarted(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    if (this._openedWave === wave) return;
+
+    // Fallback for a wave whose plan this voice never saw (e.g. a direct waveStarted): it still
+    // opens on time, and only a plan for THIS wave may name it.
+    this._resetWave(wave);
+    this._openedWave = wave;
+    if (this._planWave !== wave) return;
+    this._speakOpening(wave);
   },
 
   _onWaveMaterialized(payload) {
@@ -524,6 +589,12 @@ export const survivalAnnounce = {
     }
     // A fresh wave_intro means the previous wave's line budget is spent and gone.
     if (phase === 'wave_intro') this._hintsThisWave = 0;
+    // FB-025 — the arena intro beat is armed on entry and its completion emitted from update()
+    // at the authored window end. The machine's floor covers a muted or absent announce.
+    if (phase === 'arena_intro') {
+      this._arenaIntroArmed = true;
+      this._arenaIntroTicks = 0;
+    }
   },
 
   /**

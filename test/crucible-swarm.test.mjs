@@ -531,8 +531,9 @@ test('the stat curve is pinned at 1, so a deep run ends on execution rather than
   }
   // SWARM_LEVEL_CAP still names the wave at which concurrency and roster max out — not HP.
   assert.equal(swarmFullIntensityWave(), 1 + (SWARM_LEVEL_CAP - 1) * 3);
-  // And the arc keeps its own unbounded curve.
-  assert.ok(levelForWave(60) > SWARM_LEVEL_CAP, 'the authored arc is untouched');
+  // FB-026: the authored arc is under the same law now — its curve is composition, so the arc's
+  // materialization level is flat too.
+  assert.equal(levelForWave(60), 1, 'the authored arc materializes at level 1 as well');
 });
 
 test('everything the mode has is on the table by the full-intensity wave', () => {

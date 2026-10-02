@@ -56,12 +56,14 @@ export function batchStreamSeed(seed, wave, packageIndex, batchIndex) {
 }
 
 /**
- * Enemy level for a wave. Deterministic and monotone; no HP inflation knob beyond the
- * archetype's own level scaling (§33 forbids HP inflation as the difficulty lever).
+ * Enemy level for a wave. Always 1: §33 forbids HP inflation as the difficulty lever, and
+ * FB-026 moved the arc's curve into composeArcWave package counts, bearings and batch gaps
+ * (survivalActs.js). A level here would multiply hull/armor/shield/damage through
+ * scaleCombatant — the exact knob the arc is not allowed to have.
  */
 export function levelForWave(wave) {
-  const w = Number.isInteger(wave) && wave > 0 ? wave : 1;
-  return 1 + Math.floor((w - 1) / 3);
+  void wave;
+  return 1;
 }
 
 /** Unit bearing for a gate id, falling back to `front` for an unknown id. */
