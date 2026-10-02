@@ -207,6 +207,7 @@ function migrationBaselinePlan(plan) {
     delete copy.terrain;
     // warmAssets is a render-warm hint on the pending item — same post-migration class.
     delete copy.warmAssets;
+    delete copy.warmShips;
     copy.ships = item.ships.map((ship) => {
       const next = { ...ship };
       const doctrine = MIGRATION_ERA_SHIP_DOCTRINE[ship.archetype];
