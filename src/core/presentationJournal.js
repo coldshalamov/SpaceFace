@@ -136,6 +136,11 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   const isEntityJournaled = typeof options.isEntityJournaled === 'function'
     ? options.isEntityJournaled
     : () => true;
+  // Entities whose spawn actually recorded. Eligibility flags are mutable post-spawn
+  // (the renderer latches _noMesh after build failures), so a suppressed destroy must
+  // only apply to entities that were never journaled — a journaled entity that loses
+  // eligibility mid-life still needs its destroy to close the generation.
+  const journaledEntities = new WeakSet();
   const records = Array.from({ length: size }, () => createPresentationJournalRecord());
 
   let generations = new Uint32Array(initialEntityCapacity + 1);
@@ -321,6 +326,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       1,
       entity,
     );
+    journaledEntities.add(entity);
     spawnCount++;
     return sequence;
   }
@@ -333,7 +339,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
   function recordDestroy(tick, source) {
     assertOpen();
-    if (!isEntityJournaled(source)) return 0;
+    if (!isEntityJournaled(source) && !journaledEntities.has(source)) return 0;
     if (!prepareRecord(tick)) return 0;
     const entityId = ensureEntityId(source);
     if (entityId === 0 || rebuildRequired) return 0;
