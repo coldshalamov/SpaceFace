@@ -327,3 +327,48 @@ One game path means most of this lands in Adventure too:
    additive phase — "a really good idea", deliberately not in the first builds because it needs a
    lot of attention.
 4. **Co-op.** Never. Swarm is single-player (B11).
+
+## 10. The physics dream: a UX verdict (owner question, 2026-10-02)
+
+Asked directly whether "physics attacks and cool weapons to blast enemies in waves" is well served
+by the UX today. **No. The capability is real and generously rewarded; the presentation undersells
+it and the first minute actively hides it.** Findings, ranked by damage:
+
+1. **The first minute taught nothing and punished the fast player.** The opening lesson (first-run
+   only) fields one wasp, one throwable rock and a gravity well, then holds the pack for 45 s —
+   but nothing on screen said what the rock was for, and shooting the wasp (a second of gunfire)
+   left 44 s of empty arena. *Fixed this session:* the hold is now a ceiling — it releases ~3 s
+   after the lesson hull falls — and the announcer names the lesson ("The rock beside you is
+   ammunition: line it and throw it") and the pack's early arrival. Test: `opening-lesson.test.mjs`.
+2. **The power rail is a good shelf nobody reads.** Nine physics verbs render as a small diagonal
+   ladder of labelled dots; what each *does* lives only in hover tips. Worse, two slots (7 Cone
+   snowplow, 8 Skim harvester) are Adventure utility verbs — dead inventory in an arena fight.
+3. **The signature verb is not the default.** The rope — latch, swing, release — is the one move
+   no competitor has, yet the default starter (Ricochet Runner: bank stream + concussion + repel
+   trap) carries no line. Only the Massline Rig package has it, and it is not the default. The
+   basic tether rope *does* work on any hull (slot 3) — but nothing tells the player that.
+4. **Physics kills are the best-paid kills and nobody can tell.** Style scoring already pays ≥2×
+   for explosive/terrain/collision kills and the stunt layer names tricks — but it is a quiet
+   13 px column bottom-left. Kill causes (SLAMMED / MINED / PILE-UP) never reach the screen.
+5. **No opportunity language.** Nothing says *this body is throwable*, *a well would catch that
+   pack*, *your charge is armed — now*. The target card's "VULN E K X" encodes physics weakness
+   in three letters a new player cannot read.
+
+What optimal looks like, in build order for the arcade phase (pre-Fortify):
+
+- **Teach by doing.** The renamed lesson (done) plus a first-trick bounty: the first body thrown
+  into anything gets the full named-callout treatment and a credit bonus — the achievements for
+  these tricks already exist; surface them in-run.
+- **The rail answers "why now".** A slot pulses when its power is tactically live — hostile light
+  enough to throw inside reach (Line), armed ordnance on the field (Blast), a pack inside a
+  well's footprint (Well). The slot-claim contract already exists; this is a cue layer, not a new
+  surface. Retire or reskin slots 7–8 in Swarm — the rail should show only arena verbs.
+- **Kill attribution.** Every physics kill gets a cause tag on the stunt line; multi-kills get
+  the DOUBLE/TRIPLE callout and the kill counter rolls like a pinball display. `stuntCallout.js`
+  already owns the lane — it needs volume, not a new system.
+- **Clumps, not streams.** Wave packages should arrive in throw-shaped groups — tight enough that
+  one charge or one swung body can take three. The planner owns spacing; this is a scheduling
+  shape, not new tech.
+- **The rope is the logo.** Either Massline Rig becomes the default starter, or the basic tether
+  becomes a louder, always-on Swarm verb with an explicit "swing release" moment in the lesson.
+  This one is an owner call — it decides what a new player's hands learn first.
