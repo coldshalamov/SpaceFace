@@ -36,7 +36,7 @@ import {
   promotedPilotIdentity,
   promotedReturnLine,
 } from '../data/pilotCallsigns.js';
-import { rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
+import { ensureMoralMemory, rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
 import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity, reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
@@ -124,7 +124,11 @@ export const aceMemory = {
     this._listen('combat:kill', (p) => this._promotedKilled(p));
     this._listen('pirateDisengage:triggered', (p) => this._pirateDisengageTriggered(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
+    // FB-139 — a moral-memory return (the spared pilot coming back angry) is announced
+    // through the ace voice and a cited news line, not only felt through the spawn.
+    this._listen('moralMemory:vengefulReturn', (p) => this._vengefulReturn(p));
     this._recentFlung = new Map();
+    this._vengefulAnnounced = new Set();
   },
 
   newGame() {
@@ -558,6 +562,49 @@ export const aceMemory = {
     rec.lastSeenAt = rec.lastFlungAt;
     rec.lastSectorId = sectorOf(this.state, payload);
     this._emitTransition('flung', ace, rec);
+  },
+
+  // FB-139 — a spared pilot returning vengeful gets the remembered-bark voice plus a
+  // news line that names the mercy it answers. The debt record is the proof of the
+  // earlier spare: no debt, no announcement (a first encounter stays silent).
+  _vengefulReturn(payload) {
+    if (!payload || payload.id == null || !this.state) return;
+    const memory = ensureMemory(this.state);
+    const debt = ensureMoralMemory(this.state).debts[String(payload.id)] || null;
+    if (!debt) return;
+    const key = `${payload.id}:${payload.encounterId || ''}`;
+    if (this._vengefulAnnounced && this._vengefulAnnounced.has(key)) return;
+    if (this._vengefulAnnounced) this._vengefulAnnounced.add(key);
+    const ace = resolveAce(payload)
+      || promotedAceForRecord(memory[payload.id])
+      || {
+        id: String(payload.id),
+        name: payload.name || debt.name || String(payload.id),
+        crew: (memory[payload.id] && memory[payload.id].crew) || 'the crew',
+        factionId: debt.factionId || 'faction_reach',
+      };
+    const rec = recordFor(memory, ace);
+    rec.encountered = true;
+    rec.returned = true;
+    rec.lastSeenAt = nowOf(this.state, payload);
+    rec.lastSectorId = sectorOf(this.state, payload);
+    const stance = stanceForRecord(rec);
+    const seed = hash32(seedOf(this.state), ace.id, payload.encounterId || 'vengeful');
+    const line = rememberedBarkFor(ace, rec, stance, seed)
+      || `${ace.name}: you should have finished me.`;
+    this._speakAceLine(ace, line, 'vengeful-return', `aceMemory:${ace.id}:vengeful-return`);
+    const mercy = Number.isInteger(debt.mercyOrdinal)
+      ? `mercy no. ${debt.mercyOrdinal}` : 'a spared debt';
+    const headline = `${ace.name} is back for blood — the lane remembers ${mercy}.`;
+    emit(this.bus, 'news:headline', {
+      headline,
+      text: headline,
+      kind: 'ace-vengeful-return',
+      aceId: ace.id,
+      aceName: ace.name,
+      crew: ace.crew,
+      sectorId: rec.lastSectorId || null,
+    });
   },
 
   _playerKill(payload) {

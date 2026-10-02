@@ -32,8 +32,13 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // dropped their measured `skin:` manifests for single ball colliders (colliders 190 → 68).
 // Entity/type census, cathedral census and releaseSha256 unchanged. Prior digest
 // c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa.
+// Re-pinned 2026-09-30 for solid contact dynamics (eb1869826 "make contacts solid and keep
+// player heading true"): dynamic bodies adopt measured solid skins via SKIN_DYNAMIC_TYPES,
+// restoring compound collision proxies to 6 live asteroids (128 primitives) and 2 live ships
+// (48 primitives), taking colliders 68 → 236. Prior digest
+// 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  '718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544';
+  'b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -160,9 +165,11 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // skins and authored rebuilds changed proxy primitive counts (66 → 108 prism gallery,
   // 108 → 184 Forge wave, 184 → 190 the packet-8 pack releases). Package E (b7b499263) made the
   // six non-landmark asteroids dynamic, so they left the measured-skin eligibility list and
-  // collide as single balls (190 → 68). The count tracks sanctioned asset/physics work, not
-  // topology — the digest pin above is the canary.
-  assert.equal(first.structuralCost.colliders, 68);
+  // collide as single balls (190 → 68). Solid contact dynamics (eb1869826) then restored compound
+  // skins to solid dynamic bodies via SKIN_DYNAMIC_TYPES (68 → 236: 60 stations/gates + 128
+  // asteroid primitives + 48 ship primitives). The count tracks sanctioned asset/physics work,
+  // not topology — the digest pin above is the canary.
+  assert.equal(first.structuralCost.colliders, 236);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);

@@ -20,9 +20,13 @@ const factorySource = readFileSync(VISUAL_FACTORY, 'utf8');
 
 assert.match(hlodSource, /export function attachStationHlod\(/, 'hlod.js should export attachStationHlod()');
 assert.match(hlodSource, /stable-authored-identity/, 'hlod.js should state why generic proxy swapping is disabled');
-assert.match(rendererSource, /_publishHlodDiagnostics/, 'renderer should publish hlod diagnostics');
+// The renderer publishes hlod diagnostics by assigning this._hlodDiagnostics onto
+// state.render.hlod and updating the same object every frame — there is no
+// _publishHlodDiagnostics() method; pin the actual publish site instead.
+assert.match(rendererSource, /state\.render\.hlod\s*=\s*(this\._hlodDiagnostics|hlodDiagnostics)/,
+  'renderer should publish hlod diagnostics onto state.render.hlod');
 assert.match(rendererSource, /hlodDetailedVisible/, 'renderer diagnostics should track detailed visibility');
-assert.match(rendererSource, /m\.userData\.hlod && Number\(m\.userData\.hlod\.visualRadius\)/,
+assert.match(rendererSource, /userData\.hlod && Number\(userData\.hlod\.visualRadius\)/,
   'renderer should select station HLOD from the visible authored envelope, not collision radius');
 assert.match(factorySource, /attachStationHlod/, 'visualFactory should wrap stations with HLOD');
 

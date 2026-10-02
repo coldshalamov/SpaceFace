@@ -106,6 +106,61 @@ test('INF-092 store-less shell stays healthy with mirror none', async () => {
   } finally { h.restore(); g.restore(); }
 });
 
+test('INF-092 a hung mirror PUT cannot pin Continue at Checking saves', async () => {
+  // Boot mirror sync against a store that answers GET but never finishes the PUT: the mirror
+  // PUT must carry the shared deadline so pending clears, health reports false once, and the
+  // durable local save is untouched.
+  const storage = makeStorage();
+  storage.setItem('sf.save.quick', '{"fmt":"x"}');
+  const prev = {
+    location: globalThis.location,
+    fetch: globalThis.fetch,
+    localStorage: globalThis.localStorage,
+  };
+  const realTimeout = AbortSignal.timeout;
+  const controller = new AbortController();
+  const deadlines = [];
+  let putSignal = null;
+  globalThis.location = { protocol: 'http:' };
+  globalThis.localStorage = storage;
+  AbortSignal.timeout = (ms) => { deadlines.push(ms); return controller.signal; };
+  globalThis.fetch = async (url, opts = {}) => {
+    if ((opts.method || 'GET') === 'PUT') {
+      putSignal = opts.signal || null;
+      return new Promise((_, reject) => {
+        if (!putSignal) return; // the unbounded PUT: never settles
+        const fail = () => reject(new Error('store mirror timed out'));
+        if (putSignal.aborted) fail();
+        else putSignal.addEventListener('abort', fail, { once: true });
+      });
+    }
+    return { ok: true, json: async () => ({ keys: {} }) };
+  };
+  const h = installSave();
+  try {
+    const done = save._syncSharedPlayerStore();
+    await tick();
+    assert.ok(putSignal, 'the mirror PUT must carry an abort deadline');
+    assert.deepEqual(deadlines, [10000, 10000], 'GET and PUT share the finite deadline');
+    controller.abort();
+    const settled = await Promise.race([done.then(() => 'done'), tick(500).then(() => 'hung')]);
+    assert.equal(settled, 'done', 'sync must settle once the PUT deadline fires');
+    assert.equal(save.isSharedStoreSyncPending(), false, 'pending clears for the title screen');
+    assert.equal(save.isSharedStoreMirrorHealthy(), false);
+    const synced = h.events.filter((e) => e.name === 'save:store-synced');
+    assert.equal(synced.length, 1, 'exactly one failure status');
+    assert.equal(synced[0].payload.ok, false);
+    assert.equal(synced[0].payload.mirror, 'shared');
+    assert.equal(storage.getItem('sf.save.quick'), '{"fmt":"x"}', 'the durable local save is untouched');
+  } finally {
+    AbortSignal.timeout = realTimeout;
+    h.restore();
+    if (prev.location === undefined) delete globalThis.location; else globalThis.location = prev.location;
+    if (prev.fetch === undefined) delete globalThis.fetch; else globalThis.fetch = prev.fetch;
+    if (prev.localStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = prev.localStorage;
+  }
+});
+
 test('INF-092 a later landed write clears the warning exactly once', async () => {
   const storage = makeStorage();
   const g = installGlobals({ storage, putBehavior: 'throw' });

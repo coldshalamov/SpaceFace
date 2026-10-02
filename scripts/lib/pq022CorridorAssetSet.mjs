@@ -178,15 +178,15 @@ const PLACE_ROWS = [
     ],
   }),
   row({
-    assetId: 'place_memorial_array',
-    family: 'place-infrastructure',
-    horizon: 30,
+    assetId: 'place_landmark_candle_fleet',
+    family: 'place-landmark',
     status: 'focused-green',
     derivations: [
       d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_memorial'),
     ],
-    ownerLane: 'PQ-022 navigation-infrastructure',
-    note: 'Replaced place_station_billboard at poi_memorial. Material-truth V2 keep; live G1/G2/G4 not claimed as accepted.',
+    ownerLane: 'D54 hero-landmark lane (d7ba0abd9)',
+    note: 'Dedicated Forge hero landmark for poi_memorial, drawn at placeTargetRadius 100. '
+      + 'place_memorial_array still ships as worldOneOffs dressing, which this gate does not count.',
   }),
   row({
     assetId: 'place_lane_pin',
@@ -667,6 +667,12 @@ export const EXCLUDED_WITH_REASON = Object.freeze([
   Object.freeze({
     assetId: 'place_station_blackmarket',
     reason: 'No corridor station anchor uses it; poi_blackmkt resolves to place_nav_buoy.',
+  }),
+  Object.freeze({
+    assetId: 'place_memorial_array',
+    reason: 'poi_memorial was re-authored to the D54 hero landmark place_landmark_candle_fleet; '
+      + 'the array remains shipped and reachable through worldOneOffs dressing rows, which this '
+      + 'gate does not count as corridor routing.',
   }),
   Object.freeze({
     assetId: 'place_station_billboard',

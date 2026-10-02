@@ -266,6 +266,30 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     };
   }
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
+  if (def.subsystems && typeof def.subsystems === 'object') {
+    spec.data.subsystems = { ...def.subsystems };
+    const turretHp = Number(def.subsystems.turretHp) || 300;
+    const turrets = {};
+    let tIdx = 0;
+    for (const w of def.weapons || []) {
+      const count = w.count || 1;
+      for (let i = 0; i < count; i++) {
+        const subId = `turret_${tIdx}`;
+        turrets[subId] = {
+          id: subId,
+          health: turretHp,
+          maxHealth: turretHp,
+          destroyed: false,
+          effectiveDisabled: false,
+          isTurret: true,
+          weaponDefId: w.id,
+        };
+        tIdx++;
+      }
+    }
+    spec.data.subsystems.turrets = turrets;
+    spec.subsystems = { ...(spec.subsystems || {}), ...turrets };
+  }
   // Presentation-only boss dressing (Forge Regent crown). Render-owned; no combat fields.
   if (def.bossDressing && typeof def.bossDressing === 'object') {
     spec.data.bossDressing = { ...def.bossDressing };

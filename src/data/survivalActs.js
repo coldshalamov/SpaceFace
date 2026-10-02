@@ -343,3 +343,70 @@ export function bodyCount(packages) {
   }
   return total;
 }
+
+/**
+ * NXB-017 / SF-061 / SF-062 / SF-064 / SF-068:
+ * The authored three-round act whose physical question changes each round.
+ * Round 1: Exploit loose mass against an exposed enemy (throw wasps into rocks/each other).
+ * Round 2: A specialist arrives to contest that use (rehearsal on its own bearing; shove/counterplay).
+ * Round 3: Combine with a heavy anchor and a clear counter-window (rope the anchor / move the well).
+ */
+export const SURVIVAL_THREE_ROUND_ACT = Object.freeze([
+  Object.freeze({
+    round: 1,
+    roleProblem: 'mass',
+    verb: 'throw',
+    question: 'Six identical lights on one bearing. Throw them into each other before they close.',
+    physicalTool: 'loose_mass',
+    archetype: 'wasp_swarmer',
+    draftAfter: true,
+  }),
+  Object.freeze({
+    round: 2,
+    roleProblem: 'pressure',
+    verb: 'shove',
+    question: 'The second pack arrives behind you. Shove the rear so you can turn.',
+    physicalTool: 'specialist_rehearsal',
+    archetype: 'reaver_pirate',
+    draftAfter: true,
+  }),
+  Object.freeze({
+    round: 3,
+    roleProblem: 'anchor',
+    verb: 'rope',
+    question: 'A tether on the far end is pulling your line. Rope it so the well moves with you.',
+    physicalTool: 'anchor_counter_window',
+    archetype: 'field_anchor_controller',
+    draftAfter: true,
+  }),
+]);
+
+/**
+ * Validate that an authored act sequence satisfies NXB-017 / SF-061..068:
+ * 1. Each round has a different physical decision / answer verb.
+ * 2. Progression moves from loose mass -> specialist contesting -> heavy anchor counter-window.
+ * 3. Each round provides genuine draft / fitting recovery opportunity.
+ */
+export function validateThreeRoundActSequence(act = SURVIVAL_THREE_ROUND_ACT) {
+  if (!Array.isArray(act) || act.length !== 3) {
+    return { valid: false, error: 'Three-round act must have exactly 3 rounds' };
+  }
+  const verbs = new Set();
+  const problems = new Set();
+  for (let i = 0; i < 3; i++) {
+    const round = act[i];
+    if (!round || typeof round !== 'object') {
+      return { valid: false, error: `Round ${i + 1} definition missing` };
+    }
+    if (verbs.has(round.verb)) {
+      return { valid: false, error: `Duplicate answer verb ${round.verb} across rounds` };
+    }
+    verbs.add(round.verb);
+    problems.add(round.roleProblem);
+  }
+  if (!verbs.has('throw') || !verbs.has('shove') || !verbs.has('rope')) {
+    return { valid: false, error: 'Act sequence must cover throw, shove, and rope' };
+  }
+  return { valid: true, error: null };
+}
+

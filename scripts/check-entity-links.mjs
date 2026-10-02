@@ -207,7 +207,7 @@ const SURFACE_MANIFEST = [
   ['src/ui/screens/footprint.js', 'record rows (node/incident/ace)', /decorateEntityNode\(node, ref\)/],
   ['src/ui/screens/drill.js', 'ore legend items', /decorateEntityNode\(legendItem\.querySelector\('\.drill-legend-label'\), 'commodity:' \+ oreId\)/],
   ['src/ui/screens/drill.js', 'manifest hold rows', /decorateEntityNode\(oreName, 'commodity:' \+ commodityId\)/],
-  ['src/ui/screens/drill.js', 'scan tooltip vein name', /entitySpanHtml\('commodity:' \+ t\.ore/],
+  ['src/ui/screens/drill.js', 'scan tooltip vein name', /entitySpanHtml\('commodity:' \+ facing\.ore/],
   ['src/ui/screens/drill.js', 'settle manifest items', /decorateEntityNode\(oreLink, 'commodity:' \+ commodityId\)/],
   ['src/ui/screens/techTree.js', 'unlock rows (hulls/modules)', /entitySpanHtml\(ref, name\)/],
   ['src/ui/screens/automationPanel.js', 'outpost feedstock inputs', /entitySpanHtml\('commodity:' \+ input\.goodId/],

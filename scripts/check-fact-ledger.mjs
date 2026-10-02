@@ -170,7 +170,9 @@ function testFactLedgerSurfacesAreWired() {
       'sf-sim trace reads scenario facts into scenarioContract.factValues'],
     [EVENT_TRACE_SOURCE, /'scenario:factsInitialized'[\s\S]*'scenario:factChanged'[\s\S]*'scenario:branchResolved'/,
       'event trace includes fact initialization, fact deltas, and branch resolution'],
-    [COMMS_SOURCE, /bus\.on\('scenario:branchResolved'[\s\S]*branchLifecycleCommsPayload\(payload \|\| \{\}\)/,
+    // comms.js subscribes through its local listen() helper (bus.on + unsubscribe tracking);
+    // the contract is the subscription plus the lifecycle payload, not the call spelling.
+    [COMMS_SOURCE, /(?:bus\.on|listen)\('scenario:branchResolved'[\s\S]*branchLifecycleCommsPayload\(payload \|\| \{\}\)/,
       'comms surfaces branch lifecycle text from fact-changing branch resolution'],
   ];
   for (const [source, pattern, label] of checks) {

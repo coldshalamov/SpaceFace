@@ -2812,8 +2812,26 @@ function statusForReason(reason) {
   return 'invalid';
 }
 
+/**
+ * SFQ-B021 — an ineligible class denies with its specific reason, not a generic invalid, so the
+ * advertised receipt (and the HUD pill that quotes it) tells the player which class refused them.
+ * The class checks mirror isAttachable's gates in the same order; the function is only read after
+ * isAttachable has already said no.
+ */
+export function acquisitionDenialReason(entity, playerId) {
+  if (!entity || entity.id === playerId || !entity.alive) return 'target-lost';
+  if (entity.physicsBody === false) return 'scripted-body';
+  const siteRole = entity.data?.role;
+  if (siteRole === 'world_site_component' || siteRole === 'world_site_collision') return 'site-machinery';
+  if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return 'not-tetherable';
+  if (TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return 'not-tetherable';
+  return 'target-lost';
+}
+
 function validateAcquisitionTarget(host, player, target, def, state) {
-  if (!isAttachable(target, player && player.id, state)) return 'target-lost';
+  if (!isAttachable(target, player && player.id, state)) {
+    return acquisitionDenialReason(target, player && player.id);
+  }
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
   const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
   if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
@@ -3127,6 +3145,15 @@ export function isAttachable(entity, playerId, state) {
   const explicitlyTetherable = entity.data?.masslineTetherable === true
     || entity.flags?.masslineTetherable === true;
   if (!explicitlyTetherable && TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return false;
+  // NXI-022 — the offer follows the physics. An entity whose pose is authored `physicsBody: false`
+  // has no body in the SG-02 index, so the line has nothing to pull on: scripted machine proxies,
+  // fauna and closed-form route actors move by their owner's script and are never advertised as
+  // throwable cargo. Site machinery keeps that exclusion even when solid — its kinematic body
+  // (material 'station', mass 1e9) is terrain whose cycle the site runtime owns, never tow load.
+  // Loose payloads released beside it carry dynamic bodies and stay offered (NXB-006).
+  if (entity.physicsBody === false) return false;
+  const siteRole = entity.data?.role;
+  if (siteRole === 'world_site_component' || siteRole === 'world_site_collision') return false;
   // A Mass Seed is ineligible before frame lock (travelling/locking/collapsing): it publishes
   // its own eligibility so a premature latch can never attach to a still-moving deployable.
   if (entity.type === 'massSeed') return isMassSeedTetherEligible(entity);

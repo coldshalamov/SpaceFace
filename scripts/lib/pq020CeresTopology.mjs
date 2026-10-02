@@ -116,8 +116,14 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // 190 → 68: the 128 skin primitives on asteroids 4/5/9/36/38/68 became 6 balls). Entity/type
 // census, cathedral census, releaseSha256 and every other assertion are unchanged. Prior digest
 // was c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa.
+// 2026-09-30: re-pinned for solid contact dynamics (eb1869826 "make contacts solid and keep
+// player heading true"): dynamic bodies now adopt measured solid skins via SKIN_DYNAMIC_TYPES,
+// restoring compound collision proxies to the 6 live asteroids (128 primitives) and 2 live ships
+// (48 primitives), growing colliders from 68 (single balls/capsules) to 236 (60 station/gate +
+// 128 asteroid + 48 ship). Entity/type census, cathedral census, releaseSha256 and every other
+// topology assertion are unchanged. Prior digest was 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544';
+  'b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

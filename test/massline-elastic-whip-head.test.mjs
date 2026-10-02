@@ -71,7 +71,8 @@ test('Elastic Whip is a reachable, exclusive, independently flagged Massline hea
   assert.equal(ships.fitModule({ slotIndex: utilitySlots[1].index, instanceId: 'whip_inventory' }), false,
     'live fitting must require the current head to be unfitted first');
   assert.equal(state.player.moduleInventory[0].instanceId, 'whip_inventory');
-  assert.match(emitted.at(-1).payload.text, /unfit .* before fitting another head/i);
+  const toastEvent = emitted.findLast((e) => e.type === 'toast');
+  assert.match(toastEvent?.payload?.text, /unfit .* before fitting another head/i);
 });
 
 test('Elastic Whip returns more earned spring energy without steering, and a player cut spends the store', async () => {

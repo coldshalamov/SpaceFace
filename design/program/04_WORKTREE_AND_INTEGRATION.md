@@ -12,6 +12,32 @@ This snapshot is historical. Current leftover `C:\sf-agents` copies and unused
 models are harvested through [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md)
 and [`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md), not this table.
 
+## Recovery refresh — 2026-10-02
+
+Full audit after the vm-drop import sweep and remote merge batch. Primary checkout `SpaceFace`
+`master` is synced with `origin/master` at `c4dfcceb1`; live foreign lanes (3D graphics,
+pb-ten-lanes, research/swarm docs) still dirty the shared tree by design and are preserved.
+
+| Worktree | Branch/tip | State | Disposition |
+|---|---|---|---|
+| `SpaceFace` (primary) | `master` `c4dfcceb1` | live lanes' dirty hunks only (swarm/pb-ten-lanes files) | canonical shared checkout; foreign hunks protected |
+| `.worktrees/consolidated` | `consolidated/inflight-2026-09-29` `6fe0255f6` | clean; 2 unique commits = 989-file Sep-29 "parked, not reviewed" snapshot | **historical park** — useful content long since landed through other routes; keep branch, do not merge wholesale |
+| `.worktrees/pr186` | `devin/1790746113-beta-sweep` `0458093e6` | clean; 0 commits ahead of master | fully contained — old beta-sweep checkpoint |
+| `.worktrees/sweep-head` | detached scratch | contains only bisect tooling edits | scratch for the D117 projectile-hit bisect; safe to remove |
+| `SpaceFace-ci` | `ci-repair-core` `55b9093d0` | clean (diagnostic budgets.json scratch restored) | 0 ahead — branch fully contained in master; stale |
+| `SpaceFace-final` | `ci-repair-final` `b1f046152` | clean (tmpdiag scratch deleted) | 0 ahead — merged; D117 wedge fix landed as `e09db3ade`/`3afd2d475` |
+| `SpaceFace-pr194` | `merge/pr-194-perf-w8` `792fd7b7c` | clean; 33 ahead | **live PR surface** — cloud-agent draft PR #194; leave for owner |
+| `sf-sync` | `devin/infer-2026-10-01` `83c9e679b` | clean; 0 ahead | fully contained — its work merged to master earlier today |
+| `SF-ci-tmp` | detached `a66c602b4` | clean | scratch checkout; safe to remove |
+| `Temp/p193fix` | detached `eb813958c` | clean | scratch checkout; safe to remove |
+| `.devshots/ring-selector/publish` | detached `a257ab159` | clean | publish worktree for a generated asset ring; leave |
+| `Users93rob...SpaceFace.wt-head-check` | plain dir, no `.git` | — | non-repo Sep-14 snapshot debris; ignorable |
+
+Branches: `ci-repair-kestrel` / `ci-repair-probes` were assessed stale — master republished newer
+kestrel/places content the same day; no salvageable unique hunks. `merge/pr-194-perf-w8` is PR #194's
+surface (DRAFT, author still pushing). PRs #194 and #192 are cloud-agent drafts — mergeable but left
+for their owners to un-draft; not claimed as merged here.
+
 ## Live shared-tree snapshot — 2026-08-09
 
 ### Remote reconciliation — 2026-09-06

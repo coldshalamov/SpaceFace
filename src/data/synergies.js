@@ -81,6 +81,41 @@ export function synergiesForFittings(fittings) {
   return SYNERGY_TELLS.filter((row) => row.moduleIds.every((id) => ids.has(id)));
 }
 
+/**
+ * The explanation matches the fitted parts. A missing or unscanned part names the gap
+ * and does not advertise the benefit or reveal the hidden module id list.
+ */
+export function explainSynergy(row, fittings, { scanned = true } = {}) {
+  if (!row) return null;
+  const ids = new Set(Array.isArray(fittings) ? fittings.filter((id) => typeof id === 'string') : []);
+  if (!scanned) {
+    return { id: row.id, active: false, hidden: true, text: 'Scan incomplete. The fit is not shown.', drawback: null, benefit: null };
+  }
+  const missing = row.moduleIds.filter((id) => !ids.has(id));
+  const active = missing.length === 0;
+  const drawback = row.drawback && row.drawback.label;
+  if (!active) {
+    return {
+      id: row.id,
+      active: false,
+      hidden: false,
+      missingCount: missing.length,
+      benefit: null,
+      drawback: null,
+      text: `${row.label} is inactive until ${missing.length} required part${missing.length === 1 ? '' : 's'} ${missing.length === 1 ? 'is' : 'are'} fitted.`,
+    };
+  }
+  return {
+    id: row.id,
+    active: true,
+    hidden: false,
+    missingCount: 0,
+    benefit: row.benefit,
+    drawback,
+    text: `${row.label}: ${row.benefit}. Drawback: ${drawback}.`,
+  };
+}
+
 export function compactSynergy(row) {
   if (!row) return null;
   const names = row.moduleIds.map((id) => MODULE_NAME_BY_ID.get(id) || id);

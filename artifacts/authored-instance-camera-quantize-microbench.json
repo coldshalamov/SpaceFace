@@ -1,0 +1,72 @@
+{
+  "label": "authored-instance-camera-quantize",
+  "oracle": {
+    "microDirtyRate": 0.19,
+    "largeDirtyRate": 1,
+    "microQuieterThanLarge": true,
+    "largeMostlyDirty": true
+  },
+  "scenarios": [
+    {
+      "owners": 80,
+      "frames": 4000,
+      "jitterWu": 0.05,
+      "beforeMs": 344.052,
+      "afterMs": 72.92,
+      "speedup": 4.718,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1827,
+      "beforeOwnersVisited": 320000,
+      "afterOwnersVisited": 58480
+    },
+    {
+      "owners": 120,
+      "frames": 4000,
+      "jitterWu": 0.05,
+      "beforeMs": 202.127,
+      "afterMs": 87.118,
+      "speedup": 2.32,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1827,
+      "beforeOwnersVisited": 480000,
+      "afterOwnersVisited": 87720
+    },
+    {
+      "owners": 120,
+      "frames": 4000,
+      "jitterWu": 0.02,
+      "beforeMs": 213.108,
+      "afterMs": 60.845,
+      "speedup": 3.502,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.054,
+      "beforeOwnersVisited": 480000,
+      "afterOwnersVisited": 25920
+    },
+    {
+      "owners": 200,
+      "frames": 3000,
+      "jitterWu": 0.05,
+      "beforeMs": 263.799,
+      "afterMs": 113.127,
+      "speedup": 2.332,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1833,
+      "beforeOwnersVisited": 600000,
+      "afterOwnersVisited": 110000
+    }
+  ],
+  "primary": {
+    "owners": 120,
+    "frames": 4000,
+    "jitterWu": 0.05,
+    "beforeMs": 202.127,
+    "afterMs": 87.118,
+    "speedup": 2.32,
+    "beforeDirtyRate": 1,
+    "afterDirtyRate": 0.1827,
+    "beforeOwnersVisited": 480000,
+    "afterOwnersVisited": 87720
+  },
+  "note": "Portable pool sync. Soft-GPU fps not claimed. Before=exact cameraDirty; After=0.25WU/1e-3 quantize."
+}

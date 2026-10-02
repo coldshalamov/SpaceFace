@@ -1300,6 +1300,11 @@ function textRuns() {
       if (text.length < 2) continue;
       const host = node.parentElement;
       if (!host || host.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
+      // SVG paint-server subtrees (defs/mask/clipPath/pattern/marker/symbol) never print type on
+      // the page — the orrery's wordcut mask carries a copy of each label to punch a hole for it,
+      // and a Range still hands that copy real boxes, so it must be skipped before it can accuse
+      // the visible label it exists to protect.
+      if (host.closest('defs, mask, clipPath, pattern, marker, symbol')) continue;
       if (fadedOut(host)) continue;
       const style = styleOf(host);
       if (alphaOf(style.color) < 0.06) continue;           // spacing tricks and sr-only labels
@@ -1526,6 +1531,18 @@ function deadBoxes() {
       if ((el.innerText || '').trim().length) continue;
       if (el.querySelector('img, svg, canvas, video, picture, input, button')) continue;
       if (el.childElementCount) continue;                  // a track with a fill is a drawn shape
+      // A painted leaf beside drawn media in the same parent is that assembly's coat — the medal
+      // face under a dial's svg — not a hole in the layout.
+      const parent = el.parentElement;
+      if (parent) {
+        let siblingMedia = false;
+        for (const sib of parent.children) {
+          if (sib === el) continue;
+          if ((sib.matches && sib.matches('img, svg, canvas, video, picture'))
+            || (sib.querySelector && sib.querySelector('img, svg, canvas, video, picture'))) { siblingMedia = true; break; }
+        }
+        if (siblingMedia) continue;
+      }
       const style = styleOf(el);
       if (style.backgroundImage !== 'none') continue;      // a plate with art on it is content
       const painted = alphaOf(style.backgroundColor) >= 0.2

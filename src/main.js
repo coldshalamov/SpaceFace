@@ -3,6 +3,7 @@
 // save system is implemented it owns newGame() and this delegates to it.
 import * as THREE from 'three';
 import { createGameState } from './core/gameState.js';
+import { shouldGrantKeepsake } from './core/newGamePlus.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
@@ -612,11 +613,13 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       if (newGamePlus) {
-        if (!ships || typeof ships.grantModule !== 'function'
+        const keepsakeId = newGamePlus.keepsake && newGamePlus.keepsake.defId;
+        const grantKeepsake = shouldGrantKeepsake(state.player, keepsakeId);
+        if (grantKeepsake && (!ships || typeof ships.grantModule !== 'function'
             || !ships.grantModule({
-              defId: newGamePlus.keepsake.defId,
+              defId: keepsakeId,
               reason: `new-game-plus:${newGamePlus.sourceEnding}`,
-            })) {
+            }))) {
           throw new GameStartReadinessError(
             'NEW_GAME_PLUS_UNAVAILABLE',
             'new-game-plus',

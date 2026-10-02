@@ -30,6 +30,7 @@ test('a loaded standard tether constrains separation without capping tangent spe
       targetWorld: anchor.pos,
       restLength: 14,
       tick: 0,
+      springState: { wasTaut: true, captureActive: false, slackS: 0, phase: 'loaded' },
     });
     assert.ok(handle, 'fixture creates the production standard tether');
 

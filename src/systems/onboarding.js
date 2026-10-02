@@ -34,7 +34,9 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
-import { fieldEscapeOf } from '../data/fields.js';
+// TEACH-06: FIELD_ESCAPES is the authored "you are never trapped without a verb" table, and until
+// now nothing in src/ read it. The player had a named escape for every power and no way to learn it.
+import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -2755,7 +2757,10 @@ export const onboarding = {
     profile.type = player.type;
     profile.team = player.team;
     for (const field of snapshot) {
-      const escape = fieldEscapeOf(field && field.kind);
+      // The kernel records a skim sheet by its volume kind ('sheet'); the escape table keys
+      // the power id ('skim'). Every other kind is already the power's own key.
+      const key = field && field.kind === FIELD_KINDS.SHEET ? 'skim' : (field && field.kind);
+      const escape = fieldEscapeOf(key);
       if (!escape || hints['fieldEscape:' + escape.id]) continue;
       if (!fieldContainsPoint(field, player.pos.x, player.pos.z)) continue;
       if (!fieldAffectsBody(field, profile)) continue;

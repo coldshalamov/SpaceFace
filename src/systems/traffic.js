@@ -4018,7 +4018,9 @@ export const traffic = {
       ent = this.helpers.spawnEntity(spec);
       if (!ent) return;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
-      const target = this._pickStation(stations);
+      const target = (role === 'express' || def.express)
+        ? this._pickExpressDestination(stations, station)
+        : this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
       this._active.push(ent.id);
       rec = {
@@ -4031,6 +4033,9 @@ export const traffic = {
         dockSeq: 0,
         manifest,
       };
+      if (role === 'express' || def.express) {
+        this._stampExpressRoute(ent, rec, station, target, sectorId, list.length);
+      }
       list.push(rec);
     }
     this._stampNamedLaneContact(ent, contact);

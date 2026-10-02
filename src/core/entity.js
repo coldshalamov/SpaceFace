@@ -153,15 +153,28 @@ export function allocateEntityId(state) {
   if (!state || typeof state !== 'object') {
     throw new TypeError('allocateEntityId requires simulation state');
   }
+  const entities = state.entities instanceof Map ? state.entities : null;
   while (Array.isArray(state.freeIds) && state.freeIds.length > 0) {
     const recycled = state.freeIds.pop();
-    if (!worldLedgerHoldsId(state.world, recycled)) return recycled;
+    // A recycled id is only free when it is a usable positive integer that no live entity
+    // or world-ledger row still addresses; anything else is consumed and skipped.
+    if (!Number.isSafeInteger(recycled) || recycled < 1) continue;
+    if (worldLedgerHoldsId(state.world, recycled)) continue;
+    if (entities && entities.has(recycled)) continue;
+    return recycled;
   }
   if (!Number.isSafeInteger(state.nextEntityId) || state.nextEntityId < 1) {
     throw new TypeError('allocateEntityId requires a positive integer nextEntityId');
   }
   let id = state.nextEntityId;
-  while (worldLedgerHoldsId(state.world, id)) id++;
+  while (worldLedgerHoldsId(state.world, id) || (entities && entities.has(id))) {
+    id += 1;
+    // An occupied MAX_SAFE_INTEGER must fail closed: past 2^53 an increment stops moving and
+    // every publish would alias onto an unsafe integer.
+    if (!Number.isSafeInteger(id)) {
+      throw new RangeError('allocateEntityId exhausted the safe entity id range');
+    }
+  }
   state.nextEntityId = id + 1;
   return id;
 }

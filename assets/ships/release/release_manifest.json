@@ -2851,14 +2851,14 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_conveyor_barge.glb",
       "release": "assets/ships/release/parts/places/place_conveyor_barge.glb",
-      "sourceSha256": "672a6b6097465cca506f53832e92d14cc264f057a2e52450bd8c82b31d9b74b7",
-      "releaseSha256": "b64f6e65c3e9dea4a60b7d507009088307bfbda8ddf2701cb52ef60cfc2abfc1",
-      "sourceBytes": 1013152,
-      "releaseBytes": 557360,
+      "sourceSha256": "777b899e007341f0bfb72f11b73d40d07f526c095a37a252b8179faee811b582",
+      "releaseSha256": "3665d4d8b4d443d6b9b6e883394c6ffb9fa365f206dd58acab894eea1b472e0d",
+      "sourceBytes": 1015148,
+      "releaseBytes": 559352,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 107,
-      "contractNodeCount": 33
+      "contractNodeCount": 42
     },
     {
       "id": "place_conveyor_truss",

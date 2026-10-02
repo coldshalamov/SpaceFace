@@ -99,7 +99,7 @@ test('DOM input init is idempotent and destroy removes only owned listeners', ()
     host.init(ctx);
     host.init(ctx);
 
-    for (const type of ['resize', 'keydown', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup']) {
+    for (const type of ['resize', 'keydown', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup', 'pointercancel']) {
       assert.equal(dom.windowTarget.listenerCount(type), type === 'keydown' ? 2 : 1, type);
     }
     assert.equal(dom.canvasTarget.listenerCount('mousedown'), 1);
@@ -124,7 +124,7 @@ test('DOM input init is idempotent and destroy removes only owned listeners', ()
 
     host.destroy();
     assert.equal(host._domAdapterAttached, false);
-    for (const type of ['resize', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup']) {
+    for (const type of ['resize', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup', 'pointercancel']) {
       assert.equal(dom.windowTarget.listenerCount(type), 0, type);
     }
     assert.equal(dom.windowTarget.listenerCount('keydown'), 1, 'foreign keydown listener survives');
@@ -132,7 +132,7 @@ test('DOM input init is idempotent and destroy removes only owned listeners', ()
     assert.equal(dom.canvasTarget.listenerCount('contextmenu'), 0);
 
     host.init(ctx);
-    for (const type of ['resize', 'keydown', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup']) {
+    for (const type of ['resize', 'keydown', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup', 'pointercancel']) {
       assert.equal(dom.windowTarget.listenerCount(type), type === 'keydown' ? 2 : 1, type);
     }
     assert.equal(dom.canvasTarget.listenerCount('mousedown'), 1);
@@ -338,4 +338,30 @@ test('Massline grammar can block a physically held source until release', () => 
   assert.equal(grammar.step(1 / 60, { held: true, attached: false, source: 'gamepad' }).latch, false);
   grammar.step(1 / 60, { held: false, attached: false, source: null });
   assert.equal(grammar.step(1 / 60, { held: true, attached: false, source: 'gamepad' }).latch, true);
+});
+
+test('pointer cancel drops a held fire and the committed thrust before the next tick', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.input.moveX = 1;
+  state.input.moveZ = 1;
+  state.input.fire = true;
+  state.input.brake = true;
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    host._m0 = true;
+    host._keys.KeyW = true;
+    dom.windowTarget.dispatch('pointercancel');
+    assert.equal(host._m0, false);
+    assert.equal(host._keys.KeyW, false);
+    assert.equal(state.input.moveX, 0);
+    assert.equal(state.input.moveZ, 0);
+    assert.equal(state.input.fire, false);
+    assert.equal(state.input.brake, false);
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
 });

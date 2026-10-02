@@ -34,6 +34,8 @@ import {
 } from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
 import { setGamepadCaptureHandler } from '../bindings.js';
+import { confirm } from '../confirm.js';
+import { ironmanChoiceChange } from '../../save/ironmanChoice.js';
 import { LANGUAGE_OPTIONS, gameLocalization, localizeText, setGameLocale } from '../../localization/gameLocalization.js';
 import {
   ACCESSIBILITY_STATEMENT_ID,
@@ -46,6 +48,22 @@ import { el, words, settle, cue } from '../kit/index.js';
 // graduated Scales, and a live preview of what the focused row changes beside the list.
 import { injectOrrerySettings, dressSettingsPane, attachSpotlight } from '../orrery/settingsLayouts.js';
 import { createSettingsPreview } from '../orrery/settingsPreview.js';
+// PRO-08: the touch overlay's own vocabulary lives with the overlay, so the Settings rows and the
+// DOM builder can never disagree about what a legal scale or layout is.
+import {
+  TOUCH_LAYOUTS,
+  TOUCH_SCALE_MAX,
+  TOUCH_SCALE_MIN,
+  normalizeTouchLayout,
+  normalizeTouchScale,
+  readTouchOverlayConfig,
+} from '../../systems/touch.js';
+
+const TOUCH_LAYOUT_LABELS = Object.freeze({
+  standard: 'Standard — sticks at both bottom corners',
+  lefty: 'Left-handed — mirrored for a left thumb',
+  compact: 'Compact — pads pulled in for short thumbs',
+});
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
 
@@ -489,6 +507,7 @@ export const settingsScreen = {
       const a = s.audio;
       // First control: Mute all, so silence is always one press away.
       rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
+      rowToggle('Mute when the window loses focus', () => a.muteOnFocusLoss === true, (v) => this._set(ctx, 'audio', 'muteOnFocusLoss', v));
       rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'master', v, persist));
       rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'sfx', v, persist));
       rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'music', v, persist));
@@ -497,6 +516,9 @@ export const settingsScreen = {
       rowSlider('Combat', () => a.combat == null ? 0.7 : a.combat, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'combat', v, persist));
       rowSlider('UI', () => a.ui == null ? 0.7 : a.ui, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'ui', v, persist));
       rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'comms', v, persist));
+      // Voice = the bark/speech gate (barkDirector reads `audio.voice !== 0`): a slider keeps
+      // parity with the bus rows and 0 silences spoken comms without touching their text.
+      rowSlider('Voice', () => a.voice == null ? 1 : a.voice, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'voice', v, persist));
     } else if (refs.active === 'Video') {
       const vd = s.video;
       // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
@@ -550,6 +572,18 @@ export const settingsScreen = {
       // Access row below. It is now a read-only mirror pointing at the home.
       motionEffectsRow(build, s, false);
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
+      // FB-100 parity rows — keys that already drive the picture/mix but had no control, plus
+      // the HUD's own scale/opacity (consumed by #hud as --sf-hud-scale/--sf-hud-opacity,
+      // applied on the root so they compose with UI scale and survive Continue).
+      rowSlider('HUD scale', () => vd.hudScale == null ? 1 : vd.hudScale, 0.75, 1.5, 0.05, pct, (v, persist) => this._set(ctx, 'video', 'hudScale', v, persist));
+      rowSlider('HUD opacity', () => vd.hudOpacity == null ? 1 : vd.hudOpacity, 0.3, 1, 0.05, pct, (v, persist) => this._set(ctx, 'video', 'hudOpacity', v, persist));
+      build.note('Advanced video');
+      rowToggle('Tighter chase camera', () => vd.chaseClose === true, (v) => this._set(ctx, 'video', 'chaseClose', v));
+      rowToggle('Post-processing', () => vd.postFx !== false, (v) => this._set(ctx, 'video', 'postFx', v));
+      rowToggle('Sharpen', () => vd.sharpen === true, (v) => this._set(ctx, 'video', 'sharpen', v));
+      rowSelect('Bloom depth', () => String(vd.bloomLevels == null ? 2 : vd.bloomLevels), [['1', 'Tight'], ['2', 'Full']], (v) => this._set(ctx, 'video', 'bloomLevels', Number(v)));
+      rowSlider('Bloom threshold', () => vd.bloomThreshold == null ? 1 : vd.bloomThreshold, 0.2, 2, 0.05, (x) => x.toFixed(2), (v, persist) => this._set(ctx, 'video', 'bloomThreshold', v, persist));
+      rowSlider('Pixel ratio cap', () => vd.pixelRatioCap == null ? 2 : vd.pixelRatioCap, 0.5, 4, 0.25, (x) => x.toFixed(2) + 'x', (v, persist) => this._set(ctx, 'video', 'pixelRatioCap', v, persist));
       uiScaleRow(build, s, false);
     } else if (refs.active === 'Gameplay') {
       const g = s.gameplay;
@@ -558,7 +592,28 @@ export const settingsScreen = {
       g.physicsBackend = 'rapier-dynamic';
       g.aiBackend = 'sg06-tactical';
       g.flightBackend = 'v3';
-      rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
+      rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => {
+        const decision = ironmanChoiceChange(ctx.state, v);
+        if (!decision.ok) {
+          if (ctx.bus) ctx.bus.emit('toast', { text: decision.text, kind: 'error', ttl: 4 });
+          this._render(ctx);
+          return;
+        }
+        if (!decision.needsConfirm) {
+          this._set(ctx, 'gameplay', 'difficulty', v);
+          return;
+        }
+        confirm({
+          title: decision.title,
+          body: decision.body,
+          confirmLabel: v === 'ironman' ? 'Play Ironman' : 'Leave Ironman',
+          danger: v === 'ironman',
+        }).then((ok) => {
+          if (!ok) { this._render(ctx); return; }
+          this._set(ctx, 'gameplay', 'difficulty', v);
+        });
+      });
+      rowToggle('Pause when the window loses focus', () => g.pauseOnFocusLoss !== false, (v) => this._set(ctx, 'gameplay', 'pauseOnFocusLoss', v));
       rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
@@ -780,6 +835,29 @@ export const settingsScreen = {
     };
     build.choice('Touch controls', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], touchMode,
       (mode) => commitTouchValue(mode === 'auto' ? null : mode === 'on'));
+    // PRO-08: size and thumb placement. Both write into the same `controls.touch` object as the
+    // tri-state above and re-apply to a live overlay, so a phone can grow the sticks mid-flight.
+    const commitTouchOverlay = (patch) => {
+      const next = { ...(s.controls.touch || {}), ...patch };
+      const tp = ctx.touch;
+      if (tp && typeof tp.applyOverlayConfig === 'function') {
+        // applyOverlayConfig reads state.settings, so write first and then let the overlay re-read.
+        s.controls.touch = next;
+        tp.applyOverlayConfig();
+      } else {
+        s.controls.touch = next;
+      }
+      ctx.bus.emit('settings:changed', { section: 'controls', key: 'touch', value: next });
+    };
+    build.slider('Touch overlay size',
+      () => readTouchOverlayConfig(s).scale,
+      TOUCH_SCALE_MIN, TOUCH_SCALE_MAX, 0.05,
+      (x) => Math.round(x * 100) + '%',
+      (value) => commitTouchOverlay({ scale: normalizeTouchScale(value) }));
+    build.choice('Touch layout',
+      TOUCH_LAYOUTS.map((id) => [id, TOUCH_LAYOUT_LABELS[id]]),
+      () => readTouchOverlayConfig(s).layout,
+      (mode) => commitTouchOverlay({ layout: normalizeTouchLayout(mode) }));
     // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
     build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
     // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams

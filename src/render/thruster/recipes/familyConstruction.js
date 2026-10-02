@@ -124,10 +124,20 @@ export const SILHOUETTE_CANDIDATES = Object.freeze({
         + 'makes it unmistakable beside the industrial torch, which is the other wide family.',
     }),
     Object.freeze({
+      id: 'field-stream',
+      selected: true,
+      family: 'field_sprint',
+      motion: 'A hyper-extended stream of tightly channeled field lines driven at sprint velocity, '
+        + 'shearing through space with high axial compression and minimal throat divergence.',
+      why: 'The saucer sprint drive needs to read as pure directional field projection rather than '
+        + 'chemical reaction mass: the stream travels faster than any conventional plume, holding '
+        + 'its integrity without billowing.',
+    }),
+    Object.freeze({
       id: 'lattice-bloom',
       selected: false,
       motion: 'A crystalline lattice of creases that subdivides as throttle rises.',
-      why: 'Rejected for both unusual families: a subdividing lattice is a net of individually '
+      why: 'Rejected for the unusual families: a subdividing lattice is a net of individually '
         + 'visible lines with gaps between them, which is B19 however it is generated.',
     }),
   ]),
@@ -346,6 +356,33 @@ export const FAMILY_CONSTRUCTION = Object.freeze({
     reachSpread: 0.34,
     impulse: Object.freeze({
       headLaunch: 0.26, headTravel: 0.74, headDepth: 0.58, collarLift: 0.9, collarHold: 0.5,
+    }),
+  }),
+  /**
+   * Field sprint: the inertialess saucer drive pushed to its sprint envelope. High fold count,
+   * ultra-fast fold travel, tight downstream coherence (low foldBreak), and a stand-off throat
+   * bite reading as field projection rather than a welded nozzle attachment.
+   */
+  field_sprint: Object.freeze({
+    group: 'unusual',
+    silhouette: 'field-stream',
+    foldCount: 7,
+    creaseSharp: 4.8,
+    creaseDepth: 0.38,
+    creaseBias: 0,
+    foldTravel: 3.2,
+    foldPitch: 2.2,
+    foldBreak: 0.08,
+    foldBeatHz: 0,
+    foldAnnulus: 0,
+    shellArc: 1.08,
+    throatBite: 0.38,
+    mouthLobes: 1,
+    compressionPitch: 13.5,
+    compressionDepth: 0.08,
+    reachSpread: 0.12,
+    impulse: Object.freeze({
+      headLaunch: 0.10, headTravel: 1.15, headDepth: 0.82, collarLift: 1.15, collarHold: 0.25,
     }),
   }),
 });

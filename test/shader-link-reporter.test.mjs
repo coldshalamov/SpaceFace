@@ -160,6 +160,51 @@ test('installing twice guards each program once', () => {
   assert.deepEqual(gl.calls, [['getProgramParameter', LINK_STATUS]]);
 });
 
+test('a still-linking program is queried once on the draw path, then polled off it', async () => {
+  const COMPLETION_STATUS_KHR = 0x82cf;
+  const calls = [];
+  let complete = false;
+  const gl = {
+    LINK_STATUS,
+    calls,
+    lost: false,
+    isContextLost() { return this.lost; },
+    getExtension(name) {
+      return name === 'KHR_parallel_shader_compile' ? { COMPLETION_STATUS_KHR } : null;
+    },
+    getProgramParameter(program, pname) {
+      calls.push(['getProgramParameter', pname]);
+      return pname === COMPLETION_STATUS_KHR ? complete : true;
+    },
+    getProgramInfoLog() { return ''; },
+    getShaderInfoLog() { return ''; },
+  };
+  const renderer = fakeRenderer(gl);
+  installShaderLinkReporter(renderer);
+  const program = fakeProgram();
+  renderer.info.programs.push(program);
+  const completionQueries = () => calls.filter((c) => c[1] === COMPLETION_STATUS_KHR).length;
+
+  // The first bind arms the settle poll; every further bind while the link is in flight
+  // answers unsettled without touching the GPU process.
+  program.getUniforms();
+  program.getUniforms();
+  program.getAttributes();
+  assert.equal(completionQueries(), 1);
+  assert.equal(program.firstUses, 1);
+  assert.equal(program.getUniforms.name, 'getUniformsAfterLinkCheck');
+
+  // The shared poll re-asks off the draw path; once the driver finishes, the next bind
+  // restores three's accessors and runs the one LINK_STATUS read, exactly as before.
+  complete = true;
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  program.getUniforms();
+  program.getUniforms();
+  assert.ok(completionQueries() >= 2);
+  assert.deepEqual(calls.filter((c) => c[1] === LINK_STATUS), [['getProgramParameter', LINK_STATUS]]);
+  assert.equal(program.getUniforms.name, 'getUniforms');
+});
+
 test('the vendored three still has the program internals the reporter relies on', () => {
   const three = readFileSync(new URL('../vendor/three.module.js', import.meta.url), 'utf8');
   assert.match(three, /if \( renderer\.debug\.checkShaderErrors \) \{\s*const programInfoLog = gl\.getProgramInfoLog\( program \)/);

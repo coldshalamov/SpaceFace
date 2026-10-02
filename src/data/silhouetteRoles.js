@@ -121,6 +121,15 @@ const ROLE_ROWS = Object.freeze([
     counterplay: 'Do not trade into the face; work around the mass.',
   }),
   Object.freeze({
+    role: 'tug',
+    label: 'Tug',
+    familyId: 'hauler',
+    tell: 'TOW',
+    visualFamilies: Object.freeze(['freighter']),
+    tacticalTell: 'Working hull built to move mass; it shoves, never sprints.',
+    counterplay: 'It cannot chase — break the tow line and the fight is over.',
+  }),
+  Object.freeze({
     role: 'corvette',
     label: 'Corvette',
     familyId: 'brawler',
@@ -173,6 +182,15 @@ const ROLE_ROWS = Object.freeze([
     visualFamilies: Object.freeze(['capital']),
     tacticalTell: 'Spoked command silhouette; the fight bends around it.',
     counterplay: 'Break the wing first, then isolate the core.',
+  }),
+  Object.freeze({
+    role: 'exotic',
+    label: 'Exotic',
+    familyId: 'carrier',
+    tell: 'DISC',
+    visualFamilies: Object.freeze(['capital']),
+    tacticalTell: 'Symmetrical disc on an inertialess drive; heading means nothing to it.',
+    counterplay: 'Ignore the nose and read the turret arc — it fires where it already faces.',
   }),
 ]);
 

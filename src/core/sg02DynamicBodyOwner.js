@@ -27,6 +27,7 @@ import { observeAppliedImpulse, observeConstraint, observeRelease, observeContac
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { combatFlag } from '../data/featureFlags.js';
+import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -1066,6 +1067,23 @@ export class Sg02DynamicBodyOwner {
     return (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV) + slack;
   }
 
+  _playerContactClosingFraction(rec) {
+    const receipts = this._stepContactReceipts;
+    if (!receipts || !receipts.length) return 0;
+    const own = rec.entity && rec.entity.id;
+    let maxClosing = 0;
+    for (let i = 0; i < receipts.length; i++) {
+      const r = receipts[i];
+      if (r.aId === own || r.bId === own) {
+        if (Number.isFinite(r.preSolveClosingSpeed) && r.preSolveClosingSpeed > maxClosing) {
+          maxClosing = r.preSolveClosingSpeed;
+        }
+      }
+    }
+    const incomingSpeed = Math.hypot(finite(rec.expected && rec.expected.vx), finite(rec.expected && rec.expected.vz));
+    return incomingSpeed > 1e-3 ? maxClosing / incomingSpeed : 0;
+  }
+
   // PQ-137.11: player contact structural give.
   // The player is not ammunition: the solver's planar velocity response is REAL and passes
   // through untouched, but contact may never spin or kick the hull — yaw pose and rate restore
@@ -1099,14 +1117,41 @@ export class Sg02DynamicBodyOwner {
     const rawDvx = Number(v.x) - e.vx;
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
-    const contactDvBudget = (!Number.isFinite(rawDv)
-        || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
-      ? this._contactResponseDvBudget(rec)
-      : Infinity;
+
+    const isActive = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
+    if (isActive) {
+      const lastTick = rec._playerContactLastTick;
+      const gap = Number.isFinite(lastTick) ? tickNow - lastTick : Infinity;
+      if (gap > PLAYER_CONTACT_EVENT_BRIDGE_TICKS) {
+        rec._playerContactCumulativeDeltaV = 0;
+      }
+      rec._playerContactLastTick = tickNow;
+    }
+
+    const cumulative = rec._playerContactCumulativeDeltaV || 0;
+    const isDirectSlam = rec._tumbling === true || this._playerContactClosingFraction(rec) > 0.55;
+    let contactDvBudget;
+    if (isDirectSlam) {
+      contactDvBudget = (!Number.isFinite(rawDv)
+          || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+        ? this._contactResponseDvBudget(rec)
+        : Infinity;
+    } else {
+      const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
+      const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
+      const eventBudget = (Number.isFinite(cruise) && cruise > 0)
+        ? PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise
+        : MAX_CONTACT_DV;
+      const remainingBudget = Math.max(0, eventBudget - cumulative);
+      contactDvBudget = (!Number.isFinite(rawDv) || rawDv > remainingBudget)
+        ? remainingBudget
+        : Infinity;
+    }
     let acceptedVx = vx;
     let acceptedVz = vz;
     if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
-      if (Number.isFinite(rawDv) && rawDv > 0) {
+      if (Number.isFinite(rawDv) && rawDv > 0 && contactDvBudget > 0) {
         const scale = contactDvBudget / rawDv;
         acceptedVx = e.vx + rawDvx * scale;
         acceptedVz = e.vz + rawDvz * scale;
@@ -1145,6 +1190,9 @@ export class Sg02DynamicBodyOwner {
     // last-contact tick, and no tethered-traffic scan survive on the record — contact is just
     // contact now.
     const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
+    if (isActive && !isDirectSlam) {
+      rec._playerContactCumulativeDeltaV = cumulative + actualPlayerDeltaV;
+    }
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);

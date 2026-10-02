@@ -14,6 +14,7 @@ import {
 } from './assetResidency.js';
 import * as THREE from 'three';
 import { activeDecodeClass, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { createAsyncAdmission } from './asyncAdmission.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
@@ -57,6 +58,16 @@ export function createRenderPackageLoader(options = {}) {
   const cache = new Map();
   let ownerSequence = 0;
   let disposed = false;
+
+  // Admission ledger: each decode generation rides one async-admission token. An evicted or
+  // superseded generation's token aborts so a late decode fails its assertActive instead of
+  // resurrecting private resources into a replaced package; dispose aborts every live token.
+  const activeAdmissions = new Set();
+  const newAdmission = (label) => {
+    const admission = createAsyncAdmission({ label });
+    activeAdmissions.add(admission);
+    return admission;
+  };
 
   const createOwner = (role, contentHash) => Object.freeze({
     type: 'render-package',
@@ -161,14 +172,11 @@ export function createRenderPackageLoader(options = {}) {
         return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, metadataUrl);
       }
       retainConsumer(existing.key);
-      if (!existing.packageOwner && !retainPackageOwner(existing, decodeWarm, decodeServed)) {
+      // retainPackageOwner owns both cases: an entry still held bumps its lease count, an
+      // evicted-owner entry reacquires residency — with the decodeWarm flag threaded so a warm
+      // re-decode keeps its soft-eviction protection (and a failed reacquire still throws).
+      if (!retainPackageOwner(existing, decodeWarm, decodeServed)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
-      }
-      // A live-boundary serve upgrades a speculation-warm package lease in place — residency
-      // .retain merges decodeServed onto the existing owner record.
-      else if (existing.packageOwner && decodeServed === true) {
-        residency.retain(existing.key, existing.packageOwner,
-          { role: 'render-package-cache', decodeWarm, decodeServed });
       }
       return loaded;
     }
@@ -185,6 +193,8 @@ export function createRenderPackageLoader(options = {}) {
       packageOwner: createOwner('package-cache', contentHash),
       request: null,
       evicted: false,
+      admission: newAdmission(`render-package:${metadata.assetId || contentHash}`),
+      refCount: 1,
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
@@ -240,7 +250,24 @@ export function createRenderPackageLoader(options = {}) {
             : null;
         } catch (error) {
           disposeUnregisteredResources(plan.resources);
+          disposeDecodedResources(decoded);
           throw error;
+        }
+        try {
+          entry.admission.assertActive();
+        } catch (error) {
+          disposeUnregisteredResources(plan.resources);
+          disposeDecodedResources(decoded);
+          throw error;
+        }
+        // NXI-230: Superseded old-generation check releases only this decode's private resources
+        if (cache.get(contentHash) !== entry || entry.evicted) {
+          disposeUnregisteredResources(plan.resources);
+          disposeDecodedResources(decoded);
+          if (entry.request) entry.request.cancel('superseded-old-generation');
+          entry.request = null;
+          entry.admission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
+          throw new Error(`Render package decode for ${metadata.assetId} was superseded.`);
         }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
           residency,
@@ -264,10 +291,12 @@ export function createRenderPackageLoader(options = {}) {
               loaded.markEvicted();
               if (cache.get(contentHash) === entry) cache.delete(contentHash);
               dropPackageDetachManifest(contentHash);
+              entry.admission.abort(new Error(`Render package ${metadata.assetId} was evicted mid-decode.`));
             },
           });
         } catch (error) {
           disposeUnregisteredResources(loaded.resources);
+          disposeDecodedResources(decoded);
           throw error;
         }
         retainConsumer(entry.key);
@@ -292,6 +321,11 @@ export function createRenderPackageLoader(options = {}) {
       })();
   }
     cache.set(contentHash, entry);
+    const admissionSettled = () => {
+      entry.admission.finish();
+      activeAdmissions.delete(entry.admission);
+    };
+    entry.promise.then(admissionSettled, admissionSettled);
     entry.promise.catch(() => {
       if (entry.request) entry.request.cancel('render-package-decode-failed');
       entry.request = null;
@@ -302,14 +336,31 @@ export function createRenderPackageLoader(options = {}) {
 
   function retainPackageOwner(entry, decodeWarm = false, decodeServed = false) {
     if (disposed || entry.evicted) return false;
+    if (entry.packageOwner) {
+      entry.refCount = (entry.refCount || 1) + 1;
+      // A live-boundary serve upgrades a speculation-warm package lease in place —
+      // residency .retain merges decodeServed onto the existing owner record.
+      if (decodeServed === true) {
+        residency.retain(entry.key, entry.packageOwner,
+          { role: 'render-package-cache', decodeWarm, decodeServed });
+      }
+      return true;
+    }
     const owner = createOwner('package-cache', entry.metadata.contentHash);
     if (!residency.retain(entry.key, owner, { role: 'render-package-cache', decodeWarm, decodeServed })) return false;
     entry.packageOwner = owner;
     entry.loaded?.markRetained();
+    entry.refCount = 1;
     return true;
   }
 
   function releasePackageOwner(entry, reason = 'render-package-released') {
+    if (!entry) return false;
+    if (entry.refCount > 1) {
+      entry.refCount--;
+      return true;
+    }
+    entry.refCount = 0;
     const owner = entry.packageOwner;
     if (!owner) return false;
     entry.packageOwner = null;
@@ -361,6 +412,9 @@ export function createRenderPackageLoader(options = {}) {
     for (const entry of cache.values()) {
       releasePackageOwner(entry, reason);
       dropPackageDetachManifest(entry.metadata.contentHash);
+    }
+    for (const admission of [...activeAdmissions]) {
+      admission.abort(new Error('Render package loader has been disposed.'));
     }
     return true;
   }

@@ -389,6 +389,51 @@ export function createMarketNews(ctx) {
   on('freight:loss', surfaceFreightLoss);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
+  function citeTrafficHeadline(p, kind) {
+    if (!p) return null;
+    const eventId = p.receiptId || p.id || `${kind}:${p.worldRecordId || p.linerId || p.sectorId || 'lane'}:${Number(p.t) || state.simTime || 0}`;
+    const name = p.linerName || p.name || 'A passenger liner';
+    const text = kind === 'passenger_suspended'
+      ? `${name} is suspended. The berth is holding the sailing.`
+      : `${name} filed its receipt${p.outcome ? `: ${p.outcome}` : ''}.`;
+    return commitHeadline(text, {
+      kind,
+      sectorId: p.sectorId || null,
+      eventId,
+      source: kind === 'passenger_suspended' ? 'traffic:passengerLinerSuspended' : 'traffic:passengerLinerReceipt',
+      sourceRef: String(eventId),
+    }, {
+      metadata: {
+        eventId: String(eventId),
+        source: kind === 'passenger_suspended' ? 'traffic:passengerLinerSuspended' : 'traffic:passengerLinerReceipt',
+        sourceRef: String(eventId),
+        sectorId: p.sectorId || null,
+      },
+    });
+  }
+
+  on('traffic:passengerLinerReceipt', (p) => citeTrafficHeadline(p, 'passenger_receipt'));
+  on('traffic:passengerLinerSuspended', (p) => citeTrafficHeadline(p, 'passenger_suspended'));
+  on('frontierRumor:resolved', (p) => {
+    if (!p || !p.rumorId || p.type !== 'resolved') return;
+    const eventId = `frontier-resolved:${p.rumorId}`;
+    const payoff = p.kind || p.reason || 'the lead';
+    commitHeadline(`Frontier rumour paid off: ${payoff}.`, {
+      kind: 'frontier_resolved',
+      sectorId: p.sectorId || null,
+      eventId,
+      source: 'frontierRumor:resolved',
+      sourceRef: eventId,
+    }, {
+      metadata: {
+        eventId,
+        source: 'frontierRumor:resolved',
+        sourceRef: eventId,
+        sectorId: p.sectorId || null,
+        payoff,
+      },
+    });
+  });
   on('npcjobs:minerRelocated', (p) => {
     if (!p || !p.sectorId) return;
     const here = state.world && state.world.currentSectorId;

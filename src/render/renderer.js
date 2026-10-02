@@ -7778,6 +7778,12 @@ export const render = {
         // not in _meshes: they must re-skin too or the warmed program stays the bare variant
         // while live rocks draw the PBR one.
         for (const root of this._rosterPrewarmRoots || []) count += upgradeBareRockMaterials(root);
+        parallaxLayers.seatReadyRockSurfaceTextures();
+        if (state && state.render && typeof state.render.compileObjectPipelines === 'function') {
+          for (const group of parallaxLayers.activeGroups()) {
+            try { state.render.compileObjectPipelines(group, { explicit: true }); } catch (_) { /* best effort */ }
+          }
+        }
         // Pool chunks warmed while leaves were bare bind the bare material; empty buckets may
         // rebind to the real leaf pair so the first registration matches.
         try {
@@ -9214,6 +9220,7 @@ export const render = {
       // Parallax layers are production scene roots, not speculative VFX. Near speed motes normally
       // remain dormant, but Continue can restore nonzero motion; admit them when their real draw
       // range is already active instead of relying on the New Game zero-speed assumption.
+      parallaxLayers.seatReadyRockSurfaceTextures();
       for (const child of scene.children || []) {
         if (!child || !(
           child.name === 'Parallax_FarDust'

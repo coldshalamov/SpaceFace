@@ -99,6 +99,25 @@ function publishSanctuaryQuiet(state, latched) {
   rt.sanctuaryQuietLatched = !!latched;
 }
 
+/** Bench A/B: production default ON. Quiet latch skips job-interactable cone census
+ * when no customs scanners and no jettisoned cargo pods remain. Soft-GPU fps not claimed. */
+let CUSTOMS_CONES_EMPTY_QUIET_LATCH = true;
+export function setCustomsConesEmptyQuietLatchForBench(enabled) {
+  CUSTOMS_CONES_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getCustomsConesEmptyQuietLatchForBench() {
+  return CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishCustomsConesQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
+  rt.customsConesQuietLatched = !!latched;
+}
+
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 
 /** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
@@ -204,6 +223,7 @@ export const lawSecurity = {
     this._coneScratchScanners = [];
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
+    this._customsConesQuiet = null;
     this._nextInspectionTick = 0;
     this._inspectionRebindPasses = 0;
     ensureState(this.state);
@@ -1005,6 +1025,9 @@ export const lawSecurity = {
     incident.rankFromVictim = jurisdiction.rankFromVictim === true;
     incident.challengeWindowS = policy.challengeWindowS * patrolResponse;
     own.incidents[key] = incident;
+    if (attacker && attacker.id === state.playerId) {
+      for (const other of state.entityList || []) reopenLawFireForNewCause(other, incident.id);
+    }
     this._say('alert', `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
     this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
@@ -2940,6 +2963,25 @@ export const lawSecurity = {
   _updateCustomsScanCones(dt, state) {
     const step = Number(dt);
     if (!(step > 0) || !state) return;
+    // Quiet Ceres / open flight: no customs scanners and no jettisoned pods still paid a
+    // full forEachJobInteractable census (shipLike+stations+wrecks+payloads+pickups) calling
+    // customsScanConeOf every tick. Latch when both bags stay empty; wake on membership,
+    // a live scanner/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Different angle from
+    // held env-machinery far / hazards far / sampleProjectileEvidence surface-cadence.
+    if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const quiet = this._customsConesQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishCustomsConesQuiet(state, true);
+        return;
+      }
+    } else if (this._customsConesQuiet) {
+      this._customsConesQuiet = null;
+    }
     // Empty-payloads early-out: pods are only ever `type === 'payload'` entities, so a live
     // index with an empty payloads bucket proves pods.length would end 0 and the join below
     // returns without writes. Same gate as _catchPodsInNets; fixtures without the index keep
@@ -2951,6 +2993,31 @@ export const lawSecurity = {
     if (index && index.__spacefaceEntityIndexV1 && index.ready === true
       && Array.isArray(index.payloads) && index.payloads.length === 0) {
       dwell.clear();
+      // Empty payloads proves pods.length would end 0 — the quiet outcome then hangs on
+      // whether any shipLike carries a scan cone (same test the census applies). Arm or
+      // clear the latch here so the early-skip above keeps meaning over empty worlds.
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        let scannerFound = false;
+        const ships = index.shipLike;
+        if (Array.isArray(ships)) {
+          for (let i = 0; i < ships.length; i += 1) {
+            if (customsScanConeOf(ships[i])) { scannerFound = true; break; }
+          }
+        }
+        if (!scannerFound) {
+          const membership = entityIndexVersion(state);
+          if (membership != null) {
+            this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+            publishCustomsConesQuiet(state, true);
+          } else {
+            this._customsConesQuiet = null;
+            publishCustomsConesQuiet(state, false);
+          }
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
       return;
     }
     const pods = this._coneScratchPods || (this._coneScratchPods = []);
@@ -2984,10 +3051,22 @@ export const lawSecurity = {
       if (customsScanConeOf(entity)) scanners.push(entity);
       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
     });
-    if (scanners.length === 0) {
+    if (scanners.length === 0 || pods.length === 0) {
       for (const key of dwell.keys()) dwell.delete(key);
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        if (membership != null && scanners.length === 0 && pods.length === 0) {
+          this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+          publishCustomsConesQuiet(state, true);
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
       return;
     }
+    this._customsConesQuiet = null;
+    publishCustomsConesQuiet(state, false);
 
     const seen = this._coneScratchSeen || (this._coneScratchSeen = new Set());
     seen.clear();
@@ -4453,6 +4532,9 @@ export const lawSecurity = {
       }
     }
     const priceCr = hold.priceCr;
+    for (const other of state.entityList || []) {
+      applyAcceptedSurrenderStandDown(other, { playerId: state.playerId, causeId: hold.causeId });
+    }
     this._emit('combat:surrendered', {
       player: true,
       accepted: true,
@@ -4989,6 +5071,55 @@ function isPirateLike(entity) {
   const words = `${ai.archetype || ''} ${ai.doctrine || ''} ${ai.role || ''} ${data.role || ''} ${entity.factionId || ''}`.toLowerCase();
   return words.includes('pirate') || words.includes('raider') || words.includes('scavenger')
     || words.includes('corsair') || entity.factionId === 'faction_reach';
+}
+
+/** Clear an uncommitted lawful shot. Already-fired ordnance is left where it is. */
+export function applyAcceptedSurrenderStandDown(ship, { playerId = null, causeId = null } = {}) {
+  if (!ship || !ship.data || !ship.data.ai || ship.data.ai.lawful !== true) {
+    return { stoodDown: false, reason: 'not_lawful' };
+  }
+  const ai = ship.data.ai;
+  const combat = ship.data.combat;
+  const intent = ship.data.intent;
+  const engaging = !!(combat && (combat.targetId === playerId || combat.lockTarget === playerId))
+    || !!(intent && intent.fire === true);
+  if (!engaging) return { stoodDown: false, reason: 'not_engaging' };
+  if (ai.stoodDownCause && causeId && ai.stoodDownCause !== causeId) {
+    return { stoodDown: false, reason: 'newer_cause', causeId: ai.stoodDownCause };
+  }
+  ai.roe = 'hold_fire';
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.stoodDownCause = causeId || ai.stoodDownCause || null;
+  if (intent) intent.fire = false;
+  if (combat && combat.targetId === playerId) {
+    combat.targetId = null;
+    combat.lockTarget = null;
+  }
+  return { stoodDown: true, causeId: ai.stoodDownCause, projectilesUntouched: true };
+}
+
+/** A later crime uses its own cause. The settled surrender accusation is not reapplied. */
+export function reopenLawFireForNewCause(ship, newCauseId) {
+  const ai = ship && ship.data && ship.data.ai;
+  if (!ai || !ai.stoodDownCause) return { reopened: false, reason: 'not_stood_down' };
+  if (!newCauseId || newCauseId === ai.stoodDownCause) {
+    return { reopened: false, reason: 'same_accusation' };
+  }
+  ai.stoodDownCause = null;
+  ai.passive = false;
+  ai.roe = 'weapons_free';
+  return { reopened: true, causeId: newCauseId };
+}
+
+export function composedRemainingText(composed) {
+  const rows = composed && typeof composed === 'object' ? Object.values(composed) : [];
+  const open = rows.filter((row) => row && row.status !== 'paid' && row.remainingCr > 0);
+  if (!open.length) return 'No open obligations.';
+  return open.map((row) => {
+    const what = row.forPerson ? `${row.kind} for ${row.forPerson}` : `${row.label || row.kind} (${row.causeId})`;
+    return `${what} — ${row.remainingCr} cr`;
+  }).join('; ');
 }
 
 function isLawful(entity) {

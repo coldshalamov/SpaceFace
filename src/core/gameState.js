@@ -12,7 +12,6 @@ function defaultSettings() {
   return {
     uiScale: 1,
     showDamageNumbers: true,
-    keybinds: {},
     audio: {
       master: 0.55,
       sfx: 0.7,
@@ -20,6 +19,16 @@ function defaultSettings() {
       // PQ-158.00: the designed sample library is the default voice — new games start unmuted.
       // Stored profiles keep the player's own choice (graphicsProfileBootstrap owns that migration).
       muted: false,
+      muteOnFocusLoss: false,
+      // FB-100: the voice gate (barkDirector reads `audio.voice !== 0`) and the five channel
+      // buses (audioSystem falls back to 0.7 when absent) are real keys now — same values as
+      // the fallbacks they replace, so the shipped mix is unchanged.
+      voice: 1,
+      engine: 0.7,
+      ambient: 0.7,
+      combat: 0.7,
+      ui: 0.7,
+      comms: 0.7,
       defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
     },
     // renderScale raised from 0.85 after a matched A/B on the 60fps target hardware
@@ -31,11 +40,12 @@ function defaultSettings() {
     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1 },
     gameplay: {
       autosaveIntervalS: 120,
       tutorialHints: true,
       difficulty: 'standard',
+      pauseOnFocusLoss: true,
       physicsBackend: 'rapier-dynamic',
       aiBackend: 'sg06-tactical',
       flightBackend: 'v3',
