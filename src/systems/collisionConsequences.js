@@ -249,27 +249,44 @@ export const collisionConsequences = {
       && causalProvenanceShadowsOnlyRope(causalProvenance)
         ? explicitContact : causalProvenance;
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, ramProvenance, state);
-    const observed=evidenceForConsequence({tick,targetId:target.id,otherId:other.id,
-      surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
-    const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
-      tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
+    _evidenceArg.tick = tick;
+    _evidenceArg.targetId = target.id;
+    _evidenceArg.otherId = other.id;
+    _evidenceArg.surface = ['asteroid', 'planet'].includes(other.type)
+      ? 'terrain' : other.type === 'station' ? 'structure' : 'craft';
+    _evidenceArg.otherMass = positiveMass(other);
+    const observed = evidenceForConsequence(_evidenceArg, state);
+    let provenance = ramPlate?.provenance || causalProvenance;
+    if (!ramPlate?.provenance && observed) {
+      // Sync-read by resolveCollisionConsequence's normalizeProvenance copy — a scratch is
+      // never the retained record.
+      _provenanceScratch.actorId = observed.root.actorId;
+      _provenanceScratch.weaponId = observed.root.weaponId;
+      _provenanceScratch.tag = observed.root.kind === 'constraint' ? 'massline' : 'weapon_hit';
+      _provenanceScratch.tick = observed.root.tick;
+      _provenanceScratch.rootId = observed.root.id;
+      provenance = _provenanceScratch;
+    }
     // Hull-burst overhaul slice A (`combat.tumbleFling`): a hull that has lost its helm is a projectile,
     // so what it strikes is knocked by the closing speed and both masses, not by one solver tick.
-    const receipt = resolveCollisionConsequence({
-      target,
-      other,
-      exchangedMomentum,
-      tick,
-      provenance,
-      craftDamageMultiplier: ramPlate?.damageMultiplier,
-      suppressCraftDamage,
-      pos: payload.pos,
-      normal: payload.normal,
-      preSolveClosingSpeed: payload.preSolveClosingSpeed,
-      projectileStrike: strikerLoose
-        ? { strikerMass: positiveMass(other), closingSpeed: payload.preSolveClosingSpeed }
-        : null,
-    });
+    _consequenceArgs.target = target;
+    _consequenceArgs.other = other;
+    _consequenceArgs.exchangedMomentum = exchangedMomentum;
+    _consequenceArgs.tick = tick;
+    _consequenceArgs.provenance = provenance;
+    _consequenceArgs.craftDamageMultiplier = ramPlate?.damageMultiplier;
+    _consequenceArgs.suppressCraftDamage = suppressCraftDamage;
+    _consequenceArgs.pos = payload.pos;
+    _consequenceArgs.normal = payload.normal;
+    _consequenceArgs.preSolveClosingSpeed = payload.preSolveClosingSpeed;
+    if (strikerLoose) {
+      _strikeArgs.strikerMass = positiveMass(other);
+      _strikeArgs.closingSpeed = payload.preSolveClosingSpeed;
+      _consequenceArgs.projectileStrike = _strikeArgs;
+    } else {
+      _consequenceArgs.projectileStrike = null;
+    }
+    const receipt = resolveCollisionConsequence(_consequenceArgs);
     if (!receipt) return;
     // The struck hull is now loose because of whoever knocked the striker loose: that credit chains.
     // The struck hull gets its OWN fresh record (this contact is a new cause on it) so the flight hold
@@ -292,43 +309,45 @@ export const collisionConsequences = {
       }
     }
 
-    publishHitstunImpulse(this.bus, {
-      source: 'collision',
-      victimId: target.id,
-      attackerId: other.id,
-      attackerMass: hitstunAttackerMassForCollision(other),
-      victimMass: positiveMass(target),
-      deltaV: receipt.deltaV,
-      dirX: finite(receipt.normal && receipt.normal.x),
-      dirZ: finite(receipt.normal && receipt.normal.z),
-      hitSide: signedHitSide(target, receipt.normal, { pos: receipt.pos }, target.id),
-      worldBody: isWorldHitstunBody(other),
-      provenance: hitProvenance,
-      tick,
-    });
+    _impulseArg.source = 'collision';
+    _impulseArg.victimId = target.id;
+    _impulseArg.attackerId = other.id;
+    _impulseArg.attackerMass = hitstunAttackerMassForCollision(other);
+    _impulseArg.victimMass = positiveMass(target);
+    _impulseArg.deltaV = receipt.deltaV;
+    _impulseArg.dirX = finite(receipt.normal && receipt.normal.x);
+    _impulseArg.dirZ = finite(receipt.normal && receipt.normal.z);
+    _hitSidePos.pos = receipt.pos;
+    _impulseArg.hitSide = signedHitSide(target, receipt.normal, _hitSidePos, target.id);
+    _impulseArg.worldBody = isWorldHitstunBody(other);
+    _impulseArg.provenance = hitProvenance;
+    _impulseArg.tick = tick;
+    publishHitstunImpulse(this.bus, _impulseArg);
     const helmLossSeconds = helmLossFromTumbleStatus(readTumbleStatus(state, target), tick);
     const closingSpeed = closingSpeedFromImpact(payload);
     if (isSlamFractureCandidate(target, closingSpeed)) {
-      notePendingSlam(target, { closingSpeed, tick });
+      _slamArg.closingSpeed = closingSpeed;
+      _slamArg.tick = tick;
+      notePendingSlam(target, _slamArg);
     }
     const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
     if (target.alive !== false) clearPendingSlam(target.id);
 
-    appendCombatTrace(state.combat, tick, 'collision.consequence', {
-      actorId: receipt.provenance.actorId,
-      targetId: target.id,
-      otherId: other.id,
-      surface: receipt.surface,
-      exchangedMomentum: receipt.exchangedMomentum,
-      deltaV: receipt.deltaV,
-      control: receipt.control,
-      staggerTicks: receipt.staggerTicks,
-      impactDamage: receipt.impactDamage,
-      damageApplied: damageResult && damageResult.ok === true,
-      debrisCount: receipt.debrisCount,
-      weaponId: receipt.provenance.weaponId,
-      provenance: receipt.provenance.tag,
-    });
+    // fields spread into the trace's own raw record — the arg object is never retained.
+    _traceArg.actorId = receipt.provenance.actorId;
+    _traceArg.targetId = target.id;
+    _traceArg.otherId = other.id;
+    _traceArg.surface = receipt.surface;
+    _traceArg.exchangedMomentum = receipt.exchangedMomentum;
+    _traceArg.deltaV = receipt.deltaV;
+    _traceArg.control = receipt.control;
+    _traceArg.staggerTicks = receipt.staggerTicks;
+    _traceArg.impactDamage = receipt.impactDamage;
+    _traceArg.damageApplied = damageResult && damageResult.ok === true;
+    _traceArg.debrisCount = receipt.debrisCount;
+    _traceArg.weaponId = receipt.provenance.weaponId;
+    _traceArg.provenance = receipt.provenance.tag;
+    appendCombatTrace(state.combat, tick, 'collision.consequence', _traceArg);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('combat:collisionConsequence', Object.freeze({
         ...receipt,
@@ -492,6 +511,26 @@ function helmLossFromTumbleStatus(status, tick) {
   return Math.max(0, (status.data.until ?? 0) - (status.data.startedAt ?? 0));
 }
 
+// Sync-read scratch args for the per-contact consequence path. The callees either copy the
+// fields into their own frozen payload (publishHitstunImpulse, normalizeProvenance), spread
+// them (appendCombatTrace), or read synchronously (evidenceForConsequence, notePendingSlam,
+// resolveCollisionConsequence) — nothing retains these wrappers, so storms pay zero literals.
+const _evidenceArg = { tick: 0, targetId: null, otherId: null, surface: null, otherMass: 0 };
+const _provenanceScratch = { actorId: null, weaponId: null, tag: null, tick: 0, rootId: null };
+const _consequenceArgs = {
+  target: null, other: null, exchangedMomentum: 0, tick: 0, provenance: null,
+  craftDamageMultiplier: undefined, suppressCraftDamage: false, pos: null, normal: null,
+  preSolveClosingSpeed: undefined, projectileStrike: null,
+};
+const _strikeArgs = { strikerMass: 0, closingSpeed: undefined };
+const _impulseArg = {
+  source: null, victimId: null, attackerId: null, attackerMass: 0, victimMass: 0,
+  deltaV: 0, dirX: 0, dirZ: 0, hitSide: 1, worldBody: false, provenance: null, tick: 0,
+};
+const _hitSidePos = { pos: null };
+const _slamArg = { closingSpeed: 0, tick: 0 };
+const _traceArg = {};
+
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
@@ -513,7 +552,7 @@ function preferImpulseProvenance(left, right) {
   if (left.magnitude !== right.magnitude) {
     return left.magnitude > right.magnitude ? left : right;
   }
-  return provenanceKey(left) <= provenanceKey(right) ? left : right;
+  return provenanceCompare(left, right) <= 0 ? left : right;
 }
 
 function bestImpulseProvenance(entity, tick) {
@@ -559,8 +598,19 @@ export function contactImpulseProvenance(a, b, tick) {
   return preferImpulseProvenance(bestImpulseProvenance(a, tick), bestImpulseProvenance(b, tick));
 }
 
-function provenanceKey(value) {
-  return [value.actorId ?? '', value.weaponId ?? '', value.tag ?? ''].map(String).join('\u0000');
+// Same ordering as the old [a,b,c].join('\u0000') key compare — '\u0000' sorts below any id
+// char, so fieldwise lexicographic order is identical without the per-compare array+join.
+function provenanceCompare(a, b) {
+  const aa = String(a.actorId ?? '');
+  const bb = String(b.actorId ?? '');
+  if (aa !== bb) return aa < bb ? -1 : 1;
+  const aw = String(a.weaponId ?? '');
+  const bw = String(b.weaponId ?? '');
+  if (aw !== bw) return aw < bw ? -1 : 1;
+  const at = String(a.tag ?? '');
+  const bt = String(b.tag ?? '');
+  if (at !== bt) return at < bt ? -1 : 1;
+  return 0;
 }
 
 function isPotentialMasslineWhipContact(state, a, b) {

@@ -14,6 +14,9 @@ export function isRigidOpaqueBatchableSurface(source, tags = {}, options = {}) {
   if (source.visible === false) return false;
   if (!source.geometry || !source.material || Array.isArray(source.material)) return false;
   if (tags.damageRole) return false;
+  // MOTION_* welded children ride authored rigid-part pivots — batching would detach them from
+  // the moving node their transform already lives under.
+  if (tags.motionGroup) return false;
   if (tags.canopy || tags.decal || tags.plume || tags.navLight || tags.fan) return false;
   const material = source.material;
   if (!material || material.visible === false) return false;

@@ -55,6 +55,9 @@ function readAuthoring(bag) {
 export function bossSurfaceAuthoringOf(target) {
   if (!target || typeof target !== 'object') return null;
   const data = target.data && typeof target.data === 'object' ? target.data : null;
+  // FB-020: a torn prow plate is gone — once the turret-edge effects open the window the
+  // surface stops banking shots, wherever the authoring was stamped.
+  if (data && data._prowWindowOpen === true) return null;
   const direct = readAuthoring(target.prowSurface) || readAuthoring(data && data.prowSurface);
   if (direct) return direct;
   const defId = data && (data.lootTableId || data.enemyTypeId || data.defId);

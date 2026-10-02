@@ -143,7 +143,10 @@ for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, 
     `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
 }
 setPromptScheme('pilot');
-assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/,
+// 2026-09-30 0edb38c4b reworded the kbm mining prompt to "RMB select · hold to mine": RMB on a
+// world object now invites selection and the mining beam latches on the held tool. The pin still
+// requires the prompt to advertise RMB mining.
+assert.match(controlPrompt('mining', 'kbm'), /RMB select .* hold to mine/,
   'controlPrompts must advertise RMB mining for keyboard/mouse');
 assert.match(controlPrompt('flight', 'gamepad'), /LT mine/,
   'controlPrompts must advertise LT mining for gamepad');

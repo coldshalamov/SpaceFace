@@ -798,7 +798,7 @@ export const weapons = {
     // Fastest open mount governs the warn/launch cadence; the 1.2 s floor is only the default
     // for racks that author no time — starting there silently ignored slower authored locks.
     if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
-    if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; return; }
+    if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; combat.lockTargetGeneration = null; return; }
     const tgt = this._resolveTarget(e);
     // Cloak interplay (flag massline2.cloak): a target dark to THIS shooter cannot grow a lock and
     // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
@@ -823,7 +823,7 @@ export const weapons = {
       // on the cloak window so a completed lock holds for a beat and then drops.
       const decayS = darkened ? CLOAK_LOCK_DROP_S : Math.max(0.05, lockTimeS);
       combat.lockProgress = Math.max(0, (combat.lockProgress || 0) - dt / decayS);
-      if (combat.lockProgress <= 0) combat.lockTarget = null;
+      if (combat.lockProgress <= 0) { combat.lockTarget = null; combat.lockTargetGeneration = null; }
     }
   },
 

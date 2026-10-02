@@ -1276,9 +1276,16 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
     }
   }
   const position = liveEntity && liveEntity.pos || { x: Number(body.x) || 0, z: Number(body.z) || 0 };
+  // LAW-09: a claim under a raid warning carries the live defense so the marker can offer the
+  // stand-down verb — the map reads truth, it never invents one.
+  const defense = body.spec && body.spec.defense;
   return {
     id: `player-claim:${body.id || body.poiId || 'unknown'}`,
     claimId: body.id || null,
+    defense: defense && defense.id && defense.phase ? {
+      id: defense.id, phase: defense.phase, deadlineAt: defense.deadlineAt || 0,
+      attackerName: defense.attackerName || null, attackerCount: defense.attackerCount || 0,
+    } : null,
     targetEntityId: liveEntity && liveEntity.id || null,
     kind: def ? `claim-${def.id.replace(/^spec_/, '')}` : 'claim',
     role,
@@ -2301,6 +2308,28 @@ export function resolveGalaxyMapPlotAction(state, target) {
     // True when the primary action ALREADY is this exact plot, so a secondary control can hide
     // instead of rendering a second button that does the same thing.
     redundant: !!(primary && primary.kind === 'route' && primary.targetSectorId === sectorId),
+  };
+}
+
+/**
+ * LAW-09 — the raid marker's stand-down verb. A claim under a live defense warning may be ignored
+ * on purpose: the player accepts the losses rather than answering the raid. The claims owner
+ * settles the warning through the same 'ignored' column the deadline lapse pays, so the verb is
+ * honest about what it does — the raid lands unmolested and takes its cut of stores.
+ */
+export function resolveClaimIgnoreAction(target) {
+  const defense = target && target.defense;
+  const can = !!(target && target.claimId && defense && defense.id && defense.phase === 'warning');
+  return {
+    id: 'ignore-raid',
+    label: 'Ignore raid',
+    available: can,
+    reason: can
+      ? 'Stand the claim down — the raid lands unmolested and takes its cut of stores'
+      : 'Only a live raid warning can be waived — an answered defense is already committed',
+    event: can
+      ? { name: 'claim:defenseIgnore', claimId: target.claimId, defenseId: defense.id }
+      : null,
   };
 }
 
@@ -5853,6 +5882,11 @@ _stepAnimation(now) {
             <span class="gm-ins-row-val">${escapeMapHtml(row.detail)}</span>
           </li>`).join('')}</ol>`
       : '<div class="gm-ins-note">No activity receipts recorded yet.</div>';
+    const workRemaining = history && Array.isArray(history.workRemaining) ? history.workRemaining : [];
+    const retained = workRemaining.length
+      ? `<div class="gm-ins-section"><div class="gm-ins-title">Work in progress</div>${workRemaining.map((work) => `
+          <div class="gm-ins-row"><span>${escapeMapHtml(work.label)}</span><span class="gm-ins-row-val">${escapeMapHtml(work.detail)}</span></div>`).join('')}</div>`
+      : '';
     return `<div class="gm-ins-section">
         <div class="gm-ins-kind">World Site history</div>
         <div class="gm-ins-target-name">${escapeMapHtml(target && target.name || 'World Site')}</div>
@@ -5860,6 +5894,7 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Completed</span><span class="gm-ins-row-val">${Math.max(0, Number(history && history.completedCount) || 0)}</span></div>
         <div class="gm-ins-row"><span>Failures</span><span class="gm-ins-row-val">${Math.max(0, Number(history && history.failureCount) || 0)}</span></div>
       </div>
+      ${retained}
       <div class="gm-ins-section"><div class="gm-ins-title">Recent activity</div>${activity}</div>`;
   },
 
@@ -5903,6 +5938,13 @@ _stepAnimation(now) {
     }
     const ignoreDefense = resolveClaimDefenseIgnoreVerb(t);
     if (ignoreDefense) acts.unshift(ignoreDefense);
+    // LAW-09: a claim under a raid warning offers the stand-down verb — it only exists while a
+    // live warning can still be waived. The body target carries `defense`, unlike the raid
+    // marker which flags `ignoreDefense` directly — both routes feed claim:defenseIgnore.
+    if (t.claimId && t.defense && t.defense.phase === 'warning') {
+      const ignore = resolveClaimIgnoreAction(t);
+      acts.push({ id: ignore.id, label: ignore.label, available: ignore.available, reason: ignore.reason });
+    }
     const html = acts.map((a) => {
       // Ignore is a claim-defense verb, not a chart-control id. The place-action button is enough.
       const control = a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id);
@@ -5935,6 +5977,14 @@ _stepAnimation(now) {
       this._updateEngageControl();
       this._updatePlotControl();
       this._updateRailSections(state);
+      return true;
+    }
+    if (id === 'ignore-raid') {
+      const action = resolveClaimIgnoreAction(t);
+      if (!action.available || !action.event) return false;
+      const bus = this._ctx && this._ctx.bus;
+      if (!bus) return false;
+      bus.emit(action.event.name, { claimId: action.event.claimId, defenseId: action.event.defenseId });
       return true;
     }
     if (id === 'bookmark') return this._addBookmark();

@@ -162,7 +162,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
@@ -887,7 +887,12 @@ export const world = {
         });
       }
     }
-    this.bus.emit('boss:defeated', { sectorId, poiId, killerId: p.killerId || null });
+    this.bus.emit('boss:defeated', {
+      sectorId,
+      poiId,
+      killerId: p.killerId || null,
+      poiName: (poi && poi.name) || rec.name || null,
+    });
   },
 
   // =========================================================================================
@@ -1137,7 +1142,11 @@ export const world = {
   },
 
   _arrivalSliceEnabled(opts = {}) {
-    if (opts.restoreDurableRecords === true || opts.syncResidency === true) return false;
+    if (opts.syncResidency === true) return false;
+    // A restore still materializes the membership sector synchronously (durable records),
+    // but callers may opt its non-membership plan entries into the deferred queue — the
+    // restore generator drains them across its frame yields instead of in one chunk.
+    if (opts.restoreDurableRecords === true) return opts.sliceNeighbors === true;
     return !!(this.state && this.state.world && this.state.world.sliceArrival === true);
   },
 
@@ -5141,6 +5150,10 @@ export const world = {
     if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
     const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
     if (cached && cached.alive !== false) return cached;
+    // A miss latches on the entity-index version: while the set is unchanged the walk cannot
+    // find anything new, so a site whose root never materializes doesn't re-scan every tick.
+    const indexVersion = entityIndexVersion(this.state);
+    if (indexVersion != null && p._wsCarrierMissVersion === indexVersion) return null;
     let found = null;
     for (const e of entities.values()) {
       const d = e && e.data;
@@ -5150,6 +5163,7 @@ export const world = {
       }
     }
     p._wsCarrierId = found ? found.id : null;
+    p._wsCarrierMissVersion = found || indexVersion == null ? null : indexVersion;
     return found;
   },
 

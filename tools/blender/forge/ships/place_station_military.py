@@ -18,7 +18,9 @@ import bmesh
 from mathutils import Matrix
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import forge as F  # noqa: E402
+import ANI_41  # noqa: E402
 
 SHIP_ID = 'place_station_military'
 COLORS = {
@@ -373,10 +375,23 @@ def build():
     parked_fighter(s, 'Fighter1', -4.5, 9.0, 17.1, yaw=0.0)
     parked_fighter(s, 'Fighter2', -4.5, -9.0, 17.1, yaw=0.0)
     s.detail = 0
+    # ANI-41: radar bar, bow battery and fire-control dish ride motion pivots (see animations/ANI_41.py)
+    ANI_41.register(s)
     return s
 
 
 if __name__ == '__main__':
     import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    spec = E.fleet_spec(SHIP_ID)
+    live = '--live' in sys.argv
+    bank = ANI_41.build(ship, spec['asset_id'])
+    written = E.export_ship(ship, spec, preview=not live)
+    # --live seals the bank against the release GLB (the lead publishes). A preview build skips it
+    # unless SF_BANK_OUT names a scratch folder: the bank is then baked against the preview GLB.
+    # Bank file name = render-package pilot key ('military'), see scripts/lib/renderPackageRuntimeTable.mjs.
+    scratch = os.environ.get('SF_BANK_OUT')
+    if live or scratch:
+        out_dir = ANI_41.motion_bank.MOTIONS_DIR if live else scratch
+        os.makedirs(out_dir, exist_ok=True)
+        bank.bake([path for path, _tris in written], out_path=os.path.join(out_dir, 'military.motion.json'))

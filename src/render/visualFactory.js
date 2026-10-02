@@ -47,6 +47,7 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
+import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -54,6 +55,7 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import {
   admissionOwnerInactive,
   authoredAdmissionRetriableStatus,
@@ -88,7 +90,18 @@ const NEUTRAL_PAL = { hull: '#6b7280', accent: '#b0b8c4', emissive: '#9fb2c8', t
 // hulls can mirror the actual space around them. Null until the bake completes — chrome then falls
 // back to high-metalness matte, which is still a clean-shiny read, just not mirror.
 let SHIP_ENV_MAP = null;
-export function setEnvMapForShips(env) { SHIP_ENV_MAP = env; }
+export function setEnvMapForShips(env) {
+  SHIP_ENV_MAP = env;
+  // Materials minted before a relight keep the previous PMREM render-target texture — which the
+  // bake then disposes, leaving stale/black reflections on the next mount. Re-point every cached
+  // env-mapped material; scene-attached materials are swept separately by replaceSceneEnvMap.
+  for (const material of _mat.values()) {
+    if (material && material.envMap && material.envMap !== env) {
+      material.envMap = env;
+      material.needsUpdate = true;
+    }
+  }
+}
 
 // Resolve the colors + the paint profile (grime/chrome/nose-art) for an entity. The profile comes
 // from the faction's `personality`, so the dirty-outlaw vs clean-authority look is data-driven and
@@ -3079,8 +3092,13 @@ function buildPickup(e) {
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
+  // GFX-16: one authored silhouette per commodity category (pickupShapes.js); modules and anything
+  // that is not a known commodity keep the original octahedron.
+  const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
   const gem = new THREE.Mesh(
-    getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
+    shapeName
+      ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
+      : getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
     getMaterial(`gemmat:${color}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
     }), SHARED_MATERIAL_ROLE.HULL)),
@@ -3089,6 +3107,7 @@ function buildPickup(e) {
   gem.material = gem.material.clone();
   g.add(gem);
   g.userData.kind = 'pickup'; g.userData.gem = gem;
+  g.userData.pickupShape = shapeName || 'octahedron';
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
@@ -3200,6 +3219,60 @@ function packagedPartUrl(relativeFile) {
   return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
 }
 
+// ANI-08: overkill-fractured hulls resolve authored fragment GLBs keyed by the victim's def —
+// a forward-canopy shear tears the authored nose shell off, the remainder is the aft mass —
+// instead of the whole-ship hulk or a generic aftermath piece. Entries are gated per seam id:
+// a 'Port Stabilizer Break' offcut is a lateral spar piece, and drawing a bow silhouette for
+// it reads as the wrong hull section; ungated seams fall back to generic resolution. Each
+// entry also carries its authored share of the victim's envelope so pieces fit by length,
+// not the mass-derived collision radius. Fragment files carry a sealed motion bank, so the
+// same resolution also opts the entity into the node-graph attach path.
+const WRECK_FRAGMENT_FILES = Object.freeze({
+  ship_wasp: Object.freeze({
+    seam: Object.freeze({
+      light_forward_canopy: Object.freeze({
+        file: 'places/place_wasp_frag_bow.glb',
+        lengthShare: 0.453,
+      }),
+    }),
+    remainder: Object.freeze({
+      '*': Object.freeze({
+        file: 'places/place_wasp_frag_aft.glb',
+        lengthShare: 0.747,
+      }),
+    }),
+  }),
+});
+
+function fractureFragmentSpecForEntity(e) {
+  const data = e && e.data || {};
+  const piece = data.fracturePiece;
+  if (piece !== 'seam' && piece !== 'remainder') return null;
+  const defId = (data.fractureVisual && data.fractureVisual.defId)
+    || (data.hulkVisual && data.hulkVisual.defId)
+    || data.hulkOfDefId
+    || null;
+  const table = defId && WRECK_FRAGMENT_FILES[defId];
+  const entries = table && table[piece];
+  if (!entries) return null;
+  return entries[data.fractureSeamId] || entries['*'] || null;
+}
+
+export function fractureFragmentFileForEntity(e) {
+  const spec = fractureFragmentSpecForEntity(e);
+  return (spec && spec.file) || null;
+}
+
+// The fragment GLBs are authored in intact-hull coordinates: fit each piece to its authored
+// share of the victim's envelope (victimRadius x share), not the mass-derived collision
+// radius — otherwise a 0.34-mass bow renders ~1.4x its true share of hull.
+function fractureFragmentFitRadius(entity) {
+  const spec = fractureFragmentSpecForEntity(entity);
+  const victimRadius = entity && entity.data && Number(entity.data.fractureVictimRadius);
+  if (!spec || !Number.isFinite(victimRadius) || victimRadius <= 0) return null;
+  return victimRadius * (Number.isFinite(spec.lengthShare) ? spec.lengthShare : 1);
+}
+
 // A kill wreck is the ship you killed, not generic debris (CV-SO): the marker carries the
 // same visual-identity fields the victim's own admission read, so this resolves through the
 // same wholeship selector — hostile-family, silhouette, and faction-kit files included.
@@ -3218,7 +3291,9 @@ function hulkPackagedFileForEntity(e) {
   return selection && selection.file || null;
 }
 
-function wreckPackagedFile(e) {
+export function wreckPackagedFile(e) {
+  const fragmentFile = fractureFragmentFileForEntity(e);
+  if (fragmentFile) return fragmentFile;
   const hulkFile = hulkPackagedFileForEntity(e);
   if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);
@@ -3317,6 +3392,31 @@ export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:h
     if (!file || coveredFiles.has(file)) continue;
     coveredFiles.add(file);
     specs.push(spec);
+    // An overkill rupture decodes the authored fragment packages (plus their motion banks)
+    // inside the same kill frame — warm each seam-mapped fragment file alongside the hulk.
+    const fragTable = data.defId && WRECK_FRAGMENT_FILES[data.defId];
+    if (fragTable) {
+      const probes = [
+        ...Object.keys(fragTable.seam || {}).map((seamId) => ({ piece: 'seam', seamId })),
+        { piece: 'remainder', seamId: '*' },
+      ];
+      for (const { piece, seamId } of probes) {
+        const fragSpec = {
+          ...spec,
+          id: `${spec.id}:${piece}`,
+          data: {
+            ...spec.data,
+            fracturePiece: piece,
+            fractureSeamId: seamId,
+            fractureVisual: visual,
+          },
+        };
+        const fragFile = fractureFragmentFileForEntity(fragSpec);
+        if (!fragFile || coveredFiles.has(fragFile)) continue;
+        coveredFiles.add(fragFile);
+        specs.push(fragSpec);
+      }
+    }
   }
   return specs;
 }
@@ -3639,14 +3739,24 @@ export function updateHulkEmber(ember, simTime) {
   }
 }
 
-export function deadenPackagedHulk(group) {
+export function deadenPackagedHulk(group, options = {}) {
+  // Fracture fragments keep residual life — torn-edge pins, strip lights, the dying amber
+  // strobe the forge scripts authored on the pieces. Additive meshes dim instead of hiding,
+  // and emissive material families hold a smolder floor the plain deaden pass would snuff.
+  const residualLife = options && options.residualLife === true;
   const clones = new Map();
   if (group && typeof group.traverse === 'function') {
     group.traverse((node) => {
       if (!node || !node.isMesh) return;
       const mats = Array.isArray(node.material) ? node.material : [node.material];
       if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
-        node.visible = false;
+        if (residualLife) {
+          node.material = Array.isArray(node.material)
+            ? mats.map((m) => { const c = m.clone(); c.opacity = (m.opacity ?? 1) * 0.35; c.needsUpdate = true; return c; })
+            : (() => { const c = node.material.clone(); c.opacity = (node.material.opacity ?? 1) * 0.35; c.needsUpdate = true; return c; })();
+        } else {
+          node.visible = false;
+        }
         return;
       }
       const dead = mats.map((m) => {
@@ -3672,10 +3782,13 @@ export function deadenPackagedHulk(group) {
           // erases the ship's material detail into a solid orange silhouette during the blast.
           // Uniform-only weights retain the live program identity and add no kill-time shader.
           const heatName = String(m.name || '').toLowerCase();
-          clone.userData.hulkEmberGain = /drivecore|drive_core|reactor/.test(heatName) ? 1
+          const baseGain = /drivecore|drive_core|reactor/.test(heatName) ? 1
             : /engine|radiator|heat|coolant/.test(heatName) ? 0.55
             : /mechanical/.test(heatName) ? 0.18
             : /glass|rubber|decal|marking|nav|sensor/.test(heatName) ? 0 : 0.025;
+          clone.userData.hulkEmberGain = residualLife && /emissive|glow|light|strobe|beacon|strip|nav/.test(heatName)
+            ? Math.max(baseGain, 0.2)
+            : baseGain;
           if ('envMapIntensity' in clone) {
             clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
           }
@@ -3699,9 +3812,15 @@ function attachPackagedBody(root, relativeFile, entity) {
   if (!root || !relativeFile) return root;
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
-  // a wreck that fell back to a generic aftermath piece must not be dead-stated.
-  const deadHulk = relativeFile === hulkPackagedFileForEntity(entity);
-  hideProceduralChildren(root);
+  // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
+  // fracture fragments are hull pieces of the same kill and deaden identically.
+  const deadHulk = relativeFile === hulkPackagedFileForEntity(entity)
+    || relativeFile === fractureFragmentFileForEntity(entity);
+  // Same-envelope body: the packaged group is fitted to entity.radius, so the procedural
+  // wreck stays drawn through admission (the geology-skin precedent — hiding it produced a
+  // guaranteed pop-in window). The commit at publish re-hides; the flag exempts this boundary
+  // from the authoredPending submit deny while the fallback is the visible stand-in.
+  root.userData.authoredPendingFallbackDrawn = true;
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
   root.userData.authoredVisualRoot = 'none-pending-admission';
@@ -3737,6 +3856,9 @@ function attachPackagedBody(root, relativeFile, entity) {
       renderer,
       slot: 'place',
       optional: true,
+      // A mounted-but-unready packaged body sits on the glass behind ambient decodes;
+      // deadline class keeps any un-warmed file (drone, post-evict promote) ahead of them.
+      admissionDeadline: true,
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
@@ -3747,14 +3869,66 @@ function attachPackagedBody(root, relativeFile, entity) {
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
-      instantiatePackagedPrimitives(record, packaged);
+      // Banked packages (mining drone, fracture fragments) mount through the node graph so the
+      // MOTION_* pivots the motion bank drives actually exist in the scene — the flat-primitive
+      // path bakes every transform into world-space meshes and leaves the rig no nodes.
+      const motionControllers = [];
+      if (record.motionBank && record.renderPackage
+          && typeof record.renderPackage.createInstance === 'function') {
+        const instance = record.renderPackage.createInstance({
+          name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
+          residencyOwner: liveEntity,
+          residencyRole: 'live-boundary',
+        });
+        const packageRoot = instance && instance.root;
+        if (packageRoot && packageRoot.isObject3D) {
+          packageRoot.userData = {
+            ...(packageRoot.userData || {}),
+            spacefaceRenderPackageDirect: true,
+            spacefacePartUrl: record.url,
+          };
+          const tagsByName = new Map([
+            ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+            ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+          ]);
+          for (const node of instance.planNodes || []) {
+            // Template-hidden nodes (COLLISION_HULL, sockets) carry no primitive/marker tags —
+            // force-setting visible on them un-hides a default-material collision shell that
+            // swallows the authored surfaces. Same guard the flight path keeps at :10461.
+            if (node.visible === false) continue;
+            const tags = tagsByName.get(node.name) || {};
+            node.visible = !tags.lod || tags.lod === 'lod0';
+          }
+          packaged.add(packageRoot);
+          packaged.userData.renderPackageInstance = instance;
+          const controller = bindInstanceMotion(packageRoot, record.motionBank);
+          if (controller) motionControllers.push(controller);
+        } else if (instance && typeof instance.dispose === 'function') {
+          instance.dispose();
+        }
+      }
+      if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
       }
+      if (motionControllers.length) attachAuthoredMotionDriver(root, liveEntity, motionControllers);
+      // ANI-08: hull:fractured fires at spawn — long before this packaged body's async
+      // admission lands — so the controller registry was empty at dispatch. Re-fire the
+      // rupture here: the flap/mast kick starts as the fragment becomes visible.
+      if (motionControllers.length && entity && entity.data && entity.data.fracturePiece
+          && entity.data.fractureRuptureFired !== true) {
+        entity.data.fractureRuptureFired = true;
+        const now = factoryPresentationNow() ?? 0;
+        for (const controller of motionControllers) {
+          controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, now);
+        }
+      }
       if (deadHulk) {
-        const emberMats = deadenPackagedHulk(packaged);
+        const emberMats = deadenPackagedHulk(packaged, {
+          residualLife: !!(entity && entity.data && entity.data.fracturePiece),
+        });
         packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;
         if (emberMats.length) {
           root.userData.hulkEmber = {
@@ -3763,7 +3937,7 @@ function attachPackagedBody(root, relativeFile, entity) {
           };
         }
       }
-      fitPackagedGroup(packaged, entity && entity.radius);
+      fitPackagedGroup(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius));
       freezeStaticChildMatrices(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {

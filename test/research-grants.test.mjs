@@ -222,8 +222,10 @@ test('recon_scan settlement pays the widened tier-scaled RP', () => {
   assert.ok(active, 'recon mission accepted');
   bus.emit('scan:completed', { targetId: null, sectorId: 'sector_ceres_belt', found: {} });
   assert.equal(state.missions.active.includes(active), false, 'one scan completes a 1-target recon');
-  const rpEvent = rpEvents(bus).find((entry) => !entry.payload.source);
-  assert.ok(rpEvent, 'mission settlement emits an RP grant');
+  const rpEvent = rpEvents(bus).find((entry) => entry.payload.source === 'mission:recon_scan');
+  assert.ok(rpEvent, 'mission settlement emits a named RP grant');
+  assert.equal(rpEvent.payload.granted, 4 + offer.riskTier * 2,
+    'the grant names its size');
   assert.equal(state.player.researchPoints, 4 + offer.riskTier * 2,
     'recon_scan pays 4 + 2*riskTier at settlement');
 });

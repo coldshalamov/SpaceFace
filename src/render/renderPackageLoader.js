@@ -13,10 +13,9 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
-import { createAsyncAdmission } from './asyncAdmission.js';
 import {
   createPackageDetachManifest,
   dropPackageDetachManifest,
@@ -30,24 +29,6 @@ const SHA256_RE = /^[a-f0-9]{64}$/;
 let defaultDecoderModules = null;
 
 export function createRenderPackageLoader(options = {}) {
-  const admissionTimers = options.admissionTimers && typeof options.admissionTimers === 'object'
-    ? options.admissionTimers
-    : {};
-  const activeAdmissions = new Set();
-  const newAdmission = (label) => {
-    const inner = createAsyncAdmission({ label, ...admissionTimers });
-    activeAdmissions.add(inner);
-    return Object.freeze({
-      signal: inner.signal,
-      wait: inner.wait,
-      abort: inner.abort,
-      assertActive: inner.assertActive,
-      finish: () => {
-        inner.finish();
-        activeAdmissions.delete(inner);
-      },
-    });
-  };
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const decodeGlb = typeof options.loadGlb === 'function'
     ? options.loadGlb
@@ -88,27 +69,14 @@ export function createRenderPackageLoader(options = {}) {
     if (disposed) throw new Error('Render package loader has been disposed.');
     const expectedContentHash = loadOptions.expectedContentHash ?? options.expectedContentHash ?? null;
     const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
-    const fetchMetadata = async (cacheMode) => {
-      const preflight = newAdmission(`render-package-request:${typeof metadataOrUrl === 'string' ? metadataOrUrl : 'object'}`);
-      try {
-        return await preflight.wait(resolveMetadata(
-          metadataOrUrl,
-          { ...loadOptions, signal: preflight.signal },
-          fetchImpl,
-          cacheMode,
-        ));
-      } finally {
-        preflight.finish();
-      }
-    };
-    const resolved = await fetchMetadata('no-cache');
+    const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache');
     try {
       return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions);
     } catch (error) {
       // Desktop Electron keeps a stable origin so saves persist. A previous immutable cache
       // entry for this same URL can still win once; bypass it and load the on-disk package.
       if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
-      const reloaded = await fetchMetadata('reload');
+      const reloaded = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload');
       return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions);
     }
   }
@@ -119,37 +87,27 @@ export function createRenderPackageLoader(options = {}) {
     const expectedHash = normalizeExpectedContentHash(expectedContentHash);
     const expectedRuntime = normalizeExpectedRuntimeHash(expectedRuntimeHash);
     const metadata = deepFreeze(stableJsonValue(metadataValue));
-    const preflight = newAdmission(`render-package-metadata:${metadata.assetId || 'unknown'}`);
-    let computedHash;
-    let computedRuntimeHash = null;
-    try {
-      computedHash = await preflight.wait(computeRenderPackageContentHash(metadata, {
-        ...(contentDigest ? { digest: contentDigest } : {}),
-      }));
-      if (disposed) throw new Error('Render package loader has been disposed.');
-      if (computedHash !== metadata.contentHash) {
-        throw new Error(
-          `Render package content hash mismatch for ${metadata.assetId}: ${computedHash} != ${metadata.contentHash}.`,
-        );
-      }
-      if (expectedHash && computedHash !== expectedHash) {
-        throw new Error(
-          `Render package trust-anchor mismatch for ${metadata.assetId}: ${computedHash} != ${expectedHash}.`,
-        );
-      }
-      if (metadata.runtimeHash || expectedRuntime) {
-        if (!metadata.runtimeHash || !metadata.runtime) {
-          throw new Error(`Render package runtime trust anchor is missing for ${metadata.assetId}.`);
-        }
-        computedRuntimeHash = await preflight.wait(computeRenderPackageRuntimeHash(metadata, {
-          ...(contentDigest ? { digest: contentDigest } : {}),
-        }));
-      }
-    } finally {
-      preflight.finish();
-    }
+    const computedHash = await computeRenderPackageContentHash(metadata, {
+      ...(contentDigest ? { digest: contentDigest } : {}),
+    });
     if (disposed) throw new Error('Render package loader has been disposed.');
+    if (computedHash !== metadata.contentHash) {
+      throw new Error(
+        `Render package content hash mismatch for ${metadata.assetId}: ${computedHash} != ${metadata.contentHash}.`,
+      );
+    }
+    if (expectedHash && computedHash !== expectedHash) {
+      throw new Error(
+        `Render package trust-anchor mismatch for ${metadata.assetId}: ${computedHash} != ${expectedHash}.`,
+      );
+    }
     if (metadata.runtimeHash || expectedRuntime) {
+      if (!metadata.runtimeHash || !metadata.runtime) {
+        throw new Error(`Render package runtime trust anchor is missing for ${metadata.assetId}.`);
+      }
+      const computedRuntimeHash = await computeRenderPackageRuntimeHash(metadata, {
+        ...(contentDigest ? { digest: contentDigest } : {}),
+      });
       if (computedRuntimeHash !== metadata.runtimeHash) {
         throw new Error(
           `Render package runtime hash mismatch for ${metadata.assetId}: `
@@ -172,11 +130,16 @@ export function createRenderPackageLoader(options = {}) {
     // inside that gap sends the loader into a decode→evict→retry livelock (the PQ-033.02
     // save/load station-shell hang: the gate-required package was always the eviction victim).
     const consumerOwner = loadOptions.residencyOwner || null;
+    // Warm-purpose decodes must carry the flag through this route too — a retracted prewarm or
+    // runway residue otherwise reads identical to ambient package-cache residue and loses the
+    // soft-eviction LRU race first, exactly the pop the flag exists to prevent.
+    const decodeWarm = /warm|runway|prewarm|armory|predicted/i.test(String(loadOptions.residencyRole || ''));
     const retainConsumer = (key) => {
       if (!consumerOwner) return;
       residency.retain(key, consumerOwner, {
         role: loadOptions.residencyRole || 'live-boundary',
         sectorId: loadOptions.residencySectorId || null,
+        decodeWarm,
       });
     };
     const existing = cache.get(contentHash);
@@ -190,12 +153,11 @@ export function createRenderPackageLoader(options = {}) {
         return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions);
       }
       retainConsumer(existing.key);
-      if (!existing.packageOwner) {
-        if (!retainPackageOwner(existing)) {
-          throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
-        }
-      } else {
-        existing.refCount = (existing.refCount || 0) + 1;
+      // retainPackageOwner owns both cases: an entry still held bumps its lease count, an
+      // evicted-owner entry reacquires residency — with the decodeWarm flag threaded so a warm
+      // re-decode keeps its soft-eviction protection (and a failed reacquire still throws).
+      if (!retainPackageOwner(existing, decodeWarm)) {
+        throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
       }
       return loaded;
     }
@@ -216,11 +178,12 @@ export function createRenderPackageLoader(options = {}) {
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
+      decodeWarm,
     });
-    entry.promise = entry.admission.wait(Promise.resolve()
+    entry.promise = Promise.resolve()
       .then(() => {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
-        return decodeGlb(renderUrl, metadata, { signal: entry.admission.signal });
+        return decodeGlb(renderUrl, metadata);
       })
       .then(async (decoded) => {
         // The instance plan is compiled BEFORE prepareDecoded so the preparation step can be handed
@@ -230,7 +193,6 @@ export function createRenderPackageLoader(options = {}) {
         const template = decoded?.scene || decoded;
         let plan = null;
         try {
-          entry.admission.assertActive();
           plan = buildInstancePlan(template, metadata, counters);
         } catch (error) {
           disposeDecodedResources(decoded);
@@ -309,7 +271,7 @@ export function createRenderPackageLoader(options = {}) {
           if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
-      })).finally(() => entry.admission.finish());
+      });
     cache.set(contentHash, entry);
     entry.promise.catch(() => {
       if (entry.request) entry.request.cancel('render-package-decode-failed');
@@ -319,14 +281,14 @@ export function createRenderPackageLoader(options = {}) {
     return entry.promise;
   }
 
-  function retainPackageOwner(entry) {
+  function retainPackageOwner(entry, decodeWarm = false) {
     if (disposed || entry.evicted) return false;
     if (entry.packageOwner) {
       entry.refCount = (entry.refCount || 1) + 1;
       return true;
     }
     const owner = createOwner('package-cache', entry.metadata.contentHash);
-    if (!residency.retain(entry.key, owner, { role: 'render-package-cache' })) return false;
+    if (!residency.retain(entry.key, owner, { role: 'render-package-cache', decodeWarm })) return false;
     entry.packageOwner = owner;
     entry.loaded?.markRetained();
     entry.refCount = 1;
@@ -389,13 +351,6 @@ export function createRenderPackageLoader(options = {}) {
     if (disposed) return false;
     disposed = true;
     for (const entry of cache.values()) {
-      if (entry.admission) {
-        entry.admission.abort(new Error(
-          `Render package ${entry.metadata.assetId} load was released before decode completed.`,
-        ));
-      }
-      if (entry.request) entry.request.cancel(reason);
-      entry.request = null;
       releasePackageOwner(entry, reason);
       dropPackageDetachManifest(entry.metadata.contentHash);
     }
@@ -999,9 +954,7 @@ async function resolveMetadata(metadataOrUrl, options, fetchImpl, cacheMode = 'n
     throw new Error('Render package loader requires metadata or a render-package.json URL.');
   }
   if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load metadata URLs.');
-  const response = await fetchImpl(metadataOrUrl, options.signal
-    ? { cache: cacheMode, signal: options.signal }
-    : { cache: cacheMode });
+  const response = await fetchImpl(metadataOrUrl, { cache: cacheMode });
   if (!response.ok) throw new Error(`Render package metadata fetch failed: HTTP ${response.status} ${metadataOrUrl}`);
   const metadata = await response.json();
   const responseUrl = typeof response.url === 'string' && response.url
@@ -1015,9 +968,9 @@ function isStalePackageCacheError(error) {
   return /trust-anchor mismatch|content hash mismatch|SHA-256 mismatch|byte length mismatch/i.test(message);
 }
 
-async function fetchVerifiedRenderBytes(fetchImpl, url, metadata, signal = null) {
+async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
   const read = async (cache) => {
-    const response = await fetchImpl(url, signal ? { cache, signal } : { cache });
+    const response = await fetchImpl(url, { cache });
     if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
     return new Uint8Array(await response.arrayBuffer());
   };
@@ -1061,7 +1014,7 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata, signal = null)
 // the pool is empty — so a failed spawn (or a Worker-less host such as node --test) keeps the
 // old behaviour with no caller changes.
 let meshoptWorkerPoolStarted = false;
-export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
+export function startMeshoptWorkerPool(MeshoptDecoder) {
   if (meshoptWorkerPoolStarted) return;
   try {
     if (typeof Worker !== 'function' || typeof Blob !== 'function'
@@ -1071,9 +1024,6 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
     // The KTX2 transcoder already owns a 4-worker pool; keep this lane capped so decode bursts
     // cannot evict the present thread's neighbours on small hosts.
     MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, cores - 1)));
-    const admissionTimers = options && typeof options.admissionTimers === 'object'
-      ? options.admissionTimers
-      : {};
     // The per-decoder cap alone still lets a meshopt burst plus a KTX2 burst oversubscribe
     // cores; route worker decodes through the shared cross-decoder budget (FIFO, so the
     // decoder's own least-pending dispatch order is unchanged). decodeGltfBufferAsync is the
@@ -1081,29 +1031,18 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
     const decodeGltfBufferAsync = MeshoptDecoder.decodeGltfBufferAsync;
     if (typeof decodeGltfBufferAsync === 'function' && decodeGltfBufferAsync.spacefaceDecodeBudgetGated !== true) {
       const gated = function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
-        const admission = createAsyncAdmission({ label: 'meshopt-decode', ...admissionTimers });
-        return admission.wait(
-          sharedDecodeTaskBudget().acquire({ signal: admission.signal }).then((release) => {
-            if (admission.signal.aborted) {
-              release();
-              throw admission.signal.reason;
-            }
-            const detach = () => admission.signal.removeEventListener('abort', release);
-            admission.signal.addEventListener('abort', release);
-            let result;
-            try {
-              result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);
-            } catch (error) {
-              detach();
-              release();
-              throw error;
-            }
-            return Promise.resolve(result).finally(() => {
-              detach();
-              release();
-            });
-          }),
-        ).finally(() => admission.finish());
+        return sharedDecodeTaskBudget().acquire(
+          activeDecodeClass(),
+        ).then((release) => {
+          let result;
+          try {
+            result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);
+          } catch (error) {
+            release();
+            throw error;
+          }
+          return Promise.resolve(result).finally(release);
+        });
       };
       gated.spacefaceDecodeBudgetGated = true;
       MeshoptDecoder.decodeGltfBufferAsync = gated;
@@ -1115,9 +1054,9 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
 }
 
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
-  return async (url, metadata, { signal } = {}) => {
+  return async (url, metadata) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
-    let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, signal);
+    let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
 
     // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
     // batch-decodes every meshopt bufferView and slices embedded image bytes, then transfers it all
@@ -1131,7 +1070,7 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       const prepared = await sharedGlbPrepasser().prepass(buffer);
       if (prepared === null) {
         // The worker died holding the buffer; re-read (packages are content-hash immutable).
-        bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, signal);
+        bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
         buffer = bytes.buffer;
       } else {
         buffer = prepared.glb;
@@ -1206,7 +1145,7 @@ function disposeUnregisteredResources(resources) {
   }
 }
 
-export function disposeDecodedResources(decoded) {
+function disposeDecodedResources(decoded) {
   const template = decoded?.scene || decoded;
   if (!template || typeof template.traverse !== 'function') return;
   disposeUnregisteredResources(collectImmutableResources(template));

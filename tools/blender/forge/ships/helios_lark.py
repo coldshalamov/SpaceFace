@@ -8,6 +8,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_38  # noqa: E402
 
 SHIP_ID = 'helios_lark'
 COLORS = {
@@ -78,11 +81,14 @@ def build():
     s.detail = 0
     F.light(s, 'NavPort', (-6.0, 3.95, 0.1), 'glow_red')
     F.light(s, 'NavStarboard', (-6.0, -3.95, 0.1), 'glow_green')
-    F.light(s, 'Beacon', (-7.4, 0.0, 0.75), 'glow_amber', size=0.12)
+    F.light(s, 'Beacon', (-7.4, 0.0, 0.75), 'glow_amber.beacon', size=0.12)
+    s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

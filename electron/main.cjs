@@ -303,6 +303,11 @@ function listenGameServer(root, requestedPort) {
       // admission off Electron's main thread so shell lifecycle and the fixed save origin stay live.
       async: true,
       devDiagnostics: !app.isPackaged,
+      // Packaged bytes can't change between launches of one build: pin app-source files
+      // immutable so a warm launch skips the module graph's conditional-GET sweep. The pin
+      // is keyed to the packaged build digest — a build change clears the origin cache on
+      // the next index.html before any stale module can serve.
+      appSourceImmutable: app.isPackaged,
       playerStoreDir,
       userContentDir: mountedUserContentDir(),
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },

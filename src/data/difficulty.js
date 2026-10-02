@@ -95,6 +95,11 @@ export function pacingScale(state) {
 
 export function difficultyDamageScale(state, attackerId, targetId) {
   if (!state) return 1;
+  // FB-026: a live survival run is exempt from the damage profile AND the pacing fold —
+  // the arena's difficulty is wave composition, not an outgoing/incoming dial, so the
+  // standard profile's 0.50/1.15 must not reach inside a run (same gate defeatMercyScale
+  // already uses).
+  if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return 1;
   const profile = difficultyProfile(state);
   const pacing = pacingScale(state);
   if (targetId === state.playerId) return profile.playerIncomingDamage * defeatMercyScale(state, profile) * pacing.incoming;

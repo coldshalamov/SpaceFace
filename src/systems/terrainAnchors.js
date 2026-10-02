@@ -212,6 +212,17 @@ export const terrainAnchors = {
       spawnAnchor(dx, dz, size);
       placed++;
     }
+    // NXI-076 — replenishment is explained only when a real replacement is admitted: adopting
+    // surviving in-bubble anchors is ownership bookkeeping, not new geometry, so the receipt
+    // fires on `spawned > 0` alone and carries how much was already standing.
+    if (placed > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('terrainAnchors:replenished', {
+        encounterId: payload.encounterId || null,
+        kind: payload.kind || null,
+        spawned: placed,
+        alreadyPresent: present,
+      });
+    }
   },
 
   _onResolved(payload) {
@@ -225,6 +236,11 @@ export const terrainAnchors = {
       if (index < 0) continue;
       data.terrainAnchorEncounterIds.splice(index, 1);
       if (!data.terrainAnchorEncounterIds.length) {
+        // NXB-019 — a preparation interval releases ownership, not the body: the rock keeps its
+        // authored TTL and exactly the transform the player left it with. The next wave's
+        // telegraph re-adopts in-bubble survivors; destroyed cover refills through the same
+        // authored top-up, so a round's affordance is never silently restored or silently lost.
+        if (payload.retainAnchors === true) continue;
         // VERB-07 — the opening fight's rocks survive until the player leaves the
         // neighbourhood: no aftermath clamp, and any earlier clamp lifts. Ordinary
         // encounter anchors still take the 45-second sweep.

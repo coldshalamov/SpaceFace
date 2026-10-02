@@ -7,13 +7,30 @@ repair pod on the port shoulder, a dorsal sensor dish. What changed is the build
 surfaces (no grime/scratch noise), crisp bevelled armour, one livery, lights where a crew needs them.
 All nine gameplay sockets sit exactly where the live game expects them.
 """
+import math
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_01  # noqa: E402
+import ANI_02  # noqa: E402
+import ANI_05  # noqa: E402
+import ANI_06  # noqa: E402
+import ANI_07  # noqa: E402
+import ANI_18  # noqa: E402
+import ANI_17  # noqa: E402
+import ANI_16  # noqa: E402
 
 SHIP_ID = 'kestrel'
+
+
+def E_spec_asset_id():
+    return E.fleet_spec(SHIP_ID)['asset_id']
+
+
 COLORS = {
     'paint': '#2b5159',        # Hitch steel-teal pressure hull (Helios key light lifts it ~2.5x)
     'paint2': '#25282c',       # warm charcoal armour
@@ -73,12 +90,12 @@ def build():
     F.box(s, 'GunReceiver', (7.8, 0.0, 1.3), (1.4, 1.1, 0.42), material='gunmetal', bevel=0.03)
     # Mining head: a clamp frame with an orange cutter lens under the chin.
     F.box(s, 'MiningClamp', (11.1, 0.0, -0.95), (2.0, 0.9, 0.55), material='gunmetal', bevel=0.04, taper=0.85)
-    F.cylinder(s, 'MiningCutter', (11.9, 0.0, -1.05), (12.75, 0.0, -1.05), 0.34, 0.24, material='dark',
-               cap_material='glow_amber')
+    cutter = F.cylinder(s, 'MiningCutter', (11.9, 0.0, -1.05), (12.75, 0.0, -1.05), 0.34, 0.24, material='dark',
+                        cap_material='glow_amber')
     F.band(s, 'MiningClamp', (11.1, 0, 0), (1, 0, 0), 0.3, 'hazard')
 
     # --- canopy under the dorsal spine -------------------------------------------------------
-    F.canopy(s, 'Canopy', x0=2.6, x1=7.2, w=0.78, h=0.52, z=1.62, peak=0.55, frame=False)
+    canopy = F.canopy(s, 'Canopy', x0=2.6, x1=7.2, w=0.78, h=0.52, z=1.62, peak=0.55, frame=False)
     F.plate(s, 'Spine', [(4.8, 0.28), (-10.2, 0.34), (-10.2, -0.34), (4.8, -0.28)], z0=2.05, thickness=0.26,
             material='paint2', chamfer=0.08)
     for i, x in enumerate((-9.0, -6.6, -4.2, -1.8, 0.6, 3.0)):
@@ -123,11 +140,28 @@ def build():
     pod = F.box(s, 'RepairPod', (-1.45, 4.35, 1.2), (3.2, 1.9, 1.3), material='paint.green', bevel=0.08)
     band = F.box(s, 'RepairPodBand', (-0.6, 4.35, 1.2), (0.3, 2.0, 1.4), material='hazard', bevel=0.02)
     lid = F.box(s, 'RepairPodHatch', (-2.1, 4.35, 1.88), (1.2, 1.2, 0.08), material='paint2', bevel=0.01)
+    # Dark recess floor under the lid — when the hatch swings open the pod reads as hollow,
+    # not as a lid lifting off a solid green box. The folded arm sits just above this plate.
+    F.box(s, 'PodCavity', (-2.1, 4.35, 1.46), (1.14, 1.14, 0.1), material='dark', bevel=0.0)
     s.hook_part('HOOK_SECONDARY_POD', pod, band, lid)
 
-    # --- dorsal sensor dish (sensor damage part) ----------------------------------------------
+    # ANI-06 proposed geometry: a compact two-joint service arm stowed INSIDE the pod under the
+    # hatch cutout — Z-folded flat at rest (two links stacked over each other) so the solid pod
+    # reads unchanged until the lid swings. The shoulder pivot sits at the opening's +X edge:
+    # pitching the -X-hanging chain up carries the whole arm out through the hole, then the
+    # elbow unbends the forearm toward the ship shoulder and parks its tool tip just outside.
+    arm_a = F.box(s, 'SvcArmA', (-2.3, 4.35, 1.55), (1.25, 0.16, 0.11), material='gunmetal')
+    arm_b = F.box(s, 'SvcArmB', (-2.2, 4.35, 1.62), (1.3, 0.14, 0.09), material='gunmetal')
+    arm_head = F.box(s, 'SvcHead', (-1.45, 4.35, 1.62), (0.24, 0.14, 0.16), material='dark')
+    arm_tip = F.light(s, 'SvcTip', (-1.28, 4.35, 1.68), 'glow_amber', size=0.08)
+
+    # --- dorsal sensor dish (sensor damage part; ANI-01 motion rig) -----------------------------
     ped = F.cylinder(s, 'DishPedestal', (-2.2, -0.9, 2.1), (-2.2, -0.9, 2.85), 0.2, 0.13, material='gunmetal',
                      segments=16)
+    # ANI-01 proposed geometry: a short rigid telescoping inner stem inside the pedestal bore —
+    # hidden at rest, exposed as the dish lifts.
+    stem = F.cylinder(s, 'DishStem', (-2.2, -0.9, 2.55), (-2.2, -0.9, 3.02), 0.085, 0.07,
+                      material='gunmetal', segments=12)
     # A shallow dish tilted aft: rim ring, dark reflector face, feed horn with a cyan pickup.
     dish = F.cylinder(s, 'Dish', (-2.12, -0.9, 2.95), (-2.32, -0.9, 3.12), 0.8, 0.86, material='gunmetal',
                       segments=32, cap_material='dark')
@@ -135,12 +169,39 @@ def build():
                       segments=8)
     lens = F.light(s, 'DishFeed', (-2.56, -0.9, 3.58), 'glow_cyan', size=0.1)
     dish = [dish, horn]
-    s.hook_part('HOOK_SENSOR_DISH', ped, *dish, lens)
+    s.hook_part('HOOK_SENSOR_DISH', ped, stem, *dish, lens)
+    ani01_bank = ANI_01.build(s, {'stem': stem, 'dish': dish, 'feed': lens},
+                              source_asset_id=E_spec_asset_id())
+    # ANI-02 authors into the shared bank — one kestrel.motion.json carries every rig's clips.
+    ANI_02.build(s, {'cutter': cutter}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    # ANI-05 proposed geometry: six rigid iris petals inside the DriveBell mouth, hidden under
+    # the inner rim at rest; they slide toward the axis on boost and read as the fan over the
+    # glowing core. One motion group per petal so each slides along its own radial direction.
+    iris_petals = []
+    for i in range(ANI_05.PETALS):
+        # Alternate the plate plane a few mm so neighbouring blades never sit coplanar.
+        petal = F.plate_v(s, f'IrisPetal{i}', ANI_05.petal_outline(math.radians(i * 60 + 30)),
+                          ANI_05.PETAL_X - 0.09 + (i % 3) * 0.012, 0.09, plane='yz',
+                          material='dark', chamfer=0.02, bevel=0.01)
+        iris_petals.append(petal)
+    # Static hub the fan reads against when the iris opens — a shallow chrome dome on the axis.
+    F.cylinder(s, 'IrisHub', (ANI_05.PETAL_X - 0.16, 0, 0), (ANI_05.PETAL_X + 0.1, 0, 0),
+               0.42, 0.16, material='bare', segments=20, bevel=0.03)
+    ANI_05.build(s, {'petals': iris_petals}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    s.ani01_bank = ani01_bank
 
     # --- armour plate that sheds under damage (port shoulder cap) ------------------------
     cap = F.plate(s, 'ShoulderCap', [(4.0, 3.4), (3.1, 5.8), (0.5, 5.8), (0.5, 3.4)], z0=0.62,
                   thickness=0.14, material='paint2', chamfer=0.06)
     s.hook_part('HOOK_ARMOR_PORT', cap)
+
+    # ANI-06/07 author into the shared bank: pod hatch+arm on repair jobs, cap peel on hull hits.
+    ANI_06.build(s, {'hatch': lid, 'arm_a': arm_a, 'arm_b': [arm_b, arm_head, arm_tip]},
+                 source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    ANI_07.build(s, {'cap': cap}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    # ANI-18 authors into the shared bank too — the flinch claims cap + dish groups only.
+    ANI_18.build(s, {}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    ANI_17.build(s, {'canopy': canopy}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
 
     # --- detail ------------------------------------------------------------------------------
     s.detail = 1
@@ -150,15 +211,26 @@ def build():
     F.antenna(s, 'Mast', (-6.0, -1.1, 2.1), 1.3, tip='glow_red')
     F.windows(s, 'Ports', 1.2, 4.8, 1.92, 0.75, 4, size=(0.4, 0.2), finish='glow_warm', mirror=True)
     F.box(s, 'Skid', (-4.0, 1.6, -2.15), (4.0, 0.25, 0.25), material='dark', mirror=True, bevel=0.03)
+    F.box(s, 'NoseSkid', (4.6, 0.0, -1.9), (1.4, 0.28, 0.24), material='dark', bevel=0.03)
     F.box(s, 'NameBoard', (-7.0, 0.0, 2.33), (1.6, 0.5, 0.04), material='paint2.ivory', bevel=0.0)
     s.detail = 0
     F.light(s, 'NavPort', (-9.2, 6.3, 0.75), 'glow_red', size=0.16)
     F.light(s, 'NavStarboard', (-9.2, -6.3, 0.75), 'glow_green', size=0.16)
     F.light(s, 'Beacon', (-10.4, 0.0, 2.25), 'glow_amber', size=0.16)
+
+    # ANI-16: belly gear — the two aft rails plus the nose skid just created above.
+    _o = {o.name: o for o in s.objects}
+    ANI_16.build(s, {'skidP': _o['Skid'], 'skidS': _o['Skid_M'], 'skidF': _o['NoseSkid']},
+                 source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    spec = E.fleet_spec(SHIP_ID)
+    written = E.export_ship(ship, spec, preview=not live)
+    # The motion bank seals against the exported release GLB — preview runs leave the authored
+    # rig in place but skip the bank (the runtime only reads it from release packages).
+    if live:
+        ship.ani01_bank.bake([path for path, _tris in written])

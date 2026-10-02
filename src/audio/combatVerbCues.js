@@ -248,6 +248,7 @@ export const VERB_CUE_OWNED_BY = Object.freeze({
   'drill:rockDepleted': 'audioSystem drill:rockDepleted',
   'drill:scanPulse': 'audioSystem drill:scanPulse',
   'salvage:cutComplete': 'audioSystem salvage:cutComplete',
+  'salvage:reactorTowedClear': 'salvage._onReactorTowedClear',
   'dock:docked': 'audioSystem._onDocked',
   'dock:undocked': 'audioSystem._onUndocked',
   'bombs:detonated': 'bombs detonation audio cue',

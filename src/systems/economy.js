@@ -50,7 +50,7 @@ import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { addCargo, isUnsellableCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
+import { addCargo, removeCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
@@ -885,7 +885,7 @@ function priceStationForCargoKill(saleStationId, chain) {
 }
 
 function sealedSellFree(state, commodityId, qty) {
-  if (!isUnsellableCargo(state, commodityId)) return null;
+  if (reservedCargoQuantity(state, commodityId) <= 0) return null;
   const free = sellableCargoQuantity(state, commodityId);
   const requested = Math.max(0, Math.floor(Number(qty) || 0));
   if (requested <= free) return null;
@@ -2021,6 +2021,11 @@ export const economy = {
       if (def.noMarketSeed !== true && marketTier <= stationTier) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
+      // Liquidation minting honors the same legality gate as seeding: a lawful port does not
+      // conjure a narcotics book because a carrier happened to bring one.
+      if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
+        return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+      }
       entry = this.mintUnseededListing(stationId, def);
       if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
@@ -2144,11 +2149,16 @@ export const economy = {
     const eff = Number(effectiveEq(entry, state, stationId, commodityId));
     const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
     const stock = entry.stock;
-    if (isUnsellableCargo(state, commodityId) && requested > sellableCargoQuantity(state, commodityId)) {
+    const sellable = reservedCargoQuantity(state, commodityId) > 0
+      ? sellableCargoQuantity(state, commodityId)
+      : null;
+    if (sellable !== null && (sellable <= 0 || requested > sellable)) {
       return refuse('mission_cargo_locked', stock, intakeTarget);
     }
     const headroom = Math.max(0, Math.floor(intakeTarget - stock));
-    const fillable = Math.min(requested, headroom);
+    const fillable = sellable === null
+      ? Math.min(requested, headroom)
+      : Math.min(requested, headroom, sellable);
     if (fillable <= 0) {
       return refuse(headroom <= 0 ? 'demand_saturation' : 'qty', stock, intakeTarget);
     }
@@ -2210,7 +2220,8 @@ export const economy = {
     try {
     // Enforce sealed-freight authority at execution as well as quote. This is the final shared
     // boundary for every station UI (legacy and Orbital Command) and keeps a stale or custom quote
-    // adapter from turning mission cargo into credits.
+    // adapter from turning mission cargo into credits. NXB-025: a request that would touch the
+    // sealed reservation refuses and names the free count; free units still sell.
     if (side === 'sell') {
       const free = sealedSellFree(state, commodityId, qty);
       if (free != null) {
@@ -2777,6 +2788,8 @@ export const economy = {
       return { ok: false, reason: 'salvage_listing_unavailable' };
     }
 
+    // ECON-04 — the receipt names the lot's nominal value at the pre-absorption mid.
+    const valueCr = Math.max(1, Math.round((Number(entry.lastMid) || 0) * intake.scrapQty));
     this.applyStockPressure(
       intake.yardId,
       NPC_SALVAGE_INTAKE_COMMODITY_ID,
@@ -2796,6 +2809,7 @@ export const economy = {
       lotId: intake.lotId,
       commodityId: NPC_SALVAGE_INTAKE_COMMODITY_ID,
       qty: intake.scrapQty,
+      valueCr,
       ignoredCommodityIds: intake.ignoredCommodityIds,
     };
     this.bus.emit('economy:salvageIntakeApplied', result);
@@ -2845,6 +2859,7 @@ export const economy = {
             id: record.id,
             kind: record.kind,
             cause: record.cause,
+            causeWord: SESSION_SINK_CAUSES[record.kind] || null,
             amount: record.amount,
             reason: record.reason,
             at: record.at,

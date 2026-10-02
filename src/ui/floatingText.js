@@ -7,14 +7,8 @@ import { FACTION_META } from '../data/factions.js';
 import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
-import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
-
-export const HIT_CONFIRM_PIP_SYMBOLS = Object.freeze({
-  shield: '○',
-  armor: '∧',
-  hull: '✕',
-});
+import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 
 const POOL = 56;
 
@@ -103,73 +97,61 @@ export function weakPointFloatingTextSpec(payload) {
 
 export function createFloatingText(ctx) {
   const { state, helpers, bus } = ctx;
-  const pipBook = Object.create(null);
-  const pipLog = [];
-  if (state) state.pipLog = pipLog;
+  injectStyle();
+  const layer = document.createElement('div');
+  layer.id = 'sf-floattext';
+  const root = document.getElementById('hud') || document.getElementById('ui-root') || document.body;
+  root.appendChild(layer);
 
+  // pooled nodes
   const nodes = [];
+  for (let i = 0; i < POOL; i++) {
+    const el = document.createElement('div');
+    el.className = 'sf-ft';
+    el.style.display = 'none';
+    layer.appendChild(el);
+    nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0,
+      targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null });
+  }
   let head = 0;
   let activeCount = 0;
-
-  if (typeof document !== 'undefined') {
-    injectStyle();
-    const layer = document.createElement('div');
-    layer.id = 'sf-floattext';
-    const root = document.getElementById('hud') || document.getElementById('ui-root') || document.body;
-    if (root) root.appendChild(layer);
-
-    // pooled nodes
-    for (let i = 0; i < POOL; i++) {
-      const el = document.createElement('div');
-      el.className = 'sf-ft';
-      el.style.display = 'none';
-      layer.appendChild(el);
-      nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0,
-        targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null, isPip: false });
-    }
-  }
 
   function retire(n) {
     if (!n || !n.alive) return;
     n.alive = false;
     if (activeCount > 0) activeCount--;
-    if (n.el) {
-      n.el.style.display = 'none';
-    }
+    n.el.style.display = 'none';
     n._sfHudTransform = '';
     n._sfOpacity = '';
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
-    if (typeof document === 'undefined') return null;
     opts = opts || {};
-    if (!opts.isPip) {
-      if (!state.settings || state.settings.showDamageNumbers === false
-        || state.settings.gameplay?.damageNumbers === false) return;
-    } else {
-      if (state.settings?.gameplay?.hitConfirmPips === false) return;
-    }
-    if (nodes.length === 0) return null;
+    // Damage numbers honor their toggle; control receipts (hit pips, counters) are feedback the
+    // control itself owes the pilot and answer to their own keys.
+    if (!opts.controlReceipt && (!state.settings || state.settings.showDamageNumbers === false
+      || state.settings.gameplay?.damageNumbers === false)) return;
+    if (opts.controlReceipt === 'pip' && state.settings?.gameplay?.hitPips === false) return;
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
     if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
     activeCount++;
     n.alive = true; n.age = 0; n.life = opts.life || 0.95;
     n.targetId = targetId != null ? targetId : null;
-    n.entity = targetId != null ? (state.entities && typeof state.entities.get === 'function' ? state.entities.get(targetId) : null) : null;
+    n.entity = targetId != null ? state.entities.get(targetId) : null;
     n.damage = opts.damage || 0;
     n.damageClass = opts.damageClass || null;
     n.wx = wx; n.wz = wz;
-    n.vy = opts.vy != null ? opts.vy : -48;      // px/s rise
-    n.vx = opts.vx != null ? opts.vx : (Math.random() - 0.5) * 26;
-    n.isPip = !!opts.isPip;
-    n.el.className = 'sf-ft ' + (opts.isPip ? '' : 'sf-ft--rise ') + cls;
+    n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
+    n.vx = (Math.random() - 0.5) * 26;
+    // Control receipts are flat marks — the rise animation belongs to damage numbers.
+    n.el.className = 'sf-ft ' + (opts.controlReceipt === 'pip' ? '' : 'sf-ft--rise ') + cls;
     n.el.textContent = text;
     n.el.style.display = 'block';
-    n.el.style.opacity = opts.isPip && (state.settings?.video?.reducedFlash) ? '0.7' : '1';
+    n.el.style.opacity = '1';
     n.el.style.transform = 'translate3d(0,0,0) translate(-50%,-50%)';
     n._sfHudTransform = 'translate3d(0,0,0) translate(-50%,-50%)';
-    n._sfOpacity = n.el.style.opacity;
+    n._sfOpacity = '1';
     n.x = 0; n.y = 0;
     return n;
   }
@@ -180,55 +162,45 @@ export function createFloatingText(ctx) {
     if (p.brokeShield || p.kind === 'shield') return 'sf-ft--shield';
     return 'sf-ft--hull';
   }
+  // FB-019: the hit pip is a control receipt, not a damage number — it paints a three-state
+  // layer mark (ring = shield, chevron = armor, cross = hull) at the impact for 120 ms, gated
+  // by the same 40 ms per-target gap the layer voice uses so eye and ear agree. It answers its
+  // own gameplay.hitPips key and stays lit when damage numbers are off. flashReduce holds the
+  // mark longer at lower brightness instead of flashing it.
+  const pipBook = Object.create(null);
   bus.on('combat:damage', (p) => {
     if (!p) return;
     const amount = Number.isFinite(p?.applied) ? p.applied : Number(p?.amount) || 0;
-    const playerHit = p.targetId === state.playerId;
-    const playerCaused = !playerHit && (p.attackerId === state.playerId || p.provenance?.actorId === state.playerId);
-
-    const e = p.targetId != null ? (state.entities && typeof state.entities.get === 'function' ? state.entities.get(p.targetId) : null) : null;
-    const wx = e ? e.pos.x : (p.pos && p.pos.x);
-    const wz = e ? e.pos.z : (p.pos && p.pos.z);
-
-    // Hit confirmation pip (FB-019)
-    if (playerCaused && state.settings?.gameplay?.hitConfirmPips !== false) {
-      const layer = damageLayer(p) || (p.brokeShield ? 'shield' : (Number(p.armorDamage) > 0 ? 'armor' : 'hull'));
-      const nowMs = Number.isFinite(p.timeMs)
-        ? p.timeMs
-        : (Number.isFinite(state?.simTime) ? state.simTime * 1000 : (typeof performance !== 'undefined' ? performance.now() : Date.now()));
-      const lastMs = pipBook[p.targetId];
-      if (lastMs == null || nowMs - lastMs >= 40) {
-        pipBook[p.targetId] = nowMs;
-        const reduced = !!(state.settings?.video?.reducedFlash || state.settings?.video?.motionReduce);
-        const life = reduced ? 0.18 : 0.12;
-        const symbol = HIT_CONFIRM_PIP_SYMBOLS[layer] || '○';
-        const pipRecord = {
-          targetId: p.targetId,
-          layer,
-          symbol,
-          timeMs: nowMs,
-          life,
-          pos: (wx != null && wz != null) ? { x: wx, z: wz } : null,
-        };
-        pipLog.push(pipRecord);
-        if (typeof document !== 'undefined' && wx != null && wz != null) {
-          spawn(symbol, 'sf-ft--pip sf-ft--pip-' + layer + (reduced ? ' sf-ft--pip-dim' : ''), wx, wz, p.targetId, {
-            life,
-            vy: 0,
-            vx: 0,
-            isPip: true,
-          });
+    const playerCaused = p.attackerId === state.playerId
+      || (p.provenance && p.provenance.actorId === state.playerId);
+    const onPlayer = p.targetId === state.playerId;
+    if (playerCaused && !onPlayer && p.targetId != null) {
+      const layerWord = damageLayer(p) || (p.brokeShield ? 'shield' : null);
+      if (layerWord && admitLayerVoice(pipBook, p.targetId, layerWord, (state.simTime || 0) * 1000)) {
+        const e = state.entities.get(p.targetId);
+        const wx = e ? e.pos.x : (p.pos && p.pos.x); const wz = e ? e.pos.z : (p.pos && p.pos.z);
+        if (wx != null) {
+          const calm = state.settings?.accessibility?.flashReduce === true;
+          const glyph = layerWord === 'shield' ? '○' : layerWord === 'armor' ? '❯' : '✕';
+          spawn(glyph, `sf-ft--pip sf-ft--pip-${layerWord}${calm ? ' sf-ft--pip-calm' : ''}`,
+            wx, wz, p.targetId,
+            { life: calm ? 0.18 : 0.12, vy: 0, controlReceipt: 'pip' });
         }
       }
     }
-
     if (amount <= 0 || state.settings?.gameplay?.damageNumbers === false
       || state.settings?.showDamageNumbers === false) return;
-    if (state.run?.ruleset === 'swarm' && !playerHit && !playerCaused) return;
+    const e = p.targetId != null ? state.entities.get(p.targetId) : null;
+    const playerHit = p.targetId === state.playerId;
+    if (state.run?.ruleset === 'swarm' && !playerHit && p.attackerId !== state.playerId
+      && p.provenance?.actorId !== state.playerId) return;
+    const wx = e ? e.pos.x : (p.pos && p.pos.x); const wz = e ? e.pos.z : (p.pos && p.pos.z);
     if (wx == null) return;
     const cls = playerHit ? 'sf-ft--player' : dmgColor(p);
+    // Shotgun pellets and rapid hits share one short burst total per hull/layer. The
+    // initial hit appears immediately; aggregation never delays damage acknowledgement.
     for (const n of nodes) {
-      if (!e || !n.alive || n.entity !== e || n.damageClass !== cls || n.age > 0.14 || !n.damage || n.isPip) continue;
+      if (!e || !n.alive || n.entity !== e || n.damageClass !== cls || n.age > 0.14 || !n.damage) continue;
       n.damage += amount;
       n.el.textContent = String(Math.round(n.damage));
       n.el.className = 'sf-ft sf-ft--rise ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
@@ -330,21 +302,6 @@ export function createFloatingText(ctx) {
     bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
   });
 
-  // NXI-108 — the relief cue cites the delivery that crossed the threshold, once.
-  bus.on('economy:shortageRelieved', (p) => {
-    if (!p) return;
-    const cmdty = CMDTY_BY_ID[p.commodityId];
-    const station = STATION_BY_ID[p.stationId];
-    const cmdtyName = cmdty ? cmdty.name : (p.commodityId || 'cargo');
-    const stationName = station ? station.name : (p.stationId || 'the yard');
-    const qty = Number.isFinite(p.qty) ? p.qty : null;
-    bus.emit('toast', {
-      text: 'SHORTAGE RELIEVED: ' + (qty ? qty + 'u ' : '') + cmdtyName + ' re-fed the line at ' + stationName,
-      kind: 'info',
-      ttl: 5,
-    });
-  });
-
   // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
   // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
   // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame
@@ -375,7 +332,7 @@ export function createFloatingText(ctx) {
       const rise = n.vy * n.age;            // integrated rise (px)
       const drift = n.vx * n.age;
       const reduced = state.settings?.video?.motionReduce;
-      const sc = n.isPip ? 1 : (reduced ? 1 : popScale(n.age));
+      const sc = reduced ? 1 : popScale(n.age);
       const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
       if (n._sfHudTransform !== nextTransform) {
         n._sfHudTransform = nextTransform;
@@ -392,7 +349,6 @@ export function createFloatingText(ctx) {
   return {
     update,
     _activeCount() { return activeCount; },
-    pipLog,
   };
 }
 
@@ -410,6 +366,14 @@ function injectStyle() {
   .sf-ft--rise { animation:sf-ft-rise 220ms ease-out 1; }
   @keyframes sf-ft-rise { from { margin-top:6px; } to { margin-top:0; } }
   .sf-ft--hull { color:#ffd24a; }
+  /* FB-019 hit pips — control receipts, not damage numbers. One mark per layer at the impact:
+     ring for shield work, chevron for armor bite, cross for hull. Flat marks, no rise. */
+  .sf-ft--pip { position:absolute; left:0; top:0; font-size:13px; line-height:1;
+    pointer-events:none; text-shadow:0 0 6px rgba(0,0,0,.85); will-change:transform,opacity; }
+  .sf-ft--pip-shield { color:#8fe6ff; font-size:14px; }
+  .sf-ft--pip-armor { color:#ffc98a; font-size:15px; }
+  .sf-ft--pip-hull { color:#ff7a5c; font-size:14px; font-weight:700; }
+  .sf-ft--pip-calm { opacity:.6; }
   .sf-ft--shield { color:#7fe0ff; font-size:14px; }
   .sf-ft--player { color:#ff5470; font-size:18px; }
   .sf-ft--big { font-size:24px; }
@@ -425,11 +389,6 @@ function injectStyle() {
   .sf-ft--module { color:#4f8fdd; font-size:15px; text-shadow:0 0 8px rgba(79,143,221,.6),0 0 4px #000; }
   .sf-ft--rights { color:#e8a05c; font-size:14px; letter-spacing:.05em; text-shadow:0 0 8px rgba(232,160,92,.55),0 0 4px #000; }
   .sf-ft--pickup { color:#d3e6ff; font-size:14px; }
-  .sf-ft--pip { font-size:18px; pointer-events:none; }
-  .sf-ft--pip-shield { color:#7fe0ff; text-shadow:0 0 8px rgba(127,224,255,.8); }
-  .sf-ft--pip-armor { color:#ffd24a; text-shadow:0 0 8px rgba(255,210,74,.8); }
-  .sf-ft--pip-hull { color:#ff5470; text-shadow:0 0 8px rgba(255,84,112,.8); }
-  .sf-ft--pip-dim { opacity:0.65; }
   `;
   document.head.appendChild(s);
 }

@@ -52,8 +52,7 @@ import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrin
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { stepEgressExits } from '../ai/egressExit.js';
 import { getCombatKernel } from '../combat/kernel.js';
-import { countTurretsLost } from '../combat/subsystems.js';
-import { isPdScreenActor, resolvePdCharge, pdScreenPosition } from '../ai/pdScreen.js';
+import { setThrusterHealth } from '../core/physicsAuthority.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
 const HEAVY_MASS_THRESHOLD = 150;
@@ -492,6 +491,9 @@ export function createTacticalAISystem({
             kind: doctrine.telegraph.kind,
             durationTicks: doctrine.telegraph.durationTicks,
             attackLine: doctrine.attackLine || null,
+            // FB-020: stage/edge so the listener can tell a mount-loss beat from a generic cue.
+            bossStage: doctrine.bossStage || 0,
+            turretEdge: doctrine.turretEdge || 0,
             tick,
           });
         }
@@ -505,12 +507,14 @@ export function createTacticalAISystem({
             fireWindow: doctrine.fireWindow,
             maneuverKind: doctrine.maneuverKind,
             attackLine: doctrine.attackLine || null,
+            bossStage: doctrine.bossStage || 0,
+            turretEdge: doctrine.turretEdge || 0,
             tick,
           });
         }
         applyChoreographyFireWindow(liveStack, decision);
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
-        if (entity) applyDreadnoughtTurretLossPhases(entity, state, ctxRef, tick);
+        applyTurretEdgeEffects(entity, doctrine, state);
         applyMindAwareFiringIntent(decision, state);
         applyNemesisFireGate(entity, state);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
@@ -638,88 +642,30 @@ function applyNemesisFireGate(entity, state) {
   }
 }
 
-export function applyDreadnoughtTurretLossPhases(entity, state, ctxRef, tick) {
-  if (!entity || entity.alive === false || !entity.data) return;
-  const subs = entity.data.subsystems;
-  const thresholds = subs && subs.phaseAtTurretsLost;
-  if (!Array.isArray(thresholds) || thresholds.length < 2) return;
-  const lost = countTurretsLost(entity);
-  const phase = entity.data.turretLossPhase | 0;
-
-  if (lost >= thresholds[0] && phase < 1) {
-    entity.data.turretLossPhase = 1;
-    entity.data.broadsideShortened = true;
-    if (entity.data.combatDoctrine) {
-      entity.data.combatDoctrine.fireTicks = Math.floor((entity.data.combatDoctrine.fireTicks || 60) * 0.7);
-    }
-    if (!entity.data.swarmersVented) {
-      entity.data.swarmersVented = true;
-      const reinf = entity.data.reinforcements;
-      const count = (reinf && reinf.count && reinf.count[0]) || 3;
-      if (state && state.spawnBudget && typeof state.spawnBudget.request === 'function') {
-        state.spawnBudget.request({
-          type: (reinf && reinf.type) || 'wasp_swarmer',
-          count,
-          parentId: entity.id,
-          pos: entity.pos,
-        });
-      }
-      if (ctxRef && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
-        ctxRef.bus.emit('swarm:spawnRequest', {
-          packageId: (reinf && reinf.packageId) || 'iron_maw_screen',
-          type: (reinf && reinf.type) || 'wasp_swarmer',
-          count,
-          pos: entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null,
-          parentId: entity.id,
-        });
-      }
-    }
-    if (ctxRef && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
-      ctxRef.bus.emit('ai:doctrinePhase', {
-        entityId: entity.id,
-        phase: 'phase_4_turrets_lost',
-        turretsLost: lost,
-        edge: 1,
-        tick,
-      });
-      ctxRef.bus.emit('ai:telegraph', {
-        entityId: entity.id,
-        phase: 'phase_4_turrets_lost',
-        cue: 'broadside_charge',
-        kind: 'broadside_charge',
-        line: (entity.data.telegraph && entity.data.telegraph.line) || 'Iron Maw broadside disrupted — swarmers venting!',
-        tick,
-      });
-    }
+/**
+ * FB-020: a turret-loss edge is a physical wound, not a presentation flag — apply it once per
+ * crossing regardless of who owns the boss's presentation. Edge 2 tears the prow plate (the
+ * authored prowSurface stops banking shots and the PROW RIB weak point opens) and kills the RCS
+ * pods: turn authority drops through thruster health on the physics body — mass, not a gyro.
+ */
+export function applyTurretEdgeEffects(entity, doctrine, state) {
+  if (!entity || !entity.data || !doctrine || !Number.isFinite(doctrine.turretEdge)) return;
+  const data = entity.data;
+  const edge = Math.max(0, Math.floor(doctrine.turretEdge));
+  const previous = Math.max(0, Math.floor(Number(data._turretEdge) || 0));
+  if (edge <= previous) {
+    if (data._turretEdge !== edge) data._turretEdge = edge;
+    return;
   }
-
-  if (lost >= thresholds[1] && phase < 2) {
-    entity.data.turretLossPhase = 2;
-    entity.data.prowSurfaceOpen = true;
-    entity.data.prowSurface = { exposed: true, startTick: tick };
-    const currentTurn = Number(entity.turnRate) || Number(entity.data.turnRate) || 0.3;
-    entity.turnRate = currentTurn * 0.5;
-    if (entity.data.derived) {
-      entity.data.derived.turnRate = (Number(entity.data.derived.turnRate) || 0.3) * 0.5;
-    }
-    entity.data.turnAuthorityScale = 0.5;
-
-    if (ctxRef && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
-      ctxRef.bus.emit('ai:doctrinePhase', {
-        entityId: entity.id,
-        phase: 'phase_10_turrets_lost',
-        turretsLost: lost,
-        edge: 2,
-        tick,
-      });
-      ctxRef.bus.emit('ai:telegraph', {
-        entityId: entity.id,
-        phase: 'phase_10_turrets_lost',
-        cue: 'broadside_desperation',
-        kind: 'broadside_desperation',
-        line: 'Prow armor shattered! Turn authority lost!',
-        tick,
-      });
+  data._turretEdge = edge;
+  if (edge >= 2 && data._prowWindowOpen !== true) {
+    data._prowWindowOpen = true;
+    setThrusterHealth(entity, 'rcs-port', 0.4);
+    setThrusterHealth(entity, 'rcs-starboard', 0.4);
+    const bus = state && state.bus;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('toast', { text: 'Iron Maw\'s bow plate is torn — cross the prow!', kind: 'warn', ttl: 3 });
+      bus.emit('audio:cue', { id: 'combat.subsystem.disabled' });
     }
   }
 }
@@ -729,22 +675,6 @@ export function applyEngagementPosture(entity, doctrine, state) {
   const ai = entity.data.ai;
   if (!ai || ai.passive === true || ai.roe !== 'weapons_free') return;
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
-  if (isPdScreenActor(entity)) {
-    const charge = resolvePdCharge(entity, state);
-    if (charge && charge.id !== entity.id) {
-      ai.escortTargetId = charge.id;
-      if (!ai.activity || ai.activity.kind !== 'screen') {
-        ai.activity = {
-          kind: 'screen',
-          reason: 'pd_screen',
-          targetId: charge.id,
-          anchor: charge.pos ? { x: charge.pos.x, z: charge.pos.z } : { x: entity.pos.x, z: entity.pos.z },
-          leashRadius: 2600,
-          startedTick: tick,
-        };
-      }
-    }
-  }
   const current = ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
   if (!doctrine || !POSTURE_EGRESS_PHASES.has(doctrine.phase)) {
     // Re-commit (or doctrine dropped): hand the authored activity back exactly once.
@@ -862,15 +792,7 @@ export function stampManeuverIdentities(state, shipLikeList = indexedShipLikeSca
     const enemyId = data.lootTableId || data.enemyTypeId || null;
     if (enemyId == null && data.missionTag == null) continue;
     let wanted = null;
-    if (isPdScreenActor(entity)) {
-      wanted = 'escort_screen';
-      if (ai.escortTargetId == null) {
-        const charge = resolvePdCharge(entity, state);
-        if (charge && charge.id !== entity.id) {
-          ai.escortTargetId = charge.id;
-        }
-      }
-    } else if (data.missionTag && MISSION_TAG_BOSS_DOCTRINE[data.missionTag]) {
+    if (data.missionTag && MISSION_TAG_BOSS_DOCTRINE[data.missionTag]) {
       wanted = MISSION_TAG_BOSS_DOCTRINE[data.missionTag];
     } else if (enemyId && ENEMY_DOCTRINE_OVERRIDES[enemyId]) {
       wanted = ENEMY_DOCTRINE_OVERRIDES[enemyId];
@@ -946,7 +868,7 @@ function autoRecipeForSquad(members, squadKey, seed) {
   let fast = 0;
   for (const member of members) {
     const d = normalizeCombatDoctrineId(member.data && member.data.ai && member.data.ai.combatDoctrineId);
-    if (d === CombatDoctrineId.RANGED_DISENGAGER) ranged += 1;
+    if (d === CombatDoctrineId.RANGED_DISENGAGER || d === CombatDoctrineId.RANGED_STALKER) ranged += 1;
     else if (AUTO_SQUAD_FAST_DOCTRINES.has(d)) fast += 1;
   }
   // A marksman on the squad anchors everyone behind the firing line.
@@ -1003,7 +925,7 @@ function autoSocketsFor(members) {
   // Marksman doctrines ride the rear socket so the firing line keeps its support wing.
   for (const m of sorted) {
     const d = normalizeCombatDoctrineId(m.data && m.data.ai && m.data.ai.combatDoctrineId);
-    if (d === CombatDoctrineId.RANGED_DISENGAGER) take(m, SQUAD_SOCKET.REAR);
+    if (d === CombatDoctrineId.RANGED_DISENGAGER || d === CombatDoctrineId.RANGED_STALKER) take(m, SQUAD_SOCKET.REAR);
   }
   for (let i = 0; i < sorted.length; i++) {
     const m = sorted[i];

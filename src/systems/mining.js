@@ -63,6 +63,7 @@ import {
   SALVAGE_RIGHTS_KIND,
 } from '../data/killRewards.js';
 import { consumeLethalBlow, consumePendingSlam, consumePendingSlamIfFresh, overkillNoteForKill, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
+import { victimVisualFor } from './aftermathWrecks.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
 
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
@@ -122,12 +123,12 @@ const BEAM_PICKUP_DIRECT_RADIUS = 60;
 const MINING_NOISE_GAIN_PER_S = 8;
 const MINING_NOISE_DECAY_PER_S = 3;
 const MINING_NOISE_DANGER = 70;
-// Loud mining is supposed to attract interdiction (grammar §9.5.2 amputation 3). The attention meter
-// accumulated and emitted `danger:miningNoise` to nobody, so "greed gets loud" was a UI label
-// describing a mechanic that did not exist (src/ui/panels/moduleRisk.js:76 still says it does).
-// dangerModel.js is a pure kernel with no bus, so the wiring goes through the impulse seam its
-// runtime adapter already owns: sectorSim.js:103 subscribes to `sectorsim:impulse`.
-export const MINING_NOISE_DANGER_IMPULSE = 0.05;   // sector-field danger added per threshold crossing
+// The size of the sector-danger blip one paid mining-noise episode buys (WORLD-33). Exported so
+// sectorSim and the field-picture test share the same bounded magnitude.
+export const MINING_NOISE_DANGER_IMPULSE = 0.05;
+// Loud mining is supposed to attract interdiction (grammar §9.5.2 amputation 3). A threshold
+// crossing emits one rate-limited `danger:miningNoise`; sectorSim owns the bounded field impulse
+// it pays (WORLD-33), so "greed gets loud" (src/ui/panels/moduleRisk.js:76) is now true.
 const MINING_NOISE_IMPULSE_COOLDOWN_S = 45; // one crossing may pay once per this window
 
 // --- beam heat / vent rhythm ------------------------------------------------
@@ -445,7 +446,7 @@ export const mining = {
         salvagePool: pool,
         payloadType: action ? action.id : 'cut_panel'
       }, this.helpers);
-      this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
+      this.bus.emit('salvage:cutComplete', { minerId: player.id, targetId: target.id, payloadId: payload.id });
     }
   },
 
@@ -1451,6 +1452,11 @@ export const mining = {
         || this._lootToPool();
       const fractured = spawnFracturePieces(this, note, {
         markerId: aftermathPlan && aftermathPlan.markerId,
+        // ANI-08: both spawned fragments render as the victim's own hull pieces — the seam
+        // offcut resolves its fragment GLB off this stamp; the remainder also receives
+        // hulkVisual through bindImmediateWreck below.
+        victimVisual: victimVisualFor(victim && victim.data),
+        victimRadius: victim && Number.isFinite(victim.radius) ? victim.radius : null,
         salvagePool,
         bindAftermath: aftermathPlan && aftermathOwner
           && typeof aftermathOwner.bindImmediateWreck === 'function'
@@ -2357,11 +2363,9 @@ export const mining = {
     }
   },
 
-  // The attention meter's consequence. `danger:miningNoise` had no subscriber anywhere in src/, so
-  // the game told the player (src/ui/panels/moduleRisk.js:76) that sustained beam use is dangerous
-  // and then made it free. dangerModel.js is a pure kernel, so this goes through the impulse seam
-  // its runtime adapter already owns — sectorSim.js subscribes to `sectorsim:impulse` and folds the
-  // delta into the sector's danger node. Rising danger lowers effective regional security, which
+  // The attention meter's consequence. `danger:miningNoise` reports every crossing; the paid mark
+  // goes through `sectorsim:impulse`, which sectorSim folds into the danger node as a bounded
+  // `mining_noise` impulse. Rising danger lowers effective regional security, which
   // encounterDirector reads straight into its combat-pressure accrual: loud mining brings hunters.
   //
   // Rate-limited because the meter can re-cross the threshold every few seconds of beam time and an
@@ -2369,17 +2373,13 @@ export const mining = {
   _raiseMiningNoiseDanger(level, state) {
     const now = Number(state.simTime) || 0;
     if (now - this._noiseImpulseAt < MINING_NOISE_IMPULSE_COOLDOWN_S) return;
-    this._noiseImpulseAt = now;
     const sectorId = state.world && state.world.currentSectorId;
     if (!sectorId) return;
+    this._noiseImpulseAt = now;
     // One impulse, cut to the field cap. sectorSim folds it into the danger node; the kernel
     // then decays it. This does not spawn anyone — attention is the raised field, not a ship.
     const danger = Math.min(SECTOR_IMPULSE_DANGER_CAP, MINING_NOISE_DANGER_IMPULSE);
-    this.bus.emit('sectorsim:impulse', {
-      kind: 'mining_noise',
-      sectorId,
-      danger,
-    });
+    this.bus.emit('sectorsim:impulse', { kind: 'mining_noise', sectorId, danger });
   },
 
   _ensureAsteroidSeams(ast) {

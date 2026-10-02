@@ -394,6 +394,16 @@ export function engagedContactReadout(state) {
  * mission-owned targets settle through missions, Survival bodies through the run wallet.
  * Pure and DOM-free for headless checks.
  */
+/**
+ * FB-121: the hull's physical class — AMMUNITION / TERRAIN / SPECIALIST — prints once the scanner
+ * has resolved the contact. Unscanned hulls never show a class word; pure and DOM-free so the
+ * reveal gate is checkable headlessly.
+ */
+export function targetPhysicalClassLabel(t) {
+  const cls = t && t.data && t.data.scanned === true ? t.data.physicalClass : null;
+  return typeof cls === 'string' && cls.length > 0 ? cls.toUpperCase() : null;
+}
+
 export function targetBountyPreview(target) {
   const amount = Math.max(0, Math.round(Number(target && target.data && target.data.bountyCr) || 0));
   if (amount <= 0) return 0;
@@ -654,11 +664,13 @@ export function createTargetPanel(ctx) {
       const fac = t.factionId ? FACTION_BY_ID.get(t.factionId) : null;
       const facShort = fac ? (fac.short || fac.name) : '—';
       const callsign = t.data && t.data.callsign;
-      const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}`;
+      const classLabel = targetPhysicalClassLabel(t);
+      const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}:${classLabel || ''}`;
       if (idKey !== lastIdentityKey) {
         lastIdentityKey = idKey;
         const levelBit = level != null ? ` · L${level}` : '';
-        setText(elIdentity, `${facShort} · ${role}${levelBit}`);
+        const classBit = classLabel ? ` · ${classLabel}` : '';
+        setText(elIdentity, `${facShort} · ${role}${levelBit}${classBit}`);
       }
       if (elIdentity.style.display !== 'block') elIdentity.style.display = 'block';
     } else if (elIdentity.style.display !== 'none') {

@@ -19,74 +19,105 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
   return Math.max(MIN_LIMIT, Math.floor(cores) - 2);
 }
 
-function abortError(reason) {
-  if (reason instanceof Error && reason.name === 'AbortError') return reason;
-  const message = reason instanceof Error
-    ? (reason.message || 'decode task budget wait aborted')
-    : (reason != null ? String(reason) : 'decode task budget wait aborted');
-  const error = new Error(message);
-  error.name = 'AbortError';
-  if (reason instanceof Error) error.cause = reason;
-  return error;
-}
-
 /**
- * FIFO semaphore. `acquire()` resolves a `release` function; release returns the token to the
- * next waiter (FIFO) or to `available`. Each lease's release is idempotent — a late `finally`
- * after an aborted or settled task cannot return the token twice. `acquire({ signal })`
- * rejects a still-queued waiter on abort and removes its abort listener once granted.
+ * FIFO semaphore with deadline classes. `acquire(decodeClass)` resolves a `release` function;
+ * release returns the token to the next waiter — 'visible' waiters before 'deadline' waiters
+ * before 'ambient' ones, FIFO within each class — or to `available`. Releasing is
+ * idempotent-free — callers must invoke a release exactly once, so wrap tasks so settle paths
+ * release exactly one token.
+ *
+ * Three classes: a 'visible' decode (spawn already at the glass — tGlass below the urgent
+ * threshold) never waits behind runway work that still has seconds of slack; a 'deadline'
+ * decode (decode-runway / wave-hull / admission-deadline work) never waits behind a queued
+ * ambient warm; ambient fairness is preserved because the higher classes are rare and capped.
  */
 export function createDecodeTaskBudget(limit) {
-  const size = Number(limit);
-  if (!Number.isFinite(size) || size <= 0) {
-    throw new RangeError(`decode task budget limit must be a finite positive number, got ${limit}`);
-  }
-  const slots = Math.max(1, Math.floor(size));
-  let available = slots;
+  const size = Math.max(1, Math.floor(limit));
+  let available = size;
   const waiters = [];
-  const grant = () => {
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      const next = waiters.shift();
-      if (next) next();
-      else available += 1;
-    };
+  const release = () => {
+    let idx = waiters.findIndex((w) => w.decodeClass === 'visible');
+    if (idx < 0) idx = waiters.findIndex((w) => w.decodeClass === 'deadline');
+    if (idx < 0) idx = waiters.length ? 0 : -1;
+    const next = idx >= 0 ? waiters.splice(idx, 1)[0] : null;
+    if (next) next.resolve(release);
+    else available += 1;
   };
-  const acquire = ({ signal } = {}) => {
-    if (signal && signal.aborted) return Promise.reject(abortError(signal.reason));
+  const acquire = (decodeClass) => {
     if (available > 0) {
       available -= 1;
-      return Promise.resolve(grant());
+      return Promise.resolve(release);
     }
-    return new Promise((resolve, reject) => {
-      const waiter = { onAbort: null };
-      const detach = () => {
-        if (waiter.onAbort) signal.removeEventListener('abort', waiter.onAbort);
-      };
-      const grantSeat = () => {
-        detach();
-        resolve(grant());
-      };
-      if (signal && typeof signal.addEventListener === 'function') {
-        waiter.onAbort = () => {
-          detach();
-          const index = waiters.indexOf(grantSeat);
-          if (index >= 0) waiters.splice(index, 1);
-          reject(abortError(signal.reason));
-        };
-        signal.addEventListener('abort', waiter.onAbort);
-      }
-      waiters.push(grantSeat);
-    });
+    return new Promise((resolve) => { waiters.push({ decodeClass, resolve }); });
   };
   return Object.freeze({
     acquire,
-    get limit() { return slots; },
-    get inFlight() { return slots - available; },
+    get limit() { return size; },
+    get inFlight() { return size - available; },
     get queued() { return waiters.length; },
   });
+}
+
+// Depth of currently in-flight deadline-class decode operations. Task intakes that cannot
+// thread a per-task class (the KTX2 worker pool's postMessage is created inside the shared
+// loader's internals) read this at post time: any task posted while a deadline decode owns
+// the lane is treated as deadline work. The serial decode lane keeps the over-inclusion
+// bounded to at most the co-scheduled sibling of a deadline part — strictly narrower than
+// classifying nothing.
+let deadlineDecodeDepth = 0;
+let visibleDecodeDepth = 0;
+
+export function deadlineDecodeActive() {
+  // A visible decode is on the tightest clock the system models — everything deadline-scoped
+  // applies to it as well.
+  return deadlineDecodeDepth > 0 || visibleDecodeDepth > 0;
+}
+
+export function visibleDecodeActive() {
+  return visibleDecodeDepth > 0;
+}
+
+/** The class any worker-decode post made right now should carry. */
+export function activeDecodeClass() {
+  return visibleDecodeDepth > 0 ? 'visible' : (deadlineDecodeDepth > 0 ? 'deadline' : 'ambient');
+}
+
+/** Run fn with the deadline-class flag set for the duration of its settlement. */
+export function withDeadlineDecodeClass(fn) {
+  deadlineDecodeDepth += 1;
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    deadlineDecodeDepth -= 1;
+  };
+  try {
+    const result = fn();
+    Promise.resolve(result).then(settle, settle);
+    return result;
+  } catch (error) {
+    settle();
+    throw error;
+  }
+}
+
+/** Run fn with the visible-class flag set for the duration of its settlement. */
+export function withVisibleDecodeClass(fn) {
+  visibleDecodeDepth += 1;
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    visibleDecodeDepth -= 1;
+  };
+  try {
+    const result = fn();
+    Promise.resolve(result).then(settle, settle);
+    return result;
+  } catch (error) {
+    settle();
+    throw error;
+  }
 }
 
 let shared = null;

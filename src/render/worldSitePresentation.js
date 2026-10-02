@@ -2,6 +2,7 @@
 // objects attached to verified GLB sockets; it never writes simulation state or authored materials.
 
 import * as THREE from 'three';
+import { recordMountedRootForUnreadyScan } from './bloom.js';
 import { impairedDutyCycle, worldSiteConditionForStatus } from '../presentation/worldSiteDamageStates.js';
 
 const TAU = Math.PI * 2;
@@ -48,6 +49,7 @@ export function installWorldSitePresentation(root, entity, { THREE_NS = THREE } 
     mesh.renderOrder = 3;
     mount.add(mesh);
     socket.add(mount);
+    recordMountedRootForUnreadyScan(mount);
     const fixture = {
       id: spec.id,
       componentId: spec.componentId,

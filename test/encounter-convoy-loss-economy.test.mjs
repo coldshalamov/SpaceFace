@@ -7,6 +7,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { stableLossIntentId } from '../src/economy/freightCausality.js';
 import { economy } from '../src/systems/economy.js';
 import { encounterDirector, planEncounterShape } from '../src/systems/encounterDirector.js';
@@ -36,6 +37,14 @@ function boot(seed, { voiceAccepted = true } = {}) {
   state.world.currentSectorId = SECTOR_ID;
   state.world.activeSector = {
     stations: [{ id: STATION_ID, pos: { ...STATION_POS }, name: 'Meridian Exchange' }],
+  };
+  // ECON-01 tier-gates seeding: convoy cargo rolls up to marketTier 1, so the fixture's exchange
+  // must resolve through the content registry at a tier that stocks it (a bare world.activeSector
+  // row carries no tier and seeds marketTier-0 listings only).
+  state.content = {
+    sectors: SECTORS.map((s) => (s.id === SECTOR_ID
+      ? { ...s, tier: 3, stations: [...(s.stations || []), { id: STATION_ID, type: 'trade_hub', size: 'L' }] }
+      : s)),
   };
   const player = sim.spawn({
     type: 'ship',

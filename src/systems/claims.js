@@ -341,6 +341,9 @@ export const claims = {
       // economy just stocked. The committed receipt dedupes canonical retries (and only them).
       this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {}));
       this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {}));
+      // LAW-09: the raid marker's ignore verb — standing a claim down on purpose settles through
+      // the same 'ignored' column the deadline lapse pays.
+      this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
       this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
       this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
@@ -1507,6 +1510,16 @@ export const claims = {
     this._settleDefense(body, payload.outcome || 'timeout');
   },
 
+  // LAW-09 — the player may stand a claim down on purpose. Only a live warning may be waived: an
+  // engaged defense is already committed, and a stale marker's defenseId no longer matches.
+  _onDefenseIgnore(payload) {
+    const body = this._body(payload && payload.claimId);
+    const defense = body && body.spec && body.spec.defense;
+    if (!defense || defense.phase !== 'warning') return false;
+    if (payload && payload.defenseId && payload.defenseId !== defense.id) return false;
+    return this._settleDefense(body, 'ignored');
+  },
+
   _settleDefense(body, rawOutcome) {
     const spec = body && body.spec;
     const defense = spec && spec.defense;
@@ -2474,7 +2487,7 @@ export const claims = {
     };
     ledger.completed[pullId] = rec;
     ledger.completedOrder.push(pullId);
-    const text = endgamePullLine(pullId);
+    const text = endgamePullLine(pullId, { victim: rec.victimFactionId });
     this.bus.emit('endgame:pullCompleted', {
       pullId,
       kind: rec.kind,

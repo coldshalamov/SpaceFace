@@ -51,7 +51,14 @@ async function restored(saved){
 // clip bleeds closing across six ticks and the first impulse packet stays under damageDeltaV
 // (8), so the old grazing seat produced damageApplied=false and no amendment; the head-on seat
 // lands a single ~17.4-deltaV kill, preserving the same collateral-count-2 contract.
-const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-118,42,{hull:3,mass:10,combatSpeed:95})];
+// 2026-09-30 (eb1869826 solid contacts): the bolas strike lands ~t71 and flings the pursuer
+// downrange at (-106.4,6.4), while the released payload leaves on its own line — the old
+// (-118,42) seat now sits on the PAYLOAD's line, so the payload struck the wingman first and
+// the incident amended in-run before the t90 save boundary. The wingman returns to the
+// pursuer's post-strike flight line at (-155,37) (pursuer arrives ~t110): the wingman
+// collision lands after the save, and its receipt rides the pursuer's bolas-strike path
+// (edges 2, two victim lives), preserving the same collateral-count-2 contract.
+const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-155,37,{hull:3,mass:10,combatSpeed:95})];
 const release=tick=>tick===31;
 
 test('a save between release and impact restores the pending root; the impact settles once with the saved identity',async()=>{

@@ -282,6 +282,16 @@ export function encodeRunShareCode(spec) {
 export function decodeRunShareCode(code) {
   const res = decodeShareBlock(code, RUN_SHARE_PREFIX);
   if (!res.ok) return { ok: false, error: res.error || 'invalid run code' };
+  // NXB-020: the codec version IS the ruleset-compatibility id. A code from a different
+  // envelope version must fail closed as non-comparable — never silently re-versioned
+  // into a run the writer did not mean.
+  const version = Number(res.payload && res.payload.v);
+  if (version !== SHARE_CODE_VERSION) {
+    return {
+      ok: false,
+      error: `code was written by codec v${Number.isInteger(version) ? version : '?'} — this build reads v${SHARE_CODE_VERSION}; the attempt is not comparable`,
+    };
+  }
   const spec = normalizeRunShareSpec(res.payload);
   if (!spec) return { ok: false, error: 'code carries no run seed' };
   return { ok: true, spec };

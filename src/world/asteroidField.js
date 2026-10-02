@@ -466,7 +466,10 @@ export function tickOpticFieldRocks(state, helpers) {
     if (ent) promoted += 1;
   }
 
-  const list = state.entityList || [];
+  // Prefer the indexed asteroid list — the fat entityList walk re-visits every ship/station/
+  // projectile on every demote pass while the index already carries exactly this filter.
+  const index = state.entityIndex;
+  const list = (index && Array.isArray(index.asteroids)) ? index.asteroids : (state.entityList || []);
   for (let i = list.length - 1; i >= 0; i--) {
     const entity = list[i];
     if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;

@@ -189,6 +189,21 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   }
   spec.data = spec.data || {};
   if (ws.length) spec.data.weapons = ws;
+  // FB-020: a heavy hull authoring turret subsystems keys each turret mount to its own
+  // destructible `subsystem_turret_<i>` — a dead mount goes silent through the ordinary
+  // weaponBankReadiness gate, and mount loss (not hull fraction) drives the fight's phases.
+  if (def.subsystems && Number(def.subsystems.turretHp) > 0) {
+    let turretIndex = 0;
+    for (const w of ws) {
+      if (w && (w.facing === 'turret' || w.tracking === 'auto_turret')) {
+        w.subsystemId = `subsystem_turret_${turretIndex++}`;
+      }
+    }
+    spec.data.subsystems = { ...def.subsystems };
+  }
+  // FB-020: a row may author its own weak-point arc (Iron Maw's prow rib) — the scan-revealed
+  // seam the packet promises differs from the class table's rear vent.
+  if (def.weakPoint && typeof def.weakPoint === 'object') spec.data.weakPoint = { ...def.weakPoint };
   // Keep the render-facing fittings in sync with the NPC's assigned weapons so its barrels render
   // at the right hardpoints (combat bypasses the fittings path that the player shipyard uses).
   const shipDef = SHIP.get(def.shipId) || SHIPS.find((s) => s.id === def.shipId);
@@ -237,6 +252,9 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   // Ecology roles: durable telegraph + counter hints for HUD/comms (presentation consumers).
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
+  // FB-121: ammunition / moving terrain / specialist — the scan panel's one-word read on what
+  // this hull IS, derived on the row from mass unless the specialist identity overrides it.
+  spec.data.physicalClass = def.physicalClass || null;
   // INF-025: authored directional armor (Mirrorjaw prow/stern split). Clamped here so a bad
   // row can neither immunize a hull nor multiply damage without bound; the router stays pure.
   if (def.directionalArmor && typeof def.directionalArmor === 'object') {
@@ -300,6 +318,7 @@ function doctrineTelegraphFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_spool';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_charge';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
+  if (doctrineId === CombatDoctrineId.RANGED_STALKER) return 'sensor_ghost';
   if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'detonator_fuse';
   return 'engine_flare';
 }

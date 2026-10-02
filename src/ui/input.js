@@ -346,6 +346,14 @@ export function createUiInput(ctx, screenManager) {
       return;
     }
 
+    // PRO-09: dismiss the one-voice floor pill. The arbiter owns what may be cleared (danger and
+    // the onboarding floor are protected); the key just asks.
+    if (matchesBinding(ev, BINDINGS.dismissVoice)) {
+      ev.preventDefault();
+      bus.emit('voice:dismiss', { source: 'keyboard' });
+      return;
+    }
+
     switch (key) {
       case 'Escape':
         if (state.ui && state.ui.commsBacklogOpen) {

@@ -222,6 +222,7 @@ const DRONE_ENTITY_RADIUS = 2.4;      // wu collision radius of a single drone m
 const DRONE_SPEED = 130;              // wu/s cruise toward the targeted asteroid
 const DRONE_MINE_RANGE = 34;          // wu standoff at which the drone "chips" the rock
 const DRONE_ORBIT_GAP = 14;           // wu added to the asteroid radius for the standoff ring
+const DRONE_GRIND_CYCLE_S = 4.2;      // authored grind-cycle length; refire cadence while on rock
 const DRONE_SPREAD = 26;              // wu spacing so multiple drones in a group fan out
 const ASTEROID_QUERY_RADIUS_PAD = 64;
 
@@ -930,7 +931,11 @@ export const automation = {
         e.data.targetAstId = ast ? ast.id : null;
       }
 
-      if (!ast) { this._driveDrone(e, e.pos, dt, true); continue; } // no rock: drift/idle in place
+      if (!ast) {
+        this._driveDrone(e, e.pos, dt, true); // no rock: drift/idle in place
+        this._setDroneGrinding(e, false);
+        continue;
+      }
 
       const dx = ast.pos.x - e.pos.x, dz = ast.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
@@ -941,15 +946,42 @@ export const automation = {
         const target = { x: tx, z: tz };
         const detour = resolveDroneDetour(this.state, e, target, ast, standoff + DRONE_MINE_RANGE);
         this._driveDrone(e, detour || target, dt, false);
+        this._setDroneGrinding(e, false);
       } else {
         // in range: face the rock, ease to a hover, and chip ore into the shared buffer.
         this._driveDrone(e, { x: ast.pos.x, z: ast.pos.z }, dt, true);
         anyOnRock = true;
+        this._setDroneGrinding(e, !!wantOre);
+        this._maybeRefireDroneGrind(e);
         if (wantOre) this._chipAsteroid(ast, def, dt);
       }
     }
     if (alive.length !== g.entityIds.length) g.entityIds = alive;
     return anyOnRock;
+  },
+
+  // Publish the drone's on-rock grinding state so authored motion can spin its cutter drum —
+  // drone:grindStart / drone:grindStop carry the drone's own entity id and fire on transitions
+  // only, never per tick.
+  _setDroneGrinding(e, grinding) {
+    const data = e.data || (e.data = {});
+    if (!!data.grinding === !!grinding) return;
+    data.grinding = !!grinding;
+    if (!grinding) delete data.grindCycleAt;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit(grinding ? 'drone:grindStart' : 'drone:grindStop', { id: e.id });
+    }
+  },
+
+  // A grind cycle is one authored clip (~4.2 s); while the drone stays on the rock the sim
+  // re-fires grindStart on the clip's own cadence so the drum keeps working cycle to cycle.
+  _maybeRefireDroneGrind(e) {
+    const data = e.data || {};
+    if (!data.grinding || !this.bus || typeof this.bus.emit !== 'function') return;
+    const now = this.state.simTime || 0;
+    if (now - (data.grindCycleAt || 0) < DRONE_GRIND_CYCLE_S) return;
+    data.grindCycleAt = now;
+    this.bus.emit('drone:grindStart', { id: e.id });
   },
 
   // Publish a drone's desired world heading through the canonical Flight V3 intent. The flight

@@ -91,24 +91,31 @@ test('projectile hit produces one critical callout and one correctly multiplied 
   assert.equal(f.damage.length, 1);
   assert.equal(f.damage[0].applied, 16);
   assert.equal(f.target.hull, 984);
+  // FB-019: a player-caused hull hit also paints its layer pip between the callout and the
+  // number (a flat mark — no --rise), and spawns carry the --rise class since demo-prep.
   assert.deepEqual(dom.visible().map(el => [el.textContent, el.className]), [
-    ['◈ CRIT · DRIVE COIL', 'sf-ft sf-ft--weak sf-ft--critical'],
-    ['16', 'sf-ft sf-ft--hull'],
+    ['◈ CRIT · DRIVE COIL', 'sf-ft sf-ft--rise sf-ft--weak sf-ft--critical'],
+    ['✕', 'sf-ft sf-ft--pip sf-ft--pip-hull'],
+    ['16', 'sf-ft sf-ft--rise sf-ft--hull'],
   ]);
   // An ordinary hit in the same burst still aggregates solely into the numeric receipt.
   f.bus.emit('projectile:hit', { ...HIT, pos: { x: 10, z: 0 } });
   assert.equal(f.receipts.length, 1);
   assert.equal(f.target.hull, 974);
-  assert.deepEqual(dom.visible().map(el => el.textContent), ['◈ CRIT · DRIVE COIL', '26']);
-  assert.equal(dom.visible()[1].className, 'sf-ft sf-ft--hull sf-ft--big');
+  assert.deepEqual(dom.visible().map(el => el.textContent), ['◈ CRIT · DRIVE COIL', '✕', '26']);
+  assert.equal(dom.visible()[2].className, 'sf-ft sf-ft--rise sf-ft--hull sf-ft--big');
 });
 
-for (const [name, options, hit] of [
-  ['outside the weak arc', {}, { ...HIT, pos: { x: 10, z: 0 } }],
-  ['a hull without a weak point', { shipClass: 'fighter' }, HIT],
-  ['a non-player attacker', {}, { ...HIT, ownerId: 3 }],
-  ['the feature flag off', { enabled: false }, HIT],
-  ['no hit position', {}, { ...HIT, pos: null }],
+// FB-019: player-caused hull hits paint their layer pip beside the number (a control receipt,
+// not a crit path) — only the non-player-attacker case keeps a pip-free list.
+const ORDINARY = [['10', 'sf-ft sf-ft--rise sf-ft--hull']];
+const WITH_PIP = [['✕', 'sf-ft sf-ft--pip sf-ft--pip-hull'], ['10', 'sf-ft sf-ft--rise sf-ft--hull']];
+for (const [name, options, hit, expected] of [
+  ['outside the weak arc', {}, { ...HIT, pos: { x: 10, z: 0 } }, WITH_PIP],
+  ['a hull without a weak point', { shipClass: 'fighter' }, HIT, WITH_PIP],
+  ['a non-player attacker', {}, { ...HIT, ownerId: 3 }, ORDINARY],
+  ['the feature flag off', { enabled: false }, HIT, WITH_PIP],
+  ['no hit position', {}, { ...HIT, pos: null }, WITH_PIP],
 ]) {
   test(`${name} keeps ordinary damage and floating text unchanged`, t => {
     const f = fixture(t, options);
@@ -119,7 +126,7 @@ for (const [name, options, hit] of [
     assert.equal(f.damage.length, 1);
     assert.equal(f.damage[0].applied, 10);
     assert.equal(f.target.hull, 990);
-    assert.deepEqual(dom.visible().map(el => [el.textContent, el.className]), [['10', 'sf-ft sf-ft--hull']]);
+    assert.deepEqual(dom.visible().map(el => [el.textContent, el.className]), expected);
   });
 }
 
@@ -148,7 +155,7 @@ test('critical text uses the pool and existing reduced-motion lifetime without n
   assert.equal(critical.style.transform, legacy.style.transform, 'critical uses the existing motion path');
   assert.match(critical.style.transform, /scale\(1\)$/);
   assert.equal(critical.style.opacity, legacy.style.opacity);
-  assert.equal(legacy.className, 'sf-ft sf-ft--weak');
+  assert.equal(legacy.className, 'sf-ft sf-ft--rise sf-ft--weak');
   assert.equal(legacy.textContent, '◈ DRIVE COIL');
   f.state.settings.video.motionReduce = false;
   dom.text.update(0.02);
@@ -161,10 +168,11 @@ test('critical text uses the pool and existing reduced-motion lifetime without n
   dom.text.update(1 / 60);
   assert.equal(dom.projections(), projected, 'expired callouts go back to sleep');
   // Fill and wrap the pool, ensuring critical classes cannot leak onto ordinary numbers.
+  // (No targetId on these damage events means no layer pip — pips need a resolved target.)
   for (let i = 0; i < dom.pool.length + 1; i++) {
     f.bus.emit('combat:damage', { amount: 5, pos: HIT.pos });
   }
-  assert.ok(dom.visible().every(el => el.textContent === '5' && el.className === 'sf-ft sf-ft--hull'));
+  assert.ok(dom.visible().every(el => el.textContent === '5' && el.className === 'sf-ft sf-ft--rise sf-ft--hull'));
   assert.equal(dom.allocations(), allocated, 'spawns and updates reuse the existing DOM pool');
 });
 
@@ -172,7 +180,7 @@ for (const settings of [{ showDamageNumbers: false }, { gameplay: { damageNumber
   test(`critical callouts respect the damage-number preference ${JSON.stringify(settings)}`, t => {
     const f = fixture(t);
     const dom = mountText(t, f);
-    f.state.settings = { ...settings, gameplay: { difficulty: 'veteran', ...settings.gameplay } };
+    f.state.settings = { ...settings, gameplay: { difficulty: 'veteran', ...settings.gameplay, hitPips: false } };
     f.bus.emit('projectile:hit', HIT);
     assert.equal(f.receipts.length, 1, 'presentation preferences do not change earned hits');
     assert.equal(f.target.hull, 984);

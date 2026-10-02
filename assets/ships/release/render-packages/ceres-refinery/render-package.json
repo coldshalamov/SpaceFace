@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        39
+        38
       ],
       "parentNodeId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        40
+        39
       ],
       "parentNodeId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        41
+        40
       ],
       "parentNodeId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        42
+        41
       ],
       "parentNodeId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "worldTransform": [
@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "11aae27e6ae51d6ed077e639c829dc6ea4a1fc50ed65551aa1649277937600f1",
+  "contentHash": "ea9d65f04d7cf0b8efd71ddcb3707ec065c74c93a80a92c91b3c0e36e4293921",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-refinery.node.lod0-hook-drive-core.dynamic",
@@ -285,16 +285,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce18d8a9f185a65f448b93e482d5ab058ae8ea7c3dcbe3c326fdbf564f8c720a",
+      "geometryHash": "94301e8099ef4b0435c5183e11c5032573a02d589c6dcfe313ce8044bb413f97",
       "id": "sf.render.ceres-refinery.node.lod0-armor.primitive.0",
-      "indexCount": 39036,
+      "indexCount": 37296,
       "indexed": true,
-      "materialHash": "6adc81dc47f119f3a1d906d9f95805561f5bb3db0ff7e2d0e51fc75a94430fc6",
+      "materialHash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ceres-refinery.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 12865
+      "vertexCount": 12252
     },
     {
       "bounds": {
@@ -310,16 +310,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5df55b8dec389268ef08ffb3874817aeaca096cd8e82f0ea41b6db40d799b67",
+      "geometryHash": "bc232ed2c6889d44536780b6b318c26ed5ce3bb82a5f021e646be6505a149be4",
       "id": "sf.render.ceres-refinery.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 11796,
+      "indexCount": 10884,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.ceres-refinery.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 6172
+      "vertexCount": 5820
     },
     {
       "bounds": {
@@ -335,16 +335,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "401c61e7885e3f423e1b3d43107a6c623be03527c03282db5edb7cd1a1389f11",
+      "geometryHash": "beda9558a10e3192ac560d27b17b3795b6dea6c440c0ce80e9723bf8b3395735",
       "id": "sf.render.ceres-refinery.node.lod0-canopy.primitive.0",
-      "indexCount": 276,
+      "indexCount": 288,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_CANOPY",
       "nodeId": "sf.render.ceres-refinery.node.lod0-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 110
+      "vertexCount": 115
     },
     {
       "bounds": {
@@ -435,16 +435,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58a616da021ac1847f05e4d0c129aa9575f22c8fa79f3b6baea6e35c1cdfc66f",
+      "geometryHash": "720db97b70b792125c58257a4cdac30143f65116721193d2635a0e95ebc20c23",
       "id": "sf.render.ceres-refinery.node.lod0-hull-graphite.primitive.0",
-      "indexCount": 30804,
+      "indexCount": 29700,
       "indexed": true,
-      "materialHash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_graphite",
       "nodeId": "sf.render.ceres-refinery.node.lod0-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 10167
+      "vertexCount": 9752
     },
     {
       "bounds": {
@@ -460,41 +460,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "105d9acca64475d7913ded73dc47252cec771cbc717e2482faf519ae57004270",
+      "geometryHash": "b493d1ad309523864109cf499b6f94efe7c086f7b8f358f32671c87f586de6e3",
       "id": "sf.render.ceres-refinery.node.lod0-hull.primitive.0",
-      "indexCount": 30858,
+      "indexCount": 27354,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.ceres-refinery.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 9821
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.756340503692627,
-          12.113262176513672,
-          38.68922805786133
-        ],
-        "min": [
-          -6.164340496063232,
-          11.827648162841797,
-          38.28123092651367
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bc00a97bb18d27351aa69458fdbd522d84cbb31101c9a0cb33d8df29b7daf846",
-      "id": "sf.render.ceres-refinery.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Cyan",
-      "nodeId": "sf.render.ceres-refinery.node.lod0-lights-cyan",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 8667
     },
     {
       "bounds": {
@@ -535,16 +510,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69f206118d69484e2d4f239b9980ea20d4f80cf608ff3875251ffaf712b223c8",
+      "geometryHash": "9d405a3a4072158aeff4e748a997b6fdbedf171c51f4c21562739950864f4d75",
       "id": "sf.render.ceres-refinery.node.lod0-mechanical.primitive.0",
-      "indexCount": 38316,
+      "indexCount": 33096,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.ceres-refinery.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 17406
+      "vertexCount": 15904
     },
     {
       "bounds": {
@@ -560,16 +535,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "568ee0051cdac26fb8fb4ec9756924781783e0322af4c60f55d2d073231c766a",
+      "geometryHash": "90ae2d8335606ac6d3f1cfdc9a6690b61edf210cbdeabd1f11bf797e11f2c490",
       "id": "sf.render.ceres-refinery.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 8742,
+      "indexCount": 8214,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.ceres-refinery.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2997
+      "vertexCount": 2805
+    },
+    {
+      "bounds": {
+        "max": [
+          6.649848937988281,
+          17.34987449645996,
+          6.649848937988281
+        ],
+        "min": [
+          -6.649848937988281,
+          16.65012550354004,
+          -6.649848937988281
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cbbb762eac13ebf7b2cb9e4648f3c3725a6c19aa26483f724ad1e230e49a2772",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-armor.primitive.0",
+      "indexCount": 1728,
+      "indexed": true,
+      "materialHash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_Armor",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 608
+    },
+    {
+      "bounds": {
+        "max": [
+          5.7254838943481445,
+          29.450109481811523,
+          5.7254838943481445
+        ],
+        "min": [
+          -5.7254838943481445,
+          29.199892044067383,
+          -5.7254838943481445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7005d8879decbc9322f8192846ca9ca279d6d60e7c50decccefcfee21ead5ec6",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-beacon-amber.primitive.0",
+      "indexCount": 912,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          7.325483322143555,
+          15.199616551399231,
+          7.325483322143555
+        ],
+        "min": [
+          -7.325483322143555,
+          13.400382878025994,
+          -7.325483322143555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f9bdf660c6e9259a5d627d3fb040aebcba09c1d0de413f94dfd2a5aca74cfc9",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull-graphite.primitive.0",
+      "indexCount": 1104,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 416
+    },
+    {
+      "bounds": {
+        "max": [
+          6.625576019287109,
+          28.5,
+          6.625576019287109
+        ],
+        "min": [
+          -6.625576019287109,
+          13.399999618530273,
+          -6.625576019287109
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a79617856d3c40516526df135d793e096445cf48360703354730b0cb1c68d3d4",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_Hull",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 864
+    },
+    {
+      "bounds": {
+        "max": [
+          6.77548360824585,
+          29.299979209899902,
+          6.77548360824585
+        ],
+        "min": [
+          -6.77548360824585,
+          20.740211963653564,
+          -6.77548360824585
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aae0653953b511c89d2971bcafcc335b210db0530dcfdf3a02d544d82a34c474",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanical.primitive.0",
+      "indexCount": 2160,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_Mechanical",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 744
+    },
+    {
+      "bounds": {
+        "max": [
+          6.77548360824585,
+          29.29957389831543,
+          6.77548360824585
+        ],
+        "min": [
+          -6.77548360824585,
+          28.300424575805664,
+          -6.77548360824585
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cd8742bb01e787c9fb588e0dbf981f8947c381b9adbf5ff7a1337c4cc574fe75",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanicaldark.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          6.340384483337402,
+          26.700002670288086,
+          6.340384483337402
+        ],
+        "min": [
+          -6.340384006500244,
+          25.69999885559082,
+          -6.340384006500244
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31fc9e5d858ab9015a5c6a2be07a1bb7bc5cf0b4901bd78e500ed3a1b8662e88",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-warning.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_CROWN_Warning",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 224
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4348111152648926,
+          11.805621147155762,
+          40.53495144844055
+        ],
+        "min": [
+          -9.90793228149414,
+          8.167935252189636,
+          34.40398669242859
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f61da1807d2ff7d2a2e28f9d5c914404e086cb13bebead0407050238471ec5e7",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-hull.primitive.0",
+      "indexCount": 1248,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_SCAN_Hull",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 290
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.756340503692627,
+          12.113261938095093,
+          38.6892294883728
+        ],
+        "min": [
+          -6.164340496063232,
+          11.827648401260376,
+          38.2812294960022
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eb26d3e59b5cd761e92054c703727553a15f2b358768cc3cfb11eec37990c211",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.2729833126068115,
+          12.02227258682251,
+          40.701913595199585
+        ],
+        "min": [
+          -10.0697603225708,
+          8.002742290496826,
+          34.23702073097229
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "953483e754cd6d476bc0a53ba3f78cafc6fb1d2467ae00e940e1598820bb9dbf",
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-mechanical.primitive.0",
+      "indexCount": 3060,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_REFINERY_SCAN_Mechanical",
+      "nodeId": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 758
     },
     {
       "bounds": {
@@ -585,41 +810,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3d83e08cec542b3802a453fdce994fc1b50063a38cb2bdc2a64baf3468ab6b3",
+      "geometryHash": "90bd9fd525eef3362161aa126a8f872a549195db9dc72c558cdb097fc999d12c",
       "id": "sf.render.ceres-refinery.node.lod0-warning.primitive.0",
-      "indexCount": 9456,
+      "indexCount": 8880,
       "indexed": true,
-      "materialHash": "759bc757b2464ed9d80811da628318786dc1fb712553644557d7526bddbeb364",
+      "materialHash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.ceres-refinery.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 3016
+      "vertexCount": 2792
     },
     {
       "bounds": {
         "max": [
           47.19801330566406,
           22.423885345458984,
-          41.568946838378906
+          41.56911087036133
         ],
         "min": [
           -51,
           -1.982517123222351,
-          -46.487701416015625
+          -46.48754119873047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a45f39be033a0052bbb5f20c265ac2c5c361dfa04db4e79b2225a471e0e5b48e",
+      "geometryHash": "d7ff52b8119dc4c7837b412a5fa2f1e27649523d19e4dfdf7d8aee1c78efeba3",
       "id": "sf.render.ceres-refinery.node.lod1-armor.primitive.0",
-      "indexCount": 14703,
+      "indexCount": 13884,
       "indexed": true,
-      "materialHash": "6adc81dc47f119f3a1d906d9f95805561f5bb3db0ff7e2d0e51fc75a94430fc6",
+      "materialHash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.ceres-refinery.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 5869
+      "vertexCount": 5501
     },
     {
       "bounds": {
@@ -635,32 +860,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b621233427f04194bdee1c35ce136918b622dc021d018decd953275de91f7492",
+      "geometryHash": "3f588de8e197073ca7aaa532e4fd93e00ba3e77f6e7fb40466c5bc47ef2ef97e",
       "id": "sf.render.ceres-refinery.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 3576,
+      "indexCount": 3216,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.ceres-refinery.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 2183
+      "vertexCount": 2015
     },
     {
       "bounds": {
         "max": [
-          44.800331115722656,
-          8.366864204406738,
-          38.17496871948242
+          44.801536560058594,
+          8.367646217346191,
+          38.18505859375
         ],
         "min": [
-          8.113697052001953,
-          1.2271448373794556,
+          8.112489700317383,
+          1.226362705230713,
           -7.877625465393066
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccb2bcb975831b8dc2733efdb6c84ad6f82ab5e3f10cb4d2974b239ee35d4729",
+      "geometryHash": "20d3e5ad9e9bc095360924114c21c4bdaf107f900d56473759dd8874052a0da2",
       "id": "sf.render.ceres-refinery.node.lod1-canopy.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -710,7 +935,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca71440fecf1501850dcbfb81741c8e5b312dee081ba761a4b0be315f1baa108",
+      "geometryHash": "ab7d505f02062c2f82b452df49c6840b68d8b42d158fb2f45946193c8cb4bd51",
       "id": "sf.render.ceres-refinery.node.lod1-hook-nav-port.primitive.0",
       "indexCount": 399,
       "indexed": true,
@@ -751,75 +976,50 @@
         "max": [
           44.80096435546875,
           31.989038467407227,
-          41.59158706665039
+          41.58976745605469
         ],
         "min": [
           -50.599998474121094,
           -23.486591339111328,
-          -46.60051345825195
+          -46.602333068847656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81a094c4bb1caa036778a650bdf84a269227e1343f9480a685561da3d0ffbc2c",
+      "geometryHash": "a40da4c23b56fabaa0cc909de5a04ac1ccdb7d5c03711aa7ede49e4809852266",
       "id": "sf.render.ceres-refinery.node.lod1-hull-graphite.primitive.0",
-      "indexCount": 11313,
+      "indexCount": 10692,
       "indexed": true,
-      "materialHash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_graphite",
       "nodeId": "sf.render.ceres-refinery.node.lod1-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 4249
+      "vertexCount": 3986
     },
     {
       "bounds": {
         "max": [
           44.80096435546875,
           30.88707733154297,
-          41.507328033447266
+          41.50678634643555
         ],
         "min": [
           -50.02914810180664,
           -6.102077007293701,
-          -28.245637893676758
+          -28.24618148803711
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aef43a4a18d0580251cc5f83fd760b470f1f0ec01ff2a447f81da8420683aebb",
+      "geometryHash": "0908c25d554ec6e395c1a63f7d651b425e0866522a812a49fa4c3988e1bdac4f",
       "id": "sf.render.ceres-refinery.node.lod1-hull.primitive.0",
-      "indexCount": 12579,
+      "indexCount": 11400,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.ceres-refinery.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 4552
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.756340503692627,
-          12.113262176513672,
-          38.68922805786133
-        ],
-        "min": [
-          -6.164340496063232,
-          11.827648162841797,
-          38.28123092651367
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a8734ede7661027cfb97efcf1c35f9d4b2fd65aa67df5c3e7c35272ccb355329",
-      "id": "sf.render.ceres-refinery.node.lod1-lights-cyan.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Lights_Cyan",
-      "nodeId": "sf.render.ceres-refinery.node.lod1-lights-cyan",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 4064
     },
     {
       "bounds": {
@@ -860,16 +1060,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "131397535a31e8eb28778d08ad2c6f8c4549cc35402a011b5e431b834582b79c",
+      "geometryHash": "0666e5916a0253754c9076940f9ea2de05b754945323f282aa179fd1692fa0a8",
       "id": "sf.render.ceres-refinery.node.lod1-mechanical.primitive.0",
-      "indexCount": 19815,
+      "indexCount": 17709,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.ceres-refinery.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 11432
+      "vertexCount": 10642
     },
     {
       "bounds": {
@@ -885,16 +1085,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0b6cec325a6b9171b482dc46fe55c1eafcea6807ec52e5fd7490e1c4ca4d856",
+      "geometryHash": "2ade54d2483f7fdc0d5777184e37b54744ad846ff8d5820cc6543fb3c10eef02",
       "id": "sf.render.ceres-refinery.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 1809,
+      "indexCount": 1539,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.ceres-refinery.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 836
+      "vertexCount": 730
+    },
+    {
+      "bounds": {
+        "max": [
+          6.629024982452393,
+          17.35658597946167,
+          6.627446174621582
+        ],
+        "min": [
+          -6.654372692108154,
+          16.64634370803833,
+          -6.654330253601074
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "12f9a4224d09b789f513704608fe473603feb05fe05944c28a0cf1f7bfbf7086",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-armor.primitive.0",
+      "indexCount": 606,
+      "indexed": true,
+      "materialHash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_Armor",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 313
+    },
+    {
+      "bounds": {
+        "max": [
+          5.728393077850342,
+          29.45017433166504,
+          5.728393077850342
+        ],
+        "min": [
+          -5.728393077850342,
+          29.199830055236816,
+          -5.728393077850342
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e41da447aad1e9176b6ff52eda22393d85cb6983ac09521f805cb2faa0f4c5f6",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-beacon-amber.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          7.314652442932129,
+          15.200758695602417,
+          7.330422401428223
+        ],
+        "min": [
+          -7.314652442932129,
+          13.400421363767236,
+          -7.314972877502441
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d8bff9b2909270cd7ec73378159992afcfdf6e044d1fed8e280bcbc8ceb0c31",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull-graphite.primitive.0",
+      "indexCount": 540,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 228
+    },
+    {
+      "bounds": {
+        "max": [
+          6.629300594329834,
+          28.500093460083008,
+          6.62888240814209
+        ],
+        "min": [
+          -6.629300594329834,
+          13.400007247924805,
+          -6.629718780517578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c58c216901644252148572c1b76fcd3223067b21ea7c90334ec46ebf9f6c4ad2",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull.primitive.0",
+      "indexCount": 831,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_Hull",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 370
+    },
+    {
+      "bounds": {
+        "max": [
+          6.779500961303711,
+          29.299829483032227,
+          6.7637200355529785
+        ],
+        "min": [
+          -6.77949857711792,
+          20.73995351791382,
+          -6.7803826332092285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a626e9952cbac2924203af53e7d5534553c7bc7e6fec5beb7cbc232a340d9d2c",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanical.primitive.0",
+      "indexCount": 1104,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_Mechanical",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 424
+    },
+    {
+      "bounds": {
+        "max": [
+          6.779500961303711,
+          29.299680709838867,
+          6.7637200355529785
+        ],
+        "min": [
+          -6.77949857711792,
+          28.299938201904297,
+          -6.7803826332092285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40f87c6bacb9a2ced3092cdf4fb2a1d7cea60721061f2d67779a635c893994bf",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanicaldark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    },
+    {
+      "bounds": {
+        "max": [
+          6.533926963806152,
+          28.500126838684082,
+          6.3920674324035645
+        ],
+        "min": [
+          -6.4749674797058105,
+          17.33336901664734,
+          -6.569185256958008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dccec575c2736019f8036b071288881475aaed5592c1f7ce2691be317a500078",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-warning.primitive.0",
+      "indexCount": 45,
+      "indexed": true,
+      "materialHash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_CROWN_Warning",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 41
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4348111152648926,
+          11.803356170654297,
+          40.53471755981445
+        ],
+        "min": [
+          -9.90793228149414,
+          8.175152719020844,
+          34.38004684448242
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6377e2b8269b2749aa08356d5c3438b690e7c2ab91bad50bc0c82aef52058840",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-hull.primitive.0",
+      "indexCount": 417,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_SCAN_Hull",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 123
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.756340503692627,
+          12.113261938095093,
+          38.6892294883728
+        ],
+        "min": [
+          -6.164340496063232,
+          11.827648401260376,
+          38.2812294960022
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "79b3f52a7e4a553424abe2e591ee728ec6536a70aef14b1c09e28ee47ec81e65",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.2907989025115967,
+          12.026523351669312,
+          40.69578003883362
+        ],
+        "min": [
+          -10.062658309936523,
+          8.00932902097702,
+          34.24136137962341
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "611f9e06c90a7b87f8497e3ca6c69a59b5c430cbb10e5b7a53f4b1121e4cad3f",
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-mechanical.primitive.0",
+      "indexCount": 1281,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_REFINERY_SCAN_Mechanical",
+      "nodeId": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 405
     },
     {
       "bounds": {
@@ -910,41 +1360,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2de8e7428ea16782d953b7517f3114ed1b91b7ffab98b93eb43b4d1d14a77be6",
+      "geometryHash": "dd71bd6442b226ddf05ac40336672507759731b6b03185d949df777f1e84535d",
       "id": "sf.render.ceres-refinery.node.lod1-warning.primitive.0",
-      "indexCount": 4566,
+      "indexCount": 4515,
       "indexed": true,
-      "materialHash": "759bc757b2464ed9d80811da628318786dc1fb712553644557d7526bddbeb364",
+      "materialHash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.ceres-refinery.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 1529
+      "vertexCount": 1486
     },
     {
       "bounds": {
         "max": [
           47.1787109375,
           22.400188446044922,
-          41.521854400634766
+          41.52408218383789
         ],
         "min": [
           -51,
           -1.9654622077941895,
-          -46.505496978759766
+          -46.50326919555664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5c4df7bdd5e4be7f177885f106704033b2ed9441ce3be5c0e8df404639c9581",
+      "geometryHash": "1807efdfb8e8883eb6031e9f5cc99ff50830542e5065a11d6f04257c5335e35c",
       "id": "sf.render.ceres-refinery.node.lod2-armor.primitive.0",
-      "indexCount": 5622,
+      "indexCount": 5406,
       "indexed": true,
-      "materialHash": "6adc81dc47f119f3a1d906d9f95805561f5bb3db0ff7e2d0e51fc75a94430fc6",
+      "materialHash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.ceres-refinery.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2567
+      "vertexCount": 2442
     },
     {
       "bounds": {
@@ -960,32 +1410,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab94c3eed20f68972c574e208209424631192fd9f4a7e9a1ac603e04f26c9839",
+      "geometryHash": "b9ae723b5d34e9a47a57a0667eb40fee2f122be8e3768501c333d6696aa67dd8",
       "id": "sf.render.ceres-refinery.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 498,
+      "indexCount": 339,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.ceres-refinery.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 320
+      "vertexCount": 229
     },
     {
       "bounds": {
         "max": [
-          44.812408447265625,
-          8.367176055908203,
-          38.17496871948242
+          44.81362533569336,
+          8.368013381958008,
+          38.18505859375
         ],
         "min": [
-          8.113626480102539,
-          0.7362771034240723,
+          8.112409591674805,
+          0.7354401350021362,
           -7.822394847869873
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58f6e7b025cc3b5b0c2f391e0d8df939e0865b67e9473bd586ec67c0476410d3",
+      "geometryHash": "da9e48d6c758d15bd853a4685b1405095d7fbd9d6aada9756245a863ea6aaafd",
       "id": "sf.render.ceres-refinery.node.lod2-canopy.primitive.0",
       "indexCount": 45,
       "indexed": true,
@@ -1060,7 +1510,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08bf0afd2882cd51520cf4ac1cbcab080fa00118548aee9eefc84c9acec1821c",
+      "geometryHash": "4215de0ab6d77d8e98a84472fb8908f568499b8e9597d1e3a0ecf3a600258254",
       "id": "sf.render.ceres-refinery.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1076,100 +1526,75 @@
         "max": [
           44.812782287597656,
           31.99064826965332,
-          41.54655838012695
+          41.54656982421875
         ],
         "min": [
           -50.599998474121094,
           -23.49185562133789,
-          -46.59823226928711
+          -46.59821701049805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d75b02cb897adbf6db6198642fe1cc7d02a390b4a3efa6936b1093e2ba88a9f",
+      "geometryHash": "e070cebd48307386d9bce5df8451dc3691ca8b53b680b6529d86805c43a80362",
       "id": "sf.render.ceres-refinery.node.lod2-hull-graphite.primitive.0",
-      "indexCount": 5292,
+      "indexCount": 4980,
       "indexed": true,
-      "materialHash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_graphite",
       "nodeId": "sf.render.ceres-refinery.node.lod2-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 2302
+      "vertexCount": 2148
     },
     {
       "bounds": {
         "max": [
           44.812782287597656,
           30.83316993713379,
-          41.5505485534668
+          41.55056381225586
         ],
         "min": [
           -50.097286224365234,
           -6.094483375549316,
-          -28.36549949645996
+          -28.36548614501953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f2d3586352fa637fb6ed8eba24138bf67e937e276a5c710ab4f8c344f2741dd",
+      "geometryHash": "a38dade6b24f3f7ca2ba878cc72d0e8537a4af743ecae406b8327de60b4826a1",
       "id": "sf.render.ceres-refinery.node.lod2-hull.primitive.0",
-      "indexCount": 6777,
+      "indexCount": 6090,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.ceres-refinery.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2871
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.756340026855469,
-          12.018045425415039,
-          38.689231872558594
-        ],
-        "min": [
-          -6.164340972900391,
-          11.922865867614746,
-          38.28123092651367
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fe3bc9ced9967e6751e6107e9bf34add608486132eb91ae6aee0382a990771dd",
-      "id": "sf.render.ceres-refinery.node.lod2-lights-cyan.primitive.0",
-      "indexCount": 3,
-      "indexed": true,
-      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Lights_Cyan",
-      "nodeId": "sf.render.ceres-refinery.node.lod2-lights-cyan",
-      "primitiveIndex": 0,
-      "vertexCount": 3
+      "vertexCount": 2545
     },
     {
       "bounds": {
         "max": [
           47.69143295288086,
           32.791812896728516,
-          40.69972610473633
+          37.451148986816406
         ],
         "min": [
           -50.599998474121094,
           -20.501001358032227,
-          -45.95283508300781
+          -45.94972610473633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89780a3d8d5b028bfc6695cb1827f1dc8e04d9a1c0ed80b3b94e6d60bad073fd",
+      "geometryHash": "fecdc78bbff170ddcf8b8b1e624fdf6b3325577a55f7feed9ef86e417bc1bf0a",
       "id": "sf.render.ceres-refinery.node.lod2-mechanical.primitive.0",
-      "indexCount": 6453,
+      "indexCount": 5535,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.ceres-refinery.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 4170
+      "vertexCount": 3721
     },
     {
       "bounds": {
@@ -1185,16 +1610,266 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c77ba222c3b1a55f41450e204c396ec2b62d49040b0938b64cf3662f5d522894",
+      "geometryHash": "bb820e68d9e15e373608301b9a30eca7e34dd4f989ef9d473e50cf1b6d0ec4b7",
       "id": "sf.render.ceres-refinery.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 561,
+      "indexCount": 447,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.ceres-refinery.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 247
+      "vertexCount": 193
+    },
+    {
+      "bounds": {
+        "max": [
+          6.62319803237915,
+          17.345093250274658,
+          6.5918145179748535
+        ],
+        "min": [
+          -6.668399810791016,
+          16.660373210906982,
+          -6.639748573303223
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ec9715e27ada5562a1e1f994492869fa9a56ef7060ea6f73bfa365a2c5b5ebb",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-armor.primitive.0",
+      "indexCount": 195,
+      "indexed": true,
+      "materialHash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_Armor",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 97
+    },
+    {
+      "bounds": {
+        "max": [
+          5.724729061126709,
+          29.450092315673828,
+          5.71301794052124
+        ],
+        "min": [
+          -5.78874397277832,
+          29.19991397857666,
+          -5.7245588302612305
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1623bfc40e8e3b4b167ff2392190087953ad70577f89773500068070ae028c67",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-beacon-amber.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          7.382957935333252,
+          15.206388711929321,
+          7.302226543426514
+        ],
+        "min": [
+          -7.312987804412842,
+          13.399837261502398,
+          -7.312989711761475
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49edc383a5f08aa339d626940fd910b9156e4c40916a62efdb52497e7b832338",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull-graphite.primitive.0",
+      "indexCount": 282,
+      "indexed": true,
+      "materialHash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 142
+    },
+    {
+      "bounds": {
+        "max": [
+          6.6793532371521,
+          28.5007381439209,
+          6.679154396057129
+        ],
+        "min": [
+          -6.6793532371521,
+          13.400012969970703,
+          -6.707202434539795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e639e9291d50d6c8f7866c7561486484897359889908358705fd32921e5b965",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull.primitive.0",
+      "indexCount": 453,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_Hull",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 237
+    },
+    {
+      "bounds": {
+        "max": [
+          6.758694171905518,
+          29.299561500549316,
+          6.813068389892578
+        ],
+        "min": [
+          -6.919213771820068,
+          20.698012351989746,
+          -6.831445217132568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b7ef7037f3a484cab3adc7806e05505f48e70613cd93e5f80204272d383f1a8",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanical.primitive.0",
+      "indexCount": 450,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_Mechanical",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 222
+    },
+    {
+      "bounds": {
+        "max": [
+          6.758694171905518,
+          29.30005168914795,
+          6.813068389892578
+        ],
+        "min": [
+          -6.919213771820068,
+          28.29822063446045,
+          -6.831445217132568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98e798724589b4a2882f5ff6e523029f8d998580877ff7f7a52257448358e775",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanicaldark.primitive.0",
+      "indexCount": 102,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 50
+    },
+    {
+      "bounds": {
+        "max": [
+          6.1832499504089355,
+          28.500439643859863,
+          6.516096115112305
+        ],
+        "min": [
+          -6.653629302978516,
+          17.329333543777466,
+          -6.314515590667725
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4339e6ba483074e0810af153caf593571c05f0c4b95cecfdb5609cbf65c7bf6d",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-warning.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_CROWN_Warning",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 22
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4613852500915527,
+          11.765899896621704,
+          40.549437046051025
+        ],
+        "min": [
+          -9.946671485900879,
+          8.134836077690125,
+          34.380033016204834
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebc3c206be462ab5561f143d32d8c9ffc8f4893a0d41eaca70a380666767be7b",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-hull.primitive.0",
+      "indexCount": 213,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_SCAN_Hull",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 74
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.756340265274048,
+          12.018045663833618,
+          38.689231872558594
+        ],
+        "min": [
+          -6.16434121131897,
+          11.922865629196167,
+          38.28123092651367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eabc52f539e76992e3550bb1a1cf632d9ee1df8d485163aa456504cb88f1c981",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-lights-cyan.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.2610955238342285,
+          12.001259565353394,
+          40.64828968048096
+        ],
+        "min": [
+          -10.052689552307129,
+          8.020444989204407,
+          34.24967861175537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e807b854fdbeb62a7801120a07c7fb88214de29e42986beab1058492d06dbf8",
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-mechanical.primitive.0",
+      "indexCount": 555,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_REFINERY_SCAN_Mechanical",
+      "nodeId": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 246
     },
     {
       "bounds": {
@@ -1210,16 +1885,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71fd161971b07e86b304c8007bbbab87648e614cb3bf1f793deb38ba4ad9ef5c",
+      "geometryHash": "45b7c1b9ef3331b2411befe4018b126c1de8b74e56546046f7adbe50a936ab6d",
       "id": "sf.render.ceres-refinery.node.lod2-warning.primitive.0",
-      "indexCount": 1806,
+      "indexCount": 1773,
       "indexed": true,
-      "materialHash": "759bc757b2464ed9d80811da628318786dc1fb712553644557d7526bddbeb364",
+      "materialHash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.ceres-refinery.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 880
+      "vertexCount": 856
     }
   ],
   "hlods": [],
@@ -1227,43 +1902,43 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
       "textures": []
+    },
+    {
+      "hash": "3421ac12207caab1d711c856ba8677a658c556301efbc78c2067989545651f78",
+      "id": "material:3421ac12207caab1d711c856",
+      "name": "Material_Hull_graphite",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
@@ -1273,79 +1948,8 @@
       "textures": []
     },
     {
-      "hash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
-      "id": "material:674f214b9b571ec60dc6b3ef",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6adc81dc47f119f3a1d906d9f95805561f5bb3db0ff7e2d0e51fc75a94430fc6",
-      "id": "material:6adc81dc47f119f3a1d906d9",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "759bc757b2464ed9d80811da628318786dc1fb712553644557d7526bddbeb364",
-      "id": "material:759bc757b2464ed9d80811da",
+      "hash": "48a134d69953d599139199d417b8a55edf197a49d767b5fc6bcc082454787316",
+      "id": "material:48a134d69953d599139199d4",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1376,9 +1980,9 @@
       ]
     },
     {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
+      "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "id": "material:5ef013365e942f1ac873c307",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1408,6 +2012,13 @@
       ]
     },
     {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "id": "material:85add90c89b799ae69ad3e2f",
       "name": "Material_Emissive_Cyan",
@@ -1422,16 +2033,9 @@
       "textures": []
     },
     {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "d3c43bb5d52a69e57c5774bfd91a1fc4d5ee2786103998094a65b8a8b58eb20a",
-      "id": "material:d3c43bb5d52a69e57c5774bf",
-      "name": "Material_Hull_graphite",
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1455,6 +2059,77 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "dac6669f9417eacc4f79dd0f843b01e103d0ec5ff42a51eb1471d233d309f583",
+      "id": "material:dac6669f9417eacc4f79dd0f",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1911,55 +2586,6 @@
       ]
     },
     {
-      "id": "sf.render.ceres-refinery.node.lod0-lights-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Cyan",
-      "nodeName": "LOD0_Lights_Cyan",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.ceres-refinery.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
       "id": "sf.render.ceres-refinery.node.lod0-lights-warm",
       "localTransform": [
         1,
@@ -1984,7 +2610,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        10
+        9
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2033,7 +2659,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        11
+        10
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2082,7 +2708,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        12
+        11
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2103,6 +2729,506 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_Armor",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_Armor",
+      "nodePath": [
+        0,
+        36,
+        0
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodePath": [
+        0,
+        36,
+        1
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_Hull",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_Hull",
+      "nodePath": [
+        0,
+        36,
+        2
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodePath": [
+        0,
+        36,
+        3
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_Mechanical",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_Mechanical",
+      "nodePath": [
+        0,
+        36,
+        4
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodePath": [
+        0,
+        36,
+        5
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_CROWN_Warning",
+      "nodeName": "LOD0_MOTION_REFINERY_CROWN_Warning",
+      "nodePath": [
+        0,
+        36,
+        6
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_SCAN_Hull",
+      "nodeName": "LOD0_MOTION_REFINERY_SCAN_Hull",
+      "nodePath": [
+        0,
+        37,
+        0
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodePath": [
+        0,
+        37,
+        1
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_REFINERY_SCAN_Mechanical",
+      "nodeName": "LOD0_MOTION_REFINERY_SCAN_Mechanical",
+      "nodePath": [
+        0,
+        37,
+        2
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
         1
       ]
     },
@@ -2131,7 +3257,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        13
+        12
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2180,7 +3306,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        14
+        13
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2229,7 +3355,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2278,7 +3404,7 @@
       "nodeName": "LOD1_CANOPY",
       "nodePath": [
         0,
-        16
+        15
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2327,7 +3453,7 @@
       "nodeName": "LOD1_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
-        17
+        16
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "dynamic",
@@ -2376,7 +3502,7 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        18
+        17
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "dynamic",
@@ -2425,7 +3551,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        19
+        18
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "dynamic",
@@ -2474,7 +3600,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        20
+        19
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2523,56 +3649,7 @@
       "nodeName": "LOD1_Hull_graphite",
       "nodePath": [
         0,
-        21
-      ],
-      "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.ceres-refinery.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.ceres-refinery.node.lod1-lights-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Lights_Cyan",
-      "nodeName": "LOD1_Lights_Cyan",
-      "nodePath": [
-        0,
-        22
+        20
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2621,7 +3698,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        23
+        21
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2670,7 +3747,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        24
+        22
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2719,7 +3796,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        25
+        23
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2740,6 +3817,506 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_Armor",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_Armor",
+      "nodePath": [
+        0,
+        36,
+        7
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodePath": [
+        0,
+        36,
+        8
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_Hull",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_Hull",
+      "nodePath": [
+        0,
+        36,
+        9
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodePath": [
+        0,
+        36,
+        10
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_Mechanical",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_Mechanical",
+      "nodePath": [
+        0,
+        36,
+        11
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodePath": [
+        0,
+        36,
+        12
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_CROWN_Warning",
+      "nodeName": "LOD1_MOTION_REFINERY_CROWN_Warning",
+      "nodePath": [
+        0,
+        36,
+        13
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_SCAN_Hull",
+      "nodeName": "LOD1_MOTION_REFINERY_SCAN_Hull",
+      "nodePath": [
+        0,
+        37,
+        3
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodePath": [
+        0,
+        37,
+        4
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_REFINERY_SCAN_Mechanical",
+      "nodeName": "LOD1_MOTION_REFINERY_SCAN_Mechanical",
+      "nodePath": [
+        0,
+        37,
+        5
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
         1
       ]
     },
@@ -2768,7 +4345,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        26
+        24
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2817,7 +4394,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        27
+        25
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2866,7 +4443,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        28
+        26
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2915,7 +4492,7 @@
       "nodeName": "LOD2_CANOPY",
       "nodePath": [
         0,
-        29
+        27
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -2964,7 +4541,7 @@
       "nodeName": "LOD2_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
-        30
+        28
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "dynamic",
@@ -3013,7 +4590,7 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        31
+        29
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "dynamic",
@@ -3062,7 +4639,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        32
+        30
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "dynamic",
@@ -3111,7 +4688,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        33
+        31
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3160,56 +4737,7 @@
       "nodeName": "LOD2_Hull_graphite",
       "nodePath": [
         0,
-        34
-      ],
-      "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.ceres-refinery.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.ceres-refinery.node.lod2-lights-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Lights_Cyan",
-      "nodeName": "LOD2_Lights_Cyan",
-      "nodePath": [
-        0,
-        35
+        32
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3258,7 +4786,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        36
+        33
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3307,7 +4835,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        37
+        34
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3328,6 +4856,506 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_Armor",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_Armor",
+      "nodePath": [
+        0,
+        36,
+        14
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_Beacon_Amber",
+      "nodePath": [
+        0,
+        36,
+        15
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_Hull",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_Hull",
+      "nodePath": [
+        0,
+        36,
+        16
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_Hull_graphite",
+      "nodePath": [
+        0,
+        36,
+        17
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_Mechanical",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_Mechanical",
+      "nodePath": [
+        0,
+        36,
+        18
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_MechanicalDark",
+      "nodePath": [
+        0,
+        36,
+        19
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_CROWN_Warning",
+      "nodeName": "LOD2_MOTION_REFINERY_CROWN_Warning",
+      "nodePath": [
+        0,
+        36,
+        20
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_SCAN_Hull",
+      "nodeName": "LOD2_MOTION_REFINERY_SCAN_Hull",
+      "nodePath": [
+        0,
+        37,
+        6
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_REFINERY_SCAN_Lights_Cyan",
+      "nodePath": [
+        0,
+        37,
+        7
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_REFINERY_SCAN_Mechanical",
+      "nodeName": "LOD2_MOTION_REFINERY_SCAN_Mechanical",
+      "nodePath": [
+        0,
+        37,
+        8
+      ],
+      "parentId": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
         1
       ]
     },
@@ -3356,7 +5384,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        38
+        35
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3377,6 +5405,104 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.motion-refinery-crown",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_REFINERY_CROWN",
+      "nodeName": "MOTION_REFINERY_CROWN",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        13.399999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.node.motion-refinery-scan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_REFINERY_SCAN",
+      "nodeName": "MOTION_REFINERY_SCAN",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        9,
+        37,
         1
       ]
     },
@@ -3453,7 +5579,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        39
+        38
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3502,7 +5628,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        40
+        39
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3551,7 +5677,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        41
+        40
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3600,7 +5726,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        42
+        41
       ],
       "parentId": "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
       "role": "immutable",
@@ -3627,22 +5753,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "c61f969dfcff3769a523dea1b022c6d4240ab2cdc5fd958c5309955646edf137"
+      "sha256": "ed58c1e4f92336be09dbdeff092f494754b86b2090d722c9bb3db9559d703849"
     },
     "sourceGlb": {
-      "bytes": 2047980,
-      "sha256": "fb24c6c27d598d83b31fedb44737922f8e7ab74b935e35bacca79249c95dc5ef",
+      "bytes": 1936344,
+      "sha256": "3d5f63b19886135304e7a28edd0ff624c84f2f5f26fd51ded8f12477652f8b25",
       "uri": "place_station_refinery.glb"
     },
     "sourceManifest": {
-      "bytes": 212795,
-      "sha256": "db6e53e6c0233030808cb3ad99b0b3264ce1b410320cdb3ece2c0cf2e0349559",
+      "bytes": 218953,
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3952812,
-    "sha256": "b9295d79a1c71953545a9a31b76080b22f3c9e4819615df90d301ca47ad53f25",
+    "bytes": 3841040,
+    "sha256": "5e280edd327708105c471cb7154591acd7eb3c77e7352ff091df4501d90335bd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3687,13 +5813,143 @@
           0,
           1,
           0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "MOTION_REFINERY_CROWN",
+        "planIndex": 38,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "refinery_crown",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              13.399999618530273
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_REFINERY_CROWN",
+          "spaceface": {
+            "motionGroup": "refinery_crown"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_REFINERY_CROWN",
+            "recordIds": [
+              "sf.render.ceres-refinery.node.motion-refinery-crown"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "MOTION_REFINERY_SCAN",
+        "planIndex": 60,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "refinery_scan",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -7
+            ],
+            [
+              0,
+              1,
+              0,
+              -37
+            ],
+            [
+              0,
+              0,
+              1,
+              9
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_REFINERY_SCAN",
+          "spaceface": {
+            "motionGroup": "refinery_scan"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_REFINERY_SCAN",
+            "recordIds": [
+              "sf.render.ceres-refinery.node.motion-refinery-scan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           7.450000762939453,
           2.749850034713745,
           -14.683847427368164,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 41,
+        "planIndex": 70,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -3730,7 +5986,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 42,
+        "planIndex": 71,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3768,7 +6024,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 43,
+        "planIndex": 72,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3806,7 +6062,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 44,
+        "planIndex": 73,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -3828,10 +6084,10 @@
     "materialProfileRoles": {
       "drive": 3,
       "glass": 3,
-      "hull": 10,
-      "mechanical": 6,
-      "signal": 14,
-      "warning": 3
+      "hull": 22,
+      "mechanical": 15,
+      "signal": 17,
+      "warning": 6
     },
     "materialProfiles": [
       {
@@ -3887,7 +6143,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3897,32 +6153,32 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 15,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
+        "planIndex": 16,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 18,
+        "planIndex": 17,
         "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 19,
+        "planIndex": 18,
         "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3932,7 +6188,7 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3942,95 +6198,236 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
         "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 32,
+        "planIndex": 30,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 33,
+        "planIndex": 31,
         "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 45,
+    "motionBank": {
+      "bytes": 8023,
+      "rigId": "station_refinery",
+      "sha256": "9db88357536fff25aa81e277c4e5c83c6cc6f54f996690bc2d872d6581e019d2",
+      "uri": "assets/ships/motions/ceres-refinery.motion.json"
+    },
+    "nodeCount": 74,
     "primitives": [
       {
         "canopy": false,
@@ -4289,7 +6686,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Cyan",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -4316,7 +6713,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_Mechanical",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -4343,7 +6740,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -4370,7 +6767,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
+        "name": "LOD0_Warning",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -4397,35 +6794,8 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD1_Armor",
-        "planIndex": 16,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4452,7 +6822,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 17,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4479,7 +6849,7 @@
           1
         ],
         "name": "LOD1_CANOPY",
-        "planIndex": 18,
+        "planIndex": 17,
         "tags": {
           "canopy": true,
           "lod": "lod1"
@@ -4506,7 +6876,7 @@
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
-        "planIndex": 19,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -4552,7 +6922,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 20,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4580,7 +6950,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 21,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4608,7 +6978,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 22,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4635,34 +7005,7 @@
           1
         ],
         "name": "LOD1_Hull_graphite",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Lights_Cyan",
-        "planIndex": 24,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4689,7 +7032,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 25,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4716,7 +7059,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 26,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4743,7 +7086,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 27,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4770,7 +7113,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 28,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -4797,7 +7140,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 29,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4824,7 +7167,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 30,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -4851,7 +7194,7 @@
           1
         ],
         "name": "LOD2_CANOPY",
-        "planIndex": 31,
+        "planIndex": 29,
         "tags": {
           "canopy": true,
           "lod": "lod2"
@@ -4878,7 +7221,7 @@
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
-        "planIndex": 32,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -4924,7 +7267,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 33,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4952,7 +7295,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 34,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4980,7 +7323,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 35,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5007,34 +7350,7 @@
           1
         ],
         "name": "LOD2_Hull_graphite",
-        "planIndex": 36,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Lights_Cyan",
-        "planIndex": 37,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5061,7 +7377,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 38,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5088,7 +7404,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 39,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5115,10 +7431,850 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 40,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_Armor",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_Beacon_Amber",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_Hull",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_Hull_graphite",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_Mechanical",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_MechanicalDark",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_CROWN_Warning",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_Armor",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_Beacon_Amber",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_Hull",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_Hull_graphite",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_Mechanical",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_MechanicalDark",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_CROWN_Warning",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_Armor",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_Beacon_Amber",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_Hull",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_Hull_graphite",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_Mechanical",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_MechanicalDark",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          13.399999618530273,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_CROWN_Warning",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_SCAN_Hull",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_SCAN_Lights_Cyan",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD0_MOTION_REFINERY_SCAN_Mechanical",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_SCAN_Hull",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_SCAN_Lights_Cyan",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD1_MOTION_REFINERY_SCAN_Mechanical",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_SCAN_Hull",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_SCAN_Lights_Cyan",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          9,
+          37,
+          1
+        ],
+        "name": "LOD2_MOTION_REFINERY_SCAN_Mechanical",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
         }
       }
     ],
@@ -5126,7 +8282,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_refinery.glb"
   },
-  "runtimeHash": "ac71a72a264d1ae40d0959351f7949f726d0ca6eae9934396ce15c3ba40c22e3",
+  "runtimeHash": "8dcf99767a7bfb5eef5fe1a17dfcabcf2c8fa5c1f64a2ab390a24030ffcbed42",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -5153,10 +8309,19 @@
         "sf.render.ceres-refinery.node.lod0-hook-nav-starboard",
         "sf.render.ceres-refinery.node.lod0-hull",
         "sf.render.ceres-refinery.node.lod0-hull-graphite",
-        "sf.render.ceres-refinery.node.lod0-lights-cyan",
         "sf.render.ceres-refinery.node.lod0-lights-warm",
         "sf.render.ceres-refinery.node.lod0-mechanical",
         "sf.render.ceres-refinery.node.lod0-mechanicaldark",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-armor",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-beacon-amber",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-hull-graphite",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanical",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-mechanicaldark",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-crown-warning",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-hull",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-lights-cyan",
+        "sf.render.ceres-refinery.node.lod0-motion-refinery-scan-mechanical",
         "sf.render.ceres-refinery.node.lod0-warning",
         "sf.render.ceres-refinery.node.lod1-armor",
         "sf.render.ceres-refinery.node.lod1-beacon-amber",
@@ -5166,10 +8331,19 @@
         "sf.render.ceres-refinery.node.lod1-hook-nav-starboard",
         "sf.render.ceres-refinery.node.lod1-hull",
         "sf.render.ceres-refinery.node.lod1-hull-graphite",
-        "sf.render.ceres-refinery.node.lod1-lights-cyan",
         "sf.render.ceres-refinery.node.lod1-lights-warm",
         "sf.render.ceres-refinery.node.lod1-mechanical",
         "sf.render.ceres-refinery.node.lod1-mechanicaldark",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-armor",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-beacon-amber",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-hull-graphite",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanical",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-mechanicaldark",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-crown-warning",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-hull",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-lights-cyan",
+        "sf.render.ceres-refinery.node.lod1-motion-refinery-scan-mechanical",
         "sf.render.ceres-refinery.node.lod1-warning",
         "sf.render.ceres-refinery.node.lod2-armor",
         "sf.render.ceres-refinery.node.lod2-beacon-amber",
@@ -5179,10 +8353,21 @@
         "sf.render.ceres-refinery.node.lod2-hook-nav-starboard",
         "sf.render.ceres-refinery.node.lod2-hull",
         "sf.render.ceres-refinery.node.lod2-hull-graphite",
-        "sf.render.ceres-refinery.node.lod2-lights-cyan",
         "sf.render.ceres-refinery.node.lod2-mechanical",
         "sf.render.ceres-refinery.node.lod2-mechanicaldark",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-armor",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-beacon-amber",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-hull-graphite",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanical",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-mechanicaldark",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-crown-warning",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-hull",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-lights-cyan",
+        "sf.render.ceres-refinery.node.lod2-motion-refinery-scan-mechanical",
         "sf.render.ceres-refinery.node.lod2-warning",
+        "sf.render.ceres-refinery.node.motion-refinery-crown",
+        "sf.render.ceres-refinery.node.motion-refinery-scan",
         "sf.render.ceres-refinery.node.sf-place-station-refinery-root",
         "sf.render.ceres-refinery.node.socket-camera-focus",
         "sf.render.ceres-refinery.node.socket-dock-approach",

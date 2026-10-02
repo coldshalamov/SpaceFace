@@ -371,6 +371,7 @@ Current save version: `14`
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
 | `$.settings.gameplay.difficulty` | string | standard |
 | `$.settings.gameplay.flightBackend` | string | v3 |
+| `$.settings.gameplay.hitPips` | boolean | true |
 | `$.settings.gameplay.masslineReleaseAssist` | string | snap |
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.pauseOnFocusLoss` | boolean | true |

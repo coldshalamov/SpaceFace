@@ -1,186 +1,137 @@
-import assert from 'node:assert/strict';
+/**
+ * FB-019 — hit-confirmation pips: a three-state layer mark at the impact, owned by the
+ * feedback channel the trigger already has, not by the damage-number toggle.
+ *
+ * The pip reuses floatingText's pool and the hit-voice layer classifier, so eye and ear
+ * agree about which layer a shot actually chewed. These pins run `createFloatingText` on a
+ * stub DOM and the real `combat:damage` payloads:
+ *
+ *   1. Player-caused shield damage spawns the ring pip (`○`) at the target.
+ *   2. Armor-dominant and hull-only hits paint the chevron (`❯`) and cross (`✕`).
+ *   3. The pip answers `gameplay.hitPips` and STAYS lit when damage numbers are off —
+ *      it is a control receipt, not a number.
+ *   4. NPC-on-NPC damage paints nothing — the pip confirms MY trigger only.
+ *   5. Rapid same-layer hits dedupe on the shared 40 ms layer gap.
+ *   6. `flashReduce` holds the mark longer at the calmer treatment.
+ *
+ * RUN: `node --test test/fb-hit-confirmation-pip.test.mjs`
+ */
 import test from 'node:test';
+import assert from 'node:assert/strict';
+
 import { createBus } from '../src/core/eventBus.js';
-import { createFloatingText, HIT_CONFIRM_PIP_SYMBOLS } from '../src/ui/floatingText.js';
-import { mulberry32 } from '../src/core/rng.js';
+import { createFloatingText } from '../src/ui/floatingText.js';
 
-test('FB-019: hitting a shielded target through to hull confirms shield -> armor -> hull pips in order', () => {
-  const rng = mulberry32(4242);
+// ── minimal DOM stub ─────────────────────────────────────────────────────────
+function stubEl(tag) {
+  return {
+    tag, id: '', className: '', textContent: '', children: [],
+    style: {},
+    appendChild(child) { this.children.push(child); child.parent = this; return child; },
+  };
+}
+const elementsById = new Map();
+const headEl = stubEl('head');
+const bodyEl = stubEl('body');
+globalThis.document = {
+  createElement: (tag) => stubEl(tag),
+  getElementById: (id) => elementsById.get(id) || null,
+  head: headEl,
+  body: bodyEl,
+};
+
+function makeWorld({ hitPips = true, damageNumbers = true, flashReduce = false } = {}) {
+  const hud = stubEl('div'); hud.id = 'hud'; elementsById.set('hud', hud);
   const bus = createBus();
+  const target = { id: 'npc_1', type: 'ship', alive: true, pos: { x: 100, z: -40 } };
   const state = {
-    playerId: 1,
-    simTime: 10.0,
-    rng,
+    playerId: 'player', simTime: 0, tick: 0,
+    entities: new Map([[target.id, target]]),
     settings: {
-      showDamageNumbers: true,
-      gameplay: { hitConfirmPips: true },
-      video: { motionReduce: false, reducedFlash: false },
+      showDamageNumbers: damageNumbers,
+      gameplay: { damageNumbers, hitPips },
+      accessibility: { flashReduce },
     },
-    entities: new Map(),
   };
+  const ft = createFloatingText({ state, bus, helpers: {} });
+  const layer = hud.children.find((c) => c.id === 'sf-floattext');
+  return { bus, state, ft, layer, target };
+}
 
-  const target = {
-    id: 10,
-    type: 'ship',
-    alive: true,
-    pos: { x: 100, z: 0 },
-    shield: 100,
-    shieldMax: 100,
-    armorHp: 100,
-    armorMax: 100,
-    hull: 200,
-    hullMax: 200,
+function liveNodes(world) {
+  return world.layer.children.filter((el) => el.style.display === 'block');
+}
+
+function hit(targetId, fields = {}) {
+  return {
+    targetId, attackerId: 'player', applied: 12,
+    shieldDamage: 0, armorDamage: 0,
+    pos: { x: 100, z: -40 },
+    ...fields,
   };
-  state.entities.set(10, target);
+}
 
-  const ft = createFloatingText({ state, helpers: {}, bus });
-
-  // 1. Hit shield
-  state.simTime += 0.05; // +50ms
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 10,
-    amount: 30,
-    applied: 30,
-    shieldAbsorbed: true,
-    shieldDamage: 30,
-    pos: { x: 100, z: 0 },
-  });
-
-  // 2. Hit armor (shield depleted)
-  state.simTime += 0.05; // +50ms
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 10,
-    amount: 30,
-    applied: 30,
-    dominantLayer: 'armor',
-    armorDamage: 30,
-    pos: { x: 100, z: 0 },
-  });
-
-  // 3. Hit hull (armor depleted)
-  state.simTime += 0.05; // +50ms
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 10,
-    amount: 30,
-    applied: 30,
-    dominantLayer: 'hull',
-    hullDamage: 30,
-    pos: { x: 100, z: 0 },
-  });
-
-  assert.equal(ft.pipLog.length, 3);
-  assert.equal(ft.pipLog[0].layer, 'shield');
-  assert.equal(ft.pipLog[0].symbol, HIT_CONFIRM_PIP_SYMBOLS.shield);
-  assert.equal(ft.pipLog[1].layer, 'armor');
-  assert.equal(ft.pipLog[1].symbol, HIT_CONFIRM_PIP_SYMBOLS.armor);
-  assert.equal(ft.pipLog[2].layer, 'hull');
-  assert.equal(ft.pipLog[2].symbol, HIT_CONFIRM_PIP_SYMBOLS.hull);
+test('FB-019: shield-layer damage paints the ring pip at the target', () => {
+  const world = makeWorld();
+  world.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 12 }));
+  const nodes = liveNodes(world);
+  const pip = nodes.find((el) => el.className.includes('sf-ft--pip'));
+  assert.ok(pip, 'a player-caused shield hit must paint a pip');
+  assert.equal(pip.textContent, '○');
+  assert.ok(pip.className.includes('sf-ft--pip-shield'));
 });
 
-test('FB-019: rate limit drops second hit inside 40 ms per target', () => {
-  const bus = createBus();
-  const state = {
-    playerId: 1,
-    simTime: 1.000,
-    settings: {
-      showDamageNumbers: true,
-      gameplay: { hitConfirmPips: true },
-      video: { motionReduce: false },
-    },
-    entities: new Map(),
-  };
-
-  const ft = createFloatingText({ state, helpers: {}, bus });
-
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 20,
-    amount: 10,
-    shieldAbsorbed: true,
-    timeMs: 1000,
-    pos: { x: 0, z: 0 },
-  });
-  // 20ms later (inside 40ms threshold)
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 20,
-    amount: 10,
-    shieldAbsorbed: true,
-    timeMs: 1020,
-    pos: { x: 0, z: 0 },
-  });
-  // 50ms later (exceeds 40ms threshold)
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 20,
-    amount: 10,
-    shieldAbsorbed: true,
-    timeMs: 1050,
-    pos: { x: 0, z: 0 },
-  });
-
-  assert.equal(ft.pipLog.length, 2);
-  assert.equal(ft.pipLog[0].timeMs, 1000);
-  assert.equal(ft.pipLog[1].timeMs, 1050);
+test('FB-019: armor and hull hits paint their own marks', () => {
+  const world = makeWorld();
+  world.bus.emit('combat:damage', hit('npc_1', { armorDamage: 9 }));
+  world.state.simTime += 0.05; // past the 40 ms layer gap
+  world.bus.emit('combat:damage', hit('npc_1', { applied: 20 }));
+  const pips = liveNodes(world).filter((el) => el.className.includes('sf-ft--pip'));
+  assert.equal(pips.length, 2, 'different layers paint separate marks');
+  assert.equal(pips[0].textContent, '❯', 'armor bite is the chevron');
+  assert.ok(pips[0].className.includes('sf-ft--pip-armor'));
+  assert.equal(pips[1].textContent, '✕', 'hull hit is the cross');
+  assert.ok(pips[1].className.includes('sf-ft--pip-hull'));
 });
 
-test('FB-019: showDamageNumbers: false leaves pips enabled; hitConfirmPips: false disables pips', () => {
-  const bus = createBus();
-  const state = {
-    playerId: 1,
-    simTime: 1.0,
-    settings: {
-      showDamageNumbers: false,
-      gameplay: { hitConfirmPips: true },
-    },
-    entities: new Map(),
-  };
+test('FB-019: pips stay lit with damage numbers off, and honor their own gameplay key', () => {
+  const off = makeWorld({ damageNumbers: false });
+  off.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 8 }));
+  const pip = liveNodes(off).find((el) => el.className.includes('sf-ft--pip'));
+  assert.ok(pip, 'the pip is a control receipt — damage numbers being off must not mute it');
+  assert.ok(!liveNodes(off).some((el) => !el.className.includes('sf-ft--pip')),
+    'no damage number joins it');
 
-  const ft = createFloatingText({ state, helpers: {}, bus });
-
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 30,
-    amount: 10,
-    dominantLayer: 'hull',
-    timeMs: 2000,
-    pos: { x: 0, z: 0 },
-  });
-  assert.equal(ft.pipLog.length, 1);
-
-  // Turn hitConfirmPips off
-  state.settings.gameplay.hitConfirmPips = false;
-  bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 30,
-    amount: 10,
-    dominantLayer: 'hull',
-    timeMs: 2100,
-    pos: { x: 0, z: 0 },
-  });
-  assert.equal(ft.pipLog.length, 1, 'no new pip spawned when hitConfirmPips is false');
+  const muted = makeWorld({ hitPips: false });
+  muted.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 8 }));
+  assert.equal(liveNodes(muted).filter((el) => el.className.includes('sf-ft--pip')).length, 0,
+    'gameplay.hitPips=false mutes the pip channel');
+  // …but the damage number still paints (the pip key does not gate numbers).
+  assert.ok(liveNodes(muted).some((el) => el.textContent === '12' && el.className.includes('sf-ft--hull')),
+    'damage numbers still paint when only hitPips is off');
 });
 
-test('FB-019: NPC-on-NPC hits do not generate pips', () => {
-  const bus = createBus();
-  const state = {
-    playerId: 1,
-    simTime: 1.0,
-    settings: { gameplay: { hitConfirmPips: true } },
-    entities: new Map(),
-  };
+test('FB-019: NPC-on-NPC damage paints no pip', () => {
+  const world = makeWorld();
+  world.bus.emit('combat:damage', hit('npc_1', { attackerId: 'npc_9', shieldDamage: 5 }));
+  world.bus.emit('combat:damage', hit('player', { attackerId: 'npc_9', applied: 7 }));
+  assert.equal(liveNodes(world).filter((el) => el.className.includes('sf-ft--pip')).length, 0);
+});
 
-  const ft = createFloatingText({ state, helpers: {}, bus });
+test('FB-019: same-layer hits inside the 40 ms gap dedupe', () => {
+  const world = makeWorld();
+  world.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 6 }));
+  world.state.simTime += 0.02; // 20 ms — inside the shared layer gap
+  world.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 6 }));
+  world.state.simTime += 0.03; // 50 ms — outside the gap
+  world.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 6 }));
+  assert.equal(liveNodes(world).filter((el) => el.className.includes('sf-ft--pip-shield')).length, 2,
+    'the middle hit shares the first pip; the third earns its own');
+});
 
-  bus.emit('combat:damage', {
-    attackerId: 99,
-    targetId: 100,
-    amount: 50,
-    dominantLayer: 'hull',
-    pos: { x: 0, z: 0 },
-  });
-  assert.equal(ft.pipLog.length, 0);
+test('FB-019: flashReduce holds the mark longer at the calm treatment', () => {
+  const calm = makeWorld({ flashReduce: true });
+  calm.bus.emit('combat:damage', hit('npc_1', { shieldDamage: 6 }));
+  const pip = liveNodes(calm).find((el) => el.className.includes('sf-ft--pip'));
+  assert.ok(pip.className.includes('sf-ft--pip-calm'), 'reduced flash takes the calm class');
 });

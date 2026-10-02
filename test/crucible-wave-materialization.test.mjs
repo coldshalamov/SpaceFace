@@ -306,11 +306,12 @@ test('materialization is deterministic for the same seed and wave', () => {
   assert.notDeepEqual(other, first, 'a different seed places the wave differently');
 });
 
-test('enemy level climbs with the wave without inventing a new scaling knob', () => {
-  assert.equal(levelForWave(1), 1);
-  assert.equal(levelForWave(3), 1);
-  assert.equal(levelForWave(4), 2);
-  assert.equal(levelForWave(10), 4);
+test('enemy level is flat — FB-026 moved the curve into composition', () => {
+  // The arc's rising difficulty lives in composeArcWave package counts, bearings and batch gaps.
+  // levelForWave pinned flat is what keeps scaleCombatant out of the wave path.
+  for (const wave of [1, 3, 4, 10, 11, 30, 60]) {
+    assert.equal(levelForWave(wave), 1, `wave ${wave} keeps level 1`);
+  }
 });
 
 test('survivalWave is a strict no-op outside a live survival run', () => {

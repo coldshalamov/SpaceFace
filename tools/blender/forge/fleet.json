@@ -284,6 +284,48 @@
       "part_id": "wholeship_helios_span_reach",
       "npc_root": "SF_M4_HELIOS_SPAN_REACH_ROOT"
     },
+    "hornet_scn_interdictor": {
+      "layout": "npc",
+      "file": "hornet_scn_interdictor",
+      "asset_id": "SF_HORNET_SCN_INTERDICTOR",
+      "part_id": "wholeship_hornet_scn_interdictor",
+      "npc_root": "HORNET_SCN_INTERDICTOR_ROOT"
+    },
+    "wasp_quiet_ghost": {
+      "layout": "npc",
+      "file": "wasp_quiet_ghost",
+      "asset_id": "SF_WASP_QUIET_GHOST",
+      "part_id": "wholeship_wasp_quiet_ghost",
+      "npc_root": "WASP_QUIET_GHOST_ROOT"
+    },
+    "ashline_dart_choir": {
+      "layout": "npc",
+      "file": "ashline_dart_choir",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_DART_CHOIR",
+      "part_id": "wholeship_ashline_dart_choir",
+      "npc_root": "SF_M4_ASHLINE_DART_CHOIR_ROOT"
+    },
+    "ashline_lode_vael": {
+      "layout": "npc",
+      "file": "ashline_lode_vael",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_LODE_VAEL",
+      "part_id": "wholeship_ashline_lode_vael",
+      "npc_root": "SF_M4_ASHLINE_LODE_VAEL_ROOT"
+    },
+    "ashline_rig_quiet": {
+      "layout": "npc",
+      "file": "ashline_rig_quiet",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG_QUIET",
+      "part_id": "wholeship_ashline_rig_quiet",
+      "npc_root": "SF_M4_ASHLINE_RIG_QUIET_ROOT"
+    },
+    "helios_cradle_dmc": {
+      "layout": "npc",
+      "file": "helios_cradle_dmc",
+      "asset_id": "SF_WHOLESHIP_HELIOS_CRADLE_DMC",
+      "part_id": "wholeship_helios_cradle_dmc",
+      "npc_root": "SF_M4_HELIOS_CRADLE_DMC_ROOT"
+    },
     "massline_express_liner": {
       "layout": "player",
       "file": "massline_express_liner_v1",
@@ -465,14 +507,14 @@
       "file": "place_claim_mark",
       "asset_id": "SF_PLACE_CLAIM_MARK",
       "part_id": "place_claim_mark",
-      "note": "Forge rebuild of the claim mark: a prospector's staked beacon \u00e2\u20ac\u201d driven shaft, weld collar, cage frame, lamp lens and streamer tabs."
+      "note": "Forge rebuild of the claim mark: a prospector's staked beacon â€” driven shaft, weld collar, cage frame, lamp lens and streamer tabs."
     },
     "place_ash_pin": {
       "layout": "place",
       "file": "place_ash_pin",
       "asset_id": "SF_PLACE_ASH_PIN",
       "part_id": "place_ash_pin",
-      "note": "Forge rebuild of the ash pin: a squat memorial cairn \u00e2\u20ac\u201d ballast base, offering cage, hung tokens, name plate, one warm lamp."
+      "note": "Forge rebuild of the ash pin: a squat memorial cairn â€” ballast base, offering cage, hung tokens, name plate, one warm lamp."
     },
     "place_whistle": {
       "layout": "place",
@@ -486,7 +528,7 @@
       "file": "place_cold_locker",
       "asset_id": "SF_PLACE_COLD_LOCKER",
       "part_id": "place_cold_locker",
-      "note": "Forge rebuild of the cold locker: a tall vacuum-insulated storage rack \u00e2\u20ac\u201d latticed tower of locked cryo drawers on a bond-ring foot."
+      "note": "Forge rebuild of the cold locker: a tall vacuum-insulated storage rack â€” latticed tower of locked cryo drawers on a bond-ring foot."
     },
     "place_memorial_array": {
       "layout": "place",
@@ -628,49 +670,49 @@
       "layout": "place",
       "file": "place_transponder_gate",
       "asset_id": "place_transponder_gate",
-      "note": "Forge rebuild: lane-reader gate \u00e2\u20ac\u201d twin pylons, lit crossbar, lane-centre beacon.",
+      "note": "Forge rebuild: lane-reader gate â€” twin pylons, lit crossbar, lane-centre beacon.",
       "part_id": "place_transponder_gate"
     },
     "place_interdiction_buoy": {
       "layout": "place",
       "file": "place_interdiction_buoy",
       "asset_id": "place_interdiction_buoy",
-      "note": "Forge rebuild: Concord field buoy \u00e2\u20ac\u201d octagonal drum, emitter cage, authority lights.",
+      "note": "Forge rebuild: Concord field buoy â€” octagonal drum, emitter cage, authority lights.",
       "part_id": "place_interdiction_buoy"
     },
     "place_ceres_bait_wreck": {
       "layout": "place",
       "file": "place_ceres_bait_wreck",
       "asset_id": "SF_PLACE_CERES_BAIT_WRECK",
-      "note": "Forge rebuild: Throughline bait wreck \u00e2\u20ac\u201d gutted liner bow, torn boatbay, deadmetal derelict.",
+      "note": "Forge rebuild: Throughline bait wreck â€” gutted liner bow, torn boatbay, deadmetal derelict.",
       "part_id": "place_ceres_bait_wreck"
     },
     "place_ceres_grave_shard": {
       "layout": "place",
       "file": "place_ceres_grave_shard",
       "asset_id": "SF_PLACE_CERES_GRAVE_SHARD",
-      "note": "Forge rebuild: Cathedral grave shard \u00e2\u20ac\u201d leaning torn plate with rib arches, tether mast.",
+      "note": "Forge rebuild: Cathedral grave shard â€” leaning torn plate with rib arches, tether mast.",
       "part_id": "place_ceres_grave_shard"
     },
     "place_scrap_cage": {
       "layout": "place",
       "file": "place_scrap_cage",
       "asset_id": "place_scrap_cage",
-      "note": "Forge rebuild: driller's scrap cage \u00e2\u20ac\u201d corner-post pen with gate leaf and heaped salvage.",
+      "note": "Forge rebuild: driller's scrap cage â€” corner-post pen with gate leaf and heaped salvage.",
       "part_id": "place_scrap_cage"
     },
     "place_improvised_dock": {
       "layout": "place",
       "file": "place_improvised_dock",
       "asset_id": "place_improvised_dock",
-      "note": "Forge rebuild: stolen berth \u00e2\u20ac\u201d leaning truss arm with clamp cradle, improvised teal/rust.",
+      "note": "Forge rebuild: stolen berth â€” leaning truss arm with clamp cradle, improvised teal/rust.",
       "part_id": "place_improvised_dock"
     },
     "place_47a_rescue_capsule": {
       "layout": "place",
       "file": "place_47a_rescue_capsule",
       "asset_id": "SF_PLACE_47A_RESCUE_CAPSULE",
-      "note": "Forge rebuild: the 47-A lifeboat \u00e2\u20ac\u201d ceramic pressure hull, distress band, airlock collar.",
+      "note": "Forge rebuild: the 47-A lifeboat â€” ceramic pressure hull, distress band, airlock collar.",
       "part_id": "place_47a_rescue_capsule"
     },
     "pod_cargo_container": {
@@ -701,49 +743,49 @@
       "layout": "place",
       "file": "place_breakaway_fork",
       "asset_id": "SF_PLACE_BREAKAWAY_FORK",
-      "note": "Forge rebuild: capture fork \u00e2\u20ac\u201d mouth frame at origin, two diverging tines, seat + service.",
+      "note": "Forge rebuild: capture fork â€” mouth frame at origin, two diverging tines, seat + service.",
       "part_id": "place_breakaway_fork"
     },
     "place_breakaway_sp07": {
       "layout": "place",
       "file": "place_breakaway_sp07",
       "asset_id": "SF_PLACE_BREAKAWAY_SP07",
-      "note": "Forge rebuild: SP-07 flywheel \u00e2\u20ac\u201d spoked wheel in a cradle cage, tow eyes fore/aft.",
+      "note": "Forge rebuild: SP-07 flywheel â€” spoked wheel in a cradle cage, tow eyes fore/aft.",
       "part_id": "place_breakaway_sp07"
     },
     "place_asteroid_rock_a": {
       "layout": "place",
       "file": "place_asteroid_rock_a",
       "asset_id": "SF_PLACE_HELIOS_ROCK_A",
-      "note": "Forge rebuild: Helios metallic rock \u2014 faceted boulder cluster, quarried face, dark specular veins.",
+      "note": "Forge rebuild: Helios metallic rock — faceted boulder cluster, quarried face, dark specular veins.",
       "part_id": "place_asteroid_rock_a"
     },
     "place_asteroid_rock_b": {
       "layout": "place",
       "file": "place_asteroid_rock_b",
       "asset_id": "SF_PLACE_HELIOS_ROCK_B",
-      "note": "Forge rebuild: Helios icy rock \u2014 faceted core with pale frost caps and ice veins.",
+      "note": "Forge rebuild: Helios icy rock — faceted core with pale frost caps and ice veins.",
       "part_id": "place_asteroid_rock_b"
     },
     "place_asteroid_rock_c": {
       "layout": "place",
       "file": "place_asteroid_rock_c",
       "asset_id": "SF_PLACE_HELIOS_ROCK_C",
-      "note": "Forge rebuild: Helios crystalline rock \u2014 faceted core with a spiked crystal cluster, faint glow.",
+      "note": "Forge rebuild: Helios crystalline rock — faceted core with a spiked crystal cluster, faint glow.",
       "part_id": "place_asteroid_rock_c"
     },
     "place_asteroid_seamed": {
       "layout": "place",
       "file": "place_asteroid_seamed",
       "asset_id": "SF_PLACE_ASTEROID_SEAMED_GEOLOGY_V3",
-      "note": "Forge rebuild: seamed asteroid \u2014 banded mineral vein cut across the rock, faint warm seam.",
+      "note": "Forge rebuild: seamed asteroid — banded mineral vein cut across the rock, faint warm seam.",
       "part_id": "place_asteroid_seamed"
     },
     "place_asteroid_graffiti": {
       "layout": "place",
       "file": "place_asteroid_graffiti",
       "asset_id": "SF_PLACE_ASTEROID_GRAFFITI_GEOLOGY_V3",
-      "note": "Forge rebuild: graffiti rock \u2014 quarried face with modelled miners' paint bands, survey stakes, lamp.",
+      "note": "Forge rebuild: graffiti rock — quarried face with modelled miners' paint bands, survey stakes, lamp.",
       "part_id": "place_asteroid_graffiti"
     },
     "place_dock_interior": {
@@ -754,7 +796,7 @@
       "lod_levels": [
         0
       ],
-      "note": "Forge rebuild: shipworks hangar bay \u2014 landing deck, gantry cranes, bay walls (LOD0-only for shipPreviewMount).",
+      "note": "Forge rebuild: shipworks hangar bay — landing deck, gantry cranes, bay walls (LOD0-only for shipPreviewMount).",
       "no_collision": true
     },
     "place_dock_interior_grit": {
@@ -765,7 +807,7 @@
       "lod_levels": [
         0
       ],
-      "note": "Forge rebuild: grit variant \u2014 patched civilian yard, rust patches, extra work lamps (LOD0-only).",
+      "note": "Forge rebuild: grit variant — patched civilian yard, rust patches, extra work lamps (LOD0-only).",
       "no_collision": true
     },
     "place_dock_interior_military": {
@@ -776,8 +818,22 @@
       "lod_levels": [
         0
       ],
-      "note": "Forge rebuild: military variant \u2014 clean armoured bay, navy band, red/white deck lines (LOD0-only).",
+      "note": "Forge rebuild: military variant — clean armoured bay, navy band, red/white deck lines (LOD0-only).",
       "no_collision": true
+    },
+    "wasp_frag_bow": {
+      "layout": "place",
+      "file": "place_wasp_frag_bow",
+      "asset_id": "SF_WASP_FRAG_BOW",
+      "part_id": "wasp_frag_bow",
+      "note": "ANI-08 wasp rupture bow fragment: nose+canopy+chine sheared at x=1.2, torn collar/ribs/ember edge, two residual-motion torn flaps."
+    },
+    "wasp_frag_aft": {
+      "layout": "place",
+      "file": "place_wasp_frag_aft",
+      "asset_id": "SF_WASP_FRAG_AFT",
+      "part_id": "wasp_frag_aft",
+      "note": "ANI-08 wasp rupture aft fragment: aft fuselage+nacelles+wings+tail sheared at x=1.2, torn collar/ribs/ember edge, residual torn flap + mast whip."
     }
   }
 }

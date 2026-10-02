@@ -476,3 +476,27 @@ export class FieldForcePresentation {
   } // Also safe when the next simulation dt is zero.
   dispose(){if(this.disposed)return;this.disposed=true;this._quietEmpty=false;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
 }
+
+// NXB-010 — presentation ledger of which sim field owns which anchor ring. The picture stores
+// the contributor (kind, footprint, anchor pos) and never a second copy of the force it made:
+// acceleration stays owned by core/fields/fieldKernel.js, so a stored `ax`/`az` here would be a
+// force source that escapes the kernel's ordering and cap rules.
+export function noteFieldAnchorRing(rings, spec){
+  if(!rings||typeof rings.set!=='function'||!spec)return false;
+  const fieldId=spec.fieldId!=null?String(spec.fieldId):(spec.id!=null?String(spec.id):null);
+  if(!fieldId)return false;
+  const pos=spec.pos||{};
+  rings.set(fieldId,{
+    fieldId,
+    kind:typeof spec.kind==='string'?spec.kind:null,
+    radius:Number.isFinite(spec.radius)?spec.radius:0,
+    pos:{x:Number.isFinite(pos.x)?pos.x:0,z:Number.isFinite(pos.z)?pos.z:0},
+  });
+  return true;
+}
+
+export function clearFieldAnchorRings(rings, spec){
+  if(!rings||typeof rings.delete!=='function')return false;
+  const fieldId=spec!=null&&typeof spec==='object'?(spec.fieldId!=null?String(spec.fieldId):(spec.id!=null?String(spec.id):null)):(spec!=null?String(spec):null);
+  return fieldId!=null?rings.delete(fieldId):false;
+}

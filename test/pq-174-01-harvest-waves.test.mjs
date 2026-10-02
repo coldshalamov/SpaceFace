@@ -1,7 +1,10 @@
-// PQ-174.01 — sixty-second harvest waves.
+// PQ-174.01 — harvest-wave completion.
 //
-// Prints the measured wave-one duration per seed. The memo predicted 60.000–60.017 s;
-// this file prints what the clock actually did.
+// The contract that shipped is the finite cohort: a wave closes when every body it admitted has
+// resolved (fast clears earn the shop early), progress is a countdown of bodies left, and a live
+// wave never has a whole second with nobody on the board. The sixty-second envelope survives only
+// as the fallback for legacy timed saves — `durationTicks` rides plan and receipt for them.
+// Prints the measured wave-one clear time per seed.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -36,8 +39,6 @@ import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 const DT = 1 / 60;
 const ARENA = 'helios_core';
 const SEEDS = [4242, 8008, 13502];
-const BAND_LO = 60;
-const BAND_HI = 60 + DT + 1e-9;
 
 function boot(seed) {
   resetSwarmPressureState();
@@ -158,46 +159,52 @@ function measureWaveOne(seed, { killEvery = 6 } = {}) {
   return { h, duration, killed: cleared.killed, kills, survivors: cleared.survivors, cleared };
 }
 
-test('plan contract: duration completion, rewardReferenceKills, level 1', () => {
+test('plan contract: cohort completion, kill quota, level 1', () => {
   const plan = planWave({ seed: 4242, arenaId: ARENA, wave: 1, ruleset: SWARM_RULESET });
   assert.notEqual(plan.ok, false);
-  assert.equal(plan.completionRules.kind, 'duration');
-  assert.equal(plan.completionRules.durationTicks, SWARM_WAVE_DURATION_TICKS);
-  assert.equal(plan.completionRules.requiredPackagesMaterialized, false);
+  // The finite cohort is the contract: every body the wave owes must be admitted and resolved.
+  // `durationTicks` survives on the plan only as the fallback envelope for legacy timed saves.
+  assert.equal(plan.completionRules.kind, 'cohort');
+  assert.equal(plan.completionRules.requiredPackagesMaterialized, true);
   assert.deepEqual(plan.completionRules.blockingRoles, []);
   assert.equal(plan.completionRules.cleanupTicks, SWARM_CLEANUP_TICKS);
-  assert.equal(plan.swarm.durationTicks, 3600);
+  assert.equal(plan.swarm.durationTicks, SWARM_WAVE_DURATION_TICKS);
+  assert.equal(plan.swarm.killTarget, swarmQuota(1));
   assert.equal(plan.swarm.rewardReferenceKills, swarmQuota(1));
-  assert.equal(plan.swarm.quota, undefined);
   assert.equal(plan.level, 1);
   assert.equal(plan.swarm.level, 1);
   for (const wave of [1, 10, 22, 60, 999]) {
     assert.equal(swarmLevel(wave), 1, `swarmLevel(${wave}) stays 1`);
     assert.ok(swarmCurveIsSane(wave), `wave ${wave} duration/concurrency stay sane`);
   }
-  const credits = plan.rewards.credits;
-  const ref = plan.swarm.rewardReferenceKills;
-  assert.equal(chipValueForPlan(plan), Math.max(1, Math.round(credits / ref)));
+  // Chips price off the flat threat table, never the per-spawn purse — a quota wave cannot mint
+  // an infinite credit line by farming arrivals.
+  assert.equal(chipValueForPlan(plan), 10);
   const spec = makeEnemySpawnSpec('wasp_swarmer', swarmLevel(22), { x: 0, z: 0 });
   const base = makeEnemySpawnSpec('wasp_swarmer', 1, { x: 0, z: 0 });
   assert.equal(spec.hull, base.hull, 'swarmLevel 1 does not inflate wasp hull');
 });
 
-test('wave 1 lasts sixty seconds on the three .00 seeds (printed)', () => {
+test('wave 1 clears on its cohort quota, not a clock, on the three .00 seeds (printed)', () => {
+  // A wave ends when every body it admitted has resolved — a fast clear earns the shop early
+  // instead of waiting out a timer (the shipped swarm contract; crucible-swarm pins the beat).
   for (const seed of SEEDS) {
     const cell = measureWaveOne(seed, { killEvery: 6 });
     console.log(`[pq-174.01] seed=${seed} wave1Duration=${cell.duration.toFixed(6)}s killed=${cell.killed} survivors=${cell.survivors}`);
-    assert.ok(cell.duration >= BAND_LO, `seed ${seed} duration ${cell.duration} below 60 s`);
-    assert.ok(cell.duration <= BAND_HI, `seed ${seed} duration ${cell.duration} above one-tick band`);
-    assert.equal(cell.cleared.completionKind, 'duration');
-    assert.equal(cell.cleared.durationTicks, 3600);
-    assert.equal(cell.cleared.quota, undefined);
-    assert.ok(cell.survivors > 0, `seed ${seed} carried survivors`);
-    assert.ok(cell.killed >= 15, `seed ${seed} kept killing past the old quota of 15`);
+    assert.equal(cell.cleared.completionKind, 'cohort');
+    assert.equal(cell.cleared.durationTicks, SWARM_WAVE_DURATION_TICKS,
+      'the duration envelope still rides the receipt for legacy consumers');
+    assert.equal(cell.cleared.killed, swarmQuota(1),
+      `seed ${seed} resolved fewer than the quota — the wave owed ${swarmQuota(1)} bodies`);
+    assert.equal(cell.cleared.survivors, 0, 'a resolved cohort leaves no survivors to carry');
+    assert.ok(cell.duration < 3600, `seed ${seed} sat on a clock for ${cell.duration.toFixed(1)}s`);
+    assert.ok(cell.killed >= 15, `seed ${seed} cleared before the wave-1 quota of 15`);
   }
 });
 
-test('the stream does not stop at fifteen kills, and the clock does not wait for a boss', () => {
+test('the stream stops at its quota, and a living champion holds its round open', () => {
+  // Finite cohort: once the quota's bodies are all admitted and resolved, the wave closes —
+  // nothing keeps the stream alive past the number the plan owed.
   const h = boot(4242);
   beginSwarm(h, 4242);
   let kills = 0;
@@ -205,43 +212,56 @@ test('the stream does not stop at fifteen kills, and the clock does not wait for
     if (i % 4 === 0 && killOne(h)) kills += 1;
     tick(h, 1);
   }
-  assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'still fighting after well past 15 kills');
-  assert.ok(kills >= 20, `stream kept supplying after 15 (kills=${kills})`);
-  assert.ok(liveHostiles(h).length > 0);
+  const clears = named(h.emitted, 'run:waveCleared').filter((e) => e.payload.wave === 1);
+  assert.equal(clears.length, 1, 'wave 1 closed on cohort resolution');
+  assert.equal(clears[0].payload.killed, swarmQuota(1));
+  const materialized = named(h.emitted, 'run:waveMaterialized').length;
+  for (let i = 0; i < 120; i++) tick(h, 1);
+  assert.equal(named(h.emitted, 'run:waveMaterialized').length, materialized,
+    'no hostiles spawn into a cleared round');
 
+  // But a living cohort — boss included — keeps the wave open: no clock rescues a refused fight.
+  // Fresh boot on wave 1's active phase: inject the boss plan while the room is still live.
+  const h2 = boot(4242);
+  beginSwarm(h2, 4242);
   const bossPlan = planWave({ seed: 4242, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
-  h.bus.emit('run:wavePlanned', { wave: 10, plan: bossPlan });
-  h.bus.emit('run:waveStarted', { wave: 10 });
-  const before = named(h.emitted, 'run:waveCleared').length;
-  for (let i = 0; i < 4000 && named(h.emitted, 'run:waveCleared').length === before; i++) {
-    tick(h, 1);
-  }
-  const bossClears = named(h.emitted, 'run:waveCleared').filter((e) => e.payload.wave === 10);
-  assert.equal(bossClears.length, 1, 'boss wave closed on the clock');
-  assert.equal(bossClears[0].payload.completionKind, 'duration');
-  assert.ok(
-    liveHostiles(h).some((e) => e.data && e.data.lootTableId === 'dreadnought_boss')
-      || bossClears[0].payload.survivors > 0,
-    'a living champion is allowed to carry; the clock did not wait for a boss kill',
+  h2.bus.emit('run:wavePlanned', { wave: 10, plan: bossPlan });
+  h2.bus.emit('run:waveStarted', { wave: 10 });
+  for (let i = 0; i < 4000; i++) tick(h2, 1);
+  assert.equal(
+    named(h2.emitted, 'run:waveCleared').filter((e) => e.payload.wave === 10).length,
+    0,
+    'the boss round must not time out under a live cohort',
   );
+  for (let i = 0; i < 6000
+    && named(h2.emitted, 'run:waveCleared').filter((e) => e.payload.wave === 10).length === 0; i++) {
+    if (i % 4 === 0) killOne(h2);
+    tick(h2, 1);
+  }
+  const bossClears = named(h2.emitted, 'run:waveCleared').filter((e) => e.payload.wave === 10);
+  assert.equal(bossClears.length, 1, 'the boss wave cleared once its cohort resolved');
+  assert.equal(bossClears[0].payload.completionKind, 'cohort');
 });
 
-test('run:waveProgress publishes remainingTicks at start and when the displayed second changes', () => {
+test('run:waveProgress publishes the cohort countdown — bodies left of the quota', () => {
   const h = boot(4242);
   beginSwarm(h, 4242);
   const first = named(h.emitted, 'run:waveProgress');
   assert.ok(first.length >= 1, 'progress published at activation');
   const open = first[0].payload;
   assert.equal(open.wave, 1);
-  assert.equal(open.durationTicks, 3600);
-  assert.equal(open.remainingTicks, 3600);
-  tick(h, 60);
+  assert.equal(open.completionKind, 'cohort');
+  assert.equal(open.total, swarmQuota(1));
+  assert.equal(open.remaining, swarmQuota(1));
+  for (let i = 0; i < 600; i++) {
+    if (i % 4 === 0) killOne(h);
+    tick(h, 1);
+  }
   const later = named(h.emitted, 'run:waveProgress');
-  assert.ok(later.length >= 2, 'progress published again when the displayed second changed');
+  assert.ok(later.length >= 2, 'progress published again when the quota countdown moved');
   const last = later[later.length - 1].payload;
-  assert.equal(last.durationTicks, 3600);
-  assert.ok(last.remainingTicks < 3600);
-  assert.ok(last.remainingTicks >= 3600 - 60);
+  assert.equal(last.total, swarmQuota(1));
+  assert.ok(last.remaining < swarmQuota(1), `remaining ${last.remaining} should drop as bodies resolve`);
 });
 
 test('death at the boundary is a death, not a surviving-wave award', () => {
@@ -302,7 +322,9 @@ function measureQuiet(seed) {
 
   beginSwarm(h, seed);
   const wave1StartTick = t;
-  for (let i = 0; i < 16000 && (wave2StartTick == null || t < wave2StartTick + 60); i++) {
+  // Observe through the clear plus a beat afterwards — wave 2 is player-launched, so the loop
+  // waits on the clear, not on the next wave arriving on its own.
+  for (let i = 0; i < 16000 && (wave1ClearTick == null || t < wave1ClearTick + 300); i++) {
     let killed = false;
     if (i % 6 === 0 && h.state.run.phase === 'active') killed = killOne(h);
     tick(h, 1);
@@ -338,6 +360,7 @@ function measureQuiet(seed) {
   const emptyMemoWindow = wholeSeconds(memoLo, Math.min(memoHi, wave1End), (k) => (alive[k] || 0) === 0);
   const quietActivityWave1 = wholeSeconds(wave1StartTick, wave1End, (k) => !killAt[k] && !spawnAt[k]);
   const emptyTicksWave1 = alive.slice(wave1StartTick, wave1End).filter((n) => n === 0).length;
+  const postClearPhase = h.state.run && h.state.run.phase;
   swarmArena.destroy();
   bindSwarmPressureContext(null);
   return {
@@ -351,13 +374,14 @@ function measureQuiet(seed) {
     quietActivityWave1,
     emptyTicksWave1,
     wave1Seconds: (wave1End - wave1StartTick) / 60,
+    postClearPhase,
   };
 }
 
-test('quiet seconds on 4242/8008/13502: the extra minute is not an empty farm', () => {
-  // PQ-174.01 design memo: Any quiet second falsifies the claim that extending the fastest cell
-  // creates continuous playable combat. The depleted-farm falsifier is a WHOLE SECOND with
-  // nobody on the board. Reservoir holds among surviving enemies are not that.
+test('quiet seconds on 4242/8008/13502: a live wave is never an empty farm', () => {
+  // The swarm contract's falsifier is a WHOLE SECOND with nobody on the board while the wave is
+  // live. What comes after the clear is the authored break — rounds are player-launched now, so
+  // an empty room past waveCleared is the shop window, not a stalled farm.
   for (const seed of SEEDS) {
     const m = measureQuiet(seed);
     console.log(
@@ -367,9 +391,10 @@ test('quiet seconds on 4242/8008/13502: the extra minute is not an empty farm', 
       + ` w1clearTick=${m.wave1ClearTick} w2startTick=${m.wave2StartTick}`,
     );
     assert.ok(m.wave1ClearTick != null, `seed ${seed} closed wave 1`);
-    assert.ok(m.wave2StartTick != null, `seed ${seed} opened wave 2`);
     assert.equal(m.emptyWave1, 0, `seed ${seed} had ${m.emptyWave1} empty seconds inside wave 1`);
-    assert.equal(m.emptyBoundary, 0, `seed ${seed} had ${m.emptyBoundary} empty seconds across the boundary`);
+    assert.equal(m.emptyTicksWave1, 0, `seed ${seed} had ${m.emptyTicksWave1} empty ticks inside wave 1`);
     assert.equal(m.emptyMemoWindow, 0, `seed ${seed} had ${m.emptyMemoWindow} empty seconds in 22.733..60`);
+    assert.equal(m.postClearPhase !== 'active', true,
+      `seed ${seed}: the cleared round must park in a player-gated break, not a live empty room`);
   }
 });

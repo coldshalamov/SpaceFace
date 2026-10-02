@@ -176,7 +176,8 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
     progress = false;
     for (const id of sortedSubsystemIds(runtime)) {
       if (disabled.has(id)) continue;
-      const def = catalog.subsystems.get(id);
+      // Per-mount defs (turret subsystems) ride on the row — the shared catalog never learned them.
+      const def = catalog.subsystems.get(id) || runtime.subsystems[id].def;
       if (!def) continue;
       if ((def.dependencies || []).some((dependencyId) => disabled.has(dependencyId))) {
         disabled.add(id);
@@ -192,10 +193,11 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
 
   for (const id of sortedSubsystemIds(runtime)) {
     const subsystem = runtime.subsystems[id];
+    const rowDef = catalog.subsystems.get(id) || subsystem.def;
     subsystem.effectiveDisabled = disabled.has(id);
-    if (subsystem.effectiveDisabled) applyEffects(runtime, blocked, catalog.subsystems.get(id)?.disabledBehavior, 1);
+    if (subsystem.effectiveDisabled) applyEffects(runtime, blocked, rowDef?.disabledBehavior, 1);
     if (emitTransitions && previousEffective[id] !== subsystem.effectiveDisabled) {
-      const def = catalog.subsystems.get(id);
+      const def = rowDef;
       appendCombatTrace(state.combat, state.tick, subsystem.effectiveDisabled ? 'subsystem.disabled' : 'subsystem.enabled', {
         targetId: entity.id,
         subsystemId: id,
@@ -234,7 +236,7 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
 export function damageSubsystem(context, entity, runtime, subsystemId, incomingDamage, channelWeights, penetration = 0) {
   const { state, catalog } = context;
   const subsystem = runtime && runtime.subsystems && runtime.subsystems[subsystemId];
-  const def = subsystem && catalog.subsystems.get(subsystemId);
+  const def = subsystem && (catalog.subsystems.get(subsystemId) || subsystem.def);
   if (!subsystem || !def || !(incomingDamage > 0)) {
     return { subsystemId: subsystemId || null, applied: 0, overflow: Math.max(0, incomingDamage || 0), before: subsystem ? subsystem.health : 0, after: subsystem ? subsystem.health : 0 };
   }

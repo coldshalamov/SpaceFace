@@ -884,8 +884,11 @@ export const ui = {
       // The baked clip is a bonus layer over the .cine-bg still: drop the
       // element on any failure and the Ken-Burns still simply remains.
       const cineVideo = cinematic.querySelector('.cine-video');
+      // Hoisted beside cineVideo: mountCinematic's play() fallback calls this, and a nested
+      // declaration here left it out of scope there (ReferenceError on every autoplay
+      // rejection, which also stranded the clip and its fetch pipeline).
+      const dropVideo = () => { try { if (cineVideo) cineVideo.remove(); } catch (_) {} };
       if (cineVideo) {
-        const dropVideo = () => { try { cineVideo.remove(); } catch (_) {} };
         cineVideo.addEventListener('error', dropVideo);
         const cineSource = cineVideo.querySelector('source');
         if (cineSource) cineSource.addEventListener('error', dropVideo);
@@ -894,12 +897,10 @@ export const ui = {
           || (typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         if (motionReduced) dropVideo();
-        else {
-          try {
-            const p = cineVideo.play();
-            if (p && typeof p.catch === 'function') p.catch(dropVideo);
-          } catch (_) { dropVideo(); }
-        }
+        // play() stays inside mountCinematic: calling it here spun up a second fetch+decoder
+        // pipeline on the same 28.8 MB clip inside the registry-init crunch (the boot intro
+        // video already plays the file), competing with init + contract fetch + authored
+        // preload for decode threads every launch.
       }
 
       let dismissed = false;
@@ -949,6 +950,14 @@ export const ui = {
         // sitting between it and the player forever.
         if (!host) { this._cinematicActive = false; showMainMenuWhenReady(); return; }
         host.appendChild(cinematic);
+        // First paint-worthy moment for the clip: start the decoder only now that the layer
+        // can actually be seen (the .cine-bg still + poster covered the wait).
+        if (cineVideo && cineVideo.isConnected) {
+          try {
+            const p = cineVideo.play();
+            if (p && typeof p.catch === 'function') p.catch(dropVideo);
+          } catch (_) { dropVideo(); }
+        }
         inputFence = createCinematicInputFence({
           keyboardTarget: window,
           visibilityTarget: document,

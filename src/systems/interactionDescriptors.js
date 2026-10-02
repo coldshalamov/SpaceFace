@@ -271,6 +271,8 @@ function siteComponentForEntity(state, entity, stableKey) {
   const readiness = worldSiteOperationReadiness(manifest, record, componentId);
   const operation = readiness.operation;
   const inactiveReason = operation ? null : readiness.reason;
+  const workApplied = operation ? Math.max(0, Number(live.progress && live.progress[operation.id]) || 0) : 0;
+  const workThreshold = operation && Number.isFinite(operation.threshold) ? operation.threshold : null;
   return {
     componentId,
     kind: def.kind || COMPONENT_KINDS.MACHINE,
@@ -284,6 +286,9 @@ function siteComponentForEntity(state, entity, stableKey) {
     receiverId: operation && operation.receiverId || null,
     active: !!operation,
     inactiveReason,
+    workApplied,
+    workThreshold,
+    workRemaining: workThreshold == null ? null : Math.max(0, workThreshold - workApplied),
     presentationOwnerWorldRecordId: data.presentationOwnerWorldRecordId || `${manifest.worldObjectId}/root`,
     live: true,
   };

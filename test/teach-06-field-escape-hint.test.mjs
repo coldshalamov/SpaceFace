@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import { onboarding } from '../src/systems/onboarding.js';
 import { FIELD_ESCAPES } from '../src/data/fields.js';
 
-// TEACH-06 — FIELD_ESCAPES is the authored "never trapped without a verb" table. A hostile
-// field that owns the player's hull earns ONE named-escape lesson per power, through the same
-// once-only hint path as combat/dock/gate. Player-owned fields and open space teach nothing.
+// TEACH-06 — each field power's authored escape is taught once, the first time a field actually
+// owns the player hull. The FIELD_ESCAPES table existed with no consumer; onboarding now reads the
+// published field snapshot and speaks the matching sentence once per kind per profile.
 
 class FakeClassList {
   constructor() { this.values = new Set(); }
@@ -45,32 +45,27 @@ class FakeDocument {
   getElementById() { return null; }
 }
 
-function wellAt(x, z, extra = {}) {
-  return {
-    id: 'field_npc_well_1', kind: 'well', volume: 'ring',
-    center: { x, z }, dir: { x: 1, z: 0 },
-    radius: 120, innerRadius: 0, strength: 60,
-    tag: 'npc', ownerId: 'npc_9', sourceId: 'npc_9',
-    ...extra,
-  };
-}
-
-function drive(fields = []) {
+function drive({ fields = [], playerPos = { x: 50, z: 0 } } = {}) {
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
   globalThis.document = new FakeDocument();
   globalThis.window = { innerWidth: 1280, innerHeight: 720, addEventListener() {}, removeEventListener() {} };
   const events = [];
+  const entities = new Map([[1, {
+    id: 1, type: 'ship', team: 'player',
+    pos: { x: playerPos.x, z: playerPos.z },
+    vel: { x: 0, z: 0 },
+  }]]);
   const state = {
     playerId: 1,
     tick: 0,
     simTime: 0,
-    entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, alive: true }]]),
-    entityList: [],
-    player: { hints: {}, flags: {} },
+    entities,
+    entityList: [...entities.values()],
+    player: { id: 1, hints: {}, flags: {} },
     settings: {},
+    onboarding: { active: false, finished: false },
     fields: { snapshot: fields },
-    onboarding: { active: false, finished: true },
   };
   const bus = {
     on() { return () => {}; },
@@ -79,9 +74,13 @@ function drive(fields = []) {
   const system = Object.create(onboarding);
   system.init({ state, bus, helpers: {} });
   return {
-    events, state, system,
-    tick(dt = 0.25) { system.update(dt, state); },
-    hints() { return events.filter((e) => e.event === 'hud:firstUse'); },
+    state,
+    events,
+    tick() { system.update(0.25, state); },
+    escapeHints() {
+      return events.filter((e) => e.event === 'hud:firstUse'
+        && e.payload && String(e.payload.verbId).startsWith('fieldEscape:'));
+    },
     restore() {
       try { system.destroy(); } catch (_) {}
       globalThis.document = previousDocument;
@@ -90,69 +89,79 @@ function drive(fields = []) {
   };
 }
 
-test('TEACH-06: a hostile field that owns the hull teaches its authored escape, once', () => {
-  const h = drive([wellAt(10, 0)]);
+const hostileWell = { kind: 'well', center: { x: 0, z: 0 }, radius: 100, innerRadius: 0, filters: { excludeId: 99 } };
+
+test('TEACH-06: first capture by a hostile well speaks the authored escape once', () => {
+  const h = drive({ fields: [hostileWell] });
   try {
     h.tick();
-    const shown = h.hints();
-    assert.equal(shown.length, 1, 'inside the well earns exactly one lesson');
-    assert.equal(shown[0].payload.verbId, 'fieldEscape:well');
-    assert.equal(shown[0].payload.text, FIELD_ESCAPES.well.sentence, 'the authored sentence is what the player reads');
+    assert.equal(h.escapeHints().length, 1, 'one hint on first capture');
+    const hint = h.escapeHints()[0];
+    assert.equal(hint.payload.verbId, 'fieldEscape:well');
+    assert.match(hint.payload.text, new RegExp(FIELD_ESCAPES.well.name, 'i'));
+    assert.match(hint.payload.text, /boost/i, 'the sentence is the authored escape');
+    assert.equal(h.state.player.hints['fieldEscape:well'], true, 'profile flag set');
+
     h.tick();
     h.tick();
-    assert.equal(h.hints().length, 1, 'player.hints keeps it once-only across further containment');
-  } finally { h.restore(); }
+    assert.equal(h.escapeHints().length, 1, 'second and later captures stay silent');
+  } finally {
+    h.restore();
+  }
 });
 
-test('TEACH-06: open space and your own field teach nothing', () => {
-  const away = drive([wellAt(10, 0)]);
+test('TEACH-06: once per field kind — a cone still teaches after the well already did', () => {
+  const cone = { kind: 'cone', center: { x: 0, z: 0 }, radius: 200, innerRadius: 0, dir: { x: 1, z: 0 }, halfAngleRad: 0.5, edgeSoftRad: 0.2, filters: { excludeId: 99 } };
+  const h = drive({ fields: [hostileWell] });
   try {
-    away.state.entities.get(1).pos = { x: 900, z: 0 };
-    away.tick();
-    assert.equal(away.hints().length, 0, 'outside the radius is no lesson');
-  } finally { away.restore(); }
-
-  const own = drive([wellAt(10, 0, { ownerId: 1, sourceId: 1, tag: 'player' })]);
-  try {
-    own.tick();
-    assert.equal(own.hints().length, 0, 'your own well is not a trap — no lesson');
-  } finally { own.restore(); }
+    h.tick();
+    h.state.fields.snapshot = [cone];
+    h.tick();
+    const hints = h.escapeHints();
+    assert.equal(hints.length, 2, 'each kind gets its own lesson');
+    assert.equal(hints[1].payload.verbId, 'fieldEscape:cone');
+    assert.match(hints[1].payload.text, new RegExp(FIELD_ESCAPES.cone.name, 'i'));
+  } finally {
+    h.restore();
+  }
 });
 
-test('TEACH-06: different powers teach different verbs; a skim sheet maps to out-mass', () => {
-  const coneField = {
-    id: 'f_cone', kind: 'cone', volume: 'cone',
-    center: { x: 0, z: 0 }, dir: { x: 1, z: 0 },
-    radius: 400, halfAngleRad: 0.6, tag: 'npc', ownerId: 'npc_9',
+test('TEACH-06: a field that excludes the player hull cannot teach', () => {
+  const ownWell = { ...hostileWell, filters: { excludeId: 1 } };
+  const h = drive({ fields: [ownWell] });
+  try {
+    h.tick();
+    assert.equal(h.escapeHints().length, 0, 'own deployed well never nags its owner');
+  } finally {
+    h.restore();
+  }
+});
+
+test('TEACH-06: outside every field there is nothing to escape', () => {
+  const h = drive({ fields: [hostileWell], playerPos: { x: 500, z: 500 } });
+  try {
+    h.tick();
+    assert.equal(h.escapeHints().length, 0);
+  } finally {
+    h.restore();
+  }
+});
+
+test('TEACH-06: a skim sheet records by volume kind but still teaches its power', () => {
+  // The kernel registers the skim collector's field with kind 'sheet' (its volume shape), while
+  // FIELD_ESCAPES keys the power id 'skim' — without the mapping this power would never teach.
+  const sheet = {
+    kind: 'sheet', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 },
+    radius: 300, halfWidth: 80, filters: { excludeId: 99 },
   };
-  const h = drive([coneField]);
-  try {
-    h.state.entities.get(1).pos = { x: 100, z: 0 };
-    h.tick();
-    assert.equal(h.hints()[0].payload.verbId, 'fieldEscape:cone', 'the cone teaches the sidestep');
-  } finally { h.restore(); }
-
-  const sheet = drive([{
-    id: 'f_sheet', kind: 'sheet', volume: 'sheet',
-    center: { x: 0, z: 0 }, dir: { x: 1, z: 0 },
-    radius: 300, halfWidth: 80, tag: 'npc', ownerId: 'npc_9',
-  }]);
-  try {
-    sheet.state.entities.get(1).pos = { x: 100, z: 0 };
-    sheet.tick();
-    assert.equal(sheet.hints()[0].payload.verbId, 'fieldEscape:skim',
-      'a sheet-kind field teaches the skim power\'s out-mass escape');
-  } finally { sheet.restore(); }
-});
-
-test('TEACH-06: fields without a named escape never hint', () => {
-  const h = drive([{
-    id: 'f_snare', kind: 'anchorSnare',
-    center: { x: 0, z: 0 }, dir: { x: 1, z: 0 }, radius: 200,
-    tag: 'npc', ownerId: 'npc_9',
-  }]);
+  const h = drive({ fields: [sheet], playerPos: { x: 100, z: 0 } });
   try {
     h.tick();
-    assert.equal(h.hints().length, 0, 'no authored escape row means silence, not noise');
-  } finally { h.restore(); }
+    const hints = h.escapeHints();
+    assert.equal(hints.length, 1, 'the sheet still earns its lesson');
+    assert.equal(hints[0].payload.verbId, 'fieldEscape:skim', 'volume kind resolves to the skim power');
+    assert.match(hints[0].payload.text, /mass/i);
+  } finally {
+    h.restore();
+  }
 });

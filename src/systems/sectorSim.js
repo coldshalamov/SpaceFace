@@ -78,7 +78,6 @@ const FREIGHT_SPILL_DANGER_BASE = 0.007;    // cargo dumped under fire — the l
 const FREIGHT_SPILL_DANGER_PER_UNIT = 0.0002;
 const FREIGHT_SPILL_DANGER_MAX = 0.018;
 const FREIGHT_VOLATILE_DANGER_MULT = 1.6;   // volatile freight burning/loose on a lane is worse
-
 const STATION_GOODS = Object.freeze({
   refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel_cells'],
   mine: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_scrap_metal'],

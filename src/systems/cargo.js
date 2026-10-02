@@ -83,19 +83,17 @@ export function isPersistentCargo(state, commodityId) {
  * consumers (`_deliverCargo`, `_removePreloadedContractCargo`) that remove preloaded cargo through
  * the writer directly. The guard belongs on player intent, not on the writer.
  */
-export function isUnsellableCargo(state, commodityId) {
-  if (isPersistentCargo(state, commodityId)) return true;
-  if (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId)) return true;
-  const active = state && state.missions && state.missions.active;
-  if (!Array.isArray(active)) return false;
-  for (const m of active) {
-    if (m && m.status === 'active' && m.preloadedCargo === true && m.params && m.params.cmdtyId === commodityId) {
-      return true;
-    }
-  }
-  return false;
-}
-
+/**
+ * Sealed contract freight. A preloaded mission (`preloadedCargo:true` on cargo_delivery /
+ * salvage_retrieval / smuggling_run) reserves units of `params.cmdtyId` until it delivers or ends;
+ * units the player bought or salvaged on top of the manifest are their own. Persistent story cargo
+ * and `fixtureSealed` ids seal the entire held lot. `bulk_trade`/`bulk_haul` commodities stay
+ * sellable — those missions require selling generic goods at the destination.
+ *
+ * Plain state reads (no missions import) → no circular dependency. The canonical cargo writer
+ * (`removeCargo`) is intentionally NOT gated: the missions system removes preloaded cargo through
+ * the writer directly. The guards belong on player intent, not on the writer.
+ */
 function heldCargoQuantity(state, commodityId) {
   const items = state && state.player && state.player.cargo && state.player.cargo.items;
   return Math.max(0, Math.floor(Number(items && items[commodityId]) || 0));
@@ -163,6 +161,23 @@ export function sellableCargoQuantity(state, commodityId) {
   let reserved = 0;
   for (const row of claims) reserved += row.claim.remaining;
   return Math.max(0, held - reserved);
+}
+
+/** NXB-025 published spellings — aliases of the canonical *Quantity readers above. */
+export function reservedCargoQty(state, commodityId) {
+  return reservedCargoQuantity(state, commodityId);
+}
+
+export function sellableCargoQty(state, commodityId) {
+  return sellableCargoQuantity(state, commodityId);
+}
+
+/** True when a seal exists and leaves nothing the player may sell or dump. */
+export function isUnsellableCargo(state, commodityId) {
+  const sealed = isPersistentCargo(state, commodityId)
+    || (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId))
+    || activePreloadedClaims(state, commodityId).length > 0;
+  return sealed && sellableCargoQuantity(state, commodityId) <= 0;
 }
 
 /**
@@ -824,11 +839,14 @@ export const cargo = {
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
   jettison(commodityId, qty, options = null) {
-    // Exact amount: a request that would touch sealed units dumps nothing.
-    if (isUnsellableCargo(this.state, commodityId)) {
-      const requested = Math.max(0, Math.floor(Number(qty) || 0));
-      if (requested > sellableCargoQuantity(this.state, commodityId)) return 0;
-    }
+    const free = sellableCargoQuantity(this.state, commodityId);
+    if (qty == null) qty = free;
+    qty = Math.max(0, Math.floor(Number(qty) || 0));
+    // A sealed manifest refuses a dump that would reach into it outright — the request named a
+    // count the contract forbids. "Dump everything" (no qty) means only the free units.
+    if (reservedCargoQuantity(this.state, commodityId) > 0 && qty > free) return 0;
+    qty = Math.min(qty, free);
+    if (qty <= 0) return 0;
     const state = this.state;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const dumped = removeCargo(state, commodityId, qty);

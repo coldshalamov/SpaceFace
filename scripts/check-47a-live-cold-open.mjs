@@ -24,6 +24,8 @@ try {
   const issues = collectPageIssues(page);
 
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
+  // Boot liveness on a contended runner: cooperative startup yields, so the SF surface can take
+  // tens of seconds to appear. AUTHORED_START_TIMEOUT_MS budgets the wait without asserting boot speed.
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: AUTHORED_START_TIMEOUT_MS });
   await page.evaluate(() => {
     window.SF.eventTrace.clear();
@@ -186,6 +188,16 @@ try {
       if (state.ui) state.ui.trackedMissionId = null;
       const splash = document.querySelector('.sf-firstrun-splash');
       if (splash) splash.remove();
+    });
+    // The opening re-asserts its tracked objective (84420c421 pins an entry-tier writ for fresh
+    // operators, and the story nav refresh reinstalls the waypoint on onboarding finish), so a
+    // one-time field clear races the installer. Let the opening settle, then re-clear through
+    // the same fields before waiting out the held-line drip.
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => {
+      const state = window.SF.state;
+      if (state.nav) state.nav.waypoint = null;
+      if (state.ui) state.ui.trackedMissionId = null;
     });
     await page.waitForFunction(
       () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),

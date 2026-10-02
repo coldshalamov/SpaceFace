@@ -59,9 +59,9 @@ def build():
     s.detail = 1
     for i in range(4):
         F.box(s, f'PortHole{i}', (-1.2 + i * 1.1, -1.32, 0.45), (0.55, 0.12, 0.42),
-              material='dark', bevel=0.04)
-        F.box(s, f'PortGlow{i}', (-1.2 + i * 1.1, -1.35, 0.45), (0.34, 0.05, 0.26),
-              material='glow_warm', bevel=0.0)
+              material='dark', bevel=0.04, mirror=True)
+        F.box(s, f'PortGlow{i}', (-1.2 + i * 1.1, -1.40, 0.45), (0.34, 0.05, 0.26),
+              material='glow_warm', bevel=0.0, mirror=True)
     s.detail = 0
 
     # dark dorsal spine over the hull crown — breaks the pale shell from the top read

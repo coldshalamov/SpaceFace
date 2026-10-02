@@ -31,6 +31,7 @@ import {
   SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
+  SWARM_ACT_ROUNDS,
   SWARM_DEBUT_DISTANCE,
   SWARM_DEBUT_TICKS,
   SWARM_MASS_GAP_CLOSE_TICKS,
@@ -39,7 +40,11 @@ import {
   SWARM_MASS_GAP_WALL_DISTANCE,
   SWARM_MASS_GAP_WALL_ROCKS,
   SWARM_FODDER_ROLES,
+  isSwarmBossWave,
   isSwarmMassGapWave,
+  swarmActFor,
+  swarmActIssues,
+  swarmActPackages,
   swarmArenaPhase,
   swarmFodderRoster,
   swarmFreeGateFor,
@@ -196,6 +201,7 @@ function expandSchedule(packages) {
       if (pkg.lesson === true) entry.lesson = true;
       if (pkg.debut === true) entry.debut = true;
       if (pkg.wall === true) entry.wall = true;
+      if (pkg.staged === true) entry.staged = true;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
@@ -361,9 +367,12 @@ export function resolvePlanMode(input) {
  * results screen) keeps working without a swarm-shaped branch of its own. The one addition is
  * `plan.swarm`, the block that describes the reinforcement stream.
  *
- * Completion here is a SIXTY-SECOND CLOCK, not "every scheduled package materialized and every
- * blocking role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty
- * on purpose: a swarm wave must never be able to stall on one straggler flying home.
+ * Completion here is a FINITE COHORT — the wave owes `swarm.killTarget` bodies and closes when
+ * every admitted body has resolved, so a fast clear earns the shop early instead of waiting out
+ * a timer, and a living champion holds its round open rather than being abandoned by a clock.
+ * `blockingRoles` stays empty on purpose: no single straggler class gates the wave, the cohort
+ * itself does. `durationTicks` rides the plan only as the fallback envelope for legacy timed
+ * saves replayed through old plans.
  *
  * SF-072 — the room reads the run's build and leans on the roles that TEST it, never the ones
  * that forbid it. A massline build meets more anchors (hulls too heavy to sling carelessly) and
@@ -413,18 +422,32 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   // its late heavies turn one side of the room into a corridor the player navigates or breaks.
   // The mutator owns the room outright, so heavies_only suppresses the shape entirely.
   const massGap = !heaviesOnly && isSwarmMassGapWave(w);
-  const fodderRoster = massGap && swarmFodderRoster(w).length > 0 ? swarmFodderRoster(w) : null;
+  // SF-068 — a boss round's reduced swarm is ammunition, not chores: the champion is the work,
+  // so its opening chaff draws from the same light bodies the mass-gap wall feeds — the shapes
+  // the room's berm, mines and pull can actually turn on the boss. heavies_only owns outright.
+  const bossWave = !heaviesOnly && isSwarmBossWave(w);
+  const fodderRoster = (massGap || bossWave) && swarmFodderRoster(w).length > 0
+    ? swarmFodderRoster(w)
+    : null;
   // SF-064 — a specialist's first wave stages one readable arrival: its tell lands alone on its
   // own bearing a beat after the opening burst, before the stream mixes it with other bodies.
   // The debut is a function of the wave number alone — no tutorial state, and later waves field
   // the same archetype through the ordinary roster like everything else.
   const newcomer = swarmNewcomerFor(w);
   const debuting = !!newcomer && w === newcomer.fromWave;
+  // NXB-017 — the three-round act authors the opening recipe outright on its three slots
+  // (waves 25–27 carry no debut, mass-gap or boss flag, so nothing else competes for them).
+  // The mutator owns the room outright: heavies_only suppresses the act exactly like the wall.
+  const act = !heaviesOnly ? swarmActFor(w) : null;
+  if (act) {
+    const actIssues = swarmActIssues(w);
+    if (actIssues.length) return invalid(actIssues);
+  }
   const openingRoster = debuting
     ? (fodderRoster || biasedRoster || swarmRosterFor(w))
       .filter((entry) => entry.enemyId !== newcomer.enemyId)
     : (fodderRoster || biasedRoster || undefined);
-  let packages = swarmOpeningPackages(w, rng, openingRoster);
+  let packages = act ? swarmActPackages(w) : swarmOpeningPackages(w, rng, openingRoster);
   if (debuting) {
     // The debut is one of the wave's bodies, not an extra: hand its seat back from the largest
     // ordinary group so the opening budget stays exactly what the pressure math asked for.
@@ -522,17 +545,31 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   if (massGapBlock) {
     swarm.massGap = massGapBlock;
     swarm.wallLine = 'A wall is closing on the room — mind the gaps.';
-    // The stream keeps feeding ammunition: fodder share bends up, no role leaves the room.
-    if (!biasedRoster) {
-      swarm.roster = swarmRosterFor(w).map((entry) => ({
-        enemyId: entry.enemyId,
-        role: entry.role,
-        weight: SWARM_FODDER_ROLES.includes(entry.role)
-          ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
-          : entry.weight,
-        fromWave: entry.fromWave,
-      }));
-    }
+  }
+  if (act) {
+    // NXB-017 — the act block is how the announce names the round's question. Quota,
+    // concurrency, draft and clear law are untouched: the act rewrote the recipe, not the
+    // rules the wave runs under.
+    swarm.act = {
+      id: act.id,
+      round: act.round,
+      rounds: SWARM_ACT_ROUNDS,
+      question: act.question,
+    };
+  }
+  // The ammunition bend is not only the wall's: a boss round's stream keeps feeding light
+  // bodies too (SF-068), so the champion's room never reads as a heavy-escort checklist —
+  // and an act round's stream keeps the loose-mass lesson supplied the same way.
+  // Build pressure still wins when it is live — the read on the run's build outranks either.
+  if ((massGapBlock || bossWave || (act && act.streamBias === 'fodder')) && !biasedRoster) {
+    swarm.roster = swarmRosterFor(w).map((entry) => ({
+      enemyId: entry.enemyId,
+      role: entry.role,
+      weight: SWARM_FODDER_ROLES.includes(entry.role)
+        ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
+        : entry.weight,
+      fromWave: entry.fromWave,
+    }));
   }
   if (heaviesOnly) {
     swarm.roster = HEAVIES_ONLY_ROSTER.map((entry) => ({
@@ -580,7 +617,8 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
     objective: { kind: swarm.boss ? 'boss' : 'resolve_hostiles' },
     packages,
     schedule,
-    arenaPhase: swarmArenaPhase(w),
+    // An authored act round owns its room: the act table's phase wins over the cycle.
+    arenaPhase: (act && act.arenaPhase) || swarmArenaPhase(w),
     rewards,
     draftExpectation: isSwarmRefitWave(w)
       ? { kind: 'refit', choices: null }

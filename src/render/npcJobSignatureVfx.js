@@ -352,6 +352,15 @@ const BY_PHASE = Object.freeze({
   // terminal and shows nothing: the job is over and the hull reverts to ordinary traffic.
 });
 
+// Fielded traffic roles arrive at this resolver under their hull names, not the kernel's six job
+// kinds. A volatiles tanker is a heavy hauler; an inspection cutter runs a patrol beat. Two rows
+// say that, rather than a kind-per-hull table of duplicate profiles.
+const JOB_KIND_ALIASES = Object.freeze({
+  tanker: 'hauler',
+  customs: 'patrol',
+  cutter: 'patrol',
+});
+
 /**
  * Resolve the signal a hull should be showing.
  *
@@ -364,7 +373,8 @@ const BY_PHASE = Object.freeze({
  */
 export function resolveNpcJobSignature(kind, phase, loaded) {
   if (typeof phase !== 'string' || phase.length === 0) return null;
-  const exact = EXACT[`${kind}:${phase}`];
+  const canonical = JOB_KIND_ALIASES[kind] || kind;
+  const exact = EXACT[`${canonical}:${phase}`];
   if (exact) return exact;
   // Tanker included: a full hold is heavy_burn, an empty hold is clean_burn. Load picks
   // the existing pair. There is no tanker profile.

@@ -77,8 +77,8 @@ const SNAG_SPAN_RATE_EPS_WU_S = 1;         // |span rate| below this = the pull 
 const SNAG_CONTACT_MARGIN_WU = 3;          // contact grace between hull skins
 const SNAG_QUERY_PAD_WU = 60;              // local obstacle search padding around the line
 // Large statics foul by their edge while their center sits far past the midpoint-radius — the
-// indexed collidables walk covers them without an oversized hash circle.
-const SNAG_MAX_BODY_REACH_WU = 480;
+// spatial hash buckets bodies by radius-overlap so they surface on the line's cell range, and
+// the exact reach filter downstream keeps the same universe the collidables walk had.
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
 const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;
 const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
@@ -2156,7 +2156,27 @@ export const tetherGameplay = {
     const radius = span * 0.5 + SNAG_QUERY_PAD_WU;
     let candidates;
     const index = state.entityIndex;
-    if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+    if (hasActiveSpatialHash(state.spatialHash)) {
+      // The hash buckets every collidable across the cells its body overlaps, so a foul
+      // candidate's cells always reach the rope's own cell range — the query returns exactly
+      // the collidables universe near the line without a full-bucket walk. (Radius-aware
+      // insert covers large statics; the old midpoint reach pad was compensating for a
+      // center-distance walk.)
+      queryNearbyEntities(state, center, radius, scratch);
+      // Re-apply the walk's exact reach test so downstream passes see an identical universe
+      // to the collidables scan this replaced.
+      let write = 0;
+      for (let i = 0; i < scratch.length; i++) {
+        const e = scratch[i];
+        if (!e || !e.pos) continue;
+        const ddx = finite(e.pos.x) - center.x;
+        const ddz = finite(e.pos.z) - center.z;
+        const reach = radius + positive(e.radius, 0);
+        if (ddx * ddx + ddz * ddz <= reach * reach) scratch[write++] = e;
+      }
+      scratch.length = write;
+      candidates = scratch;
+    } else if (index && index.__spacefaceEntityIndexV1 && index.ready === true
         && Array.isArray(index.collidables)) {
       // The collidables bucket is the honest obstacle universe — everything that can foul a rope,
       // typed or not, sensors excluded. Distance-filtered into scratch.
@@ -2168,8 +2188,6 @@ export const tetherGameplay = {
         if (ddx * ddx + ddz * ddz <= reach * reach) scratch.push(e);
       }
       candidates = scratch;
-    } else if (hasActiveSpatialHash(state.spatialHash)) {
-      candidates = queryNearbyEntities(state, center, radius + SNAG_MAX_BODY_REACH_WU, scratch);
     } else {
       const list = state.entityList
         || (state.entities && typeof state.entities.values === 'function' ? state.entities.values() : []);

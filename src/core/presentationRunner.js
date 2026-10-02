@@ -11,7 +11,7 @@ import {
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
-import { resolveFrameCap, stepFrameCapDebt } from '../render/adaptiveQuality.js';
+import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
@@ -20,6 +20,12 @@ import { syncFocusLossHold } from './focusLossHold.js';
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
 // that a player who is looking at a frozen world has not been looking at it for long.
 const PRESENTATION_STALL_FRAMES = 30;
+
+const _stepCapArgs = { frameDt: 0, fixedDt: LOOP_FIXED_DT, maxSteps: 0 };
+const _frameCapArgs = { cap: 0, vsync: true, displayHz: 60 };
+const _capStepArgs = { cap: 0, displayHz: 60, debt: 0 };
+const _capStepScratch = { present: true, debt: 0 };
+const _drainCompileArg = { leftoverMs: 0, late: false };
 export const LOOP_LIFECYCLE_STATES = Object.freeze({
   FOREGROUND_VISIBLE: 'foreground-visible',
   FOREGROUND_OCCLUDED: 'foreground-occluded',
@@ -904,9 +910,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // clock restarts. A draw throw must not undo the sim that already ran this callback.
       let presentationMs = 0;
       let presentationError = null;
+      _stepCapArgs.frameDt = frameDt;
+      _stepCapArgs.fixedDt = fixedDt;
+      _stepCapArgs.maxSteps = simulationRunner.maxSteps;
       const stepCap = restoring
         ? undefined
-        : frameSimStepCap({ frameDt, fixedDt, maxSteps: simulationRunner.maxSteps });
+        : frameSimStepCap(_stepCapArgs);
       if (!restoring && !destroyed && !suspended) {
         advanceSimulation(frameDt, false, stepCap, perf);
       }
@@ -928,23 +937,26 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
       const displayHz = Number(state.render && state.render.displayHz) || 60;
+      _frameCapArgs.cap = video.frameCap;
+      _frameCapArgs.vsync = video.vsync !== false;
+      _frameCapArgs.displayHz = displayHz;
       const effectiveCap = restoring
         ? 0
-        : resolveFrameCap({
-          cap: video.frameCap,
-          vsync: video.vsync !== false,
-          displayHz,
-        });
+        : resolveFrameCap(_frameCapArgs);
       if (state && state.render) state.render.frameCap = effectiveCap;
-      const capStep = skipPresentation
-        ? { present: false, debt: diagnostics.frameCapDebt }
-        : (diagnostics.executedFrames <= 1
-          ? { present: true, debt: 0 }
-          : stepFrameCapDebt({
-            cap: effectiveCap,
-            displayHz,
-            debt: diagnostics.frameCapDebt,
-          }));
+      let capStep = _capStepScratch;
+      if (skipPresentation) {
+        capStep.present = false;
+        capStep.debt = diagnostics.frameCapDebt;
+      } else if (diagnostics.executedFrames <= 1) {
+        capStep.present = true;
+        capStep.debt = 0;
+      } else {
+        _capStepArgs.cap = effectiveCap;
+        _capStepArgs.displayHz = displayHz;
+        _capStepArgs.debt = diagnostics.frameCapDebt;
+        capStep = stepFrameCapDebtInto(_capStepArgs, _capStepScratch);
+      }
       diagnostics.frameCapDebt = capStep.debt;
       const capSkip = !skipPresentation && !capStep.present;
       if (capSkip) diagnostics.frameCapSkips++;
@@ -959,21 +971,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
 
       diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
-      const drainAfterPresentCompile = (leftoverMs) => {
-        if (skipPresentation || capSkip) return;
-        if (!(leftoverMs >= 2) || !(presentationMs < frameBudgetMs)) return;
-        if (presentationMs > fixedDt * 2000) return;
-        const drain = state.render && state.render.drainAfterPresentCompile;
-        if (typeof drain === 'function') {
-          drain({ leftoverMs, late: false });
-        }
-      };
-      const drainArrivalSlices = () => {
-        const sliceBus = registry?.ctx?.bus;
-        if (sliceBus && typeof sliceBus.drainEmitSlice === 'function') {
-          sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
-        }
-      };
       // A restore frame's picture is out; settle its accumulator without advancing the clock.
       if (restoring && !destroyed && !suspended) advanceSimulation(frameDt, true, undefined, perf);
       // Sim and picture are both done. The compile drain is offered what TRULY remains of this
@@ -983,9 +980,22 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // band the owner's iGPU lives in during a fight, and the cost its worst freezes are made of.
       const remainMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
       diagnostics.lastLeftoverMs = remainMs;
-      drainAfterPresentCompile(remainMs);
-      drainArrivalSlices();
-      diagnostics.lastLeftoverStepCap = stepCap ?? frameSimStepCap({ maxSteps: simulationRunner.maxSteps });
+      if (!skipPresentation && !capSkip && remainMs >= 2
+          && presentationMs < frameBudgetMs && presentationMs <= fixedDt * 2000) {
+        const drain = state.render && state.render.drainAfterPresentCompile;
+        if (typeof drain === 'function') {
+          _drainCompileArg.leftoverMs = remainMs;
+          _drainCompileArg.late = false;
+          drain(_drainCompileArg);
+        }
+      }
+      const sliceBus = registry?.ctx?.bus;
+      if (sliceBus && typeof sliceBus.drainEmitSlice === 'function') {
+        sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+      }
+      _stepCapArgs.frameDt = 0;
+      _stepCapArgs.fixedDt = LOOP_FIXED_DT;
+      diagnostics.lastLeftoverStepCap = stepCap ?? frameSimStepCap(_stepCapArgs);
       if (presentationError) throw presentationError;
     } catch (err) {
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;

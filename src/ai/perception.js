@@ -253,6 +253,10 @@ export function targetIdentityGeneration(entity) {
   const data = entity.data;
   if (data && data.identityGeneration != null && data.identityGeneration !== '') return data.identityGeneration;
   if (entity.generation != null && entity.generation !== '') return entity.generation;
+  // The recycler's own token (core/entity.js stampOccupantGeneration): present on every live body,
+  // non-enumerable, and the only generation the runtime actually writes — without it the
+  // lock/missile lineage guard above can never fire outside a hand-built fixture.
+  if (entity.occupantGeneration != null && entity.occupantGeneration !== '') return entity.occupantGeneration;
   return 0;
 }
 

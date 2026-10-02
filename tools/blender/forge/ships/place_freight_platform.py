@@ -10,6 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_29  # noqa: E402
 import claim_outpost_kit as K  # noqa: E402
 
 SHIP_ID = 'place_freight_platform'
@@ -69,10 +72,29 @@ def build():
                     size=0.55, lens='glow_warm')
         F.beams(s, f'MastFoot{k}', [((mx, 5.2, 6.0), (mx + (1.6 if k == 0 else -1.6), 5.8,
                                     4.9))], 0.25, material='paint2')
+
+    # ANI-29: traveling bridge crane over the rack lanes — rails are static; the bridge,
+    # carriage and grab block ride motion pivots.
+    F.box(s, 'CraneRail', (0.0, -4.2, 6.0), (21.0, 0.5, 0.4), material='dark', bevel=0.02)
+    F.box(s, 'CraneRail2', (0.0, 4.2, 6.0), (21.0, 0.5, 0.4), material='dark', bevel=0.02)
+    beam = F.box(s, 'CraneBeam', (0.0, 0.0, 7.5), (1.2, 9.2, 0.8), material='hazard', bevel=0.05)
+    truck_l = F.box(s, 'CraneTruckL', (0.0, -4.2, 7.1), (1.6, 0.9, 1.0), material='gunmetal', bevel=0.04)
+    truck_r = F.box(s, 'CraneTruckR', (0.0, 4.2, 7.1), (1.6, 0.9, 1.0), material='gunmetal', bevel=0.04)
+    carriage = F.box(s, 'CraneCarriage', (0.0, -2.0, 7.0), (1.1, 1.3, 0.6), material='gunmetal', bevel=0.03)
+    cable = F.cylinder(s, 'HookCable', (0.0, -2.0, 6.9), (0.0, -2.0, 5.7), 0.07, material='dark', segments=8)
+    block = F.box(s, 'HookBlock', (0.0, -2.0, 5.5), (0.5, 0.5, 0.4), material='hazard', bevel=0.04, taper=0.7)
+    s.ani29_bank = ANI_29.build(s, {
+        'bridge': [beam, truck_l, truck_r], 'carriage': carriage, 'hook': [cable, block],
+    }, source_asset_id=E.fleet_spec(s.id)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani29_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_29.motion_bank.MOTIONS_DIR,
+                                                   'freight-platform.motion.json'))
+

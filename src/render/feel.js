@@ -323,6 +323,23 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   return out;
 }
 
+// Contact-rate scratches: resolveCollisionFeel only reads its inputs and traumaFromContact
+// returns a scalar, so the literal temporaries below never escape — reusing them removes
+// three allocations per emitted contact.
+const _traumaImpactScratch = { dp: 0 };
+const _traumaCtxScratch = {
+  mode: 'flight',
+  deltaV: 0,
+  feelDeltaV: 0,
+  momentum: 0,
+  playerDistance: 0,
+  motionReduce: false,
+  photoMode: false,
+  playerContact: false,
+  state: null,
+};
+const _traumaOutScratch = {};
+
 /** One trauma number for a contact. Physics, the camera helper, and the flash all call this. */
 export function traumaFromContact(dp, context = {}) {
   const momentum = Number.isFinite(dp) ? Math.max(0, dp) : 0;
@@ -337,20 +354,18 @@ export function traumaFromContact(dp, context = {}) {
       : playerDeltaV > 0
         ? playerDeltaV
         : momentum / 20;
-  const feel = resolveCollisionFeel(
-    { dp: momentum },
-    {
-      mode: context.mode || 'flight',
-      deltaV,
-      feelDeltaV: Number.isFinite(pre) && pre > 0 ? pre : deltaV,
-      momentum,
-      playerDistance: Number.isFinite(context.playerDistance) ? context.playerDistance : 0,
-      motionReduce: context.motionReduce === true,
-      photoMode: context.photoMode === true,
-      playerContact: context.playerContact === true,
-      state: context.state,
-    },
-  );
+  _traumaImpactScratch.dp = momentum;
+  const ctx = _traumaCtxScratch;
+  ctx.mode = context.mode || 'flight';
+  ctx.deltaV = deltaV;
+  ctx.feelDeltaV = Number.isFinite(pre) && pre > 0 ? pre : deltaV;
+  ctx.momentum = momentum;
+  ctx.playerDistance = Number.isFinite(context.playerDistance) ? context.playerDistance : 0;
+  ctx.motionReduce = context.motionReduce === true;
+  ctx.photoMode = context.photoMode === true;
+  ctx.playerContact = context.playerContact === true;
+  ctx.state = context.state;
+  const feel = resolveCollisionFeel(_traumaImpactScratch, ctx, _traumaOutScratch);
   return feel && Number.isFinite(feel.trauma) ? feel.trauma : 0;
 }
 

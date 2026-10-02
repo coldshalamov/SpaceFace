@@ -70,7 +70,11 @@ export const VOLATILE_BY_COMMODITY = Object.freeze({
  */
 export function volatileClassOf(commodityId) {
   if (!commodityId) return null;
-  const id = typeof commodityId === 'object' ? (commodityId.commodityId || commodityId.id) : commodityId;
+  // NXI-029: record-shaped callers may carry the hazard under a stamped class (`volatileClass`)
+  // or a pooled manifest's headline (`primaryCommodityId`); both are honest reads of the lot.
+  const id = typeof commodityId === 'object'
+    ? (commodityId.commodityId || commodityId.volatileClass || commodityId.id || commodityId.primaryCommodityId)
+    : commodityId;
   if (!id || typeof id !== 'string') return null;
 
   const classId = VOLATILE_BY_COMMODITY[id];

@@ -33,6 +33,7 @@ import {
   offerDraft,
   rerollPrice,
   swarmPurchasePrice,
+  fittingName,
 } from '../data/survivalDraft.js';
 import {
   bindSwarmRoleProblems,
@@ -174,7 +175,12 @@ export const survivalDraft = {
     const run = liveSurvivalRun(this.state);
     const held = heldDefIds(this.state);
     const offers = (this._offers ? this._offers.slice() : [])
-      .filter((offer) => !isNoOpDuplicateOffer(offer, held, run && run.ruleset));
+      // A demoed row stays on the shelf though its defId now reads "held" — the trial copy is
+      // not owned, and this card is the only way to buy it before the armory closes.
+      .filter((offer) => !isNoOpDuplicateOffer(offer, held, run && run.ruleset)
+        || (Number.isInteger(offer.slotIndex)
+          && this._trials instanceof Map
+          && this._trials.get(offer.slotIndex)?.defId === offer.defId));
     if (!run || !isSwarmRuleset(run.ruleset) || !this._draftInput) return offers;
     // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
     // initially want the same empty slot; the second purchase must see the new loadout.
@@ -199,7 +205,9 @@ export const survivalDraft = {
       // that seeded the trial would read "No compatible slot" while it is still wearing it.
       const legal = !!current || demoed;
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
-      return { ...offer, ...(current || {}), price, purchased, demoed,
+      const replaces = (current || offer).replaces ?? null;
+      return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
+        replacesName: replaces ? fittingName(replaces) : null,
         available: !purchased && legal && price != null && run.credits >= price,
         unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null };
@@ -499,12 +507,28 @@ export const survivalDraft = {
       }
       this._purchased.add(pending.id);
       this._notice = `${pending.name} fitted. Buy again or launch the next round.`;
-      this._noteModifier({
-        kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
-        slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
-      }, {
-        wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id,
-      });
+      // Shelf rows carry a stock word ('Gun', 'Launcher', …), not an authored verb — the note
+      // would die in the validator and the buy would vanish from the run's memory. Record it
+      // verbatim the same way hull rows do, so results/buildCode/SF-072's buildSummary see it.
+      if (pending.catalog === true) {
+        this._emit('run:modifierRecordRequested', {
+          record: {
+            kind: 'catalog', offerId: pending.id, defId: pending.defId,
+            slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
+          },
+          draft: {
+            wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
+          },
+          wave: this._wave,
+        });
+      } else {
+        this._noteModifier({
+          kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
+          slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
+        }, {
+          wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id,
+        });
+      }
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }

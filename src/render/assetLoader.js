@@ -14,9 +14,9 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
-import { createAsyncAdmission } from './asyncAdmission.js';
-import { createRenderPackageLoader, disposeDecodedResources, startMeshoptWorkerPool } from './renderPackageLoader.js';
+import { activeDecodeClass, deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
+import { loadMotionBank } from './authoredMotion.js';
 import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
@@ -122,12 +122,7 @@ export class AssetContractError extends Error {
 export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
   if (!runtime || runtime.retiring) return null;
   if (!runtime.assets.has(cacheKey)) {
-    const timers = runtime.admissionTimers && typeof runtime.admissionTimers === 'object'
-      ? runtime.admissionTimers
-      : {};
-    const admission = createAsyncAdmission({ label: `authored-asset:${cacheKey}`, ...timers });
-    const inner = Promise.resolve().then(() => createTask(admission));
-    const task = admission.wait(inner).finally(() => admission.finish());
+    const task = Promise.resolve().then(createTask);
     runtime.assets.set(cacheKey, task);
     const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
     pendingTasks.add(task);
@@ -149,17 +144,10 @@ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
         if (value == null && runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
         // A re-admitted task that produced a record supersedes any failure the evicted attempt
         // recorded under this key.
-        else if (value != null && runtime.assets.get(cacheKey) === task && runtime.failures) {
-          runtime.failures.delete(cacheKey);
-        }
+        else if (value != null && runtime.failures) runtime.failures.delete(cacheKey);
       },
-      (error) => {
+      () => {
         pendingTasks.delete(task);
-        if (!runtime.retiring && runtime.failures && error
-            && (error.name === 'TimeoutError' || error.code === 'AUTHORED_ADMISSION_TIMEOUT')
-            && runtime.assets.get(cacheKey) === task) {
-          runtime.failures.set(cacheKey, error);
-        }
         if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
       },
     );
@@ -194,31 +182,15 @@ export function retireAuthoredAssetRuntime(runtime) {
  * Renderer-to-runtime ownership. Disposal detaches the renderer synchronously so later callers can
  * acquire a fresh runtime, while repeated disposal keeps the original guarded retirement Promise.
  */
-export function createAuthoredAssetRuntimeRegistry(runtimeFactory, registryOptions = {}) {
+export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
   const activeByRenderer = new WeakMap();
   const retirementByRenderer = new WeakMap();
-  const timers = registryOptions && typeof registryOptions.admissionTimers === 'object'
-    ? registryOptions.admissionTimers
-    : {};
 
   function get(renderer) {
     let runtimePromise = activeByRenderer.get(renderer);
     if (!runtimePromise) {
       retirementByRenderer.delete(renderer);
-      const admission = createAsyncAdmission({ label: 'authored-asset-runtime', ...timers });
-      const inner = Promise.resolve().then(() => runtimeFactory(renderer));
-      inner.then((runtime) => {
-        if (admission.signal.aborted === true
-            && activeByRenderer.get(renderer) !== runtimePromise) {
-          retireAuthoredAssetRuntime(runtime);
-        }
-      }, () => {});
-      runtimePromise = admission.wait(inner).finally(() => admission.finish());
-      runtimePromise.catch(() => {
-        if (activeByRenderer.get(renderer) === runtimePromise) {
-          activeByRenderer.delete(renderer);
-        }
-      });
+      runtimePromise = Promise.resolve().then(() => runtimeFactory(renderer));
       activeByRenderer.set(renderer, runtimePromise);
     }
     return runtimePromise;
@@ -387,49 +359,33 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   // would still field more busy workers than the host has spare cores. Route task intake
   // through the shared cross-decoder budget (FIFO, so the pool's own queue order is unchanged);
   // when KTX2 is the only decoder working it still uses the whole budget. Tasks still queued on
-  // the budget when the loader is disposed are aborted through the task admission — their callers
-  // reject with AbortError and the token returns to the pool's remaining live tasks.
+  // the budget when the loader is disposed return their token and never dispatch, matching the
+  // stock pool's dropped-queue semantics (their callers never settle either way).
   const decodeBudget = options.decodeBudget || sharedDecodeTaskBudget();
   const pendingPoolTasks = new Set();
   const pool = ktx2.workerPool;
-  const loaderLifetime = new AbortController();
-  const ktx2AbortError = (message) => Object.assign(new Error(message), { name: 'AbortError' });
   if (typeof pool.postMessage === 'function' && pool.spacefaceDecodeBudgetGated !== true) {
     const postTask = pool.postMessage.bind(pool);
     pool.spacefaceDecodeBudgetGated = true;
-    pool.postMessage = (msg, transfer) => {
-      const taskAdmission = createAsyncAdmission({
-        label: 'ktx2-decode',
-        signal: loaderLifetime.signal,
-      });
-      return taskAdmission.wait(
-        decodeBudget.acquire({ signal: taskAdmission.signal }).then((release) => {
-          const retire = () => {
-            release();
-            throw taskAdmission.signal.aborted
-              ? taskAdmission.signal.reason
-              : ktx2AbortError('KTX2 loader was disposed while the decode task was queued.');
-          };
-          if (disposed || taskAdmission.signal.aborted) retire();
-          const task = {};
-          task.settle = () => {
-            if (!pendingPoolTasks.delete(task)) return;
-            taskAdmission.signal.removeEventListener('abort', task.settle);
-            release();
-          };
-          taskAdmission.signal.addEventListener('abort', task.settle);
-          pendingPoolTasks.add(task);
-          let result;
-          try {
-            result = postTask(msg, transfer);
-          } catch (error) {
-            task.settle();
-            throw error;
-          }
-          return Promise.resolve(result).finally(task.settle);
-        }),
-      ).finally(() => taskAdmission.finish());
-    };
+    pool.postMessage = (msg, transfer) => decodeBudget.acquire(
+      msg && msg.spacefaceDecodeClass || activeDecodeClass(),
+    ).then((release) => {
+      if (disposed) {
+        release();
+        return new Promise(() => {});
+      }
+      const task = {};
+      task.settle = () => { if (pendingPoolTasks.delete(task)) release(); };
+      pendingPoolTasks.add(task);
+      let result;
+      try {
+        result = postTask(msg, transfer);
+      } catch (error) {
+        task.settle();
+        throw error;
+      }
+      return Promise.resolve(result).finally(task.settle);
+    });
   }
 
   ktx2.workerSourceURL = workerUrl;
@@ -438,19 +394,13 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   ktx2.init = function initCspSafeKtx2Transcoder() {
     if (disposed) return Promise.reject(new Error('KTX2 loader has been disposed.'));
     if (!this.transcoderPending) {
-      const admission = createAsyncAdmission({
-        label: 'ktx2-transcoder-init',
-        signal: loaderLifetime.signal,
-      });
-      const pending = admission.wait(Promise.resolve().then(async () => {
+      this.transcoderPending = Promise.resolve().then(async () => {
         if (typeof fetchImpl !== 'function') throw new Error('KTX2 transcoder requires fetch.');
-        const response = await fetchImpl(wasmUrl, { cache: 'force-cache', signal: admission.signal });
-        admission.assertActive();
+        const response = await fetchImpl(wasmUrl, { cache: 'force-cache' });
         if (!response || response.ok !== true) {
           throw new Error(`KTX2 transcoder fetch failed: HTTP ${response && response.status || 0} ${wasmUrl}`);
         }
         const binary = await response.arrayBuffer();
-        admission.assertActive();
         if (disposed) throw new Error('KTX2 loader was disposed during transcoder initialization.');
         this.transcoderBinary = binary;
         this.workerPool.setWorkerCreator(() => {
@@ -461,10 +411,6 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
           worker.postMessage({ type: 'init', config: this.workerConfig, transcoderBinary }, [transcoderBinary]);
           return worker;
         });
-      })).finally(() => admission.finish());
-      this.transcoderPending = pending;
-      pending.catch(() => {
-        if (this.transcoderPending === pending) this.transcoderPending = null;
       });
     }
     return this.transcoderPending;
@@ -474,8 +420,7 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
     disposed = true;
     // Terminated workers never answer, so settle gated tasks here to return their tokens;
     // without this every task in flight at dispose would leak a budget slot.
-    loaderLifetime.abort(ktx2AbortError('KTX2 loader has been disposed.'));
-    for (const task of [...pendingPoolTasks]) task.settle();
+    for (const task of pendingPoolTasks) task.settle();
     this.workerPool.dispose();
     this.transcoderBinary = null;
     this.transcoderPending = null;
@@ -598,9 +543,24 @@ export async function loadAuthoredPart(url, options = {}) {
   if (runtime.retiring) return null;
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
 
+  // Deadline-class decodes (runway/wave-hull/admission-deadline work) mark the whole fetch +
+  // worker-decode window so every task this part posts — prepass, meshopt, KTX2 — is served
+  // ahead of queued ambient warm inside the shared decode budget. The class travels by depth,
+  // not by message, because the worker intakes are shared-loader internals. Computed before the
+  // pilot branch: render-package pilots are the dominant decode path and must classify too.
+  const deadlineClass = options.admissionDeadline === true
+    || options.admissionVisible === true
+    || /runway|deadline/i.test(String(options.residencyRole || ''));
+  // admissionVisible is a deadline superset: the spawn is already at the glass, so its worker
+  // posts jump ahead of even other deadline waiters via the 'visible' budget class.
+  const wrapDecodeClass = options.admissionVisible === true
+    ? withVisibleDecodeClass
+    : (deadlineClass ? withDeadlineDecodeClass : null);
+
   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
   if (renderPackagePilot) {
-    return loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options);
+    return (wrapDecodeClass ? () => wrapDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
+      : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
   }
   assertSourceRouteAdmitted(url);
 
@@ -618,13 +578,15 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
-  const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
-    loadGltfDocument(url, runtime.gltf)
+  // A deadline caller joining an in-flight ambient task still sits on the player's
+  // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
+  // time, so refcount the join for the rest of the task's settle — the same idiom the
+  // serial lane already uses, bounded to the joined task's tail.
+  const deadlineJoin = deadlineClass && runtime.assets.has(cacheKey);
+  const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+    (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf))
+      : () => loadGltfDocument(url, runtime.gltf))()
       .then((gltf) => {
-        if (admission && admission.signal && admission.signal.aborted === true) {
-          disposeDecodedResources(gltf);
-          throw admission.signal.reason;
-        }
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
         const tier1 = tier1CountersForRenderer(renderer);
         if (tier1) tier1.countRuntimeSemanticCompile('source-blueprint-compile', 0);
@@ -638,7 +600,7 @@ export async function loadAuthoredPart(url, options = {}) {
         });
       })
       .catch((error) => {
-        if (!runtime.retiring && runtime.assets.get(cacheKey) === task) {
+        if (!runtime.retiring) {
           runtime.failures.set(cacheKey, error);
           if (error instanceof AssetContractError) {
             if (!optional) warnOnce(cacheKey, error.message);
@@ -653,13 +615,8 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
-  let blueprint = null;
-  try {
-    blueprint = await task;
-  } catch (error) {
-    if (request) request.cancel('decode-failed');
-    return null;
-  }
+  if (deadlineJoin) (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
+  const blueprint = await task;
   if (!blueprint) {
     if (request) request.cancel('decode-failed');
     return null;
@@ -675,21 +632,37 @@ export async function loadAuthoredPart(url, options = {}) {
     residency.retain(cacheKey, runtime.decodeCacheOwner, {
       role: 'decode-cache',
       sectorId: options.sectorId || null,
+      // Warm-purpose decodes (sector prewarm, decode runway, roster warm) speculate on future
+      // use — a never-touched prewarm otherwise reads as the oldest idle entry and is the first
+      // casualty of byte pressure, so the spawn it covered still pops cold.
+      decodeWarm: /warm|runway|prewarm|armory|predicted/i.test(String(options.residencyRole || '')),
     });
   }
   return blueprint;
 }
 
 export async function preloadAuthoredParts(requests, renderer) {
-  const records = [];
-  // GLB fetches are local; decode, transcode, resource registration, and first upload are the costly
-  // operations. Keep one admission in flight so the preparation runway cannot become its own spike.
-  for (const rawRequest of requests || []) {
-    const request = typeof rawRequest === 'string' ? { url: rawRequest } : rawRequest;
-    if (!request || !request.url) continue;
-    records.push(await loadAuthoredPart(request.url, { ...request, renderer }));
-  }
-  return records;
+  const list = requests || [];
+  const records = new Array(list.length);
+  // GLB fetches are local; decode, transcode, resource registration, and first upload are the
+  // costly operations. Depth 2 keeps the admission lane near-serial (the runway cannot become
+  // its own spike) while a multi-file plan decodes at ~max(file) instead of sum(files) — the
+  // shared decode budget already caps true worker parallelism underneath.
+  const DECODE_PRELOAD_DEPTH = 2;
+  let cursor = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = cursor;
+      cursor += 1;
+      if (i >= list.length) return;
+      const rawRequest = list[i];
+      const request = typeof rawRequest === 'string' ? { url: rawRequest } : rawRequest;
+      if (!request || !request.url) continue;
+      records[i] = await loadAuthoredPart(request.url, { ...request, renderer });
+    }
+  };
+  await Promise.all(Array.from({ length: DECODE_PRELOAD_DEPTH }, worker));
+  return records.filter((record) => record !== undefined);
 }
 
 /**
@@ -750,21 +723,34 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
   // `loadPart` and `residency` are injectable so the ordering contract can be exercised for real
   // headlessly. A check that re-implemented this body would only prove itself consistent.
   const loadPart = options.loadPart || loadAuthoredPart;
-  const records = [];
+  const records = new Array(requested.length);
   let failureReason = 'sector-prewarm-load-failed';
   try {
-    for (const request of requested) {
-      if (!isEntryActive()) return cancelled();
-      records.push(await loadPart(request.url, {
-        ...request,
-        renderer,
-        sectorId: exactSectorId,
-        residencyOwner: owner,
-        residencyRole: 'sector-prewarm',
-        isResidencyOwnerActive: isEntryActive,
-      }));
-    }
-    if (!isEntryActive()) return cancelled();
+    // Depth 2: the serial census paid the SUM of per-file decode latency across a whole sector
+    // plan; two pipelined lanes halve the warm while the shared decode budget and the serial
+    // residency/commit contracts underneath keep the anti-spike invariant.
+    const PREWARM_DECODE_DEPTH = 2;
+    let cursor = 0;
+    let inactive = false;
+    const worker = async () => {
+      for (;;) {
+        if (!isEntryActive()) { inactive = true; return; }
+        const i = cursor;
+        cursor += 1;
+        if (i >= requested.length) return;
+        const request = requested[i];
+        records[i] = await loadPart(request.url, {
+          ...request,
+          renderer,
+          sectorId: exactSectorId,
+          residencyOwner: owner,
+          residencyRole: 'sector-prewarm',
+          isResidencyOwnerActive: isEntryActive,
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: PREWARM_DECODE_DEPTH }, worker));
+    if (inactive || !isEntryActive()) return cancelled();
 
     const missing = requested.filter((_, index) => !records[index]);
     if (missing.length) {
@@ -991,7 +977,12 @@ async function createRuntime(renderer) {
     prepareDecoded(decoded, packageMetadata, renderUrl, plan) {
       const pilot = renderPackagePilotForAssetId(packageMetadata.assetId);
       if (!pilot) throw new Error(`Unknown production render package ${packageMetadata.assetId}.`);
-      return prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, { renderer, plan });
+      const prepared = prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, { renderer, plan });
+      // A package carrying runtime.motionBank attests which bank bytes it was compiled against;
+      // fetch + pin them once per package so every later instance binds synchronously.
+      const motionRef = packageMetadata.runtime && packageMetadata.runtime.motionBank;
+      if (!motionRef) return prepared;
+      return loadMotionBank(motionRef).then((motionBank) => Object.freeze({ ...prepared, motionBank }));
     },
   });
 
@@ -1343,6 +1334,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   const materialProfile = configureAuthoredMaterialProfiles(scene, {
     assetId: metadata.assetId || fileStem(url),
     bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
+    slot: expectedSlot || metadata.slot || null,
   });
   canonicalizeObjectSurfaceProgramKeys(scene);
 
@@ -1542,7 +1534,9 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     const materials = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
     for (const material of materials) {
       if (!material || profiled.has(material)) continue;
-      if (!applyAuthoredMaterialProfile(material, entry.role, { assetId, bounds: table.bounds, allowTextures: entry.allowTextures })) continue;
+      if (!applyAuthoredMaterialProfile(material, entry.role, {
+        assetId, bounds: table.bounds, slot: expectedSlot || metadata.slot || null, allowTextures: entry.allowTextures,
+      })) continue;
       profiled.add(material);
       const effectiveRole = material.userData.spacefaceMaterialRole || entry.role;
       profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
@@ -1558,6 +1552,10 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     metadata: Object.freeze({ ...metadata }),
     primitives: Object.freeze(primitives),
     markers: Object.freeze(markers),
+    // The package's runtime table may attest a rigid-motion bank sidecar
+    // (runtime.motionBank = {uri, sha256, bytes, rigId}); when present the prepare step fetches
+    // and verifies it, then per-instance binding rides these MOTION_* nodes.
+    motionBank: table.motionBank ? Object.freeze({ ...table.motionBank }) : null,
     bounds: Object.freeze({
       min: Object.freeze([...table.bounds.min]),
       max: Object.freeze([...table.bounds.max]),
@@ -2175,6 +2173,9 @@ function applyNodeTags(tags, node, slot, legacyPart) {
   if (name.includes('HOOK_SENSOR_')) tags.damageRole = 'sensor';
   if (name.includes('HOOK_ARMOR_')) tags.damageRole = 'armor';
   if (name.includes('HOOK_SECONDARY_')) tags.damageRole = 'secondary';
+  // MOTION_* pivots and their welded children (LOD0_MOTION_<RIG>_...) ride authored rigid-part
+  // animation — never static-batch, pool or freeze them.
+  if (name.startsWith('MOTION_') || name.includes('_MOTION_')) tags.motionGroup = true;
   if (name.includes('CANOPY') || name.includes('COCKPIT_GLASS') ||
     (legacyPart && slot === 'cockpit' && (name.includes('GLASS') || name.includes('WINDOW')))) tags.canopy = true;
   if (name.includes('DECAL')) tags.decal = true;
@@ -2415,7 +2416,8 @@ function validateNodeTransform(node, matrix, errors) {
 }
 
 function isContractMarker(node, tags) {
-  return !!(tags.socket || tags.mount || tags.drive || tags.damageRole || /^(HOOK|MOUNT)_/i.test(node.name || ''));
+  return !!(tags.socket || tags.mount || tags.drive || tags.damageRole || tags.motionGroup
+    || /^(HOOK|MOUNT|MOTION)_/i.test(node.name || ''));
 }
 
 function isCanopy(node, slot) {

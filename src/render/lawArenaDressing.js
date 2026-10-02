@@ -28,6 +28,7 @@
 // flashReduce caps emissive pulses to a steady glow.
 
 import * as THREE from 'three';
+import { recordMountedRootForUnreadyScan } from './bloom.js';
 import { CRUSHER_CYCLE, crusherPhase, SHUTTER_CYCLE, shutterPhase } from '../data/arenaModuleLibrary.js';
 import { CINDER_ARENA_ID, stepCinderMachinery } from '../systems/cinderSluiceArena.js';
 import { LAGRANGE_ARENA_ID } from '../systems/lagrangeCrucible.js';
@@ -1047,6 +1048,7 @@ export function createLawArenaDressing() {
         rec.tick = built.tick || null;
       }
       parent.add(rec.group);
+      recordMountedRootForUnreadyScan(rec.group);
       rec.boundMesh = mesh_;
     }
 

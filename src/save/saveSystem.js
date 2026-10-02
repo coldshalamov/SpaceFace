@@ -79,6 +79,9 @@ export const SAVE_IMPORT_MAX_DEPTH = 64;
 export const SAVE_IMPORT_MAX_NODES = 200_000;
 export const SAVE_IMPORT_MAX_COLLECTION_ITEMS = 50_000;
 export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
+// Restore-route persistent respawn batch: spawn order is unchanged; the window only bounds
+// how much spawn work runs between presentation yields inside the chunked restore.
+const RESTORE_PERSISTENT_SPAWN_BATCH = 16;
 export const SAVE_IMPORT_LIMITS = Object.freeze({
   maxBytes: SAVE_IMPORT_MAX_BYTES,
   maxDepth: SAVE_IMPORT_MAX_DEPTH,
@@ -217,7 +220,10 @@ export const save = {
       }
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
-      if (typeof defer === 'function' && defer(load) === true) return;
+      // The painted defer path swallows a promise (nextPaint().then(restore).catch), so the
+      // worker-pool restore lane can take it; the immediate fallback keeps the sync contract.
+      const loadDeferred = () => this.load((p && p.slot) || 'latest', { preferAsync: true });
+      if (typeof defer === 'function' && defer(loadDeferred) === true) return;
       load();
     });
     bus.on('settings:changed', (payload) => {
@@ -316,8 +322,13 @@ export const save = {
     // Installed through a typeof guard: init() is also driven against partial host objects in
     // focused tests, and a convenience listener must never be what stops a save system booting.
     if (typeof this._installUnloadExitSave === 'function') this._installUnloadExitSave();
+    // Warm the save worker once at init: Continue and autosave each pay a Blob-URL spawn +
+    // worker boot on the load path when a cold worker is created per request. One idle worker
+    // kept hot removes the spawn from every later request; run-epoch sweeps retire it and the
+    // checkout lazily rewarms.
+    this._warmSaveWorker = this._createSaveWorker();
     this._syncSharedPlayerStore();
-  },
+  }, 
 
   isSharedStoreSyncPending() {
     return this._sharedStoreReady === false;
@@ -337,12 +348,21 @@ export const save = {
     let ok = true;
     let error = null;
     try {
-      const remote = await fetchSharedPlayerStore();
+      // The local collect+string materialization is synchronous main-thread work; overlapping
+      // it with the fetch wait removes it from the pin duration Continue observes.
+      const remotePromise = fetchSharedPlayerStore();
       const local = collectLocalSharedStoreKeys();
+      const remote = await remotePromise;
       const merged = mergeSharedStoreKeys(local, remote || {});
       applySharedStoreKeys(merged);
       if (remote != null || Object.keys(local).length > 0) {
-        const pushed = await pushSharedPlayerStore(merged);
+        // Only ship what the merge actually changed — an already-mirrored store keeps the
+        // ~220 KB envelope PUT off the boot path entirely.
+        let delta = null;
+        for (const [key, value] of Object.entries(merged)) {
+          if ((remote || {})[key] !== value) (delta || (delta = {}))[key] = value;
+        }
+        const pushed = delta == null ? true : await pushSharedPlayerStore(delta);
         if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
     } catch (err) {
@@ -1119,7 +1139,7 @@ export const save = {
       };
     }
     const t = nowMs();
-    this._updateIndex(slot, envelope);
+    this._updateIndex(slot, envelope, json);
     indexMs = nowMs() - t;
     return {
       ok: true,
@@ -1239,7 +1259,7 @@ export const save = {
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
-  _updateIndex(slot, envelope) {
+  _updateIndex(slot, envelope, raw = null) {
     try {
       // The fallback scanner is for Continue/list repair, not the write hot path. Re-validating every
       // primary and recovery envelope here made one autosave pay an O(all save bytes) index tax.
@@ -1254,7 +1274,13 @@ export const save = {
           return known && (known.name || known.id) || '';
         })
         : null;
-      idx[slot] = fromFile || liveSlotSummary(slot, envelope, this.state);
+      const card = fromFile || liveSlotSummary(slot, envelope, this.state);
+      // Fingerprint the exact bytes just verified by the write path. The fallback scan can then
+      // trust this card after one cheap blob hash — any post-write byte change (corruption,
+      // foreign writer) fails the hash and falls back to the full validate walk, so the
+      // corruption-hiding contract is unchanged for every blob the hash does not cover.
+      if (card && typeof raw === 'string') card._blobHash = fnv1a(raw);
+      idx[slot] = card;
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
     } catch (err) { /* index is best-effort; never fail a save over it */ }
   },
@@ -1268,10 +1294,52 @@ export const save = {
     } catch (err) { return {}; }
   },
 
+  // The merged index is rebuilt only when the store actually changes: one Continue touches it
+  // through listSlots/_latestSlot/_newerUnplayableSkip several times in a row, and each rebuild
+  // used to deep-validate every stored blob (decrypt+migrate+parse) — several megabyte-scale
+  // envelopes parsed three or four times per menu visit. The signature walks the key list once
+  // (plus each value's length + end-slices — never a full parse), so a stale cache is impossible
+  // even for writes saveLoad.js performs outside this system.
+  _slotStoreSignature() {
+    if (typeof localStorage === 'undefined') return { sig: 'none', raws: null };
+    const parts = [];
+    const raws = new Map();
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || (!key.startsWith(LS_PREFIX) && !key.startsWith(RECOVERY_PREFIX))) continue;
+        const v = localStorage.getItem(key);
+        raws.set(key, v);
+        // FNV-1a over the whole blob — the raws map already holds the full string, so the
+        // only added cost is the char walk itself (still far cheaper than the parse-and-checksum
+        // this signature replaced). End-slice sampling left same-length middle edits invisible.
+        let hash = 0x811c9dc5;
+        if (v) {
+          for (let j = 0; j < v.length; j++) {
+            hash ^= v.charCodeAt(j);
+            hash = (hash * 0x01000193) | 0;
+          }
+        }
+        parts.push(key + ':' + (v == null ? -1 : v.length) + ':' + (hash >>> 0).toString(16));
+      }
+    } catch (err) {
+      // A signature built from a partial walk could collide with a previously cached one and
+      // keep stale slot cards served while storage is actually failing. A thrown-read sig must
+      // never match — each call re-attempts the walk until the store is readable again.
+      return { sig: 'sig-error:' + (this._slotSigErrorSeq = (this._slotSigErrorSeq || 0) + 1), raws };
+    }
+    return { sig: parts.join('|'), raws };
+  },
+
   _slotIndexWithFallback() {
+    const { sig, raws } = this._slotStoreSignature();
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { ...cache.merged };
     const indexed = normalizeSlotIndex(this._readIndex());
-    const scanned = this._scanStoredSlots();
-    const recovered = this._scanRecoverySlots(scanned);
+    // The signature walk already enumerated every save key and read every blob this tick —
+    // hand the raws forward so the two scans never touch localStorage again.
+    const scanned = this._scanStoredSlots(indexed, raws);
+    const recovered = this._scanRecoverySlots(scanned, raws);
     const merged = mergeSlotIndexes(indexed, scanned);
     for (const slot in recovered) {
       merged[slot] = Object.assign({}, merged[slot] || {}, recovered[slot], {
@@ -1284,19 +1352,46 @@ export const save = {
     for (const slot in merged) {
       if (!scanned[slot] && !recovered[slot]) delete merged[slot];
     }
-    return merged;
+    // _blobHash is scan-internal bookkeeping — never publish it on slot cards.
+    for (const slot in merged) {
+      if (merged[slot] && merged[slot]._blobHash !== undefined) {
+        merged[slot] = Object.assign({}, merged[slot]);
+        delete merged[slot]._blobHash;
+      }
+    }
+    this._slotIndexCache = { sig, merged };
+    return { ...merged };
   },
 
-  _scanStoredSlots() {
+  _scanStoredSlots(indexed = {}, raws = null) {
     const out = {};
-    if (typeof localStorage === 'undefined') return out;
+    if (raws == null && typeof localStorage === 'undefined') return out;
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+      const entries = raws != null ? raws.entries() : (function* () {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          yield [key, localStorage.getItem(key)];
+        }
+      })();
+      for (const [key, raw] of entries) {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
         if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
-        const prepared = this._prepareEnvelopeString(localStorage.getItem(key));
+        // The write path's index card is already envelope-accurate for this slot — trust it and
+        // Index cards written by _updateIndex carry the fingerprint of the bytes they were
+        // verified against. One fnv1a over the blob replaces the parse+preflight+migrate+
+        // stringify walk when the bytes are unchanged; anything else (missing fingerprint,
+        // foreign write, flipped byte) still pays the full validation so an unplayable slot
+        // is never advertised — the Continue resolver depends on that hiding contract.
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
+          && fnv1a(raw) === indexCard._blobHash) {
+          const trusted = Object.assign({}, indexCard);
+          delete trusted._blobHash;
+          out[slot] = trusted;
+          continue;
+        }
+        const prepared = this._prepareEnvelopeString(raw);
         if (!prepared.ok) continue;
         const meta = slotMetaFromEnvelope(slot, prepared.env);
         if (meta) out[slot] = meta;
@@ -1307,16 +1402,21 @@ export const save = {
     return out;
   },
 
-  _scanRecoverySlots(primarySlots = {}) {
+  _scanRecoverySlots(primarySlots = {}, raws = null) {
     const out = {};
-    if (typeof localStorage === 'undefined') return out;
+    if (raws == null && typeof localStorage === 'undefined') return out;
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+      const entries = raws != null ? raws.entries() : (function* () {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          yield [key, localStorage.getItem(key)];
+        }
+      })();
+      for (const [key, raw] of entries) {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
         if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
-        const prepared = this._prepareEnvelopeString(localStorage.getItem(key));
+        const prepared = this._prepareEnvelopeString(raw);
         if (!prepared.ok) continue;
         const meta = slotMetaFromEnvelope(slot, prepared.env);
         if (meta) out[slot] = meta;
@@ -1684,20 +1784,37 @@ export const save = {
    */
   primeAutosaveCapture() {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
-    try {
-      for (const [key, read] of this._saveCapturePlan()) {
-        // The large-player path is deliberately warmed by its bounded production batches. Running
-        // the synchronous compatibility serializer here would reintroduce the same loading brick.
-        if (key === 'player' && this._shouldCapturePlayerIncrementally()) continue;
-        read();
+    const plan = this._saveCapturePlan();
+    const incrementalPlayer = this._shouldCapturePlayerIncrementally();
+    const runSlice = (index) => {
+      try {
+        const started = workNowMs();
+        while (index < plan.length) {
+          const [key, read] = plan[index++];
+          // The large-player path is deliberately warmed by its bounded production batches.
+          // Running the synchronous compatibility serializer here would reintroduce the same
+          // loading brick.
+          if (key === 'player' && incrementalPlayer) continue;
+          read();
+          if (workNowMs() - started >= AUTOSAVE_TARGET_SLICE_MS) break;
+        }
+      } catch (error) {
+        // Save reliability does not depend on preparation. A later real save still owns its
+        // normal error receipt and defensive fallback behavior.
+        console.warn('[save] autosave capture preparation failed', error);
+        return false;
+      }
+      if (index < plan.length) {
+        // Same macrotask cadence the autosave capture slices use: bounded reads between
+        // painted frames instead of one ~50-read monolith at the end of the restore. The warm
+        // only exists for loading mode; once flight starts, the first real autosave reads
+        // again anyway, so a stale slice simply stops.
+        if (this.state.mode !== 'loading' || !this._hasPlayerEntity()) return true;
+        this._scheduleAutosaveWork(() => runSlice(index));
       }
       return true;
-    } catch (error) {
-      // Save reliability does not depend on preparation. A later real save still owns its normal
-      // error receipt and defensive fallback behavior.
-      console.warn('[save] autosave capture preparation failed', error);
-      return false;
-    }
+    };
+    return runSlice(0);
   },
 
   _captureAutosaveSlice(job, capture) {
@@ -2287,8 +2404,26 @@ export const save = {
     }
   },
 
-  _requestSaveWorker(type, payload, onResult, onFailure, options = {}) {
+  // One warm worker serves sequential save requests: Continue's prepare, later validates, and
+  // chunked encodes reuse it instead of paying Blob-URL spawn + worker boot each time. A busy
+  // warm worker never queues — a concurrent request still gets its own fresh worker.
+  _checkoutSaveWorker() {
+    const warm = this._warmSaveWorker;
+    if (warm && this._activeSaveWorkers && this._activeSaveWorkers.has(warm)
+      && !warm.__spacefaceSaveBusy) {
+      warm.__spacefaceSaveBusy = true;
+      return warm;
+    }
+    if (warm && (!this._activeSaveWorkers || !this._activeSaveWorkers.has(warm))) {
+      this._warmSaveWorker = null; // swept by an epoch/restore boundary — forget it
+    }
     const worker = this._trackSaveWorker(this._createSaveWorker());
+    if (worker) worker.__spacefaceSaveBusy = true;
+    return worker;
+  },
+
+  _requestSaveWorker(type, payload, onResult, onFailure, options = {}) {
+    const worker = this._checkoutSaveWorker();
     if (!worker) return false;
     const id = ++this._saveWorkerRequestId;
     const roundtripStartedAtMs = nowMs();
@@ -2298,7 +2433,20 @@ export const save = {
       settled = true;
       clearTimeout(timeout);
       worker.__spacefaceSaveSupersede = null;
-      try { worker.terminate(); } catch (error) {}
+      worker.__spacefaceSaveBusy = false;
+      // Only a worker that delivered its real response is quiescent enough to stay warm. A
+      // superseded/timed-out/errored worker may still post its stale answer, which the next
+      // request would read as its own failure — terminate instead of pooling it.
+      const keepWarm = callback === onResult;
+      if (keepWarm && this._warmSaveWorker === worker) {
+        // stays hot for the next request
+      } else if (keepWarm && (!this._warmSaveWorker
+        || !this._activeSaveWorkers || !this._activeSaveWorkers.has(this._warmSaveWorker))) {
+        this._warmSaveWorker = worker; // promote the survivor rather than spawn again
+      } else {
+        try { worker.terminate(); } catch (error) {}
+        if (this._warmSaveWorker === worker) this._warmSaveWorker = null;
+      }
       if (typeof options.onRoundtrip === 'function') {
         try { options.onRoundtrip(Math.max(0, nowMs() - roundtripStartedAtMs)); } catch (error) {}
       }
@@ -2656,7 +2804,7 @@ export const save = {
   _autosaveWriteIndex(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope);
+    this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope, snapshot.json);
     const sliceMs = workNowMs() - started;
     tx.indexMs += sliceMs;
     this._pushAutosaveSlice(tx, 'storage_write_index', sliceMs);
@@ -2773,7 +2921,13 @@ export const save = {
 
   /** Load a slot (or 'latest'). Validates fully before any destructive restore; a live run is
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
-  load(slot) {
+  load(slot, options = null) {
+    // preferAsync: the painted Continue lane asks for the worker-backed restore; callers that
+    // stub `load` as the restore primitive (tests, overrides) keep the seam — options are just
+    // a second argument to them.
+    if (options && options.preferAsync === true && typeof this.loadAsync === 'function') {
+      return this.loadAsync(slot);
+    }
     slot = slot || 'quick';
     // INF-091: the Continue route resolves 'latest' past a dead newest slot. Compute the skip
     // BEFORE resolving so both the loaded receipt and the failure below can name it explicitly.
@@ -2811,7 +2965,7 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env);
+          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
           if (promoted) this._queueSharedStoreMirror();
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this.bus.emit('save:recovered', {
@@ -2829,6 +2983,155 @@ export const save = {
       { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
       skippedNewer ? { skippedNewer } : null));
     return false;
+  },
+
+  /**
+   * The Continue-route load: identical slot resolution, recovery, and restore order as load(),
+   * but the parse+checksum+player checks run in the save worker so the loading screen paints
+   * instead of freezing behind a multi-MB synchronous JSON.parse. Migrations, normalization,
+   * and the restore itself still run on main in the same order; a missing/failed worker falls
+   * back to the synchronous prepare, so this cannot regress correctness — only cost.
+   */
+  async loadAsync(slot) {
+    slot = slot || 'quick';
+    let skippedNewer = null;
+    if (slot === 'latest') {
+      try { skippedNewer = this._newerUnplayableSkip(); } catch (err) { skippedNewer = null; }
+      const resolved = this._latestSlot();
+      if (!resolved) {
+        this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
+          skippedNewer ? { skippedNewer } : null));
+        return false;
+      }
+      slot = resolved;
+    }
+    let raw = null;
+    try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+    catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+    const primaryPromise = this._prepareEnvelopeStringAsync(raw);
+    // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
+    // is main-thread serialize work that used to serialize after the roundtrip. A failed
+    // primary falls through to the same snapshot: nothing destructive ran in between.
+    let rollbackSnapshot = null;
+    let rollbackSnapshotError = null;
+    if (this._hasPlayerEntity()) {
+      try { rollbackSnapshot = this._captureRollbackSnapshot(); }
+      catch (err) { rollbackSnapshotError = err; }
+    } else {
+      rollbackSnapshot = { notNeeded: true };
+    }
+    const primary = await primaryPromise;
+    if (primary.ok) {
+      // The envelope tells us exactly which ships/stations/places the saved sector will
+      // rematerialize — start those authored decodes now so they overlap the chunked
+      // restore instead of starting cold at each spawn event inside it.
+      if (this.bus && this.bus.emit) {
+        this.bus.emit('save:envelopePrepared', { slot, data: primary.data });
+      }
+      return this._restorePreparedEnvelopeAsync(primary, slot, {
+        ...(skippedNewer ? { skippedNewer } : null),
+        rollbackSnapshot,
+        rollbackSnapshotError,
+      });
+    }
+
+    let backupRaw = null;
+    try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
+    catch (err) { /* primary failure below remains the player-facing reason */ }
+    const backup = await this._prepareEnvelopeStringAsync(backupRaw);
+    if (backup.ok) {
+      if (this.bus && this.bus.emit) {
+        this.bus.emit('save:envelopePrepared', { slot, data: backup.data });
+      }
+      const restored = await this._restorePreparedEnvelopeAsync(backup, slot, Object.assign(
+        { emitError: false, recovered: true },
+        skippedNewer ? { skippedNewer } : null,
+        { rollbackSnapshot, rollbackSnapshotError }));
+      if (restored) {
+        let promoted = false;
+        try {
+          localStorage.setItem(LS_PREFIX + slot, backupRaw);
+          promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
+          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
+          if (promoted) this._queueSharedStoreMirror();
+        } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
+        this.bus.emit('save:recovered', {
+          slot,
+          source: 'previous_generation',
+          failedReason: primary.reason,
+          recoveredSavedAt: backup.env.savedAt || null,
+          recoveredVersion: backup.env.version | 0,
+          promoted,
+        });
+        return true;
+      }
+    }
+    this.bus.emit('save:error', Object.assign(
+      { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
+      skippedNewer ? { skippedNewer } : null));
+    return false;
+  },
+
+  /**
+   * Worker-side envelope prepare for the Continue lane: the worker parses + checksums and the
+   * envelope crosses postMessage already-cloned, so main keeps only the bounded preflight plus
+   * migration/normalize — clonePlain is deliberately absent because nothing else shares the
+   * worker's copy. Falls back to the synchronous prepare when no worker exists or the round
+   * trip fails, preserving the exact failure vocabulary of the sync path.
+   */
+  _prepareEnvelopeStringAsync(raw) {
+    if (!raw) return Promise.resolve({ ok: false, reason: 'no_save' });
+    if (typeof raw !== 'string') return Promise.resolve({ ok: false, reason: 'parse_failed' });
+    const bytes = saveImportByteLength(raw);
+    if (bytes > SAVE_IMPORT_MAX_BYTES) {
+      return Promise.resolve(importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes));
+    }
+    if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
+      return Promise.resolve(this._prepareEnvelopeString(raw));
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const accepted = this._requestSaveWorker('restore_prepare',
+        { raw, currentVersion: CURRENT_VERSION },
+        (message) => settle(message && message.result ? message.result : null),
+        () => settle(null));
+      if (!accepted) settle(null);
+    }).then(async (prepared) => {
+      if (!prepared) return this._prepareEnvelopeString(raw);
+      if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
+      const env = prepared.env;
+      if (!env || typeof env !== 'object') return { ok: false, reason: 'bad_format' };
+      try {
+        const versionRead = readSaveVersion(env.version);
+        if (!versionRead.ok) return versionRead;
+        const ver = versionRead.version;
+        // The worker's restore_prepare already ran the full-graph bound (preflighted flag);
+        // an absent marker keeps the main-thread walk as the fallback for any worker build
+        // that doesn't include it.
+        if (prepared.preflighted !== true) {
+          const preflight = preflightSaveImport(env);
+          if (!preflight.ok) return preflight;
+        }
+        // env.data is the worker's private structured clone: migrations may mutate it in place.
+        const data = env.data;
+        // The parse+checksum already ran in the worker; preflight/migrations/normalize stay on
+        // main (the migrations module owns imports a Blob worker cannot load) but yield a frame
+        // between the three object-graph walks so the loading shell paints between them.
+        await this._restoreFrameYield();
+        if (!runMigrations(data, ver)) return { ok: false, reason: 'migration_failed' };
+        await this._restoreFrameYield();
+        const normalized = normalizeRestorableData(data);
+        if (!normalized.ok) return { ok: false, reason: normalized.reason };
+        return { ok: true, env, data, version: ver };
+      } catch (err) {
+        return { ok: false, reason: 'load_failed', error: err };
+      }
+    });
   },
 
   /** Parse + validate + migrate a raw JSON string, then restore. Shared by load() and import. */
@@ -2965,49 +3268,105 @@ export const save = {
       if (result && result.restored === false) return result.superseded === true;
       return true;
     } catch (err) {
-      console.error('[save] load failed', err);
-      if (rollbackAttempt || !rollbackSnapshot || rollbackSnapshot.notNeeded) {
+      return this._handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
+    }
+  },
+
+  // Shared failure tail for both envelope restore lanes: report, then one rollback attempt
+  // against the pre-restore snapshot when one exists. Rollback itself stays synchronous — it
+  // only ever runs on an already-failed load, never on the golden path.
+  _handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    console.error('[save] load failed', err);
+    if (rollbackAttempt || !rollbackSnapshot || rollbackSnapshot.notNeeded) {
+      if (options.emitError !== false) {
+        this.bus.emit('save:error', {
+          slot,
+          reason: 'load_failed',
+          rollback: rollbackAttempt ? 'failed' : 'not_needed',
+          error: restoreErrorMessage(err),
+        });
+      }
+      return false;
+    }
+
+    let rollbackError = null;
+    this._rollbackInProgress = true;
+    try {
+      const rollbackResult = this._restore(rollbackSnapshot.data, rollbackSnapshot.slot, {
+        rollback: true,
+        emitError: false,
+        rollbackSnapshot: null,
+      });
+      if (!rollbackResult || rollbackResult.restored !== true) {
+        throw new Error('rollback_restore_incomplete');
+      }
+    } catch (rollbackErr) {
+      rollbackError = rollbackErr;
+    } finally {
+      this._rollbackInProgress = false;
+    }
+
+    if (options.emitError !== false) {
+      const payload = {
+        slot,
+        reason: 'load_failed',
+        rollback: rollbackError ? 'failed' : 'restored',
+        error: restoreErrorMessage(err),
+        // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
+        ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
+      };
+      if (rollbackError) payload.rollbackError = restoreErrorMessage(rollbackError);
+      this.bus.emit('save:error', payload);
+    }
+    return false;
+  },
+
+  // Async twin of _restorePreparedEnvelope for the Continue lane: same rollback contract,
+  // same result semantics — the only differences are the chunked _restoreAsync drive and an
+  // optionally pre-captured rollback snapshot (captured during the worker roundtrip).
+  async _restorePreparedEnvelopeAsync(prepared, slot, options = {}) {
+    const rollbackAttempt = options.rollback === true;
+    if (this._rollbackInProgress && !rollbackAttempt) return false;
+
+    let rollbackSnapshot = null;
+    let rollbackSnapshotError = null;
+    if (!rollbackAttempt) {
+      if (Object.prototype.hasOwnProperty.call(options, 'rollbackSnapshot')) {
+        rollbackSnapshot = options.rollbackSnapshot;
+        rollbackSnapshotError = options.rollbackSnapshotError || null;
+      } else if (this._hasPlayerEntity()) {
+        try {
+          rollbackSnapshot = this._captureRollbackSnapshot();
+        } catch (err) {
+          rollbackSnapshotError = err;
+        }
+      } else {
+        rollbackSnapshot = { notNeeded: true };
+      }
+      if (rollbackSnapshotError) {
+        console.error('[save] rollback snapshot failed', rollbackSnapshotError);
         if (options.emitError !== false) {
           this.bus.emit('save:error', {
             slot,
-            reason: 'load_failed',
-            rollback: rollbackAttempt ? 'failed' : 'not_needed',
-            error: restoreErrorMessage(err),
+            reason: 'restore_prepare_failed',
+            rollback: 'unavailable',
+            error: restoreErrorMessage(rollbackSnapshotError),
           });
         }
         return false;
       }
+    }
 
-      let rollbackError = null;
-      this._rollbackInProgress = true;
-      try {
-        const rollbackResult = this._restore(rollbackSnapshot.data, rollbackSnapshot.slot, {
-          rollback: true,
-          emitError: false,
-          rollbackSnapshot: null,
-        });
-        if (!rollbackResult || rollbackResult.restored !== true) {
-          throw new Error('rollback_restore_incomplete');
-        }
-      } catch (rollbackErr) {
-        rollbackError = rollbackErr;
-      } finally {
-        this._rollbackInProgress = false;
-      }
-
-      if (options.emitError !== false) {
-        const payload = {
-          slot,
-          reason: 'load_failed',
-          rollback: rollbackError ? 'failed' : 'restored',
-          error: restoreErrorMessage(err),
-          // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
-          ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
-        };
-        if (rollbackError) payload.rollbackError = restoreErrorMessage(rollbackError);
-        this.bus.emit('save:error', payload);
-      }
-      return false;
+    try {
+      const result = await this._restoreAsync(prepared.data, slot, {
+        ...options,
+        rollbackSnapshot,
+      });
+      if (result && result.queued) return true;
+      if (result && result.restored === false) return result.superseded === true;
+      return true;
+    } catch (err) {
+      return this._handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
     }
   },
 
@@ -3061,6 +3420,92 @@ export const save = {
       return marker;
     }
 
+    const s = this._openRestoreSession(data, slot, options);
+    const it = this._restoreChunks(s);
+    let restoreError = null;
+    try {
+      while (!it.next().done) { /* chunk boundaries are synchronous in this lane */ }
+    } catch (error) {
+      restoreError = error;
+    }
+    return this._closeRestoreSession(s, restoreError);
+  },
+
+  // The worker-backed Continue lane runs the identical chunk sequence but awaits a frame
+  // boundary between chunks, so the loading shell keeps painting through the sector rebuild
+  // instead of freezing behind it. load() drives the same generator with no yields — same
+  // code, same order, only the scheduling differs.
+  async _restoreAsync(data, slot, options = {}) {
+    if (this._restoring) {
+      const marker = { queued: true, stale: true, slot };
+      this.deferRunTransition(() => {
+        try {
+          return this._restore(data, slot);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return marker;
+    }
+
+    const s = this._openRestoreSession(data, slot, options);
+    const it = this._restoreChunks(s);
+    let restoreError = null;
+    // Chunks pay a frame boundary only once the last one is at least a frame old — a
+    // sub-millisecond chunk costs a whole rAF otherwise (~9+N fixed waits ≈ 160-400 ms of
+    // pure scheduling on every Continue), while a heavy chunk still yields at paint cadence.
+    let lastRealYieldAt = -Infinity;
+    try {
+      for (;;) {
+        const r = it.next();
+        if (r.done) break;
+        const t = nowMs();
+        if (lastRealYieldAt === -Infinity || t - lastRealYieldAt >= RESTORE_YIELD_SLICE_MS) {
+          await this._restoreFrameYield();
+          lastRealYieldAt = nowMs();
+        }
+      }
+    } catch (error) {
+      restoreError = error;
+    }
+    return this._closeRestoreSession(s, restoreError);
+  },
+
+  // The Continue bar otherwise sits at its 0.05 seed through the whole chunked restore leg
+  // (the async lane already paints a frame between chunks — these emits give that paint real
+  // numbers). Same event as the rest of the boot timeline; the sync lane emits identically.
+  _reportRestoreProgress(progress, detail) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('game:loadingProgress', {
+      id: 'restoring-save',
+      progress,
+      label: 'Restoring flight state',
+      detail,
+      transition: 'continue',
+    });
+  },
+
+  _restoreFrameYield() {
+    if (typeof requestAnimationFrame !== 'function') {
+      return new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      requestAnimationFrame(finish);
+      // A starved compositor still yields the boundary to the timer so a restore can never
+      // deadlock behind a paused rAF (background tab, throttled shell).
+      setTimeout(finish, 48);
+    });
+  },
+
+  _openRestoreSession(data, slot, options) {
     const state = this.state;
     this._restoring = true;
     const finalizeLoadedGame = this.helpers && typeof this.helpers.finalizeLoadedGame === 'function'
@@ -3079,15 +3524,29 @@ export const save = {
     this.bus.emit('save:restoring', { slot, source: restoreSource });
     timeEffects.reset();
     timeEffects.set(restoreSource, { scale: 0 });
-    let finalizerPending = false;
-    let drainedRunTransition = null;
-    let restoreError = null;
-    let hadPendingRunTransition = false;
     const entityIdRemap = new Map();
     // Exposed on state so the renderer's keep-GPU reattach can translate its retained mesh set
     // (keyed by pre-restore ids) onto the freshly spawned ids instead of rebuilding every boundary.
     state.sessionEntityIdRemap = entityIdRemap;
+    return {
+      data, slot, options, state, timeEffects, restoreSource,
+      entityIdRemap, finalizeLoadedGame, transitionToken,
+      finalizerPending: false,
+    };
+  },
 
+  // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
+  // pause → clear old mission runtime/transient entities → restore meta/player/cargo/economy/factions/world
+  // → spawn the saved player → re-enter the sector (regenerates NPCs/stations/asteroids) →
+  // re-apply player pose → restore persistent entities → remap semantic combat state →
+  // restore missions/automation/settings → rebuild rng → save:loaded → unpause.
+  // Yield points sit at phase boundaries only: the async lane never suspends inside a step,
+  // so every observable event still fires in the same order as the sync lane.
+  *_restoreChunks(s) {
+    const {
+      data, slot, options, state, timeEffects, restoreSource,
+      entityIdRemap, finalizeLoadedGame, transitionToken,
+    } = s;
     try {
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.
       this._restoreMeta(data.meta);
@@ -3101,6 +3560,8 @@ export const save = {
 
       // 3. clear ALL transient entities (dispose meshes via entity:destroyed) and reset id allocator.
       this._clearEntities();
+      this._reportRestoreProgress(0.08, 'Clearing the old sector');
+      yield 'cleared';
 
       // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
@@ -3119,6 +3580,8 @@ export const save = {
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
       this._callDeserialize('scanner', data.signalInvestigation);
       this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
+      yield 'deserialized-core';
 
       // 5. spawn the saved player entity (fresh id) and adopt it.
       const savedPlayer = data.entities && data.entities.player;
@@ -3161,10 +3624,24 @@ export const save = {
         }
       }
       if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
-        worldSys.enterSector(sectorId, { restoreDurableRecords: true });
+        worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true });
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
+      this._reportRestoreProgress(0.17, 'Rebuilding the saved sector');
+      yield 'sector-entered';
+      // The restore plan deferred non-membership materialization onto _pendingResidency (the
+      // membership sector already ran synchronously with durable records). Drain one plan entry
+      // per restore yield so a mature save's neighbor materialization spreads across frames
+      // instead of landing inside this chunk — plan order is preserved, so the post-drain state
+      // is identical to the synchronous plan before later chunks read neighbor sectors.
+      if (worldSys && typeof worldSys._drainResidencyQueue === 'function') {
+        while (worldSys._pendingResidency && worldSys._pendingResidency.length) {
+          worldSys._drainResidencyQueue();
+          this._reportRestoreProgress(0.18, 'Materializing nearby sectors');
+          yield 'residency-drained';
+        }
+      }
 
       // The frame is runtime-only. Derive it from the restored global player pose before any
       // persistent actor or physics body can be created at an unnecessarily large local offset.
@@ -3175,8 +3652,26 @@ export const save = {
       }
 
       // 10. restore persistent saved actors after sector regeneration, which despawns non-player
-      // entities from the previous live sector.
-      this._spawnPersistentEntities(data.entities && data.entities.persistent, entityIdRemap);
+      // entities from the previous live sector. Spawn order (and therefore ids/entityList order)
+      // is identical to the monolithic call — the batch window only inserts presentation
+      // yields so a mature save's respawn does not freeze the loading bar in one chunk.
+      const savedPersistent = data.entities && data.entities.persistent;
+      if (Array.isArray(savedPersistent)) {
+        let nextSpawnIndex = 0;
+        do {
+          nextSpawnIndex = this._spawnPersistentEntities(savedPersistent, entityIdRemap, {
+            startIndex: nextSpawnIndex,
+            limit: RESTORE_PERSISTENT_SPAWN_BATCH,
+            clearStale: nextSpawnIndex === 0,
+          });
+          this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
+          yield 'persistent-spawned';
+        } while (nextSpawnIndex < savedPersistent.length);
+      } else {
+        this._spawnPersistentEntities(savedPersistent, entityIdRemap);
+        this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
+        yield 'persistent-spawned';
+      }
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
@@ -3187,18 +3682,23 @@ export const save = {
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
       this._callDeserialize('bombs', data.bombs);
+      this._reportRestoreProgress(0.21, 'Restoring combat memory');
+      yield 'combat-restored';
 
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
       this._callDeserialize('careerOrigins', data.careerOrigins);
       this._callDeserialize('careerLadders', data.careerLadders);
       this._restoreScenario(data.scenario);
+      yield 'missions-restored';
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
         missionsSys.spawnTargetsForSector(sectorId);
       }
       this._restoreAutomation(data.automation);
       this._restoreCrafting(data.crafting);
+      this._reportRestoreProgress(0.215, 'Restoring automation');
+      yield 'automation-restored';
       // Offscreen sim state restores last (after world/factions/economy) so its drift overlay can
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
       this._callDeserialize('sectorSim', data.sectorSim);
@@ -3206,13 +3706,17 @@ export const save = {
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
       this._callDeserialize('npcJobsRuntime', data.npcJobs);
+      yield 'jobs-restored';
       // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
       // clears the compact record instead of retaining a same-process handoff.
       this._callDeserialize('traffic', data.traffic);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
+      yield 'claims-restored';
       this._callDeserialize('asteroidSites', data.sites);
       this._callDeserialize('asteroidFormations', data.formations);
+      this._reportRestoreProgress(0.22, 'Restoring world memory');
+      yield 'deserialized-tail';
       this._callDeserialize('aceMemory', data.aceMemory);
       this._callDeserialize('lossLedger', data.lossLedger);
       this._callDeserialize('provenanceLedger', data.provenance);
@@ -3243,6 +3747,8 @@ export const save = {
       // so the owners' reconcile handlers run against the restored entity/world state. Unknown
       // future schema versions throw inside normalize (fail loudly, never erase a campaign);
       // absent slices (old saves) initialize an empty arc / empty deployment ledger.
+      this._reportRestoreProgress(0.23, 'Restoring the campaign directors');
+      yield 'deserialized-campaign';
       this._callDeserialize('nemesis', data.nemesis);
       this._callDeserialize('nemesisEncounter', data.nemesisDeployment);
       // Enemy Mind cognition namespace (version 1). Absent in older saves → cleared, so cognition
@@ -3275,6 +3781,8 @@ export const save = {
       // died in the rebuild must be allowed to call again — while a caller whose squad actually
       // arrived keeps the once-ever contract.
       this._reconcileReinforcementLatches(entityIdRemap);
+      this._reportRestoreProgress(0.235, 'Restoring flight deck state');
+      yield 'deserialized-flight';
       this._restoreFlight(data.flight);
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
@@ -3298,6 +3806,15 @@ export const save = {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
 
+      this._reportRestoreProgress(0.24, 'Priming the flight deck');
+      yield 'pre-loaded';
+      // A mature save's save:loaded reconcile (economy reseed, traffic relink, navigation
+      // restore, UI closeAll) used to land as one monolithic task ahead of the visual gates.
+      // Slice it like sector:enter and drain the tail across the restore's own frame yields —
+      // listener order is preserved; the veil stays up the whole time.
+      if (typeof this.bus.setEmitSliceBudget === 'function') {
+        this.bus.setEmitSliceBudget('save:loaded', 8);
+      }
       this.bus.emit('save:loaded', {
         slot,
         visualGatePending: !!finalizeLoadedGame,
@@ -3309,18 +3826,23 @@ export const save = {
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
       });
+      while (typeof this.bus.pendingEmitSliceCount === 'function'
+          && this.bus.pendingEmitSliceCount() > 0) {
+        this.bus.drainEmitSlice(12);
+        yield 'save-loaded-drained';
+      }
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;
         try {
           const finalizerPayload = transitionToken ? { slot, transitionToken } : { slot };
           finalizerResult = finalizeLoadedGame(finalizerPayload);
-          finalizerPending = true;
+          s.finalizerPending = true;
         } catch (err) {
           console.error('[save] finalizeLoadedGame', err);
           this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
         }
-        if (finalizerPending) {
+        if (s.finalizerPending) {
           Promise.resolve(finalizerResult).then(
             () => timeEffects.clear(restoreSource),
             (err) => {
@@ -3338,26 +3860,34 @@ export const save = {
         this.bus.emit('settings:changed', { section: 'video', key: null, persist: false, source: 'save-load' });
       }
     } catch (error) {
-      restoreError = error;
-    } finally {
-      if (!finalizerPending) timeEffects.clear(restoreSource);
-      const pendingRunTransition = this._pendingRunTransition;
-      hadPendingRunTransition = !!pendingRunTransition;
-      this._pendingRunTransition = null;
-      this._restoring = false;
-      this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
-      this._lastAutosavePlaytime = state.meta.playtimeS;
-      if (pendingRunTransition) {
-        try {
-          drainedRunTransition = pendingRunTransition();
-        } catch (error) {
-          // Never let a newer queued callback replace an exception already leaving this restore.
-          console.error('[save] deferred run transition failed', error);
-          this.bus.emit('save:error', { reason: 'deferred_transition_failed' });
-        }
+      s.chunkError = error;
+    }
+  },
+
+  _closeRestoreSession(s, restoreError) {
+    const { state, timeEffects, restoreSource, slot } = s;
+    let drainedRunTransition = null;
+    let hadPendingRunTransition = false;
+    if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
+    // The epilogue always runs (the old finally{}): a failed chunk still releases the restore
+    // freeze, clears the transition latch, and drains a newer queued route before surfacing.
+    if (!s.finalizerPending) timeEffects.clear(restoreSource);
+    const pendingRunTransition = this._pendingRunTransition;
+    hadPendingRunTransition = !!pendingRunTransition;
+    this._pendingRunTransition = null;
+    this._restoring = false;
+    this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
+    this._lastAutosavePlaytime = state.meta.playtimeS;
+    if (pendingRunTransition) {
+      try {
+        drainedRunTransition = pendingRunTransition();
+      } catch (error) {
+        // Never let a newer queued callback replace an exception already leaving this restore.
+        console.error('[save] deferred run transition failed', error);
+        this.bus.emit('save:error', { reason: 'deferred_transition_failed' });
       }
     }
-    if (restoreError) {
+    if (restoreError != null) {
       if (hadPendingRunTransition) {
         return {
           restored: false,
@@ -3670,27 +4200,35 @@ export const save = {
     }
   },
 
-  _spawnPersistentEntities(savedList, entityIdRemap = null) {
-    if (!Array.isArray(savedList)) return;
+  _spawnPersistentEntities(savedList, entityIdRemap = null, batch = null) {
+    if (!Array.isArray(savedList)) return 0;
     if (savedList.length > SAVE_IMPORT_MAX_PERSISTENT_ENTITIES) {
       throw new Error('persistent_entity_limit');
     }
     const state = this.state;
+    const startIndex = batch && Number.isSafeInteger(batch.startIndex) && batch.startIndex > 0
+      ? Math.min(batch.startIndex, savedList.length)
+      : 0;
+    const limit = batch && Number.isFinite(batch.limit) ? Math.max(0, batch.limit) : Infinity;
     // Sector regen deliberately keeps flags.persistent actors alive, so on load they are still
     // standing when the saved copies arrive. The envelope is authoritative: clear the survivors
     // first or every save→load roundtrip spawns a duplicate generation (save size grew ~+40KB
     // per quick-load in the release soak until the 5MB localStorage quota refused writes).
-    const removeEntity = this.helpers && this.helpers.removeEntity;
-    if (typeof removeEntity === 'function') {
-      const staleIds = [];
-      for (const e of state.entityList) {
-        if (!e || e.id === state.playerId || e.isPlayer) continue;
-        const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
-        if (persistent) staleIds.push(e.id);
+    if (!batch || batch.clearStale !== false) {
+      const removeEntity = this.helpers && this.helpers.removeEntity;
+      if (typeof removeEntity === 'function') {
+        const staleIds = [];
+        for (const e of state.entityList) {
+          if (!e || e.id === state.playerId || e.isPlayer) continue;
+          const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
+          if (persistent) staleIds.push(e.id);
+        }
+        for (const id of staleIds) removeEntity(id, { immediate: true });
       }
-      for (const id of staleIds) removeEntity(id, { immediate: true });
     }
-    for (const saved of savedList) {
+    const end = Math.min(savedList.length, startIndex + limit);
+    for (let spawnIndex = startIndex; spawnIndex < end; spawnIndex++) {
+      const saved = savedList[spawnIndex];
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
       delete spec._isPlayer;
@@ -3724,6 +4262,7 @@ export const save = {
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
       if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
+    return end;
   },
 
   _applySavedVitals(saved) {
@@ -3975,6 +4514,10 @@ export function preflightSaveImport(value, options = SAVE_IMPORT_LIMITS) {
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 }
+
+// Async-lane restore chunks share one frame boundary per slice of real work (~1 frame at
+// 60 Hz): cheap chunks skip their scheduled rAF entirely, heavy chunks still breathe.
+const RESTORE_YIELD_SLICE_MS = 16;
 
 function restoreErrorMessage(error) {
   if (error && typeof error.message === 'string' && error.message) return error.message;

@@ -204,6 +204,10 @@ export function shipworksDockIdForState(state) {
 export function syncShipworksDockForState(mount, state) {
   const dockId = shipworksDockIdForState(state);
   if (mount && typeof mount.setDockId === 'function') mount.setDockId(dockId);
+  // ANI-25: showing the shipworks while docked means the berth is holding this hull —
+  // seat the clamps and mate the boom on the backdrop rig (replayed after the async
+  // backdrop load lands inside the mount).
+  if (dockId && mount && typeof mount.dockVerb === 'function') mount.dockVerb('dock:docked');
   return dockId;
 }
 
@@ -3420,7 +3424,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             ? `The rack is short ${prepPlan.unmetNeed} units — restock fee plus ammunition exceed the balance`
             : 'Rack is already prepared';
       if (prepReady && prepPlan.limitingReason === 'credits') prepNote = prepareHint;
-      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock title="${escapeHtml(prepareHint)}" ${availability.outfitEnabled && prepReady ? '' : `disabled aria-label="${escapeHtml(prepareHint)}"`}>${escapeHtml(prepareLabel)}</button></li>`);
+      // No native title: the hint prints in visible type (prepNote) and the disabled state
+      // carries the aria-label — matching the upgrade verb below (check-ui-native-titles).
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && prepReady ? '' : `disabled aria-label="${escapeHtml(prepareHint)}"`}>${escapeHtml(prepareLabel)}</button></li>`);
     }
     if (rack.sockets < BOMB_RACK.socketsMax) {
       const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;

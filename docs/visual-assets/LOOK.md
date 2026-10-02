@@ -37,6 +37,7 @@ shader uniforms by one module. Nothing else in the renderer hardcodes a look con
 | Surface response (every lit hull): paint value and chroma, light bands, shadow and light tint, contour, clear coat, rim, paint ceiling | [`src/render/illustratedSurface.js`](../../src/render/illustratedSurface.js) (`sfLook*`) |
 | Post: split-tone grade, contrast, saturation and vibrance, ink amount, bloom colour, vignette colour; three-scale bloom halo | [`src/render/bloom.js`](../../src/render/bloom.js) (`uLook*`), shared by `post/spaceRenderGraph.js` |
 | Light rig: mood supplies the four light colours; the sector profile keeps intensities, sky and exposure | `resolveLookLighting` / `resolveLookPost`, called from `renderer.js` |
+| Lamp rhythm (which lamps blink, flash-and-decay envelopes, reduced-flash steady gain) | [`src/data/lampChannels.js`](../../src/data/lampChannels.js); runtime [`src/render/lampBus.js`](../../src/render/lampBus.js) (`sfLamp*`) |
 
 A mood is a small overlay on `LOOK_BASE`. To change the whole game's vibe, edit `LOOK_BASE`. To
 change one place, edit its mood. To give a sector a different mood, edit `LOOK_MOOD_BY_PROFILE`
@@ -51,6 +52,28 @@ change one place, edit its mood. To give a sector a different mood, edit `LOOK_M
 | `cold_drift` | Pallas Drift | blue-white / violet edge, highest gloss | medium |
 | `dust_gold` | Ceres, the belts | gold / slate teal | bright |
 | `void_signal` | the anomaly | violet / acid green | dark |
+
+## Lamps blink (the Lamp Bus)
+
+A lamp is light, so it may have a rhythm. One shared clock (`tickLampBus`, once a frame from
+`renderer.js`) feeds a flash-and-decay envelope in the emissive term of lamp materials: no extra draw
+call, material, texture or per-frame allocation, and a floor above zero so a lamp never goes dark.
+Reduced-flash (`settings.accessibility.flashReduce` / `video.flashReduce`) holds every channel at its
+steady gain. Every channel stays under 3 flashes per second.
+
+Which lamps blink is decided in data, never by base finish: `glow_amber`, `glow_cyan` and `glow_warm`
+carry lit trims, dock lamps and window rows and must stay steady. Exactly two rules apply:
+
+- **Hull nav lamps**: `Material_Emissive_NavRed` / `Material_Emissive_NavGreen` on a package whose slot is
+  `hull` (`HOOK_NAV_PORT` / `HOOK_NAV_STARBOARD`) run the aviation rhythm, port and starboard half a cycle
+  apart. Stations and props that use `glow_red` / `glow_green` stay steady.
+- **Opt-in channel finishes**: a Forge recipe names a variant finish (`glow_amber.beacon`,
+  `glow_cyan.strobe`, `glow_amber.breathe`). Forge exports it as `Material_Emissive_<Base>_<channel>`.
+  `beacon`, `strobe` and `breathe` are reserved suffixes; never reuse them as colour names.
+
+Phase is a cosmetic hash of the material's uuid (never `state.rng`). Nav lamps already get a ship-local
+material clone for damage dimming, and the clone keeps the hook, so each hull staggers on its own and
+phase stays put as it flies. Lamps are signal-role: they never wear the illustrated-surface shader.
 
 ## Judge it by the picture
 

@@ -220,7 +220,7 @@ test('sustained ticks keep industrial and hub prices materially apart, determini
     try {
       const { state } = sim;
       const econ = sim.registry.get('economy');
-      for (const sid of ['sector_ceres_belt', 'sector_helios_prime',
+      for (const sid of ['sector_ceres_belt', 'sector_helios_prime', 'sector_tethys_junction',
         'sector_charon_expanse', 'sector_pallas_drift']) {
         econ.populateSector({ sectorId: sid });
       }
@@ -231,9 +231,10 @@ test('sustained ticks keep industrial and hub prices materially apart, determini
         // Producer vs consumer-world spread on the yard's own product.
         plateSpread: econ.priceOf('station_expanse', 'cmdty_comp_hullplate', 'sell')
           / econ.priceOf('station_drift', 'cmdty_comp_hullplate', 'sell'),
-        // Smelted product is cheaper at the refinery than at the big hub.
+        // Smelted product is cheaper at the refinery than at the big hub. Tethys is the
+        // comparison hub because ECON-01 keeps marketTier-1 goods off tier-0 Helios's book.
         refinedSpread: econ.priceOf('station_ceres', 'cmdty_refined_metals', 'sell')
-          / econ.priceOf('station_helios', 'cmdty_refined_metals', 'sell'),
+          / econ.priceOf('station_tethys', 'cmdty_refined_metals', 'sell'),
         // Feedstock asks more at the refinery gate than at the pit head next door.
         oreSpread: econ.priceOf('station_ceres', 'cmdty_ore_iron', 'sell')
           / econ.priceOf('station_beltout', 'cmdty_ore_iron', 'sell'),

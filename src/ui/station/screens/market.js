@@ -695,10 +695,7 @@ export function createMarketScreen(ctx) {
   }
 
   function tradeQuantityLimit(state, row) {
-    if (mode === 'sell' && row && isUnsellableCargo(state, row.id)) {
-      return sellableCargoQuantity(state, row.id);
-    }
-    if (mode === 'sell') return heldQty(state, row.id);
+    if (mode === 'sell' && row) return sellableCargoQuantity(state, row.id);
     const free = holdFree(state);
     const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
     const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
@@ -707,14 +704,15 @@ export function createMarketScreen(ctx) {
   }
 
   // A sealed lot stays on the sell list. The dial, the sale line, and the hold
-  // arc must describe no sale of it, including after Fewer or More.
+  // arc must describe no sale of it, including after Fewer or More. NXB-025:
+  // the pin binds the sealed count — units free of the reservation still dial.
   function pinSealedSellQuantity(state, id = selectedId) {
-    if (mode === 'sell' && id && isUnsellableCargo(state, id) && sellableCargoQuantity(state, id) <= 0) qty = 0;
+    if (mode === 'sell' && id && reservedCargoQuantity(state, id) > 0) {
+      qty = Math.min(qty, sellableCargoQuantity(state, id));
+    }
   }
 
   function sellOpeningQuantity(state, id) {
-    const held = heldQty(state, id);
-    if (!isUnsellableCargo(state, id)) return held;
     return sellableCargoQuantity(state, id);
   }
 
@@ -1384,8 +1382,7 @@ export function createMarketScreen(ctx) {
     // Priority matters: with no quote yet (qty 0, or nothing affordable) creditReady is false by
     // construction, and checking it first blamed credits on first paint of a stockless market.
     const freeSell = mode === 'sell' ? sellableCargoQuantity(state, r.id) : 0;
-    const sealedUnits = mode === 'sell' && isUnsellableCargo(state, r.id)
-      ? reservedCargoQuantity(state, r.id) : 0;
+    const sealedUnits = mode === 'sell' ? reservedCargoQuantity(state, r.id) : 0;
     const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id) && freeSell <= 0;
     const note = sealedHold ? 'Sealed contract cargo cannot be sold'
       : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
@@ -1594,10 +1591,10 @@ export function createMarketScreen(ctx) {
     if (go) {
       if (go.disabled) return;
       if (tradeBusy) return;
-      const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
+      let tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
       const tradeState = ctx.state || {};
-      if (mode === 'sell' && isUnsellableCargo(tradeState, selectedId)
+      if (mode === 'sell' && reservedCargoQuantity(tradeState, selectedId) > 0
         && tradeQty > sellableCargoQuantity(tradeState, selectedId)) return;
       const quotedRow = tradedList(tradeState).find((row) => row.id === selectedId) || null;
       const freshQuote = quotedRow ? selectedTradeQuote(tradeState, quotedRow, tradeQty) : null;

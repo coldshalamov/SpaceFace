@@ -2,11 +2,18 @@
 
 Plan read at the chase camera: an arrowhead with a black spine stripe and two hot nozzles.
 """
+import math
 import os
 import sys
 
+import bpy
+from mathutils import Vector
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_37  # noqa: E402
 
 SHIP_ID = 'hornet'
 COLORS = {
@@ -16,6 +23,48 @@ COLORS = {
     'hazard': '#d6951a',
     'glow_cyan.jacket': '#ffcc2e',  # lit yellow-jacket trim: the wing leading edges
 }
+
+
+def skin_z(x, y, parts):
+    """Top-down ray onto the named parts: the skin height under (x, y). A miss is a design error."""
+    best = None
+    for n in parts:
+        o = bpy.data.objects.get(n)
+        if o is None:
+            continue
+        hit, loc, _, _ = o.ray_cast(Vector((x, y, 60.0)), Vector((0.0, 0.0, -1.0)))
+        if hit and (best is None or loc.z > best):
+            best = loc.z
+    if best is None:
+        raise ValueError(f'detail point ({x:.2f}, {y:.2f}) is off the skin')
+    return best
+
+
+def drape(pts, parts, step=0.2, proud=0.02, h=0.06, closed=False):
+    """A plan-view polyline laid on the skin as beam segments: resampled every `step` m, tops `proud`
+    above the surface, bodies buried (so nothing floats and nothing z-fights)."""
+    pts = list(pts) + ([pts[0]] if closed else [])
+    path = []
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        n = max(1, round(math.hypot(x1 - x0, y1 - y0) / step))
+        for i in range(n):
+            x, y = x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n
+            path.append((x, y, skin_z(x, y, parts) + proud - h / 2))
+    x, y = pts[-1]
+    path.append((x, y, skin_z(x, y, parts) + proud - h / 2))
+    return list(zip(path, path[1:]))
+
+
+def rect(cx, cy, sx, sy, ang=0.0):
+    """Closed plan-view rectangle (corner list), yawed `ang` rad about its centre."""
+    c, sn = math.cos(ang), math.sin(ang)
+    return [(cx + c * dx - sn * dy, cy + sn * dx + c * dy)
+            for dx, dy in ((-sx / 2, -sy / 2), (sx / 2, -sy / 2), (sx / 2, sy / 2), (-sx / 2, sy / 2))]
+
+
+def studs(pts, parts, size=0.07, proud=0.035):
+    """Fastener heads sitting on the skin: (centre, size) rows for F.boxes."""
+    return [((x, y, skin_z(x, y, parts) + proud - size / 2), (size, size, size)) for x, y in pts]
 
 
 def build():
@@ -94,17 +143,76 @@ def build():
     # Lights
     F.light(s, 'NavPort', (-4.35, 4.34, 0.0), 'glow_red')
     F.light(s, 'NavStarboard', (-4.35, -4.34, 0.0), 'glow_green')
-    F.light(s, 'Beacon', (-1.0, 0.0, 0.73), 'glow_amber', size=0.1)
+    F.light(s, 'Beacon', (-1.0, 0.0, 0.73), 'glow_amber.beacon', size=0.1)
+
+    # --- close-zoom detail layer (LOD0 only; existing finishes, laid on the skin so nothing floats) ---
+    bpy.context.view_layer.update()
+    s.detail = 2
+    # Canopy frame: three bows across the glass and a centre rib, so the blister reads as a framed cockpit.
+    def glass_w(x, x0=0.55, x1=3.0, w=0.42, peak=0.4):
+        t = (x - x0) / (x1 - x0)
+        k = math.sin(0.5 * math.pi * t / peak) if t <= peak else math.cos(0.5 * math.pi * (t - peak) / (1 - peak))
+        return w * math.sqrt(max(k, 0.02))
+    frame = []
+    for bx in (0.95, 1.6, 2.25):
+        gw = glass_w(bx) * 0.9
+        frame += drape([(bx, -gw + 2 * gw * i / 8) for i in range(9)], ['Canopy'], step=0.12, proud=0.03, h=0.06)
+    frame += drape([(0.8, 0.0), (2.85, 0.0)], ['Canopy'], step=0.15, proud=0.03, h=0.06)
+    F.beams(s, 'CanopyFrame', frame, 0.06, 'gunmetal', h=0.06)
+    # Access hatches and plate seams on the dorsal flanks of the fuselage (thin dark outlines, mirrored).
+    dark = []
+    for (cx, cy, sx, sy) in ((-1.55, 0.47, 0.8, 0.28), (-0.55, 0.47, 0.6, 0.26)):
+        dark += drape(rect(cx, cy, sx, sy), ['Fuselage'], closed=True)
+    dark += drape([(-1.0, 0.3), (-1.0, 0.72)], ['Fuselage'])
+    dark += drape([(0.25, 0.3), (0.25, 0.66)], ['Fuselage'])
+    F.beams(s, 'PanelLines', dark, 0.07, 'dark', h=0.07, mirror=True)
+    # Access hatches on the graphite chevron: gunmetal outlines on the dark band (tone on tone, so they
+    # read as machined at close zoom and melt into the band at the chase camera), a rivet at each corner.
+    ang = math.atan2(0.62, -0.78)
+    hatches, rivets = [], []
+    for t in (1.9, 3.0):
+        cx, cy = 0.85 * 0.62 - 0.78 * t, 0.85 * 0.78 + 0.62 * t
+        hatches += drape(rect(cx, cy, 0.8, 0.3, ang), ['Wing'], closed=True, proud=0.03, h=0.06)
+        rivets += studs(rect(cx, cy, 0.7, 0.2, ang), ['Wing'], size=0.08, proud=0.045)
+    # Canopy jettison hatch behind the glass, on the black dorsal stripe: gunmetal outline plus corner rivets.
+    hatches += drape(rect(0.12, 0.0, 0.5, 0.36), ['Fuselage'], closed=True, proud=0.03, h=0.06)
+    rivets += studs(rect(0.12, 0.0, 0.4, 0.26), ['Fuselage'], size=0.08, proud=0.045)
+    F.beams(s, 'ChevronHatches', hatches, 0.06, 'gunmetal', h=0.06, mirror=True)
+    # Flap-hinge rivets: their OWN mesh, so the ANI-37 flap rig carries them (a stud left in the shared
+    # fastener mesh would hover where the flap used to be). Plus a short row along the tail-fin spine.
+    F.boxes(s, 'FlapRivets', studs([(-3.8 + 0.28 * k, 1.18 + 1.06 * k) for k in (0.2, 0.5, 0.8)], ['FlapInner'],
+                                   size=0.08, proud=0.045), material='gunmetal', mirror=True)
+    rivets += studs([(-3.475 - u, 0.5 + u) for u in (0.3, 0.5, 0.7)], ['TailFin'], size=0.08, proud=0.045)
+    F.beams(s, 'RootPipe', drape([(0.3, 1.14), (-2.3, 1.14)], ['Wing'], step=0.3, proud=0.1, h=0.14), 0.12,
+            'gunmetal', h=0.14, mirror=True)
+    # Fastener rows: the hatch corners and a row down the flank of the engine saddle.
+    heads = studs([(-2.5 - 0.4 * i, 0.9) for i in range(5)], ['EngineSaddle', 'Fuselage'], size=0.1, proud=0.05)
+    F.boxes(s, 'Fasteners', heads + rivets, material='gunmetal', mirror=True)
+    s.detail = 0
 
     # --- damage hooks: wingtip gun pod sheds, beacon strobes at critical, port flap displaces ----
     _dmg = {o.name: o for o in s.objects}
     s.hook_part('HOOK_SECONDARY_TIPPOD', _dmg['TipPod'], _dmg['TipBarrel'])
     s.hook_part('HOOK_SENSOR_BEACON', _dmg['Beacon'])
     s.hook_part('HOOK_ARMOR_FLAP', _dmg['FlapOuter'])
+    s.ani37_bank = ANI_37.build(s, {
+        'tippodP': [_dmg['TipPod'], _dmg['TipBarrel']],
+        'tippodS': [_dmg['TipPod_M'], _dmg['TipBarrel_M']],
+        'flapP': [_dmg['FlapOuter'], _dmg['FlapInner'], _dmg['FlapRivets']],
+        'flapS': [_dmg['FlapOuter_M'], _dmg['FlapInner_M'], _dmg['FlapRivets_M']],
+        'canardP': [_dmg['Canard']],
+        'canardS': [_dmg['Canard_M']],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        # The production pilot key seals this filename; LOD pilots share it (bankKey
+        # strips the -lodN suffix, so one bank serves hornet-production-v1{,-lod1,-lod2}).
+        ship.ani37_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_37.motion_bank.MOTIONS_DIR,
+                                                   'hornet-production-v1.motion.json'))

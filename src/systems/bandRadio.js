@@ -6,6 +6,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { localizeText } from '../localization/gameLocalization.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
   BAND_BEARING_TEMPLATE,
@@ -71,6 +72,11 @@ const LIVE_LANDMARK_SOURCES = Object.freeze({
   }),
 });
 const LIVE_LANDMARK_SOURCE_ENTRIES = Object.freeze(Object.entries(LIVE_LANDMARK_SOURCES));
+// Version-latched carrier list: the 5 Hz sample only re-walks the entity Map when the indexed
+// set changes (or the sector changes) — between bumps it distance-checks the handful of
+// entities that can carry a live landmark source.
+const _landmarkCarrierCache = { version: -1, sectorId: null, carriers: [] };
+const _landmarkStrengths = Object.fromEntries(LIVE_LANDMARK_SOURCE_ENTRIES.map(([sourceId]) => [sourceId, 0]));
 
 export function numbersBearingDue(programSeed, sequence) {
   return (hash32(programSeed || 1, 'band-numbers-drop', sequence | 0) % NUMBERS_DROP_DENOMINATOR) === 0;
@@ -380,13 +386,47 @@ export const bandRadio = {
     }
 
     const sectorId = this.state.world && this.state.world.currentSectorId;
-    const sectorEntries = LIVE_LANDMARK_SOURCE_ENTRIES.filter(([, source]) => source.sectorId === sectorId);
-    if (sectorEntries.length === 0) {
+    const carrierVersion = entityIndexVersion(this.state);
+    const carriers = (carrierVersion == null
+      || _landmarkCarrierCache.version !== carrierVersion
+      || _landmarkCarrierCache.sectorId !== sectorId)
+      ? this._scanLandmarkCarriers(entities, sectorId, player)
+      : _landmarkCarrierCache.carriers;
+    if (carriers.length === 0) {
       const own = this._ensureState();
       for (const [sourceId] of LIVE_LANDMARK_SOURCE_ENTRIES) setProximityValue(own.proximitySources, sourceId, 0);
       return true;
     }
-    const strengths = Object.fromEntries(LIVE_LANDMARK_SOURCE_ENTRIES.map(([sourceId]) => [sourceId, 0]));
+    const strengths = _landmarkStrengths;
+    for (const [sourceId] of LIVE_LANDMARK_SOURCE_ENTRIES) strengths[sourceId] = 0;
+    for (const carrier of carriers) {
+      const { entity, sourceId, source } = carrier;
+      if (!entity || entity.alive === false || !finitePoint(entity.pos)) continue;
+      const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
+      const configuredRadius = finite(data.bandProximityRadius, source.falloffRadius);
+      const falloffRadius = configuredRadius > 0 ? configuredRadius : source.falloffRadius;
+      const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+      const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius, 0)));
+      const strength = clamp01(1 - surfaceDistance / falloffRadius);
+      strengths[sourceId] = Math.max(strengths[sourceId], strength);
+    }
+
+    const own = this._ensureState();
+    for (const [sourceId] of LIVE_LANDMARK_SOURCE_ENTRIES) {
+      setProximityValue(own.proximitySources, sourceId, strengths[sourceId]);
+    }
+    return true;
+  },
+
+  _scanLandmarkCarriers(entities, sectorId, player) {
+    const carriers = _landmarkCarrierCache.carriers;
+    carriers.length = 0;
+    const sectorEntries = LIVE_LANDMARK_SOURCE_ENTRIES.filter(([, source]) => source.sectorId === sectorId);
+    if (sectorEntries.length === 0) {
+      _landmarkCarrierCache.version = -1;
+      _landmarkCarrierCache.sectorId = sectorId;
+      return carriers;
+    }
     for (const entity of entities.values()) {
       if (!entity || entity === player || entity.alive === false || !finitePoint(entity.pos)) continue;
       const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
@@ -394,20 +434,13 @@ export const bandRadio = {
       if (entitySectorId && entitySectorId !== sectorId) continue;
       for (const [sourceId, source] of sectorEntries) {
         if (data[source.dataKey] !== source.dataValue) continue;
-        const configuredRadius = finite(data.bandProximityRadius, source.falloffRadius);
-        const falloffRadius = configuredRadius > 0 ? configuredRadius : source.falloffRadius;
-        const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
-        const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius, 0)));
-        const strength = clamp01(1 - surfaceDistance / falloffRadius);
-        strengths[sourceId] = Math.max(strengths[sourceId], strength);
+        carriers.push({ entity, sourceId, source });
       }
     }
-
-    const own = this._ensureState();
-    for (const [sourceId, strength] of Object.entries(strengths)) {
-      setProximityValue(own.proximitySources, sourceId, strength);
-    }
-    return true;
+    const version = entityIndexVersion(this.state);
+    _landmarkCarrierCache.version = version == null ? -1 : version;
+    _landmarkCarrierCache.sectorId = sectorId;
+    return carriers;
   },
 
   _cycleChannel() {
