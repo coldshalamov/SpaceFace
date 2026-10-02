@@ -34,13 +34,24 @@
 //
 //   node scripts/check-crucible-route.mjs
 //   node scripts/check-crucible-route.mjs --verbose
+//   node scripts/check-crucible-route.mjs --headed   a real visible window on the native GPU —
+//                                                  distinguishes native-GPU evidence from
+//                                                  software-GL evidence when a headless run
+//                                                  stalls; the exact cause still needs a
+//                                                  diagnostic, not this flag alone
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { collectPageIssues } from './lib/browser-issues.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERBOSE = process.argv.includes('--verbose');
+// --headed runs the real windowed browser on the host GPU with backgrounding disabled; default
+// stays headless for CI. Headed distinguishes native-GPU evidence from software-GL evidence —
+// a headed failure is not itself proof of a production defect; the exact cause still needs a
+// diagnostic to separate a real stall from a slow render environment.
+const HEADED = process.argv.includes('--headed');
 const SEED = 4242;
 // --full walks to round 10 extraction in Swarm, or the complete 30-wave Gauntlet victory.
 const FULL = process.argv.includes('--full');
@@ -80,6 +91,8 @@ async function startServer() {
   const url = `http://127.0.0.1:${port}/`;
   const child = spawn(process.execPath, ['server.js', String(port)], {
     cwd: ROOT, stdio: ['ignore', 'ignore', 'ignore'], windowsHide: true,
+    // An unset store env mounts the real shared save drawer — browser checks run isolated.
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
   });
   for (let i = 0; i < 80; i++) {
     if (child.exitCode != null) throw new Error('dev server exited before it was reachable');
@@ -176,10 +189,12 @@ async function killSome(page, n) {
 }
 
 async function waitForPhase(page, phase, timeout = 30000) {
+  // Sim-state readiness, not visible pixels: poll on an interval so a stalled rAF cadence
+  // cannot keep an already-true predicate unevaluated.
   await page.waitForFunction(
     (want) => window.SF.state.run && window.SF.state.run.phase === want,
     phase,
-    { timeout },
+    { timeout, polling: 100 },
   );
 }
 
@@ -221,15 +236,23 @@ async function launchArmoryRound(page, round) {
 
 async function main() {
   server = await startServer();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({
+    headless: !HEADED,
+    args: HEADED
+      ? ['--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows']
+      : [],
+  });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 
-  const pageErrors = [];
-  page.on('pageerror', (err) => pageErrors.push(String(err && err.message || err)));
+  // Shared issue ledger: it already knows the optional unmounted player-store 404, generic
+  // resource-load console twins of HTTP responses, and expected-navigation aborts — CLEAN reads
+  // errorIssues() below rather than a raw pageerror/console bag.
+  const pageIssues = collectPageIssues(page);
+  let loggedErrors = 0;
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;
-    pageErrors.push(msg.text());
-    if (VERBOSE && pageErrors.length <= 5) console.log('  browser error:', msg.text());
+    if (VERBOSE && loggedErrors++ < 5) console.log('  browser error:', msg.text());
   });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -670,7 +693,8 @@ async function main() {
       `phase ${won.phase} wave ${won.wave} · "${won.title}" — ${won.headline} · `
       + `${won.kills} kills, ${won.score} score, ${won.credits} cr, level ${won.level}, `
       + `build: ${won.picks.join('/') || '(none)'} · cleared ${log.join(' ')}`);
-    const noisy = pageErrors.filter(t => !/favicon|KHR_parallel_shader_compile|partsLibrary|opening submission pre-submit gate failed closed/i.test(t));
+    const noisy = pageIssues.errorIssues().map((issue) => issue.text)
+      .filter(t => !/favicon|KHR_parallel_shader_compile|partsLibrary|opening submission pre-submit gate failed closed/i.test(t));
     record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
     // A won run is terminal; the death path below cannot run on the same session.
     return;
@@ -764,12 +788,13 @@ async function main() {
   // appears identically on the `--gauntlet` walk, which touches none of the swarm code, so it is
   // filtered here rather than left to fail every Crucible run forever. If it ever stops appearing
   // on the Gauntlet path, delete this and investigate.
-  const noisy = pageErrors.filter((t) => !(
+  const errorTexts = pageIssues.errorIssues().map((issue) => issue.text);
+  const noisy = errorTexts.filter((t) => !(
     /favicon|KHR_parallel_shader_compile|partsLibrary/i.test(t)
     || /opening submission pre-submit gate failed closed/i.test(t)
   ));
   record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
-  if (VERBOSE && pageErrors.length) console.log('  page messages:', pageErrors.slice(0, 20));
+  if (VERBOSE && errorTexts.length) console.log('  page messages:', errorTexts.slice(0, 20));
 }
 
 let exitCode = 0;
