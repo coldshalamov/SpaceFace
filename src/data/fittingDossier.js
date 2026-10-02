@@ -185,7 +185,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Right for the ship that expects to take hits rather than avoid them.',
   },
   mod_shield_aegis_l: {
-    detail: 'The capital shield projector — a heavy screen that soaks an entire fight and rebuilds afterward.',
     tip: 'For the hull that parks in the middle of the swarm and takes the hit on purpose.',
   },
   // ---- engines ----------------------------------------------------------------
@@ -207,7 +206,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Save the slot money and live with the drift; or pay up if you need the answer.',
   },
   mod_thruster_vernier_m: {
-    detail: 'A precision manoeuvring cluster — the nose comes around harder, slides and stops with more authority.',
     tip: 'How a gun platform keeps its aim inside a swarm — the turn is the targeting.',
   },
   mod_thruster_gimbal_l: {
@@ -224,7 +222,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The mass is what you feel once it is full; fit a drive to match.',
   },
   mod_cargo_compactor_l: {
-    detail: 'Compression stowage — more hold, and the space you already have packs tighter.',
     tip: 'Best on a hull that already carries a lot — the percentage scales with the base.',
   },
   mod_smuggler_hold: {
@@ -249,7 +246,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the mining barge that lives on the rock belt.',
   },
   mod_mining_industrial_l: {
-    detail: 'The deepest extractor — ore goes straight into the hold without a haul pass.',
     tip: 'Fit it once and the run becomes a mining operation, not a mining trip.',
   },
   // ---- countermeasures / defense utility --------------------------------------
@@ -312,19 +308,15 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For hauling big salvage: the load becomes part of the ship\'s frame.',
   },
   mod_monofilament_sweep_m: {
-    detail: 'A taut cutting line — a swing through a hostile\'s line severs it and staggers a light hull.',
     tip: 'Swing through the pack\'s lanes; anything that crosses the line pays for it.',
   },
   mod_transverse_snare_m: {
-    detail: 'A snare line laid across a lane — a fast hull that crosses it gets snatched and tumbled.',
     tip: 'Lay it in their path; the swarm runs into its own tripwire.',
   },
   mod_twin_bridle_m: {
-    detail: 'A two-point massline — latch two targets close together and the line tumbles both.',
     tip: 'Two anchors tied at short range make a knot the pack cannot untangle.',
   },
   mod_massline_spool_m: {
-    detail: 'A longer line drum — the swing starts from much farther out.',
     tip: 'More rope means more arc; the speed lives in the swing, not the motor.',
   },
   mod_massline_spool_l: {
@@ -336,15 +328,12 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'You are the winch, not the bait — haul them to you.',
   },
   mod_swing_drive_m: {
-    detail: 'A drive that fires on a taut line — a dash while tethered swings you around the anchor instead of off it.',
     tip: 'Latch a heavy mass, boost, and the whole ship slingshots around it.',
   },
   mod_swing_drive_s: {
-    detail: 'The same swing-around dash in the small bay a starter hull can fit.',
     tip: 'The cheap way to make a light hull do the massline trick.',
   },
   mod_mass_flail_rig_m: {
-    detail: 'A tow flail — while you haul something heavier than you, a bump hits with the load\'s mass.',
     tip: 'Tow a wreck, swing it through the pack, and let the physics do the damage.',
   },
   // ---- cloak / stealth ----------------------------------------------------------
@@ -353,7 +342,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Stay dark while the swarm hunts a contact that is not there; drop it when you need the guns.',
   },
   mod_cloak_mk2: {
-    detail: 'A tighter shroud — harder to see than the Mk1, and it recovers faster when you drop it.',
     tip: 'The professional\'s cloak; the drain is worth the invisibility.',
   },
   // ---- ordnance racks -----------------------------------------------------------
@@ -371,7 +359,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the pirate\'s calculus: know the manifest before you commit.',
   },
   mod_market_data_s: {
-    detail: 'A live uplink — streams exchange quotes from every station in the sector while you fly.',
     tip: 'Fit it when you are buying or hauling; the market intel pays for the slot.',
   },
   mod_sensor_array_l: {
@@ -383,7 +370,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the long-range prospector: the anomaly fix comes faster.',
   },
   mod_drill_amp: {
-    detail: 'An amplifier that keeps the rich-core window on a rock open a little longer.',
     tip: 'For the miner who wants the seam to last, not just the bite.',
   },
   mod_sensor_scrambler_s: {
@@ -492,7 +478,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the trigger-happy build: the guns stay hot less.',
   },
   mod_thermal_sink_m: {
-    detail: 'A stronger heatsink — the guns stay cool through a longer hold.',
     tip: 'For the ship that wants to keep firing past the first vent.',
   },
   mod_drone_bay_l: {
@@ -504,11 +489,9 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the long-jump run: a bigger step between fights.',
   },
   mod_ram_plate: {
-    detail: 'A ram plate — the hull hits harder when you mean to ram.',
     tip: 'For the build that treats collision as a weapon; flying through something stops being your problem.',
   },
   mod_loot_magnet_s: {
-    detail: 'A magnet ring that draws debris and pods into the hull as you fly past.',
     tip: 'For the cleanup pass: the field feeds itself.',
   },
   // ---- weapon trait rigs --------------------------------------------------------
@@ -517,7 +500,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Fit it where there is cover; the ricochet is free damage on the pack.',
   },
   mod_smart_bank: {
-    detail: 'After a bounce, the shot steers toward a hostile — a wall is a targeting assistant.',
     tip: 'The bank that hunts: shoot the wall and the pack catches the turn.',
   },
   mod_piercing_core: {
@@ -541,7 +523,6 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the swarm that wants to stay close together.',
   },
   mod_bank_relay: {
-    detail: 'A bounced hit can jump onward — a direct hit cannot.',
     tip: 'For the bank-shot build that wants the ricochet to be the thing that hits.',
   },
   mod_gravity_tag: {
@@ -561,15 +542,12 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the one-two punch: freeze first, then finish.',
   },
   mod_cryo_gyros: {
-    detail: 'Two orbiting cryo nodes that freeze whatever passes close — a cold halo around the hull.',
     tip: 'For the swarm that wants to swarm you: the orbit does the catching.',
   },
   mod_tether_capacitor: {
-    detail: 'Shots into the hull on your line hit harder, up to a cap — the tether is also a charge.',
     tip: 'For the massline build: latch first, then the guns pay more.',
   },
   mod_conductive_path: {
-    detail: 'A chain only jumps to a target that is already ionized — the path chooses the primed.',
     tip: 'For the conductive-primer build: the arc only goes where the film is.',
   },
   mod_storm_carom: {
@@ -712,6 +690,50 @@ function hullStats(def) {
   push('Cargo', num(def.cargo));
   push('Outfit space', num(def.outfitSpace));
   return out;
+}
+
+/**
+ * Authored text for the armory's service counter — the same {detail, tip} contract the
+ * fitting dossier keeps, so the reading column reads a service like it reads a fitting.
+ */
+const SERVICE_DOSSIER = {
+  svc_weld: {
+    detail: 'A dockside crew re-welds the hull seams and flushes armor plating back to spec — both pools restored in full the moment the credit clears. The counter only puts it up while the hull is actually hurt.',
+    tip: 'The cheapest armor in the shop when the next pack would catch you under-plated; a sound hull never needs it.',
+  },
+  svc_ordnance: {
+    detail: 'Impulse charges racked from the counter to the hold, up to the six-charge ceiling the throwers draw against. Ammunition for the charge-rack fittings — nothing else consumes it.',
+    tip: 'Only earns its slot on a build that primes charges; with no thrower fitted the crates ride along as dead cargo.',
+  },
+};
+
+/**
+ * The dossier for one counter service offer ({id: 'svc_*', service, price, name}).
+ * Same shape as dossierFor, stats quoted live so a re-priced offer never reads stale.
+ * Returns null for an offer that is not a service the counter knows.
+ */
+export function serviceDossier(offer) {
+  if (!offer || offer.kind !== 'service' || typeof offer.id !== 'string') return null;
+  const authored = SERVICE_DOSSIER[offer.id];
+  if (!authored) return null;
+  const stats = [{ label: 'Cost', value: `${Number(offer.price) || 0} cr` }];
+  if (offer.service === 'weld') {
+    stats.push({ label: 'Restores', value: 'hull + armor full' });
+    stats.push({ label: 'Gate', value: 'only while hurt' });
+  } else if (offer.service === 'ordnance') {
+    stats.push({ label: 'Racks', value: 'up to 6 charges' });
+    stats.push({ label: 'Gate', value: 'only below cap' });
+  }
+  stats.push({ label: 'Applied', value: 'instant' });
+  return Object.freeze({
+    defId: offer.id,
+    name: offer.name || offer.id,
+    kind: 'service',
+    detail: authored.detail,
+    tip: authored.tip,
+    stats: Object.freeze(stats),
+    media: null,
+  });
 }
 
 /**

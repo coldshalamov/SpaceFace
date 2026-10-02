@@ -33,17 +33,23 @@ const up = async (k) => page.keyboard.up(k);
 async function settle(ms) { await page.waitForTimeout(ms); }
 
 // --- demo verbs ---------------------------------------------------------------
+// Demos whose whole point is discharging a weapon — a record for one of these with
+// zero combat:fire means the clip shows a ship drifting, so the run gates on it.
+// Specs with an explicit `must` (emergent tools, deploys) keep their own signature.
+const FIRE_DEMOS = new Set(['shoot', 'shoot_nose', 'shoot_inert', 'trait', 'duo_line', 'bank', 'tether_shoot', 'dronebay', 'gyros']);
 const ACTS = {
   async shoot(page, spec, t) {
     // Combat-stick auto-aim resolves the locked hostile and writes the lead angle;
-    // input.fire (LMB) is the trigger. Hover the canvas center so _m0 registers.
+    // input.fire is the trigger — driven through setFire (input._m0) because a DOM
+    // mousedown only counts when the event target is the canvas, and a toast or
+    // label under the cursor eats the whole clip's worth of trigger.
     await page.mouse.move(480, 270);
     await sh(() => window.__showcase.setAutoFire(true));
     await sh(() => window.__showcase.aimLockStart());
     await settle(600);
-    await page.mouse.down();
+    await sh(() => window.__showcase.setFire(true));
     await settle(t - 600);
-    await page.mouse.up();
+    await sh(() => window.__showcase.setFire(false));
     await sh(() => window.__showcase.aimLockStop());
   },
   async shoot_nose(page, spec, t) {
@@ -67,10 +73,10 @@ const ACTS = {
     });
     await settle(300);
     await aimOnce();
-    await page.mouse.down();
+    await sh(() => window.__showcase.setFire(true));
     const end = Date.now() + t - 300;
     while (Date.now() < end) { await aimOnce(); await settle(500); }
-    await page.mouse.up();
+    await sh(() => window.__showcase.setFire(false));
     await sh(() => window.__showcase.aimLockStop());
   },
   async shoot_inert(page, spec, t) {
@@ -89,10 +95,10 @@ const ACTS = {
       if (pos) await page.mouse.move(Math.max(4, Math.min(956, pos.x)), Math.max(4, Math.min(536, pos.y)));
     };
     await track();
-    await page.mouse.down();
+    await sh(() => window.__showcase.setFire(true));
     const end = Date.now() + t;
     while (Date.now() < end) { await track(); await settle(350); }
-    await page.mouse.up();
+    await sh(() => window.__showcase.setFire(false));
   },
   async duo_line(page, spec, t) { return ACTS.shoot_inert(page, spec, t); },
   async bank(page, spec, t) { return ACTS.shoot_inert(page, spec, t); },
@@ -124,9 +130,9 @@ const ACTS = {
   async tether_shoot(page, spec, t) {
     await down('Control'); await down('Space'); await settle(220); await up('Control');
     await settle(1500);
-    await page.mouse.down();
+    await sh(() => window.__showcase.setFire(true));
     await settle(t - 2000);
-    await page.mouse.up();
+    await sh(() => window.__showcase.setFire(false));
     await up('Space');
   },
   async burst(page, spec, t) {
@@ -394,13 +400,17 @@ async function runItem(id, spec) {
     const evList = spec.ev || [];
     const evOk = evList.length ? evList.some((e) => (ev.counts[e] || 0) > 0) : true;
     // `must` pins the signature event: an item may not pass on ambient damage/toasts alone.
-    const mustOk = (spec.must || []).every((e) => (ev.counts[e] || 0) > 0);
+    // Any demo whose whole point is pulling the trigger must show a discharge — a clip
+    // that proves `ev` on collision noise alone is a silent clip shipped to the store.
+    const must = spec.must || (FIRE_DEMOS.has(spec.demo) ? ['combat:fire'] : []);
+    const mustOk = must.every((e) => (ev.counts[e] || 0) > 0);
     // The stat is proven either by a derived-field diff (numbers that live on the hull)
     // or by the fitted def carrying the same key in its mods (use-time flags).
     const statOk = spec.stat ? (rec.statDiff[spec.stat] !== undefined
       || (rec.mods != null && rec.mods[spec.stat] != null && rec.mods[spec.stat] !== false)) : true;
     rec.ok = rec.fitOk !== false && evOk && mustOk && statOk && (evList.length > 0 || !!spec.stat);
     // teardown
+    await sh(() => window.__showcase.setFire(false));
     await sh(() => window.__showcase.setAutoFire(false));
     await sh(() => window.__showcase.removeSpawned());
     await sh(() => window.__showcase.strip());

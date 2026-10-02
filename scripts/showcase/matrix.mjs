@@ -46,7 +46,9 @@ export const DEMOS = {
   wpn_beam_laser_m:       { hull: H_M, demo: 'shoot', ev: ['combat:damage', 'combat:beamStop'], clip: 8 },
   wpn_railgun_m:          { hull: H_M, demo: 'shoot_nose', ev: ['combat:damage', 'projectile:hit'], clip: 9, dist: 70 },
   wpn_plasma_cannon_m:    { hull: H_M, demo: 'shoot', ev: ['combat:damage'], clip: 8 },
-  wpn_missile_rack_m:     { hull: H_M, demo: 'shoot', ev: ['combat:damage', 'entity:killed'], clip: 9, dist: 100 },
+  // Homing racks only launch inside the nose lock cone — the pinned-target nose-track
+  // demo holds the pick in the cone long enough for lockProgress to reach 1.
+  wpn_missile_rack_m:     { hull: H_M, demo: 'shoot_nose', ev: ['combat:damage', 'entity:killed'], clip: 9, dist: 100 },
   wpn_heavy_beam_l:       { hull: H_L, demo: 'shoot', ev: ['combat:damage', 'combat:beamStop'], clip: 8 },
   wpn_torpedo_l:          { hull: H_L, demo: 'shoot_nose', ev: ['combat:damage', 'entity:killed', 'projectile:hit'], clip: 14, dist: 80 },
   wpn_siege_lance_l:      { hull: H_L, demo: 'shoot', ev: ['combat:damage'], clip: 8, dist: 110 },

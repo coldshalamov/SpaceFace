@@ -169,6 +169,20 @@ export function createSlotJig({ host } = {}) {
       sub.textContent = spec.sub;
       layer.appendChild(sub);
     }
+    // The svg layer is overflow:visible so a long label bleeds out of the jig host and
+    // collides with the reading column beside it. Clamp each caption inside the host:
+    // right-anchored words end at x+width <= W-2, left-anchored words start at x-width >= 2.
+    for (const el of layer.querySelectorAll('.orr-slotjig__word, .orr-slotjig__sub')) {
+      if (typeof el.getComputedTextLength !== 'function') break;
+      const wpx = el.getComputedTextLength();
+      if (!(wpx > 0)) continue;
+      const anchor = el.getAttribute('text-anchor');
+      const x = parseFloat(el.getAttribute('x')) || 0;
+      let nx = x;
+      if (anchor === 'start') nx = Math.max(2, Math.min(x, W - 2 - wpx));
+      else if (anchor === 'end') nx = Math.min(W - 2, Math.max(x, 2 + wpx));
+      if (Number.isFinite(nx) && nx !== x) el.setAttribute('x', nx.toFixed(1));
+    }
   }
 
   return {

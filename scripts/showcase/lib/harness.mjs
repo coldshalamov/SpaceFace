@@ -296,12 +296,13 @@ async function installShowcaseApi(page) {
       // a pilot makes through the cursor lock (autoAim needs state.player.targetId).
       aimLockStart() {
         clearInterval(window.__aimIv);
-        window.__aimIv = setInterval(() => {
+        // Pin ONE hostile as the selected target: re-picking nearest every tick resets the
+        // missile lock's progress on every swap (and floods LOCK LOST toasts). Re-resolve
+        // only when the pinned target dies or despawns.
+        const pick = () => {
           const st = sf.state;
-          const pl = st.player;
-          if (!pl) return;
           const p = st.entities.get(st.playerId);
-          if (!p || !p.pos) return;
+          if (!p || !p.pos) return null;
           let best = null, bd = Infinity;
           for (const e of st.entities.values()) {
             if (!e || !e.alive || !e.pos || (e.type !== 'ship' && e.type !== 'drone')) continue;
@@ -309,7 +310,15 @@ async function installShowcaseApi(page) {
             const d = (e.pos.x - p.pos.x) ** 2 + (e.pos.z - p.pos.z) ** 2;
             if (d < bd) { bd = d; best = e; }
           }
-          pl.targetId = best ? best.id : null;
+          return best ? best.id : null;
+        };
+        window.__aimIv = setInterval(() => {
+          const st = sf.state;
+          const pl = st.player;
+          if (!pl) return;
+          const cur = pl.targetId != null ? st.entities.get(pl.targetId) : null;
+          if (cur && cur.alive && cur.pos) return;
+          pl.targetId = pick();
         }, 120);
         return true;
       },
@@ -471,6 +480,15 @@ async function installShowcaseApi(page) {
           if (!onOff && inp.autoAim) inp.autoAim.targetId = null;
         }
         return inp?.autoFire;
+      },
+      // LMB truth without a DOM event: the input system's mousedown only registers when the
+      // event target IS the canvas, so a toast or label under the cursor silently eats the
+      // trigger and a whole clip can record zero discharges. Writing _m0 is the same lane
+      // the real handler sets (kbdFire = _m0 || held('fire')), minus the overlay roulette.
+      setFire(onOff) {
+        const inpSys = sf.registry.get('input');
+        if (inpSys) inpSys._m0 = !!onOff;
+        return inpSys ? inpSys._m0 : false;
       },
       telemetry() { return sf.telemetry?.combatDiagnostics?.() || sf.telemetry?.() || null; },
       step(frames = 1) { sf.loop?.simStep?.(frames); return true; },

@@ -36,7 +36,7 @@ import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../syste
 import { survivalRun } from '../../systems/survivalRun.js';
 import { el, settle, cue, attachHoldVerb } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
-import { dossierFor } from '../../data/fittingDossier.js';
+import { dossierFor, serviceDossier } from '../../data/fittingDossier.js';
 import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createHullSchematic } from '../orrery/hullSchematic.js';
@@ -1099,7 +1099,9 @@ export const crucibleDraftScreen = {
     parts.act.textContent = lines.activation || '';
     // The dossier's second paragraph — what the fitting actually does in play — plus its
     // usage note and the derived spec sheet. Skips itself when the blurb already says it.
-    const dossier = dossierFor(offer.defId || (offer.kind === 'hull' ? offer.hullId : ''));
+    // Services carry no defId — their reading comes from the service dossier instead.
+    const dossier = dossierFor(offer.defId || (offer.kind === 'hull' ? offer.hullId : ''))
+      || serviceDossier(offer);
     if (parts.detail) {
       const detail = dossier && dossier.detail ? dossier.detail : '';
       parts.detail.textContent = detail && detail !== (lines.blurb || '') ? detail : '';
