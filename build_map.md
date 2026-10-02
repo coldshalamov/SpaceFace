@@ -407,7 +407,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | industry | grok-15 | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
 | people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
 | ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
-| hand | glm-hand-220 | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 220, 229, 236, 238, 239 |
+| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
 | missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
 | world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
 | story | grok-15 | story | 192, 215, 216, 253 |
@@ -766,7 +766,6 @@ First-wave lanes (each row is one lane opening; deeper units follow the pack's D
 | # | Kind | Unit | Decided player outcome | Prerequisite / prior owner | Status |
 |---|---|---|---|---|---|
 | 219 | BUILD | SFQ-B011/B012 (prog 02) | Hand lane: verify the current G-stick and hand conflicts on the live route; one reproduced usability issue improved or verified-good | G-stick owners; NXB-002/NXB-003 adjacent (crosswalk) | OPEN |
-| 220 | BUILD | SFQ-B021/B025 (prog 03) | A real body that should be usable can be latched and manipulated without violating kinematic opt-outs; a fresh wreck is that body | PB-MASS-A/B adjacent; seam tetherGameplay serial | OPEN |
 | 221 | BUILD | SFQ-B031/B033 (prog 04) | A normal fight exposes distinct useful starter verbs and composable state responses, no new combat engine | PB-TAC rows adjacent | OPEN |
 | 222 | BUILD | SFQ-B071/B079 (prog 08) | One existing mission works end to end while its object moves, fails and reloads | PB-MIS rows adjacent; seam missions.js serial | OPEN |
 | 223 | ART | SFQ-B172 or SFQ-B181 (prog 18/19) | One actual visible defect corrected in the production asset/effect owner (attached parts or nozzle/history continuity) | graphics-lane coordination on Forge manifests | OPEN |

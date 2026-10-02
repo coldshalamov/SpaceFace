@@ -43,7 +43,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| §1C row 220 hand seam (SFQ-B021+SFQ-B025: latch eligibility honest + a fresh wreck latches) | glm-hand-220 | EDITING | `src/systems/tetherGameplay.js`, possibly `src/systems/terrainAnchors.js`/`src/systems/masslineImpacts.js`, new focused test under `test/`, `build_map.md`, `design/program/NOW.md` (NXI-022 landed 6eca0bd9a from this thread; same file) | land pathspec, delete board row 220, release this row |
 | demo-5 board+3 inference: §1C rows 217/260/262/226/143 slices + NXI-197/198/108 — all landed by pathspec | devin-demo5 | DONE | released | 7451b94ee 5ba307571 7d53e642a afb3b2525 662387bb1 aa4c23cba |
 | PRO-08 touch overlay scale + layout (INFERENCE catalog PRO-08) | infer-pro08-touch | COMPLETE 3ce78b75f | `src/systems/touch.js`, `src/ui/screens/settings.js`, `src/save/saveSystem.js`, `test/pro-08-touch-overlay-config.test.mjs` | landed; row removable on next sweep |
 | TEACH-06 field escape taught once on first capture | infer-teach06 | EDITING | `src/systems/onboarding.js`, `test/teach-06-field-escape-hint.test.mjs`, `design/program/INFERENCE_IDEAS.md`, `design/program/NOW.md` | land pathspec and delete this row |

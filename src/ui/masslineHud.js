@@ -103,6 +103,9 @@ const DENIAL_NEXT_ACTION = Object.freeze({
   'CUT ACTIVE LINE': 'CUT THE ACTIVE LINE FIRST',
   'NO TARGET': 'AIM AT A BODY',
   'LINE FAILED': 'CHECK THE FIT AND RETRY',
+  'MACHINE, NOT CARGO': 'HAUL THE LOOSE FREIGHT INSTEAD',
+  'SCRIPTED MOTION': 'PICK A PHYSICAL BODY',
+  'CANNOT LATCH': 'PICK ANOTHER TARGET',
   'UNAVAILABLE': 'REPOSITION AND RETRY',
 });
 export function denialNextAction(status, reason) {
@@ -122,6 +125,9 @@ const BRACKET_DENIAL_REASON = Object.freeze({
   'CUT ACTIVE LINE': 'CUT ACTIVE LINE',
   'NO TARGET': 'NO BODY AIMED',
   'LINE FAILED': 'LINE DID NOT',
+  'MACHINE, NOT CARGO': 'MACHINE, NOT CARGO',
+  'SCRIPTED MOTION': 'SCRIPTED MOTION',
+  'CANNOT LATCH': 'CANNOT LATCH',
   'UNAVAILABLE': 'LATCH NOT READY',
 });
 
@@ -1968,6 +1974,10 @@ function previewStatusCopy(status, reason) {
     || r === 'attachment_authority_unavailable' || r === 'authority_unavailable') {
     return 'LINE FAILED';
   }
+  // SFQ-B021 — the ineligible classes name themselves instead of a generic UNAVAILABLE.
+  if (r === 'site-machinery') return 'MACHINE, NOT CARGO';
+  if (r === 'scripted-body') return 'SCRIPTED MOTION';
+  if (r === 'not-tetherable') return 'CANNOT LATCH';
   return 'UNAVAILABLE';
 }
 
