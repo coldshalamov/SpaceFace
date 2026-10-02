@@ -614,7 +614,10 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return g ? g.nodes.length : 0;
     },
     clipActive(name) {
-      if (state.clips.has(name)) return true;
+      // Presence is not enough: a fully-superseded hold clip keeps its run in
+      // state.clips (it is the state owner a transient rides over) but poses nothing,
+      // and a `!clipActive` gate would stay closed forever after a permanent reset.
+      if (this.clipDrives(name)) return true;
       // A bridge chaining into `name` is the clip in transit — gates checking 'is the
       // verb busy' must see through the blend or they re-fire mid-hand-off.
       for (const runName of state.clips.keys()) {
@@ -821,6 +824,8 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const bridgeChannels = [];
       let rotDist = 0;
       let posDist = 0;
+      let needsBridge = false;
+      const livePose = new Map();
       const startDeltas = evaluateMotionClip(checked, clip, 0);
       const live = new Map();
       const at = Number.isFinite(startTimeS) ? startTimeS : 0;
@@ -851,14 +856,24 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         const dRot = quatAngleBetween(rot, rotT);
         rotDist = Math.max(rotDist, dRot);
         posDist = Math.max(posDist, dPos);
-        if (dPos > BRIDGE_POS_EPS || dRot > BRIDGE_ROT_EPS) {
+        if (dPos > BRIDGE_POS_EPS || dRot > BRIDGE_ROT_EPS) needsBridge = true;
+        livePose.set(groupId, { pos, rot, posT, rotT });
+      }
+      if (!noBridge && needsBridge) {
+        // The bridge supersedes every claimed group, so its write-set must equal its
+        // claim-set: groups already within epsilon get a flat live→key0 channel too —
+        // otherwise they lose their writer, park at rest for the blend, and pop twice
+        // (bridge entry, drain→follow-on hand-off). Uniform claims also keep the
+        // contested-inheritance bookkeeping consistent — no half-driven rigs.
+        for (const groupId of claimed) {
+          const p = livePose.get(groupId);
           bridgeChannels.push({
             group: groupId, path: 'translation', times: [0, 1],
-            values: [...pos, ...posT],
+            values: [...p.pos, ...p.posT],
           });
           bridgeChannels.push({
             group: groupId, path: 'rotation', times: [0, 1],
-            values: [...rot, ...rotT],
+            values: [...p.rot, ...p.rotT],
           });
         }
       }
@@ -871,7 +886,10 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         const bridgeName = `__settle__${++settleSerial}`;
         clips.set(bridgeName, {
           name: bridgeName, durationS: duration, loop: false, endMode: 'rest',
-          thenClip: clipName, channels: bridgeChannels,
+          // Overlay: the bridge's supersede marks must release on drain or they leak
+          // forever — a held base clip (gate:index) would stay superseded after its
+          // follow-on lands, leaving owned groups parked at rest.
+          overlay: true, thenClip: clipName, channels: bridgeChannels,
         });
         const bridgeSeq = ++startSeqCounter;
         for (const [otherName, otherRun] of [...state.clips]) {

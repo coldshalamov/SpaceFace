@@ -221,7 +221,10 @@ const SEQUENCES = {
     ['wait', 2.6], ['expectDrives', 'drill_idle'],
   ],
   'jump-ring': [
-    ['ev', 'gate:index'], ['wait', 0.9], ['ev', 'jump:chargeTick'], ['wait', 1.3],
+    // First tick lands mid-index flight — a surge claiming all 12 tips while some are
+    // far from key0 forces the auto-bridge; it must carry every claimed group (the
+    // unblended ones were popping to rest for the bridge duration).
+    ['ev', 'gate:index'], ['wait', 0.2], ['ev', 'jump:chargeTick'], ['wait', 1.3],
     ['ev', 'jump:chargeTick'], ['wait', 1.3], ['expectDrives', 'index'],
     ['ev', 'gate:reset'], ['wait', 1.6], ['expectDrives', 'emitter_roll'],
   ],
