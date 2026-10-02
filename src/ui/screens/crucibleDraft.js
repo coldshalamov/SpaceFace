@@ -799,11 +799,19 @@ export const crucibleDraftScreen = {
       const index = '123'.indexOf(event.key);
       if (!inSearch && index >= 0 && all[index]) {
         event.preventDefault();
+        // A card click can resolve the draft and pop this screen inside THIS keydown (Gauntlet
+        // picks); the same event must not then fall through to flight, where 1/2/3 are live
+        // ordnance keys.
+        event.stopPropagation();
         all[index].click();
         return;
       }
       if (event.key === 'Escape') {
         event.preventDefault();
+        // The skip resolves the draft and pops this screen synchronously, so the SAME keydown
+        // would reach the document-level flight handler with no modal open and Escape would
+        // also push Pause — one key, two consequences. Own it here end to end.
+        event.stopPropagation();
         skip.click();
         return;
       }
@@ -1403,6 +1411,9 @@ export const crucibleRefitScreen = {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 'Escape') {
         event.preventDefault();
+        // done.click() can pop this screen synchronously; without stopping propagation the same
+        // keydown then reaches the flight handler's Escape branch and also pushes Pause.
+        event.stopPropagation();
         // Escape resumes (launch the next block, back to the armory); it never ends a run -- the
         // last wave's "take the win" is pressed, not escaped into.
         if (refitFootLines(ctx.state && ctx.state.run).finishes) { cue('deny'); return; }
@@ -1418,6 +1429,9 @@ export const crucibleRefitScreen = {
         if (!a || (tag !== 'BUTTON' && tag !== 'SELECT' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'A')) {
           if (refitFootLines(ctx.state && ctx.state.run).cont && this._continue) {
             event.preventDefault();
+            // Keep-going closes this screen synchronously; the same Space keydown must not
+            // continue to the flight handler, where Space is the tether verb.
+            event.stopPropagation();
             this._continue.click();
           }
         }
