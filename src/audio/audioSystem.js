@@ -5087,14 +5087,16 @@ export const audio = {
   _stepWantedSearchAudio() {
     const state = this.state;
     if (!state) return;
-    const volume = readWantedSearchVolume(state);
+    const rt = this.rt || (this.rt = {});
+    const volume = readWantedSearchVolume(state,
+      rt._wantedVolume || (rt._wantedVolume = {}));
     const player = state.entities && state.playerId != null && state.entities.get
       ? state.entities.get(state.playerId)
       : null;
     const inside = !!(volume && player && player.pos
       && pointInsideWantedSearch(volume, player.pos.x, player.pos.z));
-    const rt = this.rt || (this.rt = {});
-    const step = stepWantedSearchEdge(rt._wantedSearchInside, inside);
+    const step = stepWantedSearchEdge(rt._wantedSearchInside, inside,
+      rt._wantedEdge || (rt._wantedEdge = {}));
     rt._wantedSearchInside = step.inside;
     if (step.edge === 'leave') this.play(WANTED_SEARCH_EDGE_CUES.leave, { gain: 0.45 });
     else if (step.edge === 'enter') this.play(WANTED_SEARCH_EDGE_CUES.enter, { gain: 0.4 });

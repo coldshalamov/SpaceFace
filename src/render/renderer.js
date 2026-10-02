@@ -421,6 +421,20 @@ import { getActivityFrame } from '../core/worldActivityManager.js';
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
 const _residencyLookDelta = { x: 0, z: 0 };
+
+// classifyTableBand reads its options object synchronously, so one pooled args
+// struct serves every band call — the glass/runway predicates fire per entity
+// per drain and per-poll and a fresh literal per call is pure churn.
+const _bandArgs = { dx: 0, dz: 0, glassHalfX: 0, glassHalfZ: 0, runwayWu: 0, radius: 0 };
+function _bandArgsFor(dx, dz, glassHalfX, glassHalfZ, runwayWu, radius) {
+  _bandArgs.dx = dx;
+  _bandArgs.dz = dz;
+  _bandArgs.glassHalfX = glassHalfX;
+  _bandArgs.glassHalfZ = glassHalfZ;
+  _bandArgs.runwayWu = runwayWu;
+  _bandArgs.radius = radius;
+  return _bandArgs;
+}
 // Shared empty list for the on-glass pending diagnostics — the per-frame sync
 // publishes it instead of slicing an array that holds nothing.
 const EMPTY_ON_GLASS_PENDING_IDS = Object.freeze([]);
@@ -1063,7 +1077,9 @@ const _ledgerPredVel = { x: 0, z: 0 };
 // traffic as static and shrink every glass runway ~2x. Use the itinerary cruise speed
 // when the row has a live schedule; stored vel otherwise. Widens prediction only —
 // earlier admission is the safe direction.
-function predictionVel(entity, state) {
+const _predVelStored = { x: 0, z: 0 };
+
+function predictionVel(entity, state, out = _predVelStored) {
   const vel = entity && entity.vel;
   if (isPresentationLedgerRow(entity) && entity.intent
       && Number.isFinite(entity.lastExactT)) {
@@ -1071,9 +1087,15 @@ function predictionVel(entity, state) {
       ? state.simTime
       : ((state && state.tick) | 0) / 60;
     const along = itineraryVelocityInto(entity.intent, simTime, _ledgerPredVel);
-    if (along) return along;
+    if (along) {
+      out.x = along.x;
+      out.z = along.z;
+      return out;
+    }
   }
-  return { x: Number(vel && vel.x) || 0, z: Number(vel && vel.z) || 0 };
+  out.x = Number(vel && vel.x) || 0;
+  out.z = Number(vel && vel.z) || 0;
+  return out;
 }
 
 // An itinerary row's schedule — not its current-leg velocity — is its trajectory. Sampling
@@ -1163,7 +1185,7 @@ function playerPlanarDistance(entity, state) {
 }
 
 /** True when a live inbound hull is already inside the authored decode circle. */
-function isInboundDecodeHull(entity, state, radius = null) {
+function isInboundDecodeHull(entity, state, radius = null, admissionEnv = null) {
   if (!entity || entity.alive === false) return false;
   if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
   const stationBoundary = entity.type === 'station';
@@ -1190,7 +1212,7 @@ function isInboundDecodeHull(entity, state, radius = null) {
   const horizon = stationBoundary ? TABLE_DECODE_RUNWAY_SECONDS : TABLE_PROMOTE_HORIZON_SECONDS;
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos) return false;
-  const env = renderAdmissionEnv(state);
+  const env = admissionEnv || renderAdmissionEnv(state);
   const pad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
   return entityTimeToGlassSeconds(
     entity,
@@ -1314,10 +1336,29 @@ export function entityHasOwnSectorPrewarmPlan(entity, sectorId, playerId = null)
   }).length > 0;
 }
 
+// shouldKeepPersistentLandmarkResident reads its options synchronously — one pooled
+// struct per residency evaluation instead of a six-field literal per entity per poll.
+const _landmarkKeepOpts = {
+  mode: null, currentSectorId: null, authoredResident: false,
+  authoredPending: false, distanceWu: 0, travelSpeedWu: 0,
+};
+function _landmarkKeepOptsFor(entity, state) {
+  _landmarkKeepOpts.mode = state && state.mode;
+  _landmarkKeepOpts.currentSectorId = state && state.world && state.world.currentSectorId;
+  _landmarkKeepOpts.authoredResident = entityHasAuthoredResidentRoot(entity);
+  _landmarkKeepOpts.authoredPending = entityHasAuthoredPendingRoot(entity);
+  _landmarkKeepOpts.distanceWu = landmarkKeepDistanceWu(entity, state);
+  _landmarkKeepOpts.travelSpeedWu = tableTravelSpeed(state);
+  return _landmarkKeepOpts;
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null, options = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
   const bypassShellGates = !!(options && options.bypassShellGates === true);
+  // `options.scan` carries the per-poll hoisted terms (player/look-at/env) the
+  // residency loops build once; absent it, the predicates derive them per call.
+  const scan = options && options.scan;
   if (!bypassShellGates && state && state.render && (
     state.render.liveSectorGpuAdmission === true
     || state.render.sectorShellAdmission === true
@@ -1348,17 +1389,10 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   // while its authored body re-loaded on screen. This is a post-admission residency rule
   // (`authoredResident` is still required — nothing far is ever built by it, and off-screen
   // roots are still not submitted; the keep is memory only).
-  if (shouldKeepPersistentLandmarkResident(entity, {
-    mode: state && state.mode,
-    currentSectorId: state && state.world && state.world.currentSectorId,
-    authoredResident: entityHasAuthoredResidentRoot(entity),
-    authoredPending: entityHasAuthoredPendingRoot(entity),
-    distanceWu: landmarkKeepDistanceWu(entity, state),
-    travelSpeedWu: tableTravelSpeed(state),
-  })) return true;
+  if (shouldKeepPersistentLandmarkResident(entity, _landmarkKeepOptsFor(entity, state))) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
-  const inboundDecode = isInboundDecodeHull(entity, state, radius);
+  const inboundDecode = isInboundDecodeHull(entity, state, radius, scan && scan.env);
   if (activityFrame && activityFrame.complete === true) {
     const has = (collection) => collection && typeof collection.has === 'function'
       ? collection.has(entity.id)
@@ -1380,7 +1414,9 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
       // screen: "I fly kind of away from something and it'll pop out of existence."
       // entityMeshVisibility already honours the live glass for VISIBILITY; residency must too,
       // or the override only ever hides and shows a mesh that has been thrown away.
-      if (entityIsOnReadableGlass(entity, state)) return true;
+      if (scan
+        ? entityIsOnReadableGlassScan(entity, state, scan)
+        : entityIsOnReadableGlass(entity, state)) return true;
       // The activity owner has explicitly classified this entity outside the
       // presentation runway. Do not recreate an Object3D for a metadata-only or
       // unloaded record merely because it shares a sector with the player.
@@ -1390,7 +1426,9 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   if (inboundDecode) return true;
   if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
     // Same law without a complete activity frame: nothing on the live glass loses its mesh.
-    return entityIsOnReadableGlass(entity, state);
+    return scan
+      ? entityIsOnReadableGlassScan(entity, state, scan)
+      : entityIsOnReadableGlass(entity, state);
   }
   if (tier === PRESENTATION_TIER.R0_GLASS || tier === PRESENTATION_TIER.R1_RUNWAY) return true;
   const numericRadius = Number(radius);
@@ -1829,15 +1867,42 @@ function entityIsOnReadableGlassScan(entity, state, scan) {
   const scanPos = ledgerAwarePos(entity, state);
   _residencyLookDelta.x = (Number.isFinite(scanPos.x) ? scanPos.x : 0) - scan.lookOrigin.x;
   _residencyLookDelta.z = (Number.isFinite(scanPos.z) ? scanPos.z : 0) - scan.lookOrigin.z;
-  const band = classifyTableBand({
-    dx: _residencyLookDelta.x,
-    dz: _residencyLookDelta.z,
-    glassHalfX: glass.halfX,
-    glassHalfZ: glass.halfZ,
-    runwayWu: TABLE_FRAME_SKIRT_WU,
-    radius: entityVisualCullRadius(entity, entity.mesh),
-  });
+  const band = classifyTableBand(_bandArgsFor(
+    _residencyLookDelta.x,
+    _residencyLookDelta.z,
+    glass.halfX,
+    glass.halfZ,
+    TABLE_FRAME_SKIRT_WU,
+    entityVisualCullRadius(entity, entity.mesh),
+  ));
   return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
+}
+
+/** entityIsOnDeadlineGlass with the per-poll terms already resolved — same math, same order. */
+function entityIsOnDeadlineGlassScan(entity, state, scan) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  if (entity.activity && entity.activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  const frame = state.render && state.render.activityFrame;
+  const glassIds = frame && frame.renderGlassIds;
+  const listed = glassIds && typeof glassIds.has === 'function'
+    ? glassIds.has(entity.id)
+    : Array.isArray(glassIds) && glassIds.includes(entity.id);
+  if (listed === true) return true;
+  const player = scan.player;
+  if (!player || !player.pos || !entity.pos) return false;
+  const glass = scan.glass;
+  const scanPos = ledgerAwarePos(entity, state);
+  _residencyLookDelta.x = (Number.isFinite(scanPos.x) ? scanPos.x : 0) - scan.lookOrigin.x;
+  _residencyLookDelta.z = (Number.isFinite(scanPos.z) ? scanPos.z : 0) - scan.lookOrigin.z;
+  return classifyTableBand(_bandArgsFor(
+    _residencyLookDelta.x,
+    _residencyLookDelta.z,
+    glass.halfX,
+    glass.halfZ,
+    0,
+    entityVisualCullRadius(entity, entity.mesh),
+  )) === TABLE_BAND.GLASS;
 }
 
 /**
@@ -1938,14 +2003,14 @@ export function entityIsOnReadableGlass(entity, state) {
   const cam = liveTableCamera(state);
   const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
   const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
-  const band = classifyTableBand({
-    dx: delta.x,
-    dz: delta.z,
-    glassHalfX: glass.halfX,
-    glassHalfZ: glass.halfZ,
-    runwayWu: TABLE_FRAME_SKIRT_WU,
-    radius: entityVisualCullRadius(entity, entity.mesh),
-  });
+  const band = classifyTableBand(_bandArgsFor(
+    delta.x,
+    delta.z,
+    glass.halfX,
+    glass.halfZ,
+    TABLE_FRAME_SKIRT_WU,
+    entityVisualCullRadius(entity, entity.mesh),
+  ));
   return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
 
@@ -1974,14 +2039,14 @@ function entityIsOnDeadlineGlass(entity, state) {
   const cam = liveTableCamera(state);
   const g = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
   const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
-  return classifyTableBand({
-    dx: delta.x,
-    dz: delta.z,
-    glassHalfX: g.halfX,
-    glassHalfZ: g.halfZ,
-    runwayWu: 0,
-    radius: entityVisualCullRadius(entity, entity.mesh),
-  }) === TABLE_BAND.GLASS;
+  return classifyTableBand(_bandArgsFor(
+    delta.x,
+    delta.z,
+    g.halfX,
+    g.halfZ,
+    0,
+    entityVisualCullRadius(entity, entity.mesh),
+  )) === TABLE_BAND.GLASS;
 }
 
 /**
@@ -2026,9 +2091,10 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   const hoisted = [];
   const remainder = [];
   let reordered = false;
+  const scan = makeHoldExemptScanContext(owner.state);
   for (let i = 0; i < tail.length; i++) {
     const id = tail[i];
-    if (entityIsOnDeadlineGlass(resolveWorldPresentationEntity(owner.state, id), owner.state)) {
+    if (entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan)) {
       if (remainder.length) reordered = true;
       hoisted.push(id);
     } else {
@@ -14740,6 +14806,15 @@ export const render = {
     // requestDecodeRunwayPromote in world.update). Spawning here is for dirty/full
     // rebuilds, not the present beat.
     const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
+    // The evict radius is fixed for the whole reconcile except the authored ship/wreck
+    // cap — derive camera/speed once; the scan context serves every relevant check too.
+    const reconcileSpeed = tableTravelSpeed(state);
+    const reconcileCam = liveTableCamera(state);
+    const reconcileEvictBase = residencyEvictRadius(
+      reconcileSpeed, reconcileCam.prefetchZoom, reconcileCam.fov, reconcileCam.aspect, reconcileCam.tilt);
+    const reconcileEvictShipWreck = Math.max(
+      reconcileEvictBase, authoredResidencyEvictRadius(reconcileSpeed));
+    const reconcileScanOpts = { scan: makeHoldExemptScanContext(state) };
     // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
@@ -14753,7 +14828,9 @@ export const render = {
       // existence" defect — count it so probes can prove the class stays at 0.
       const residencyEvict = !!(e && e.alive !== false && !mismatched)
         && !keepResidentSet
-        && !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict', e));
+        && !isEntityRenderRelevant(e, state,
+          e.type === 'ship' || e.type === 'wreck' ? reconcileEvictShipWreck : reconcileEvictBase,
+          reconcileScanOpts);
       if (!e || e.alive === false || mismatched || residencyEvict) {
         if (residencyEvict) noteOnGlassResidencyEviction(state, e);
         this._unbindPresentationMesh(id, m);
@@ -14775,7 +14852,7 @@ export const render = {
       this._meshBuildQueuedIds,
       this._meshBuildQueue,
       (entity) => !this._sectorBoundaryPreparations?.has(entity.id)
-        && isEntityRenderRelevant(entity, state),
+        && isEntityRenderRelevant(entity, state, null, reconcileScanOpts),
       (entity) => entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS,
       (entity) => entityTimeToGlassSeconds(entity, env, state),
     );
@@ -14829,6 +14906,9 @@ export const render = {
     const evictRadiusBase = residencyEvictRadius(
       speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
     const evictRadiusShipWreck = Math.max(evictRadiusBase, authoredResidencyEvictRadius(speed));
+    // One scan context serves the whole poll: player/look-at/env are fixed within it.
+    const residencyScan = makeHoldExemptScanContext(state);
+    const residencyScanOpts = { scan: residencyScan };
     for (const [id, mesh] of this._meshes) {
       stats.meshVisits++;
       const entity = resolveWorldPresentationEntity(state, id);
@@ -14836,7 +14916,7 @@ export const render = {
         ? evictRadiusShipWreck
         : evictRadiusBase;
       const residencyEvict = !!(entity && entity.alive !== false)
-        && !isEntityRenderRelevant(entity, state, evictRadius);
+        && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
       if (!entity || entity.alive === false || residencyEvict) {
         if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
         this._unbindPresentationMesh(id, mesh);
@@ -14894,7 +14974,7 @@ export const render = {
       stats.entityVisits++;
       if (!entity || this._meshes.has(entity.id)
           || this._sectorBoundaryPreparations?.has(entity.id)
-          || !isEntityRenderRelevant(entity, state)) continue;
+          || !isEntityRenderRelevant(entity, state, null, residencyScanOpts)) continue;
       // Candidates about to cross the glass drain ahead of ordinary runway filler.
       const urgent = tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS;
       if (entity.type === 'ship') (urgent ? urgentShips : shipCandidates).push(entity);
@@ -15064,6 +15144,9 @@ export const render = {
       : Date.now());
     const simNow = Number(this.state && this.state.simTime) || 0;
     let hoistedDeadlineBuilds = false;
+    // One scan context for the whole drain — player/look-at/env are fixed per call.
+    const drainScan = makeHoldExemptScanContext(this.state);
+    const drainScanOpts = { scan: drainScan };
     while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
       const peek = resolveWorldPresentationEntity(
         this.state,
@@ -15071,14 +15154,14 @@ export const render = {
       );
       // Under a refused late-present start only the hoisted deadline-glass
       // prefix may build; the first ambient head ends the drain.
-      if (deadlineGlassOnly && !entityIsOnDeadlineGlass(peek, this.state)) break;
+      if (deadlineGlassOnly && !entityIsOnDeadlineGlassScan(peek, this.state, drainScan)) break;
       // A count cap of a few builds per frame is right for off-screen runway
       // filler. It is wrong for a body already on the glass: that is a hole in
       // the picture. On-glass builds ignore the count and stop on the time
       // slice instead. A caller that asked for exactly one build (the loading
       // yield) keeps that count.
       const onGlassOverflow = buildBudget > 1 && buildBudget !== Infinity
-        && entityIsOnReadableGlass(peek, this.state);
+        && entityIsOnReadableGlassScan(peek, this.state, drainScan);
       if (built >= buildBudget && !onGlassOverflow) {
         // The enqueue poll re-orders the queue every ~0.25 s. An entity that
         // crossed the deadline glass inside that window is still buried behind
@@ -15100,7 +15183,7 @@ export const render = {
       const e = resolveWorldPresentationEntity(this.state, id);
       if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
           || this._sectorBoundaryPreparations?.has(id)
-          || !isEntityRenderRelevant(e, this.state)) continue;
+          || !isEntityRenderRelevant(e, this.state, null, drainScanOpts)) continue;
       // Transient-failure backoff: a null or thrown build must not latch _noMesh on the first
       // miss — enqueueMeshBuildCandidate skips _noMesh forever, so a first-frame asset race
       // used to permanently strand the entity. Failed candidates re-enter via the next
@@ -15198,7 +15281,8 @@ export const render = {
       } else {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       }
-      const linkOnGlass = this.state.mode === 'flight' && entityIsOnReadableGlass(e, this.state);
+      const linkOnGlass = this.state.mode === 'flight'
+        && entityIsOnReadableGlassScan(e, this.state, drainScan);
       const compileAsteroid = e.type === 'asteroid';
       // Do not compile or 1x1-upload held first-flight rocks during the live
       // frame. That was the leftover Intel context-loss: several residency

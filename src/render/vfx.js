@@ -8603,7 +8603,8 @@ export const vfx = {
   },
 
   _updateWantedSearchRing() {
-    const volume = readWantedSearchVolume(this.state);
+    const volume = readWantedSearchVolume(this.state,
+      this._wantedVolume || (this._wantedVolume = {}));
     if (!this._wantedRing && this._scene) {
       const geo = new THREE.RingGeometry(0.985, 1, 64);
       geo.rotateX(-Math.PI / 2);

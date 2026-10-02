@@ -994,7 +994,9 @@ export const aftermathWrecks = {
   _driveScavengers(state, sectorId) {
     const own = ensureAftermathState(state);
     if (!own) return;
-    for (const field of Object.values(own.ecology || {})) {
+    const ecology = own.ecology;
+    for (const fieldId in ecology) {
+      const field = ecology[fieldId];
       if (!field || field.sectorId !== sectorId) continue;
       for (const slot of field.roster || []) {
         if (!slot || slot.role !== 'scavenger' || slot.status !== 'live') continue;

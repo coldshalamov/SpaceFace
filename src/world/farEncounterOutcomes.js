@@ -1,9 +1,9 @@
 // Off-glass NPC vs NPC is a scheduled outcome, not a 60 Hz dogfight.
 // Deterministic from seed + ids + simTime. Does not promote either body.
-// Motion uses worldCatchup ballistic drift; identity uses encounterCausality fingerprints.
+// Motion uses the farActorTable catch-up path; identity uses encounterCausality fingerprints.
 
 import { hash32 } from '../core/rng.js';
-import { ballisticDrift } from './worldCatchup.js';
+import { catchUpFarRecord } from './farActorTable.js';
 import { encounterFingerprint, resolvedEncounterFingerprint } from './encounterCausality.js';
 
 const DELAY_MIN_S = 8;
@@ -19,16 +19,6 @@ function hostileRole(rec) {
 
 function liveShip(rec) {
   return !!(rec && rec.alive !== false && rec.type !== 'wreck' && rec.pos);
-}
-
-function driftRecordTo(rec, fromT, toT) {
-  const dt = toT - fromT;
-  if (!(dt > 0)) return;
-  const drifted = ballisticDrift(rec.pos, rec.vel, rec.rot, rec.angVel, dt);
-  rec.pos = drifted.pos;
-  rec.vel = drifted.vel;
-  rec.rot = drifted.rot;
-  rec.angVel = drifted.angVel;
 }
 
 export function resolveFarEncounters(state, simTime) {
@@ -64,8 +54,13 @@ export function resolveFarEncounters(state, simTime) {
         }
         if (t < due) continue;
 
-        driftRecordTo(a, due, t);
-        driftRecordTo(b, due, t);
+        // The pair arrives at simTime through the same advance the sweep applies:
+        // lastExactT-anchored catch-up keeps the grid re-key + version stamp contract —
+        // a raw drift skips all three (stale stamp double-advances at the next sweep,
+        // stale cell pairs against wrong cellmates, stale version blinds the memoized
+        // collect walk at its disc rim).
+        catchUpFarRecord(a, t, table);
+        catchUpFarRecord(b, t, table);
 
         const lo = a.id < b.id ? a : b;
         const hi = a.id < b.id ? b : a;
