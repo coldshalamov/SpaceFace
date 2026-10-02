@@ -32,6 +32,12 @@ export function createBus() {
   const presentationSets = new Map(); // event -> Set<fn> (presentation-tier listeners)
   const presentationSnaps = new Map();
   const presentationQueue = []; // [{ event, payload, fns, index }] — drained per frame
+  // Lifecycle-class events drain ahead of cosmetic slices: entity:destroyed carries the
+  // corpse-mesh unbind (plus tag/doctrine/residency cleanup) — a starved frame that
+  // dropped its slice would leave a dead hull on the glass until the residency poll
+  // self-healed. Whole-event promotion keeps in-event FIFO; only cross-event order moves.
+  const PRESENTATION_PRIORITY_EVENTS = new Set(['entity:destroyed']);
+  const presentationPriorityQueue = [];
   const presentationSlicePool = [];
   // Pooled-payload events (physics:impact, combat:damage refill one record per emit) register
   // an emit-time snapshotter: a queued presentation tail must read the fields a synchronous
@@ -109,11 +115,16 @@ export function createBus() {
     slice.payload = snapshot ? snapshot(payload) : payload;
     slice.fns = fns;
     slice.index = 0;
-    presentationQueue.push(slice);
+    (PRESENTATION_PRIORITY_EVENTS.has(event) ? presentationPriorityQueue : presentationQueue).push(slice);
     // A claimed-but-unpumped drain (hidden tab, suspended shell) must not accumulate
     // unboundedly: drop the oldest slices past the cap — losing a mid-burst visual tail is
-    // cheaper than minutes of deferred drain when the pump resumes.
-    if (presentationQueue.length > 64) recyclePresentationSlice(presentationQueue.shift());
+    // cheaper than minutes of deferred drain when the pump resumes. Cosmetic slices drop
+    // first; the lifecycle lane only sheds when nothing cosmetic remains.
+    let overflow = presentationQueue.length + presentationPriorityQueue.length - 64;
+    while (overflow-- > 0) {
+      recyclePresentationSlice(
+        presentationQueue.length ? presentationQueue.shift() : presentationPriorityQueue.shift());
+    }
   }
 
   function recyclePresentationSlice(slice) {
@@ -217,14 +228,18 @@ export function createBus() {
       ? performance.now() + maxMs
       : Infinity;
     let ran = 0;
-    while (ran < limit && presentationQueue.length) {
-      const head = presentationQueue[0];
+    while (ran < limit) {
+      const queue = presentationPriorityQueue.length ? presentationPriorityQueue
+        : presentationQueue.length ? presentationQueue
+        : null;
+      if (!queue) break;
+      const head = queue[0];
       const fn = head.fns[head.index];
       head.index += 1;
       ran += 1;
       try { fn(head.payload, head.event); }
       catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
-      if (head.index >= head.fns.length) recyclePresentationSlice(presentationQueue.shift());
+      if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline) break;
     }
     return ran;
@@ -232,6 +247,7 @@ export function createBus() {
 
   function pendingPresentationCount() {
     let n = 0;
+    for (const slice of presentationPriorityQueue) n += slice.fns.length - slice.index;
     for (const slice of presentationQueue) n += slice.fns.length - slice.index;
     return n;
   }

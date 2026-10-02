@@ -397,17 +397,20 @@ export function applySpecialistCounterplay({
       : null;
     if (!player) return null;
     // Screen targets resolve to hulls — the roster lanes (ships/drones/stations) when the
-    // index is ready, the full pool when it is not.
+    // index is ready, the full pool when it is not. The lanes iterate as two passes so a
+    // routed eval doesn't allocate a concat per attempt.
     const index = state && state.entityIndex;
-    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
-      && Array.isArray(index.shipLike) && Array.isArray(index.stations)
-      ? index.shipLike.concat(index.stations)
-      : shipsOf(state);
-    for (const ent of pool) {
-      if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
-      if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
-      const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
-      if (blocked && blocked.id === specialist.id) return { verb: 'ward_screen', ok: true, targetId: ent.id };
+    const indexed = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && Array.isArray(index.shipLike) && Array.isArray(index.stations);
+    const pool = indexed ? null : shipsOf(state);
+    const lanes = indexed ? [index.shipLike, index.stations] : [pool];
+    for (const lane of lanes) {
+      for (const ent of lane) {
+        if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
+        if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
+        const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
+        if (blocked && blocked.id === specialist.id) return { verb: 'ward_screen', ok: true, targetId: ent.id };
+      }
     }
     return null;
   }

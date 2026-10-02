@@ -57,6 +57,16 @@ function enemyFactionIdFor(def, explicit) {
     || (def && def.factionLawful ? 'faction_scn' : 'faction_reach');
 }
 
+// The scripted onboarding cohort (raid raider + claims patrol) resolves its faction exactly
+// like makeEnemySpawnSpec: def faction, else the lawful/hostile fallback. Export for the
+// embark-speculation arm, which warms the same roster hulls during newGame dwell.
+export function scriptedOnboardingRosterRows() {
+  return ['reaver_pirate', 'patrol_lawman'].map((archetype) => ({
+    archetype,
+    factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
+  }));
+}
+
 // Promoted-pilot records carry every ace-shaped field returnCrewForAce reads — rebuild the
 // minimal ace object from the saved row rather than importing the aceMemory system module.
 export function promotedAceShapeForRecord(id, rec) {
@@ -209,7 +219,11 @@ export function saveEnvelopeSectorStubs(data) {
   const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
   if (!sector) return out;
   out.sectorId = sector.id;
-  const seed = (data.meta && Number.isFinite(data.meta.seed)) ? data.meta.seed : 1;
+  // A caller without a committed seed (the embark arm before Launch picks one) must not
+  // enumerate seed-hashed rows — warming seed-1's salted files is wasted decode for a run
+  // that will roll a different seed. Unseeded rows still enumerate.
+  const seeded = !!(data.meta && Number.isFinite(data.meta.seed));
+  const seed = seeded ? data.meta.seed : 1;
 
   for (const st of sector.stations || []) {
     if (!st) continue;
@@ -296,11 +310,13 @@ export function saveEnvelopeSectorStubs(data) {
   })) {
     if (placeId) out.placeStubs.push({ type: 'fx', data: { placeId, worldDressing: true } });
   }
-  for (const row of kitRows) {
-    out.placeStubs.push({ type: 'fx', data: { placeId: row.placeId, everydaySpaceKit: true } });
-  }
-  for (const row of wreckRows) {
-    out.placeStubs.push({ type: 'fx', data: { placeId: row.placeId, wreckAftermath: true } });
+  if (seeded) {
+    for (const row of kitRows) {
+      out.placeStubs.push({ type: 'fx', data: { placeId: row.placeId, everydaySpaceKit: true } });
+    }
+    for (const row of wreckRows) {
+      out.placeStubs.push({ type: 'fx', data: { placeId: row.placeId, wreckAftermath: true } });
+    }
   }
 
   const recordsById = (data.world && data.world.records && data.world.records.byId) || {};
@@ -1111,7 +1127,8 @@ export function saveEnvelopeFullExtrasStubs(data) {
   const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
   if (!sector) return out;
   out.sectorId = sector.id;
-  const seed = (data.meta && Number.isFinite(data.meta.seed)) ? data.meta.seed : 1;
+  const seeded = !!(data.meta && Number.isFinite(data.meta.seed));
+  const seed = seeded ? data.meta.seed : 1;
   const recordsById = (data.world && data.world.records && data.world.records.byId) || {};
   const sectorRecords = Object.keys(recordsById)
     .map((id) => recordsById[id])
@@ -1182,18 +1199,21 @@ export function saveEnvelopeFullExtrasStubs(data) {
   }
 
   // Fresh materialize is epoch 0 (residentSectors restore empty) — identical stream to the
-  // live enumerator's 'alien-ecology' draw.
+  // live enumerator's 'alien-ecology' draw. The module plan is seed-hashed: an unseeded
+  // caller still warms the always-mounted filament sheet but skips guessed module ids.
   const aeSites = data.world.alienEcology && data.world.alienEcology.sites;
   for (const site of alienSitesForSector(sector.id)) {
     if (!site || site.sterile) continue;
-    const siteState = (aeSites && aeSites[site.siteId] && aeSites[site.siteId].state) || 'dormant';
-    const siteRng = mulberry32(hash32(seed, sector.id, 0, 'alien-ecology', site.siteId));
-    for (const g of planInfestationModules(site, siteRng, siteState) || []) {
-      if (g && g.moduleId) {
-        out.placeStubs.push({
-          type: 'fx',
-          data: { placeId: `alien_growth_${g.moduleId}`, alienEcology: true },
-        });
+    if (seeded) {
+      const siteState = (aeSites && aeSites[site.siteId] && aeSites[site.siteId].state) || 'dormant';
+      const siteRng = mulberry32(hash32(seed, sector.id, 0, 'alien-ecology', site.siteId));
+      for (const g of planInfestationModules(site, siteRng, siteState) || []) {
+        if (g && g.moduleId) {
+          out.placeStubs.push({
+            type: 'fx',
+            data: { placeId: `alien_growth_${g.moduleId}`, alienEcology: true },
+          });
+        }
       }
     }
     out.placeStubs.push({ type: 'fx', data: { placeId: 'alien_growth_filament_sheet', alienEcology: true } });

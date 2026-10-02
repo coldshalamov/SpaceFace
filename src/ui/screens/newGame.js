@@ -8,6 +8,7 @@ import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
 import {
   DEFAULT_STARTER_ID,
+  NEW_GAME,
   NEW_GAME_STARTERS,
   starterById,
 } from '../../data/newGameDefaults.js';
@@ -561,7 +562,7 @@ export const newGameScreen = {
     const newSeed = el('button', 'k-word k-word--fine', 'New seed');
     newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
     paintKey(newSeed, 'small');
-    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
+    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); this._emitEmbarkSpec(); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
     const seedDesc = el('p', 'k-t-fine k-38', ORRERY
@@ -569,6 +570,8 @@ export const newGameScreen = {
       : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
+    // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
+    seed.addEventListener('input', () => this._emitEmbarkSpec());
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
 
@@ -839,9 +842,28 @@ export const newGameScreen = {
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
+      // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
+      // a candidate here so the salted dressing rows it warms are the ones the launch rolls.
+      // Cosmetic randomness — the run's seed contract is unchanged (resetRunState treats a
+      // forwarded opts.seed identically to its internal roll).
+      specSeedRoll: 1 + Math.floor(Math.random() * 0xfffffffe),
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+  },
+
+  // The newGame screen used to be the only embark path with no speculation emit — every
+  // authored decode for the start sector paid inside the loading window. During form dwell
+  // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
+  // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
+  _emitEmbarkSpec() {
+    if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
+    refs.ctx.bus.emit('game:embarkSpeculation', {
+      sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+      seed: typed == null ? refs.specSeedRoll : typed,
+      shipDefId: refs.starter && refs.starter.shipId,
+    });
   },
 
   _setStarter(id, { silent = false } = {}) {
@@ -864,6 +886,7 @@ export const newGameScreen = {
     if (this.hull) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
     }
+    this._emitEmbarkSpec();
     syncKeys(refs.starterWords);
   },
 
@@ -897,7 +920,9 @@ export const newGameScreen = {
     // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
     // would silently mean "random" while looking deliberate.
     const rawSeed = parseUniverseSeed(refs.seed.value);
-    const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
+    // Blank forwards the pre-rolled candidate the embark arm already enumerated for — the
+    // salted dressing rows it warmed are the exact rows this run materializes.
+    const seedOpt = { seed: rawSeed == null ? refs.specSeedRoll : rawSeed };
     const legacy = refs.legacy();
     const newGamePlusOpt = legacy.on && legacy.select && legacy.select.value && legacy.candidate
       ? { newGamePlus: { slot: legacy.candidate.sourceSlot, keepsakeId: legacy.select.value } }
@@ -917,6 +942,7 @@ export const newGameScreen = {
   onShow(ctx) {
     if (!refs) return;
     cue('open');
+    this._emitEmbarkSpec();
     refs.setLaunching(false);
     refs.cancelHullRelease();
     if (this.hull) this.hull.restore();

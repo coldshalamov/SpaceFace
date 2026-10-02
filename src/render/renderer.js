@@ -110,7 +110,7 @@ import {
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
+import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
@@ -653,6 +653,10 @@ const RENDER_STREAM_EVICT_RADIUS = residencyEvictRadius();
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
+// Zoom-open/focus-moved early triggers re-arm the poll, but during boost transit the
+// focus moves >80 wu every frame — the 0.25 s cadence would degenerate into a per-frame
+// reconcile. An early poll only fires once the re-arm is at least half spent (≤8/s).
+const RENDER_RESIDENCY_EARLY_POLL_FLOOR_S = RENDER_RESIDENCY_POLL_SECONDS / 2;
 /** Hold-exempt discovery cadence: fast enough for the rescue set piece, slow enough to skip the scan. */
 const HOLD_EXEMPT_COLLECT_SECONDS = 0.1;
 // Decoded packages whose presentation owner is gone keep only a soft cache lease, which the
@@ -1731,7 +1735,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     && pollZoom > owner._residencyPollZoom + 12;
   const focusMoved = Number.isFinite(owner._residencyPollFocusX)
     && Math.hypot(pollFocusX - owner._residencyPollFocusX, pollFocusZ - owner._residencyPollFocusZ) > 80;
-  if (owner._renderResidencyPollS <= 0 || zoomOpened || focusMoved) {
+  if (owner._renderResidencyPollS <= 0
+      || ((zoomOpened || focusMoved) && owner._renderResidencyPollS <= RENDER_RESIDENCY_EARLY_POLL_FLOOR_S)) {
     owner._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
     owner._residencyPollZoom = pollZoom;
     owner._residencyPollFocusX = pollFocusX;
@@ -2086,24 +2091,34 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   const queue = owner && owner._meshBuildQueue;
   if (!queue) return false;
   const head = owner._meshBuildQueueHead | 0;
-  // Stable partition, same ordering contract as the old splice-per-move scan: glass ids
-  // hoist in scan order, non-glass keep theirs. reordered mirrors the old contract —
-  // true only when a non-glass id sat ahead of a glass one (an actual permutation).
-  const tail = queue.slice(head);
-  const hoisted = [];
-  const remainder = [];
-  let reordered = false;
+  // Single scan pass: glass count and the partition's reordered flag both fall out of the
+  // walk — the three tail-sized arrays are only built when a permutation is actually
+  // needed (an already-ordered tail, the common steady case, allocates nothing).
+  const tail = queue.length - head;
+  if (tail <= 0) return 0;
   const scan = makeHoldExemptScanContext(owner.state);
-  for (let i = 0; i < tail.length; i++) {
-    const id = tail[i];
-    if (entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan)) {
-      if (remainder.length) reordered = true;
-      hoisted.push(id);
+  let glassCount = 0;
+  let reordered = false;
+  let seenNonGlass = false;
+  for (let i = head; i < queue.length; i++) {
+    if (entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, queue[i]), owner.state, scan)) {
+      glassCount++;
+      if (seenNonGlass) reordered = true;
     } else {
-      remainder.push(id);
+      seenNonGlass = true;
     }
   }
   if (reordered) {
+    const hoisted = [];
+    const remainder = [];
+    for (let i = head; i < queue.length; i++) {
+      const id = queue[i];
+      if (entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan)) {
+        hoisted.push(id);
+      } else {
+        remainder.push(id);
+      }
+    }
     queue.length = head;
     for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
     for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
@@ -2111,7 +2126,7 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   // Return the deadline-glass count, not the permutation flag: callers gate on whether
   // glass work exists in the tail, and an already-ordered glass prefix is still work
   // that must build (a refused late-present start admits the glass prefix only).
-  return hoisted.length;
+  return glassCount;
 }
 
 /**
@@ -12292,6 +12307,10 @@ export const render = {
     // The speculative Continue prepare resolves during menu dwell — warm the same runway
     // early; decode-task dedupe makes the click-time envelopePrepared emit nearly free.
     onBus('save:envelopeSpecPrepared', (p) => this._prefetchSaveEnvelopeVisuals(p));
+    // New-game embark dwell — the form's committed sector/starter (plus its seed once one is
+    // decided) enumerate the whole first-sector authored cast, so Launch lands on warmed
+    // files instead of paying every decode inside the loading window.
+    onBus('game:embarkSpeculation', (p) => this._prefetchEmbarkVisuals(p));
     // Between-round roster warm: every swarm wave ends in the armory, and the next wave's
     // newcomer set is fixed by its number, so the eligible-minus-covered cohort builds and
     // compiles during the shop dwell rather than inside the launch cook or the next round.
@@ -12778,10 +12797,17 @@ export const render = {
     // gates, POI landmarks, field geology heads, dressing rows, durable records, owed mission
     // rosters) rematerializes behind the authored-visuals gate — none of it is an envelope
     // entity, so without this pass their decodes start cold at enterSector.
+    this._warmSectorRecipeStubs(placeStubs, shipStubs, roster, sectorStubs.sectorId);
+  },
+
+  // Shared stub-lane driver for the envelope and embark speculation arms: place/packaged
+  // stubs decode through warmPackagedEntityDecode, ship stubs through the authored preload,
+  // roster entries through the same key path the wave-hull runway uses.
+  _warmSectorRecipeStubs(placeStubs, shipStubs, roster, sectorId) {
     for (const stub of placeStubs) {
-      Promise.resolve(warmPackagedEntityDecode(this, stub, null, false, sectorStubs.sectorId)).catch(() => {});
+      Promise.resolve(warmPackagedEntityDecode(this, stub, null, false, sectorId)).catch(() => {});
     }
-    for (const stub of shipStubs) warmSaveEnvelopeEntityDecode(this, stub, sectorStubs.sectorId);
+    for (const stub of shipStubs) warmSaveEnvelopeEntityDecode(this, stub, sectorId);
     // Roster entries decode through the same authored preload the spawn kick uses. The
     // menu-dwell caller is mode-free, so warmEnemyRosterDecode's flight/loading gate is
     // reproduced inline rather than invoked.
@@ -12794,10 +12820,56 @@ export const render = {
       if (!stub) continue;
       Promise.resolve(preloadAuthoredAssetsForEntity(this.renderer, stub, {
         residencyRole: 'save-envelope-decode-runway',
-        sectorId: sectorStubs.sectorId,
+        sectorId,
       })).catch(() => {});
-      warmKillHulkDecode(this, stub, sectorStubs.sectorId);
+      warmKillHulkDecode(this, stub, sectorId);
     }
+  },
+
+  // New-game embark dwell: the only embark screen with no speculation emit used to pay every
+  // sector_helios_prime decode inside the loading window. A fresh run has no records — the
+  // enumerable authored cast is sector-def rows (stations, gates, POI landmarks, field heads,
+  // literal palette dressing; salted kit/wreck picks only when the emit carried a seed the
+  // launch will actually use) plus compile constants: the 47-A opening scene (carrier hulk,
+  // evidence spindle, wasp/mule cast), the picked starter hull, and the scripted onboarding
+  // cohort's roster hulls. seed==null skips every seed-hashed enumeration branch instead of
+  // warming seed-1's wrong files.
+  _prefetchEmbarkVisuals(payload) {
+    if (!payload || !this.renderer) return;
+    const sectorId = typeof payload.sectorId === 'string' && payload.sectorId
+      ? payload.sectorId
+      : null;
+    if (!sectorId) return;
+    const seed = Number.isFinite(payload.seed) ? payload.seed : null;
+    const data = {
+      world: { currentSectorId: sectorId, records: { byId: {} } },
+      meta: seed == null ? {} : { seed },
+      entities: { persistent: [] },
+    };
+    const sectorStubs = saveEnvelopeSectorStubs(data);
+    const fullExtras = saveEnvelopeFullExtrasStubs(data);
+    const placeStubs = sectorStubs.placeStubs.concat(fullExtras.placeStubs);
+    const shipStubs = sectorStubs.shipStubs.concat(fullExtras.shipStubs);
+    const roster = sectorStubs.roster.concat(fullExtras.roster);
+    // The opening scene's cast is compile-constant: wasp/mule hulls via the ship lane, the
+    // carrier hulk + evidence spindle through their packaged-prop resolution (a wreck-typed
+    // stub would take the hash-picked residue table instead of the authored slice files).
+    shipStubs.push(
+      { type: 'ship', factionId: 'faction_reavers', data: { defId: 'ship_wasp' } },
+      { type: 'ship', factionId: 'faction_free', data: { defId: 'ship_mule' } },
+    );
+    placeStubs.push(
+      { type: 'payload', alive: true, data: { packagedPropFile: 'pods/pod_47a_evidence_spindle.glb', packagedPropSlot: 'pod' } },
+      { type: 'payload', alive: true, data: { packagedPropFile: 'places/place_dead_hulk.glb', packagedPropSlot: 'place' } },
+    );
+    // The picked starter hull is the one body the first frame must show.
+    if (typeof payload.shipDefId === 'string' && payload.shipDefId) {
+      shipStubs.push({ type: 'ship', data: { defId: payload.shipDefId } });
+    }
+    // The scripted onboarding cohort (raid raider + claims patrol) resolves its faction like
+    // makeEnemySpawnSpec does — def faction or the lawful fallback.
+    roster.push(...scriptedOnboardingRosterRows());
+    this._warmSectorRecipeStubs(placeStubs, shipStubs, roster, sectorStubs.sectorId);
   },
 
   // PQ-210.00 Crucible roster prewarm. A wave that introduces a hull the GPU has never drawn

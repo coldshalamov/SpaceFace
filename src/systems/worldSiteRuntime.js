@@ -108,6 +108,14 @@ export function captureWorldSitePayloadState({
   const index = state.entityIndex;
   const byWorldRecordId = index && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
   const pickupScan = index && Array.isArray(index.pickups) ? index.pickups : null;
+  // Coverage-provable index: when _indexedIds mirrors every live entities entry, a
+  // byWorldRecordId miss is the authoritative answer — a consumed pod would walk the
+  // whole map forever for a provably-absent holder.
+  const entities = state.entities instanceof Map ? state.entities : null;
+  const covered = !!(byWorldRecordId && entities
+    && index.ready === true
+    && index._indexedIds instanceof Set
+    && index._indexedIds.size === entities.size);
   for (const payload of manifest.payloads) {
     const durable = record.payloads && record.payloads[payload.id];
     if (!durable || durable.status !== 'released') continue;
@@ -120,6 +128,8 @@ export function captureWorldSitePayloadState({
         if (holder.alive !== false && holder.data
             && holder.data.worldSiteId === manifest.id
             && holder.data.worldSitePayloadId === payload.id) live = holder;
+      } else if (covered) {
+        indexAnswered = true;
       }
     }
     if (!live && !indexAnswered) {
