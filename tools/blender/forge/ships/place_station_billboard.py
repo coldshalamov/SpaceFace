@@ -79,10 +79,10 @@ def build():
         _box(s, f'BlockD{e:+d}', (-2.2, e * 0.68, -2.4), (4.8, 0.06, 1.6),
              material='glow_warm', bevel=0.0)
     # corner status lamps ride the tilted board
-    for tag, c, fin in (('LampTL', (-6.6, -0.62, 3.9), 'glow_red'),
-                        ('LampTR', (6.6, -0.62, 3.9), 'glow_green'),
-                        ('LampBL', (-6.6, -0.62, -3.9), 'glow_amber'),
-                        ('LampBR', (6.6, -0.62, -3.9), 'glow_amber')):
+    for tag, c, fin in (('LampTL', (-6.6, 0.62, 3.9), 'glow_red'),
+                        ('LampTR', (6.6, 0.62, 3.9), 'glow_green'),
+                        ('LampBL', (-6.6, 0.62, -3.9), 'glow_amber'),
+                        ('LampBR', (6.6, 0.62, -3.9), 'glow_amber')):
         F.light(s, tag, _tilt(c), fin, size=0.28)
 
     # --- the frame: splayed A-legs under the board's swing path --------------------
@@ -128,10 +128,10 @@ def build():
     lat = []
     for i in range(6):
         x = -5.5 + i * 2.2
-        lat.append((_tilt((x, 0.75, -0.1)), (0.16, 0.16, 7.6), 0.0))
+        lat.append((_tilt((x, -0.75, -0.1)), (0.16, 0.16, 7.6), 0.0))
     for i in range(4):
         z = -3.2 + i * 2.2
-        lat.append((_tilt((0, 0.75, z)), (12.6, 0.16, 0.16), 0.0))
+        lat.append((_tilt((0, -0.75, z)), (12.6, 0.16, 0.16), 0.0))
     for i, (c, sz, rz) in enumerate(lat):
         F.box(s, f'BackLattice{i}', c, sz, material='gunmetal', bevel=0.0,
               rot=(TILT, 0, 0))
