@@ -496,7 +496,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   );
   assert.deepEqual(
     Object.keys(oldEnds[0]).sort(),
-    ['endedAt', 'reason', 'targetId'],
+    ['endedAt', 'reason', 'seed', 'targetId'],
     're-init end payload contains only the documented fields',
   );
   assert.equal(nextFixture.state.player.flybyFocus.active, false, 'new state starts with no Focus lease');
