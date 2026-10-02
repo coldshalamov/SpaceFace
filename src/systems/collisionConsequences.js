@@ -7,7 +7,7 @@
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
-import { bodyLife, evidenceForConsequence } from '../combat/stuntEvidence.js';
+import { bodyLife, evidenceForConsequence, evidenceForConsequenceLive } from '../combat/stuntEvidence.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
@@ -112,7 +112,10 @@ export const collisionConsequences = {
     const b = entityById(state, payload.bId);
     if (!a || !b || a === b || a.alive === false || b.alive === false) return;
     const tick = nonNegativeTick(Number.isFinite(payload.tick) ? payload.tick : state.tick);
-    if (!this._admitPair(a.id, b.id, tick)) return;
+    // physics interns the identical sorted pair key on the pooled payload — reuse it instead
+    // of allocating `${a}\0${b}` again per admitted contact.
+    const internedKey = typeof payload.pairKey === 'string' ? payload.pairKey : null;
+    if (!this._admitPair(a.id, b.id, tick, internedKey)) return;
     const exchangedMomentum = Math.max(0, finite(payload.impulse, payload.dp));
     if (!(exchangedMomentum > 0)) return;
 
@@ -255,7 +258,9 @@ export const collisionConsequences = {
     _evidenceArg.surface = ['asteroid', 'planet'].includes(other.type)
       ? 'terrain' : other.type === 'station' ? 'structure' : 'craft';
     _evidenceArg.otherMass = positiveMass(other);
-    const observed = evidenceForConsequence(_evidenceArg, state);
+    // Probe only: five scalars are read synchronously below and the record is dropped — the
+    // live-journal query skips a per-direction structuredClone the emit payload still pays.
+    const observed = evidenceForConsequenceLive(_evidenceArg, state);
     let provenance = ramPlate?.provenance || causalProvenance;
     if (!ramPlate?.provenance && observed) {
       // Sync-read by resolveCollisionConsequence's normalizeProvenance copy — a scratch is
@@ -450,8 +455,8 @@ export const collisionConsequences = {
     });
   },
 
-  _admitPair(aId, bId, tick) {
-    const key = pairKey(aId, bId);
+  _admitPair(aId, bId, tick, internedKey = null) {
+    const key = internedKey || pairKey(aId, bId);
     const previous = this._pairTicks.get(key);
     if (Number.isFinite(previous) && tick - previous < COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS) return false;
     this._pairTicks.set(key, tick);

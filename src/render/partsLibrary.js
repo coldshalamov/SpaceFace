@@ -7555,7 +7555,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
-      authored = buildComposedShip(entity, library, scene, boundary, options);
+      authored = await buildComposedShipAsync(entity, library, scene, boundary, options);
     } finally {
       recordAdmissionSlice(compositionStartedAtMs, 'compose');
       endAdmissionPhase(phaseTimings, 'compose', compositionStartedAtMs);
@@ -8048,7 +8048,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
         if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
-        composed = buildComposedShip(entity, library, scene, boundary, {
+        composed = await buildComposedShipAsync(entity, library, scene, boundary, {
           ...options,
           requiredWholeShip: true,
           forceWholeShipFile: file,
@@ -8169,7 +8169,7 @@ async function commitAuthoredBoundary(
   };
   const authored = preparedAuthored || (
     mayComposeAuthoredShipLive(liveComposeOptions)
-      ? buildComposedShip(entity, library, scene, boundary, options)
+      ? await buildComposedShipAsync(entity, library, scene, boundary, options)
       : null
   );
   if (!authored) {
@@ -8186,6 +8186,15 @@ async function commitAuthoredBoundary(
     boundary.userData.authoredAssetState = 'unavailable';
     boundary.userData.authoredVisualRoot = 'none-build-failed';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+    return false;
+  }
+  // Composition may now span frames: re-run the staleness gate after it resolves so a
+  // re-admission or abort that landed mid-compose cannot publish a stale-era ship.
+  if ((options.admissionEpoch != null && boundary.userData.admissionEpoch != null
+        && boundary.userData.admissionEpoch !== options.admissionEpoch)
+      || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
+      || (entity && entity.alive === false)) {
+    await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
     return false;
   }
   if (options.deferBoundaryPublication === true
@@ -8742,7 +8751,7 @@ function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
   return library;
 }
 
-function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
+function* composedShipSteps(entity, library, scene, ownerBoundary, options = {}) {
   const releaseMode = isReleaseAssetMode(options);
   const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
   const assemblySeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
@@ -8826,6 +8835,31 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   root.add(hull);
   root.userData.hull = hull;
 
+  // Every entity-derived pick is resolved here, before the first yield — the async driver
+  // may interleave frames between part instantiations, and a loadout change mid-compose must
+  // not assemble a torn hull-weapons-mismatch under a templateKey that no longer matches it.
+  const hullRecord = selected.get('hull');
+  const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
+  const shipDef = SHIP_BY_ID.get(entity.data && entity.data.defId) || null;
+  const weaponMounts = wholeShip
+    ? [] : authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed);
+  const podMounts = wholeShip
+    ? [] : authoredPodMounts(entity, shipDef, library.get('pod') || [], assemblySeed);
+  const gearMount = wholeShip
+    ? null : authoredGearMount(entity, shipDef, library.get('gear') || [], assemblySeed);
+  const greebleMounts = wholeShip
+    ? [] : authoredGreebleMounts(entity, shipDef, library.get('greeble') || [], assemblySeed);
+  const podRecordsForFit = library.get('pod') || [];
+  const greebleRecordsForFit = library.get('greeble') || [];
+  const authoredJobs = wholeShip ? authoredHullJobs(hullRecord) : null;
+  const integrated = wholeShip && hullIntegratesHardpoints(hullRecord);
+  const fittedMounts = integrated
+    ? [] : fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed);
+  const fitWeaponMounts = (wholeShip && !integrated)
+    ? authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed, { fittedOnly: true })
+    : [];
+  const fittedDriveGlow = visibleFittingsForEntity(entity).driveGlow;
+
   const { materials, built: builtFallbackMaterials } = fallbackMaterials(palette, visualSeed);
   const bindings = createBindings();
   const mutableMaterials = new Map();
@@ -8841,7 +8875,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots[slot].push(record.url);
   };
 
-  const hullRecord = selected.get('hull');
+  yield;
   if (hullRecord) {
     instantiatePart(hullRecord, hull, {
       position: [0, 0, 0], targetLength: 1.72, label: 'Hull',
@@ -8850,7 +8884,6 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   } else {
     fallbackParts.push('hull');
   }
-  const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
   // Do not construct an opaque second skin when an authored hull exists; it would cover the actual
   // panel and material work. Emergency geometry exists only for a genuinely absent hull level.
   let safetyCore = null;
@@ -8868,6 +8901,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   });
   const cockpitRecord = selected.get('cockpit');
   if (cockpitRecord) {
+    yield;
     instantiatePart(cockpitRecord, hull, cockpitPlacement,
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('cockpit', cockpitRecord);
@@ -8889,6 +8923,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const engineRecord = selected.get('engine');
   if (engineRecord) {
     for (const placement of enginePlacements) {
+      yield;
       instantiatePart(engineRecord, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     }
@@ -8917,6 +8952,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const finRecord = selected.get('fin');
   for (const placement of finPlacements) {
     if (finRecord) {
+      yield;
       instantiatePart(finRecord, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     } else {
@@ -8926,14 +8962,13 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   if (finRecord) noteUsed('fin', finRecord);
   else fallbackParts.push('fin');
   } // end !wholeShip — skip cockpit/engine/fin for authored whole-ship bodies (baked in)
-  const shipDef = SHIP_BY_ID.get(entity.data && entity.data.defId) || null;
 
   if (!wholeShip) {
-  const weaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed);
   if (weaponMounts.length) {
     let mounted = 0;
     for (const mount of weaponMounts) {
       if (!mount.record) continue;
+      yield;
       instantiatePart(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('weapon', mount.record);
@@ -8942,11 +8977,11 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     if (!mounted) fallbackParts.push('weapon');
   }
 
-  const podMounts = authoredPodMounts(entity, shipDef, library.get('pod') || [], assemblySeed);
   if (podMounts.length) {
     let mounted = 0;
     for (const mount of podMounts) {
       if (!mount.record) continue;
+      yield;
       const partRoot = instantiatePart(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       if (mount.damageRole === 'armor') bindings.armor.push(partRoot);
@@ -8957,8 +8992,8 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     if (!mounted) fallbackParts.push('pod');
   }
 
-  const gearMount = authoredGearMount(entity, shipDef, library.get('gear') || [], assemblySeed);
   if (gearMount && gearMount.record) {
+    yield;
     const partRoot = instantiatePart(gearMount.record, hull, gearMount.placement,
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     bindings.secondary.push(partRoot);
@@ -8967,11 +9002,11 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('gear');
   }
 
-  const greebleMounts = authoredGreebleMounts(entity, shipDef, library.get('greeble') || [], assemblySeed);
   if (greebleMounts.length) {
     let mounted = 0;
     for (const mount of greebleMounts) {
       if (!mount.record) continue;
+      yield;
       instantiatePart(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('greeble', mount.record);
@@ -8993,11 +9028,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   // ship:appearanceChanged on any loadout change, which rebuilds this composition — the parts
   // hot-swap with the fit.
   {
-    const podRecordsForFit = library.get('pod') || [];
-    const greebleRecordsForFit = library.get('greeble') || [];
-    const authoredJobs = wholeShip ? authoredHullJobs(hullRecord) : null;
-    const integrated = wholeShip && hullIntegratesHardpoints(hullRecord);
-    for (const mount of integrated ? [] : fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed)) {
+    for (const mount of fittedMounts) {
       if (!mount.record) continue;
       // A production body that already models the hardware for this job (Kestrel's mining head)
       // shows the fit through that hardware; a second kit part on the same socket reads as a box
@@ -9013,6 +9044,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         ];
       }
       if (wholeShip) keepPlacementBehindNose(placement, mount.record, hullRecord);
+      yield;
       const partRoot = instantiatePart(mount.record, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       bindings.secondary.push(partRoot);
@@ -9020,8 +9052,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     }
   }
 
-  if (wholeShip && !hullIntegratesHardpoints(hullRecord)) {
-    const fitWeaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed, { fittedOnly: true });
+  if (wholeShip && !integrated) {
     const weaponSocketPos = hullLocalPositionForSocket(hull, 'SOCKET_Weapon_Front');
     for (let index = 0; index < fitWeaponMounts.length; index += 1) {
       const mount = fitWeaponMounts[index];
@@ -9036,12 +9067,14 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         ];
       }
       keepPlacementBehindNose(mount.placement, mount.record, hullRecord);
+      yield;
       instantiatePart(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('weapon', mount.record);
     }
   }
 
+  yield;
   staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
@@ -9049,7 +9082,6 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const primaryDrive = completeDriveBinding(bindings);
   // A fitted drive is read through the nacelle it powers: tint the bound core + plume so a
   // Fusion or Warp fit visibly re-colors the exact glow the flight VFX pulse each frame.
-  const fittedDriveGlow = visibleFittingsForEntity(entity).driveGlow;
   if (fittedDriveGlow) applyFittedDriveGlow(bindings, mutableMaterials, fittedDriveGlow);
   normalizeWaspDomeGlass(root, entity);
   const navLightBase = bindings.navLights.map((mesh) => (
@@ -9057,6 +9089,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
       ? mesh.material.emissiveIntensity : 1
   ));
 
+  yield;
   kit.finalizeShip({
     root,
     hull,
@@ -9195,6 +9228,48 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     }));
   }
   return result;
+}
+
+function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
+  const steps = composedShipSteps(entity, library, scene, ownerBoundary, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Synchronous composition runs uninterruptibly for every authored part a kit carries — a
+// heavy multi-part ship (hull + cockpit + engines + fins + mounts + fitted modules) is one
+// ms-scale block inside the frame that asked for it. This driver walks the same steps under
+// a per-slice budget: yields are no-ops while a slice stays inside the budget, so a light
+// ship still composes in a single pass, while a heavy one spreads part instantiation across
+// a few frames instead of one hitch. The yield point is rAF-paced (never a bare timer — see
+// scheduleUpgradeFrame) and the root is not published until commit, so a mid-compose frame
+// can never present a partially assembled ship.
+const COMPOSE_SLICE_MS = 4;
+
+function composeYield() {
+  if (typeof globalThis.requestAnimationFrame === 'function') {
+    return new Promise((resolve) => globalThis.requestAnimationFrame(() => resolve()));
+  }
+  return Promise.resolve();
+}
+
+async function buildComposedShipAsync(entity, library, scene, ownerBoundary, options = {}) {
+  const steps = composedShipSteps(entity, library, scene, ownerBoundary, options);
+  const now = () => (
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now()
+  );
+  let sliceStarted = now();
+  let step = steps.next();
+  while (!step.done) {
+    if (now() - sliceStarted >= COMPOSE_SLICE_MS) {
+      await composeYield();
+      sliceStarted = now();
+    }
+    step = steps.next();
+  }
+  return step.value;
 }
 
 function flightRootTemplateKey({

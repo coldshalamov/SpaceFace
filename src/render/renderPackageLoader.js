@@ -1092,7 +1092,8 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)));
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
-    await dedupeGltfTextureSources(gltf);
+    // Paced through the class lanes so clustered parse replies can't stack the sync walk.
+    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
     return gltf;
   };
 }

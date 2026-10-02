@@ -572,14 +572,35 @@ export async function loadAuthoredPart(url, options = {}) {
     ? withVisibleDecodeClass
     : (deadlineClass ? withDeadlineDecodeClass : null);
 
+  const cacheKey = `${url}::${slot || '*'}`;
+  // A deadline caller joining an in-flight ambient task still sits on the player's
+  // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
+  // time, so refcount the join for the rest of the task's settle — the same idiom the
+  // serial lane already uses, bounded to the joined task's tail.
+  // Only an unsettled join re-grades — a cached task that already resolved has no
+  // queued posts left to promote.
+  const deadlineJoin = deadlineClass
+    && runtime.pendingAssetTasks
+    && runtime.pendingAssetTasks.has(runtime.assets.get(cacheKey));
+
   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
   if (renderPackagePilot) {
+    if (deadlineJoin) {
+      // Package-path join: the pilot's admitAuthoredAssetTask dedupes the shared task, but
+      // its already-queued worker posts froze their budget class at enqueue — flush the
+      // ambient tail the same way the GLB lane does. The wrap window the caller raises
+      // around the pilot call covers the task's own tail classification, so a join needs
+      // only the promote, not a second flag wrap.
+      const budget = sharedDecodeTaskBudget();
+      const joinClass = options.admissionVisible === true ? 'visible' : 'deadline';
+      if (budget && typeof budget.promote === 'function') {
+        budget.promote(joinClass);
+      }
+    }
     return (wrapDecodeClass ? () => wrapDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
       : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
   }
   assertSourceRouteAdmitted(url);
-
-  const cacheKey = `${url}::${slot || '*'}`;
   const residency = getAssetResidency(renderer);
   const residencyOwner = options.residencyOwner || runtime.defaultResidencyOwner;
   // An ownerless warm decode has no boundary lifecycle to release its pin — a non-soft role on
@@ -599,15 +620,6 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
-  // A deadline caller joining an in-flight ambient task still sits on the player's
-  // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
-  // time, so refcount the join for the rest of the task's settle — the same idiom the
-  // serial lane already uses, bounded to the joined task's tail.
-  // Only an unsettled join re-grades — a cached task that already resolved has no
-  // queued posts left to promote.
-  const deadlineJoin = deadlineClass
-    && runtime.pendingAssetTasks
-    && runtime.pendingAssetTasks.has(runtime.assets.get(cacheKey));
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf))
       : () => loadGltfDocument(url, runtime.gltf))()
@@ -2079,7 +2091,10 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
 export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
     const gltf = await scheduleGltfParse(() => loader.loadAsync(url));
-    await dedupeGltfTextureSources(gltf);
+    // The dedupe's texture walk + source bookkeeping is synchronous — pace it through the
+    // class lanes so a parse-cluster burst can't stack several walks in one microtask drain.
+    // Its async digests already yield off-main.
+    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
     return gltf;
   }
   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
@@ -2093,7 +2108,7 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const errors = validateWholeShipJsonDocument(url, gltf);
   if (errors.length) throw new AssetContractError(url, errors);
   const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)));
-  await dedupeGltfTextureSources(parsed);
+  await scheduleGltfCompile(() => dedupeGltfTextureSources(parsed), activeDecodeClass());
   return parsed;
 }
 

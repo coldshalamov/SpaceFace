@@ -12690,6 +12690,10 @@ export const render = {
     const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
       includePrefetch: true,
     });
+    // Presentation tier: the prewarm census + full-extras + roster warm are a bounded sweep
+    // of decode posts — drain-lane work, not something the jump emit should pay inside the
+    // update tick. The payload already carries the target sector, so the ≤4-frame lag
+    // against a multi-second charge window changes nothing the warm covers.
     onBus('jump:chargeStart', ({ targetSectorId, via, interdictionPool } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
       // A REDUCED-resident destination mounts its FULL-extras cohort (dressing, ambient
@@ -12701,7 +12705,7 @@ export const render = {
       if (via === 'drive' && Array.isArray(interdictionPool) && interdictionPool.length) {
         warmEnemyRosterDecode(this, interdictionPool, 'interdiction-decode-runway', targetSectorId);
       }
-    });
+    }, { presentation: true });
     // An unfiled jump's destination only exists at confirm — the chargeStart arm above
     // no-ops on its null targetSectorId, leaving the whole post-confirm charge window
     // (~3.5-8s; chargeT is frozen until _unfiledConfirmed) unused while the destination
@@ -12715,7 +12719,7 @@ export const render = {
       if (Array.isArray(interdictionPool) && interdictionPool.length) {
         warmEnemyRosterDecode(this, interdictionPool, 'interdiction-decode-runway', returnSectorId);
       }
-    });
+    }, { presentation: true });
     // A disrupted lane segment only publishes while the player closes on it inside the
     // corridor — the fire's own trigger is crossing the boundary, so this approach arm is
     // the only decode lead its squad gets. Presentation tier: the plan replay and decode
