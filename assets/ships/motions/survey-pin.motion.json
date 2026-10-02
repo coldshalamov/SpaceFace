@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_SURVEY_PIN",
- "sourceGlbSha256": "e3364a24e851b93ebc91d656e5b91987f9b02d25be0b2e4130c382b097784a64",
+ "sourceGlbSha256": "8d159930983087a603f2e296d4e351e30a48ede0dd785d078a09b0b50fd59460",
  "fps": 60,
  "bindings": [
   {
