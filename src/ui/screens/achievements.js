@@ -16,6 +16,7 @@ import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 import { createMedalOrrery, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
 import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
 import { decrypt, rollTo } from '../orrery/text.js';
+import ACHIEVEMENT_MEDALS_MANIFEST from '../../../assets/ui/generated/achievements/manifest.json' with { type: 'json' };
 
 export const ACHIEVEMENT_SECTIONS = Object.freeze([
   Object.freeze({ id: 'all', label: 'All' }),
@@ -98,7 +99,10 @@ function medalArt(row) {
   if (DRAWN_EMBLEM[row.id]) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
   // a hidden deed is a plain medallion: scrambled telemetry until it is earned, then its glyph
   if (row.hidden) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
-  return { url: MEDAL_ROOT + 'medal-' + String(row.id).replace(/_/g, '-') + '.webp', glyph: false };
+  // A deed the sheet never produced a medal for takes the plain medallion with its glyph — asking
+  // for medal-<id>.webp that was never cut is a 404 and an empty face (has-art hides the glyph).
+  const file = ACHIEVEMENT_MEDALS_MANIFEST.medals && ACHIEVEMENT_MEDALS_MANIFEST.medals[row.id];
+  return { url: MEDAL_ROOT + (file || 'medal-base.webp'), glyph: !file };
 }
 
 function glyphFor(row, size = 30) {
