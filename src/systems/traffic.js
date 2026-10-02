@@ -4690,8 +4690,17 @@ export const traffic = {
     // site through a full entity scan was O(routedFreighters × entities) at 60 Hz. The index is
     // built before the stepper loop, whose world-site branch only reads positions and writes
     // intent, so the entity set it snapshots is the same one each per-freighter scan saw.
+    // Live index read when available: the stepper only needs get/set, and misses fall
+    // through to the same reseeding entity walk either way — so copying the whole map into a
+    // scratch Map every tick buys nothing once byWorldRecordId is the source.
+    const liveWorldRecordMap = anyWorldSiteRoute
+      && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true
+      && state.entityIndex.ready === true
+      && state.entityIndex.byWorldRecordId instanceof Map
+      ? state.entityIndex.byWorldRecordId : null;
     const worldRecordIndex = anyWorldSiteRoute
-      ? buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
+      ? liveWorldRecordMap
+        || buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
       : null;
     // Retained per-tick options record: _ambientPlanGate reads playerId/playerTeam/
     // authorityRadius/origin synchronously, so the same object is rewritten each update.
@@ -4779,7 +4788,7 @@ export const traffic = {
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
-        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex);
+        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex, worldRecordIndex === liveWorldRecordMap);
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
@@ -4875,11 +4884,14 @@ export const traffic = {
     this._maintainYardTugJobs();
   },
 
-  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null) {
+  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null, worldRecordIndexIsLive = false) {
     const route = rec.worldSiteRoute;
     // The per-tick map can miss a carrier stamped with its record id after spawn; the helper
     // resolves those through the same entity walk and reseeds the index map on a hit.
     let site = worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId);
+    // Live index rows aren't alive-filtered like the scratch copy — a dead-but-still-mapped
+    // carrier resolves the same way the copy's undefined did: through the walk below.
+    if (site && site.alive === false) site = null;
     if (!site) {
       // A permanently-absent site is the index's documented negative hole: the map cannot
       // cache a miss, so every routed freighter otherwise re-walks the entity set per tick.
@@ -4895,7 +4907,10 @@ export const traffic = {
       if (!memo.ids.has(route.siteWorldRecordId)) {
         site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
         if (site) {
-          if (worldRecordIndex) worldRecordIndex.set(route.siteWorldRecordId, site);
+          // A walk-hit on the live index already registered itself (count + marker + lane
+          // via registerEntityWorldRecordId inside indexedWorldRecordEntity) — a bare set
+          // would diverge the bookkeeping. The scratch copy still needs its per-tick reseed.
+          if (worldRecordIndex && !worldRecordIndexIsLive) worldRecordIndex.set(route.siteWorldRecordId, site);
         } else {
           memo.ids.add(route.siteWorldRecordId);
         }
