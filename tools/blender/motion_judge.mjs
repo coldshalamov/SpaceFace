@@ -19,7 +19,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluateMotionClip } from '../../src/contracts/motionBank.js';
+import { bindAuthoredMotion, evaluateMotionClip } from '../../src/contracts/motionBank.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const MOTIONS_DIR = join(ROOT, 'assets/ships/motions');
@@ -118,10 +118,12 @@ function judgeClip(bank, clip, predecessors) {
       violations.push(`${clipName}/${key}: sustained acceleration ${drive.toFixed(0)} > ${accMax} — weightless`);
     }
 
-    // Boundary behaviour.
+    // Boundary behaviour. Overlay clips ride a held base pose — their start and end
+    // deltas are authored around that base, not rest, so rest-boundary checks don't
+    // apply (the sequence pass judges the live claim hand-off instead).
     const start = scalar(values[0]);
     const end = scalar(values[values.length - 1]);
-    if (clip.loop !== true && start > restEps) {
+    if (clip.overlay !== true && clip.loop !== true && start > restEps) {
       const grounded = (predecessors.get(key) || [])
         .some(([lo, hi]) => start >= lo - CHAIN_EPS && start <= hi + CHAIN_EPS + restEps);
       if (!grounded) {
@@ -132,7 +134,7 @@ function judgeClip(bank, clip, predecessors) {
         }
       }
     }
-    if (clip.endMode === 'rest' && !clip.loop) {
+    if (clip.endMode === 'rest' && !clip.loop && clip.overlay !== true) {
       if (end > restEps * 3) {
         violations.push(`${clipName}/${key}: 'rest' clip ends ${end.toFixed(3)} off rest — pops on settle`);
       } else if (end > restEps) {
@@ -184,6 +186,178 @@ function predecessorEnvelopes(bank) {
   return env;
 }
 
+// ---------------------------------------------------------------------------
+// Sequence pass: replay a canonical event script through a real bound controller on
+// stub nodes and measure the pose each update lands. Supersede/drain/settle bugs are
+// invisible to the static pass — it never runs the state machine — so claim hand-backs,
+// mid-flight interrupts and ambient resumes get judged here at the pose level.
+//
+// Ops: ['ev', type] fires the bank event; ['wait', s] advances the sim clock;
+// ['settle', groups, durS, holdClip?] calls controller.settleGroups exactly as the
+// authoredMotion handlers do; ['expectDrives', clip] / ['expectRest', group] assert
+// liveness/park afterwards.
+const SEQ_HZ = 60;
+const SEQ_ROT_POP = 0.30;   // rad of node rotation inside one update = a snap
+const SEQ_POS_POP = 0.35;   // WU of node translation inside one update = a teleport
+const SEQ_ROT_WARN = 0.15;
+const SEQ_POS_WARN = 0.18;
+
+function stubNode(name, restT, restQ) {
+  return {
+    name, isMesh: true, visible: true, children: [], parent: null,
+    userData: {}, matrixAutoUpdate: true,
+    position: { x: restT[0], y: restT[1], z: restT[2], set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+    quaternion: {
+      x: restQ[0], y: restQ[1], z: restQ[2], w: restQ[3],
+      set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; },
+    },
+  };
+}
+
+const SEQUENCES = {
+  'drill-platform': [
+    ['ev', 'drill:start'], ['ev', 'drill:feed'], ['wait', 1.2], ['ev', 'drill:break'],
+    ['wait', 0.7], ['ev', 'drill:break'], ['wait', 2.0], ['ev', 'drill:end'],
+    ['wait', 2.6], ['expectDrives', 'drill_idle'],
+  ],
+  'jump-ring': [
+    ['ev', 'gate:index'], ['wait', 0.9], ['ev', 'jump:chargeTick'], ['wait', 1.3],
+    ['ev', 'jump:chargeTick'], ['wait', 1.3], ['expectDrives', 'index'],
+    ['ev', 'gate:reset'], ['wait', 1.6], ['expectDrives', 'emitter_roll'],
+  ],
+  'interdiction-buoy': [
+    // Full bloom, then the drop: petals_close plus the handler's core spool-down settle.
+    ['ev', 'interdiction:triggered'], ['wait', 2.0], ['ev', 'cruise:snareRequest'],
+    ['wait', 0.7], ['ev', 'cruise:dropped'], ['settle', ['snare_core'], 0.9],
+    ['wait', 1.8],
+    // Mid-bloom abort: the handler settles the whole rig home instead of firing close.
+    ['ev', 'interdiction:triggered'], ['wait', 0.6],
+    ['settle', ['snare_petal_0', 'snare_petal_1', 'snare_petal_2', 'snare_petal_3',
+      'snare_petal_4', 'snare_petal_5', 'snare_core'], 0.9],
+    ['wait', 1.6], ['expectDrives', 'petal_shimmer'],
+  ],
+  'pod-cargo-container': [
+    ['ev', 'survivorPod:ejected'], ['wait', 0.9], ['ev', 'survivorPod:rescueSelected'],
+    ['wait', 2.0], ['ev', 'survivorPod:delivered'], ['wait', 1.6],
+  ],
+  kestrel: [
+    ['ev', 'dock:range'], ['wait', 1.8], ['ev', 'dock:docked'], ['wait', 2.2],
+    ['ev', 'dock:undocked'], ['wait', 1.6],
+    // Left range mid-deploy: the handler aborts with a settle-to-rest, not the stow clip.
+    ['ev', 'dock:range'], ['wait', 0.4],
+    ['settle', ['kestrel_strut_p', 'kestrel_strut_s', 'kestrel_strut_f'], 0.8],
+    ['wait', 1.4], ['expectDrives', 'strut_idle'],
+  ],
+  'ore-barge': [
+    // The handler gates refires on clawBusy; the bank-level probe still double-fires to
+    // prove a mid-cycle re-claim cannot pop, then waits out the restarted 4.8s cycle
+    // plus the gantry verb before expecting the ambient claw_idle back.
+    ['ev', 'traffic:oreCollected'], ['wait', 2.0], ['ev', 'npcjobs:minerRelocated'],
+    ['wait', 1.0], ['ev', 'traffic:oreCollected'], ['wait', 5.2],
+    ['expectDrives', 'claw_idle'],
+  ],
+  wasp: [
+    ['ev', 'ai:telegraph'], ['wait', 1.4], ['ev', 'encounter:predationEngaged'],
+    ['wait', 1.2], ['ev', 'ai:flee'], ['wait', 1.8], ['expectDrives', 'wasp_idle_drift'],
+  ],
+  'inspection-cutter': [
+    ['ev', 'lawfulInspection:choose'], ['wait', 1.6], ['ev', 'player:scannedByPatrol'],
+    ['wait', 2.2], ['ev', 'customs:breakScan'], ['wait', 1.6], ['expectDrives', 'scan_idle'],
+  ],
+  'freight-platform': [
+    // Handlers gate throughput on pickBusy; the raw probe still fires it mid-pick to
+    // prove the claim hand-off can't pop — then waits out the bridged 3.2s sweep.
+    ['ev', 'freight:arrival'], ['wait', 2.4], ['ev', 'station:throughput'],
+    ['wait', 4.6], ['expectDrives', 'gantry_work_idle'],
+  ],
+  'yard-tug': [
+    ['ev', 'massline:snareArmed'], ['wait', 1.2], ['ev', 'massline:snareDeployed'],
+    ['wait', 1.8], ['ev', 'tether:snapCatch'], ['wait', 0.6], ['ev', 'tether:reelPump'],
+    ['wait', 1.0], ['ev', 'massline:snareEnded'], ['wait', 1.8],
+    ['expectDrives', 'hook_dangle'],
+  ],
+  'nav-buoy': [
+    ['ev', 'capitalBoss:telegraph'], ['wait', 3.0],
+  ],
+};
+// The three dock interiors share one rig and one script shape.
+for (const variant of ['dock-interior', 'dock-interior-grit', 'dock-interior-military']) {
+  SEQUENCES[variant] = [
+    // dock:docked lands mid-anticipate — the runtime auto-bridges the gape into engage.
+    ['ev', 'dock:range'], ['wait', 0.45], ['ev', 'dock:docked'], ['wait', 2.6],
+    ['ev', 'dock:undocked'], ['wait', 1.6], ['expectDrives', 'berth_idle'],
+  ];
+}
+
+const quatDeltaAngle = (a, b) => {
+  const d = Math.abs(a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
+  return 2 * Math.acos(Math.min(1, d));
+};
+
+function runSequence(bank, steps) {
+  const root = { children: [] };
+  for (const binding of bank.bindings) {
+    root.children.push(stubNode(binding.node, binding.restPose.translation, binding.restPose.rotation));
+  }
+  const controller = bindAuthoredMotion(root, bank);
+  const violations = [];
+  const warnings = [];
+  let now = 0;
+  // attach: the render driver fires the synthetic event on first update.
+  controller.handleEvent('authoredMotion:attach', {}, 0);
+  const snapshot = () => root.children.map((n) => ({
+    name: n.name,
+    p: [n.position.x, n.position.y, n.position.z],
+    q: [n.quaternion.x, n.quaternion.y, n.quaternion.z, n.quaternion.w],
+  }));
+  const step = () => {
+    now += 1 / SEQ_HZ;
+    const before = snapshot();
+    controller.update(now, {});
+    for (const prev of before) {
+      const node = root.children.find((n) => n.name === prev.name);
+      const dPos = Math.hypot(node.position.x - prev.p[0], node.position.y - prev.p[1], node.position.z - prev.p[2]);
+      const dRot = quatDeltaAngle(node.quaternion, { x: prev.q[0], y: prev.q[1], z: prev.q[2], w: prev.q[3] });
+      if (dRot > SEQ_ROT_POP || dPos > SEQ_POS_POP) {
+        violations.push(`seq@${now.toFixed(2)} ${prev.name}: pose jump rot ${dRot.toFixed(3)} rad, pos ${dPos.toFixed(2)} WU in one update — live-pop`);
+      } else if (dRot > SEQ_ROT_WARN || dPos > SEQ_POS_WARN) {
+        warnings.push(`seq@${now.toFixed(2)} ${prev.name}: pose jump rot ${dRot.toFixed(3)} rad, pos ${dPos.toFixed(2)} WU — abrupt hand-back`);
+      }
+    }
+  };
+  for (const op of steps) {
+    if (op[0] === 'ev') {
+      controller.handleEvent(op[1], {}, now);
+    } else if (op[0] === 'wait') {
+      const until = now + op[1];
+      while (now < until) step();
+    } else if (op[0] === 'settle') {
+      controller.settleGroups(op[2], now, op[1], op[3] || null);
+    } else if (op[0] === 'expectDrives') {
+      if (!controller.clipDrives(op[1])) {
+        violations.push(`seq@end: expected ${op[1]} to be driving — rig went dead`);
+      }
+    } else if (op[0] === 'expectRest') {
+      const binding = bank.bindings.find((b) => b.id === op[1]);
+      const node = binding && root.children.find((n) => n.name === binding.node);
+      if (node) {
+        const dPos = Math.hypot(node.position.x - binding.restPose.translation[0],
+          node.position.y - binding.restPose.translation[1],
+          node.position.z - binding.restPose.translation[2]);
+        const dRot = quatDeltaAngle(node.quaternion, {
+          x: binding.restPose.rotation[0], y: binding.restPose.rotation[1],
+          z: binding.restPose.rotation[2], w: binding.restPose.rotation[3],
+        });
+        if (dPos > REST_POS_EPS || dRot > REST_ANGLE_EPS) {
+          violations.push(`seq@end: ${op[1]} rests ${dPos.toFixed(3)} WU / ${dRot.toFixed(3)} rad off rest`);
+        }
+      }
+    }
+  }
+  controller.dispose();
+  return { violations, warnings };
+}
+
 const args = process.argv.slice(2);
 const only = args.find((a) => a.startsWith('--bank='))?.slice('--bank='.length);
 const files = readdirSync(MOTIONS_DIR)
@@ -200,6 +374,25 @@ for (const file of files.sort()) {
   const bank = JSON.parse(readFileSync(join(MOTIONS_DIR, file), 'utf8'));
   const predecessors = predecessorEnvelopes(bank);
   const lines = [];
+  // Same-group-claim: a one-shot non-overlay clip channeling a LOOP's group kills the
+  // loop's coverage permanently when it drains (supersede marks survive the claimer).
+  // Intentional for state transitions (drill:end parks over the spin loop); anything
+  // transient should be overlay:true so the loop gets its groups back. The ambient loop
+  // is exempt: nothingDriving() re-arms it the frame its last claimer stops driving.
+  const ambientName = bank.events && bank.events['authoredMotion:attach'];
+  const loops = (bank.clips || []).filter((c) => c.loop === true && c.name !== ambientName);
+  for (const clip of bank.clips || []) {
+    if (clip.loop || clip.overlay === true) continue;
+    const claimed = new Set(clip.channels.map((ch) => ch.group));
+    for (const loop of loops) {
+      const shared = loop.channels.map((ch) => ch.group).filter((g) => claimed.has(g));
+      for (const group of new Set(shared)) {
+        const msg = `  warn ${clip.name}/${group}: claims a group from loop ${loop.name} without overlay — the loop stays superseded after drain`;
+        lines.push(msg);
+        warns += 1;
+      }
+    }
+  }
   for (const clip of bank.clips || []) {
     const { violations, warnings, stats } = judgeClip(bank, clip, predecessors);
     lines.push(...violations.map((v) => `  FAIL ${v}`), ...warnings.map((w) => `  warn ${w}`));
@@ -208,6 +401,13 @@ for (const file of files.sort()) {
     if (stats.maxAcc > worst.acc) {
       worst = { acc: stats.maxAcc, step: stats.maxStep, vel: stats.maxVel, who: `${file}:${clip.name}` };
     }
+  }
+  const seq = SEQUENCES[bank.rigId] || SEQUENCES[file.replace(/\.motion\.json$/, '')];
+  if (seq) {
+    const { violations, warnings } = runSequence(bank, seq);
+    lines.push(...violations.map((v) => `  FAIL ${v}`), ...warnings.map((w) => `  warn ${w}`));
+    failures += violations.length;
+    warns += warnings.length;
   }
   const verdict = lines.some((l) => l.startsWith('  FAIL')) ? 'FAIL' : lines.length ? 'WARN' : 'PASS';
   console.log(`${verdict} ${file} (${(bank.clips || []).length} clips)`);

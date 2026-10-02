@@ -58,8 +58,9 @@ def author(bank):
         ping.key('pod_ping', t, loc=(PING_HOME_X + PING_TRAVEL * f, 0.0, 1.05))
 
     steady = bank.clip('pod_steady', 1.6, loop=False, end_mode='rest')
-    # Damp the roll to flat over ~1.5s with a final settle bump; the runtime
-    # blends entry from wherever the loop left the shell.
+    # Damp the roll to flat over ~1.5s with a final settle bump. Keys start at
+    # identity — the runtime never dispatches this mid-tumble; it settles the
+    # live pose home instead (authoredMotion onPodRescue).
     for t, f in [(0.0, 1.0), (0.5, 0.6), (0.9, 0.28), (1.2, 0.10),
                  (1.4, 0.04), (1.6, 0.0)]:
         steady.key('pod_shell', t, rot=Euler((2 * math.pi * (1.0 - f), 0.0, 0.0)))

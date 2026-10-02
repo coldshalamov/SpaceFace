@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "drill_platform",
  "sourceAssetId": "place_drill_platform",
- "sourceGlbSha256": "115b0c011eb5a6bd58d48aaacf2f349eb97a90b77a864f1d68583f3ca8934be3",
+ "sourceGlbSha256": "fb38abe09a26fc6d780ad6fe1b9ad9948e25a03257a48b1791c98a58411ad915",
  "fps": 60,
  "bindings": [
   {
@@ -39,6 +39,32 @@
     "translation": [
      0,
      4.400000095367432,
+     0
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  },
+  {
+   "id": "drill_crown",
+   "node": "MOTION_DRILL_CROWN",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     0,
+     11.399999618530273,
      0
     ],
     "rotation": [
@@ -156,7 +182,7 @@
    "endMode": "rest",
    "channels": [
     {
-     "group": "drill_string",
+     "group": "drill_crown",
      "path": "rotation",
      "times": [
       0.0,

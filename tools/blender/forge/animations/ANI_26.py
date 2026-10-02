@@ -8,11 +8,12 @@ stall, and session end parks everything back to rest.
 Groups
   drill_string — the string + bit, spinning under the crown.
   drill_collar — feed collar that creeps down the string in ratchet steps.
+  drill_crown — torque crown on the derrick top, takes the stall kicks.
 
 Clips
 - drill_spin_up (1.4s, loop): continuous string yaw, quarter-turn keys.
 - drill_feed (6s, loop): collar ratchet creep — three down-steps, spring reset.
-- drill_stall_kick (0.5s, rest): torque-stall shudder on the string.
+- drill_stall_kick (0.5s, rest): torque-stall shudder on the drive crown.
 - drill_park (1.4s, rest): collar lifts home and the string unwinds.
 
 Triggers: `drill:start` -> drill_spin_up (+ side-band `drill:feed` ->
@@ -38,9 +39,10 @@ COLLAR_HOME_Z = 4.4
 
 
 def register(ship, parts):
-    """parts: {'string': [objs], 'collar': obj}."""
+    """parts: {'string': [objs], 'collar': obj, 'crown': obj}."""
     ship.motion_group('drill_string', pivot=(0.0, 0.0, 10.6), objects=list(parts['string']))
     ship.motion_group('drill_collar', pivot=(0.0, 0.0, 4.4), objects=[parts['collar']])
+    ship.motion_group('drill_crown', pivot=(0.0, 0.0, 11.4), objects=[parts['crown']])
 
 
 def author(bank):
@@ -55,10 +57,13 @@ def author(bank):
                  (4.6, 2.0), (4.8, 3.0), (5.6, 3.0), (6.0, 0.0)]:
         feed.key('drill_collar', t, loc=(0.0, 0.0, COLLAR_HOME_Z - FEED_STEP * f))
 
+    # The kick rocks the torque crown, never the string: keying the spinning group
+    # would both pop the string to a fixed first key and permanently supersede the
+    # spin loop — the platform would freeze at its busiest moment.
     kick = bank.clip('drill_stall_kick', 0.5, loop=False, end_mode='rest')
     for t, f in [(0.0, 0.0), (0.08, 1.0), (0.18, -0.55), (0.3, 0.3),
                  (0.42, -0.1), (0.5, 0.0)]:
-        kick.key('drill_string', t, rot=Euler((0.0, 0.0, STALL_RAD * f)))
+        kick.key('drill_crown', t, rot=Euler((0.0, 0.0, STALL_RAD * f)))
 
     park = bank.clip('drill_park', 1.4, loop=False, end_mode='rest')
     # Park must claim the string too or the spin loop owns it forever after

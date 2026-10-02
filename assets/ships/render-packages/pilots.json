@@ -497,8 +497,8 @@
       "slot": "place",
       "releaseAssetId": "place_drill_platform",
       "sourceUrl": "assets/ships/release/parts/places/place_drill_platform.glb",
-      "releaseSha256": "63577e2ddcb0f3699f63a96700dacde943e716e424763861edcff50d996c1294",
-      "releaseBytes": 425484,
+      "releaseSha256": "f62f698ae97e41ea0b67c905661395b40b2e2046a4e43f59c18a302938184407",
+      "releaseBytes": 429992,
       "rootNode": "SF_PLACE_DRILL_PLATFORM_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -1247,8 +1247,8 @@
       "slot": "place",
       "releaseAssetId": "place_gate_jump_ring",
       "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-      "releaseSha256": "14e9d9ebcdd84dff75a065fe1f9f3fb790f2ab673a4e050d7e82da3330fe2995",
-      "releaseBytes": 1962388,
+      "releaseSha256": "5342739fd92a4c2f4c63f4c436cc0a50b3c154ced24b1f3bb716a7b579dd2dc9",
+      "releaseBytes": 1965004,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

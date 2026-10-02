@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "332a74e45cce623a30f26b05af1bcce8b0051d9be29ce7c0b155e1b1ad03ca59",
+  "contentHash": "cb932b9a4c66ac9b0b4d7cdab933e65e625b9422f05f8c2675b3f717abd8e995",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1119,7 +1119,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "6ebc266fb03b3fffe5574f35251e48f0ebba2feaa1a5838e9cd6c295a155b35e",
+      "sha256": "b9b3fba23aa946c4f73860dced34a60cfe4a6f87a9fdd918131fe86c3480defd",
       "uri": "pilots.json"
     }
   },
@@ -1615,7 +1615,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_a.glb"
   },
-  "runtimeHash": "1a63d3ed7a0bf5b28b4fabb65ec3db5092b88dc8b095dca80dd0148fe7a6e7f6",
+  "runtimeHash": "1dbcf8f390869402f1db2f40d6396865e863ae4945f7a66c53cd7b23db76a625",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

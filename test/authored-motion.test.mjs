@@ -630,7 +630,11 @@ test('ambient loop re-enters when the last event clip drains', () => {
   assert.ok(controller.clipActive('hum'));
   controller.handleEvent('test:kick', {}, 1);
   assert.ok(controller.clipActive('kick'));
-  ship.userData.updateAuthoredMotion({ id: 'ent-amb2' }, 2.0); // kick drained (dur 0.5)
+  // Kick's claim auto-bridges (hum mid-loop vs kick's key0); the bridge drains on this
+  // update and chains into kick — the clip itself starts here, so one more tick past its
+  // 0.5s length is what drains it.
+  ship.userData.updateAuthoredMotion({ id: 'ent-amb2' }, 2.0);
+  ship.userData.updateAuthoredMotion({ id: 'ent-amb2' }, 3.0);
   assert.equal(controller.clipActive('kick'), false);
   assert.ok(controller.clipActive('hum'), 'ambient resumed after drain');
 });
@@ -683,16 +687,19 @@ test('settle merges only live (non-superseded) channel poses', () => {
   const controller = bindAuthoredMotion(root, bank);
   controller.setState({ state: 'kick', startTimeS: 0 });
   controller.update(0.25); // kick mid-flight: arm ~0.5, gear ~0.5
-  controller.setState({ state: 'grab', startTimeS: 0.3 }); // supersedes kick's 'arm' channel
+  controller.setState({ state: 'grab', startTimeS: 0.3 }); // claims 'arm' mid-kick → auto-bridges
   const ok = controller.settle(0.5, 0.3);
   assert.ok(ok);
   controller.update(0.3);
-  // The settle clip's 'arm' pose must come from grab (delta 0.5*x at t=0.2 → ~0.1),
-  // not from kick's superseded channel (delta ~1.0).
-  const settle = controller.clipActive('__settle__1') ? '__settle__1' : null;
+  // The grab claim auto-bridges (live kick pose 0.6 vs grab's key0 0), so the settle's
+  // live 'arm' sample is the mid-bridge pose ~0.6 — the merged truth of what's driving.
+  // Kick's superseded channel must NOT leak in: alone it reads ~1.0 at clamp.
+  const settle = controller.clipActive('__settle__2') ? '__settle__2' : null;
   assert.ok(settle || controller.state !== 'rest', 'settle clip is running');
-  // arm lands near grab's pose, far from kick's superseded pose.
-  assert.ok(arm.position.x < 0.35, `arm x=${arm.position.x} should follow grab (~0.1), not kick (~0.75)`);
+  assert.ok(arm.position.x < 0.75,
+    `arm x=${arm.position.x} should follow the live merged pose (~0.6), not kick's leaked delta (~1.0)`);
+  controller.update(0.9); // settle duration elapsed → parked at rest
+  assert.ok(arm.position.x < 0.02, `arm x=${arm.position.x} should have settled to rest`);
   controller.dispose();
 });
 

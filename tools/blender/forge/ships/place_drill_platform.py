@@ -68,7 +68,7 @@ def build():
             chord=0.28, web=0.16)
     F.truss(s, 'DerrickD', (1.8, -1.8, 4.4), (0.5, -0.5, 11.0), 0.9, 4, material='paint2',
             chord=0.28, web=0.16)
-    F.box(s, 'Crown', (0, 0, 11.4), (2.0, 2.0, 1.0), material='hazard', bevel=0.06)
+    crown = F.box(s, 'Crown', (0, 0, 11.4), (2.0, 2.0, 1.0), material='hazard', bevel=0.06)
     F.beacon(s, 'CrownStrobe', (0, 0, 12.1), finish='glow_red', size=0.4)
     # drill string down through the moon pool
     drill_string = F.cylinder(s, 'DrillString', (0, 0, 10.6), (0, 0, -6.5), 0.45,
@@ -98,7 +98,8 @@ def build():
         F.cylinder(s, f'MudTank{e:+d}', (4.6, e * 4.9 - 1.4, 4.5), (4.6, e * 4.9 + 1.4, 4.5),
                    1.1, material='paint.aged', segments=14)
         F.light(s, f'MudLamp{e:+d}', (4.6, e * 4.9, 5.8), 'glow_amber', size=0.3)
-    s.ani26_bank = ANI_26.build(s, {'string': [drill_string, drill_bit], 'collar': collar},
+    s.ani26_bank = ANI_26.build(s, {'string': [drill_string, drill_bit], 'collar': collar,
+                                    'crown': crown},
                                 source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 

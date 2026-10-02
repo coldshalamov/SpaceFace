@@ -14890,7 +14890,7 @@ export const render = {
         }
       }
       if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
-      if (entity && runClosures && userData.updateAuthoredMotion) {
+      if (entity && runClosures && !farSpeck && userData.updateAuthoredMotion) {
         userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y);
       }
 

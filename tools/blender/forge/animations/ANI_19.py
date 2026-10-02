@@ -49,10 +49,14 @@ def author(bank):
                      loc=(rest.x, rest.y + dy * AMP_M * f, rest.z + dz * AMP_M * f),
                      rot=Euler((0, 0, 0)))
 
-    # Charge surge: all twelve tips punch outward together and hold a beat — the
-    # whole ring leans into the jump the way the index stroke writes a single tip.
-    # Distinct from the roll's travelling swell: synchronous, larger, one-shot.
-    surge = bank.clip('emitter_charge_surge', 1.1, loop=False, end_mode='rest')
+    # Charge surge rides ON TOP of the ANI-15 index hold: every key is the indexed
+    # pose plus an outward pulse that lands back at zero at both ends, so claiming
+    # and draining hand the tips to the held index run without a visible step.
+    # overlay=True releases its group claims on drain — the held index run takes the
+    # tips again rather than the ring freezing at rest after the first charge tick.
+    index_m = 0.55  # ANI_15.STROKE_M — the hold pose the surge's envelope orbits
+    surge = bank.clip('emitter_charge_surge', 1.1, loop=False, end_mode='rest',
+                      overlay=True)
     for i in range(N_SEG):
         am = i * step + step / 2
         rest = pivots[f'gate_tip_{i}'].matrix_basis.translation
@@ -60,8 +64,9 @@ def author(bank):
         dz = math.sin(am)
         for t, f in ((0.0, 0.0), (0.18, 0.72), (0.4, 1.0), (0.55, 1.04),
                      (0.8, 0.55), (1.0, 0.12), (1.1, 0.0)):
+            stroke = SURGE_M * f - index_m
             surge.key(f'gate_tip_{i}', t,
-                      loc=(rest.x, rest.y + dy * SURGE_M * f, rest.z + dz * SURGE_M * f))
+                      loc=(rest.x, rest.y + dy * stroke, rest.z + dz * stroke))
 
 
 EVENTS = {

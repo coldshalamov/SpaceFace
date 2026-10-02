@@ -46,6 +46,20 @@ export function motionGroupIdFor(nodeName) {
   return name.slice(MOTION_NODE_PREFIX.length).toLowerCase() || null;
 }
 
+// Auto-bridge thresholds: a claimed group further than this from the incoming clip's
+// first key earns a synthesized live→key0 blend instead of a teleport.
+const BRIDGE_POS_EPS = 0.04;   // WU — sub-pixel at any sane LOD
+const BRIDGE_ROT_EPS = 0.035;  // rad (~2°)
+const BRIDGE_MIN_S = 0.15;
+const BRIDGE_MAX_S = 0.9;
+const BRIDGE_ROT_SPEED = 4;    // rad/s — a handoff reads as mechanical, not inert
+const BRIDGE_POS_SPEED = 5;    // WU/s
+
+function quatAngleBetween(a, b) {
+  const d = Math.abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]);
+  return 2 * Math.acos(Math.min(1, d));
+}
+
 function finiteArray(value, length, label) {
   if (!Array.isArray(value) || value.length !== length) {
     throw new Error(`motion bank ${label} must be an array of ${length} finite numbers.`);
@@ -171,6 +185,9 @@ export function validateMotionBank(bank) {
     }
     if (!END_MODES.has(clip.endMode || 'rest')) {
       throw new Error(`motion bank clip ${clip.name} endMode must be rest or hold.`);
+    }
+    if (clip.overlay !== undefined && typeof clip.overlay !== 'boolean') {
+      throw new Error(`motion bank clip ${clip.name} overlay must be boolean.`);
     }
     if (!Array.isArray(clip.channels) || clip.channels.length === 0) {
       throw new Error(`motion bank clip ${clip.name} requires at least one channel.`);
@@ -500,6 +517,20 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     parked: true,
   };
   let disposed = false;
+  // run.superseded: Map<groupId, claimSeq[]> — which claims stole each channel group.
+  // A stack, not a flag: an overlay releasing its claims must hand the group back to
+  // the run that superseded the victim before IT arrived, not unmark the victim entirely.
+  const markSuperseded = (run, group, claimSeq) => {
+    const marks = run.superseded || (run.superseded = new Map());
+    const list = marks.get(group);
+    if (!list) marks.set(group, [claimSeq]);
+    else if (!list.includes(claimSeq)) list.push(claimSeq);
+  };
+  // Merge order is start-order: Map insertion tracks re-insertions, not claim
+  // chronology, so a resumed ambient must not overwrite the newer runs it lost to.
+  const runsBySeq = () => [...state.clips].sort(
+    (a, b) => (a[1].seq || 0) - (b[1].seq || 0),
+  );
   // Each settle gets its own clip name — two settles in one tick (scoped blends on
   // different rigs sharing this bank) would otherwise clobber one another by name.
   let settleSerial = 0;
@@ -510,6 +541,58 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     for (const name of [...clips.keys()]) {
       if (name.startsWith('__settle__') && !state.clips.has(name)) clips.delete(name);
     }
+  }
+
+  // Claim order across restarts — Map insertion order alone lies once a clip restarts
+  // (delete+set moves it to the end). Every run stamps its own start sequence.
+  let startSeqCounter = 0;
+
+  /**
+   * Release a drained OVERLAY clip's claims: groups it covered go back to the still-alive
+   * clips underneath (a held base pose or a running loop) — unless a run started after the
+   * overlay claims the same group (its transition owns the group now). Non-overlay clips
+   * release nothing: a state-transition clip's claims must outlive its own park, or a held
+   * predecessor would re-apply its pose the frame the newer clip deletes (deploy/stow).
+   */
+  function releaseOverlayClaims(overlayRun, overlayClip) {
+    const groups = new Set(overlayClip.channels.map((channel) => channel.group));
+    for (const group of groups) {
+      let claimedByNewer = false;
+      for (const [otherName, otherRun] of state.clips) {
+        if (otherRun.seq <= overlayRun.seq) continue;
+        const other = clips.get(otherName);
+        if (other && other.channels.some((channel) => channel.group === group)) {
+          claimedByNewer = true;
+          break;
+        }
+      }
+      if (claimedByNewer) continue;
+      for (const [otherName, otherRun] of state.clips) {
+        if (otherRun.seq >= overlayRun.seq || !otherRun.superseded) continue;
+        const other = clips.get(otherName);
+        if (other && other.channels.some((channel) => channel.group === group)) {
+          const list = otherRun.superseded.get(group);
+          if (!list) continue;
+          const idx = list.indexOf(overlayRun.seq);
+          if (idx >= 0) list.splice(idx, 1);
+          if (!list.length) otherRun.superseded.delete(group);
+        }
+      }
+    }
+  }
+
+  // Nothing owns a single channel right now: either no clips run at all or every run's
+  // channels are superseded — a rig in this state poses at rest and is eligible for
+  // ambient resume (a superseded ambient loop counts as dead, not as cover).
+  function nothingDriving() {
+    for (const [name, run] of state.clips) {
+      const clip = clips.get(name);
+      if (!clip) continue;
+      if (clip.channels.some((channel) => !(run.superseded && run.superseded.has(channel.group)))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   function restAll() {
@@ -530,7 +613,25 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const g = groups.get(id);
       return g ? g.nodes.length : 0;
     },
-    clipActive(name) { return state.clips.has(name); },
+    clipActive(name) {
+      if (state.clips.has(name)) return true;
+      // A bridge chaining into `name` is the clip in transit — gates checking 'is the
+      // verb busy' must see through the blend or they re-fire mid-hand-off.
+      for (const runName of state.clips.keys()) {
+        const clip = clips.get(runName);
+        if (clip && clip.thenClip === name) return true;
+      }
+      return false;
+    },
+    // A run that still DRIVES at least one channel: a fully-superseded hold clip stays in
+    // state.clips (it is the state owner a transient rides over) but poses nothing, so
+    // 'is this clip posing the rig' must look past presence to live channels.
+    clipDrives(name) {
+      const run = state.clips.get(name);
+      const clip = clips.get(name);
+      if (!run || !clip) return false;
+      return clip.channels.some((channel) => !(run.superseded && run.superseded.has(channel.group)));
+    },
     activeClipNames() { return [...state.clips.keys()]; },
     // Bus-side stale-state probe: a hold-ended clip keeps its group claimed, so 'any clip
     // touching these groups' is the truth for whether a rig is still posed (a rebuilt
@@ -568,7 +669,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       const at = Number.isFinite(timeS) ? timeS : 0;
       const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
       const merged = new Map();
-      for (const [name, run] of state.clips) {
+      for (const [name, run] of runsBySeq()) {
         const clip = clips.get(name);
         if (!clip) continue;
         const t = (at - run.startS) * run.rateScale;
@@ -601,7 +702,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       };
       clips.set(settleName, settleClip);
       state.clips.clear();
-      state.clips.set(settleName, { startS: at, rateScale: 1 });
+      state.clips.set(settleName, { startS: at, rateScale: 1, seq: ++startSeqCounter });
       trimParkedSettles();
       state.latest = settleName;
       state.parked = false;
@@ -616,14 +717,19 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      * choose group sets that do not bisect a clip — a clip touching both settled and
      * unsettled groups is dropped whole.
      */
-    settleGroups(durationS = 1.0, timeS = 0, groupIds = []) {
+    settleGroups(durationS = 1.0, timeS = 0, groupIds = [], thenClipName = null) {
       if (disposed || !state.clips.size) return false;
       const at = Number.isFinite(timeS) ? timeS : 0;
       const wanted = new Set(groupIds || []);
       if (!wanted.size) return false;
       const duration = Number.isFinite(durationS) && durationS > 0 ? durationS : 1;
+      // Optional follow-on clip: blend each group onto that clip's START pose, then
+      // chain into it on drain — a verb landing mid-flight eases through the next
+      // clip's doorway instead of teleporting to its first key.
+      const thenClip = thenClipName != null ? clips.get(thenClipName) : null;
+      const thenDeltas = thenClip ? evaluateMotionClip(checked, thenClip, 0) : null;
       const merged = new Map();
-      for (const [name, run] of state.clips) {
+      for (const [name, run] of runsBySeq()) {
         const clip = clips.get(name);
         if (!clip) continue;
         const t = (at - run.startS) * run.rateScale;
@@ -639,23 +745,31 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       for (const groupId of wanted) {
         const delta = merged.get(groupId);
         if (!delta) continue;
+        const target = thenDeltas && thenDeltas.get(groupId);
         if (Array.isArray(delta.translation)) {
           channels.push({
             group: groupId, path: 'translation', times: [0, duration],
-            values: [...delta.translation, 0, 0, 0],
+            values: [
+              ...delta.translation,
+              ...(target && Array.isArray(target.translation) ? target.translation : [0, 0, 0]),
+            ],
           });
         }
         if (Array.isArray(delta.rotation)) {
           channels.push({
             group: groupId, path: 'rotation', times: [0, duration],
-            values: [...delta.rotation, 0, 0, 0, 1],
+            values: [
+              ...delta.rotation,
+              ...(target && Array.isArray(target.rotation) ? target.rotation : [0, 0, 0, 1]),
+            ],
           });
         }
       }
       if (!channels.length) return false;
       const settleName = `__settle__${++settleSerial}`;
       const settleClip = {
-        name: settleName, durationS: duration, loop: false, endMode: 'rest', channels,
+        name: settleName, durationS: duration, loop: false, endMode: 'rest',
+        thenClip: thenClip ? thenClip.name : null, channels,
       };
       clips.set(settleName, settleClip);
       for (const [name, run] of [...state.clips]) {
@@ -668,7 +782,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           state.clips.delete(name);
         }
       }
-      state.clips.set(settleName, { startS: at, rateScale: 1 });
+      state.clips.set(settleName, { startS: at, rateScale: 1, seq: ++startSeqCounter });
       // Runs after settleName joins state.clips so the fresh clip is never collected as dead.
       trimParkedSettles();
       state.latest = settleName;
@@ -681,7 +795,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      * a stale or repeated generation is ignored so an event replayed on restore cannot restart
      * the same sweep. Passing state 'rest' or 'idle' parks the whole rig at its authored rest pose.
      */
-    setState({ state: clipName, startTimeS, rateScale = 1, generation } = {}) {
+    setState({ state: clipName, startTimeS, rateScale = 1, generation, noBridge = false, deferToSeq = null } = {}) {
       if (disposed) return false;
       if (generation != null && state.generation >= 0 && generation <= state.generation) {
         return false;
@@ -699,30 +813,127 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       if (!clip) {
         throw new Error(`motion bank ${checked.rigId} has no clip "${clipName}".`);
       }
+      const claimed = new Set(clip.channels.map((channel) => channel.group));
+      // Auto-bridge: a claimed group already posed somewhere else (ambient loop mid-cycle,
+      // an interrupted verb) would teleport to this clip's first key. Synthesize a short
+      // settle clip live→key0 that chains into the real clip on drain — every event then
+      // enters through the doorway the author keyed, whatever pose the rig was in.
+      const bridgeChannels = [];
+      let rotDist = 0;
+      let posDist = 0;
+      const startDeltas = evaluateMotionClip(checked, clip, 0);
+      const live = new Map();
+      const at = Number.isFinite(startTimeS) ? startTimeS : 0;
+      for (const [otherName, otherRun] of runsBySeq()) {
+        const other = clips.get(otherName);
+        if (!other) continue;
+        const t = (at - otherRun.startS) * otherRun.rateScale;
+        const deltas = evaluateMotionClip(
+          checked,
+          other,
+          other.loop
+            ? ((t % other.durationS) + other.durationS) % other.durationS
+            : Math.min(Math.max(t, 0), other.durationS),
+        );
+        for (const [groupId, delta] of deltas) {
+          if (otherRun.superseded && otherRun.superseded.has(groupId)) continue;
+          live.set(groupId, delta);
+        }
+      }
+      for (const groupId of claimed) {
+        const here = live.get(groupId);
+        const door = startDeltas.get(groupId);
+        const pos = (here && here.translation) || [0, 0, 0];
+        const rot = (here && here.rotation) || [0, 0, 0, 1];
+        const posT = (door && door.translation) || [0, 0, 0];
+        const rotT = (door && door.rotation) || [0, 0, 0, 1];
+        const dPos = Math.hypot(pos[0] - posT[0], pos[1] - posT[1], pos[2] - posT[2]);
+        const dRot = quatAngleBetween(rot, rotT);
+        rotDist = Math.max(rotDist, dRot);
+        posDist = Math.max(posDist, dPos);
+        if (dPos > BRIDGE_POS_EPS || dRot > BRIDGE_ROT_EPS) {
+          bridgeChannels.push({
+            group: groupId, path: 'translation', times: [0, 1],
+            values: [...pos, ...posT],
+          });
+          bridgeChannels.push({
+            group: groupId, path: 'rotation', times: [0, 1],
+            values: [...rot, ...rotT],
+          });
+        }
+      }
+      if (!noBridge && bridgeChannels.length) {
+        const duration = Math.min(BRIDGE_MAX_S, Math.max(BRIDGE_MIN_S,
+          Math.max(rotDist / BRIDGE_ROT_SPEED, posDist / BRIDGE_POS_SPEED)));
+        for (const ch of bridgeChannels) {
+          ch.times = [0, duration];
+        }
+        const bridgeName = `__settle__${++settleSerial}`;
+        clips.set(bridgeName, {
+          name: bridgeName, durationS: duration, loop: false, endMode: 'rest',
+          thenClip: clipName, channels: bridgeChannels,
+        });
+        const bridgeSeq = ++startSeqCounter;
+        for (const [otherName, otherRun] of [...state.clips]) {
+          if (otherName === clipName) continue;
+          for (const group of claimed) markSuperseded(otherRun, group, bridgeSeq);
+        }
+        state.clips.delete(clipName);
+        state.clips.set(bridgeName, {
+          startS: Number.isFinite(startTimeS) ? startTimeS : 0,
+          rateScale: 1, seq: bridgeSeq,
+        });
+        trimParkedSettles();
+        if (generation != null) state.generation = generation;
+        state.latest = bridgeName;
+        state.parked = false;
+        return true;
+      }
       // A started clip permanently supersedes older clips on every group it channels.
       // Latest-started-wins must outlive the younger clip's own rest-park — otherwise a held
       // earlier clip (endMode 'hold', never evicted) re-applies its delta the frame the newer
       // clip deletes, snapping the rig back to the superseded pose (breach↔seal, index↔reset,
       // deploy↔stow).
-      const claimed = new Set(clip.channels.map((channel) => channel.group));
+      // Chained starts (deferToSeq = the draining bridge's seq) settle only what their
+      // bridge held: a group re-claimed by anything newer than the bridge is contested —
+      // the chain must not steal it back.
+      const claimSeq = ++startSeqCounter;
+      const contested = new Map();
+      if (deferToSeq != null) {
+        for (const group of claimed) {
+          for (const [otherName, otherRun] of state.clips) {
+            if (otherName === clipName || (otherRun.seq || 0) <= deferToSeq) continue;
+            const other = clips.get(otherName);
+            if (!other || !other.channels.some((ch) => ch.group === group)) continue;
+            if (otherRun.superseded && otherRun.superseded.has(group)) continue;
+            contested.set(group, otherRun.seq);
+            break;
+          }
+        }
+      }
       for (const [otherName, otherRun] of [...state.clips]) {
         if (otherName === clipName) continue;
         const other = clips.get(otherName);
         if (!other) continue;
-        const remaining = other.channels.some((channel) => !claimed.has(channel.group));
-        if (!remaining) {
-          state.clips.delete(otherName);
-          continue;
+        // Fully-claimed runs are kept, not deleted: a held base state must stay readable
+        // (clipActive gates on the run's presence) and an overlay draining later hands the
+        // groups back to whatever survives underneath.
+        for (const group of claimed) {
+          if (contested.has(group) && (otherRun.seq || 0) > deferToSeq) continue;
+          markSuperseded(otherRun, group, claimSeq);
         }
-        const superseded = otherRun.superseded || (otherRun.superseded = new Set());
-        for (const group of claimed) superseded.add(group);
       }
       if (generation != null) state.generation = generation;
       state.clips.delete(clipName);
-      state.clips.set(clipName, {
+      const run = {
         startS: Number.isFinite(startTimeS) ? startTimeS : 0,
         rateScale: Number.isFinite(rateScale) && rateScale > 0 ? rateScale : 1,
-      });
+        seq: claimSeq,
+      };
+      if (contested.size) {
+        for (const [group, winnerSeq] of contested) markSuperseded(run, group, winnerSeq);
+      }
+      state.clips.set(clipName, run);
       state.latest = clipName;
       state.parked = false;
       return true;
@@ -735,11 +946,14 @@ export function bindAuthoredMotion(root, bank, options = {}) {
      * matching the rest of the motion systems' reduced-motion convention.
      */
     update(timeS, a11y) {
-      if (disposed || !state.clips.size) return;
+      if (disposed) return;
       const reduced = !!(a11y && (a11y.reducedMotion === true || a11y.motionReduce === true));
       const dampen = reduced ? REDUCED_AMP : 1;
       mergeStamp += 1;
-      for (const [name, run] of state.clips) {
+      // Drain pass first: a rest-ended clip releases its overlay claims before anything
+      // samples this frame — otherwise an older clip released this same frame already
+      // skipped its channels and the group flashes rest for exactly one update.
+      for (const [name, run] of [...state.clips]) {
         const clip = clips.get(name);
         if (!clip) {
           // A run-entry outliving its clip must not throw inside the frame loop — drop it
@@ -752,10 +966,35 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         if (!clip.loop && t >= clip.durationS && (clip.endMode || 'rest') === 'rest') {
           // Rest-ended clips park this frame — their final pose is excluded from the merge so
           // owned groups land exactly at rest (or under a still-active clip's delta).
+          if (clip.overlay === true) releaseOverlayClaims(run, clip);
           state.clips.delete(name);
           if (state.latest === name) state.latest = lastClipName();
-          continue;
+          // A settle chain hands off to its follow-on clip the frame it lands — the blend
+          // ended exactly where that clip's first key poses the groups, so the start is
+          // seamless and the authored clip still plays its full length. The merge just
+          // lost this run's held pose, so the hand-off skips the live-pose bridge check:
+          // the pose on the nodes already IS that clip's first key.
+          if (clip.thenClip && clips.has(clip.thenClip)) {
+            this.setState({ state: clip.thenClip, startTimeS: timeS, noBridge: true, deferToSeq: run.seq });
+          }
         }
+      }
+      if (nothingDriving()) {
+        // An explicit 'rest' park or a fully-superseded ambient run silences the rig only
+        // while nothing drives — it must not permanently kill the ambient idle. Runs after
+        // the drain pass so a rig whose last clip drained this update resumes this same
+        // frame instead of spending one update at rest. Routing through setState gives the
+        // resume the same live→key0 bridge any event gets. No early return: with no ambient
+        // to resume the sample pass still has to land the drained groups at rest — bailing
+        // here leaves the nodes frozen at the last written pose.
+        if (!reduced && ambientClip !== null) {
+          this.setState({ state: ambientClip, startTimeS: timeS });
+        }
+      }
+      for (const [name, run] of runsBySeq()) {
+        const clip = clips.get(name);
+        if (!clip) continue;
+        const t = (timeS - run.startS) * run.rateScale;
         if (reduced && ambientClip !== null && name === ambientClip) continue;
         const local = clip.loop === true
           ? ((t % clip.durationS) + clip.durationS) % clip.durationS
@@ -790,7 +1029,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
         const restT = binding.restPose.translation;
         const restQ = binding.restPose.rotation;
         for (const node of nodes) {
-          if (!nodeHasVisibleMesh(node) || !active) {
+          if (!active || !nodeHasVisibleMesh(node)) {
             // No clip owns this group right now, or a hidden part: park at rest.
             node.position.set(...restT);
             node.quaternion.set(...restQ);
@@ -820,12 +1059,10 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       // and rigs that never declare the event are unaffected; an explicit rest setState still
       // parks for a frame but the next update resumes ambient, which is what a docked machine
       // should look like (calm, not dead). Reduced-motion holds the rig parked instead.
-      if (!state.clips.size) {
+      if (nothingDriving()) {
         state.parked = true;
         if (!reduced && ambientClip !== null) {
-          state.clips.set(ambientClip, { startS: timeS, rateScale: 1 });
-          state.latest = ambientClip;
-          state.parked = false;
+          this.setState({ state: ambientClip, startTimeS: timeS });
         }
       }
     },

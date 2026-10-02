@@ -67,13 +67,16 @@ def _sha256(path):
 class Clip:
     """One authored action: keyframe pivots with `key(t, loc=..., rot=...)` at 60 fps."""
 
-    def __init__(self, name, duration_s, loop=False, end_mode='rest'):
+    def __init__(self, name, duration_s, loop=False, end_mode='rest', overlay=False):
         self.name = name
         self.duration_s = float(duration_s)
         self.loop = bool(loop)
         if end_mode not in ('rest', 'hold'):
             raise ValueError(f'clip {name}: endMode must be rest or hold')
         self.end_mode = end_mode
+        # Transient overlay: its group claims RELEASE when it drains, so a held base
+        # pose or running loop underneath re-drives instead of staying suppressed.
+        self.overlay = bool(overlay)
         # rig -> {t_frame: {'loc':..., 'rot':...}}
         self._keys = {}
 
@@ -106,8 +109,8 @@ class MotionBank:
         self.events = dict(events or {})
         self.clips = []
 
-    def clip(self, name, duration_s, loop=False, end_mode='rest'):
-        c = Clip(name, duration_s, loop=loop, end_mode=end_mode)
+    def clip(self, name, duration_s, loop=False, end_mode='rest', overlay=False):
+        c = Clip(name, duration_s, loop=loop, end_mode=end_mode, overlay=overlay)
         self.clips.append(c)
         return c
 
@@ -261,13 +264,16 @@ class MotionBank:
                         'values': values,
                         'interpolation': 'slerp' if path == 'rotation' else 'linear',
                     })
-            clips.append({
+            entry = {
                 'name': clip.name,
                 'durationS': clip.duration_s,
                 'loop': clip.loop,
                 'endMode': clip.end_mode,
                 'channels': channels,
-            })
+            }
+            if clip.overlay:
+                entry['overlay'] = True
+            clips.append(entry)
 
         bank = {
             'schema': 'spaceface.rigidMotionBank.v1',
