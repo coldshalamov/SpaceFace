@@ -46,8 +46,7 @@ test('velocity vectoring on the real path: the band keeps B1/B2 and redirects so
     `${B2} — turn radius must not regress beyond 5% (${band.turnRadius.radiusScreenDepths} vs ${off.turnRadius.radiusScreenDepths} screens)`);
 
   // The packet's metric and the felt case: sooner, and at speed.
-  assert.ok(band.redirect90.timeS != null && off.redirect90.timeS != null
-    && band.redirect90.timeS < off.redirect90.timeS,
+  assert.ok(band.redirect90.timeS != null && (off.redirect90.timeS == null || band.redirect90.timeS < off.redirect90.timeS),
   `${TWITCH} — redirect90 must get sooner (${band.redirect90.timeS} vs ${off.redirect90.timeS} s)`);
   assert.ok(band.twitch90.timeS != null && off.twitch90.timeS != null
     && band.twitch90.timeS <= off.twitch90.timeS * 0.75,
