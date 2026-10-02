@@ -34,11 +34,27 @@ export function installShaderLinkReporter(renderer, options = {}) {
       : null,
     generation: 0,
     programGenerations: new WeakMap(),
+    // While a program reports still-linking its draw path pays ZERO further GPU-process queries:
+    // the first 'false' arms one shared settle poll (a timer off the draw path), and binds answer
+    // 'unsettled' from the armed set alone. Previously every drawable binding a pending program
+    // re-issued a COMPLETION_STATUS round trip — ~1.7 s of serialized IPC inside a single
+    // presented frame on the 2026-10-02 frame-solid profile.
+    settleArmed: new Set(),
+    settleArmedAt: new WeakMap(),
+    settlePollTimer: null,
   };
   guardProgramList(renderer, context);
   const canvas = renderer.domElement;
   if (canvas && typeof canvas.addEventListener === 'function') {
-    canvas.addEventListener('webglcontextlost', () => { context.generation += 1; }, false);
+    canvas.addEventListener('webglcontextlost', () => {
+      context.generation += 1;
+      // Handles die with the context: stop the poll instead of querying dead programs.
+      context.settleArmed.clear();
+      if (context.settlePollTimer != null) {
+        clearTimeout(context.settlePollTimer);
+        context.settlePollTimer = null;
+      }
+    }, false);
     // three rebuilds its program list when the context is restored; its own listener runs first.
     canvas.addEventListener('webglcontextrestored', () => guardProgramList(renderer, context), false);
   }
@@ -73,7 +89,7 @@ function guardFirstUse(program, context) {
   const getUniforms = program.getUniforms;
   const getAttributes = program.getAttributes;
   const beforeFirstUse = (self) => {
-    if (!programSettled(self, context.gl, context.parallelCompile)) return;
+    if (!programSettled(self, context)) return;
     self.getUniforms = getUniforms;
     self.getAttributes = getAttributes;
     checkLinkStatus(self, context);
@@ -91,12 +107,64 @@ function guardFirstUse(program, context) {
 // COMPLETION_STATUS_KHR is the non-blocking readiness read: false while the link is in flight,
 // true once it has finished whether it succeeded or not. Without the extension the link is already
 // synchronous, so the program is always treated as settled and the check behaves exactly as before.
-function programSettled(program, gl, parallelCompile) {
+// The read is non-blocking for the driver but still a GPU-process IPC, so the first 'false' arms
+// a shared settle poll and later binds answer unsettled for free until the poll sees the link
+// finish — draw calls never re-query a pending program.
+function programSettled(program, context) {
+  const { gl, parallelCompile } = context;
   if (!parallelCompile || !program.program) return true;
+  if (context.settleArmed.has(program)) return false;
+  let settled = true;
   try {
-    return gl.getProgramParameter(program.program, parallelCompile.COMPLETION_STATUS_KHR) !== false;
+    settled = gl.getProgramParameter(program.program, parallelCompile.COMPLETION_STATUS_KHR) !== false;
   } catch (_) {
-    return true;
+    // A failed query answers as settled, as before — the program then pays one LINK_STATUS read.
+  }
+  if (!settled) armSettlePoll(program, context);
+  return settled;
+}
+
+// One timer walks every armed program once per interval — the whole pending set costs one
+// query per program per ~16 ms spread across wall time, instead of one per draw per frame.
+const SETTLE_POLL_MS = 16;
+// A driver wedge could leave a link pending forever; stop polling (the next bind pays one
+// query and re-arms) rather than hold a timer for the session. 20 s matches the readiness
+// deadline the pipeline waits already use.
+const SETTLE_POLL_MAX_MS = 20_000;
+
+function armSettlePoll(program, context) {
+  if (!context.settleArmed.has(program)) {
+    context.settleArmed.add(program);
+    context.settleArmedAt.set(program, Date.now());
+  }
+  if (context.settlePollTimer != null) return;
+  const tick = () => {
+    context.settlePollTimer = null;
+    const gl = context.gl;
+    const parallelCompile = context.parallelCompile;
+    for (const pending of [...context.settleArmed]) {
+      if (!pending.program
+        || context.programGenerations.get(pending) !== context.generation
+        || Date.now() - (context.settleArmedAt.get(pending) || 0) > SETTLE_POLL_MAX_MS) {
+        context.settleArmed.delete(pending);
+        continue;
+      }
+      let settled = true;
+      try {
+        settled = gl.getProgramParameter(pending.program, parallelCompile.COMPLETION_STATUS_KHR) !== false;
+      } catch (_) { /* keep polling next interval */ settled = false; }
+      if (settled) context.settleArmed.delete(pending);
+    }
+    if (context.settleArmed.size > 0) {
+      context.settlePollTimer = setTimeout(tick, SETTLE_POLL_MS);
+      if (context.settlePollTimer && typeof context.settlePollTimer.unref === 'function') {
+        context.settlePollTimer.unref();
+      }
+    }
+  };
+  context.settlePollTimer = setTimeout(tick, SETTLE_POLL_MS);
+  if (context.settlePollTimer && typeof context.settlePollTimer.unref === 'function') {
+    context.settlePollTimer.unref();
   }
 }
 
