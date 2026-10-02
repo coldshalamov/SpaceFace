@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "79d65be2e3a3adb25851a07564a92138115175e0d056fcc8567bec2afbbdd9fa",
+  "contentHash": "543abcfdd456130c109cb921938478e27f30bc95a83ac6727f8f9ab336b90946",
   "dynamicGroups": [
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
@@ -668,7 +668,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48d76be7e3adcc5f2ddb1b88cde8a3e56de154f941d8c13cd6a61f892538b274",
+      "geometryHash": "81e5b9e816eaccf65f2f9d88d74d94080c85f558414370d8a9d298a897366c49",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 35763,
       "indexed": true,
@@ -843,7 +843,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccaffbd2fdb3712cf766da8edc1bd56fd9432bc500cb80c67f0676d858177387",
+      "geometryHash": "e89961aef23e7a3a070bb52749daebb956a0c5115ef82a55fa2e91426bfe27f9",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1374,
       "indexed": true,
@@ -1043,7 +1043,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9269dea4a1db9495a2e15839da3ea3ee75860509d7e5e5f476db9a8dc480caba",
+      "geometryHash": "182106027759172c4af97a5daa01e10ea2e9274ac6cd78be307c52f23935c498",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 33132,
       "indexed": true,
@@ -3267,19 +3267,19 @@
       "sha256": "8850186b871eac0e6d96e44939930a8f40c19ec809dd779149536d975e43c60a"
     },
     "sourceGlb": {
-      "bytes": 1116964,
-      "sha256": "cac5e77cb9463241da98c7f1a0b835cef587f1621fd5d603c1ee6fdd5cf2b80b",
+      "bytes": 1116956,
+      "sha256": "9d7434ade1160602dba168d1c29dd07a1bc27a39fd91346724d3d9391e3a4ff7",
       "uri": "leviathan_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1950172,
-    "sha256": "bce8d95236eae24e7bbd3c55cd635fa5ce22d507a8e97d9fd98de6b2dfdd4072",
+    "bytes": 1950032,
+    "sha256": "b2a81cd447bb0c4bf3d1bec2a927fe4bc8e48d8311b8aa0adc37395b9a80e7fe",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4121,9 +4121,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6751,
+      "bytes": 7284,
       "rigId": "hull",
-      "sha256": "a8d8d5a9542d5e06a111a742e5ab1dde8f1cc6e17c26ea120d5b58728468f44d",
+      "sha256": "b7d78af5feef2f50ed186ecc8320b2ada05dfbe5474972975f87fc4d0a9788b7",
       "uri": "assets/ships/motions/leviathan-production-v1.motion.json"
     },
     "nodeCount": 38,
@@ -4779,7 +4779,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb"
   },
-  "runtimeHash": "964dc1e61d31285d8a2f09d84b358cded38d122f59552ef5f0c271aa054bf8d9",
+  "runtimeHash": "00d4248a8e3ac40fe90a138645bb7ccc2163019342f4a115596f676caae65044",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

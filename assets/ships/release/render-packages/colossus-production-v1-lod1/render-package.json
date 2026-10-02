@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9b39f3b096595e40daf48f77f09f331e2a16365aa11eb1c710d1f6278c342650",
+  "contentHash": "a14e92e3e973ad57fb19afef9b9b3e76775be02218b5307e907c477ff6fd4b9b",
   "dynamicGroups": [
     {
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-port-armor.dynamic",
@@ -638,7 +638,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56acd5ce513b30392ef62b3b94b2906eb7f2fb31ce6f53da0e3f70d0e8b898c2",
+      "geometryHash": "df56445fc45f55e6154cbdd877edd20a023a1d5e1d4ffa91b30629051d37eaac",
       "id": "sf.render.colossus-production-v1-lod1.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -654,16 +654,16 @@
         "max": [
           26.498857498168945,
           6.84507942199707,
-          12.795854568481445
+          12.795807838439941
         ],
         "min": [
           -25.19721794128418,
           -2.2991952896118164,
-          -12.795808792114258
+          -12.795856475830078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1e1eae405a34acc6522bcad335478a73b736b737a0acf62ada28c9615a27891",
+      "geometryHash": "77ec995b075c975493efd2fd620c9f01b96b8af40ff8ba1f99f76a79d161b895",
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 10983,
       "indexed": true,
@@ -702,18 +702,18 @@
     {
       "bounds": {
         "max": [
-          22.192495346069336,
-          1.7472926751772806,
-          -6.001768753250427
+          22.192598342895508,
+          1.7472924135840693,
+          -6.001771805833358
         ],
         "min": [
-          14.609129905700684,
-          1.4501326902707175,
-          -9.198552921096496
+          14.609246253967285,
+          1.4501329518639288,
+          -9.198550345350725
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d8008b4e190bace08324faddfc0feff05228b5a57477cf45d3ce544ee064704",
+      "geometryHash": "2cc1553dbad7206375b3107bc56876ecd9e268bae23d9e06bcd478f055360876",
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-port-armor.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -804,16 +804,16 @@
         "max": [
           -4.109035968780518,
           2.7259211350568546,
-          -5.241044637947119
+          -5.241044876365698
         ],
         "min": [
           -5.98996639251709,
           2.1320851038805233,
-          -6.758957269401514
+          -6.758957507820093
         ]
       },
       "drawMode": 4,
-      "geometryHash": "948a5aa3b42baf7dd7fb98d301e5567e8789c837b1d7745b3d64f46a56f5f404",
+      "geometryHash": "5663251ed12a787ec7c4baca5348473dbcca4b207d7b6aa5f7cdbf170e53d315",
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-turret-armor.primitive.0",
       "indexCount": 129,
       "indexed": true,
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3314a4ad03021dd0c81dd866601db8ca0e9fb0a2a5a309e83dd41de95e256ff",
+      "geometryHash": "42a88f6ca933404d4a0807ef77a7ecc331e2312c6987b4c68916bb42ec8be628",
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 6765,
       "indexed": true,
@@ -1063,7 +1063,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d3be3d0c9892affbda60b930715dd0c45a91aff9e8d838300739b10ebb682a5",
+      "geometryHash": "d5a8a353169270e1b258f00038db48b5f96290da3134769cefc271ae3dead463",
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 20256,
       "indexed": true,
@@ -1485,21 +1485,21 @@
     {
       "id": "sf.render.colossus-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-port-armor",
       "localTransform": [
-        3.791682720184326,
+        3.7916760444641113,
         0,
         0,
         0,
         0,
-        3.791682720184326,
+        3.7916760444641113,
         0,
         0,
         0,
         0,
-        3.791682720184326,
+        3.7916760444641113,
         0,
-        18.40081262588501,
+        18.400922298431396,
         1.598712682723999,
-        -7.600160837173462,
+        -7.600161075592041,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1514,21 +1514,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.colossus-production-v1-lod1.body",
       "worldTransform": [
-        3.791682720184326,
+        3.7916760444641113,
         0,
         0,
         0,
         0,
-        3.791682720184326,
+        3.7916760444641113,
         0,
         0,
         0,
         0,
-        3.791682720184326,
+        3.7916760444641113,
         0,
-        18.40081262588501,
+        18.400922298431396,
         1.598712682723999,
-        -7.600160837173462,
+        -7.600161075592041,
         1
       ]
     },
@@ -1699,7 +1699,7 @@
         0,
         -5.049501180648804,
         2.429003119468689,
-        -6.000000953674316,
+        -6.0000011920928955,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1728,7 +1728,7 @@
         0,
         -5.049501180648804,
         2.429003119468689,
-        -6.000000953674316,
+        -6.0000011920928955,
         1
       ]
     },
@@ -2436,18 +2436,18 @@
     },
     "sourceGlb": {
       "bytes": 760888,
-      "sha256": "dd43a8de1dcfea7198f23bf201f175fc7743c93e4c6c9775c7bcca2ca6407933",
+      "sha256": "107e747e8a7e376964c51a0551e9370927c49957734fbcf5e9d608f87aa108ed",
       "uri": "colossus_production_v1_lod1.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1192340,
-    "sha256": "87f10ef7c749c8066b3123f249040d7f24a7da0c1b202714b114d932a8a87ceb",
+    "bytes": 1192308,
+    "sha256": "a7399c9318a5f5e6a4dd354cac77890f9636e4463275ab8e0844bfe08a385a86",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3261,9 +3261,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6750,
+      "bytes": 7191,
       "rigId": "hull",
-      "sha256": "9d79b6c1e452c36cbe73fec55d72ad58ae3c81b9cbe25d99a56524b778007d8b",
+      "sha256": "b143f6a1462a2f5146929e8f558801cc97e75c47283c6f413286c83ba58f9e06",
       "uri": "assets/ships/motions/colossus-production-v1.motion.json"
     },
     "nodeCount": 35,
@@ -3327,21 +3327,21 @@
       {
         "canopy": false,
         "matrix": [
-          3.791682720184326,
+          3.7916760444641113,
           0,
           0,
           0,
           0,
-          3.791682720184326,
+          3.7916760444641113,
           0,
           0,
           0,
           0,
-          3.791682720184326,
+          3.7916760444641113,
           0,
-          18.40081262588501,
+          18.400922298431396,
           1.598712682723999,
-          -7.600160837173462,
+          -7.600161075592041,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Armor",
@@ -3475,7 +3475,7 @@
           0,
           -5.049501180648804,
           2.429003119468689,
-          -6.000000953674316,
+          -6.0000011920928955,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Armor",
@@ -3834,7 +3834,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1_lod1.glb"
   },
-  "runtimeHash": "8301699ffde310b0caad752125973bd1896ddbda4fe9eed2633da3b65212f41c",
+  "runtimeHash": "a99f958c82823b50dfb682aa778e7578cefca9fb54afd0736f987fe3fe8c932f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8ab8f8badcaf949b0e303f5c9171a0e2da061eebdaa3fa2c0430f3cd9b797265",
+  "contentHash": "d0035445e740c74265a85b4e7404348bba8a04853f2d30c76ab1d7ce5c02b2c1",
   "dynamicGroups": [
     {
       "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -1028,7 +1028,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6354409ddf913e164d7b593892568966ac9bfd050b1396197c8be13e34231db0",
+      "geometryHash": "02b2e7e43cb920f60900e708360c67b3f5f78b54970b86e0aeada4ea044d14de",
       "id": "sf.render.repair-tender.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 6615,
       "indexed": true,
@@ -1203,7 +1203,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "568abb027017d370b9cfe15ccd3a2650a2768a4a6458c8a2e933b16f27f68359",
+      "geometryHash": "edecdae1d5e4576acf2f4a1577f7782721893c8552a279da3cb4f62f778cfcdf",
       "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 6729,
       "indexed": true,
@@ -1212,7 +1212,7 @@
       "meshName": "LOD1_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1935
+      "vertexCount": 1933
     },
     {
       "bounds": {
@@ -1578,7 +1578,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edac544bfcd87fb16f6b8f72563f8845c38559dc2676d80e3565d62cfd94b4e3",
+      "geometryHash": "bb9ff20de3564782c6b7eb785f96693d54859136c60cd4ac43ed9e32c8a17e9d",
       "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 2157,
       "indexed": true,
@@ -5041,19 +5041,19 @@
       "sha256": "9e8958af0592a4ed3af2bc4cb8a81f72a4cfebcc210e7a833525d3e95a35ce72"
     },
     "sourceGlb": {
-      "bytes": 1121296,
-      "sha256": "bf21412e8e705b054c4b5487865c1ba6d925d94edfbe211e975a8ef0af829101",
+      "bytes": 1121284,
+      "sha256": "05436f87c31968827ba5439f0b965f536648e6f5beb8b7a1bf6d97307a361269",
       "uri": "repair_tender.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2090340,
-    "sha256": "ea351e421f446dd0db394da59f7c6ab95cf8db0131bf49e4b376b74c476efa28",
+    "bytes": 2090256,
+    "sha256": "3bd4ec9d8ca3118c63dde87d4bbd3615e1a68ab1074da8647ef59fa1740dc43c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6016,9 +6016,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6737,
+      "bytes": 7191,
       "rigId": "hull",
-      "sha256": "e0e570b49e1ca9df52484d6fb84ac4ad62765c2ae730225e5672fb97936f0b1c",
+      "sha256": "71efc2d5cd7c1841878837351a8361e9ba025db3964be48504d1f66d7e850b87",
       "uri": "assets/ships/motions/repair-tender.motion.json"
     },
     "nodeCount": 61,
@@ -7351,7 +7351,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
-  "runtimeHash": "466c49cb5d47fa524bb8d525817c8227d4e12a45f1b99e31dc333530f64541ab",
+  "runtimeHash": "e5acaa378aaa21720c7b63b4213ffc5a79bba3f11548973c2373d4c6a2e050e3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

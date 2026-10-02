@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bda9790c67b84afcba3534c5fb6f58d5053c85549369c33b9723091f6fdbd798",
+  "contentHash": "6e3a2555a242890e33d9774869b246348934f961ac0fffe4f65c9f23dfa8c189",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.dynamic",
@@ -668,17 +668,17 @@
       "bounds": {
         "max": [
           7.898310661315918,
-          1.6178929805755615,
-          3.093181610107422
+          1.6178960800170898,
+          3.093187093734741
         ],
         "min": [
-          -7.194369316101074,
-          -0.9375497102737427,
-          -3.44972825050354
+          -7.194406509399414,
+          -0.9375528693199158,
+          -3.4497387409210205
         ]
       },
       "drawMode": 4,
-      "geometryHash": "239c843fbd6dde9668afac78fe357e121a291f64dafdef4a591d061b1fa6ca48",
+      "geometryHash": "911cb4e1bfe4f3d9ee997316f5537f4130a72f652d9e38ea106e611e65a718d3",
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 1476,
       "indexed": true,
@@ -768,17 +768,17 @@
       "bounds": {
         "max": [
           -3.312596082687378,
-          0.15471601639847135,
-          -1.1017812136768161
+          0.15467377415349076,
+          -1.1017740835955623
         ],
         "min": [
-          -7.194248199462891,
-          -0.11679943059543943,
-          -2.4481045361400784
+          -7.194209575653076,
+          -0.11731281539847443,
+          -2.4480840096661565
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d43273a538e9883b39398886494bbb0f862702730d15e18df8fc665c3cedf24d",
+      "geometryHash": "35acf5f5ef29ea1cd4cab5d5d8b9ea00fb80b9ecb6542fc10205c59f713ffed4",
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -793,17 +793,17 @@
       "bounds": {
         "max": [
           -3.3110952377319336,
-          0.005537838808333875,
-          -1.1011693868034036
+          0.005343088515441498,
+          -1.1011622567221493
         ],
         "min": [
-          -7.194248199462891,
-          -0.11676245894569755,
-          -2.4480132666237204
+          -7.194209575653076,
+          -0.11743002022464163,
+          -2.447992740149799
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eef0aafa05d7b1a719b9457ab1a9c764c3a8989fb58a0931264bdfb1cc07adba",
+      "geometryHash": "db6c993a049b8e6606f88f9890f85a9e03571a9fc5bf118c167be8eba322bda1",
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-hook-armor-winglet-mechanical.primitive.0",
       "indexCount": 78,
       "indexed": true,
@@ -1244,16 +1244,16 @@
         "max": [
           8.900150299072266,
           1.5280929803848267,
-          3.4377176761627197
+          3.4377150535583496
         ],
         "min": [
           -9.020537376403809,
           -0.9001994729042053,
-          -3.449553966522217
+          -3.449556350708008
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fa2520043c69ad369771af546b0d2c3b42a6ab1038a68cfa916da0571fc4e5e",
+      "geometryHash": "84718cf19455078bd42a0f32427729b1a51b2c81dbcdd7957120979d140d2cb9",
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 3249,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6407c987dd6162ab061e118a310a9dd0f99ab37fb8d6cd295f4f990b4206470f",
+      "geometryHash": "ea1a5cc5666387fe00966a585930e402f2856e01d3b37b3c2985cabef3d6eb46",
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 1551,
       "indexed": true,
@@ -1910,21 +1910,21 @@
     {
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-hook-armor-winglet-armor",
       "localTransform": [
-        1.9408260583877563,
+        1.9408067464828491,
         0,
         0,
         0,
         0,
-        1.9408260583877563,
+        1.9408067464828491,
         0,
         0,
         0,
         0,
-        1.9408260583877563,
+        1.9408067464828491,
         0,
-        -5.253422141075134,
-        0.01895829290151596,
-        -1.7749428749084473,
+        -5.253402829170227,
+        0.018680479377508163,
+        -1.7749290466308594,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1939,42 +1939,42 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.drifter-production-v1-lod2.body",
       "worldTransform": [
-        1.9408260583877563,
+        1.9408067464828491,
         0,
         0,
         0,
         0,
-        1.9408260583877563,
+        1.9408067464828491,
         0,
         0,
         0,
         0,
-        1.9408260583877563,
+        1.9408067464828491,
         0,
-        -5.253422141075134,
-        0.01895829290151596,
-        -1.7749428749084473,
+        -5.253402829170227,
+        0.018680479377508163,
+        -1.7749290466308594,
         1
       ]
     },
     {
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-hook-armor-winglet-mechanical",
       "localTransform": [
-        1.9415764808654785,
+        1.9415571689605713,
         0,
         0,
         0,
         0,
-        1.9415764808654785,
+        1.9415571689605713,
         0,
         0,
         0,
         0,
-        1.9415764808654785,
+        1.9415571689605713,
         0,
-        -5.252671718597412,
-        -0.055612310068681836,
-        -1.774591326713562,
+        -5.252652406692505,
+        -0.05604346585460007,
+        -1.7745774984359741,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1989,21 +1989,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.drifter-production-v1-lod2.body",
       "worldTransform": [
-        1.9415764808654785,
+        1.9415571689605713,
         0,
         0,
         0,
         0,
-        1.9415764808654785,
+        1.9415571689605713,
         0,
         0,
         0,
         0,
-        1.9415764808654785,
+        1.9415571689605713,
         0,
-        -5.252671718597412,
-        -0.055612310068681836,
-        -1.774591326713562,
+        -5.252652406692505,
+        -0.05604346585460007,
+        -1.7745774984359741,
         1
       ]
     },
@@ -3110,26 +3110,26 @@
       "sha256": "a81cabac586c5ad19d3b1d83d9638be46581fa77f87d9d02b62b0a7567917574"
     },
     "sourceGlb": {
-      "bytes": 464000,
-      "sha256": "272044596c83ef2ce8043188206138680967fcf2d5a5198d16890073c3854828",
+      "bytes": 463988,
+      "sha256": "0951f5a48b8074bf720da92de3273f98f828f20751a10139d571cbeef787cfc2",
       "uri": "drifter_production_v1_lod2.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 600060,
-    "sha256": "718173b03c65f5f503ce9b54aafb16d7b2235bd6f4af21dfae6d4e74f16cb81b",
+    "bytes": 599988,
+    "sha256": "ab5bbd3d9f52e501af5808289e6020b295faa344db222ad35551572214ef57aa",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.28940916061401367,
-        0.7399340271949768,
+        0.7399324476718903,
         -0.03477895259857178
       ],
       "max": [
@@ -3139,12 +3139,12 @@
       ],
       "min": [
         -9.020537376403809,
-        -0.9375497102737427,
+        -0.9375528693199158,
         -3.590043783187866
       ],
       "size": [
         18.619893074035645,
-        3.354967474937439,
+        3.354970633983612,
         7.110529661178589
       ]
     },
@@ -3973,9 +3973,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6749,
+      "bytes": 7234,
       "rigId": "hull",
-      "sha256": "9d2517e1e1094e9ef3131ed4567f3c394a7db58540ac2c27e0348ca6df8f4a2c",
+      "sha256": "c1d4823af1bb51dc3f8d7961d9f067380e04cc663409c00fc7c70e552fd1475c",
       "uri": "assets/ships/motions/drifter-production-v1.motion.json"
     },
     "nodeCount": 42,
@@ -4095,21 +4095,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.9408260583877563,
+          1.9408067464828491,
           0,
           0,
           0,
           0,
-          1.9408260583877563,
+          1.9408067464828491,
           0,
           0,
           0,
           0,
-          1.9408260583877563,
+          1.9408067464828491,
           0,
-          -5.253422141075134,
-          0.01895829290151596,
-          -1.7749428749084473,
+          -5.253402829170227,
+          0.018680479377508163,
+          -1.7749290466308594,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
@@ -4124,21 +4124,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.9415764808654785,
+          1.9415571689605713,
           0,
           0,
           0,
           0,
-          1.9415764808654785,
+          1.9415571689605713,
           0,
           0,
           0,
           0,
-          1.9415764808654785,
+          1.9415571689605713,
           0,
-          -5.252671718597412,
-          -0.055612310068681836,
-          -1.774591326713562,
+          -5.252652406692505,
+          -0.05604346585460007,
+          -1.7745774984359741,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
@@ -4745,7 +4745,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
   },
-  "runtimeHash": "7a3acc6ec44131a23e20b0c153cc75801391bf7155d3978eca5a892b1d37109a",
+  "runtimeHash": "36d0eb228a2a37fb6611ec87389c6f9ce8cd06cade69c2b3c3a30c57e8258c21",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4757,7 +4757,7 @@
         ],
         "min": [
           -9.020537376403809,
-          -0.9375497102737427,
+          -0.9375528693199158,
           -3.590043783187866
         ]
       },

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "61787ea7aab55f784c39d4759463013f4f9cba016038bcf175227bc4f85f2c2f",
+  "contentHash": "28a3aadbff3c4b3638dfeeb8d6b412374240d26c7579866f0b0910ca6a4090d1",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-dart-choir.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64cdfdd14ebb3ee48c0fd39f576c5cd6f81ce712cefd06186a8d4a2d52b8db6e",
+      "geometryHash": "46f802a64aaabd788af47f1f2d7b0f511419718d5f45e07855cc6012196fe9bb",
       "id": "sf.render.ashline-dart-choir.node.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 3804,
       "indexed": true,
@@ -828,7 +828,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d3b235ab3e95653f9c459bd19aed4d02c288f0548ffe1f5c595d082d7779e317",
+      "geometryHash": "089af39b911b77aeac6b5b4d32f0515d6b11dc98b7557e1466866f1c416f5eb4",
       "id": "sf.render.ashline-dart-choir.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 8214,
       "indexed": true,
@@ -928,7 +928,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41a019941a681c93324564791bd43b4eecbef1e1c23de7d3d0d46fa3efba052f",
+      "geometryHash": "2669d838ad8a4a43e2a86936b8614e2aac661b3c3a98af7d19fd94bc273408d5",
       "id": "sf.render.ashline-dart-choir.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 24816,
       "indexed": true,
@@ -937,7 +937,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.ashline-dart-choir.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 8012
+      "vertexCount": 8004
     },
     {
       "bounds": {
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "839a3e14bc4c4177b15abfe1d85d5c76d41fc6f9a79b0e59aef264254c7008b4",
+      "geometryHash": "63da1b5a0fd69cd3140c34a7632a8adf1110c9c270d2c945dd3081ec3b1f671f",
       "id": "sf.render.ashline-dart-choir.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 846,
       "indexed": true,
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1253cad765425cc707aa7113f0c6f1eb8ac8affa84e73186b8bf4b96dbf5b5b6",
+      "geometryHash": "a82f4626a40b68ef46c8b678d6c369419d2cece70adf2420e752920d09870f9c",
       "id": "sf.render.ashline-dart-choir.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 1743,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9260fb686c908a4a4e3e3307cfb2a96abbf083d0b57a10ffee7a6daf261f93c8",
+      "geometryHash": "7d8b659a9f553b6eaedff5f5548bcfc108d136d123952629dbe2286d026ea4c1",
       "id": "sf.render.ashline-dart-choir.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 11817,
       "indexed": true,
@@ -1403,7 +1403,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8673eae49d071f9c5e33b5d885311ae56ec44f3c135c3b543bb2c9dee01b313",
+      "geometryHash": "4340d6be2a0b671785f109a4451d669b467b3c76803b02b723cfe794a1911f8c",
       "id": "sf.render.ashline-dart-choir.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1528,7 +1528,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "681a377421a1ea0c42d1061d75f163569493f84ce12828e0c9e4df775b5c0699",
+      "geometryHash": "0a22243748d65403318fc95fae7bf6e8335887fa5401d5a979b0d32ba163763e",
       "id": "sf.render.ashline-dart-choir.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 807,
       "indexed": true,
@@ -1628,7 +1628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "333610070a2e11fdcfbd0958c1a929e95dfd4e181a3f57153575c2692e7bf83c",
+      "geometryHash": "05e991301c79d4c006f824a6f53483e5f22a3aaf0b7e68df44185c5e8661653b",
       "id": "sf.render.ashline-dart-choir.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 5076,
       "indexed": true,
@@ -4809,19 +4809,19 @@
       "sha256": "1879c4ab30ec04e43fbde04731d9b58f58de3f9d51b26fce624dcaf8132dd8c6"
     },
     "sourceGlb": {
-      "bytes": 896728,
-      "sha256": "a36c47ada6b8944d2495aed56ee53c08f328532085f8be13457000e942f7a896",
+      "bytes": 896440,
+      "sha256": "7203ce075fab179f46879b4c1ef06571179c42a4fe8375e45f926bb9523df502",
       "uri": "ashline_dart_choir.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1588636,
-    "sha256": "077301ce37a3777242bd2c908d560685a19787d5c034410c21b50e6e3493dd36",
+    "bytes": 1588508,
+    "sha256": "4560203d7bbf65c0b0efa89013f5923b1f3b54b83dd4c91bbfb3b9c626b3af05",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5769,9 +5769,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6742,
+      "bytes": 7268,
       "rigId": "hull",
-      "sha256": "a226f01f041b22b46d6eb14e0ada08a455de24ed5986d3a3041a254df4ff3466",
+      "sha256": "b123da48d0590096a5011df3be62f515fdae8fa5568fc6d66300dde9b27c339d",
       "uri": "assets/ships/motions/ashline-dart-choir.motion.json"
     },
     "nodeCount": 58,
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart_choir.glb"
   },
-  "runtimeHash": "370fafbe1c7aa1622d895cd22fe2b5a10b249f878cbb8392653ffe57e567805c",
+  "runtimeHash": "750241e413bfbf84bfabf247a0cffd88688fd5d2c4f4c671f674d8ea36f7c069",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

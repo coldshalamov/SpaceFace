@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c8b81c6dad22a7fd736d77f2ae3ed22741ce4bf56c1106c3ec0b16c6c0a43780",
+  "contentHash": "765db6171f08fb26e1595042c41f0acfd51c648821fe41b483bce7fe8fc6b785",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -678,7 +678,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdcb83d0ca7a59d9ec8cdd9ab2c12010d8f864fd4c9d836dba591709e382f2a8",
+      "geometryHash": "7a9eef267d7decc506f223874a81ff7e6d70dc1656f8e64a758008a8f6415365",
       "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 6888,
       "indexed": true,
@@ -1078,7 +1078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69ad0a518a95a48362a9f12665b94efbe07c2ba67650b501eca9f9cd239565fd",
+      "geometryHash": "eb5ea9d6ea50ea86030f547cc0f81102f35394b72eda372b646007c29730e455",
       "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 2058,
       "indexed": true,
@@ -1478,7 +1478,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a998771731951ee50651e74da447c23aa66c578c876afae78cc57e80ed726580",
+      "geometryHash": "8d75f9fec762721964dcf6be921128f605cb3f35829ddddbe72ce22849663ae6",
       "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 1239,
       "indexed": true,
@@ -5024,18 +5024,18 @@
     },
     "sourceGlb": {
       "bytes": 1343588,
-      "sha256": "cd93791fa0c21810230bad9c5cf77ec4a5ca3b2fbef52697f3480a090670feb5",
+      "sha256": "0ff76aa7743b2452d5d2281cab6735da274ddd706ea0f9e956e7f2476dae280d",
       "uri": "helios_cradle.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 2699652,
-    "sha256": "2ce820a655e3916b9067c466e673790e3ea0bbf138166b5adaf7509e93712b83",
+    "sha256": "06e416686f676bee1c0a9302e5c6952d01cfa50517be618143903936d08a416e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5993,9 +5993,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6737,
+      "bytes": 7189,
       "rigId": "hull",
-      "sha256": "cd9cadf9361825d4ae3a1d17409d2f858917533581c69e66f58785443aaa38e5",
+      "sha256": "b765e10f81a6b40d3116e7fe3296c64e863ebd82b373a1050ba0c45b0c5a341d",
       "uri": "assets/ships/motions/helios-cradle.motion.json"
     },
     "nodeCount": 60,
@@ -7300,7 +7300,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_cradle.glb"
   },
-  "runtimeHash": "1e838361088a697b53c995d163f4bfb3f5b4943d72168cdba52e56da1fdd50c6",
+  "runtimeHash": "3c64eadaa0f285a33ac47e1d90fa6feb8ecfaa9929b2a1a4211e7ae663df81c8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
