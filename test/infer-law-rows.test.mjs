@@ -322,15 +322,19 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
 
   const held = makeLaw({ heat: 0.65, credits: 5000 });
   add(held, {
-    id: 'player', type: 'ship', alive: true, pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {},
+    id: 'player', type: 'ship', alive: true, pos: { x: 40, z: 5000 }, vel: { x: 0, z: 0 }, rot: 0, data: {},
   });
   const patrol = add(held, {
-    id: 'patrol', type: 'ship', alive: true, pos: { x: 0, z: 0 }, rot: 0, factionId: 'faction_scn',
+    id: 'patrol', type: 'ship', alive: true, pos: { x: 0, z: 5000 }, rot: 0, factionId: 'faction_scn',
     data: { ai: { lawful: true }, intent: { fire: true }, combat: { targetId: 'player' } },
   });
   const bystander = add(held, {
-    id: 'far-patrol', type: 'ship', alive: true, pos: { x: 0, z: 400 }, rot: 0, factionId: 'faction_scn',
+    id: 'far-patrol', type: 'ship', alive: true, pos: { x: 0, z: 5400 }, rot: 0, factionId: 'faction_scn',
     data: { ai: { lawful: true }, intent: { fire: true }, combat: { targetId: 'player' } },
+  });
+  const raider = add(held, {
+    id: 'raider', type: 'ship', alive: true, pos: { x: 0, z: 5600 }, rot: 0, factionId: 'faction_reach',
+    data: { ai: { lawful: false }, intent: { fire: true }, combat: { targetId: 'player' } },
   });
   held.law.noteComposedObligation({ kind: 'toll', causeId: 'passage:keep', amountCr: 120, label: 'passage toll' });
   const started = held.law._beginPlayerSurrender();
@@ -344,7 +348,8 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   assert.equal(held.state.player.heat, 0.65);
   assert.equal(events(held.bus, 'heat:clear').length, 0);
   assert.equal(patrol.data.intent.fire, false);
-  assert.equal(bystander.data.intent.fire, true);
+  assert.equal(bystander.data.intent.fire, false, 'an accepted surrender stands down every lawful engager, not only the cone responder');
+  assert.equal(raider.data.intent.fire, true, 'a surrender to the law does not disarm an unlawful attacker');
   const surrenderBill = held.law.composedDisposition().find((row) => row.causeId === started.causeId);
   assert.equal(surrenderBill.advertisePay, true);
   assert.equal(surrenderBill.amountCr, started.priceCr);
