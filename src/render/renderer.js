@@ -14366,14 +14366,16 @@ export const render = {
             && capturedRender.admissionRunGeneration === capturedGeneration
             && capturedRender.compileObjectPipelines === compileFn
             && e.alive !== false && e.mesh === subject && !!subject.parent;
-          void yieldAfterPresent().then(() => {
+          // The post-present continuation adopts compileFn's promise into a new child. Observing
+          // the base admission alone cannot handle this ignored child's cancellation or failure.
+          observePipelineAdmission(yieldAfterPresent().then(() => {
             if (!isActive()) return;
             // A freshly built on-camera body has the same deadline as an authored
             // upgrade. Ambient FIFO priority here left its root hidden for seconds.
             return compileFn(subject, {
               urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
             });
-          });
+          }));
         } else {
           void compileFn(m);
         }
