@@ -24,7 +24,7 @@ try {
   const issues = collectPageIssues(page);
 
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: 15000 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: AUTHORED_START_TIMEOUT_MS });
   await page.evaluate(() => {
     window.SF.eventTrace.clear();
     window.SF.bus.emit('game:new', { name: '47-A Live Cold Open Check', seed: 47 });
@@ -44,7 +44,7 @@ try {
   await page.waitForFunction(
     () => window.SF.eventTrace.snapshot().some((record) => record.type === 'presentation:cueApplied'),
     null,
-    { timeout: 20000 },
+    { timeout: AUTHORED_START_TIMEOUT_MS },
   );
 
   const report = await page.evaluate(({ scenarioId, scenarioPath }) => {
@@ -190,7 +190,7 @@ try {
     await page.waitForFunction(
       () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
       null,
-      { timeout: 60000 },
+      { timeout: AUTHORED_START_TIMEOUT_MS },
     );
   }
   const kesslerCommsEventuallyVisible = await page.evaluate(
@@ -251,7 +251,7 @@ function spawnProbeServer(port) {
     cwd: ROOT,
     // server.js mounts the real save drawer by default; a browser test server must boot
     // with the store explicitly unmounted so the check can never touch real saves.
-    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
