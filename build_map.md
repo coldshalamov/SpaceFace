@@ -400,7 +400,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
-| fight | free | enemies, bombs, countermeasures, squads | 96, 178, 179, 200, 202, 221, 231, 234 |
+| fight | devin-fight | enemies, bombs, countermeasures, squads | 178, 179, 200, 202, 221, 231, 234 |
 | fields | free | fields | 94, 162 |
 | law | grok-15 | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
@@ -602,7 +602,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 91 | PB-TAC-E | SF-055+056+057 wounded cargo tradeoff, retreat-to-cover trigger, bounded-search residual | PB | DONE 2026-09-29 — laden raiders accelerate escape off the attacker instead of converting (empty hold still converts); pack_pursuit wounded-subsystem retreat to ally/hazard-shadow/flee with hysteresis latch; squad merge carries live-sighting truth through wing-order + doctrine overrides so stale-only contacts steer search but never aim guns (`receipts/PB-TAC-E-WOUNDED-CARGO-COVER-SEARCH.md`, implemented/route-unproven) |
 | 92 | PB-TAC-F | SF-058+059 lawful-motive verify + terrain-aware orbit ring | PB | DONE 2026-09-29 — label hostility verified already-satisfied and pinned (armed neutral/same-team pairs stay cold, pod strike never aggros owner, station protection ends retaliation); orbit() sweeps a bounded 9-ray tangential fan on perceived obstacles — widest clear arc + velocity continuity, side never flips, ring resumes byte-identically once clear; dodge takeovers 140→39/1800 (`receipts/PB-TAC-F-LABEL-HOSTILITY-TERRAIN-ORBIT.md`, implemented/route-unproven) |
 | 94 | PB-ORD-B | SF-034+038+039+040 field-family readability: goo edge/recovery, pinning law, bend read, mine breakout (fields.js stale-adoptable) | PB | OPEN — seam fields.js; verify claim staleness first |
-| 96 | PB-ORD-D | SF-031+032+033+045 drop-law/wake/leak verify + concussion encounter composition | PB | OPEN — CHECK pair + build |
+| 96 | PB-ORD-D | SF-031+032+033+045 drop-law/wake/leak verify + concussion encounter composition | PB | DONE 2026-10-02 — runtime already implements all four packets (inherited velocity, motion-heading standoff, arming gate, zero-damage shove, drifting pull field with collapse, lifecycle release); landed the packet's acceptance regression harness `test/pb-ord-d-ordnance-law.test.mjs` (6 pins: release law rest/reverse/slide + hull standoff + no early cook, empty-sky + equal-impulse concussion, moving-wake honesty + radius boundary, three-wave dense-fight cleanup incl. pooled-id no-stale-loop); repointed two stale pins (jackal doctrine now on the enemy row; static rock needs authored `physicsBody.dynamic:false` under SG-02 substance law) — 99/99 ordnance suite green |
 | 97 | PB-SWARM-A | SF-061+062 opening-wave physical promise + mass-and-gap wave composition | PB | OPEN — must-share pair |
 | 98 | PB-SWARM-B | SF-064+068 specialist introduction rehearsal + boss-round ammo placement | PB | OPEN — seam swarm planner |
 | 99 | PB-SWARM-C | SF-067+071 fracture-into-usable-cover + arena throw-window modifier | PB | OPEN — must-share pair |
