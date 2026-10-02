@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        49
+        47
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        50
+        48
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        51
+        49
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Gate_Aperture",
       "nodePath": [
         0,
-        52
+        50
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        53
+        51
       ],
       "parentNodeId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "worldTransform": [
@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a65fa75bbdec6c04e79ac86fae452ef033b82f4740447c9c954f96bf24fd179b",
+  "contentHash": "0215e950844cc2f5ed2fd550e51175fddfa0e64da1c488da6367876efa1bac4d",
   "dynamicGroups": [
     {
       "id": "sf.render.jump-ring.node.lod0-hook-nav-port.dynamic",
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f6f9866f0b61b804f55b795643dc84d7bc4ea1d7561ac0054340e29a8f1f6b7",
+      "geometryHash": "f5ef73db02c27e1c49851d42d069fb3b38dd393228cfcb76dd89ce07b3ee3ce2",
       "id": "sf.render.jump-ring.node.lod0-canopy.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -566,7 +566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "973c45896eadb803e26863e7b2492b2c051a6619377b58ee6328a8d70bda9718",
+      "geometryHash": "b8be307322e7ca6109f2645555a6a932d8ea4fb72c7e351400121128b56665fb",
       "id": "sf.render.jump-ring.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 4752,
       "indexed": true,
@@ -1207,16 +1207,16 @@
         "max": [
           9.499393463134766,
           52.48189926147461,
-          50.19989013671875
+          50.19990921020508
         ],
         "min": [
           -9.499393463134766,
           -47.99150848388672,
-          -50.199928283691406
+          -50.19990921020508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6616af6521bfb9a1379718b033984b55f7b08a59e82084c9786791451b9dd9b2",
+      "geometryHash": "2659154a425a80dcb3bb2c6052c0a5bdcb8daeae3e37f12ce0e18ec6d0291811",
       "id": "sf.render.jump-ring.node.lod1-armor.primitive.0",
       "indexCount": 15096,
       "indexed": true,
@@ -1251,31 +1251,6 @@
       "nodeId": "sf.render.jump-ring.node.lod1-beacon-amber",
       "primitiveIndex": 0,
       "vertexCount": 618
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.995967388153076,
-          49.620758056640625,
-          -3.998990297317505
-        ],
-        "min": [
-          -8.79672622680664,
-          48.006019592285156,
-          -6.9974045753479
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "725c7f2340834d4a81223f19ae1638027fc4e8f83c08098cccd1a5bfa4af1fab",
-      "id": "sf.render.jump-ring.node.lod1-canopy.primitive.0",
-      "indexCount": 3,
-      "indexed": true,
-      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
-      "materialPipelineKey": "blend",
-      "meshName": "LOD1_CANOPY",
-      "nodeId": "sf.render.jump-ring.node.lod1-canopy",
-      "primitiveIndex": 0,
-      "vertexCount": 3
     },
     {
       "bounds": {
@@ -1330,20 +1305,20 @@
     {
       "bounds": {
         "max": [
-          9.491318702697754,
-          54.63328552246094,
-          50.19361877441406
+          9.491304397583008,
+          54.63324737548828,
+          50.193538665771484
         ],
         "min": [
           -9.491304397583008,
-          -41.11009216308594,
+          -41.11005401611328,
           -50.194313049316406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f50140827bbf3e0ca207d3b84aa4876db6f4495e69bfe2a6c2808a502adfb78b",
+      "geometryHash": "2e5941576e4be4fffc6ca2e74a0d2fb41d45200ed6ae2c40bab61fa5900b689a",
       "id": "sf.render.jump-ring.node.lod1-hull.primitive.0",
-      "indexCount": 8103,
+      "indexCount": 8106,
       "indexed": true,
       "materialHash": "73c66c3fd420c2f5f017de373144175748c86b688a810f0bb59f3622b9cb627e",
       "materialPipelineKey": "opaque",
@@ -1391,16 +1366,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46f54e596ba0e2f3caaa31b75a65c96c2a35817a989eec2dcc2d358945ad44fa",
+      "geometryHash": "8e82b60e60b86e0211ecde74fc3db39f412c6ae51ae61a674dde73acec4aff1d",
       "id": "sf.render.jump-ring.node.lod1-lights-warm.primitive.0",
-      "indexCount": 13956,
+      "indexCount": 13944,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.jump-ring.node.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 9553
+      "vertexCount": 9549
     },
     {
       "bounds": {
@@ -1466,16 +1441,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01939a87235a09514c166ee43292885c73f1ec65f194275339c642c545c15abe",
+      "geometryHash": "01c3ecba71d6fb50b7d5e1a38f9aa2a627fac5cc35bc5be97f1cce47da6729a5",
       "id": "sf.render.jump-ring.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 3075,
+      "indexCount": 3087,
       "indexed": true,
       "materialHash": "591bb8c899dfc708a17ffdf0717046aa8e6dd5faf05bee19d658e62d4bbeb11e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.jump-ring.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2053
+      "vertexCount": 2057
     },
     {
       "bounds": {
@@ -2107,16 +2082,16 @@
         "max": [
           9.496511459350586,
           52.45142364501953,
-          50.19692611694336
+          50.19694519042969
         ],
         "min": [
           -9.496511459350586,
           -47.99150848388672,
-          -50.196964263916016
+          -50.19694519042969
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbf33179c7460427e74f4db06004bf3d33af9aef0d8274b7f61c15de1dd23be3",
+      "geometryHash": "22ff9acb4174cf6652db80162124725df216fce821ec8f4d73071ee1236f323a",
       "id": "sf.render.jump-ring.node.lod2-armor.primitive.0",
       "indexCount": 8094,
       "indexed": true,
@@ -2151,31 +2126,6 @@
       "nodeId": "sf.render.jump-ring.node.lod2-beacon-amber",
       "primitiveIndex": 0,
       "vertexCount": 90
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.995967388153076,
-          49.620758056640625,
-          -3.998990297317505
-        ],
-        "min": [
-          -8.79672622680664,
-          48.006019592285156,
-          -6.9974045753479
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "725c7f2340834d4a81223f19ae1638027fc4e8f83c08098cccd1a5bfa4af1fab",
-      "id": "sf.render.jump-ring.node.lod2-canopy.primitive.0",
-      "indexCount": 3,
-      "indexed": true,
-      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
-      "materialPipelineKey": "blend",
-      "meshName": "LOD2_CANOPY",
-      "nodeId": "sf.render.jump-ring.node.lod2-canopy",
-      "primitiveIndex": 0,
-      "vertexCount": 3
     },
     {
       "bounds": {
@@ -2230,20 +2180,20 @@
     {
       "bounds": {
         "max": [
-          9.491318702697754,
-          54.60868453979492,
-          50.19361877441406
+          9.491304397583008,
+          54.608646392822266,
+          50.193538665771484
         ],
         "min": [
           -9.491304397583008,
-          -41.085670471191406,
+          -41.08563232421875,
           -50.194313049316406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bafcff760c08ed75632e2144ee726f492ae3fdba6444c6bf0027c42a50f4b3f5",
+      "geometryHash": "cc32484921d050d94125377f9a27c99c16edaace7933f85bada612751e782127",
       "id": "sf.render.jump-ring.node.lod2-hull.primitive.0",
-      "indexCount": 2823,
+      "indexCount": 2826,
       "indexed": true,
       "materialHash": "73c66c3fd420c2f5f017de373144175748c86b688a810f0bb59f3622b9cb627e",
       "materialPipelineKey": "opaque",
@@ -2266,7 +2216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fea66e01b103f880f37d0bc65468f8499a198d07e78a0c1767774d1deda32803",
+      "geometryHash": "9ab2e8d57eebf62f5d493315917dfa96d01736c0aadfa5436446d702e23e1853",
       "id": "sf.render.jump-ring.node.lod2-lights-cyan.primitive.0",
       "indexCount": 7719,
       "indexed": true,
@@ -2291,7 +2241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e12980c362917303a67681f51d61dffb7fdc1bd83f203f3922370b516920f020",
+      "geometryHash": "f371a0d942dd59ff506543931720ddeeb5d040074b1a5356a02018c7e29a83b1",
       "id": "sf.render.jump-ring.node.lod2-lights-warm.primitive.0",
       "indexCount": 3819,
       "indexed": true,
@@ -2366,7 +2316,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ef85a0608d6d7f33a6864b49027df13da020038bceb589fdc8ef4ef42945cae",
+      "geometryHash": "7c147cf4282402b53f66a8866ab207c6a5f88ab4bc093de63df391d0f900ec24",
       "id": "sf.render.jump-ring.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1431,
       "indexed": true,
@@ -2991,7 +2941,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aacd81fae5603781528c9f8183e52b96a55799665c82da86c735573ecada5d72",
+      "geometryHash": "68f1859a0492753f911c8f627a4c65ff57872a4ff13edcbb7000bab1e96e5c71",
       "id": "sf.render.jump-ring.node.lod2-warning.primitive.0",
       "indexCount": 261,
       "indexed": true,
@@ -3856,7 +3806,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_0_Hull",
       "nodePath": [
         0,
-        37,
+        35,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-0",
@@ -3906,7 +3856,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_0_Lights_Cyan",
       "nodePath": [
         0,
-        37,
+        35,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-0",
@@ -3956,7 +3906,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_1_Hull",
       "nodePath": [
         0,
-        38,
+        36,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-1",
@@ -4006,7 +3956,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_1_Lights_Cyan",
       "nodePath": [
         0,
-        38,
+        36,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-1",
@@ -4056,7 +4006,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_10_Hull",
       "nodePath": [
         0,
-        39,
+        37,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-10",
@@ -4106,7 +4056,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_10_Lights_Cyan",
       "nodePath": [
         0,
-        39,
+        37,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-10",
@@ -4156,7 +4106,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_11_Hull",
       "nodePath": [
         0,
-        40,
+        38,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-11",
@@ -4206,7 +4156,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_11_Lights_Cyan",
       "nodePath": [
         0,
-        40,
+        38,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-11",
@@ -4256,7 +4206,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_2_Hull",
       "nodePath": [
         0,
-        41,
+        39,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-2",
@@ -4306,7 +4256,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_2_Lights_Cyan",
       "nodePath": [
         0,
-        41,
+        39,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-2",
@@ -4356,7 +4306,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_3_Hull",
       "nodePath": [
         0,
-        42,
+        40,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-3",
@@ -4406,7 +4356,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_3_Lights_Cyan",
       "nodePath": [
         0,
-        42,
+        40,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-3",
@@ -4456,7 +4406,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_4_Hull",
       "nodePath": [
         0,
-        43,
+        41,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-4",
@@ -4506,7 +4456,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_4_Lights_Cyan",
       "nodePath": [
         0,
-        43,
+        41,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-4",
@@ -4556,7 +4506,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_5_Hull",
       "nodePath": [
         0,
-        44,
+        42,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-5",
@@ -4606,7 +4556,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_5_Lights_Cyan",
       "nodePath": [
         0,
-        44,
+        42,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-5",
@@ -4656,7 +4606,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_6_Hull",
       "nodePath": [
         0,
-        45,
+        43,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-6",
@@ -4706,7 +4656,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_6_Lights_Cyan",
       "nodePath": [
         0,
-        45,
+        43,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-6",
@@ -4756,7 +4706,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_7_Hull",
       "nodePath": [
         0,
-        46,
+        44,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-7",
@@ -4806,7 +4756,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_7_Lights_Cyan",
       "nodePath": [
         0,
-        46,
+        44,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-7",
@@ -4856,7 +4806,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_8_Hull",
       "nodePath": [
         0,
-        47,
+        45,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-8",
@@ -4906,7 +4856,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_8_Lights_Cyan",
       "nodePath": [
         0,
-        47,
+        45,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-8",
@@ -4956,7 +4906,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_9_Hull",
       "nodePath": [
         0,
-        48,
+        46,
         0
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-9",
@@ -5006,7 +4956,7 @@
       "nodeName": "LOD0_MOTION_GATE_TIP_9_Lights_Cyan",
       "nodePath": [
         0,
-        48,
+        46,
         1
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-9",
@@ -5179,55 +5129,6 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.node.lod1-canopy",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD1_CANOPY",
-      "nodeName": "LOD1_CANOPY",
-      "nodePath": [
-        0,
-        15
-      ],
-      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
       "id": "sf.render.jump-ring.node.lod1-hook-nav-port",
       "localTransform": [
         52.642499923706055,
@@ -5252,7 +5153,7 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        16
+        15
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -5301,7 +5202,7 @@
       "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        17
+        16
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -5350,7 +5251,7 @@
       "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        18
+        17
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -5399,7 +5300,7 @@
       "nodeName": "LOD1_Lights_Cyan",
       "nodePath": [
         0,
-        19
+        18
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -5448,7 +5349,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        20
+        19
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -5497,7 +5398,7 @@
       "nodeName": "LOD1_Livery",
       "nodePath": [
         0,
-        21
+        20
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -5546,7 +5447,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        22
+        21
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -5595,7 +5496,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        23
+        22
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -5644,7 +5545,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_0_Hull",
       "nodePath": [
         0,
-        37,
+        35,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-0",
@@ -5694,7 +5595,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_0_Lights_Cyan",
       "nodePath": [
         0,
-        37,
+        35,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-0",
@@ -5744,7 +5645,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_1_Hull",
       "nodePath": [
         0,
-        38,
+        36,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-1",
@@ -5794,7 +5695,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_1_Lights_Cyan",
       "nodePath": [
         0,
-        38,
+        36,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-1",
@@ -5844,7 +5745,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_10_Hull",
       "nodePath": [
         0,
-        39,
+        37,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-10",
@@ -5894,7 +5795,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_10_Lights_Cyan",
       "nodePath": [
         0,
-        39,
+        37,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-10",
@@ -5944,7 +5845,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_11_Hull",
       "nodePath": [
         0,
-        40,
+        38,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-11",
@@ -5994,7 +5895,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_11_Lights_Cyan",
       "nodePath": [
         0,
-        40,
+        38,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-11",
@@ -6044,7 +5945,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_2_Hull",
       "nodePath": [
         0,
-        41,
+        39,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-2",
@@ -6094,7 +5995,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_2_Lights_Cyan",
       "nodePath": [
         0,
-        41,
+        39,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-2",
@@ -6144,7 +6045,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_3_Hull",
       "nodePath": [
         0,
-        42,
+        40,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-3",
@@ -6194,7 +6095,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_3_Lights_Cyan",
       "nodePath": [
         0,
-        42,
+        40,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-3",
@@ -6244,7 +6145,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_4_Hull",
       "nodePath": [
         0,
-        43,
+        41,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-4",
@@ -6294,7 +6195,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_4_Lights_Cyan",
       "nodePath": [
         0,
-        43,
+        41,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-4",
@@ -6344,7 +6245,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_5_Hull",
       "nodePath": [
         0,
-        44,
+        42,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-5",
@@ -6394,7 +6295,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_5_Lights_Cyan",
       "nodePath": [
         0,
-        44,
+        42,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-5",
@@ -6444,7 +6345,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_6_Hull",
       "nodePath": [
         0,
-        45,
+        43,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-6",
@@ -6494,7 +6395,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_6_Lights_Cyan",
       "nodePath": [
         0,
-        45,
+        43,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-6",
@@ -6544,7 +6445,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_7_Hull",
       "nodePath": [
         0,
-        46,
+        44,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-7",
@@ -6594,7 +6495,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_7_Lights_Cyan",
       "nodePath": [
         0,
-        46,
+        44,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-7",
@@ -6644,7 +6545,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_8_Hull",
       "nodePath": [
         0,
-        47,
+        45,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-8",
@@ -6694,7 +6595,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_8_Lights_Cyan",
       "nodePath": [
         0,
-        47,
+        45,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-8",
@@ -6744,7 +6645,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_9_Hull",
       "nodePath": [
         0,
-        48,
+        46,
         2
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-9",
@@ -6794,7 +6695,7 @@
       "nodeName": "LOD1_MOTION_GATE_TIP_9_Lights_Cyan",
       "nodePath": [
         0,
-        48,
+        46,
         3
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-9",
@@ -6844,7 +6745,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        24
+        23
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -6893,7 +6794,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        25
+        24
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -6942,56 +6843,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        26
-      ],
-      "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.jump-ring.node.lod2-canopy",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD2_CANOPY",
-      "nodeName": "LOD2_CANOPY",
-      "nodePath": [
-        0,
-        27
+        25
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7040,7 +6892,7 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        28
+        26
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -7089,7 +6941,7 @@
       "nodeName": "LOD2_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        29
+        27
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "dynamic",
@@ -7138,7 +6990,7 @@
       "nodeName": "LOD2_Hull",
       "nodePath": [
         0,
-        30
+        28
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7187,7 +7039,7 @@
       "nodeName": "LOD2_Lights_Cyan",
       "nodePath": [
         0,
-        31
+        29
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7236,7 +7088,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        32
+        30
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7285,7 +7137,7 @@
       "nodeName": "LOD2_Livery",
       "nodePath": [
         0,
-        33
+        31
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7334,7 +7186,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        34
+        32
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7383,7 +7235,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        35
+        33
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -7432,7 +7284,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_0_Hull",
       "nodePath": [
         0,
-        37,
+        35,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-0",
@@ -7482,7 +7334,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_0_Lights_Cyan",
       "nodePath": [
         0,
-        37,
+        35,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-0",
@@ -7532,7 +7384,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_1_Hull",
       "nodePath": [
         0,
-        38,
+        36,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-1",
@@ -7582,7 +7434,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_1_Lights_Cyan",
       "nodePath": [
         0,
-        38,
+        36,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-1",
@@ -7632,7 +7484,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_10_Hull",
       "nodePath": [
         0,
-        39,
+        37,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-10",
@@ -7682,7 +7534,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_10_Lights_Cyan",
       "nodePath": [
         0,
-        39,
+        37,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-10",
@@ -7732,7 +7584,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_11_Hull",
       "nodePath": [
         0,
-        40,
+        38,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-11",
@@ -7782,7 +7634,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_11_Lights_Cyan",
       "nodePath": [
         0,
-        40,
+        38,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-11",
@@ -7832,7 +7684,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_2_Hull",
       "nodePath": [
         0,
-        41,
+        39,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-2",
@@ -7882,7 +7734,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_2_Lights_Cyan",
       "nodePath": [
         0,
-        41,
+        39,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-2",
@@ -7932,7 +7784,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_3_Hull",
       "nodePath": [
         0,
-        42,
+        40,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-3",
@@ -7982,7 +7834,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_3_Lights_Cyan",
       "nodePath": [
         0,
-        42,
+        40,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-3",
@@ -8032,7 +7884,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_4_Hull",
       "nodePath": [
         0,
-        43,
+        41,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-4",
@@ -8082,7 +7934,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_4_Lights_Cyan",
       "nodePath": [
         0,
-        43,
+        41,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-4",
@@ -8132,7 +7984,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_5_Hull",
       "nodePath": [
         0,
-        44,
+        42,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-5",
@@ -8182,7 +8034,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_5_Lights_Cyan",
       "nodePath": [
         0,
-        44,
+        42,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-5",
@@ -8232,7 +8084,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_6_Hull",
       "nodePath": [
         0,
-        45,
+        43,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-6",
@@ -8282,7 +8134,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_6_Lights_Cyan",
       "nodePath": [
         0,
-        45,
+        43,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-6",
@@ -8332,7 +8184,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_7_Hull",
       "nodePath": [
         0,
-        46,
+        44,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-7",
@@ -8382,7 +8234,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_7_Lights_Cyan",
       "nodePath": [
         0,
-        46,
+        44,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-7",
@@ -8432,7 +8284,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_8_Hull",
       "nodePath": [
         0,
-        47,
+        45,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-8",
@@ -8482,7 +8334,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_8_Lights_Cyan",
       "nodePath": [
         0,
-        47,
+        45,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-8",
@@ -8532,7 +8384,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_9_Hull",
       "nodePath": [
         0,
-        48,
+        46,
         4
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-9",
@@ -8582,7 +8434,7 @@
       "nodeName": "LOD2_MOTION_GATE_TIP_9_Lights_Cyan",
       "nodePath": [
         0,
-        48,
+        46,
         5
       ],
       "parentId": "sf.render.jump-ring.node.motion-gate-tip-9",
@@ -8632,7 +8484,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        36
+        34
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8681,7 +8533,7 @@
       "nodeName": "MOTION_GATE_TIP_0",
       "nodePath": [
         0,
-        37
+        35
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8730,7 +8582,7 @@
       "nodeName": "MOTION_GATE_TIP_1",
       "nodePath": [
         0,
-        38
+        36
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8779,7 +8631,7 @@
       "nodeName": "MOTION_GATE_TIP_10",
       "nodePath": [
         0,
-        39
+        37
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8828,7 +8680,7 @@
       "nodeName": "MOTION_GATE_TIP_11",
       "nodePath": [
         0,
-        40
+        38
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8877,7 +8729,7 @@
       "nodeName": "MOTION_GATE_TIP_2",
       "nodePath": [
         0,
-        41
+        39
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8926,7 +8778,7 @@
       "nodeName": "MOTION_GATE_TIP_3",
       "nodePath": [
         0,
-        42
+        40
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -8975,7 +8827,7 @@
       "nodeName": "MOTION_GATE_TIP_4",
       "nodePath": [
         0,
-        43
+        41
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9024,7 +8876,7 @@
       "nodeName": "MOTION_GATE_TIP_5",
       "nodePath": [
         0,
-        44
+        42
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9073,7 +8925,7 @@
       "nodeName": "MOTION_GATE_TIP_6",
       "nodePath": [
         0,
-        45
+        43
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9122,7 +8974,7 @@
       "nodeName": "MOTION_GATE_TIP_7",
       "nodePath": [
         0,
-        46
+        44
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9171,7 +9023,7 @@
       "nodeName": "MOTION_GATE_TIP_8",
       "nodePath": [
         0,
-        47
+        45
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9220,7 +9072,7 @@
       "nodeName": "MOTION_GATE_TIP_9",
       "nodePath": [
         0,
-        48
+        46
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9317,7 +9169,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        49
+        47
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9366,7 +9218,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        50
+        48
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9415,7 +9267,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        51
+        49
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9464,7 +9316,7 @@
       "nodeName": "SOCKET_Gate_Aperture",
       "nodePath": [
         0,
-        52
+        50
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9513,7 +9365,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        53
+        51
       ],
       "parentId": "sf.render.jump-ring.node.sf-place-gate-jump-ring-root",
       "role": "immutable",
@@ -9540,22 +9392,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "ca708963003c456f9eee07688a4d7781693658bd93ff6efc50d8b88dc31c6fa9"
+      "sha256": "7dee5ae20fa0f67e25028371db746b31bdd83cf153a94b4be13cb1f1d67b487c"
     },
     "sourceGlb": {
-      "bytes": 1965148,
-      "sha256": "dc3a76db4faf1b032bfe3ce026c18b6db5aa93aba976ab5a693905a21e52ded7",
+      "bytes": 1962388,
+      "sha256": "14e9d9ebcdd84dff75a065fe1f9f3fb790f2ab673a4e050d7e82da3330fe2995",
       "uri": "place_gate_jump_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 214095,
+      "sha256": "6ebc266fb03b3fffe5574f35251e48f0ebba2feaa1a5838e9cd6c295a155b35e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3702320,
-    "sha256": "910395f9585f3fec81986c57899a4a5811b61fd8d4278755e7c1d909cf6ce944",
+    "bytes": 3695696,
+    "sha256": "92087a38046ef8293d32ac2cbd9925899597c88c041477fe05b730f23f4765f4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9606,7 +9458,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_0",
-        "planIndex": 39,
+        "planIndex": 37,
         "tags": {
           "motionGroup": true
         },
@@ -9671,7 +9523,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_1",
-        "planIndex": 46,
+        "planIndex": 44,
         "tags": {
           "motionGroup": true
         },
@@ -9736,7 +9588,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_10",
-        "planIndex": 53,
+        "planIndex": 51,
         "tags": {
           "motionGroup": true
         },
@@ -9801,7 +9653,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_11",
-        "planIndex": 60,
+        "planIndex": 58,
         "tags": {
           "motionGroup": true
         },
@@ -9866,7 +9718,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_2",
-        "planIndex": 67,
+        "planIndex": 65,
         "tags": {
           "motionGroup": true
         },
@@ -9931,7 +9783,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_3",
-        "planIndex": 74,
+        "planIndex": 72,
         "tags": {
           "motionGroup": true
         },
@@ -9996,7 +9848,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_4",
-        "planIndex": 81,
+        "planIndex": 79,
         "tags": {
           "motionGroup": true
         },
@@ -10061,7 +9913,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_5",
-        "planIndex": 88,
+        "planIndex": 86,
         "tags": {
           "motionGroup": true
         },
@@ -10126,7 +9978,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_6",
-        "planIndex": 95,
+        "planIndex": 93,
         "tags": {
           "motionGroup": true
         },
@@ -10191,7 +10043,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_7",
-        "planIndex": 102,
+        "planIndex": 100,
         "tags": {
           "motionGroup": true
         },
@@ -10256,7 +10108,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_8",
-        "planIndex": 109,
+        "planIndex": 107,
         "tags": {
           "motionGroup": true
         },
@@ -10321,7 +10173,7 @@
           1
         ],
         "name": "MOTION_GATE_TIP_9",
-        "planIndex": 116,
+        "planIndex": 114,
         "tags": {
           "motionGroup": true
         },
@@ -10386,7 +10238,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 123,
+        "planIndex": 121,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -10423,7 +10275,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 124,
+        "planIndex": 122,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -10460,7 +10312,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 125,
+        "planIndex": 123,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -10498,7 +10350,7 @@
           1
         ],
         "name": "SOCKET_Gate_Aperture",
-        "planIndex": 126,
+        "planIndex": 124,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -10536,7 +10388,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 127,
+        "planIndex": 125,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -10557,7 +10409,7 @@
     ],
     "materialProfileRoles": {
       "accent": 3,
-      "glass": 3,
+      "glass": 1,
       "hull": 43,
       "mechanical": 6,
       "signal": 51,
@@ -10642,7 +10494,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10652,12 +10504,12 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10667,12 +10519,12 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "signal"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -10682,17 +10534,17 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
+        "planIndex": 26,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10702,12 +10554,12 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -10717,37 +10569,37 @@
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 36,
+        "planIndex": 34,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 37,
+        "planIndex": 35,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "warning"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10771,12 +10623,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 44,
+        "planIndex": 45,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 45,
+        "planIndex": 46,
         "role": "signal"
       },
       {
@@ -10801,12 +10653,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 51,
+        "planIndex": 52,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 52,
+        "planIndex": 53,
         "role": "signal"
       },
       {
@@ -10831,12 +10683,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 58,
+        "planIndex": 59,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 59,
+        "planIndex": 60,
         "role": "signal"
       },
       {
@@ -10861,12 +10713,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 65,
+        "planIndex": 66,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 66,
+        "planIndex": 67,
         "role": "signal"
       },
       {
@@ -10891,12 +10743,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 72,
+        "planIndex": 73,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 73,
+        "planIndex": 74,
         "role": "signal"
       },
       {
@@ -10921,12 +10773,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 79,
+        "planIndex": 80,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 80,
+        "planIndex": 81,
         "role": "signal"
       },
       {
@@ -10951,12 +10803,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 86,
+        "planIndex": 87,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 87,
+        "planIndex": 88,
         "role": "signal"
       },
       {
@@ -10981,12 +10833,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 93,
+        "planIndex": 94,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 94,
+        "planIndex": 95,
         "role": "signal"
       },
       {
@@ -11011,12 +10863,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 100,
+        "planIndex": 101,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 101,
+        "planIndex": 102,
         "role": "signal"
       },
       {
@@ -11041,12 +10893,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 107,
+        "planIndex": 108,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 108,
+        "planIndex": 109,
         "role": "signal"
       },
       {
@@ -11071,12 +10923,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 114,
+        "planIndex": 115,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 115,
+        "planIndex": 116,
         "role": "signal"
       },
       {
@@ -11098,25 +10950,15 @@
         "allowTextures": true,
         "planIndex": 120,
         "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 121,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 122,
-        "role": "signal"
       }
     ],
     "motionBank": {
-      "bytes": 160404,
+      "bytes": 63430,
       "rigId": "gate_emitter_index",
-      "sha256": "e36752c9ba1ce46e1110d4b6a090bf73de52c237ab87a59887747eca223ac401",
+      "sha256": "4b7f62304dcebb2ab6d8a6f502f5a0a6ae48dc7d9d48b70f6c95c6a765f6ec69",
       "uri": "assets/ships/motions/jump-ring.motion.json"
     },
-    "nodeCount": 128,
+    "nodeCount": 126,
     "primitives": [
       {
         "canopy": false,
@@ -11499,33 +11341,6 @@
         }
       },
       {
-        "canopy": true,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_CANOPY",
-        "planIndex": 17,
-        "tags": {
-          "canopy": true,
-          "lod": "lod1"
-        }
-      },
-      {
         "canopy": false,
         "matrix": [
           52.642499923706055,
@@ -11546,7 +11361,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 18,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -11574,7 +11389,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 19,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -11602,7 +11417,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 20,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11629,7 +11444,7 @@
           1
         ],
         "name": "LOD1_Lights_Cyan",
-        "planIndex": 21,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11656,7 +11471,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 22,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11683,7 +11498,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 23,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11710,7 +11525,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 24,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11737,7 +11552,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 25,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11764,7 +11579,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 26,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -11791,7 +11606,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 27,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11818,36 +11633,9 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 28,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": true,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_CANOPY",
-        "planIndex": 29,
-        "tags": {
-          "canopy": true,
           "lod": "lod2"
         }
       },
@@ -11872,7 +11660,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 30,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -11900,7 +11688,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 31,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -11928,7 +11716,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 32,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11955,7 +11743,7 @@
           1
         ],
         "name": "LOD2_Lights_Cyan",
-        "planIndex": 33,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11982,7 +11770,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 34,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -12009,7 +11797,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 35,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -12036,7 +11824,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 36,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -12063,7 +11851,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 37,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -12090,7 +11878,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 38,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -12117,7 +11905,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_0_Hull",
-        "planIndex": 40,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12145,7 +11933,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_0_Lights_Cyan",
-        "planIndex": 41,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12173,7 +11961,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_0_Hull",
-        "planIndex": 42,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12201,7 +11989,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_0_Lights_Cyan",
-        "planIndex": 43,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12229,7 +12017,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_0_Hull",
-        "planIndex": 44,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12257,7 +12045,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_0_Lights_Cyan",
-        "planIndex": 45,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12285,7 +12073,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_1_Hull",
-        "planIndex": 47,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12313,7 +12101,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_1_Lights_Cyan",
-        "planIndex": 48,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12341,7 +12129,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_1_Hull",
-        "planIndex": 49,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12369,7 +12157,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_1_Lights_Cyan",
-        "planIndex": 50,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12397,7 +12185,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_1_Hull",
-        "planIndex": 51,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12425,7 +12213,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_1_Lights_Cyan",
-        "planIndex": 52,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12453,7 +12241,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_10_Hull",
-        "planIndex": 54,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12481,7 +12269,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_10_Lights_Cyan",
-        "planIndex": 55,
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12509,7 +12297,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_10_Hull",
-        "planIndex": 56,
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12537,7 +12325,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_10_Lights_Cyan",
-        "planIndex": 57,
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12565,7 +12353,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_10_Hull",
-        "planIndex": 58,
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12593,7 +12381,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_10_Lights_Cyan",
-        "planIndex": 59,
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12621,7 +12409,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_11_Hull",
-        "planIndex": 61,
+        "planIndex": 59,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12649,7 +12437,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_11_Lights_Cyan",
-        "planIndex": 62,
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12677,7 +12465,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_11_Hull",
-        "planIndex": 63,
+        "planIndex": 61,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12705,7 +12493,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_11_Lights_Cyan",
-        "planIndex": 64,
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12733,7 +12521,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_11_Hull",
-        "planIndex": 65,
+        "planIndex": 63,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12761,7 +12549,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_11_Lights_Cyan",
-        "planIndex": 66,
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12789,7 +12577,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_2_Hull",
-        "planIndex": 68,
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12817,7 +12605,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_2_Lights_Cyan",
-        "planIndex": 69,
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12845,7 +12633,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_2_Hull",
-        "planIndex": 70,
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12873,7 +12661,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_2_Lights_Cyan",
-        "planIndex": 71,
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12901,7 +12689,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_2_Hull",
-        "planIndex": 72,
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12929,7 +12717,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_2_Lights_Cyan",
-        "planIndex": 73,
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12957,7 +12745,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_3_Hull",
-        "planIndex": 75,
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12985,7 +12773,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_3_Lights_Cyan",
-        "planIndex": 76,
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13013,7 +12801,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_3_Hull",
-        "planIndex": 77,
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13041,7 +12829,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_3_Lights_Cyan",
-        "planIndex": 78,
+        "planIndex": 76,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13069,7 +12857,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_3_Hull",
-        "planIndex": 79,
+        "planIndex": 77,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13097,7 +12885,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_3_Lights_Cyan",
-        "planIndex": 80,
+        "planIndex": 78,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13125,7 +12913,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_4_Hull",
-        "planIndex": 82,
+        "planIndex": 80,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13153,7 +12941,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_4_Lights_Cyan",
-        "planIndex": 83,
+        "planIndex": 81,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13181,7 +12969,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_4_Hull",
-        "planIndex": 84,
+        "planIndex": 82,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13209,7 +12997,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_4_Lights_Cyan",
-        "planIndex": 85,
+        "planIndex": 83,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13237,7 +13025,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_4_Hull",
-        "planIndex": 86,
+        "planIndex": 84,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13265,7 +13053,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_4_Lights_Cyan",
-        "planIndex": 87,
+        "planIndex": 85,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13293,7 +13081,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_5_Hull",
-        "planIndex": 89,
+        "planIndex": 87,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13321,7 +13109,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_5_Lights_Cyan",
-        "planIndex": 90,
+        "planIndex": 88,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13349,7 +13137,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_5_Hull",
-        "planIndex": 91,
+        "planIndex": 89,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13377,7 +13165,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_5_Lights_Cyan",
-        "planIndex": 92,
+        "planIndex": 90,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13405,7 +13193,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_5_Hull",
-        "planIndex": 93,
+        "planIndex": 91,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13433,7 +13221,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_5_Lights_Cyan",
-        "planIndex": 94,
+        "planIndex": 92,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13461,7 +13249,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_6_Hull",
-        "planIndex": 96,
+        "planIndex": 94,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13489,7 +13277,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_6_Lights_Cyan",
-        "planIndex": 97,
+        "planIndex": 95,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13517,7 +13305,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_6_Hull",
-        "planIndex": 98,
+        "planIndex": 96,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13545,7 +13333,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_6_Lights_Cyan",
-        "planIndex": 99,
+        "planIndex": 97,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13573,7 +13361,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_6_Hull",
-        "planIndex": 100,
+        "planIndex": 98,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13601,7 +13389,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_6_Lights_Cyan",
-        "planIndex": 101,
+        "planIndex": 99,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13629,7 +13417,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_7_Hull",
-        "planIndex": 103,
+        "planIndex": 101,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13657,7 +13445,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_7_Lights_Cyan",
-        "planIndex": 104,
+        "planIndex": 102,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13685,7 +13473,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_7_Hull",
-        "planIndex": 105,
+        "planIndex": 103,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13713,7 +13501,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_7_Lights_Cyan",
-        "planIndex": 106,
+        "planIndex": 104,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13741,7 +13529,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_7_Hull",
-        "planIndex": 107,
+        "planIndex": 105,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13769,7 +13557,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_7_Lights_Cyan",
-        "planIndex": 108,
+        "planIndex": 106,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13797,7 +13585,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_8_Hull",
-        "planIndex": 110,
+        "planIndex": 108,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13825,7 +13613,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_8_Lights_Cyan",
-        "planIndex": 111,
+        "planIndex": 109,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13853,7 +13641,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_8_Hull",
-        "planIndex": 112,
+        "planIndex": 110,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13881,7 +13669,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_8_Lights_Cyan",
-        "planIndex": 113,
+        "planIndex": 111,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -13909,7 +13697,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_8_Hull",
-        "planIndex": 114,
+        "planIndex": 112,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13937,7 +13725,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_8_Lights_Cyan",
-        "planIndex": 115,
+        "planIndex": 113,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -13965,7 +13753,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_9_Hull",
-        "planIndex": 117,
+        "planIndex": 115,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -13993,7 +13781,7 @@
           1
         ],
         "name": "LOD0_MOTION_GATE_TIP_9_Lights_Cyan",
-        "planIndex": 118,
+        "planIndex": 116,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -14021,7 +13809,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_9_Hull",
-        "planIndex": 119,
+        "planIndex": 117,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -14049,7 +13837,7 @@
           1
         ],
         "name": "LOD1_MOTION_GATE_TIP_9_Lights_Cyan",
-        "planIndex": 120,
+        "planIndex": 118,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -14077,7 +13865,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_9_Hull",
-        "planIndex": 121,
+        "planIndex": 119,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -14105,7 +13893,7 @@
           1
         ],
         "name": "LOD2_MOTION_GATE_TIP_9_Lights_Cyan",
-        "planIndex": 122,
+        "planIndex": 120,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -14117,7 +13905,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "43b1a7e660bbf7e7ca3af8abde5c8adf005d5caf4485a3758013aecefbfa48f9",
+  "runtimeHash": "fb086e37c8e1098d360b6628f4320c38954a5c6c97864f408d877ca7d5009137",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -14174,7 +13962,6 @@
         "sf.render.jump-ring.node.lod0-warning",
         "sf.render.jump-ring.node.lod1-armor",
         "sf.render.jump-ring.node.lod1-beacon-amber",
-        "sf.render.jump-ring.node.lod1-canopy",
         "sf.render.jump-ring.node.lod1-hook-nav-port",
         "sf.render.jump-ring.node.lod1-hook-nav-starboard",
         "sf.render.jump-ring.node.lod1-hull",
@@ -14210,7 +13997,6 @@
         "sf.render.jump-ring.node.lod1-warning",
         "sf.render.jump-ring.node.lod2-armor",
         "sf.render.jump-ring.node.lod2-beacon-amber",
-        "sf.render.jump-ring.node.lod2-canopy",
         "sf.render.jump-ring.node.lod2-hook-nav-port",
         "sf.render.jump-ring.node.lod2-hook-nav-starboard",
         "sf.render.jump-ring.node.lod2-hull",
