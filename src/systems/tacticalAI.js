@@ -833,7 +833,7 @@ function autoRecipeForSquad(members, squadKey, seed) {
   let fast = 0;
   for (const member of members) {
     const d = normalizeCombatDoctrineId(member.data && member.data.ai && member.data.ai.combatDoctrineId);
-    if (d === CombatDoctrineId.RANGED_DISENGAGER) ranged += 1;
+    if (d === CombatDoctrineId.RANGED_DISENGAGER || d === CombatDoctrineId.RANGED_STALKER) ranged += 1;
     else if (AUTO_SQUAD_FAST_DOCTRINES.has(d)) fast += 1;
   }
   // A marksman on the squad anchors everyone behind the firing line.
@@ -890,7 +890,7 @@ function autoSocketsFor(members) {
   // Marksman doctrines ride the rear socket so the firing line keeps its support wing.
   for (const m of sorted) {
     const d = normalizeCombatDoctrineId(m.data && m.data.ai && m.data.ai.combatDoctrineId);
-    if (d === CombatDoctrineId.RANGED_DISENGAGER) take(m, SQUAD_SOCKET.REAR);
+    if (d === CombatDoctrineId.RANGED_DISENGAGER || d === CombatDoctrineId.RANGED_STALKER) take(m, SQUAD_SOCKET.REAR);
   }
   for (let i = 0; i < sorted.length; i++) {
     const m = sorted[i];

@@ -237,6 +237,9 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   // Ecology roles: durable telegraph + counter hints for HUD/comms (presentation consumers).
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
+  // FB-121: ammunition / moving terrain / specialist — the scan panel's one-word read on what
+  // this hull IS, derived on the row from mass unless the specialist identity overrides it.
+  spec.data.physicalClass = def.physicalClass || null;
   // INF-025: authored directional armor (Mirrorjaw prow/stern split). Clamped here so a bad
   // row can neither immunize a hull nor multiply damage without bound; the router stays pure.
   if (def.directionalArmor && typeof def.directionalArmor === 'object') {
@@ -276,6 +279,7 @@ function doctrineTelegraphFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_spool';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_charge';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
+  if (doctrineId === CombatDoctrineId.RANGED_STALKER) return 'sensor_ghost';
   if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'detonator_fuse';
   return 'engine_flare';
 }

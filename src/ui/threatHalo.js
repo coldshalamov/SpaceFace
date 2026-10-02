@@ -53,6 +53,16 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'attach_spool',
   'wake_mines',
   'detonator_fuse',
+  'field_spool',
+  'pd_curtain',
+  'sensor_ghost',
+  'broadside_charge',
+  'shield_lance',
+  'pirate_stalk',
+  'scan_sweep',
+  'return_fire_warning',
+  'pd_curtain_closing',
+  'warden_screen_closing',
 ]);
 
 export const TELEGRAPH_CUE_TICKS = 30;
@@ -75,15 +85,21 @@ export function leftoverTelegraphKind(payload) {
   if (TELEGRAPH_KIND_SET.has(raw)) return raw;
   if (raw === 'mine') return 'wake_mines';
   if (raw === 'transverse_snare') return 'attach_spool';
-  if (raw === 'shield_lance') return 'weapon_charge';
   if (COMPAT_ATTACK_KINDS.has(raw)) return 'engine_flare';
   const doctrineId = String(payload.doctrineId || '');
   if (doctrineId === 'interceptor_flyby' || doctrineId === 'brawler_commit' || doctrineId === 'escort_screen'
-      || doctrineId === 'capital_broadside') {
+      || doctrineId === 'pack_pursuit' || doctrineId === 'swarm_pack') {
     return 'engine_flare';
   }
-  if (doctrineId === 'tether_control_raider' || doctrineId === 'field_anchor_controller') return 'attach_spool';
+  if (doctrineId === 'capital_broadside' || doctrineId === 'capital_broadside_tollman'
+      || doctrineId === 'capital_broadside_ala') {
+    return 'broadside_charge';
+  }
+  if (doctrineId === 'tether_control_raider') return 'attach_spool';
+  if (doctrineId === 'field_anchor_controller') return 'field_spool';
   if (doctrineId === 'ranged_disengager' || doctrineId === 'shield_breaker') return 'weapon_charge';
+  if (doctrineId === 'ranged_stalker') return 'sensor_ghost';
+  if (doctrineId === 'mine_layer_wake') return 'wake_mines';
   if (doctrineId === 'detonator_run') return 'detonator_fuse';
   return null;
 }

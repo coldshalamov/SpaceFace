@@ -373,14 +373,21 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
 test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => {
   assert.deepEqual([...LEFTOVER_TELEGRAPH_KINDS], [
     'engine_flare', 'weapon_charge', 'attach_spool', 'wake_mines', 'detonator_fuse',
+    'field_spool', 'pd_curtain', 'sensor_ghost', 'broadside_charge', 'shield_lance',
+    'pirate_stalk', 'scan_sweep', 'return_fire_warning', 'pd_curtain_closing',
+    'warden_screen_closing',
   ]);
   assert.equal(leftoverTelegraphKind({ kind: 'engine_flare' }), 'engine_flare');
   assert.equal(leftoverTelegraphKind({ kind: 'weapon_charge' }), 'weapon_charge');
   assert.equal(leftoverTelegraphKind({ kind: 'attach_spool' }), 'attach_spool');
   assert.equal(leftoverTelegraphKind({ kind: MINE_TELEGRAPH_CUE }), 'wake_mines');
   assert.equal(leftoverTelegraphKind({ kind: 'transverse_snare' }), 'attach_spool');
+  assert.equal(leftoverTelegraphKind({ kind: 'sensor_ghost' }), 'sensor_ghost');
+  assert.equal(leftoverTelegraphKind({ kind: 'field_spool' }), 'field_spool');
   assert.equal(leftoverTelegraphKind({ doctrineId: 'ranged_disengager' }), 'weapon_charge');
+  assert.equal(leftoverTelegraphKind({ doctrineId: 'ranged_stalker' }), 'sensor_ghost');
   assert.equal(leftoverTelegraphKind({ doctrineId: 'detonator_run' }), 'detonator_fuse');
+  assert.equal(leftoverTelegraphKind({ doctrineId: 'capital_broadside' }), 'broadside_charge');
   assert.equal(leftoverTelegraphKind({ kind: 'collision' }), null);
   assert.equal(DOCTRINE_TELEGRAPH_TICKS, TELEGRAPH_CUE_TICKS);
   assert.equal(Math.round(TELEGRAPH_CUE_TICKS * TICK_MS), 500, 'a telegraph lead is 500 ms / 30 frames');
@@ -391,6 +398,19 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
     weapon_charge: 'impulses',
     wake_mines: 'repulsors',
     attach_spool: 'rope',
+    detonator_fuse: 'repulsors',
+    shield_lance: 'impulses',
+    field_spool: 'wells',
+    pd_curtain: 'shields',
+    sensor_ghost: 'impulses',
+    broadside_charge: 'impulses',
+    pirate_stalk: 'impulses',
+    return_fire_warning: 'impulses',
+    scan_sweep: 'shields',
+    pd_curtain_closing: 'shields',
+    warden_screen_closing: 'shields',
+    attackRun: 'impulses',
+    alphaStrike: 'impulses',
   });
   assert.equal(forceChannelForTelegraphKind('engine_flare'), 'impulses');
   assert.equal(forceChannelForTelegraphKind('weapon_charge'), 'impulses');

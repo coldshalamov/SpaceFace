@@ -549,10 +549,11 @@ export function resolveWeaponCueTable(weaponId, weaponsArray = []) {
 // outrank this table.
 
 export const ENEMY_DOCTRINE_OVERRIDES = Object.freeze({
-  // The two light pack hulls stop flying the generic raider flyby and run tight synchronized
-  // pack passes (short cycles, 120 WU commit band).
+  // The light pack hull stops flying the generic raider flyby and runs tight synchronized pack
+  // passes (short cycles, 120 WU commit band).
   wasp_swarmer: 'swarm_pack',
-  choir_zealot: 'swarm_pack',
+  // FB-017: the zealot's guardian identity (escort_screen + prow plate) is declared on its own
+  // enemy row — the same single-statement rule that retired the jackal override.
   // The jackal's area-denial identity (telegraph cue `wake_mines`, counter hint
   // `cut_tether_or_clear_wake`) is declared on its own enemy row — no override needed.
   // The corsair elite is the roster's shield-breaker: closes through the band, telegraphs, lands
