@@ -63,6 +63,7 @@ import { aceById } from '../data/namedAces.js';
 import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { collidesFlipEpoch } from '../world/livingWorldViews.js';
+import { physicsPartitionEpoch } from '../world/activityRuntime.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -824,21 +825,30 @@ export const claims = {
   // Blocker-passing bodies the spatial hash cannot cover: hash membership requires
   // e.collides truthy, so a member with collides===undefined/0 still passes
   // _travelInfrastructureStaticBlocker (only ===false fails it) yet never reaches a
-  // queryRadius result. The domain is the blocker domain — entityList minus the six
-  // excluded types — not index.statics. Rebuilt only on index churn or a post-spawn
-  // collides flip, so the per-check walk stays at this small list.
+  // queryRadius result — and a collides-truthy member shelved out of the physics
+  // partition (_physicsPartition ∉ {1,2}) is hash-invisible the same way. The domain
+  // is the blocker domain — entityList minus the six excluded types — not index.statics.
+  // Rebuilt on index churn, a collides flip, or a physics-partition flip (shelf in/out).
   _travelInfrastructureStaticsUncovered() {
     const index = this.state && this.state.entityIndex;
     const version = index && Number.isFinite(index.version) ? index.version : null;
     const epoch = collidesFlipEpoch();
+    const partitionEpoch = physicsPartitionEpoch();
     const cache = this._infraStaticsUncovered
-      || (this._infraStaticsUncovered = { version: -1, epoch: -1, list: [] });
-    if (version === null || cache.version !== version || cache.epoch !== epoch) {
+      || (this._infraStaticsUncovered = { version: -1, epoch: -1, partitionEpoch: -1, list: [] });
+    if (version === null || cache.version !== version || cache.epoch !== epoch
+      || cache.partitionEpoch !== partitionEpoch) {
       cache.version = version == null ? -1 : version;
       cache.epoch = epoch;
+      cache.partitionEpoch = partitionEpoch;
       cache.list.length = 0;
       const list = (this.state && this.state.entityList) || [];
-      for (const e of list) if (e && !e.collides && e.collides !== false) cache.list.push(e);
+      for (const e of list) {
+        if (e && e.collides !== false
+          && (!e.collides || (e._physicsPartition !== 1 && e._physicsPartition !== 2))) {
+          cache.list.push(e);
+        }
+      }
     }
     return cache.list;
   },

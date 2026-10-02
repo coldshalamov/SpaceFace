@@ -183,8 +183,12 @@ export function createWorldObjectPicker(env) {
   const perfNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
   const getViewport = () => {
     const now = perfNow();
-    if (!vpCache || now - vpCache.at >= 500) {
-      vpCache = { at: now, vp: rawGetViewport() };
+    // canvas.width/height are attribute reads (no layout) — invalidate the rect
+    // cache on a resize instead of letting a stale rect survive the full TTL.
+    const c = state && state.render && state.render.canvas;
+    const cw = c && c.width, ch = c && c.height;
+    if (!vpCache || now - vpCache.at >= 500 || vpCache.cw !== cw || vpCache.ch !== ch) {
+      vpCache = { at: now, vp: rawGetViewport(), cw, ch };
     }
     return vpCache && vpCache.vp;
   };
@@ -221,9 +225,19 @@ export function createWorldObjectPicker(env) {
     return !scene;
   }
 
+  const _invRoot = new THREE.Matrix4();
+  const _relM = new THREE.Matrix4();
+  const _leafCenter = new THREE.Vector3();
+
   function rebuildRoot(entry, root) {
     entry.nodes.length = 0;
     entry.recs.length = 0;
+    entry.maxReachLocal = 0;
+    // Per-root leaf reach: the drawn cull sphere is XZ-only, so a leaf high on
+    // +Y or far past the pad overhangs the envelope — maxReachLocal covers the
+    // true 3-D leaf silhouette in root-local space (rigid-invariant under
+    // rotation; root scale re-multiplies at pick time).
+    _invRoot.copy(root.matrixWorld).invert();
     root.traverse((object) => {
       let rec = entry.recs[entry.nodes.length];
       if (!rec) {
@@ -236,6 +250,20 @@ export function createWorldObjectPicker(env) {
       const kids = object.children;
       for (let k = 0; k < kids.length; k++) rec.kids.push(kids[k]);
       entry.nodes.push(object);
+      const geo = object.geometry;
+      if (geo) {
+        if (!geo.boundingSphere) {
+          try { geo.computeBoundingSphere(); } catch (_) {}
+        }
+        const bs = geo.boundingSphere;
+        if (bs) {
+          _relM.multiplyMatrices(_invRoot, object.matrixWorld);
+          _leafCenter.copy(bs.center).applyMatrix4(_relM);
+          const scale = _relM.getMaxScaleOnAxis() || 1;
+          const reach = _leafCenter.length() + bs.radius * scale;
+          if (reach > entry.maxReachLocal) entry.maxReachLocal = reach;
+        }
+      }
     });
     entry.recs.length = entry.nodes.length;
   }
@@ -259,15 +287,19 @@ export function createWorldObjectPicker(env) {
   }
 
   function nodesFor(root) {
+    return entryFor(root).nodes;
+  }
+
+  function entryFor(root) {
     let entry = leafCache.get(root);
     if (!entry) {
-      entry = { nodes: [], recs: [] };
+      entry = { nodes: [], recs: [], maxReachLocal: 0 };
       leafCache.set(root, entry);
       rebuildRoot(entry, root);
     } else if (signatureDirty(entry)) {
       rebuildRoot(entry, root);
     }
-    return entry.nodes;
+    return entry;
   }
 
   function presentedStaticBatch(nodes, root) {
@@ -314,12 +346,16 @@ export function createWorldObjectPicker(env) {
       if (!root || !rootPresented(root)) return;
       const entity = resolveWorldPresentationEntity(state, id);
       if (!isSelectableWorldObject(entity)) return;
-      // Envelope reject: the drawn cull sphere already covers every leaf sphere (it is the
-      // same bound frustum culling trusts — a leaf outside it would clip), so a ray that
-      // misses it misses every leaf. The approx path forgives FORGIVE_PX for tiny bodies;
-      // each leaf's overhangPx is bounded below by the envelope's own miss projected at
-      // the farthest leaf depth, so exceeding FORGIVE_PX proves no leaf can qualify.
-      const cullR = entityVisualCullRadius(entity, root);
+      // Envelope reject: the drawn cull sphere is XZ-only — a leaf high on +Y or
+      // past the pad overhangs it — so the reject bound unions the cull radius
+      // with the root's measured leaf reach (root-local reach x world scale).
+      // A ray that misses the union misses every leaf; the approx path forgives
+      // FORGIVE_PX for tiny bodies, and exceeding it proves no leaf can qualify.
+      const nodesEntry = entryFor(root);
+      const cullR = Math.max(
+        entityVisualCullRadius(entity, root),
+        nodesEntry.maxReachLocal * (root.matrixWorld.getMaxScaleOnAxis() || 1),
+      );
       if (cullR > 0) {
         tmpV.setFromMatrixPosition(root.matrixWorld);
         toCenter.subVectors(tmpV, ro);
@@ -332,7 +368,7 @@ export function createWorldObjectPicker(env) {
           if (!(envOverhang * pxScaleMin <= FORGIVE_PX)) return;
         }
       }
-      const nodes = nodesFor(root);
+      const nodes = nodesEntry.nodes;
       const batchPresented = presentedStaticBatch(nodes, root);
       for (let i = 0; i < nodes.length; i++) {
         const leaf = nodes[i];

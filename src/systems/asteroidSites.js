@@ -539,9 +539,16 @@ export const asteroidSites = {
     const index = this.state.entityIndex;
     const byWorldRecord = index && index.__spacefaceEntityIndexV1 && index.ready === true
       && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    // The map holds the FIRST carrier — provably the only candidate only when the
+    // count is exactly one; a multi-carrier id falls back to the walk so a later
+    // carrier satisfying the compound predicate is not missed.
+    const wrCounts = index && index.byWorldRecordIdCount instanceof Map
+      ? index.byWorldRecordIdCount : null;
     let payloadEntity = null;
     let receiverEntity = null;
-    if (byWorldRecord) {
+    if (byWorldRecord && wrCounts
+      && wrCounts.get(payloadDef.worldObjectId) === 1
+      && wrCounts.get(receiverWorldRecordId) === 1) {
       const payloadHit = indexedWorldRecordEntity(this.state, payloadDef.worldObjectId);
       const receiverHit = indexedWorldRecordEntity(this.state, receiverWorldRecordId);
       if (payloadHit && payloadHit.data && payloadHit.data.worldSiteId === manifest.id

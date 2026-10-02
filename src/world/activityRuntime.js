@@ -1302,18 +1302,31 @@ export function entityNeedsPhysics(entity) {
  * Mirrors entityNeedsPhysics + shouldSyncPhysicsBodyEntity + isDynamicPhysicsBodyEntity
  * (projectile forced dynamic). Quiet revisits read the byte; applyStamp refreshes on
  * simTier / pinnedExact flips.
+ *
+ * Partition flips take an entity in or out of the spatial-hash physics layers — a
+ * consumer caching "members the hash cannot see" (the travel-infrastructure
+ * uncovered set) latches on this epoch rather than walking entityList every call.
  */
+let PHYSICS_PARTITION_EPOCH = 0;
+export function physicsPartitionEpoch() { return PHYSICS_PARTITION_EPOCH; }
+
 export function refreshPhysicsPartition(entity) {
+  const before = entity && entity._physicsPartition;
   if (!entity || entity.alive === false) {
-    if (entity) entity._physicsPartition = 0;
+    if (entity) {
+      entity._physicsPartition = 0;
+      if (before === 1 || before === 2) PHYSICS_PARTITION_EPOCH += 1;
+    }
     return 0;
   }
   if (!entityNeedsPhysics(entity) || !shouldSyncPhysicsBodyEntity(entity)) {
     entity._physicsPartition = 0;
+    if (before === 1 || before === 2) PHYSICS_PARTITION_EPOCH += 1;
     return 0;
   }
   const kind = (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') ? 2 : 1;
   entity._physicsPartition = kind;
+  if (kind !== before) PHYSICS_PARTITION_EPOCH += 1;
   return kind;
 }
 

@@ -3344,13 +3344,21 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     // Hull archetypes the fire path mounts outside plan.ships — the ambush claim victim
     // spawns beside the fight and a player_in_range trigger can land engagement while it
     // is still on-glass. Warm-only: never feeds the spawn list (spawnClaimVictim owns it).
-    warmShips: enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
-      ? [{
-        archetype: enc.claimVictim.archetype,
-        factionId: enc.claimVictim.factionId || 'faction_dmc',
-        role: 'claim',
-      }]
-      : null,
+    warmShips: enc.script === 'namedHunter'
+      // The captain pool resolves at fire time from the live roster (grudges evolve),
+      // so plan.ships stays empty — but every hull it can pick is known now: the three
+      // seed archetypes plus each captain's escort pool. Warm the union so whichever
+      // pool entry fires is already decoded when the entrance lands on-glass.
+      ? NAMED_CAPTAINS.flatMap((cap) => [cap.archetype, ...((cap.escort && cap.escort.archetypes) || [])])
+          .filter((a, i, arr) => typeof a === 'string' && a && arr.indexOf(a) === i)
+          .map((archetype) => ({ archetype, factionId, role: 'captain' }))
+      : (enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
+        ? [{
+          archetype: enc.claimVictim.archetype,
+          factionId: enc.claimVictim.factionId || 'faction_dmc',
+          role: 'claim',
+        }]
+        : null),
     // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
     // rock near their anchor (applied at spawnShips time, once per encounter).
     terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,

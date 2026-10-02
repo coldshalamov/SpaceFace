@@ -246,15 +246,42 @@ export function createScreenManager(ctx) {
   function paintWarm(id) {
     const rec = build(id);
     if (!rec || !rec.el || rec.painted) return;
+    // A racing real open owns the element — its open already paid mount+layout,
+    // and the warm's hidden write would fight it.
+    if (stack[stack.length - 1] === id) return;
     rec.painted = true;
     const el = rec.el;
     clearInlineDisplay(el.style);
-    el.style.display = 'flex';
+    // Mirror the display choice syncVisibility makes for a real open — a kit
+    // screen's grid shell must not be clobbered by a flex write.
+    el.style.display = (typeof el.classList?.contains === 'function'
+      && (el.classList.contains('k-screen') || el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
+    // position:fixed keeps the warmed root out of #screens' flex flow — an
+    // in-flow sibling would reflow the visible screen for exactly one frame.
+    el.style.position = 'fixed';
     el.style.visibility = 'hidden';
+    // The warm must actually render: a display:none subtree (stack empty →
+    // #screens hidden) never enters the render tree, so flip the root to
+    // rendered-but-hidden for this one frame instead of latching a dead
+    // painted stamp that blocks every later warm.
+    const rootHidden = screensRoot && screensRoot.style.display === 'none';
+    if (rootHidden) {
+      screensRoot.style.display = 'flex';
+      screensRoot.style.visibility = 'hidden';
+    }
     requestAnimationFrame(() => {
-      if (stack[stack.length - 1] === id) return;
+      // visibility+position always restore — a racing real open leaves this
+      // screen stack-top, and inline visibility:hidden is permanent otherwise.
       el.style.visibility = '';
-      hideImportant(el.style);
+      el.style.position = '';
+      if (stack[stack.length - 1] !== id) hideImportant(el.style);
+      if (rootHidden && screensRoot) {
+        screensRoot.style.visibility = '';
+        const stillOpen = stack.length > 0
+          || (typeof screensRoot.querySelector === 'function'
+            && !!screensRoot.querySelector('.sf-find--host'));
+        if (!stillOpen) screensRoot.style.display = 'none';
+      }
     });
   }
 
@@ -276,6 +303,10 @@ export function createScreenManager(ctx) {
         clearInlineDisplay(rec.el.style);
         rec.el.style.display = (typeof rec.el.classList?.contains === 'function'
           && (rec.el.classList.contains('k-screen') || rec.el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
+        // The top screen is always visibility-clean — a paintWarm frame that
+        // raced this open must not leave its hidden write behind.
+        rec.el.style.visibility = '';
+        rec.el.style.position = '';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
         rec.el.inert = false;

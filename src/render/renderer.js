@@ -111,7 +111,7 @@ import {
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
 import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs } from './saveEnvelopeSectorWarm.js';
-import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord } from '../data/namedAces.js';
+import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
@@ -2495,6 +2495,13 @@ function syncResolvingMarker(mesh) {
   }
   const marker = mesh.userData.resolvingMarker;
   if (isAuthoredPendingStatus(mesh.userData.authoredAssetState)) {
+    // The hull child carries the live bank/pitch — a stand-in that stays level
+    // while the seat banks reads as a flat decal mid-turn, not the ship.
+    const hull = mesh.userData.hull;
+    if (hull) {
+      marker.rotation.x = hull.rotation.x;
+      marker.rotation.z = hull.rotation.z;
+    }
     marker.visible = true;
     return;
   }
@@ -3059,6 +3066,44 @@ function warmAceReturnDecode(owner) {
   }
   if (records.length) {
     warmEnemyRosterDecode(owner, records, 'ace-return-decode-runway', null);
+  }
+}
+
+/**
+ * Culture-eligible ace intros: `cultureIntros[aceId]` schedules a namedHunter fire at dueAt
+ * through requestAuthoredEncounter — an immediate fire with no plan-side lead, so the style
+ * loadout hulls would decode inside the entrance frame. When dueAt enters the decode runway,
+ * warm the escalated style's boss + escort archetypes (the exact pair the fire resolves).
+ */
+function warmCultureIntroDecode(owner) {
+  const state = owner && owner.state;
+  const memory = state && state.aceMemory;
+  const intros = memory && memory.cultureIntros;
+  if (!intros || typeof intros !== 'object') return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const warmedAt = owner._cultureIntroWarmAt || (owner._cultureIntroWarmAt = new WeakMap());
+  const records = [];
+  for (const [aceId, intro] of Object.entries(intros)) {
+    if (!intro || typeof intro !== 'object') continue;
+    if (intro.status !== 'pending') continue;
+    if (intro.sectorId !== currentSectorId) continue;
+    if (!Number.isFinite(intro.dueAt)
+        || intro.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    const ace = aceById(aceId);
+    if (!ace) continue;
+    if (warmedAt.get(intro) === intro.dueAt) continue;
+    warmedAt.set(intro, intro.dueAt);
+    const style = escalatedStyleFromMemory(memory, ace);
+    const loadout = styleLoadoutForAce(ace, style);
+    for (const archetype of [loadout.bossArchetype, loadout.escortArchetype]) {
+      if (typeof archetype === 'string' && archetype) {
+        records.push({ archetype, factionId: ace.factionId || 'faction_reach' });
+      }
+    }
+  }
+  if (records.length) {
+    warmEnemyRosterDecode(owner, records, 'culture-intro-decode-runway', currentSectorId);
   }
 }
 
@@ -14700,6 +14745,7 @@ export const render = {
     warmPendingReinforcementsDecode(this);
     warmClaimDefenseDecode(this);
     warmAceReturnDecode(this);
+    warmCultureIntroDecode(this);
     const env = renderAdmissionEnv(state);
     // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
     // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
@@ -15506,7 +15552,7 @@ export const render = {
       // The attach-time hlod stamp is a declared class, not the drawn envelope: a hull that
       // outgrows it (stations whose authored body exceeds dockRadius) would resolve a coarser
       // LOD while its visible footprint is still large — union it with the measured cull radius.
-      const cullRadius = viewRadius || (entity ? entityVisualCullRadius(entity, mesh) : 0) || world.radii[slot] || 0;
+      const cullRadius = viewRadius || entityVisualCullRadius(entity, mesh) || world.radii[slot] || 0;
       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
         ? Math.max(hlodVisualRadius, cullRadius)
         : cullRadius;
@@ -17692,16 +17738,26 @@ export const render = {
       for (let i = 0; i < children.length; i++) st.stack.push(children[i]);
       if (obj.isMesh !== true) continue;
       if (obj.material && obj.material.visible === false) continue;
+      // Honest counting: a mesh outside the camera's layers or an instanced mesh
+      // with count<=0 submits nothing; a material array submits one call per
+      // non-empty geometry group, not one call per mesh.
+      if (!cam.layers.test(obj.layers)) continue;
+      if (obj.isInstancedMesh === true && !(obj.count > 0)) continue;
       if (obj.frustumCulled !== false && !st.frustum.intersectsObject(obj)) continue;
-      st.draws++;
+      const groups = Array.isArray(obj.material)
+        ? (obj.geometry && Array.isArray(obj.geometry.groups)
+          ? Math.max(1, obj.geometry.groups.filter((g) => g && g.count > 0).length || 1)
+          : Math.max(1, obj.material.length))
+        : 1;
+      st.draws += groups;
       const geom = obj.geometry;
-      const key = geom ? geom.uuid : 'none';
+      const key = (geom ? geom.uuid : 'none') + (obj.isInstancedMesh === true ? ':inst' : '');
       let row = st.byGeom.get(key);
       if (!row) {
         row = { draws: 0, type: geom ? geom.type : 'none', instanced: 0, names: new Set() };
         st.byGeom.set(key, row);
       }
-      row.draws++;
+      row.draws += groups;
       if (obj.isInstancedMesh === true) row.instanced++;
       if (obj.name && row.names.size < 8) row.names.add(obj.name);
     }

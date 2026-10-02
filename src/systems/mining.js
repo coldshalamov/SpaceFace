@@ -1744,14 +1744,29 @@ export const mining = {
     // resolves either stamp, so the bark names the hull that filed it.
     let victimEntityId = null;
     let crewName = 'Salvor crew';
-    const list = state.entityList;
-    if (Array.isArray(list)) {
-      for (const e of list) {
-        if (e && e.alive !== false && e.data
-          && (e.data.worldRecordId === claimantId || e.data.salvorClaimId === claimantId)) {
-          victimEntityId = e.id;
-          crewName = e.data.callsign || e.data.shipName || e.data.name || crewName;
-          break;
+    const index = state.entityIndex;
+    // The worldRecordId carrier is provably unique at count === 1 — its liveness
+    // alone answers the first stamp. Any other shape (dead, absent, multi-carrier,
+    // or a salvorClaimId-only crew) falls through to the walk.
+    const wrCarrier = index && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index.byWorldRecordId instanceof Map
+      && index.byWorldRecordIdCount instanceof Map
+      && index.byWorldRecordIdCount.get(claimantId) === 1
+      ? index.byWorldRecordId.get(claimantId) : null;
+    if (wrCarrier && wrCarrier.alive !== false) {
+      victimEntityId = wrCarrier.id;
+      crewName = (wrCarrier.data && (wrCarrier.data.callsign || wrCarrier.data.shipName || wrCarrier.data.name)) || crewName;
+    } else {
+      const list = state.entityList;
+      if (Array.isArray(list)) {
+        for (const e of list) {
+          if (e && e.alive !== false && e.data
+            && (e.data.worldRecordId === claimantId || e.data.salvorClaimId === claimantId)) {
+            victimEntityId = e.id;
+            crewName = e.data.callsign || e.data.shipName || e.data.name || crewName;
+            break;
+          }
         }
       }
     }

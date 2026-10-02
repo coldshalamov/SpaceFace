@@ -112,6 +112,21 @@ Phase-B gap list (mechanical plumbing, not conceptual risk):
 
 **?drawhist reopen condition** (S3-beyond-rocks): a `topClusters` row with `avg ≥ 2` draws/f on a SHARED geometry in a bloom-sector window AND `instanced === 0` — offline proxy: ≥2 live bodies sharing `data.archetypeGlb`/`authoredCompositionId` in a captured bloom state. Stations/dressing are expected unique; the histogram decides.
 
+### W29 boot lane — main→sim write-surface census (feeds stages 3–6)
+
+Main-thread writes into sim-owned state that must become commands, bus events, or read-model facades before the flip (the write itself is synchronous today; under the worker the write must cross the command ring and land mid-tick or ack):
+
+- `src/ui/pause.js:977/985/998` — direct `state.mode` writes with **no bus event** (the only mode mutations outside the evented paths; stage 5 must convert to commands, not mirror).
+- `src/ui/screenManager.js:~466` — a second `state.mode = 'flight'` write redundant with the evented path — **drop candidate**, not a twin.
+- `src/ui/uiRoot.js:1248-1269` — `state.input.blocked` writes (input suppression must arrive with the input directive fold, stage 1 channel).
+- `src/ui/uiRoot.js:1566-1784` — cycleTarget/tether: synchronous entity reads + `state.player.targetId` writes (reads → read-model v2 entity facade; the write → command).
+- `src/ui/saveLoad.js:429-430` — synchronous entity-presence probe (read-model v1 entity lookup).
+- `src/render/saveEnvelopeSectorWarm.js:852-1082` — enumerates `state.entities`/`state.farActors` live (read-model v1 rows; the enumeration is the `_syncWorldPresentationTableMeshes` family stage 3 retires).
+- `src/main.js:521` sync `spawnEntity`, `:531` sync `world.enterSector`, `:559-568` direct sim-state mutation, `:535` `state.rng()` on main (command conversions + rng must stay worker-side; a main-side draw would fork the stream — verify at stage 5 audit).
+- `entity:spawned` payload carries the live entity object (stage-2 adapter now ships `{id, type, entityId}` — consumers resolve via the read model).
+- Boot-warm stubs read ~12 world internals (`sectorId`, zone tables, roster records) — read-model v1 must carry them or the warm passes move worker-side wholesale.
+- `isEntityJournaled` flag reads on the render lane (journal predicate — consolidate per the W28 new-items note; drift class already produced one defect).
+
 ## A/B verification protocol (all levers)
 
 - Golden `47a` sha256 `e517a97b…` bit-identical after every change.

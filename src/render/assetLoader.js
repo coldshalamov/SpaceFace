@@ -598,7 +598,11 @@ export async function loadAuthoredPart(url, options = {}) {
   // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
   // time, so refcount the join for the rest of the task's settle — the same idiom the
   // serial lane already uses, bounded to the joined task's tail.
-  const deadlineJoin = deadlineClass && runtime.assets.has(cacheKey);
+  // Only an unsettled join re-grades — a cached task that already resolved has no
+  // queued posts left to promote.
+  const deadlineJoin = deadlineClass
+    && runtime.pendingAssetTasks
+    && runtime.pendingAssetTasks.has(runtime.assets.get(cacheKey));
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf))
       : () => loadGltfDocument(url, runtime.gltf))()
@@ -637,7 +641,11 @@ export async function loadAuthoredPart(url, options = {}) {
     // tail while the mount is on the player's deadline. Promote flushes the tail to deadline
     // (FIFO preserved), matching the flag window the wrap raises for its remaining posts.
     const budget = sharedDecodeTaskBudget();
-    if (budget && typeof budget.promote === 'function') budget.promote('deadline');
+    // Promote to the caller's own class: an admissionVisible joiner's tail must
+    // outrank even deadline waiters, not just ambient.
+    if (budget && typeof budget.promote === 'function') {
+      budget.promote(options.admissionVisible === true ? 'visible' : 'deadline');
+    }
     (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   }
   const blueprint = await task;
