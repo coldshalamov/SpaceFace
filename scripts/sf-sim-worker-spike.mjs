@@ -33,6 +33,15 @@ import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
 import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
 import { createPresentationWorld } from '../src/render/presentationWorld.js';
 import { createSimCommandRing } from './lib/simCommandChannel.mjs';
+import {
+  applyAuxRemovals,
+  applyAuxUpserts,
+  applyDestroyIds,
+  applySpawnInfos,
+  createReadModel,
+  digestIds,
+  readModelCollectIds,
+} from './lib/simReadModel.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WORKER_PATH = resolve(ROOT, 'scripts/lib/wholeSimWorker.mjs');
@@ -191,44 +200,12 @@ function createTransportJournal() {
   };
 }
 
-// Read-model projection: resolve sites (resolveWorldPresentationEntity) read
-// entities Map + world.asteroidField/dressing/farActors. SPAWN info blocks feed
-// the entities Map; the three aux tables stay empty in Phase-A (their records
-// resolve null entity — same as a headless main without a world).
-function createReadModelState() {
-  return {
-    entities: new Map(),
-    entityList: [],
-    world: { asteroidField: null, dressing: null, farActors: null },
-  };
-}
-
-function applySpawnInfos(readModel, spawnInfos) {
-  for (const info of spawnInfos || []) {
-    if (!info || !Number.isSafeInteger(info.entityId)) continue;
-    readModel.entities.set(info.entityId, {
-      id: info.entityId,
-      type: info.type,
-      alive: info.alive,
-      team: info.team,
-      factionId: info.factionId,
-      pos: { x: info.x || 0, y: 0, z: info.z || 0 },
-      radius: info.radius || 0,
-      isPlayer: info.isPlayer === true,
-      farResident: info.farResident === true,
-      fieldResident: info.fieldResident === true,
-      sectorId: info.sectorId || null,
-      flags: info.flags || {},
-      data: {
-        callsign: info.callsign,
-        name: info.name,
-        trafficRole: info.trafficRole,
-        role: info.role,
-      },
-      activity: { presentationTier: info.presentationTier || 0 },
-    });
-  }
-}
+// Read model v1 (stage 3): entities Map from journal spawns/destroys +
+// entity-info blocks; aux rows (far/rock/dressing ledger tables) from the
+// auxUpserts/auxRemovals channel; windowed collect = readModelCollectIds —
+// the read-model twin of collectMeshPresentationEntities. Gate F digests the
+// two sets each completed tick.
+const JOURNAL_DESTROY_KIND = PRESENTATION_JOURNAL_KINDS.DESTROY;
 
 // ---------------------------------------------------------------------------
 // Worker driver — request/response pump with a bounded in-flight window.
@@ -293,7 +270,7 @@ async function runOnce() {
 
 async function runBody(client, frames) {
   const journal = createTransportJournal();
-  const readModel = createReadModelState();
+  const readModel = createReadModel();
   const world = createPresentationWorld();
   const publisher = createPresentationPublisher(world, readModel, { journal });
 
@@ -319,6 +296,12 @@ async function runBody(client, frames) {
   const presentationQueue = [];
   let presentationDrained = 0;
   let pauseProbed = false;
+  // Stage-3 read-model parity: digest mismatches vs the worker's live collect.
+  const readModelScratch = [];
+  const destroyScratch = [];
+  let collectMismatches = 0;
+  let collectProbes = 0;
+  const collectMismatchSamples = [];
 
   const init = await client.send({
     kind: 'init',
@@ -333,7 +316,10 @@ async function runBody(client, frames) {
   // the first present after game:started).
   if (init.initRebuild && init.initRebuild.end > init.initRebuild.start) {
     journal.push(init.initRebuild.pack, { fullRebuild: true, generation: init.initRebuild.generation });
+    readModel.entities.clear();
     applySpawnInfos(readModel, init.initRebuild.spawnInfos);
+    applyAuxUpserts(readModel, init.auxUpserts);
+    applyAuxRemovals(readModel, init.auxRemovals);
     const r = publisher.consume({
       journalStart: init.initRebuild.start,
       journalEnd: init.initRebuild.end,
@@ -381,6 +367,7 @@ async function runBody(client, frames) {
       steps,
       ackJournalEnd: OPT.ackStall ? 0 : ackedJournalEnd,
       churn: OPT.probe === 'churn' && tick >= 10 && tick < 210 ? { spawn: 6 } : null,
+      aux: OPT.probe === 'aux',
     });
     tickMeta.set(p, { sendNs, tick });
     pendingTicks.push(p);
@@ -418,7 +405,10 @@ async function runBody(client, frames) {
         fullRebuild: frame.journalFullRebuild,
         generation: frame.journalRebuildGeneration,
       });
+      if (frame.journalFullRebuild) readModel.entities.clear();
       applySpawnInfos(readModel, frame.spawnInfos);
+      applyAuxUpserts(readModel, frame.auxUpserts);
+      applyAuxRemovals(readModel, frame.auxRemovals);
       const consumeStart = process.hrtime.bigint();
       const r = publisher.consume({
         journalStart: frame.journalStart,
@@ -432,8 +422,42 @@ async function runBody(client, frames) {
       if (r.fallback) {
         throw new Error(`publisher fell back at tick ${meta.tick}: ${r.error}`);
       }
+      // Stage-3: destroy records carry the entities-map deletions (parity with
+      // state.entities.delete timing — removal-time, not kill-time).
+      if (frame.journalStart < frame.journalEnd) {
+        destroyScratch.length = 0;
+        journal.visitRange(frame.journalStart, frame.journalEnd, null, (rec) => {
+          if (rec.kind === JOURNAL_DESTROY_KIND) destroyScratch.push(rec.entityId);
+        });
+        if (destroyScratch.length) applyDestroyIds(readModel, destroyScratch);
+      }
       journal.discardThrough(frame.journalEnd);
       ackedJournalEnd = Math.max(ackedJournalEnd, frame.journalEnd);
+
+      // Gate F — collect-set equality: the read model's windowed collect must
+      // return the same id set the worker's live collect just walked.
+      const probe = frame.collectProbe;
+      if (probe && probe.digest) {
+        collectProbes++;
+        readModelCollectIds(readModel, probe, readModelScratch);
+        const modelDigest = digestIds(readModelScratch);
+        if (modelDigest !== probe.digest) {
+          collectMismatches++;
+          if (collectMismatchSamples.length < 8) {
+            const modelSet = new Set(readModelScratch);
+            const liveSet = new Set(probe.ids || []);
+            collectMismatchSamples.push({
+              tick: meta.tick,
+              modelDigest,
+              liveDigest: probe.digest,
+              liveCount: probe.count,
+              modelCount: readModelScratch.length,
+              onlyModel: readModelScratch.filter((id) => !liveSet.has(id)).slice(0, 12),
+              onlyLive: (probe.ids || []).filter((id) => !modelSet.has(id)).slice(0, 12),
+            });
+          }
+        }
+      }
 
       const wireNs = recvNs - BigInt(frame.sendNs);
       const directiveWireNs = BigInt(frame.arrivalNs) - BigInt(meta.sendNs);
@@ -523,6 +547,12 @@ async function runBody(client, frames) {
     receivedByType,
     presentationDrained,
     presentationQueueDepth: presentationQueue.length,
+    collectProbes,
+    collectMismatches,
+    collectMismatchSamples,
+    auxRowsShipped: fin.auxRowsShipped,
+    auxUpsertsTotal: fin.auxUpsertsTotal,
+    auxRemovalsTotal: fin.auxRemovalsTotal,
     avgWorkMs: fin.avgWorkMs,
     avgPackMs: fin.avgPackMs,
     workerHeapUsedBytes: fin.workerHeapUsedBytes,
@@ -566,9 +596,11 @@ async function main() {
   const allHashEqual = results.every((r) => r.sha256 === results[0].sha256);
   const hashMatch = results[0].sha256 === OPT.expectedHash;
 
-  // Gate (a): hash parity
+  // Gate (a): hash parity — mutating probes (aux) still must be deterministic
+  // across repeats but are not expected to match the golden hash.
+  const mutatingProbe = OPT.probe === 'aux' || OPT.probe === 'churn';
   const gateA = {
-    pass: allHashEqual && hashMatch && results[0].stateTick === OPT.ticks,
+    pass: allHashEqual && (mutatingProbe || hashMatch) && results[0].stateTick === OPT.ticks,
     sha256: results[0].sha256,
     expected: OPT.expectedHash,
     allRunsEqual: allHashEqual,
@@ -657,11 +689,26 @@ async function main() {
     presentationQueueDepth: run.presentationQueueDepth,
   };
 
+  // GATE F — stage-3 read model v1: the read-model collect (entities via
+  // journal spawns/destroys + aux rows via the upsert/removal channel, windowed
+  // query) must digest equal to the worker's live collectMeshPresentationEntities
+  // on every completed tick.
+  const gateF = {
+    pass: run.collectMismatches === 0 && run.collectProbes > 0,
+    probes: run.collectProbes,
+    mismatches: run.collectMismatches,
+    samples: run.collectMismatchSamples,
+    auxRowsShipped: run.auxRowsShipped,
+    auxUpsertsTotal: run.auxUpsertsTotal,
+    auxRemovalsTotal: run.auxRemovalsTotal,
+  };
+
   const summary = {
     schema: 'spaceface.s1WorkerSpike.v1',
     mode: 'whole-sim-in-worker',
     options: OPT,
-    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE },
+    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE, f_readModel: gateF },
+    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass && gateF.pass ? 'ALL PASS' : 'GATE FAILURE',
     run: {
       entityCount: run.entityCount,
       droppedEventCount: run.droppedEventCount,
@@ -675,7 +722,6 @@ async function main() {
       workerHeapMb: round((run.workerHeapUsedBytes || 0) / 1e6, 1),
       journalRebuildCount: run.journalRebuildCount,
     },
-    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass ? 'ALL PASS' : 'GATE FAILURE',
   };
 
   if (OPT.json) {
@@ -694,6 +740,10 @@ async function main() {
     console.log(`                     rpcAcks=${JSON.stringify(gateD.rpcAcks)} settingsAcks=${JSON.stringify(gateD.settingsAcks)}`);
     console.log(`GATE E event bridge: ${gateE.pass ? 'PASS' : 'FAIL'}  unintentionalDrops=${gateE.unintentionalDrops} intentionalDrops=${gateE.intentionalDrops} unbridgeable=${JSON.stringify(gateE.unbridgeable)} parityMismatch=${JSON.stringify(gateE.parityMismatch)}`);
     console.log(`                     presentation drained=${gateE.presentationDrained} residualQueue=${gateE.presentationQueueDepth}`);
+    console.log(`GATE F read model  : ${gateF.pass ? 'PASS' : 'FAIL'}  probes=${gateF.probes} mismatches=${gateF.mismatches} auxRows=${gateF.auxRowsShipped} upserts=${gateF.auxUpsertsTotal} removals=${gateF.auxRemovalsTotal}`);
+    if (gateF.samples && gateF.samples.length) {
+      console.log(`                     samples=${JSON.stringify(gateF.samples.slice(0, 4))}`);
+    }
     console.log(`run: entities=${run.entityCount} events=${run.eventsReceived} dropped=${run.droppedEventCount} avgWorkMs=${round(run.avgWorkMs)} workerHeap=${round((run.workerHeapUsedBytes || 0) / 1e6, 1)}MB`);
     console.log(`rebuild reasons: ${JSON.stringify(run.rebuildReasons)}`);
     console.log(`identity offenders: ${JSON.stringify((run.identityOffenders || []).slice(0, 12))}`);

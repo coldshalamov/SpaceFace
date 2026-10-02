@@ -111,7 +111,7 @@ export function collectJournalPresentationEntities(state, out = []) {
 }
 
 /** Same prefetch horizon `isEntityRenderRelevant` uses for ledger rows. */
-function presentationCollectRadius(state) {
+export function presentationCollectRadius(state) {
   const speed = tableTravelSpeed(state);
   const camera = (state && state.camera) || {};
   const video = (state && state.settings && state.settings.video) || {};
@@ -124,7 +124,7 @@ function presentationCollectRadius(state) {
 }
 
 /** The live table corner the collect pass is feeding — same envelope as the radius. */
-function presentationGlassCorner(state) {
+export function presentationGlassCorner(state) {
   const camera = (state && state.camera) || {};
   const video = (state && state.settings && state.settings.video) || {};
   const prefetchZoom = tablePrefetchZoomFromState(state);

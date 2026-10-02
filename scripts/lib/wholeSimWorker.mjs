@@ -39,8 +39,17 @@ import {
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
-import { collectJournalPresentationEntities, entityIsJournaled, resolveWorldPresentationEntity } from '../../src/world/presentationSources.js';
+import {
+  collectJournalPresentationEntities,
+  collectMeshPresentationEntities,
+  entityIsJournaled,
+  presentationCollectRadius,
+  presentationGlassCorner,
+  resolveWorldPresentationEntity,
+} from '../../src/world/presentationSources.js';
+import { farLedgerScanRadius, tableLookAtOrigin } from '../../src/render/tabletopPolicy.js';
 import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
+import { digestIds } from './simReadModel.mjs';
 import {
   finite,
   hashSnapshot,
@@ -51,6 +60,9 @@ import {
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
 import { projectBridgeEvent } from './simEventBridge.mjs';
+import { insertAsteroidFieldRock } from '../../src/world/asteroidField.js';
+import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
+import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
 
 
 
@@ -157,6 +169,112 @@ function entityInfoBlock(state, entityId) {
 // bridge module: depth-bounded flat projection, live entities collapse to
 // { entityRef } tokens, per-type adapters cover the non-entity live-object
 // families. Unflattenable payloads are intentional drops, counted separately.
+// ---------------------------------------------------------------------------
+// Stage 3 — aux-row channel + collect probe.
+//
+// Ledger rows (far actors, field rocks, dressing rows) are not journaled
+// entities; the read model needs their durable fields so its windowed collect
+// reproduces appendNearbyLedgerRows' set. Every tick the worker walks the three
+// tables and diffs a signature string per row against auxShipped — changed rows
+// cross as flat upsert blocks, vanished ids as removals. Version counters do not
+// cover every mutation (shelf sweeps write pos/lastExactT in place), so the diff
+// compares field values, not table versions — total coverage, O(rows) per tick.
+// ---------------------------------------------------------------------------
+
+function auxRowBlock(kind, row) {
+  const data = row && row.data && typeof row.data === 'object' ? row.data : {};
+  return {
+    v: 1,
+    kind,
+    id: row.id,
+    type: typeof row.type === 'string' ? row.type : null,
+    alive: row.alive !== false,
+    x: finite(row.pos && row.pos.x),
+    z: finite(row.pos && row.pos.z),
+    vx: finite(row.vel && row.vel.x),
+    vz: finite(row.vel && row.vel.z),
+    rot: finite(row.rot),
+    radius: finite(row.radius),
+    lastExactT: Number.isFinite(row.lastExactT) ? row.lastExactT : null,
+    liveEntityId: Number.isSafeInteger(row.liveEntityId) ? row.liveEntityId : null,
+    noMesh: row._noMesh === true,
+    sectorId: typeof row.sectorId === 'string' ? row.sectorId
+      : (typeof row.homeSectorId === 'string' ? row.homeSectorId
+        : (typeof data.sectorId === 'string' ? data.sectorId : null)),
+  };
+}
+
+function auxSignature(b) {
+  return `${b.type}|${b.alive ? 1 : 0}|${b.x}|${b.z}|${b.vx}|${b.vz}|${b.rot}|${b.radius}`
+    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`;
+}
+
+function diffAuxTables(state) {
+  const world = state && state.world;
+  const shipped = host.auxShipped;
+  const upserts = [];
+  const removals = [];
+  const seen = host.auxSeen || (host.auxSeen = new Set());
+  seen.clear();
+  const visit = (kind, rows) => {
+    if (!Array.isArray(rows)) return;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || !Number.isSafeInteger(row.id)) continue;
+      const block = auxRowBlock(kind, row);
+      seen.add(block.id);
+      const sig = `${kind}|${auxSignature(block)}`;
+      if (shipped.get(block.id) !== sig) {
+        shipped.set(block.id, sig);
+        upserts.push(block);
+      }
+    }
+  };
+  visit('rock', world && world.asteroidField && world.asteroidField.rocks);
+  visit('far', world && world.farActors && world.farActors.rows);
+  visit('dressing', world && world.dressing && world.dressing.rows);
+  for (const id of shipped.keys()) {
+    if (!seen.has(id)) {
+      shipped.delete(id);
+      removals.push(id);
+    }
+  }
+  return { upserts, removals };
+}
+
+const _collectOrigin = { x: 0, z: 0 };
+
+// The live present-lane collect, run inside the worker: resolved inputs ship as
+// collectProbe so the read-model twin answers the identical question.
+function collectProbeBlock(state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const live = collectMeshPresentationEntities(state);
+  const liveIds = [];
+  for (let i = 0; i < live.length; i++) {
+    if (live[i] && live[i].id != null) liveIds.push(live[i].id);
+  }
+  const probe = {
+    digest: digestIds(liveIds),
+    count: liveIds.length,
+    ids: liveIds.length <= 256 ? liveIds : null,
+    hasPlayer: !!(player && player.pos),
+  };
+  if (player && player.pos) {
+    const origin = tableLookAtOrigin(state, player.pos, _collectOrigin);
+    probe.originX = origin.x;
+    probe.originZ = origin.z;
+    probe.collectRadius = presentationCollectRadius(state);
+    probe.scanRadius = farLedgerScanRadius(state);
+    probe.glassCorner = presentationGlassCorner(state);
+    probe.simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+    probe.pvx = finite(player.vel && player.vel.x);
+    probe.pvz = finite(player.vel && player.vel.z);
+  }
+  return probe;
+}
+
 const BRIDGE_EVENTS = [
   'entity:spawned', 'entity:killed', 'combat:fire', 'combat:damage', 'projectile:hit',
   'economy:tick', 'tether:attached', 'tether:reel', 'tether:broken',
@@ -196,6 +314,11 @@ const host = {
   scratch: null,
   journalRebuildCount: 0,
   rebuildReasons: {},
+  // stage-3 aux channel
+  auxShipped: new Map(),
+  auxSeen: new Set(),
+  auxUpsertsTotal: 0,
+  auxRemovalsTotal: 0,
   // stage-1 command channel: per-directive attribution + input tape recording
   lastInputSeq: 0,
   lastInputWallMs: 0,
@@ -411,10 +534,15 @@ async function handleInit(msg) {
     }
   }
   host.committedJournalSequence = journal.getWriteSequence();
+  const initAux = diffAuxTables(state);
+  const initCollectProbe = collectProbeBlock(state);
   host.ready = true;
   return {
     journalSequence: host.committedJournalSequence,
     initRebuild,
+    auxUpserts: initAux.upserts,
+    auxRemovals: initAux.removals,
+    collectProbe: initCollectProbe,
     scenarioContractSha256: scenarioContract.sha256,
   };
 }
@@ -462,6 +590,47 @@ async function handleTick(msg) {
   }
   // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
   // drive non-coalescible append churn beyond ring capacity.
+  // Aux-row probe (stage 3 gate exercise): scripted live→shelve→promote
+  // lifecycle + rock mutation + dressing drop, driven by --probe aux. Mutates
+  // sim state so gate-A hash parity is not expected under this probe — the
+  // collect-set parity gate is what it exists to exercise.
+  if (msg.aux) {
+    const t = msg.tick;
+    if (t === 60 && !host.auxProbeShip) {
+      host.auxProbeShip = sim.spawn(makeShipEntitySpec('ship_wasp', {
+        team: 1,
+        factionId: 'faction_reavers',
+        pos: { x: 1500, z: 1500 },
+        rot: 0,
+      }));
+      host.auxProbeRock = insertAsteroidFieldRock(state, {
+        pos: { x: 120, z: 120 }, vel: { x: -0.5, z: -0.2 }, radius: 8,
+      });
+      host.auxProbeDressing = insertDressingRow(state, {
+        type: 'fx', pos: { x: 40, z: -40 }, radius: 10,
+      });
+    } else if (t === 120 && host.auxProbeShip) {
+      // Shelve: snapshot into the far ledger, then remove the live entity —
+      // the journal destroy and the aux upsert race to the same tick reply.
+      insertFarActor(state, host.auxProbeShip, state.simTime, sim.helpers);
+      sim.helpers.removeEntity(host.auxProbeShip.id, { immediate: true });
+      host.auxProbeFarId = host.auxProbeShip.id;
+      host.auxProbeShip = null;
+    } else if (t === 300 && host.auxProbeRock) {
+      // In-place durable-field write (no version bump guaranteed) — the
+      // signature diff must still ship the upsert.
+      host.auxProbeRock.pos.x += 400;
+      host.auxProbeRock.pos.z += 150;
+    } else if (t === 400 && host.auxProbeFarId != null) {
+      // Promote back: row gains liveEntityId (or leaves the table), the live
+      // entity re-enters through the journal.
+      promoteFarActor(state, host.auxProbeFarId, sim.helpers);
+      host.auxProbeFarId = null;
+    } else if (t === 500 && host.auxProbeDressing) {
+      dropDressingRow(state, host.auxProbeDressing.id);
+      host.auxProbeDressing = null;
+    }
+  }
   if (msg.churn && Number.isSafeInteger(msg.churn.spawn) && msg.churn.spawn > 0) {
     if (!host.churnEntities) host.churnEntities = [];
     for (const prev of host.churnEntities) {
@@ -522,10 +691,16 @@ async function handleTick(msg) {
   host.totalPackNs += packNs;
 
   const events = drainEvents();
+  const aux = diffAuxTables(state);
+  host.auxUpsertsTotal += aux.upserts.length;
+  host.auxRemovalsTotal += aux.removals.length;
   return {
     tick: msg.tick,
     arrivalNs,
     completedTick,
+    auxUpserts: aux.upserts,
+    auxRemovals: aux.removals,
+    collectProbe: completedTick ? collectProbeBlock(state) : null,
     journalStart,
     journalEnd,
     journalFullRebuild: fullRebuild !== null,
@@ -575,6 +750,9 @@ async function handleFinalize() {
     commandDropped: host.commandDropped,
     inputTape: host.inputHistory ? host.inputHistory.toTape() : null,
     tickCount: host.tickCount,
+    auxRowsShipped: host.auxShipped.size,
+    auxUpsertsTotal: host.auxUpsertsTotal,
+    auxRemovalsTotal: host.auxRemovalsTotal,
     avgWorkMs: host.tickCount > 0 ? Number(host.totalWorkNs) / 1e6 / host.tickCount : 0,
     avgPackMs: host.tickCount > 0 ? Number(host.totalPackNs) / 1e6 / host.tickCount : 0,
     workerRssBytes: mem.rss,
