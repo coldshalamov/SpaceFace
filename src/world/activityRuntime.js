@@ -862,6 +862,15 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
 }
 
 
+/** Bench A/B: production default ON. setClassifyFrameQuietRetainForBench(false) forces per-entity path. */
+let CLASSIFY_FRAME_QUIET_RETAIN = true;
+export function setClassifyFrameQuietRetainForBench(enabled) {
+  CLASSIFY_FRAME_QUIET_RETAIN = enabled !== false;
+}
+export function getClassifyFrameQuietRetainForBench() {
+  return CLASSIFY_FRAME_QUIET_RETAIN !== false;
+}
+
 /** Quantize XZ to ~0.25 wu so quiet parked rocks share a stable retain key. */
 function rockPoseRetainKey(entity) {
   const pos = entity && entity.pos;
@@ -902,6 +911,9 @@ function armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts) {
   if (!retain) {
     retain = {
       primed: false,
+      framePrimed: false,
+      frameVisitCount: 0,
+      frameVisitIds: [],
       originX: 0,
       originZ: 0,
       glassHalfX: 0,
@@ -940,6 +952,66 @@ function publishRetainedRockVisit(runtime, entity, stamp, statics, dynamics, cou
   }
   if (partition === 2) dynamics.push(entity);
   else if (partition === 1) statics.push(entity);
+}
+
+/**
+ * After #127 per-rock republish, quiet parked frames still cleared and rebuilt every
+ * id list / physics partition / glass set. When globals match and every visit entity
+ * still has a stable stamp + pose key (rocks and the parked player), keep last tick's
+ * lists and skip the clear+visit loop. Dirty-wake: same as rock-visit retain, plus
+ * visit-set identity (count/ids) and any non-retainable entity in the disc.
+ */
+function tryRetainClassifyFrame(runtime, visit, simTime) {
+  if (CLASSIFY_FRAME_QUIET_RETAIN === false) return false;
+  const retain = runtime._rockVisitRetain;
+  if (!retain || retain.framePrimed !== true) return false;
+  const n = visit.length;
+  if (n !== (retain.frameVisitCount | 0)) return false;
+  const ids = retain.frameVisitIds;
+  const poseKeys = retain.poseKeys;
+  for (let i = 0; i < n; i++) {
+    const entity = visit[i];
+    if (!entity || entity.alive === false) return false;
+    if (ids[i] !== entity.id) return false;
+    const stamp = entity.activity;
+    if (!stamp || !stamp.simTier || !stamp.presentationTier) return false;
+    if (!runtime.seenEntityIds.has(entity.id)) return false;
+    if (stamp.graceUntilT >= 0) return false;
+    const data = entity.data || {};
+    if (dueAt(stamp.nextEventAtT, simTime) != null) return false;
+    if (dueAt(data.nextEventAtT, simTime) != null) return false;
+    if (poseKeys.get(entity.id) !== rockPoseRetainKey(entity)) return false;
+  }
+  // Prior lists / counts / glass / runway / physics partitions stay valid.
+  runtime.changedIds.length = 0;
+  runtime.wakeCandidates.length = 0;
+  runtime.wakeTokensById.clear();
+  runtime.wakeEventsById.clear();
+  runtime.wakeBoundaryTick = -1;
+  runtime.classifyVisits = 0;
+  runtime.classifyMode = 'frame-retain';
+  return true;
+}
+
+function armClassifyFrameVisit(runtime, visit) {
+  const retain = runtime._rockVisitRetain;
+  if (!retain) return;
+  const n = visit.length;
+  let ids = retain.frameVisitIds;
+  if (!Array.isArray(ids)) ids = retain.frameVisitIds = [];
+  if (ids.length !== n) ids.length = n;
+  const poseKeys = retain.poseKeys;
+  for (let i = 0; i < n; i++) {
+    const entity = visit[i];
+    if (!entity) {
+      retain.framePrimed = false;
+      return;
+    }
+    ids[i] = entity.id;
+    poseKeys.set(entity.id, rockPoseRetainKey(entity));
+  }
+  retain.frameVisitCount = n;
+  retain.framePrimed = true;
 }
 
 function classifyWorld(state, runtime) {
@@ -985,6 +1057,29 @@ function classifyWorld(state, runtime) {
 
   const statics = runtime.physicsStatics;
   const dynamics = runtime.physicsDynamics;
+  const counts = runtime.counts;
+  const visit = selection.entities;
+  // Hoist parked-frame retain eligibility once; rocks then only pay a pose-key map hit.
+  const rockRetainFrame = rockVisitRetainGlobalsMatch(
+    runtime, origin, glass, submit, prefetchR, facts, player,
+  );
+  const rockRetain = rockRetainFrame ? runtime._rockVisitRetain : null;
+  // Full-frame retain AFTER #127: when every visit entity is stamp+pose stable, keep
+  // last tick's id lists / partitions / counts and skip clear+visit republish.
+  let frameRetained = false;
+  if (rockRetainFrame && tryRetainClassifyFrame(runtime, visit, simTime)) {
+    frameRetained = true;
+    const pvx = finite(player && player.vel && player.vel.x);
+    const pvz = finite(player && player.vel && player.vel.z);
+    if ((pvx * pvx + pvz * pvz) <= 0.25) {
+      armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
+      armClassifyFrameVisit(runtime, visit);
+    } else if (runtime._rockVisitRetain) {
+      runtime._rockVisitRetain.primed = false;
+      runtime._rockVisitRetain.framePrimed = false;
+    }
+  }
+  if (!frameRetained) {
   statics.length = 0;
   dynamics.length = 0;
   runtime.exactIds.length = 0;
@@ -1003,7 +1098,6 @@ function classifyWorld(state, runtime) {
   runtime.currentEntityIds.clear();
   runtime.glassIds.clear();
   runtime.runwayIds.clear();
-  const counts = runtime.counts;
   counts.s0 = 0;
   counts.s1 = 0;
   counts.s2 = 0;
@@ -1031,12 +1125,6 @@ function classifyWorld(state, runtime) {
   });
   ctx.pinsNormalized = false;
 
-  const visit = selection.entities;
-  // Hoist parked-frame retain eligibility once; rocks then only pay a pose-key map hit.
-  const rockRetainFrame = rockVisitRetainGlobalsMatch(
-    runtime, origin, glass, submit, prefetchR, facts, player,
-  );
-  const rockRetain = rockRetainFrame ? runtime._rockVisitRetain : null;
   // Perf: per-pass invariants hoisted out of the visit loop. The physics lookahead set does not
   // change during this pass (it is republished by the physics system later in the same tick), and
   // the world-record bag is the same object for every entity this pass.
@@ -1210,18 +1298,24 @@ function classifyWorld(state, runtime) {
     const pvz = finite(player && player.vel && player.vel.z);
     if ((pvx * pvx + pvz * pvz) <= 0.25) {
       armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
+      armClassifyFrameVisit(runtime, visit);
     } else if (runtime._rockVisitRetain) {
       runtime._rockVisitRetain.primed = false;
+      runtime._rockVisitRetain.framePrimed = false;
     }
   }
+  } // end !frameRetained visit path
 
   if (runtime.classifyMode === 'incremental') {
     const liveN = (state.entityList || []).length;
     counts.s3 = Math.max(0, liveN - counts.s0 - counts.s1 - counts.s2 - counts.s4);
   }
 
+  // frame-retain keeps the prior incremental lists — same prune gate as incremental.
+  const pruneLikeIncremental = runtime.classifyMode === 'incremental'
+    || runtime.classifyMode === 'frame-retain';
   for (const id of runtime.signaturesById.keys()) {
-    const stillLive = runtime.classifyMode === 'incremental'
+    const stillLive = pruneLikeIncremental
       ? !!(state.entities && typeof state.entities.get === 'function'
         && state.entities.get(id) && state.entities.get(id).alive !== false)
       : runtime.currentEntityIds.has(id);
