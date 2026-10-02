@@ -97,7 +97,14 @@ body.sf-flight-cursor #ui-root,
 body.sf-flight-cursor #hud { cursor: none; }
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
 #ui-root > div { position: absolute; }
-#hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint; }
+/* FB-100: --sf-hud-scale/--sf-hud-opacity (settings.video.hudScale/hudOpacity, applied on the
+   root by applyHudPresentationFromSettings) let the player size and dim the flight HUD without
+   touching global --ui-scale or screen surfaces. font-size composes both scales for em-sized
+   children; opacity sits on this layer only so pause-dim/blowout animation on the element
+   still wins during its transient. */
+#hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint;
+  font-size: calc(15px * var(--ui-scale, 1) * var(--sf-hud-scale, 1));
+  opacity: var(--sf-hud-opacity, 1); }
 #hud.sf-hud--blowout {
   animation: sf-shield-blowout-glitch 400ms steps(2, start) forwards;
 }

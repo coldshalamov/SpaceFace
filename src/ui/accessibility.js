@@ -21,6 +21,7 @@
 //     field (settings.accessibility.flashReduce), surfaced via getFlashReduced() for vfx to honor.
 
 import { currentGameLocale, setGameLocale } from '../localization/gameLocalization.js';
+import { applyHudPresentationFromSettings } from './hudLayout.js';
 
 // ---------------------------------------------------------------------------------------------------
 // Runtime-readable state (other systems poll these every frame; keep them plain module-scope booleans).
@@ -395,6 +396,9 @@ export function applyAccessibility(settings, target) {
   // Same `--ui-scale` property the Video/Access sliders write on live drag. Applying it here is
   // what makes a saved scale survive boot and Continue; it does not introduce a second scale var.
   applyUiScaleFromSettings(settings, root);
+  // FB-100: the HUD's own scale/opacity keys ride the same boot + settings:changed path so a
+  // saved pair survives Continue exactly like --ui-scale.
+  applyHudPresentationFromSettings(settings, root);
 
   return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
     forcedColorsActive, colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
