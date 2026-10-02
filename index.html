@@ -186,7 +186,9 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-              <!-- modulepreload:registry:begin -->
+                <!-- modulepreload:registry:begin -->
+  <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
+  <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
   <link rel="modulepreload" href="./node_modules/three-mesh-bvh/build/index.module.js" />
   <link rel="modulepreload" href="./node_modules/three.quarks/dist/three.quarks.esm.js" />
@@ -349,6 +351,7 @@
   <link rel="modulepreload" href="./src/core/constraints/masslineController.js" />
   <link rel="modulepreload" href="./src/core/coordinates.js" />
   <link rel="modulepreload" href="./src/core/coreSystem.js" />
+  <link rel="modulepreload" href="./src/core/deepSpaceAddress.js" />
   <link rel="modulepreload" href="./src/core/demoMode.js" />
   <link rel="modulepreload" href="./src/core/devMode.js" />
   <link rel="modulepreload" href="./src/core/dirtyJournal.js" />
@@ -418,6 +421,7 @@
   <link rel="modulepreload" href="./src/data/claimableBodies.js" />
   <link rel="modulepreload" href="./src/data/collisionProxyManifests.js" />
   <link rel="modulepreload" href="./src/data/combatDefs.js" />
+  <link rel="modulepreload" href="./src/data/combatLab.js" />
   <link rel="modulepreload" href="./src/data/combatLabSetups.js" />
   <link rel="modulepreload" href="./src/data/commodities.js" />
   <link rel="modulepreload" href="./src/data/commodityFlavor.js" />
@@ -584,6 +588,7 @@
   <link rel="modulepreload" href="./src/data/laneContacts.js" />
   <link rel="modulepreload" href="./src/data/lookMoods.js" />
   <link rel="modulepreload" href="./src/data/massSeed.js" />
+  <link rel="modulepreload" href="./src/data/masslineCounters.js" />
   <link rel="modulepreload" href="./src/data/mining.js" />
   <link rel="modulepreload" href="./src/data/missionConditions.js" />
   <link rel="modulepreload" href="./src/data/missions.js" />
@@ -633,6 +638,7 @@
   <link rel="modulepreload" href="./src/data/sectorZones.js" />
   <link rel="modulepreload" href="./src/data/sectors.js" />
   <link rel="modulepreload" href="./src/data/shipLedgerTemplates.js" />
+  <link rel="modulepreload" href="./src/data/shipPaints.js" />
   <link rel="modulepreload" href="./src/data/shipRoleLattice.js" />
   <link rel="modulepreload" href="./src/data/shipSilhouettes.js" />
   <link rel="modulepreload" href="./src/data/ships.js" />
@@ -691,6 +697,7 @@
   <link rel="modulepreload" href="./src/localization/domBridge.js" />
   <link rel="modulepreload" href="./src/localization/fonts.js" />
   <link rel="modulepreload" href="./src/localization/gameLocalization.js" />
+  <link rel="modulepreload" href="./src/localization/layout.js" />
   <link rel="modulepreload" href="./src/localization/pipeline.js" />
   <link rel="modulepreload" href="./src/localization/runtime.js" />
   <link rel="modulepreload" href="./src/localization/storeCopy.js" />
@@ -730,6 +737,7 @@
   <link rel="modulepreload" href="./src/render/assetLoader.js" />
   <link rel="modulepreload" href="./src/render/assetResidency.js" />
   <link rel="modulepreload" href="./src/render/asteroidInstancePool.js" />
+  <link rel="modulepreload" href="./src/render/asteroidInteriorPreview.js" />
   <link rel="modulepreload" href="./src/render/asteroidMotionPresentation.js" />
   <link rel="modulepreload" href="./src/render/authoredAdmissionPolicy.js" />
   <link rel="modulepreload" href="./src/render/authoredMaterialProfiles.js" />
@@ -1210,6 +1218,12 @@
   <link rel="modulepreload" href="./src/ui/accessibilityChecklist.js" />
   <link rel="modulepreload" href="./src/ui/adventureDecisions.js" />
   <link rel="modulepreload" href="./src/ui/alerts.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/asteroidController.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/asteroidRenderer2d.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/asteroidRenderer3d.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/buildPalette.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/inspector.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/worksPartLoader.js" />
   <link rel="modulepreload" href="./src/ui/automationPayoff.js" />
   <link rel="modulepreload" href="./src/ui/bandHud.js" />
   <link rel="modulepreload" href="./src/ui/bindings.js" />
@@ -1222,11 +1236,13 @@
   <link rel="modulepreload" href="./src/ui/causeLedger.js" />
   <link rel="modulepreload" href="./src/ui/cinematicInputFence.js" />
   <link rel="modulepreload" href="./src/ui/commandBar.js" />
+  <link rel="modulepreload" href="./src/ui/commandDeckRefitHooks.js" />
   <link rel="modulepreload" href="./src/ui/comms.js" />
   <link rel="modulepreload" href="./src/ui/commsRadial.js" />
   <link rel="modulepreload" href="./src/ui/confirm.js" />
   <link rel="modulepreload" href="./src/ui/contactHailPrompt.js" />
   <link rel="modulepreload" href="./src/ui/controlPrompts.js" />
+  <link rel="modulepreload" href="./src/ui/crucibleCombatReadout.js" />
   <link rel="modulepreload" href="./src/ui/crucibleFocus.js" />
   <link rel="modulepreload" href="./src/ui/crucibleLaunch.js" />
   <link rel="modulepreload" href="./src/ui/customsPrompt.js" />
@@ -1250,6 +1266,7 @@
   <link rel="modulepreload" href="./src/ui/deckplate/transition.js" />
   <link rel="modulepreload" href="./src/ui/demandDriverSummary.js" />
   <link rel="modulepreload" href="./src/ui/discoveryPlate.js" />
+  <link rel="modulepreload" href="./src/ui/dockArrival.js" />
   <link rel="modulepreload" href="./src/ui/dockDenyBanner.js" />
   <link rel="modulepreload" href="./src/ui/domInstrumentation.js" />
   <link rel="modulepreload" href="./src/ui/effects/circularGauge.js" />
@@ -1273,6 +1290,7 @@
   <link rel="modulepreload" href="./src/ui/fieldHud.js" />
   <link rel="modulepreload" href="./src/ui/floatingText.js" />
   <link rel="modulepreload" href="./src/ui/forkInstrument.js" />
+  <link rel="modulepreload" href="./src/ui/frontierRumorMapLayer.js" />
   <link rel="modulepreload" href="./src/ui/fuelReserveWarning.js" />
   <link rel="modulepreload" href="./src/ui/globalFind.js" />
   <link rel="modulepreload" href="./src/ui/glyphs.js" />
@@ -1299,11 +1317,19 @@
   <link rel="modulepreload" href="./src/ui/loadingProgressDriver.js" />
   <link rel="modulepreload" href="./src/ui/loadingProgressModel.js" />
   <link rel="modulepreload" href="./src/ui/localizedCoreCopy.js" />
+  <link rel="modulepreload" href="./src/ui/map/careersReadout.js" />
+  <link rel="modulepreload" href="./src/ui/map/mapCamera.js" />
+  <link rel="modulepreload" href="./src/ui/map/mapControlMap.js" />
+  <link rel="modulepreload" href="./src/ui/map/mapNavContext.js" />
   <link rel="modulepreload" href="./src/ui/map/mapParityBridge.js" />
+  <link rel="modulepreload" href="./src/ui/map/mapRouteRibbon.js" />
+  <link rel="modulepreload" href="./src/ui/map/mapWorkbenchCss.js" />
   <link rel="modulepreload" href="./src/ui/map/tacticalMapGrammar.js" />
   <link rel="modulepreload" href="./src/ui/mapAuthority.js" />
   <link rel="modulepreload" href="./src/ui/market/tradeLogic.js" />
   <link rel="modulepreload" href="./src/ui/marketDriverPresenter.js" />
+  <link rel="modulepreload" href="./src/ui/marketIntelPresenter.js" />
+  <link rel="modulepreload" href="./src/ui/marketIntelligence.js" />
   <link rel="modulepreload" href="./src/ui/marketNews.js" />
   <link rel="modulepreload" href="./src/ui/massSeedHud.js" />
   <link rel="modulepreload" href="./src/ui/masslineCadenceReadout.js" />
@@ -1312,6 +1338,8 @@
   <link rel="modulepreload" href="./src/ui/missionPreflight.js" />
   <link rel="modulepreload" href="./src/ui/momentumSinkOverlay.js" />
   <link rel="modulepreload" href="./src/ui/moralTrapPrompt.js" />
+  <link rel="modulepreload" href="./src/ui/navigation/cargoDeck.js" />
+  <link rel="modulepreload" href="./src/ui/navigation/localSpaceMapModel.js" />
   <link rel="modulepreload" href="./src/ui/navigationWaypoint.js" />
   <link rel="modulepreload" href="./src/ui/nemesisComms.js" />
   <link rel="modulepreload" href="./src/ui/numberFormat.js" />
@@ -1319,15 +1347,26 @@
   <link rel="modulepreload" href="./src/ui/orrery/arcRail.js" />
   <link rel="modulepreload" href="./src/ui/orrery/archiveInstruments.js" />
   <link rel="modulepreload" href="./src/ui/orrery/archiveLayouts.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/barReplyDial.js" />
   <link rel="modulepreload" href="./src/ui/orrery/bootRing.js" />
   <link rel="modulepreload" href="./src/ui/orrery/bootRingWorker.js" />
   <link rel="modulepreload" href="./src/ui/orrery/buildSigils.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/chainBeam.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/chartInstruments.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/chartLabels.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/chartLayouts.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/constellation.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/constellationLayouts.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/constellationMedals.js" />
   <link rel="modulepreload" href="./src/ui/orrery/crestOrbit.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/crucibleArmory.js" />
   <link rel="modulepreload" href="./src/ui/orrery/cruciblePreparation.js" />
   <link rel="modulepreload" href="./src/ui/orrery/cruciblePreparationLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/deathDial.js" />
   <link rel="modulepreload" href="./src/ui/orrery/equipmentGlyphs.js" />
   <link rel="modulepreload" href="./src/ui/orrery/flightCluster.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/footprintDial.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/footprintLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/helpInstruments.js" />
   <link rel="modulepreload" href="./src/ui/orrery/helpLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/helpRig.js" />
@@ -1336,8 +1375,11 @@
   <link rel="modulepreload" href="./src/ui/orrery/hudSkin.js" />
   <link rel="modulepreload" href="./src/ui/orrery/hullRing.js" />
   <link rel="modulepreload" href="./src/ui/orrery/hullSchematic.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/industryGlyphs.js" />
   <link rel="modulepreload" href="./src/ui/orrery/instruments.js" />
   <link rel="modulepreload" href="./src/ui/orrery/lampKey.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/ledgerTape.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/marketLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/motion.js" />
   <link rel="modulepreload" href="./src/ui/orrery/routeOrrery.js" />
   <link rel="modulepreload" href="./src/ui/orrery/saveBerth.js" />
@@ -1348,15 +1390,26 @@
   <link rel="modulepreload" href="./src/ui/orrery/scrollExtent.js" />
   <link rel="modulepreload" href="./src/ui/orrery/settingsLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/settingsPreview.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/shipworksLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/slotJig.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/stationLayouts.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/stationTabsLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/stopDial.js" />
   <link rel="modulepreload" href="./src/ui/orrery/svg.js" />
   <link rel="modulepreload" href="./src/ui/orrery/text.js" />
   <link rel="modulepreload" href="./src/ui/orrery/tokens.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/waveform.js" />
   <link rel="modulepreload" href="./src/ui/orrery/yardCarousel.js" />
+  <link rel="modulepreload" href="./src/ui/outfittingSpendConfirm.js" />
+  <link rel="modulepreload" href="./src/ui/pallasHiddenCacheMapLayer.js" />
+  <link rel="modulepreload" href="./src/ui/panels/handlingProfile.js" />
+  <link rel="modulepreload" href="./src/ui/panels/massDelta.js" />
+  <link rel="modulepreload" href="./src/ui/panels/moduleRisk.js" />
   <link rel="modulepreload" href="./src/ui/pirateParleyPrompt.js" />
   <link rel="modulepreload" href="./src/ui/planetHud.js" />
+  <link rel="modulepreload" href="./src/ui/portraitArt.js" />
   <link rel="modulepreload" href="./src/ui/powerRail.js" />
+  <link rel="modulepreload" href="./src/ui/presenters/engineeringPreview.js" />
   <link rel="modulepreload" href="./src/ui/previewContextRetire.js" />
   <link rel="modulepreload" href="./src/ui/priceForecast.js" />
   <link rel="modulepreload" href="./src/ui/priceHistory.js" />
@@ -1370,42 +1423,79 @@
   <link rel="modulepreload" href="./src/ui/screenManager.js" />
   <link rel="modulepreload" href="./src/ui/screenMemory.js" />
   <link rel="modulepreload" href="./src/ui/screens/clipExport.js" />
-  <link rel="modulepreload" href="./src/ui/screens/codex.js" />
   <link rel="modulepreload" href="./src/ui/screens/crucibleLabControls.js" />
-  <link rel="modulepreload" href="./src/ui/screens/missionLog.js" />
+  <link rel="modulepreload" href="./src/ui/screens/crucibleLabTelemetry.js" />
+  <link rel="modulepreload" href="./src/ui/screens/drill.js" />
   <link rel="modulepreload" href="./src/ui/screens/replay.js" />
   <link rel="modulepreload" href="./src/ui/screens/shareCode.js" />
   <link rel="modulepreload" href="./src/ui/screens/stageHull.js" />
-  <link rel="modulepreload" href="./src/ui/screens/starmap.js" />
   <link rel="modulepreload" href="./src/ui/sectorLawPresenter.js" />
   <link rel="modulepreload" href="./src/ui/sectorPostcard.js" />
   <link rel="modulepreload" href="./src/ui/securityReadout.js" />
   <link rel="modulepreload" href="./src/ui/ship/calloutLayout.js" />
+  <link rel="modulepreload" href="./src/ui/ship/fitReadout.js" />
   <link rel="modulepreload" href="./src/ui/ship/hullPoster.js" />
+  <link rel="modulepreload" href="./src/ui/ship/loadoutPresets.js" />
+  <link rel="modulepreload" href="./src/ui/ship/shipBandModels.js" />
   <link rel="modulepreload" href="./src/ui/shipLedgerPanel.js" />
   <link rel="modulepreload" href="./src/ui/shipPreviewMount.js" />
   <link rel="modulepreload" href="./src/ui/signalInvestigationPrompt.js" />
   <link rel="modulepreload" href="./src/ui/starterAirCard.js" />
+  <link rel="modulepreload" href="./src/ui/station/adBoard.js" />
+  <link rel="modulepreload" href="./src/ui/station/barContacts.js" />
+  <link rel="modulepreload" href="./src/ui/station/dock.js" />
   <link rel="modulepreload" href="./src/ui/station/icons.js" />
+  <link rel="modulepreload" href="./src/ui/station/missionDockAttention.js" />
+  <link rel="modulepreload" href="./src/ui/station/moduleCardMetrics.js" />
+  <link rel="modulepreload" href="./src/ui/station/outfittingGuidance.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/bar.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/comms.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/contracts.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/events.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/factions.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/fhChrome.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/industry.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/ledger.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/market.js" />
+  <link rel="modulepreload" href="./src/ui/station/screens/shipworks.js" />
+  <link rel="modulepreload" href="./src/ui/station/serviceQuotes.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationApp.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationArt.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationBindingMap.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationCommands.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationDepartureModel.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationEffects.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationHubFormatters.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationHubModel.js" />
+  <link rel="modulepreload" href="./src/ui/station/stationMissionModel.js" />
   <link rel="modulepreload" href="./src/ui/stuntCallout.js" />
   <link rel="modulepreload" href="./src/ui/survivalHud.js" />
   <link rel="modulepreload" href="./src/ui/targetBracket.js" />
   <link rel="modulepreload" href="./src/ui/targetCondition.js" />
   <link rel="modulepreload" href="./src/ui/targetPanel.js" />
+  <link rel="modulepreload" href="./src/ui/teachingOverlay.js" />
   <link rel="modulepreload" href="./src/ui/threatHalo.js" />
   <link rel="modulepreload" href="./src/ui/toasts.js" />
   <link rel="modulepreload" href="./src/ui/uiPrimitives.js" />
   <link rel="modulepreload" href="./src/ui/uiRoot.js" />
+  <link rel="modulepreload" href="./src/ui/uniqueWreckMapLayer.js" />
+  <link rel="modulepreload" href="./src/ui/uniqueWreckRumorSurface.js" />
+  <link rel="modulepreload" href="./src/ui/vestaOreCacheMapLayer.js" />
   <link rel="modulepreload" href="./src/ui/views/commodityGlyphs.js" />
+  <link rel="modulepreload" href="./src/ui/views/contractPresentation.js" />
   <link rel="modulepreload" href="./src/ui/views/fhGlyphs.js" />
   <link rel="modulepreload" href="./src/ui/views/flightInstruments.js" />
   <link rel="modulepreload" href="./src/ui/views/hudStyles.js" />
   <link rel="modulepreload" href="./src/ui/views/hullIntegrity.js" />
   <link rel="modulepreload" href="./src/ui/views/hullIntegrityStyles.js" />
   <link rel="modulepreload" href="./src/ui/views/identity.js" />
+  <link rel="modulepreload" href="./src/ui/views/marketPresentation.js" />
   <link rel="modulepreload" href="./src/ui/views/menuFrames.js" />
+  <link rel="modulepreload" href="./src/ui/views/navigationFrame.js" />
+  <link rel="modulepreload" href="./src/ui/views/navigationStyles.js" />
   <link rel="modulepreload" href="./src/ui/views/saveFrame.js" />
   <link rel="modulepreload" href="./src/ui/views/settingsControls.js" />
+  <link rel="modulepreload" href="./src/ui/views/stationFrames.js" />
   <link rel="modulepreload" href="./src/ui/views/targetFrame.js" />
   <link rel="modulepreload" href="./src/ui/views/velocityRail.js" />
   <link rel="modulepreload" href="./src/ui/views/velocityRailStyles.js" />
@@ -1417,6 +1507,7 @@
   <link rel="modulepreload" href="./src/ui/whyReveal.js" />
   <link rel="modulepreload" href="./src/ui/wingmanRadial.js" />
   <link rel="modulepreload" href="./src/ui/worldObjectInteraction.js" />
+  <link rel="modulepreload" href="./src/ui/worldSiteMapLayer.js" />
   <link rel="modulepreload" href="./src/ui/wreckChoicePrompt.js" />
   <link rel="modulepreload" href="./src/world/activityClassification.js" />
   <link rel="modulepreload" href="./src/world/activityRuntime.js" />
@@ -1438,6 +1529,16 @@
   <link rel="modulepreload" href="./vendor/addons/libs/ktx-parse.module.js" />
   <link rel="modulepreload" href="./vendor/addons/libs/zstddec.module.js" />
   <link rel="modulepreload" href="./vendor/addons/math/ColorSpaces.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/EffectComposer.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/MaskPass.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/OutputPass.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/Pass.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/RenderPass.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/ShaderPass.js" />
+  <link rel="modulepreload" href="./vendor/addons/postprocessing/UnrealBloomPass.js" />
+  <link rel="modulepreload" href="./vendor/addons/shaders/CopyShader.js" />
+  <link rel="modulepreload" href="./vendor/addons/shaders/LuminosityHighPassShader.js" />
+  <link rel="modulepreload" href="./vendor/addons/shaders/OutputShader.js" />
   <link rel="modulepreload" href="./vendor/addons/utils/BufferGeometryUtils.js" />
   <link rel="modulepreload" href="./vendor/addons/utils/SkeletonUtils.js" />
   <link rel="modulepreload" href="./vendor/addons/utils/WorkerPool.js" />
