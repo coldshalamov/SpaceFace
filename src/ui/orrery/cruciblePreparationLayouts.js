@@ -121,6 +121,9 @@ ${A} .orr-armory-item { position:relative; display:grid; place-items:center; min
 ${A} .orr-armory-item::before { content:''; position:absolute; inset:16px; border-radius:50%; border:1px solid var(--dp-line); pointer-events:none; }
 ${A} .orr-armory-item > .orr-equipment-glyph { width:180px; height:180px; color:var(--dp-ink); }
 ${A} .orr-armory-item > img { width:100%; height:100%; object-fit:contain; }
+/* the showcase clip: the fitting firing in the sim — the schematic's upgrade. */
+${A} .orr-armory-item > video.orr-armory-clip { width:100%; height:100%; object-fit:cover; border-radius:8px;
+  filter:saturate(1.05) contrast(1.04); }
 ${A} .orr-armory-object-label { text-align:center; margin:0; font:500 12px/1.5 var(--dp-face-label); color:var(--dp-ink-dim); letter-spacing:.1em; text-transform:uppercase; }
 ${A} .orr-armory-reading__jig { width:100% !important; height:230px !important; aspect-ratio:auto !important; min-height:180px; }
 ${A} .orr-armory-fitline { font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink); margin:0 0 12px; }
@@ -270,7 +273,9 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .sf-crd-hull .fh-tile-art { width:62px !important; }
  ${D} .orr-prep-hullname { font-size:34px; }
  ${A} { grid-template-columns:minmax(300px,.9fr) minmax(0,1.2fr) !important; }
- ${A} .orr-armory-reading.orr-armory-reading { grid-template-columns:minmax(0,1fr) !important; overflow:auto !important; }
+ /* one column: the visual band, then the words — the base fr row collapses to 0px and
+    overlays them, so the explicit row template goes too */
+ ${A} .orr-armory-reading.orr-armory-reading { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important; overflow:auto !important; }
  ${A} .orr-armory-visual { flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px; }
  ${A} .orr-armory-item { width:45%; min-width:0; height:165px; min-height:150px; }
  ${A} .orr-armory-item > .orr-equipment-glyph { width:130px; height:130px; }

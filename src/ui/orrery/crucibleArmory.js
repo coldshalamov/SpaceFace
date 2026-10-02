@@ -2,6 +2,7 @@
 // the caller supplies a fresh offer and sends the existing purchase intent when the key is used.
 import { equipmentSvg } from './equipmentGlyphs.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { fittingMedia } from '../../data/fittingDossier.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 
 export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
@@ -53,12 +54,29 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       if (lastArt !== artId) {
         lastArt = artId; item.replaceChildren();
         const url = offer.kind === 'hull' ? hullPosterUrl(offer.defId || offer.hullId) : null;
+        const media = offer.kind === 'hull' || offer.kind === 'service' ? null : fittingMedia(offer.defId);
+        const fallback = () => { item.replaceChildren(equipmentSvg(offer, doc)); label.textContent = 'Equipment schematic'; };
         if (url) {
           const image = make('img', ''); image.src = url; image.alt = ''; image.decoding = 'async';
           image.addEventListener('error', () => { item.replaceChildren(equipmentSvg(offer, doc)); }, { once: true });
           item.appendChild(image);
+        } else if (media) {
+          // The showcase clip is the schematic's upgrade: the real fitting firing in the
+          // sim. A webm that never decodes (missing on disk, unsupported codec) falls back
+          // to the authored equipment drawing.
+          const video = doc.createElement('video');
+          video.className = 'orr-armory-clip';
+          video.muted = true; video.loop = true; video.autoplay = true; video.playsInline = true;
+          video.preload = 'metadata'; video.setAttribute('aria-label', `${offer.name || 'Fitting'} in action`);
+          video.src = media.clip;
+          video.poster = media.poster;
+          let settled = false;
+          video.addEventListener('error', () => { if (!settled) { settled = true; fallback(); } }, { once: true });
+          item.appendChild(video);
+          label.textContent = 'In action';
         } else item.appendChild(equipmentSvg(offer, doc));
-        label.textContent = offer.kind === 'hull' ? 'Hull preview' : 'Equipment schematic';
+        label.textContent = offer.kind === 'hull' ? 'Hull preview'
+          : item.querySelector('video') ? 'In action' : 'Equipment schematic';
       }
       fitline.textContent = lines.slot || (offer.kind === 'service' ? 'Applies to this run.' : 'Inspect before you fit.');
       const price = Math.max(0, Number(offer.price) || 0);

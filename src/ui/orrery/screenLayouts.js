@@ -326,6 +326,9 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__s
   padding:2px 0 5px; color:rgb(232 226 212 / .56); transition:color .16s linear; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-name { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 680, "wdth" 115; font-size:15px; letter-spacing:.01em; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:500; letter-spacing:.03em; color:rgb(236 230 216 / .7); }
+/* the checked spare's dossier line — what it does, under its names. */
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-detail { margin:8px 0 0; font-size:13px; line-height:1.45; color:rgb(236 230 216 / .68); max-width:56ch; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-detail:empty { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:rgb(236 230 216 / .8);
   transform:scaleX(0); transform-origin:left; transition:transform .22s var(--dp-ease-out, ease-out); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .orr-hp__spare::after { transform-origin:right; }
@@ -523,6 +526,17 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__blurb { margin:12px 0 0; font-size:15px; line-height:1.45; color:rgb(236 230 216 / .82); max-width:34ch; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__act { margin:8px 0 0; font-size:13px; color:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__act:empty { display:none; }
+/* the dossier lines: what the thing does, then when it pays — quieter than the blurb,
+   one notch bigger than the control hint. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__detail { margin:10px 0 0; font-size:14px; line-height:1.5; color:rgb(236 230 216 / .74); max-width:44ch; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__detail:empty { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__tip { margin:6px 0 0; font-size: 12px; line-height:1.45; letter-spacing:.02em; color:rgb(143 203 255 / .8); max-width:44ch; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__tip:empty { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__stats { margin:14px 0 0; display:flex; flex-wrap:wrap; gap:5px 12px; max-width:52ch; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__stats:empty { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-stat { display:inline-flex; align-items:baseline; gap:6px; font-family:var(--dp-face-label, "Archivo"); font-size: 11px; letter-spacing:.06em; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-stat em { font-style:normal; text-transform:uppercase; letter-spacing:.16em; font-size:10px; color:rgb(236 230 216 / .5); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-stat b { font-weight:600; color:rgb(236 230 216 / .88); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__compare { margin-top:18px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__compare:empty, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__budget:empty { display:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__budget { margin-top:18px; }

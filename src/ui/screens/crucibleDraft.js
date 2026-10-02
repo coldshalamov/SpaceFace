@@ -36,6 +36,7 @@ import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../syste
 import { survivalRun } from '../../systems/survivalRun.js';
 import { el, settle, cue, attachHoldVerb } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
+import { dossierFor } from '../../data/fittingDossier.js';
 import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createHullSchematic } from '../orrery/hullSchematic.js';
@@ -513,6 +514,7 @@ export function refitRowLines(row) {
   const options = spares.map((spare) => ({
     instanceId: spare.instanceId,
     label: spareOptionLabel(spare),
+    defId: spare.defId,
   }));
   return {
     label,
@@ -677,6 +679,9 @@ export const crucibleDraftScreen = {
         name: el('h2', 'orr-armory-reading__name', ''),
         blurb: el('p', 'orr-armory-reading__blurb', ''),
         act: el('p', 'orr-armory-reading__act', ''),
+        detail: el('p', 'orr-armory-reading__detail', ''),
+        tip: el('p', 'orr-armory-reading__tip', ''),
+        stats: el('div', 'orr-armory-reading__stats'),
         jig: el('div', 'orr-armory-reading__jig'),
         compare: el('div', 'orr-armory-reading__compare'),
         budget: el('div', 'orr-armory-reading__budget'),
@@ -684,7 +689,7 @@ export const crucibleDraftScreen = {
         demo: el('p', 'orr-armory-reading__demo', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, parts.demo);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.detail, parts.tip, parts.stats, parts.compare, parts.budget, parts.buy, parts.demo);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -1084,6 +1089,23 @@ export const crucibleDraftScreen = {
     parts.name.textContent = lines.name;
     parts.blurb.textContent = lines.blurb;
     parts.act.textContent = lines.activation || '';
+    // The dossier's second paragraph — what the fitting actually does in play — plus its
+    // usage note and the derived spec sheet. Skips itself when the blurb already says it.
+    const dossier = dossierFor(offer.defId || (offer.kind === 'hull' ? offer.hullId : ''));
+    if (parts.detail) {
+      const detail = dossier && dossier.detail ? dossier.detail : '';
+      parts.detail.textContent = detail && detail !== (lines.blurb || '') ? detail : '';
+    }
+    if (parts.tip) parts.tip.textContent = dossier && dossier.tip ? `When it pays: ${dossier.tip}` : '';
+    if (parts.stats && typeof document !== 'undefined') {
+      parts.stats.replaceChildren();
+      for (const s of (dossier ? dossier.stats : []).slice(0, 8)) {
+        const chip = document.createElement('span'); chip.className = 'orr-armory-stat';
+        const k = document.createElement('em'); k.textContent = s.label;
+        const v = document.createElement('b'); v.textContent = s.value;
+        chip.append(k, v); parts.stats.appendChild(chip);
+      }
+    }
     // where it goes: the run's ship with that hardpoint lit
     const owner = draftOwner(context);
     const rows = owner && typeof owner.refitRows === 'function' ? owner.refitRows() : [];
@@ -1646,9 +1668,17 @@ export const crucibleRefitScreen = {
         spareWords.setAttribute('role', 'radiogroup');
         spareWords.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
         const scales = spareScales(row.spares);
+        // The checked spare's dossier line — what it does, read under the row of names.
+        const spareDetail = el('p', 'orr-hp__spare-detail', '');
+        const detailFor = (instanceId) => {
+          const opt = lines.options.find((o) => String(o.instanceId) === String(instanceId));
+          const d = opt && opt.defId ? dossierFor(opt.defId) : null;
+          return d && d.detail ? d.detail : '';
+        };
         const syncSpares = () => {
           for (const b of spareWords.children) b.setAttribute('aria-checked', String(b.dataset.spare === pick.value));
           if (scales) scales.update(pick.value);
+          spareDetail.textContent = detailFor(pick.value);
         };
         pick.addEventListener('change', () => {
           this._spareChoice.set(row.slotIndex, pick.value);
@@ -1672,6 +1702,7 @@ export const crucibleRefitScreen = {
         }
         syncSpares();
         line.appendChild(spareWords);
+        line.appendChild(spareDetail);
         if (scales) line.appendChild(scales.el);
         left.appendChild(pick);
         row._pick = pick;

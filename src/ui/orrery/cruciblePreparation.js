@@ -9,6 +9,7 @@ import { SWARM_BOSS_EVERY, SWARM_REFIT_EVERY } from '../../data/swarmMode.js';
 import { applyWeaponsColdLoadout } from '../../systems/survivalMutators.js';
 import { buildSlotList } from '../../systems/ships.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { dossierFor } from '../../data/fittingDossier.js';
 import { equipmentSvg } from './equipmentGlyphs.js';
 import { BUILD_SIGILS, STAKE_MARKS, sigilSvg } from './buildSigils.js';
 import { createHullRing } from './hullRing.js';
@@ -235,7 +236,10 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
         b.addEventListener('click', () => {
           lit = slot.index; showView(1);
           for (const sibling of manifest.children) sibling.setAttribute('aria-pressed', String(sibling === b));
-          fitNote.textContent = `${slot.name} · hardpoint ${slot.index + 1} · ${slot.type} ${slot.size}`;
+          // The hardpoint line, then the dossier's plain-english read of the fitting.
+          const d = slot.defId ? dossierFor(slot.defId) : null;
+          fitNote.textContent = `${slot.name} · hardpoint ${slot.index + 1} · ${slot.type} ${slot.size}`
+            + (d && d.detail ? ` — ${d.detail}` : '');
         });
         manifest.appendChild(b);
       }
