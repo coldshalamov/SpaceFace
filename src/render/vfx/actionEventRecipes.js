@@ -27,6 +27,8 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       pd_curtain:{verb:'cool',primitive:'deposition',color:0x83aefa,life:1.6,surfaceWork:true},
       sensor_ghost:{verb:'command',primitive:'induction',color:0x9db8d8,life:1.6},
       broadside_charge:{verb:'command',primitive:'induction',color:0xff8a5c,life:2.4,surfaceWork:true},
+      swarmer_vent:{verb:'fling',primitive:'pressure',color:0xffb98b,life:2.0,surfaceWork:true},
+      broadside_desperation:{verb:'command',primitive:'induction',color:0xff5c48,life:2.8,surfaceWork:true},
       pirate_stalk:{verb:'ignition',primitive:'compression',color:0xc97e5a,life:1.6},
       scan_sweep:{verb:'command',primitive:'induction',color:0x85d0da,life:1.6},
       return_fire_warning:{verb:'ignition',primitive:'compression',color:0xffc08a,life:1.4},
@@ -97,7 +99,7 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
   if(name==='ai:telegraph'||name==='ai:flee'){
     const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
-    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike'].includes(p.kind))return null;
+    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','swarmer_vent','broadside_desperation','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike'].includes(p.kind))return null;
     const aft=name==='ai:flee'||p.kind==='engine_flare';
     const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
     return {...p,targetId:source.id,sourceId:source.id,

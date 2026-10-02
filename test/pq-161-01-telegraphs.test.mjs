@@ -373,7 +373,8 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
 test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => {
   assert.deepEqual([...LEFTOVER_TELEGRAPH_KINDS], [
     'engine_flare', 'weapon_charge', 'attach_spool', 'wake_mines', 'detonator_fuse',
-    'field_spool', 'pd_curtain', 'sensor_ghost', 'broadside_charge', 'shield_lance',
+    'field_spool', 'pd_curtain', 'sensor_ghost', 'broadside_charge', 'swarmer_vent',
+    'broadside_desperation', 'shield_lance',
     'pirate_stalk', 'scan_sweep', 'return_fire_warning', 'pd_curtain_closing',
     'warden_screen_closing',
   ]);
@@ -404,6 +405,8 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
     pd_curtain: 'shields',
     sensor_ghost: 'impulses',
     broadside_charge: 'impulses',
+    swarmer_vent: 'impulses',
+    broadside_desperation: 'impulses',
     pirate_stalk: 'impulses',
     return_fire_warning: 'impulses',
     scan_sweep: 'shields',

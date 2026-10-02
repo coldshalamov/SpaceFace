@@ -229,12 +229,23 @@ export const ENEMY_TYPES = [
       cue: 'broadside_charge',
     },
     counterHint: 'Cross the bow or stern during the charge; the next salvo shifts to the opposite flank.',
-    subsystems: { turretHp: 300, spawnsSwarmers: true, phases: [0.66, 0.33] },
+    // FB-020: every mount is a destructible turret subsystem — shoot the guns off the rails and
+    // the fight phases on physical mount loss. First edge vents the screen; the last edge is the
+    // desperation battery. The old hull-fraction `phases` table is gone: the health bar no longer
+    // drives the fight, the guns do.
+    subsystems: { turretHp: 300, phaseAtTurretsLost: [4, 10] },
     reinforcements: {
       packageId: 'iron_maw_screen',
-      type: 'wasp_swarmer', count: [2, 4], hullThreshold: 0.5,
+      // The screen vents when the first turret edge falls (4 mounts) — the authored beat —
+      // with the hull threshold kept as the mercy trigger for a hull that bypasses its guns.
+      type: 'wasp_swarmer', count: [2, 4], turretsLostAtLeast: 4, hullThreshold: 0.35,
     },
-    behavior: 'slow fortress, destructible turrets, spawns swarmers, phases at 66%/33%',
+    // FB-020: the bow is an armored plate until the second turret edge tears it — shots inside
+    // the prow arc bank off (bossSurface), and only then does the PROW RIB window open for bonus
+    // damage. The class default (rear reactor vent) would punish the authored counterHint.
+    prowSurface: { arcDeg: 70, material: 'iron_plate' },
+    weakPoint: { label: 'PROW RIB', arcCenter: 0, arcHalfWidth: 0.40, bonusMult: 1.35, hint: 'BOW', opensAtTurretEdge: 2 },
+    behavior: 'slow fortress, destructible turrets, vents swarmers on mount loss, desperation battery at the second edge',
     bountyCr: 12000, shipClass: 'capital',
     loot: {
       creditsRange: [4000, 9000],
@@ -278,7 +289,9 @@ export const ENEMY_TYPES = [
     id: 'pd_screen_escort', name: 'Point-Defense Screen', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 9],
-    combatDoctrineId: 'interceptor_flyby',
+    // FB-018: the screen is the row's identity, not an override table entry — the escort holds
+    // its ward-facing slot in every spawn path, survival waves included.
+    combatDoctrineId: 'escort_screen',
     hull: 200, armor: 55, armorFlat: 2, shield: 80, shieldRegen: 11, shieldRegenCapable: true, cap: 190, capRegen: 24,
     maxSpeed: 100, accel: 80, turnRate: 1.5, collisionRadius: 20, mass: 75,
     weapons: [

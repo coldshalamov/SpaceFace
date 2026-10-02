@@ -43,7 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| fight seam — §1C row 234 (flak interception, dreadnought phasing, hit confirmation) | devin-fight | IN PROGRESS | `src/systems/{countermeasures,weapons,fields,mines}.js`, `src/data/bombs.js`, `src/ai/` combat reads, `test/` new focused tests, `build_map.md` §1C, `design/program/NOW.md` | rows 96+221+231 landed; 234 next (seam countermeasures.js); land each row by pathspec |
+| fight seam — §1C rows 178/179/200/202 next (flak interception, dreadnought phasing, hit confirmation landed) | devin-fight | IN PROGRESS | `src/systems/{countermeasures,weapons,fields,mines}.js`, `src/combat/`, `src/data/{enemies,combatDefs,weapons}.js`, `src/ai/combatDoctrine.js`, `test/` new focused tests, `build_map.md` §1C, `design/program/NOW.md` | rows 96+221+231+234 landed; land each row by pathspec |
 
 ## Remaster machine
 

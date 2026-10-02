@@ -31,6 +31,7 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { isRecovering, isTumbling } from '../combat/tumbleStatus.js';
+import { turretPhaseEdges as turretPhaseEdgesFor, turretLossCount } from '../combat/turretSubsystems.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
@@ -955,6 +956,10 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     // shoots — a doctrine committed at a nominal bolt speed would release a volley visibly off
     // the line the pilot was shown on railgun-fast mounts.
     aimProjectileSpeed: bestAimProjectileSpeed(entity.data && entity.data.weapons),
+    // FB-020: capital phase edges read physical mount loss, not hull fraction. The edges are
+    // authored on the enemy row; the loss count is the combat runtime's own truth.
+    turretPhaseEdges: turretPhaseEdgesFor(entity),
+    turretsLost: turretLossCount(runtime),
     ramAuthorized,
     woundedFallbackSpent: ai.woundedFallbackSpent === true,
     ...bands,

@@ -562,7 +562,8 @@ export const ENEMY_DOCTRINE_OVERRIDES = Object.freeze({
   corsair_raider: 'shield_breaker',
   // The PD hull's authored text ("screens a leader or wreck claim; shreds missiles and light
   // craft") is an escort warden, not a third copy of the raider flyby.
-  pd_screen_escort: 'escort_screen',
+  // FB-018: the screen escort's doctrine is declared on its enemy row (escort_screen) — same
+  // single-statement rule that retired the jackal and zealot overrides.
 });
 
 // The three CAPITAL_BOSSES missions (src/data/missions.js) stamp `data.missionTag`; each boss
@@ -575,16 +576,21 @@ export const MISSION_TAG_BOSS_DOCTRINE = Object.freeze({
 });
 
 // Boss choreography stages, keyed by the boss doctrine id. Stage 0 is the opening act; each
-// later stage engages when hullFraction drops to `hullAtMost`. `cue` is the telegraph kind the
+// later stage engages when hullFraction drops to `hullAtMost` — or, on the capital_broadside
+// line, when `turretsLost` mounts have been physically torn off. `cue` is the telegraph kind the
 // transition emits (the readable beat), fireTicks/shiftTicks/preferredRange reshape the
 // broadside cadence for that act.
 export const CAPITAL_BOSS_CHOREOGRAPHY = Object.freeze({
   capital_broadside: Object.freeze({
     boss: 'IRON MAW',
+    // FB-020: stages advance on destroyed turret mounts, not hull fraction. Stage index = how
+    // many `phaseAtTurretsLost` edges the hull has crossed. Edge 1 vents the authored screen and
+    // shortens the broadside cycle; edge 2 is the desperation battery — longer fire windows,
+    // tighter shifts, closer standoff.
     stages: Object.freeze([
-      Object.freeze({ hullAtMost: 1.01, fireTicks: 60, shiftTicks: 90, preferredRange: 260, cue: 'broadside_charge' }),
-      Object.freeze({ hullAtMost: 0.66, fireTicks: 84, shiftTicks: 66, preferredRange: 230, cue: 'broadside_charge' }),
-      Object.freeze({ hullAtMost: 0.33, fireTicks: 96, shiftTicks: 48, preferredRange: 200, cue: 'broadside_desperation' }),
+      Object.freeze({ turretsLost: 0, fireTicks: 60, shiftTicks: 90, preferredRange: 260, cue: 'broadside_charge' }),
+      Object.freeze({ turretsLost: 4, fireTicks: 66, shiftTicks: 54, preferredRange: 230, cue: 'swarmer_vent' }),
+      Object.freeze({ turretsLost: 10, fireTicks: 96, shiftTicks: 42, preferredRange: 200, cue: 'broadside_desperation' }),
     ]),
   }),
   capital_broadside_tollman: Object.freeze({

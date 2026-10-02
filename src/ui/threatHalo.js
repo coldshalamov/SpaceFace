@@ -57,6 +57,8 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'pd_curtain',
   'sensor_ghost',
   'broadside_charge',
+  'swarmer_vent',
+  'broadside_desperation',
   'shield_lance',
   'pirate_stalk',
   'scan_sweep',

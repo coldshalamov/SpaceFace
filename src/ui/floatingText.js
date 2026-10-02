@@ -7,6 +7,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 
 const POOL = 56;
@@ -125,9 +126,12 @@ export function createFloatingText(ctx) {
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
-    if (!state.settings || state.settings.showDamageNumbers === false
-      || state.settings.gameplay?.damageNumbers === false) return;
     opts = opts || {};
+    // Damage numbers honor their toggle; control receipts (hit pips, counters) are feedback the
+    // control itself owes the pilot and answer to their own keys.
+    if (!opts.controlReceipt && (!state.settings || state.settings.showDamageNumbers === false
+      || state.settings.gameplay?.damageNumbers === false)) return;
+    if (opts.controlReceipt === 'pip' && state.settings?.gameplay?.hitPips === false) return;
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
     if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
@@ -140,7 +144,8 @@ export function createFloatingText(ctx) {
     n.wx = wx; n.wz = wz;
     n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
     n.vx = (Math.random() - 0.5) * 26;
-    n.el.className = 'sf-ft sf-ft--rise ' + cls;
+    // Control receipts are flat marks — the rise animation belongs to damage numbers.
+    n.el.className = 'sf-ft ' + (opts.controlReceipt === 'pip' ? '' : 'sf-ft--rise ') + cls;
     n.el.textContent = text;
     n.el.style.display = 'block';
     n.el.style.opacity = '1';
@@ -157,9 +162,33 @@ export function createFloatingText(ctx) {
     if (p.brokeShield || p.kind === 'shield') return 'sf-ft--shield';
     return 'sf-ft--hull';
   }
+  // FB-019: the hit pip is a control receipt, not a damage number — it paints a three-state
+  // layer mark (ring = shield, chevron = armor, cross = hull) at the impact for 120 ms, gated
+  // by the same 40 ms per-target gap the layer voice uses so eye and ear agree. It answers its
+  // own gameplay.hitPips key and stays lit when damage numbers are off. flashReduce holds the
+  // mark longer at lower brightness instead of flashing it.
+  const pipBook = Object.create(null);
   bus.on('combat:damage', (p) => {
+    if (!p) return;
     const amount = Number.isFinite(p?.applied) ? p.applied : Number(p?.amount) || 0;
-    if (!p || amount <= 0 || state.settings?.gameplay?.damageNumbers === false
+    const playerCaused = p.attackerId === state.playerId
+      || (p.provenance && p.provenance.actorId === state.playerId);
+    const onPlayer = p.targetId === state.playerId;
+    if (playerCaused && !onPlayer && p.targetId != null) {
+      const layerWord = damageLayer(p) || (p.brokeShield ? 'shield' : null);
+      if (layerWord && admitLayerVoice(pipBook, p.targetId, layerWord, (state.simTime || 0) * 1000)) {
+        const e = state.entities.get(p.targetId);
+        const wx = e ? e.pos.x : (p.pos && p.pos.x); const wz = e ? e.pos.z : (p.pos && p.pos.z);
+        if (wx != null) {
+          const calm = state.settings?.accessibility?.flashReduce === true;
+          const glyph = layerWord === 'shield' ? '○' : layerWord === 'armor' ? '❯' : '✕';
+          spawn(glyph, `sf-ft--pip sf-ft--pip-${layerWord}${calm ? ' sf-ft--pip-calm' : ''}`,
+            wx, wz, p.targetId,
+            { life: calm ? 0.18 : 0.12, vy: 0, controlReceipt: 'pip' });
+        }
+      }
+    }
+    if (amount <= 0 || state.settings?.gameplay?.damageNumbers === false
       || state.settings?.showDamageNumbers === false) return;
     const e = p.targetId != null ? state.entities.get(p.targetId) : null;
     const playerHit = p.targetId === state.playerId;
@@ -337,6 +366,14 @@ function injectStyle() {
   .sf-ft--rise { animation:sf-ft-rise 220ms ease-out 1; }
   @keyframes sf-ft-rise { from { margin-top:6px; } to { margin-top:0; } }
   .sf-ft--hull { color:#ffd24a; }
+  /* FB-019 hit pips — control receipts, not damage numbers. One mark per layer at the impact:
+     ring for shield work, chevron for armor bite, cross for hull. Flat marks, no rise. */
+  .sf-ft--pip { position:absolute; left:0; top:0; font-size:13px; line-height:1;
+    pointer-events:none; text-shadow:0 0 6px rgba(0,0,0,.85); will-change:transform,opacity; }
+  .sf-ft--pip-shield { color:#8fe6ff; font-size:14px; }
+  .sf-ft--pip-armor { color:#ffc98a; font-size:15px; }
+  .sf-ft--pip-hull { color:#ff7a5c; font-size:14px; font-weight:700; }
+  .sf-ft--pip-calm { opacity:.6; }
   .sf-ft--shield { color:#7fe0ff; font-size:14px; }
   .sf-ft--player { color:#ff5470; font-size:18px; }
   .sf-ft--big { font-size:24px; }

@@ -851,14 +851,25 @@ function updateRanged(record, tick, self, target, distance) {
  * cue, fire cadence and standoff, so a boss kill reads as acts — not one loop until death. A
  * stage transition interrupts the current act and re-enters broadside_charge with the new cue,
  * which is what the ai:telegraph / ai:doctrinePhase listeners (and the player) see.
+ *
+ * FB-020: the Iron Maw line stages on PHYSICAL mount loss — its enemy row authors
+ * `phaseAtTurretsLost` edges, the self view carries `turretsLost`/`turretPhaseEdges`, and each
+ * crossed edge advances one stage (swarmer vent, then the desperation battery). A hull without
+ * authored turret edges keeps stage 0 regardless of hull damage — the health bar never drives
+ * the fight. The other capital choreographies keep their hull-fraction acts.
  */
 function capitalStageFor(record, self) {
   const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
   const stages = (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
-  // Iron Maw's exploitable opening is a disabled battery (resolveCapitalOpening),
-  // not a hull-fraction act. The opening cadence stays live so a gun-only build
-  // can still kill the hull. Other capital choreographies keep their acts.
-  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return stages[0];
+  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+    const edges = self && Array.isArray(self.turretPhaseEdges) ? self.turretPhaseEdges : [];
+    if (!edges.length) return stages[0];
+    const lost = self && Number.isFinite(self.turretsLost) ? self.turretsLost : 0;
+    let level = 0;
+    for (const edge of edges) if (lost >= edge) level++;
+    record.turretEdge = level;
+    return stages[Math.min(level, stages.length - 1)];
+  }
   const hull = self && Number.isFinite(self.hullFraction) ? self.hullFraction : 1;
   let stage = stages[0];
   for (const candidate of stages) {
@@ -1432,6 +1443,10 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       : null,
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
+    // FB-020: the boss stage + turret-loss edge ride the doctrinePhase emission so a transition
+    // telegraphed by the stage cue is also identifiable as the physical loss that caused it.
+    bossStage: record.bossStage || 0,
+    turretEdge: record.turretEdge || 0,
     fireWindow: !!record.fireWindow,
     ramAuthorized: record.ramAuthorized === true,
     phaseChanged: !!target && record.phaseChangedTick === record.lastTick,

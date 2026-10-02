@@ -400,7 +400,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas | 97, 98, 99, 100, 101, 180, 181, 203, 204, 232, 233, 235 |
-| fight | devin-fight | enemies, bombs, countermeasures, squads | 178, 179, 200, 202, 221, 231, 234 |
+| fight | devin-fight | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | free | fields | 94, 162 |
 | law | grok-15 | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
@@ -811,7 +811,7 @@ named in the status for the frontend lane to take alone):
 | 231 | FB-016+FB-017+FB-121 | Every archetype telegraphs, variant pairs become distinct problems, every row declares its mass class | PB | DONE 2026-10-02 — all 19 rows telegraph {bark,line,cue}; cue vocabulary opened (VFX recipes + halo kinds + force channels); zealot=escort_screen guardian w/ prow plate, ghost=ranged_stalker (lock-band floor, relocate-after-shot, hull parity pinned); physicalClass ammunition/terrain/specialist derived from THROW_CLASS_MAX_MASS w/ closed specialist override set, copied at spawn, panel word gated on scan pulse. Tests: fb-telegraph-every-archetype, fb-variant-pairs, fb-roster-mass-class (17/17); pq-161-01/02 updated+green |
 | 232 | FB-023+FB-024+FB-120+FB-027 | Warden, cutter and lawman join the swarm; one boss machine; champions bring rooms and tricks | PB | OPEN — seam swarmMode.js |
 | 233 | FB-025+FB-026 | Wave intros are real windows; the scored arc stops inflating HP | PB | OPEN — seam survivalRun.js |
-| 234 | FB-018+FB-020+FB-019 | Flak intercepts for real, the dreadnought phases on turret loss, hits confirm in three states | PB | OPEN — seam countermeasures.js |
+| 234 | FB-018+FB-020+FB-019 | Flak intercepts for real, the dreadnought phases on turret loss, hits confirm in three states | PB | DONE 2026-10-02 — flak weapons on data.weapons run as a real PD channel (chance/cooldown/arc/energy authored, saturation shared, pds:intercept receipt); dreadnought's 14 mounts are destructible subsystem_turret_* (dependencies: subsystem_weapon bus), phaseAtTurretsLost [4,10] drives capital_broadside stages (swarmer_vent → broadside_desperation), edge 1 vents iron_maw_screen via turretsLostAtLeast, edge 2 opens the prow surface + PROW RIB weak point and cuts RCS yaw authority; hit pips are control receipts gated on gameplay.hitPips sharing the hit-voice 40ms gap. Tests: fb-flak-interception, fb-hit-confirmation-pip, fb-dreadnought-phases (19/19); pq206-00 wing cell + pq-152-02 stay green |
 | 235 | FB-022+FB-028 | Arena props are bodies the Massline moves; the results sheet prints its stunt rows | PB | OPEN — seam survivalArena.js (ORRERY lane: FB-028) |
 | 236 | FB-001+FB-059 | The pursuit-slot assist is reachable; five heavy hulls fly distinct drives | PB | OPEN — seam flightV3.js |
 | 237 | FB-003+FB-004+FB-005+FB-113 | The pad covers the whole hand with curves, deadzones, haptics on their own axis and hold-to-toggle | PB | OPEN — seam gamepad.js / input.js (input ownership + focused validation) |

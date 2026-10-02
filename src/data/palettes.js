@@ -437,6 +437,8 @@ export const TELEGRAPH_FORCE_CHANNELS = Object.freeze({
   pd_curtain: 'shields',
   sensor_ghost: 'impulses',
   broadside_charge: 'impulses',
+  swarmer_vent: 'impulses',
+  broadside_desperation: 'impulses',
   pirate_stalk: 'impulses',
   return_fire_warning: 'impulses',
   scan_sweep: 'shields',
