@@ -195,6 +195,33 @@ export function materializeWaveBatch(ctx, request) {
         champion: req.champion === true,
       });
       if (doctrine) spec.data.ai.combatDoctrineId = doctrine;
+      // FB-023 — a hull that patrols lawful space under `lawful_wanted_only` is an ARENA
+      // combatant here: the Crucible has no WANTED axis, so the lawful latch would spawn it
+      // inert. Restamped on the COHORT copy only — the open-route def and its wanted-status
+      // policing are untouched, and engagementAuthority still validates the fight end to end
+      // (motive, trigger, telegraph, response window all still required).
+      if (req.swarm === true && spec.data.ai.lawful === true) {
+        spec.data.ai.lawful = false;
+        spec.data.ai.roe = 'weapons_free';
+        spec.data.ai.motive = 'arena_contract';
+        spec.data.ai.engagementTrigger = 'authorized_hostile_spawn';
+      }
+      // FB-024 — a capital champion's body enters the `capital_boss` doctrine family so the
+      // score's committed-bearing choreography is what it flies if orders ever lapse.
+      if (req.capitalBoss === true) spec.data.missionTag = 'capital_boss';
+      // FB-027 — the champion is a bounty hunter under the crucible's own contract. The stamp
+      // routes it through the SAME trick path a bounty mark runs (bountyHunt's normalize +
+      // startHunterTrickTelegraph): telegraph, counter window, activation, cooldown.
+      if (typeof req.trickId === 'string' && req.trickId) {
+        spec.data.bountyHunt = {
+          role: 'hunter',
+          contractId: typeof req.trickContractId === 'string' && req.trickContractId
+            ? req.trickContractId
+            : `swarm:champion:w${Number.isInteger(req.wave) ? req.wave : 0}`,
+          trickId: req.trickId,
+        };
+        spec.data.contractTargetId = playerId ?? null;
+      }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
       const bossDressing = lawArenaBossDressing(req.arenaId, req.enemyId, req.role);

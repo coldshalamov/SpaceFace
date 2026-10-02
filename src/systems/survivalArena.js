@@ -69,6 +69,7 @@ import { isSwarmRuleset } from './survivalSwarm.js';
 import {
   SWARM_BOSS_ROTATION,
   SWARM_ROSTER,
+  bossPackagesFor,
 } from '../data/swarmMode.js';
 import {
   ARENA_TOY_DT,
@@ -613,6 +614,62 @@ function planArenaInstallBody({
         });
         break;
       }
+      // FB-120 — the Foreman's lane. A cross-current sweeps the pass corridor sideways (crossing
+      // the committed run is free, chasing head-on up it is a fight against the rake), and the
+      // repulsor at the lane's end is the mirror the pass banks off — overshoot rebounds toward
+      // the stern side instead of meeting the prow's reversal. One plate breaks the head-on line.
+      if (bossRoom === 'mirror_lane') {
+        out.note = 'a mirrored lane — cross the committed pass, work the stern';
+        out.cover = true;
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 200),
+          dir: { x: across.x, z: across.z },
+          radius: 540,
+          strength: 130,
+          falloff: 1.1,
+          halfAngleRad: 0.55,
+          edgeSoftRad: 0.15,
+        });
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 380),
+          radius: 300,
+          strength: 175,
+          falloff: 1.25,
+        });
+        break;
+      }
+      // FB-120 — the Regent's furnace. The centre shoves everyone to the rim (the crown's front
+      // half is plate — nobody camps its face), a rim current runs a racetrack that carries an
+      // orbiting fighter around behind it, and the gate-facing approach inside the furnace is
+      // salted: taking the face costs, going around is free.
+      if (bossRoom === 'crown_furnace') {
+        out.note = 'the furnace wears a crown — the middle shoves, the rim is plate to bank off';
+        out.fields.push({
+          kind: 'repulsor',
+          center: { x: at.x, z: at.z },
+          radius: 360,
+          strength: 190,
+          falloff: 1.45,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, across, 330),
+          dir: { x: -lane.x, z: -lane.z },
+          radius: 480,
+          strength: 110,
+          falloff: 1.1,
+          halfAngleRad: 0.5,
+          edgeSoftRad: 0.14,
+        });
+        const arc = alongBearing(at, lane, 190);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 58;
+          out.mines.push(point(arc, across.x * offset, across.z * offset));
+        }
+        break;
+      }
       out.note = 'a heavy central pull, a berm on one flank, a mined ring and cover';
       out.cover = true;
       out.fields.push({
@@ -815,7 +872,7 @@ export function collectSurvivalRosterPrewarmEnemyIds(run, plan) {
   if (run && isSwarmRuleset(run.ruleset)) {
     for (const entry of SWARM_ROSTER) take(entry.enemyId);
     for (const boss of SWARM_BOSS_ROTATION) {
-      for (const pkg of boss && boss.packages || []) take(pkg && pkg.enemyId);
+      for (const pkg of bossPackagesFor(boss)) take(pkg && pkg.enemyId);
     }
   }
   return [...ids].sort();

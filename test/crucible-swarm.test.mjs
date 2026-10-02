@@ -33,6 +33,7 @@ import {
   SWARM_QUOTA_CAP,
   SWARM_WAVE_DURATION_TICKS,
   SWARM_ROSTER,
+  bossPackagesFor,
   swarmBossFor,
   swarmConcurrent,
   swarmCurveIsSane,
@@ -634,7 +635,7 @@ test('a refused champion remains owed until the spawn budget has room', () => {
   assert.ok(liveBosses(h, 10).length > 0, 'the deferred boss materializes');
 });
 
-test('the champion changes: four different shapes of boss wave, in step with the roster', () => {
+test('the champion changes: six different shapes of boss wave, in step with the roster', () => {
   const seen = [];
   for (let step = 1; step <= SWARM_BOSS_ROTATION.length; step++) {
     const wave = step * 10;
@@ -642,16 +643,18 @@ test('the champion changes: four different shapes of boss wave, in step with the
     assert.ok(boss, `wave ${wave} has a champion`);
     assert.ok(!seen.includes(boss.id), `wave ${wave} is a boss the player has not fought (${boss.id})`);
     seen.push(boss.id);
-    // Nothing may debut as a champion: every archetype in a boss wave is one the roster has
-    // already introduced as ordinary chaff by then.
+    // Compositional rows never debut a silhouette as champion: every body they field is one the
+    // roster already introduced as ordinary chaff. The capital rows are the authored exception —
+    // the Foreman and the Regent are the scored arc's named set-pieces and the wave IS their
+    // introduction (same carve-out the Dreadnought always had).
     const roster = new Set(swarmRosterFor(wave).map((e) => e.enemyId));
-    for (const pkg of boss.packages) {
-      if (pkg.enemyId === 'dreadnought_boss') continue;
+    for (const pkg of bossPackagesFor(boss)) {
+      if (pkg.enemyId === 'dreadnought_boss' || boss.scoreId) continue;
       assert.ok(roster.has(pkg.enemyId), `${pkg.enemyId} was already met before wave ${wave}`);
     }
     assert.ok(boss.label && boss.line, `${boss.id} names itself`);
   }
-  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'all four before any repeat');
+  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'all six before any repeat');
   // And it wraps rather than running out.
   assert.equal(swarmBossFor((SWARM_BOSS_ROTATION.length + 1) * 10).id, SWARM_BOSS_ROTATION[0].id);
   assert.equal(swarmBossFor(7), null, 'an ordinary wave has no champion');
