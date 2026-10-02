@@ -254,7 +254,7 @@ procedure:
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
 | "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
 | "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent |
-| "swarm mode should be more fun" | §16 → `--id PQ-174` |
+| "swarm mode should be more fun" | §16 — the arcade-expansion revision is §16.4 (board rows 263–273); the survival engine stays `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
 | "the ship jigs / jitters / doesn't know where it is", "it's not smooth" | **§21** → run `npm run probe:smooth-flight` and read `SHIP LOST ITS PLACE` (must be 0) before anything else. The loop has ONE order — simulate, then present (`check:baseline` → `smooth-flight`). Never reintroduce a draw-first frame, a pose hold against a running sim, or a sim step cap on slow frames |
@@ -399,7 +399,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | save | free | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
-| swarm | free | swarm planner, survival waves, arenas | 100, 101, 180, 181, 203, 204, 232, 233, 235 |
+| swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | free | fields | 94, 162 |
 | law | free | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
@@ -844,6 +844,31 @@ named in the status for the frontend lane to take alone):
 Same closing law as H and I. The bank's own routing aids ([`FIRST_BATCHES.md`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/FIRST_BATCHES.md),
 [`OVERLAP_MAP.md`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/OVERLAP_MAP.md)) name the
 recommended order and shared seams inside the bank.
+
+### J. Swarm — the arcade attraction (owner direction 2026-10-02)
+
+Owner-directed expansion turning Swarm from Adventure's showcase into its own arcade attraction.
+Detail and the owner's rulings live in [`SWARM_PROGRAM.md`](./design/swarm/SWARM_PROGRAM.md)
+(umbrella), [`SWARM_ARCADE.md`](./design/swarm/SWARM_ARCADE.md) (the bank, the Hangar, juice, the
+curated ladder, screens, crossover, the laws reversed) and
+[`SWARM_EXPANSION.md`](./design/swarm/SWARM_EXPANSION.md) (the comparative expansion: a real
+swarm, the Brood/Machine factions, biomes, bosses, the Circuit, the Show, Fortify, sharing). The
+revision to §16's contract is recorded in §16.4. Rows run in the owner's phase order; PARKED rows
+wait for the phase named on them, not for permission.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 263 | SWARM-01 | The bank and the Hangar: run earnings persist between runs (death banks half, a chosen cash-out banks all), one permanent currency buys Workshop upgrades, owned hulls and perks — SWARM_ARCADE §4, §10 step 1 | BUILD | OPEN — phase A; this alone makes Swarm additive |
+| 264 | SWARM-02 | Juice pack 1: chain hero, kill popups with cause tags, multi-kill announcer, round slam and clear tally, boss bar and intro, the Full/Reduced/Off effects setting — SWARM_ARCADE §5, §10 step 2 | BUILD | OPEN — phase A |
+| 265 | SWARM-03 | Physics UX: power-rail slots pulse when tactically live, kill causes reach the stunt line, wave packages arrive in throw-shaped clumps, the rope becomes a first-hand verb — SWARM_EXPANSION §10 | BUILD | OPEN — phase A; the opening-lesson early release landed 2026-10-02; rope default is a pending owner call |
+| 266 | SWARM-04 | The curated ladder: a fixed arcade seed per arena, named Zones of ten with stars, checkpoint starts, next-round preview in the armory — SWARM_ARCADE §6, §10 step 3 | BUILD | OPEN — phase A |
+| 267 | SWARM-05 | The screens: Hangar hub replaces the door form, armory cards, results celebration, Swarm HUD strip — SWARM_ARCADE §7, §10 step 4 | BUILD | OPEN — phase A; ORRERY lane owns the redesign, functional wiring is in-seam |
+| 268 | SWARM-06 | Depth and crossover: the Saucer is earned in Swarm only (Adventure research route retired) then buyable at Adventure shipyards, the unlock ledger, perks, Threat tiers and elite affixes, challenges, adaptive music — SWARM_ARCADE §8, §10 step 5 | BUILD | OPEN — phase A |
+| 269 | SWARM-07 | A real swarm: the Brood tier (100–400 instanced bodies that take the field kernel and can be thrown), the Brood family, the Asteroid Mill and Hive biomes, the Brood Queen and the Tendril — SWARM_EXPANSION B1–B4, B3 | BUILD | PARKED — phase B, after rows 263–268 |
+| 270 | SWARM-08 | The journey: the Circuit route map and alternate objectives; the arcade arsenal with levels, evolutions, legendaries and abilities — SWARM_EXPANSION B5, B7 | BUILD | PARKED — phase C |
+| 271 | SWARM-09 | The show: the broadcast layer (host, crowd, sponsors, rivals), eight pilots, the Machine faction, the remaining biomes and bosses, Adventure incursions — SWARM_EXPANSION B8, B9, §5 | BUILD | PARKED — phase D |
+| 272 | SWARM-10 | Fortify: arena construction, the Hold the Line mode, the Engineer pilot — SWARM_EXPANSION B13 | BUILD | PARKED — phase E; deliberately last, additive once the arcade core is strong (owner) |
+| 273 | SWARM-11 | Sharing: the arena editor and global boards — SWARM_EXPANSION B12 | BUILD | PARKED — phase F |
 
 ## 2. Product north star
 
@@ -3780,7 +3805,7 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
 - Feel before content; surface before invent; collide before add.
 
 
-## 16. Swarm mode: the arcade survival showcase — OWNER REVISION 2026-09-10
+## 16. Swarm mode: the arcade survival showcase — OWNER REVISION 2026-09-10, expanded 2026-10-02 (§16.4)
 
 **Owner-directed arcade revision — 2026-09-10.** The complete design is
 [Crucible master plan](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md), especially its opening
@@ -3800,7 +3825,7 @@ earns the same advanced toys over a longer acquisition arc and then lets you use
 | Trick arsenal and combinations | PQ-133 attack algebra/status/lineage; PQ-137.09; PQ-146; PQ-147; weapons, attachments, fields, impulseCharges | Strong guns alongside bank, web, trap, well, ram, release, cryo/heat and chain builds. The environment amplifies their combinations. |
 | Round pressure and enemies | PQ-174.01/.03/.07/.08; PQ-140; survivalWave, planner, fodderCohort and tacticalAI | Finite cohorts, growing pressure, earned gaps, readable entry lanes, specialist counters, no wave-number HP inflation. |
 | Arenas and champions | PQ-175.00/.01/.03; PQ-174.04/.05; survivalArena and the four law owners | Five usable arenas, useful terrain from round one, evolving machinery, champions with commitment and several answers, mutators that change decisions. |
-| Fast experimentation | PQ-174; PQ-175.02; PQ-182; survivalDraft, ships, runSession | Cash shop and refit every clear; multiple purchases or saving; known prices; no accidental launch; all run funds and gear isolated from Adventure. |
+| Fast experimentation | PQ-174; PQ-175.02; PQ-182; survivalDraft, ships, runSession | Cash shop and refit every clear; multiple purchases or saving; known prices; no accidental launch; run funds bank into a persistent Swarm wallet and unlocks cross to Adventure (§16.4); currency still never enters Adventure's economy. |
 | Visual and audio response | PQ-139; PQ-161; physical-play presentation; shared VFX/feel/audio owners | Bright shaped projectiles, directional hit flashes, actual cables and traps, readable damage totals, mass-scaled explosions and force cues. Keep the flight window clear. |
 | Door, combat HUD and death | PQ-182; survivalHud, powerRail, Crucible screens | Distinct starter strategies and arena descriptions, current bindings/resources, honest fatal cause, useful results, same-seed and fresh-run retry. |
 | Breadth and transfer | PQ-133 retained content; Gauntlet/circuit/endless/records; Adventure fitting owners | Keep thirty-wave Gauntlet, five laws, challenge/replay systems and advanced acquisition; Swarm is their fast showcase, not a separate combat implementation. |
@@ -3832,6 +3857,41 @@ The September 3 descriptions and unmeasured tables were a historical tuning prop
 replaces their one-menu-in-five rule, forced physics ranking, compulsory verb counts, fifteen-minute
 session target and capture-per-leaf bureaucracy. It preserves product scope and increases emphasis
 on meaningful player choice, readable force and rapid experimentation.
+
+### 16.4 The arcade attraction — OWNER REVISION 2026-10-02
+
+Swarm stops being Adventure's fast showcase and becomes a standalone arcade attraction in its own
+right. Authority: [`design/swarm/SWARM_PROGRAM.md`](./design/swarm/SWARM_PROGRAM.md) (umbrella),
+[`design/swarm/SWARM_ARCADE.md`](./design/swarm/SWARM_ARCADE.md) (the additive loop: bank, Hangar,
+juice, curated ladder, screens, crossover — including the test-law reversals in its §1.1) and
+[`design/swarm/SWARM_EXPANSION.md`](./design/swarm/SWARM_EXPANSION.md) (the wide expansion:
+comparative analysis, new factions/biomes/bosses, the Circuit, the Show, Fortify, sharing). All
+owner answers are recorded in SWARM_EXPANSION §9 and SWARM_ARCADE §11.
+
+Owner rulings that change this section's contract:
+
+- **Money carries.** A run banks into a persistent Swarm wallet — half of the take on death, all
+  of it on a chosen cash-out. §16.1's "all run funds and gear isolated from Adventure" is amended:
+  Swarm funds persist between runs and unlocks cross to Adventure; currency itself still never
+  enters Adventure's economy.
+- **The account grows stronger** — clearly (~30–40 %) when fully upgraded, never invincible;
+  opt-in Threat tiers keep the top end hard.
+- **In-flight it is loud by design** — mass-confirmed callouts, multi-kill stingers, bonus
+  tallies, boss intros — under one Full/Reduced/Off effects setting; menus stay on the ORRERY
+  grammar.
+- **The Saucer is earned in Swarm only** (its Adventure research route is retired) and becomes
+  buyable at Adventure shipyards once earned. Arena unlocks cross the same way.
+- **New factions, biomes and bosses are authorized** beyond §16.1's five-arena frame: the Brood
+  headlines, the Machine follows; nine new biomes and ten handcrafted bosses are planned.
+- **Fortify (arena construction, tower defense) is deliberately the last build phase** — additive
+  once the arcade core is strong, not an immediate build.
+
+Build order is §J rows 263–273: **A** additive + loud → **B** a real swarm (Brood) → **C** the
+journey → **D** the show/world → **E** Fortify → **F** sharing. Phase E–F rows stay PARKED until
+the earlier phases land. The physics-combat UX verdict (the rail, kill attribution, wave clumps,
+the rope question) is SWARM_EXPANSION §10; its first fix — the opening lesson releasing its held
+pack ~3 s after the lesson hull falls instead of holding 45 s — landed 2026-10-02 and is covered
+by `test/opening-lesson.test.mjs`.
 
 ## 17. Adventure mode: interesting and mentally stimulating (`PQ-176`–`PQ-178`) — ADMITTED 2026-09-03
 
