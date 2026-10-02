@@ -7585,6 +7585,14 @@ export const render = {
 
     // ?perf — auto-enable the on-screen FPS/GPU/scale overlay for quick self-diagnosis.
     try { if (query && query.get('perf') != null && this.diag) this.diag.setOverlay(true); } catch (_) {}
+    // ?drawhist[=frames] — dev-only per-frame draw histogram (draws grouped by
+    // geometry.uuid, frustum-tested like WebGLRenderer's own cull). Arms the S3
+    // instancing question: fly to a bloom sector, read the logged window.
+    try {
+      const drawhist = query && query.get('drawhist');
+      this._drawHistogramWindow = drawhist != null ? Math.max(1, +drawhist || 120) : 0;
+      if (this._drawHistogramWindow) console.info(`[drawhist] armed: window=${this._drawHistogramWindow}f — result lands on globalThis.__sfDrawHistogram each window`);
+    } catch (_) { this._drawHistogramWindow = 0; }
 
     state.render.scene = scene;
     state.render.renderer = renderer;
@@ -16997,6 +17005,7 @@ export const render = {
       endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
       if (dynamicBufferEpoch !== null) this._dynamicBuffers.disarm(dynamicBufferEpoch);
       if (postFrameToken) endPostRenderTargetFrameOrigin(postFrameToken);
+      if (this._drawHistogramWindow) this._sampleDrawHistogram();
     }
     if (this.state.mode === 'flight'
         && !this.state.render.openingSubmissionValidation
@@ -17616,6 +17625,66 @@ export const render = {
       return this.renderer.render(scene, camera);
     } finally {
       guard.restore();
+    }
+  },
+
+  _sampleDrawHistogram() {
+    const cam = this.cam && this.cam.obj;
+    if (!cam || !this.scene) return;
+    const st = this._drawHistState
+      || (this._drawHistState = {
+        frames: 0,
+        draws: 0,
+        frustum: new THREE.Frustum(),
+        projScreen: new THREE.Matrix4(),
+        byGeom: new Map(),
+        stack: [],
+      });
+    cam.updateMatrixWorld();
+    st.projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    st.frustum.setFromProjectionMatrix(st.projScreen);
+    // Same projection test WebGLRenderer applies: an invisible ancestor or a
+    // frustum-miss means the object never drew. SkinnedMesh bounds follow the
+    // base-pose sphere — a small known margin on those draws.
+    st.stack.push(this.scene);
+    while (st.stack.length) {
+      const obj = st.stack.pop();
+      if (obj.visible === false) continue;
+      const children = obj.children;
+      for (let i = 0; i < children.length; i++) st.stack.push(children[i]);
+      if (obj.isMesh !== true) continue;
+      if (obj.material && obj.material.visible === false) continue;
+      if (obj.frustumCulled !== false && !st.frustum.intersectsObject(obj)) continue;
+      st.draws++;
+      const geom = obj.geometry;
+      const key = geom ? geom.uuid : 'none';
+      let row = st.byGeom.get(key);
+      if (!row) {
+        row = { draws: 0, type: geom ? geom.type : 'none', instanced: 0, names: new Set() };
+        st.byGeom.set(key, row);
+      }
+      row.draws++;
+      if (obj.isInstancedMesh === true) row.instanced++;
+      if (obj.name && row.names.size < 8) row.names.add(obj.name);
+    }
+    st.frames++;
+    if (st.frames >= this._drawHistogramWindow) {
+      const rows = [...st.byGeom.entries()]
+        .sort((a, b) => b[1].draws - a[1].draws)
+        .slice(0, 20)
+        .map(([uuid, r]) => ({
+          uuid: String(uuid).slice(0, 8),
+          avg: +(r.draws / st.frames).toFixed(1),
+          type: r.type,
+          instanced: r.instanced,
+          names: [...r.names].slice(0, 4),
+        }));
+      const total = +(st.draws / st.frames).toFixed(1);
+      globalThis.__sfDrawHistogram = { frames: st.frames, totalDrawsPerFrame: total, topClusters: rows };
+      console.info(`[drawhist] ${st.frames}f total=${total}/f top=${rows.map((r) => `${r.avg}x${r.type}`).join(' ')}`);
+      st.byGeom.clear();
+      st.frames = 0;
+      st.draws = 0;
     }
   },
 
