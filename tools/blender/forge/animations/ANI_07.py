@@ -17,7 +17,8 @@ Groups:
 Clips:
   armorPeel   lift ~15 deg, one weighted rock back, settle at ~10 deg raised (endMode
               'hold' — the peel IS the damage state; it stays up)
-  armorStow   short re-seat when a repair completion finishes the hull (endMode 'hold' —
+  armorStow   short re-seat when a repair completion finishes the hull (endMode 'rest' —
+              the last key re-seats to identity, so evicting frees the channel)
               a rest-ended clip parks and lets armorPeel's held pose re-claim the group;
               holding at rest keeps the cap seated until the next hull hit re-peels it)
 
@@ -71,6 +72,6 @@ def build(ship, parts, source_asset_id, bank=None):
     else:
         bank.events.update(EVENTS)
     bank.clip('armorPeel', 2.6, loop=False, end_mode='hold')
-    bank.clip('armorStow', 0.9, loop=False, end_mode='hold')
+    bank.clip('armorStow', 0.9, loop=False, end_mode='rest')
     author(bank)
     return bank

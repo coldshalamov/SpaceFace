@@ -238,10 +238,13 @@ export async function sealMotionBankRef(pilot, metadata, { repoRoot } = {}) {
       `${pilot.key}: compiled GLB declares ${motionNodes.length} MOTION_ pivot(s) but no bank exists at ${bankPath}`,
     );
   }
-  const bankBytes = await readFile(bankPath);
+  // Banks are text JSON: checkouts translate them per core.autocrlf (CRLF on Windows, LF on
+  // Linux CI). Seal the canonical LF bytes so the hash is stable on every platform.
+  const bankText = (await readFile(bankPath)).toString('utf8').replace(/\r\n/g, '\n');
+  const bankBytes = Buffer.from(bankText, 'utf8');
   let bank;
   try {
-    bank = JSON.parse(bankBytes.toString('utf8'));
+    bank = JSON.parse(bankText);
   } catch (error) {
     throw new Error(`${pilot.key}: motion bank is not valid JSON: ${error.message}`);
   }

@@ -12,6 +12,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_33  # noqa: E402
 
 SHIP_ID = 'place_interdiction_buoy'
 COLORS = {
@@ -73,15 +76,31 @@ def build():
               (0.5, 0.14, 0.5), material='glow_cyan', rot_z=a, bevel=0.0)
     s.detail = 0
     F.beacon(s, 'AuthorityStrobe', (0, 0, 2.42), 'glow_red', size=0.3)
+    # --- ANI-33 iris petals: six deck plates hinged on the crown rim ---------------------------
+    petals = []
+    for k in range(6):
+        a = math.radians(k * 60)
+        petals.append(F.box(s, f'SnarePetal{k}', (2.05 * math.cos(a), 2.05 * math.sin(a), 2.0),
+                            (0.2, 1.1, 1.4), material='paint2', bevel=0.02, rot_z=a))
     # corner nav dots on the drum flats
     for k in range(4):
         a = math.radians(k * 90)
         F.light(s, f'NavDot{k}', (math.cos(a) * 3.05, math.sin(a) * 3.05, 0.4),
                 'glow_amber', size=0.2)
+    _o = {o.name: o for o in s.objects}
+    core = [o for o in s.objects if o.name in
+            ('EmitterCore', 'EmitterRing', 'EmitterSlit0', 'EmitterSlit1',
+             'EmitterSlit2', 'EmitterSlit3')]
+    s.ani33_bank = ANI_33.build(s, {'petals': petals, 'core': core},
+                                source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani33_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_33.motion_bank.MOTIONS_DIR,
+                                                   'interdiction-buoy.motion.json'))

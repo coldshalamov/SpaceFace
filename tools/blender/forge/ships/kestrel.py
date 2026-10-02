@@ -20,6 +20,9 @@ import ANI_02  # noqa: E402
 import ANI_05  # noqa: E402
 import ANI_06  # noqa: E402
 import ANI_07  # noqa: E402
+import ANI_18  # noqa: E402
+import ANI_17  # noqa: E402
+import ANI_16  # noqa: E402
 
 SHIP_ID = 'kestrel'
 
@@ -92,7 +95,7 @@ def build():
     F.band(s, 'MiningClamp', (11.1, 0, 0), (1, 0, 0), 0.3, 'hazard')
 
     # --- canopy under the dorsal spine -------------------------------------------------------
-    F.canopy(s, 'Canopy', x0=2.6, x1=7.2, w=0.78, h=0.52, z=1.62, peak=0.55, frame=False)
+    canopy = F.canopy(s, 'Canopy', x0=2.6, x1=7.2, w=0.78, h=0.52, z=1.62, peak=0.55, frame=False)
     F.plate(s, 'Spine', [(4.8, 0.28), (-10.2, 0.34), (-10.2, -0.34), (4.8, -0.28)], z0=2.05, thickness=0.26,
             material='paint2', chamfer=0.08)
     for i, x in enumerate((-9.0, -6.6, -4.2, -1.8, 0.6, 3.0)):
@@ -196,6 +199,9 @@ def build():
     ANI_06.build(s, {'hatch': lid, 'arm_a': arm_a, 'arm_b': [arm_b, arm_head, arm_tip]},
                  source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     ANI_07.build(s, {'cap': cap}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    # ANI-18 authors into the shared bank too — the flinch claims cap + dish groups only.
+    ANI_18.build(s, {}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
+    ANI_17.build(s, {'canopy': canopy}, source_asset_id=E_spec_asset_id(), bank=ani01_bank)
 
     # --- detail ------------------------------------------------------------------------------
     s.detail = 1
@@ -205,11 +211,17 @@ def build():
     F.antenna(s, 'Mast', (-6.0, -1.1, 2.1), 1.3, tip='glow_red')
     F.windows(s, 'Ports', 1.2, 4.8, 1.92, 0.75, 4, size=(0.4, 0.2), finish='glow_warm', mirror=True)
     F.box(s, 'Skid', (-4.0, 1.6, -2.15), (4.0, 0.25, 0.25), material='dark', mirror=True, bevel=0.03)
+    F.box(s, 'NoseSkid', (4.6, 0.0, -1.9), (1.4, 0.28, 0.24), material='dark', bevel=0.03)
     F.box(s, 'NameBoard', (-7.0, 0.0, 2.33), (1.6, 0.5, 0.04), material='paint2.ivory', bevel=0.0)
     s.detail = 0
     F.light(s, 'NavPort', (-9.2, 6.3, 0.75), 'glow_red', size=0.16)
     F.light(s, 'NavStarboard', (-9.2, -6.3, 0.75), 'glow_green', size=0.16)
     F.light(s, 'Beacon', (-10.4, 0.0, 2.25), 'glow_amber', size=0.16)
+
+    # ANI-16: belly gear — the two aft rails plus the nose skid just created above.
+    _o = {o.name: o for o in s.objects}
+    ANI_16.build(s, {'skidP': _o['Skid'], 'skidS': _o['Skid_M'], 'skidF': _o['NoseSkid']},
+                 source_asset_id=E_spec_asset_id(), bank=ani01_bank)
     return s
 
 

@@ -2443,9 +2443,9 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   };
   // ANI-00: authored rigid-part motion follows the same forwarding grammar as damage/LOD —
   // the renderer calls this on the boundary; the live authored root owns the controller set.
-  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y) => {
     const fn = active && active.userData && active.userData.updateAuthoredMotion;
-    if (typeof fn === 'function') fn(liveEntity, simNow);
+    if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
   syncActiveSurface(boundary, active);
 
@@ -3120,9 +3120,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
-  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y) => {
     const fn = activeRoot?.userData?.updateAuthoredMotion;
-    if (typeof fn === 'function') fn(liveEntity, simNow);
+    if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
@@ -3246,9 +3246,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
-  boundary.userData.updateAuthoredMotion = (liveEntity, simNow) => {
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y) => {
     const fn = activeRoot?.userData?.updateAuthoredMotion;
-    if (typeof fn === 'function') fn(liveEntity, simNow);
+    if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
   boundary.userData.updateWorldSitePresentation = (liveEntity, simTime, a11y) => {
     const controller = activeRoot && activeRoot.userData && activeRoot.userData.worldSitePresentationController;

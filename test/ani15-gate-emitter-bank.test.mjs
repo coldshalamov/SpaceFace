@@ -132,5 +132,8 @@ test('ANI-15 controller lifecycle: reset stays parked and index refires', () => 
   controller.handleEvent('gate:index', {}, 20);
   controller.update(20.55);
   assert.equal(controller.clipActive('index'), true, 'index refires on a later charge');
+  // The ambient roll resumed after reset and floats the tips ~0.2 WU off rest, so the
+  // refire blends through a settle bridge before index plays — land past both.
+  controller.update(21.0);
   assert.ok(Math.abs(drift() - 0.55) < 0.02, `tip0 re-indexed (drift ${drift()})`);
 });

@@ -23,4 +23,9 @@ def build():
 if __name__ == '__main__':
     import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani25_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(D.ANI_25.motion_bank.MOTIONS_DIR,
+                                                   'dock-interior-grit.motion.json'))

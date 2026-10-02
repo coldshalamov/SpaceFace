@@ -10,6 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_31  # noqa: E402
 
 SHIP_ID = 'wasp'
 COLORS = {
@@ -137,10 +140,20 @@ def build():
     s.hook_part('HOOK_SECONDARY_FIN', _dmg['TailFin'], _dmg['Mast_Mast'], _dmg['Mast_Foot'])
     s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
     s.hook_part('HOOK_ARMOR_FLAP', _dmg['Flap'])
+    s.ani31_bank = ANI_31.build(s, {
+        'wingletP': [_dmg['TailWing'], _dmg['TipRail'], _dmg['TailFin']],
+        'wingletS': [_dmg['TailWing_M'], _dmg['TipRail_M'], _dmg['TailFin_M']],
+        'guns': [_dmg['GunHousing'], _dmg['GunHousing_M'], _dmg['Barrel'], _dmg['Barrel_M'],
+                 _dmg['Muzzle'], _dmg['Muzzle_M']],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ship.ani31_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_31.motion_bank.MOTIONS_DIR,
+                                                   'wasp.motion.json'))

@@ -7,6 +7,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_37  # noqa: E402
 
 SHIP_ID = 'hornet'
 COLORS = {
@@ -101,10 +104,24 @@ def build():
     s.hook_part('HOOK_SECONDARY_TIPPOD', _dmg['TipPod'], _dmg['TipBarrel'])
     s.hook_part('HOOK_SENSOR_BEACON', _dmg['Beacon'])
     s.hook_part('HOOK_ARMOR_FLAP', _dmg['FlapOuter'])
+    s.ani37_bank = ANI_37.build(s, {
+        'tippodP': [_dmg['TipPod'], _dmg['TipBarrel']],
+        'tippodS': [_dmg['TipPod_M'], _dmg['TipBarrel_M']],
+        'flapP': [_dmg['FlapOuter'], _dmg['FlapInner']],
+        'flapS': [_dmg['FlapOuter_M'], _dmg['FlapInner_M']],
+        'canardP': [_dmg['Canard']],
+        'canardS': [_dmg['Canard_M']],
+    }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        # The production pilot key seals this filename; LOD pilots share it (bankKey
+        # strips the -lodN suffix, so one bank serves hornet-production-v1{,-lod1,-lod2}).
+        ship.ani37_bank.bake([path for path, _tris in written],
+                             out_path=os.path.join(ANI_37.motion_bank.MOTIONS_DIR,
+                                                   'hornet-production-v1.motion.json'))
