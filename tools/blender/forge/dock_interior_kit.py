@@ -26,6 +26,7 @@ FLOOR_Z = -3.44          # live previewMount floorLocalY — the deck walking su
 WALL_X = 23.0            # right-hand wall plane (+x glTF)
 WALL_Y = 15.0            # back wall plane (-z glTF)
 BAY_X, BAY_Y = 26.0, 18.0
+MOUTH_HALF = 3.8         # half-width of the dock mouth: the gap in the -x kerb
 
 BASE_COLORS = {
     'paint': '#8f8674',
@@ -204,8 +205,10 @@ def _front_trim(s, variant):
     ever standing between the shipworks camera and the hull."""
     F.box(s, 'KerbFront', (0, -BAY_Y + 0.4, FLOOR_Z + 0.45), (52.0, 0.8, 0.9),
           material='paint2', bevel=0.04)
-    F.box(s, 'KerbLeft', (-BAY_X + 0.4, 0, FLOOR_Z + 0.45), (0.8, 36.0, 0.9),
-          material='paint2', bevel=0.04)
+    # the -x kerb is split at the dock mouth (|y| < MOUTH_HALF); _dock_mouth lights the gap
+    for e, nm in ((-1, 'A'), (1, 'B')):
+        F.box(s, f'KerbLeft{nm}', (-BAY_X + 0.4, e * (MOUTH_HALF + BAY_Y) / 2, FLOOR_Z + 0.45),
+              (0.8, BAY_Y - MOUTH_HALF, 0.9), material='paint2', bevel=0.04)
     s.detail = 1
     for i in range(6):
         F.light(s, f'KerbLampF{i}', (-20.0 + i * 8.0, -BAY_Y + 0.2, FLOOR_Z + 1.0),
@@ -214,6 +217,39 @@ def _front_trim(s, variant):
         F.light(s, f'KerbLampL{i}', (-BAY_X + 0.2, -12.0 + i * 8.0, FLOOR_Z + 1.0),
                 'glow_cyan', size=0.22)
     s.detail = 0
+
+
+def _dock_mouth(s, variant):
+    """The dock mouth: a lit threshold bar across the gap in the -x kerb and a static approach
+    chase of 16 alternating lamps down the centreline into the bay (the Leviathan flight deck's
+    EdgeLight/CenterLight/Threshold idea). Stock finishes only; one mesh per finish. standard =
+    amber/cyan, military = red/amber, grit = amber/cyan with a few dead (dark) lamps and a
+    broken, slightly crooked row. The lamps stand on the deck slab and clear the dark deck panels
+    (tops at FLOOR_Z + 0.06) so the row is neither floating nor sunk."""
+    gap = MOUTH_HALF - 0.4
+    if variant == 'military':
+        lit_a, lit_b, bar = 'glow_red', 'glow_amber', 'glow_red'
+    else:
+        lit_a, lit_b, bar = 'glow_amber', 'glow_cyan', 'glow_warm'
+    dead = (4, 5, 11) if variant == 'grit' else ()
+    rows = {lit_a: [], lit_b: [], 'gunmetal': []}
+    for i in range(16):
+        x = -BAY_X + 1.2 + i * 0.9
+        y, yaw = 0.0, 0.0
+        if variant == 'grit':               # welded-on yard lamps: off the line, off the square
+            y, yaw = 0.07 * math.sin(i * 2.3), 0.09 * math.sin(i * 1.7 + 1.0)
+        key = 'gunmetal' if i in dead else (lit_a if i % 2 == 0 else lit_b)
+        rows[key].append(((x, y, FLOOR_Z + 0.05), (0.36, 0.2, 0.12), yaw))
+    s.detail = 1
+    for finish, specs in rows.items():
+        if specs:
+            F.boxes(s, f'MouthChase_{finish}', specs, finish)
+    s.detail = 0
+    # threshold bar inlaid in the deck across the gap; the grit bar is broken in three
+    spans = ((-gap, gap),) if variant != 'grit' else ((-gap, -1.9), (-1.3, 0.9), (1.6, gap))
+    F.boxes(s, 'MouthThreshold',
+            [((-BAY_X + 0.4, (y0 + y1) / 2, FLOOR_Z + 0.05), (0.2, y1 - y0, 0.1), 0.0)
+             for y0, y1 in spans], bar)
 
 
 def _variant_dressing(s, variant):
@@ -289,6 +325,7 @@ def build_hangar(s, variant='standard'):
     _right_wall(s, variant)
     _gantry(s, variant)
     _front_trim(s, variant)
+    _dock_mouth(s, variant)
     _variant_dressing(s, variant)
     _umbilical(s)
     _o = {o.name: o for o in s.objects}
