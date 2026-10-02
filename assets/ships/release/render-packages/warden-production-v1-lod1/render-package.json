@@ -3948,9 +3948,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7161,
+      "bytes": 6748,
       "rigId": "hull",
-      "sha256": "187d731c8eb60e9c068a4e45bba8ac33958b902d741eeca9d503301018ab66ae",
+      "sha256": "bcfaa7d1faaefed231b2fc856b1e0bdbbf504acace84719663b63063843a794f",
       "uri": "assets/ships/motions/warden-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4549,7 +4549,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb"
   },
-  "runtimeHash": "a400398f9021e8a469738cf735e855ec8dbed8087df4cd607c49cf3d22c3a433",
+  "runtimeHash": "935e190bd519841a05ab15b0e7f5f03004866a2000accd3e40cac2385582ac2d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -3395,9 +3395,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 3648,
+      "bytes": 3422,
       "rigId": "extraction_mast",
-      "sha256": "f58908f9e3fd4d74f2df7b3773b27480c829167b976486adabdd1a0e7f54a2c4",
+      "sha256": "9cb0dd132e0536a2f156f851dc658e3b3a55104b67f959311c3e4567e33a2a39",
       "uri": "assets/ships/motions/extraction-mast.motion.json"
     },
     "nodeCount": 39,
@@ -4310,7 +4310,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "291275efa1c84257c194d1bcd5212d52f53396999fa0152df7c1d80a6791bf70",
+  "runtimeHash": "8a70cdad5641be4a82633012336b5f57679decc5c5e24359384cbe8902ac7e0f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

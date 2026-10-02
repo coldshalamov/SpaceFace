@@ -6016,9 +6016,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7148,
+      "bytes": 6737,
       "rigId": "hull",
-      "sha256": "1ec4dbf012007c8745dae1167eb855dbbac2fdf9dea3ff7cab8983c7e57dd688",
+      "sha256": "8c6195bf98cd4733e0fc06dd7851fee4d3aed70b2781223528f5f4c5d71d9962",
       "uri": "assets/ships/motions/repair-tender.motion.json"
     },
     "nodeCount": 61,
@@ -7351,7 +7351,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
-  "runtimeHash": "fb3236a18a26c62b3fced55b61b895c1b2e4c1aa8df4f1855ec7ca70a9fec25d",
+  "runtimeHash": "d4d96c594e13427c9fb9a733405a9fad3e8aa0e4216f9cf41b1308cb457c77ce",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

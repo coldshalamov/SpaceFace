@@ -3973,9 +3973,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7162,
+      "bytes": 6749,
       "rigId": "hull",
-      "sha256": "2f18fed887bcb8e3e03dd73f3123c912a43975e5bc57e41ecdd7e193f28945d3",
+      "sha256": "67e1e53deb07a3d1f32cbe8369e384a677dcae638857d46264c1c5cb33667f36",
       "uri": "assets/ships/motions/bastion-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4574,7 +4574,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
   },
-  "runtimeHash": "3255664d70f9d4f8bc79ca1f18a8b8616622aa4769333610e273f72880c73833",
+  "runtimeHash": "d3f494e7a350cc3426fa7f9306e54841bc74152ff8748c1fd68388187d4a0408",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

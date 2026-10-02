@@ -6208,9 +6208,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7151,
+      "bytes": 6740,
       "rigId": "hull",
-      "sha256": "d36ab53a3f6f202fdfb72e3190ace269abdea81d365558a5ed8ae9f57ea0d193",
+      "sha256": "c6442b9bbd2db3f82c60e8cb8a0eb556c9d710ffd2d4ab6d29e927f1e24561fb",
       "uri": "assets/ships/motions/prospector-skiff.motion.json"
     },
     "nodeCount": 63,
@@ -7599,7 +7599,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
-  "runtimeHash": "5189e5a1452e85dc7f30df5c71059332600ff0d88ffbc524fbbe3177942c7ef5",
+  "runtimeHash": "ddb027ce081ad0b442355c6ab4db7d989c366c3aa6771f426abb9f5ac7afcb91",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

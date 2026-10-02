@@ -3813,9 +3813,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7163,
+      "bytes": 6750,
       "rigId": "hull",
-      "sha256": "5a89da5c2e1eb042be905360ef9cdf4ba3b57c7a4d093f8b3acbf83081a44e4b",
+      "sha256": "d6e966f2cb29eed280af07bdae9d119acb32b8d6ad9b3615e2fa421b078337cb",
       "uri": "assets/ships/motions/ironback-production-v1.motion.json"
     },
     "nodeCount": 34,
@@ -4355,7 +4355,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ironback_production_v1.glb"
   },
-  "runtimeHash": "1e37ab15a91c504c650bb7f887dcf7e897a5ed3fa931e06987f795ddcb573233",
+  "runtimeHash": "ed082de68765da7be5b93b4f2c04d5eb162e8c44ca6910cab32d4e1c95a9413d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

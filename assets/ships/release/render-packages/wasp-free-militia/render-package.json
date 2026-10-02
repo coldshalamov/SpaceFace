@@ -7593,9 +7593,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 8932,
+      "bytes": 8378,
       "rigId": "wasp",
-      "sha256": "0b3bdbf09b3be5c44eac374dc34001f100561bce8d22b0e1886fedbdd734bd1f",
+      "sha256": "b62538c381d24be3de52e639cc774a80cfd65d6f59ea79f3e0a7eeca08d36621",
       "uri": "assets/ships/motions/wasp-free-militia.motion.json"
     },
     "nodeCount": 81,
@@ -9405,7 +9405,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_free_militia.glb"
   },
-  "runtimeHash": "ec18099450dacc7295af26fd1d0b78b692014ba1df82917af1905e6a252b45fd",
+  "runtimeHash": "a6c833d7eef671fd209caa8299d50a8a5568a6684e6c9bbe1587d6de4c5ae1fb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

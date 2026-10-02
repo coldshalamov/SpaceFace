@@ -4000,9 +4000,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6645,
+      "bytes": 6237,
       "rigId": "drill_platform",
-      "sha256": "f16a779d8dd9d8221a822de22752ee62bd7103cefce2fcabfd2a873767034cb9",
+      "sha256": "bb4041c6d8a8a971eaa8c8e993eab1cef76f252b5ffcafddf389e47b85277e55",
       "uri": "assets/ships/motions/drill-platform.motion.json"
     },
     "nodeCount": 46,
@@ -5053,7 +5053,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform.glb"
   },
-  "runtimeHash": "2fff5fdccb9bfc2582d5d0d0d69c108e74407e2f412ecd871109c08cc884a125",
+  "runtimeHash": "aabf0c4091f558aba2a0db9d587d146b5234e3bccd316e599026a82dab6a6300",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

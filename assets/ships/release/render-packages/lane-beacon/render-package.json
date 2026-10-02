@@ -7922,9 +7922,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 12089,
+      "bytes": 11360,
       "rigId": "lane_beacon",
-      "sha256": "dbc621062b511e6d4375e2f85e780bb4c06185d5ae4546711bcb6ea4dbd2b721",
+      "sha256": "dcbde863598b6bf62325da37d6effea3e6435b93eba7278a086de393f76bc416",
       "uri": "assets/ships/motions/lane-beacon.motion.json"
     },
     "nodeCount": 93,
@@ -10274,7 +10274,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
-  "runtimeHash": "9dee6f5b69587667eab5fca5f44fdb13cb15303a1274763f23380a015f7e877a",
+  "runtimeHash": "059fc34055807bbd26bd4b15b3d42574ad90b96cb11b228ee8b6e3b7a7e7e63e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

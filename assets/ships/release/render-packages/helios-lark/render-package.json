@@ -5391,9 +5391,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7146,
+      "bytes": 6735,
       "rigId": "hull",
-      "sha256": "de4c93d95b79ed181fd24e3cdf5625c0f7ba4e936caff16d123d89d85136aae4",
+      "sha256": "4416ebf422ed85d7666e152b4c07e6fe1d0b73e2a32c000ed896213e1407fad5",
       "uri": "assets/ships/motions/helios-lark.motion.json"
     },
     "nodeCount": 54,
@@ -6530,7 +6530,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_lark.glb"
   },
-  "runtimeHash": "54f60610512192060de4cb4131d4ae041786473257d552529a5958db7ddc340e",
+  "runtimeHash": "c3f7905b9dc4b60937a335fe2c4577d1a032b2f91ad6a25045eb65f4062abdf9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

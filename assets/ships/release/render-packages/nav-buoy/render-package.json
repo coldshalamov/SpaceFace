@@ -3937,9 +3937,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 3541,
+      "bytes": 3318,
       "rigId": "nav_buoy",
-      "sha256": "5855a84a19f3f34ca0097e8ad3102538155568138b18c0a676bebe50be751996",
+      "sha256": "e440a3b30fe76d27f399a5cc6b664d3434385bd121f7dfa36fd72a04508b3c64",
       "uri": "assets/ships/motions/nav-buoy.motion.json"
     },
     "nodeCount": 45,
@@ -5014,7 +5014,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
-  "runtimeHash": "d04b019665a6b4905663d4fecaeec7e9d0f56efab09a7ba46286a6817f76c9cc",
+  "runtimeHash": "cd91f2c4feacd378908520684119a6a9cb5d2626e7715ace9a081bac6b76573a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -3827,9 +3827,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7176,
+      "bytes": 6763,
       "rigId": "hull",
-      "sha256": "d1081a30cc038d50910cffbfa07a7ae4e1d6b93b23e7e38b5979c9726cacb636",
+      "sha256": "5c70bb4b9e51bfc26aa7154ebad83440ca7320d9e137d22a33e02f3724ba7e9a",
       "uri": "assets/ships/motions/massline-express-liner-v1.motion.json"
     },
     "nodeCount": 32,
@@ -4224,7 +4224,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
   },
-  "runtimeHash": "e3c3f2d714cb637bc972dcebf2bbd44e0e037f0e0152c7879a5ef82b53a0ae29",
+  "runtimeHash": "acac075f2dec824f405e3055c6379bd05d086d152705714b589169ce527e5f4b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -5224,9 +5224,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7145,
+      "bytes": 6734,
       "rigId": "hull",
-      "sha256": "71ec9aa79507a0a8e0a97f77d7bbfd809dc45dcbf08a1e3b7fced0b4326d648d",
+      "sha256": "a2068b91e75da97d993157689bb620f495ffeddd139af2a4969b96754b7ede65",
       "uri": "assets/ships/motions/survey-pin.motion.json"
     },
     "nodeCount": 52,
@@ -6307,7 +6307,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/survey_pin.glb"
   },
-  "runtimeHash": "b816d27f13ab456410d0054537fcbdb9cee569cd33aa444814c0dc5ed6001061",
+  "runtimeHash": "4420cd123dfbdfd31e0ffb84029745dc5f8eabfa51c5ba2fb2cd98dc3a9dd8da",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

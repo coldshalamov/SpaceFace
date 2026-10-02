@@ -4016,9 +4016,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7162,
+      "bytes": 6749,
       "rigId": "hull",
-      "sha256": "bc5b16f51564aadd0a7ccbefabd9f53e8cdcbf9e91ebf510a99bd917e3722eac",
+      "sha256": "89e19547249d33e403946a7a2447ba897399c573a2f1090d80398cf5a35033e8",
       "uri": "assets/ships/motions/pelican-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4615,7 +4615,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
   },
-  "runtimeHash": "dde57e7af10a3b1bd5bcd616a015e13cf45c006c635e5bf0a1a78e90901234e1",
+  "runtimeHash": "7b6bef47bb2aa1e2908e9e321893f9cc2854e25d56c50a49f2b02ebed0b7aec9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

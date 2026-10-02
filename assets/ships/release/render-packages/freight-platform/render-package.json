@@ -4575,9 +4575,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 8468,
+      "bytes": 7959,
       "rigId": "freight_platform",
-      "sha256": "8a7f3a8aa52fd51b9a3cb6e1fc307253ad2d0ee704de538932108c35b8fede54",
+      "sha256": "4467717b0cef046b4ac2da0bc8282194957761e890596ac534463685c7362380",
       "uri": "assets/ships/motions/freight-platform.motion.json"
     },
     "nodeCount": 53,
@@ -5820,7 +5820,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_freight_platform.glb"
   },
-  "runtimeHash": "e2f4ff695aca7342afd6ed1e13cad59d5b4b09e5793b6e5459c98d8cdd3ffad9",
+  "runtimeHash": "2973a0b8f6da6bfbd5fdaf2d727461d6b04392f79ea27874df75f52bc43214e6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -7011,9 +7011,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6148,
+      "bytes": 5796,
       "rigId": "inspection_cutter",
-      "sha256": "a0e03c9de8877c3bfab9fe6afea31f5b825954491594852603ecf57d9e5fc3d6",
+      "sha256": "3eaf223f8b9e6f0a5d7b24a8ff490e7fad8b26c0f862eef7d120b82585745391",
       "uri": "assets/ships/motions/inspection-cutter.motion.json"
     },
     "nodeCount": 74,
@@ -8643,7 +8643,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "fa5bef2fc21295afa175d28d256d840abca38627c71dae45a8f3246be04ffc60",
+  "runtimeHash": "235478358e6bec67ff5407a0811f82917d5754afb1656f46a20c91a0c14f5cc8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

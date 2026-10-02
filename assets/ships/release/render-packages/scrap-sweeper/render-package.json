@@ -6313,9 +6313,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7148,
+      "bytes": 6737,
       "rigId": "hull",
-      "sha256": "661bfca85c35acf6c5a0b5b593b210fb5395bc7954831fae17a9c849da7479c0",
+      "sha256": "45a11c2e5daf7a6ec7caefa02ac62233b2292079f5b6ff194132ec0545b5f77e",
       "uri": "assets/ships/motions/scrap-sweeper.motion.json"
     },
     "nodeCount": 64,
@@ -7732,7 +7732,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scrap_sweeper.glb"
   },
-  "runtimeHash": "fc34b3a0d279fff38444a563c1fb22ce1550155dc4036e4ba605058f1d544a65",
+  "runtimeHash": "aee1272794588d595fb56b8503de3deab2bbe3f3683daee75c6b3e7752ed0f7f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

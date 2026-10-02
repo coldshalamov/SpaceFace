@@ -5769,9 +5769,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7160,
+      "bytes": 6749,
       "rigId": "hull",
-      "sha256": "1f6f622a81ddc36cd528481c75c5900e720b2027ed0d0a3ef1428e2490f3d5b6",
+      "sha256": "0e9936d0a20ff340f36f5607299e0c3c816513b608f518d029540216f907f427",
       "uri": "assets/ships/motions/ashline-rig-corsair-blade.motion.json"
     },
     "nodeCount": 58,
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
   },
-  "runtimeHash": "52eb3bcfe218a836716bfe7726a3f3ff272d9d90d1ccda25ab5e9c00ee77e0cb",
+  "runtimeHash": "2e8ab0450433a8ba7df7c849df2f2f1ffc6054a3fb4a5887312b76b7d076e156",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

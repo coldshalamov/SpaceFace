@@ -3261,9 +3261,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7163,
+      "bytes": 6750,
       "rigId": "hull",
-      "sha256": "1babba37c894eef85bae89d943024a7f304eda9b6df47b146a775d27871fd62c",
+      "sha256": "da491167973457d0ff1d208c873987449524c84047f6555d933d3441ec732762",
       "uri": "assets/ships/motions/colossus-production-v1.motion.json"
     },
     "nodeCount": 35,
@@ -3834,7 +3834,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1_lod2.glb"
   },
-  "runtimeHash": "e876542b23ade84297ac0040736ca57df7500fa1ec39dd7266755ad756791fdb",
+  "runtimeHash": "1c4a20a746f899a847aafc844c4749c60aa63f2b0282ebe70bb7f424ccc167b4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

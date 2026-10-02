@@ -5769,9 +5769,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7147,
+      "bytes": 6736,
       "rigId": "hull",
-      "sha256": "7420c85900d99336b9e8570dda2a42e36048776718e72182de079dee28b6edc0",
+      "sha256": "db48ccacfc6518fd4d382587f1e00c43ceeeafef7a892e150f3bdc1eb46d35f0",
       "uri": "assets/ships/motions/ashline-dart.motion.json"
     },
     "nodeCount": 58,
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
-  "runtimeHash": "075b917266e55875753768ecaf7a54c1cc08d3aa7795a434e9bb03eb9675164a",
+  "runtimeHash": "c56a2b6d9343dde113eb24b0daf132ed22d84cdb8dfdeba3aa0050f3d2697edf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

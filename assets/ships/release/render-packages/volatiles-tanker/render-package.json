@@ -5769,9 +5769,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7151,
+      "bytes": 6740,
       "rigId": "hull",
-      "sha256": "fc136ecb87fdd31851a247c031c88a69e19643520624d69ba80807d9b2bcaad6",
+      "sha256": "7ac12251bcd33a9a7efb0c013866189aec1adf529ec3b86d40b8057b0814f846",
       "uri": "assets/ships/motions/volatiles-tanker.motion.json"
     },
     "nodeCount": 58,
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/volatiles_tanker.glb"
   },
-  "runtimeHash": "04b94e9c24e73e5a05d0bbb1197b92a16c541360d927c6072d51b9c179d98ae8",
+  "runtimeHash": "156ed3d0fa81f720d2ea95f92746bc9461cbbfd0349f08db885b1b8d551928d4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -2327,9 +2327,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 10832,
+      "bytes": 10153,
       "rigId": "dock_interior",
-      "sha256": "a3e945b67a1e0d8c0ff6488efeeb02415c1005fd5db4168d2b5d3fbc1961fc09",
+      "sha256": "4f9156535e008b14e34bbd0c01242a8f4fecc3f56c6883831b6425bb7b665243",
       "uri": "assets/ships/motions/dock-interior.motion.json"
     },
     "nodeCount": 24,
@@ -2832,7 +2832,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior.glb"
   },
-  "runtimeHash": "a68c6416195037ab18405819e65ec3bc68847a2f80d6ebe29698695bf46710c6",
+  "runtimeHash": "8448f17217cea0f72ddb7efbcb5441d96d967d600b786ff3337f2b38b516361a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

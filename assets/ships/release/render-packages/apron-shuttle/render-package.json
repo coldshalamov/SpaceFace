@@ -5391,9 +5391,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7148,
+      "bytes": 6737,
       "rigId": "hull",
-      "sha256": "0f6639cd627d814f62774af53d6f471137b61737f674b3424558c7968d06bf2b",
+      "sha256": "76a1ffd4294886083a752feee0246f7ebe46ae848c7cd6f151e22a08282fb2ff",
       "uri": "assets/ships/motions/apron-shuttle.motion.json"
     },
     "nodeCount": 54,
@@ -6530,7 +6530,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
-  "runtimeHash": "f24a4510ceee69d096d1f3ef46fbeba4fd00f9f83125ab59010d9e8fc52a192d",
+  "runtimeHash": "1d6e4488d0465606b3b75264fed313268c86a34a7fa57f36148c1f1972e2e6c3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

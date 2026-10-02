@@ -5267,9 +5267,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 24685,
+      "bytes": 23518,
       "rigId": "interdiction_buoy",
-      "sha256": "c0f57350f4927ac5a180e3174c62dcbadac13ea20798e473934d876b4c137b7d",
+      "sha256": "ba38ae7bf2e48bae59905b2029755a8d9663f8e54f04723bf630861795772448",
       "uri": "assets/ships/motions/interdiction-buoy.motion.json"
     },
     "nodeCount": 61,
@@ -6658,7 +6658,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_interdiction_buoy.glb"
   },
-  "runtimeHash": "5506f639f5f64d91e4cdb7ef56fd670a3fabe6282db98a1f678fa1ea9b7a45e2",
+  "runtimeHash": "f42471ad17ea2d5c5795e49bb01ca1a4e40d0e8aec65c01cb42296e402527dd0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

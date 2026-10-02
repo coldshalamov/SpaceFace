@@ -4313,9 +4313,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7160,
+      "bytes": 6747,
       "rigId": "hull",
-      "sha256": "c1bd84d92f21572d33dafddf22a45b692e2aaa22a71336cbfa9d26bce19c5250",
+      "sha256": "01251a2d722a8f8990734f9c3518b96296a7cacf7be37792c54f8291072f357f",
       "uri": "assets/ships/motions/atlas-production-v1.motion.json"
     },
     "nodeCount": 39,
@@ -4997,7 +4997,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb"
   },
-  "runtimeHash": "00cfa7367b3d37713b3d7412068d54586aa6e7cf9b50b258cca8bedfb19555dd",
+  "runtimeHash": "853855911c2a376a6a9b7aa901e0b0757060a673e13a635cfba28912c4488f5d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

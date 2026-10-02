@@ -5521,9 +5521,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7147,
+      "bytes": 6736,
       "rigId": "hull",
-      "sha256": "f5d0bcb2ef2cd53256ed71db826337b3f5a4e4c5eda79f7d6598063c6534b42e",
+      "sha256": "eaed8362f1e7126748d421ea9cc2c125bf1d756c1b5010c6d5b71b00eeab42f0",
       "uri": "assets/ships/motions/ashline-lode.motion.json"
     },
     "nodeCount": 55,
@@ -6688,7 +6688,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_lode.glb"
   },
-  "runtimeHash": "2d6b5ac0b0c862be648207eee59c355794fa16657663ac9b1dd129e9065e893f",
+  "runtimeHash": "8553aaaa13ef94a1dee8ff9b3a6ffd0ed7b99e8f69c5ccbe4c497e0659e3cacd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

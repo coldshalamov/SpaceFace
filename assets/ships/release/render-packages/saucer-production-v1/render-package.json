@@ -3810,9 +3810,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7161,
+      "bytes": 6748,
       "rigId": "hull",
-      "sha256": "c2b583aa9e98ea890f9f1b1be689d9d912d8202035a16f25ee942aa2ee5eb9bf",
+      "sha256": "e0338cdfa368ded7d27e22a11a29237b3ae66981c3594a2caeadb8c10f659621",
       "uri": "assets/ships/motions/saucer-production-v1.motion.json"
     },
     "nodeCount": 33,
@@ -4266,7 +4266,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1.glb"
   },
-  "runtimeHash": "1daee8d9f7d9aaa9db3af14b11356f2c290efb2f430ad8b3b353be30dca4a0e0",
+  "runtimeHash": "c834a100fba670ae317b0a1ea0bfc9db4dcf6446490021a3ce7b5fcc66b7dcbb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

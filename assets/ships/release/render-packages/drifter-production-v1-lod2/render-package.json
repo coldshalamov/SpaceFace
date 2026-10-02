@@ -3973,9 +3973,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7162,
+      "bytes": 6749,
       "rigId": "hull",
-      "sha256": "fa2bf6f42fbf0bf420241a5d4fb85bbbf0f4192d588901b62ff0585292039bc8",
+      "sha256": "c4f131fd0a7e6db8ad8a17b0fa32e5264919b20bfa071fb7a29b1182bb51722c",
       "uri": "assets/ships/motions/drifter-production-v1.motion.json"
     },
     "nodeCount": 42,
@@ -4745,7 +4745,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
   },
-  "runtimeHash": "462df3d74a90d56770779c2c2dae04c6663e7882a87687a0d071fe7f28f2d5c8",
+  "runtimeHash": "141186624a05eb3b213b9e11953e8b78467269631d4c01c1d07c225c5885842a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

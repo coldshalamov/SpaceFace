@@ -8029,9 +8029,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7653,
+      "bytes": 7165,
       "rigId": "ore_barge",
-      "sha256": "133905e708ac560e4efdf44353943bc8ed62ef3b75ea5d59f347f584e70c2bb3",
+      "sha256": "9ce97f2bfcff8a0b4d71bc124387cc3e5e317f4f351dda5def991a6b0eb61c95",
       "uri": "assets/ships/motions/ore-barge.motion.json"
     },
     "nodeCount": 84,
@@ -9874,7 +9874,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "33e2eb102e94453bdc3e03038c2f5c52b6b2cd4c5e54e67baa36555b53800ada",
+  "runtimeHash": "3dc5c39d3752ad944f02e385a266a72d6412bfde6a46c6334e6340f7c7ef490a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

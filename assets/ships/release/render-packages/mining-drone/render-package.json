@@ -4665,9 +4665,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 11229,
+      "bytes": 10606,
       "rigId": "mining_drone_drum",
-      "sha256": "bf25da8cf7c9a26c98364ee0af2ec5fab0dd8a17003916003d599ec237351b4a",
+      "sha256": "47a90b40668010b34a02dcc305a13b960fbe94b73e71996e2b22022b3625f701",
       "uri": "assets/ships/motions/mining-drone.motion.json"
     },
     "nodeCount": 54,
@@ -6054,7 +6054,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
-  "runtimeHash": "d05fac0b789c9455f813ac20668812b6e15badbc20d8845e604fd00bb2625849",
+  "runtimeHash": "2cc16b40a872f367550fc7f640f13900c8c7c8232ba4e73739468a8e80ee4ff8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -971,9 +971,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6645,
+      "bytes": 6262,
       "rigId": "survivor_pod",
-      "sha256": "0b4a2f365a8f9f08901a01ba46cdca4ffd7f44c514755c1d97e051f7beae467f",
+      "sha256": "a0a1ca8eca5d3a23d0c19f61daea3a9619eb2fcf68e39b25fbe0758bb084df12",
       "uri": "assets/ships/motions/pod-cargo-container.motion.json"
     },
     "nodeCount": 10,
@@ -1123,7 +1123,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
-  "runtimeHash": "595af930ef009f4a5cb977e904ad05ba7b45e80cba493a50b188e132ebf0e301",
+  "runtimeHash": "93302022697b8b458d1cd76182e2cdd88f7958b2f56e280983fd4cadbf691499",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

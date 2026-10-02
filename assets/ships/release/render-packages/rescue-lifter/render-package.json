@@ -5935,9 +5935,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7148,
+      "bytes": 6737,
       "rigId": "hull",
-      "sha256": "6c617dbe87b8488cc151a9252d6b6dad47f457db54b025c2d9ef9ae38047e66b",
+      "sha256": "38ed9bc3314d85b64d2794d4334b4db5a86b8d91798d94ea9ae9db9a8cfa4eb8",
       "uri": "assets/ships/motions/rescue-lifter.motion.json"
     },
     "nodeCount": 60,
@@ -7242,7 +7242,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/rescue_lifter.glb"
   },
-  "runtimeHash": "e7599505bfbab18b7049ae76e2595724ac4d2e0121a5aad62e7d878fb60e3b60",
+  "runtimeHash": "541eef09739aa1ab1380c1adc49068a2243b1f07de61925c49e13e6dfdaf3815",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

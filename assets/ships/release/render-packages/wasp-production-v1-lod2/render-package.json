@@ -4021,9 +4021,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 8932,
+      "bytes": 8378,
       "rigId": "wasp",
-      "sha256": "0b3bdbf09b3be5c44eac374dc34001f100561bce8d22b0e1886fedbdd734bd1f",
+      "sha256": "b62538c381d24be3de52e639cc774a80cfd65d6f59ea79f3e0a7eeca08d36621",
       "uri": "assets/ships/motions/wasp-production-v1.motion.json"
     },
     "nodeCount": 37,
@@ -4577,7 +4577,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
-  "runtimeHash": "a5fe4de10e1bf5f64610e037ecd11456c923c41b6c26dbe1a4d4242ff535dfee",
+  "runtimeHash": "4d0110035c7ab93211d123ae4a805a19e39c03be5ebcc5b24fa022e6ab091895",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -11111,9 +11111,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 64243,
+      "bytes": 60305,
       "rigId": "gate_emitter_index",
-      "sha256": "6b119af7113d07f40238474f4caf530ee60560cc1534352a48bf1a065e32a3a8",
+      "sha256": "93facefa4a50294f0684a1a68109e6f914864b8f0e6f8e328333dcf40d7e03b0",
       "uri": "assets/ships/motions/jump-ring.motion.json"
     },
     "nodeCount": 128,
@@ -14117,7 +14117,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "606d2666ab74f2ceab6b0498bc14fb96250e18ec4d7832363472b47ebeacbddd",
+  "runtimeHash": "87a4e746a8809abe678b1b33eeec9c270fcef49ec680c62c155240b1d93406c2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

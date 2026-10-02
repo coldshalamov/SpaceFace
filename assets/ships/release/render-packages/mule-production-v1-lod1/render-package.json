@@ -4069,9 +4069,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7159,
+      "bytes": 6746,
       "rigId": "hull",
-      "sha256": "c291784cafd351cf0dbab2988f7d92c3a904bc07cb6740f94ff2518d06e898c1",
+      "sha256": "67d16e034aebbf1ab237e97e8a74bdd5fb98660f2fae92535a1030d0c6cc42a4",
       "uri": "assets/ships/motions/mule-production-v1.motion.json"
     },
     "nodeCount": 37,
@@ -4698,7 +4698,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb"
   },
-  "runtimeHash": "65e9e23febbd3f4326d38ad5a804ca73355bd77ca45cd363c57a745e112535b8",
+  "runtimeHash": "28198a8b7b6eb7f2ee88aa79b3d29e7140b8e0ebb5a420f822a8eb25540d6139",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

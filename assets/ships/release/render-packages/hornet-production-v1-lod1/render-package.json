@@ -4046,9 +4046,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 15350,
+      "bytes": 14421,
       "rigId": "hornet",
-      "sha256": "36876f301b91ec568c299e521c8fd8637648d80064606ed47c3c1ab4a81ca036",
+      "sha256": "4ef045922de7ede0ea281d9019b7c3d20c473254cb77fa5bec45e1c7ab3b9f4b",
       "uri": "assets/ships/motions/hornet-production-v1.motion.json"
     },
     "nodeCount": 43,
@@ -4689,7 +4689,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb"
   },
-  "runtimeHash": "7636b5660e570211167eeef494861fc05f2139b21ca29f04e296834f67a5e0e9",
+  "runtimeHash": "dd1b6fe7cd145cd716db498a37dfe9ecb4c74242bbad47a522b199b4a49e5a57",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

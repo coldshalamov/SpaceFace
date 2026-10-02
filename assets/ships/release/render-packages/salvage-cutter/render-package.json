@@ -9166,9 +9166,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 30595,
+      "bytes": 28948,
       "rigId": "salvage_cutter_jaw",
-      "sha256": "d7308b4a3da089921a22176fc26a0bcbcf79aad1a754a10efb9d4d661d878645",
+      "sha256": "fa494f55e7f758570a3e4c0d27256a1e973f7b6043bd61c73d35aa1ec9725b1a",
       "uri": "assets/ships/motions/salvage-cutter.motion.json"
     },
     "nodeCount": 99,
@@ -11433,7 +11433,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "3be247e8c15850861442bf97c8178437c4c2644fe3495f94661ed25999f39ff5",
+  "runtimeHash": "d021d8bf4bd530e7e23f1238419b25a10f49b5931c0a329936dc3c1b93f81b81",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -3064,9 +3064,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7161,
+      "bytes": 6748,
       "rigId": "hull",
-      "sha256": "37b941a29c92d0aa2c0022664bfd1e1147efa9aca234d0e715741b953560f20c",
+      "sha256": "99123766ea1823e2ffb1f670291a2dd890f16bbcc4f9ab05397269ac1f4d8474",
       "uri": "assets/ships/motions/ranger-production-v1.motion.json"
     },
     "nodeCount": 33,
@@ -3580,7 +3580,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb"
   },
-  "runtimeHash": "9269c8409c652e973dd3220e89863015eadd358ae6334f56e9d0c132d12b5a0d",
+  "runtimeHash": "babad13fc8356ca9bd3fc1330082a6c43362f6da69b85ea6501542f9f79e56ed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -3521,9 +3521,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 7164,
+      "bytes": 6751,
       "rigId": "hull",
-      "sha256": "e77c0800e32d300bc3e0576937fd07fac7769ef6b7c389d67d3dbb46d29b8661",
+      "sha256": "a8d8d5a9542d5e06a111a742e5ab1dde8f1cc6e17c26ea120d5b58728468f44d",
       "uri": "assets/ships/motions/leviathan-production-v1.motion.json"
     },
     "nodeCount": 38,
@@ -4179,7 +4179,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod1.glb"
   },
-  "runtimeHash": "3531f37925077925f58f87ffec8536397f7641dbbc5898de1f63b8f46b46c6ed",
+  "runtimeHash": "dbe075d4addea6778ed867938bbebad343563a244d7bb5a0a1f554248a8978a4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
