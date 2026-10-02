@@ -84,6 +84,16 @@ export function getDressingRow(state, id) {
   return table.byId.get(id) || null;
 }
 
+/** Journal a pose-affecting write to a live row; the version bump fires the renderer pose gate. */
+export function markDressingRowPoseDirty(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || !table.byId || !table.byId.has(id)) return false;
+  if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
+  table.dirtyPoseIds.add(id);
+  table.version++;
+  return true;
+}
+
 export function dropDressingRow(state, id) {
   const table = state && state.world && state.world.dressing;
   if (!table || id == null) return false;

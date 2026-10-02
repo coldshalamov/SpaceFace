@@ -67,6 +67,7 @@ import {
   forEachDressingRow,
   getDressingRow,
   insertDressingRow,
+  markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -1311,8 +1312,12 @@ export const automation = {
   _placeOutpostEntity(entity, o) {
     if (!entity || !o || !o.pos) return;
     entity.pos = entity.pos || { x: 0, z: 0 };
-    entity.pos.x = Number(o.pos.x) || 0;
-    entity.pos.z = Number(o.pos.z) || 0;
+    const nx = Number(o.pos.x) || 0;
+    const nz = Number(o.pos.z) || 0;
+    if (entity.pos.x === nx && entity.pos.z === nz) return;
+    entity.pos.x = nx;
+    entity.pos.z = nz;
+    markDressingRowPoseDirty(this.state, entity.id);
   },
 
   _ensureOutpostPosition(o) {
