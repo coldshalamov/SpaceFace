@@ -566,7 +566,12 @@ export const asteroidSites = {
     }
     const payloadEntities = [];
     const receiverEntities = [];
-    for (const entity of this.state.entities.values()) {
+    const idx = this.state.entityIndex;
+    const siteBucket = idx && idx.ready === true && idx.byWorldSiteId instanceof Map
+      && idx._indexedIds && idx._indexedIds.size === this.state.entities.size
+      ? idx.byWorldSiteId.get(manifest.id) : null;
+    const candidates = siteBucket || this.state.entities.values();
+    for (const entity of candidates) {
       if (!entity || entity.alive === false || !entity.data || entity.data.worldSiteId !== manifest.id) continue;
       if (entity.data.worldRecordId === payloadDef.worldObjectId
         && entity.data.worldSitePayloadId === payloadDef.id) payloadEntities.push(entity);

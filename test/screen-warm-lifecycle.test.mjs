@@ -217,12 +217,12 @@ test('hoistDeadlineGlassMeshBuilds keeps scan order within both partitions', () 
       world: {},
     },
   };
-  const reordered = hoistDeadlineGlassMeshBuilds(owner);
-  assert.equal(reordered, true);
+  const glassCount = hoistDeadlineGlassMeshBuilds(owner);
+  assert.equal(glassCount, 2);
   assert.deepEqual(owner._meshBuildQueue, [1, 12, 14, 11, 2, 13, 15, 3]);
 });
 
-test('hoistDeadlineGlassMeshBuilds reports false when the prefix is already glass', () => {
+test('hoistDeadlineGlassMeshBuilds reports the glass count when the prefix is already glass', () => {
   const ents = new Map();
   const mk = (id) => { const e = { id, alive: true, type: 'ship' }; ents.set(id, e); return e; };
   for (const id of [21, 22, 23]) mk(id);
@@ -236,7 +236,9 @@ test('hoistDeadlineGlassMeshBuilds reports false when the prefix is already glas
       world: {},
     },
   };
-  const reordered = hoistDeadlineGlassMeshBuilds(owner);
-  assert.equal(reordered, false, 'glass already at the head is not a reorder');
+  const glassCount = hoistDeadlineGlassMeshBuilds(owner);
+  // Already-ordered glass is still work the caller must build — the count contract
+  // gates deadlineGlassOnly admission, not whether a permutation was needed.
+  assert.equal(glassCount, 2);
   assert.deepEqual(owner._meshBuildQueue, [21, 22, 23]);
 });

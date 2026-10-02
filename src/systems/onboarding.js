@@ -1494,7 +1494,27 @@ export const onboarding = {
     const actors = this._createRescueCast(rescue);
     if (!actors) return false;
     this._preparedRescue = { state: st, player, rescue, actors };
+    this._warmScriptedCohort();
     return true;
+  },
+
+  // Mid-flight scripted beats spawn real GLB bodies with no lead: the raid raider and
+  // trainer fly a reaver_pirate hull, the claims patrol a patrol_lawman. Publish them
+  // during 'loading' through the roster warm runway so each entity:spawned kick at the
+  // glass is a cache hit; asteroid/wreck/drone/combat exemplars (the raid hauler,
+  // throw rock, pickups) ride the handler's own appended families.
+  _warmScriptedCohort() {
+    const st = this.state;
+    const bus = this.bus;
+    if (!bus || typeof bus.emit !== 'function' || !st) return;
+    const origin = (st.entities && st.entities.get(st.playerId) || {}).pos || { x: 0, z: 0 };
+    const opts = { startedTick: st.tick };
+    const specs = [];
+    const raider = makeEnemySpawnSpec('reaver_pirate', 1, origin, opts);
+    if (raider) { raider.id = 'onboarding_warm_raider'; specs.push(raider); }
+    const patrol = makeEnemySpawnSpec('patrol_lawman', 1, origin, opts);
+    if (patrol) { patrol.id = 'onboarding_warm_patrol'; specs.push(patrol); }
+    bus.emit('onboarding:rosterPrewarm', { specs });
   },
 
   _preparedCastIsAdoptable(prepared) {

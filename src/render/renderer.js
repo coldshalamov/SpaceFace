@@ -2040,7 +2040,10 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
     for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
     for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
   }
-  return reordered;
+  // Return the deadline-glass count, not the permutation flag: callers gate on whether
+  // glass work exists in the tail, and an already-ordered glass prefix is still work
+  // that must build (a refused late-present start admits the glass prefix only).
+  return hoisted.length;
 }
 
 /**
@@ -11421,6 +11424,12 @@ export const render = {
       // scope rather than teaching the bus about the world catalog.
       entityForStationId: (stationId) => {
         if (stationId == null || !state.entities) return null;
+        const idx = state.entityIndex;
+        if (idx && idx.ready === true && idx.byStationId instanceof Map
+            && idx._indexedIds && idx._indexedIds.size === state.entities.size) {
+          const ent = idx.byStationId.get(stationId);
+          return ent ? ent.id : null;
+        }
         for (const ent of state.entities.values()) {
           if (ent && ent.data && ent.data.stationId === stationId) return ent.id;
         }
@@ -12133,6 +12142,11 @@ export const render = {
     // kicks decode/runway for the plan's real hull keys only — no exemplar mesh, no
     // pipeline precompile (soft-GPU skips those anyway).
     onBus('survivalArena:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
+    // Onboarding's mid-flight scripted cohort (raid raider/hauler, trainer drone, claims
+    // patrol) spawns during 'flight' with no wavePlanned lead — the default-route
+    // prepareStartingScene publishes its specs during 'loading' so the same exemplar
+    // machinery warms the hulls before first presentation.
+    onBus('onboarding:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
     // PQ-133.08: law-arena machinery is render-owned dressing installed/released on the arena's
     // own events (field anchors, shutter bars, crusher presses, current mouths). The tracker
     // self-gates on arenaId, so non-law rooms pass through untouched.

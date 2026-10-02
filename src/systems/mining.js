@@ -2279,8 +2279,13 @@ export const mining = {
     const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (!player || !Array.isArray(state.entityList)) return 0;
     let banked = 0;
-    for (let i = 0; i < state.entityList.length && banked < 256; i++) {
-      const e = state.entityList[i];
+    const idx = state.entityIndex;
+    const pickupsFresh = idx && idx.ready === true && Array.isArray(idx.pickups)
+      && idx._sourceList === state.entityList && idx._sourceLength === state.entityList.length;
+    // Snapshot the lane: collection can despawn the pickup (index splice) mid-walk.
+    const candidates = pickupsFresh ? idx.pickups.slice() : state.entityList;
+    for (let i = 0; i < candidates.length && banked < 256; i++) {
+      const e = candidates[i];
       if (!e || e.alive === false || e.type !== 'pickup' || !e.data || e.data.combatLoot !== true) continue;
       clearPickupAcceptanceRetry(e.data);
       this._collectPickupViaEvent(e, player);
