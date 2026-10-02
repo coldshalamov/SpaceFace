@@ -84,7 +84,10 @@ assert.match(promptSrc, /\$\{counter\} countermeasure/, 'keyboard prompts must t
 // The pad prompt prints the live glyph (padGlyph reads the resolved map; R3 by default, asserted on gamepad.js above).
 assert.match(promptSrc, /R3 countermeasure|\$\{padGlyph\('countermeasure'\)\} countermeasure/,'gamepad prompts must teach the countermeasure pad button (R3 by default)');
 assert.match(helpSrc, /Countermeasure[\s\S]*X/, 'Help must document keyboard countermeasure');
-assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help must document gamepad countermeasure');
+// TEACH-09 (9372ecc8f) turned the Help pad sheet into a projection: rows name the action id and
+// the pad glyph renders from the resolved map at runtime (R3 at defaults, asserted on gamepad.js
+// above). Pin the projected row instead of a literal glyph.
+assert.match(helpSrc, /\['Countermeasure',\s*'countermeasure'/, 'Help must document gamepad countermeasure');
 assert.match(readmeSrc, /\|\s*Countermeasure\s*\|\s*\*\*X\*\* \/ \*\*R3\*\*/,
   'README controls must document X / R3 countermeasure');
 

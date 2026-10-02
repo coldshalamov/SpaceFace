@@ -109,6 +109,9 @@ function makeState(capVolume) {
       credits: 1000,
       cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume, capMass: 999 },
       stats: {},
+      // NXB-039 (963e11a1c): the deadline chip answers for the fitted ship; an unfitted hull
+      // reads as an honest estimate warn. These fixtures stage a fitted ship.
+      maxSpeed: 140,
     },
     missions: {
       boards: { station_helios: { refreshEpoch: 0, slots: [makeOffer()] } },
@@ -281,6 +284,9 @@ const deadlinePacing = missionTimePacing(makeOffer({
   deadline_s: 420,
   time_limit_s: null,
   distance: 0,
+  // Same-sector leg: an off-sector zero-distance route reads as an uncharted estimate
+  // under NXB-039 (963e11a1c); this case pins the absolute-deadline countdown itself.
+  destSectorId: 'sector_helios_prime',
   params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 },
 }), { ...makeState(8), simTime: 120 });
 assert.equal(deadlinePacing.chip.text, 'Tight 5m timer',
