@@ -397,7 +397,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | boot | free | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
 | audio | devin-demo5 | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
 | save | devin-demo5 | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
-| economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
+| economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250, 263 |
 | effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | devin-swarm | swarm planner, survival waves, arenas | 100, 101, 180, 181, 203, 204, 232, 233, 235 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
@@ -407,7 +407,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | industry | grok-15 | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
 | people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
 | ship | free | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
-| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
+| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239, 264 |
 | missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
 | world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
 | story | grok-15 | story | 192, 215, 216, 253 |
@@ -417,6 +417,13 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built | 60, 63, 64 |
 | imports | free | doc imports only, after code seams | 30 |
 | art | free | one visible asset defect; skip if the graphics lane is live | 223 |
+
+**Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
+are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
+is not dispatchable. The [golden standard](./design/program/research-2026-10-02/SPACEFACE_GOLDEN_STANDARD.md)
+and [evidence atlas](./design/program/research-2026-10-02/RESEARCH_EVIDENCE.md) are supporting references,
+not a parallel queue, visual direction or mandatory scoring gate. Batch checks by affected route;
+finishing a research subcheck alone does not finish the original parent assignment.
 
 `node scripts/board-chunks.mjs` prints which of those rows are still open, which seams are
 claimed, and any open row that is not in a seam. `--check` fails when the table and the
@@ -623,7 +630,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 115 | PB-IND-D | SF-095+111 lot lineage/provenance legibility at scan | PB | OPEN — custody pair |
 | 116 | PB-IND-E | SF-098+099+104+116 capacity-stall redirect, outage→shortage→remedy contract, kill-machine collateral law | PB | OPEN — CHECK cluster |
 | 117 | PB-BUILD-A | SF-122+123+124+125+133 synergy proof quintet: rammer-truck, control-tug, survey-control, bulk-miner, stale-clear | PB | OPEN — identical 5-file write-set |
-| 118 | PB-BUILD-B | SF-129+134+135 tech-ladder trio: unlock→new physical question, rare capability two homes, first-earned delay trace | PB | OPEN |
+| 118 | PB-BUILD-B | SF-129+134+135 tech-ladder trio: unlock→new physical question, rare capability two homes, first-earned delay trace; [research G](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#g-research-and-fitting-report-authoritative-outcomes--p06-p07-p08): hull research readiness + settled research feedback (P06/P07) | PB | OPEN |
 | 119 | PB-BUILD-C | SF-121+127+130+132 starter-identity proofs, charge-after-fit race verify, route-geometry upgrade, drawback management | PB | OPEN |
 | 120 | PB-CONS-A | SF-151+159 witness-validated intake legibility + verdict escalation windows | PB | OPEN — law pair; reproduce first |
 | 121 | PB-CONS-B | SF-156+162 rescued worker returns to work + scavenger occupation switch | PB | OPEN — aftermath pair |
@@ -653,8 +660,8 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 145 | PB-AUD-C | SF-232+233+240 machine work-cycle rhythm, anomaly-evidence cue, whole-mix family acceptance | PB | OPEN — seam audioSystem serial |
 | 146 | PB-AUD-D | SF-226+228+229+234+236+237 verify six: release/break distinct, slam separation, bomb phases, encounter arc, origin-shift reset, voice budget | PB | OPEN — CHECK sextet |
 | 147 | PB-UI-A | SF-242+251 capability comparison + draft fit projection — sim halves only; UI surface is ORRERY's | PB | OPEN |
-| 148 | PB-UI-B | SF-243+244+245 custody projection, stable-identity selection, discovery-knowledge model — sim halves | PB | OPEN |
-| 149 | PB-UI-C | SF-241+246 trade-confirm truth residue + mission phase→next-action derivation — sim halves | PB | OPEN |
+| 148 | PB-UI-B | SF-243+244+245 custody projection, stable-identity selection, discovery-knowledge model — sim halves plus the bounded functional UI residual; [research C](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#c-current-map-intention-and-cancellation--j1-j6): current galaxy-map query selection + first-Escape cancellation (J1/J6), minimal functional UI extension | PB | OPEN |
+| 149 | PB-UI-C | SF-241+246 trade-confirm truth residue + mission phase→next-action derivation — sim halves plus the bounded functional UI residual; [research E](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#e-commit-the-exact-contract-held--p04): exact Contracts completed-hold identity (P04), minimal functional UI extension | PB | OPEN |
 | 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | OPEN — seam saveSystem serial |
 | 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | OPEN — seam saveSystem serial |
 | 152 | PB-CONT-C | SF-280+281+284 migration template, failed-save visibility, bounds preserve consequences | PB | OPEN — seam saveSystem serial |
@@ -696,7 +703,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 181 | BUILD | [NXB-018](design/program/next-wave-2026-09-28/build/NXB-018.md) | Draft offers remain useful for the actual build and transaction state | Existing owners; SF-065, SF-066, SF-072, SF-251 | SHIPPED — displaced fitting named (NXI-071); children closed 2026-10-01 |
 | 182 | BUILD | [NXB-021](design/program/next-wave-2026-09-28/build/NXB-021.md) | Deep-core mining makes the next commitment visible without revealing the whole rock | Existing owners; SF-095, SF-125, PQ-130 | OPEN |
 | 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | SHIPPED |
-| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack | NXB-009; SF-127, SF-128, SF-242, PQ-205 | OPEN |
+| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack; [research G](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#g-research-and-fitting-report-authoritative-outcomes--p06-p07-p08): refused-unfit continuation (P08); preserve shipped NXI-114 buy-fit/fit protection | NXB-009; SF-127, SF-128, SF-242, PQ-205 | OPEN |
 | 185 | BUILD | [NXB-030](design/program/next-wave-2026-09-28/build/NXB-030.md) | Prove three existing hull sidegrades through actual physical jobs | Existing owners; SF-121, SF-122, SF-123, SF-124, SF-130 | OPEN |
 | 186 | BUILD | [NXB-031](design/program/next-wave-2026-09-28/build/NXB-031.md) | A synergy explanation matches the live combined effect and its drawback | Existing owners; SF-126, SF-132, SF-133 | SHIPPED — scan-gated basis + named prerequisites 2026-10-01 |
 | 188 | BUILD | [NXB-038](design/program/next-wave-2026-09-28/build/NXB-038.md) | A failed job leaves a playable continuation rather than a reset scene | Existing owners; SF-139, SF-147, SF-150, SF-285 | SHIPPED — disabled-helper readout + survivor release; mutations already chained 2026-10-01 |
@@ -706,7 +713,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 193 | BUILD | [NXB-049](design/program/next-wave-2026-09-28/build/NXB-049.md) | A three-verb collision stays readable without draining the spectacle | Existing owners; SF-196, SF-197, SF-200, SF-207 | OPEN |
 | 194 | BUILD | [NXB-052](design/program/next-wave-2026-09-28/build/NXB-052.md) | The crowded combat mix releases into real quiet after the last threat | Existing owners; SF-231, SF-234, SF-237, SF-240 | SHIPPED |
 | 195 | BUILD | [NXB-054](design/program/next-wave-2026-09-28/build/NXB-054.md) | The map can manage two real destinations without confusing knowledge with a route | Existing owners; SF-244, SF-245, SF-246, SF-254 | SHIPPED |
-| 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules | Existing owners; SF-247, SF-248, SF-254, PQ-164 | OPEN |
+| 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules; [research B](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#b-rebinding-reset-and-capture-ownership--j4-j5): reset conflict checks + capture-timer ownership (J4/J5) | Existing owners; SF-247, SF-248, SF-254, PQ-164 | OPEN |
 | 197 | BUILD | [NXB-056](design/program/next-wave-2026-09-28/build/NXB-056.md) | Dense instrument text survives long names, large text and narrow windows | Existing owners; SF-243, SF-249, SF-253, SF-255 | OPEN |
 | 198 | BUILD | [NXB-006](design/program/next-wave-2026-09-28/build/NXB-006.md) | Transfer a load across a moving industrial gap without scripted motion | Existing owners; SF-019, SF-024, SF-094, SF-100 | OPEN |
 | 199 | BUILD | [NXB-008](design/program/next-wave-2026-09-28/build/NXB-008.md) | Recover a volatile load by managing its physical exposure, not a scripted timer | Existing owners; SF-006, SF-021, SF-036, SF-096 | OPEN |
@@ -818,7 +825,7 @@ named in the status for the frontend lane to take alone):
 | 238 | FB-002+FB-116+FB-117+FB-118+FB-136 | Every bound verb is spoken once in the player's device vocabulary; the Range teaches all five powers | PB | OPEN — seam onboarding.js |
 | 239 | FB-006+FB-007+FB-012+FB-014 | Hitchhiking, drawn strokes and adventure stunts are named; salvage rights are heard and kept | PB | OPEN — seam masslineHud.js |
 | 240 | FB-015+FB-114+FB-093+FB-094+FB-109 | Deployables and the first-hour rail survive a save; writes are bounded and gzipped by one long-lived worker; quota keeps a recovery | PB | OPEN — seam saveSystem.js |
-| 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | Export carries medals; a fuzzer and a migration ladder guard the envelope; the save screen says what it repaired | PB | OPEN — seam saveSystem.js (second sitting) (ORRERY lane: FB-110, FB-130) |
+| 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | Export carries medals; a fuzzer and a migration ladder guard the envelope; the save screen says what it repaired; [research A](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#a-save-outcomes-and-continue-provenance--j2-j3): save delete outcomes + title Continue provenance (J2/J3) | PB | OPEN — seam saveSystem.js (second sitting) (ORRERY lane: FB-110, FB-130) |
 | 242 | FB-029+FB-032+FB-031+FB-128+FB-133 | Twenty-four sectors get distinct populations, physics, arrangement, a face and two more working craft | PB | OPEN — seam sectors.js / traffic.js |
 | 243 | FB-030 | Pallas Drift closes the miner→hauler→refinery→ambush→escort loop | PB | OPEN — composes after PB-LANE-WORLD (row 158) |
 | 244 | FB-033+FB-125+FB-038 | Six lanes, no singleton POI types, and a Ceres unique wreck | PB | OPEN — seam sectors.js (second sitting) |
@@ -835,7 +842,7 @@ named in the status for the frontend lane to take alone):
 | 255 | FB-072+FB-074+FB-077+FB-073+FB-075+FB-076+FB-142 | Severity by shape, the light director wired, reduced motion declared, undock and jettison shaped, role silhouettes, station arms, planet cues | PB | OPEN — seam cueRecipes.js / vfx.js |
 | 256 | FB-078+FB-079+FB-081+FB-082+FB-083+FB-122+FB-135+FB-123 | The ear: kill ladder, continuous voices, money register, the hush for the best moment, wider ducking, sector beds, fuel voice, captions | PB | OPEN — seam audioSystem.js |
 | 257 | FB-084+FB-085+FB-086+FB-087 | Kill beats by weight, photo filters, one kill recorder, replay from where you died | PB | OPEN — seam camera.js / crucible.js (ORRERY lane: FB-087) |
-| 258 | FB-088+FB-089+FB-090+FB-095 | The machine on the table clock: gated spatial hash, declared clocks, five quiet latches, wall-time guard | PB | OPEN — seam physics.js / authoritativeSystemManifest.js |
+| 258 | FB-088+FB-089+FB-090+FB-095 | The machine on the table clock: gated spatial hash, declared clocks, five quiet latches, wall-time guard; [research I](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#i-quiet-cleanup-still-respects-deadlines--c8): coreSystem timed wreck/asteroid quiet-clock admission (C8) | PB | OPEN — seam physics.js / authoritativeSystemManifest.js |
 | 259 | FB-091+FB-092+FB-096+FB-097+FB-098+FB-141 | The machine on the present: budgeted admission, enumerated arrival roster, no first-frame allocation, hitch ring, one batched archetype, probe doors | PB | OPEN — seam renderer.js |
 | 260 | FB-099+FB-100+FB-126+FB-105+FB-112 | Dead settings controls live, options reach parity, focus loss mutes and pauses, Ironman is one-way, settings speak to a reader | PB | OPEN — FB-099 screen shake, FB-100 parity, FB-105 ironman latch, FB-126 focus hold shipped; FB-112 is ORRERY |
 | 261 | FB-102+FB-103+FB-106+FB-107 | Career counters and a statistics screen, a shell that remembers its window, honest locale labels | PB | OPEN — seam achievements.js / electron main / localization (ORRERY lane: FB-103) |
@@ -844,6 +851,18 @@ named in the status for the frontend lane to take alone):
 Same closing law as H and I. The bank's own routing aids ([`FIRST_BATCHES.md`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/FIRST_BATCHES.md),
 [`OVERLAP_MAP.md`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/OVERLAP_MAP.md)) name the
 recommended order and shared seams inside the bank.
+
+### K. Bounded research residuals — new owners only where no exact open assignment exists
+
+[Repair briefs](design/program/research-2026-10-02/ADMITTED_REPAIRS.md) carry the evidence, preservation constraints and tests.
+All remaining research proposals stay outside this dispatch table pending discussion. Existing extended rows
+118, 148, 149, 184, 196, 241 and 258 retain their original obligations and status.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 263 | CRAFT-INTEGRITY | [Research F](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#f-crafting-respects-custody-and-source-capacity--p02-p03-p10): free cargo quantities, fitted-source capacity and truthful Industry blocker remedies | FIX | OPEN — economy; crafting/cargo/ships + Industry, coordinate exact ship/industry paths |
+| 264 | RELEASE-TRUTH | [Research H](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#h-physical-previews-describe-the-actual-release--c1-c2-c4): actual-body/relevant-field forecasts and neutral untargeted release feedback; preserve live forces and cut authority | FIX | OPEN — hand; masslineThrow/fields/presentation, coordinate row 94 exact shared paths |
+
 
 ## 2. Product north star
 
@@ -5999,3 +6018,4 @@ any order, and fix whatever else in the area falls short — the open-ended revi
 lane, not a phase after it. Acceptance batches at the area level. The queue still owns unit
 truth; grunt-sized sittings still take `--next` or an INFERENCE line; §22 and §23 remain the
 lanes' detailed wording. Lane order, briefs, gates and the coverage map live in the program file.
+
