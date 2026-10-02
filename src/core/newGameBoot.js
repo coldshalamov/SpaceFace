@@ -17,6 +17,7 @@ import { NEW_GAME, resolveNewGameStarter } from '../data/newGameDefaults.js';
 import { defaultShipAppearance } from './shipAppearance.js';
 import { mark47aPlayerActor, spawn47aOpeningScene } from '../data/scenarios/47aLiveScene.js';
 import { GameStartReadinessError } from './newGameStartTransition.js';
+import { shouldGrantKeepsake } from './newGamePlus.js';
 import { laneInputWrite } from './simLaneCommands.js';
 
 // Minimal playable scene so the engine is verifiable before subsystems exist:
@@ -177,11 +178,13 @@ export async function runNewGameSimBoot({
   if (!isCurrent()) return { aborted: true };
 
   if (newGamePlus) {
-    if (!ships || typeof ships.grantModule !== 'function'
+    const keepsakeId = newGamePlus.keepsake && newGamePlus.keepsake.defId;
+    const grantKeepsake = shouldGrantKeepsake(state.player, keepsakeId);
+    if (grantKeepsake && (!ships || typeof ships.grantModule !== 'function'
         || !ships.grantModule({
-          defId: newGamePlus.keepsake.defId,
+          defId: keepsakeId,
           reason: `new-game-plus:${newGamePlus.sourceEnding}`,
-        })) {
+        }))) {
       throw new GameStartReadinessError(
         'NEW_GAME_PLUS_UNAVAILABLE',
         'new-game-plus',
