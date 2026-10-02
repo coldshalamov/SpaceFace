@@ -28,7 +28,7 @@ import { decrypt, rollTo } from '../orrery/text.js';
 import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
 import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { NEW_GAME, DEFAULT_STARTER_ID, starterById } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
@@ -471,6 +471,19 @@ export const gameOverScreen = {
     const bNew = wordItem(list, 'New Game');
     bNew.title = 'Start a fresh run';
     bNew.setAttribute('aria-label', 'Start a fresh run');
+    // The death sheet is pure dwell and this verb's launch is a fixed shape (default
+    // sector + starter, fresh seed) — hover/focus time is warm lead the click arm wastes.
+    const armFreshRunWarm = () => {
+      if (!ctx || !ctx.bus) return;
+      const starter = starterById(DEFAULT_STARTER_ID);
+      ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: null,
+        shipDefId: starter && starter.shipId,
+      });
+    };
+    bNew.addEventListener('pointerenter', armFreshRunWarm);
+    bNew.addEventListener('focusin', armFreshRunWarm);
     bNew.addEventListener('click', () => {
       cue('confirm');
       const mgr = getManager(ctx);

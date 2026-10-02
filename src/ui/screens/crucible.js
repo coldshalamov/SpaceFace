@@ -84,6 +84,7 @@ import {
 } from './shareCode.js';
 import {
   buildSandboxLaunchConfig,
+  emitSandboxEmbarkSpeculation,
   requestSandboxGame,
   SCENARIO_PRESETS,
 } from '../sandbox/sandboxSetup.js';
@@ -1185,6 +1186,26 @@ export const crucibleScreen = {
         other.setAttribute('aria-pressed', String(on));
         if (other.classList && typeof other.classList.toggle === 'function') other.classList.toggle('is-on', on);
       }
+      armEmbarkSpec();
+    }
+    // Picker dwell is real warm lead: the launch's sector + hull are knowable the moment a
+    // tile flips, so arm the same embark speculation the sandbox picker posts on hover. The
+    // renderer latches by signature — repeat re-syncs of an unchanged pick are near-free.
+    function armEmbarkSpec() {
+      if (!ctx || !ctx.bus) return;
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || COMBAT_LAB_ARENAS[0];
+      const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
+        ? starterId.slice(5)
+        : ((COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || {}).hullId || null);
+      // The seed row's const is declared after the first syncArena paint, so a TDZ read
+      // there just means the input isn't mounted yet — freeSeed already covers restores.
+      let seed = normalizeSeed(freeSeed);
+      try { seed = normalizeSeed(seedInput && seedInput.value); } catch { /* pre-mount */ }
+      emitSandboxEmbarkSpeculation(ctx.bus, {
+        sectorId: arena && arena.sectorId,
+        shipId: hullPick,
+        seed,
+      });
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
       const open = isStarterAvailable(doorProfile, starter.id);
@@ -1330,6 +1351,7 @@ export const crucibleScreen = {
       for (const button of arenas.querySelectorAll('button')) {
         syncChoice(button, button.dataset.arenaId === arenaId);
       }
+      armEmbarkSpec();
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
       const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice', kitUrl(ARENA_TILE[arena.id] || ARENA_TILE.helios_core));
@@ -1368,6 +1390,7 @@ export const crucibleScreen = {
       seedInput.value = freeSeed;
       cue('confirm');
       syncGhost();
+      armEmbarkSpec();
       const reduce = typeof document !== 'undefined' && document.documentElement
         && document.documentElement.classList.contains('sf-reduce-motion');
       if (reduce || typeof setInterval !== 'function') return;
@@ -1397,6 +1420,7 @@ export const crucibleScreen = {
     seedInput.addEventListener('input', () => {
       if (!daily) freeSeed = seedInput.value;
       syncGhost();
+      armEmbarkSpec();
     });
     seedRow.appendChild(reroll);
     seedBody.appendChild(seedRow);

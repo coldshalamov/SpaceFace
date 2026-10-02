@@ -146,19 +146,24 @@ const GLTF_PARSE_FRAME_LIMIT = 2;
 const gltfParsePending = [];
 let gltfParseDrainScheduled = false;
 
+function drainGltfParseQueue() {
+  const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
+  for (const task of batch) {
+    Promise.resolve().then(task.fn).then(task.resolve, task.reject);
+  }
+  // The tail must keep draining without a new push — re-arm while items remain
+  // (the flag stays latched so pushes during the drain just enqueue).
+  if (gltfParsePending.length) requestAnimationFrame(drainGltfParseQueue);
+  else gltfParseDrainScheduled = false;
+}
+
 export function scheduleGltfParse(fn) {
   if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
   return new Promise((resolve, reject) => {
     gltfParsePending.push({ fn, resolve, reject });
     if (gltfParseDrainScheduled) return;
     gltfParseDrainScheduled = true;
-    requestAnimationFrame(() => {
-      gltfParseDrainScheduled = false;
-      const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
-      for (const task of batch) {
-        Promise.resolve().then(task.fn).then(task.resolve, task.reject);
-      }
-    });
+    requestAnimationFrame(drainGltfParseQueue);
   });
 }
 

@@ -2096,7 +2096,7 @@ function admissionSubjectIsOnDeadlineGlass(subject, state) {
  * about to stop the drain with glass work still buried — the inside-that-window
  * promotion the poll cannot see yet.
  */
-export function hoistDeadlineGlassMeshBuilds(owner) {
+export function hoistDeadlineGlassMeshBuilds(owner, verdictMemo) {
   const queue = owner && owner._meshBuildQueue;
   if (!queue) return false;
   const head = owner._meshBuildQueueHead | 0;
@@ -2106,6 +2106,18 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   const tail = queue.length - head;
   if (tail <= 0) return 0;
   const scan = makeHoldExemptScanContext(owner.state);
+  // Per-drain verdict memo: verdicts are per-id and read-only within a drain call, so the
+  // refused-start and mid-drain hoists share them instead of re-walking the tail — during
+  // refused starts that halves a whole tail scan per heavy frame.
+  const verdictFor = verdictMemo instanceof Map
+    ? (id) => {
+      const hit = verdictMemo.get(id);
+      if (hit !== undefined) return hit;
+      const glass = entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan);
+      verdictMemo.set(id, glass);
+      return glass;
+    }
+    : (id) => entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan);
   let glassCount = 0;
   let reordered = false;
   let seenNonGlass = false;
@@ -2114,7 +2126,7 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   // proven out-of-order element so an already-ordered tail keeps the zero-alloc path.
   let verdicts = null;
   for (let i = head; i < queue.length; i++) {
-    const glass = entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, queue[i]), owner.state, scan);
+    const glass = verdictFor(queue[i]);
     if (verdicts) verdicts[i - head] = glass ? 1 : 0;
     if (glass) {
       glassCount++;
@@ -3332,7 +3344,10 @@ function warmWantedTierDecode(owner) {
 
 const GATE_WING_WARM_DIST = 3000;
 const GATE_WING_WARM_DIST_SQ = GATE_WING_WARM_DIST * GATE_WING_WARM_DIST;
-const GATE_SCENE_DAY_SECONDS = 86400;
+// The live scene buckets days at the director's DAY_SECONDS (600 — the core 10-sim-minute
+// day); the warm MUST replay planGateScene under the same bucket or it predicts a different
+// rng input and its dedupe key re-arms on a foreign cadence.
+const GATE_SCENE_DAY_SECONDS = 600;
 
 /**
  * Gate control posts its scan wing (ship_wasp ring, 60-120 WU off the gate) the instant the
@@ -3413,7 +3428,7 @@ function warmStationPatrolDecode(owner) {
         ? [...state.entities.values()] : []);
     }
     const station = entities.find((e) => e && (
-      e.id === item.stationId
+      (e.id != null && String(e.id) === item.stationId)
       || e.stationId === item.stationId
       || (e.data && e.data.stationId) === item.stationId));
     const factionId = (station && (station.data && station.data.factionId || station.factionId))
@@ -15497,6 +15512,10 @@ export const render = {
     // (witness: live.meshBuilds1 4.4 s, 56 passes, 0 built — the items were all unbuildable
     // skips anyway, so the delay bought nothing).
     const loadingDrain = (this.state && this.state.mode) === 'loading';
+    // Per-drain glass verdict memo: the refused-start hoist below and the mid-drain hoist
+    // inside the loop share per-id verdicts instead of re-walking the tail — during refused
+    // starts that halves a whole tail scan per heavy frame.
+    const glassVerdictMemo = new Map();
     if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
       const gate = shouldStartHeavyAdmissionEventually(
         this.state && this.state.render && this.state.render.lastPresentDtMs,
@@ -15504,7 +15523,7 @@ export const render = {
       );
       this._meshBuildLateSkips = gate.skippedCount;
       if (!gate.start) {
-        if (!hoistDeadlineGlassMeshBuilds(this)) return 0;
+        if (!hoistDeadlineGlassMeshBuilds(this, glassVerdictMemo)) return 0;
         deadlineGlassOnly = true;
       }
     }
@@ -15540,7 +15559,7 @@ export const render = {
         // off-glass backlog — hoist it to the head once per drain so the
         // on-glass overflow arm above can finish it inside this slice instead
         // of leaving a hole for the rest of the window.
-        if (hoistedDeadlineBuilds || !hoistDeadlineGlassMeshBuilds(this)) break;
+        if (hoistedDeadlineBuilds || !hoistDeadlineGlassMeshBuilds(this, glassVerdictMemo)) break;
         hoistedDeadlineBuilds = true;
         continue;
       }
