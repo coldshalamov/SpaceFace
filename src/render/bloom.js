@@ -1283,9 +1283,16 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function restoreUnreadySceneDrawables() {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+    // Dev instrumentation: remember what was hidden during the pass so the ?drawhist
+    // sampler (which runs after visibility is restored) can still skip it. Bounded —
+    // the sampler clears the set each frame; when it is unarmed the set saturates.
+    const hiddenLog = renderer
+      ? (renderer.__sfLastHiddenDrawables || (renderer.__sfLastHiddenDrawables = new Set()))
+      : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
+      if (object && hiddenLog && hiddenLog.size < 4096) hiddenLog.add(object);
       unreadySceneScratch[i] = null;
     }
     unreadySceneCount = 0;

@@ -247,6 +247,13 @@ export function createWorldObjectPicker(env) {
       rec.parent = object.parent || null;
       rec.geometry = object.geometry || null;
       rec.kids.length = 0;
+      // Leaf transforms move the measured reach without touching parent/geometry/children —
+      // a dish spinning about an offset pivot or a sliding arm sweeps past its build-time
+      // envelope while the structural signature reads clean.
+      rec.px = object.position.x; rec.py = object.position.y; rec.pz = object.position.z;
+      rec.qx = object.quaternion.x; rec.qy = object.quaternion.y;
+      rec.qz = object.quaternion.z; rec.qw = object.quaternion.w;
+      rec.sx = object.scale.x; rec.sy = object.scale.y; rec.sz = object.scale.z;
       const kids = object.children;
       for (let k = 0; k < kids.length; k++) rec.kids.push(kids[k]);
       entry.nodes.push(object);
@@ -277,6 +284,12 @@ export function createWorldObjectPicker(env) {
       if (!rec) return true;
       if ((node.parent || null) !== rec.parent) return true;
       if ((node.geometry || null) !== rec.geometry) return true;
+      if (node.position.x !== rec.px || node.position.y !== rec.py || node.position.z !== rec.pz
+          || node.quaternion.x !== rec.qx || node.quaternion.y !== rec.qy
+          || node.quaternion.z !== rec.qz || node.quaternion.w !== rec.qw
+          || node.scale.x !== rec.sx || node.scale.y !== rec.sy || node.scale.z !== rec.sz) {
+        return true;
+      }
       const kids = node.children;
       if (kids.length !== rec.kids.length) return true;
       for (let k = 0; k < kids.length; k++) {

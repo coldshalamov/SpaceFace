@@ -233,6 +233,7 @@ function catchUpFieldRock(field, rec, simTime) {
   }
   rec.lastExactT = toT;
   if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
+  if (field && Number.isFinite(field.version)) field.version++;
   return rec;
 }
 

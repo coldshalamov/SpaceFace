@@ -197,6 +197,14 @@ function appendNearbyLedgerRows(state, out) {
   // dropped and skips rows it still holds — the leading-edge pop the on-glass-disposals
   // counter exists to prove is gone.
   const origin = tableLookAtOrigin(state, player.pos, _ledgerCollectOrigin);
+  // After a relocate the frame-local focus can trail the player by thousands of WU while
+  // it crawls over (the same class admissionAnchorPos's lead cap exists for): a disc
+  // anchored only on the focus gives the destination cohort zero decode runway until the
+  // glass lands. The collect disc therefore unions the player leg — dormant rows near the
+  // player enter `out` and kick their decode during the crawl — while the per-row
+  // keep/evict-anchored tests below still measure from the exact focus origin.
+  const playerX = finite(player.pos.x);
+  const playerZ = finite(player.pos.z);
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
   // The scan disc must hold every row that can still reach the glass inside the
@@ -213,10 +221,13 @@ function appendNearbyLedgerRows(state, out) {
   // cell is covered by the same superset, and the per-row tests below still filter
   // against the exact origin on every call. The walk radius is bucketed the same way
   // so small speed changes do not churn the key either.
-  const walkX = (Math.floor(origin.x / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
-  const walkZ = (Math.floor(origin.z / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const legSpan = Math.hypot(origin.x - playerX, origin.z - playerZ);
+  const unionX = (origin.x + playerX) * 0.5;
+  const unionZ = (origin.z + playerZ) * 0.5;
+  const walkX = (Math.floor(unionX / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
-  const walkRadius = Math.ceil((scanRadius + radiusPad) / 500) * 500;
+  const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
   if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)) {
     _meshWalkOrigin.x = walkX;
     _meshWalkOrigin.z = walkZ;
@@ -240,7 +251,10 @@ function appendNearbyLedgerRows(state, out) {
     const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
     const relX = eff.x - origin.x;
     const relZ = eff.z - origin.z;
-    if (relX * relX + relZ * relZ <= radius2) {
+    const relPx = eff.x - playerX;
+    const relPz = eff.z - playerZ;
+    if (relX * relX + relZ * relZ <= radius2
+      || relPx * relPx + relPz * relPz <= radius2) {
       out.push(rec);
       continue;
     }
@@ -261,7 +275,10 @@ function appendNearbyLedgerRows(state, out) {
     const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
     const relX = eff.x - origin.x;
     const relZ = eff.z - origin.z;
-    if (relX * relX + relZ * relZ <= radius2) {
+    const relPx = eff.x - playerX;
+    const relPz = eff.z - playerZ;
+    if (relX * relX + relZ * relZ <= radius2
+      || relPx * relPx + relPz * relPz <= radius2) {
       out.push(rec);
       continue;
     }

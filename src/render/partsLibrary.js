@@ -2349,7 +2349,8 @@ export function residentWholeShipStandInRecord(entity, options = {}) {
       for (const library of resolved.values()) {
         if (!(library instanceof Map)) continue;
         for (const records of library.values()) {
-          const record = (records || []).find((candidate) => recordUrlEndsWith(candidate, file));
+          const record = (records || []).find(
+            (candidate) => recordUrlEndsWith(candidate, file, options.renderer));
           if (record) return record;
         }
       }
@@ -2361,7 +2362,7 @@ export function residentWholeShipStandInRecord(entity, options = {}) {
   for (const file of candidates) {
     if (!file) continue;
     const record = decoded.find((candidate) => (
-      recordIsResident(candidate)
+      recordIsResident(candidate, options.renderer)
         && typeof candidate.url === 'string'
         && normalizePartUrl(candidate.url).endsWith(file)
     ));
@@ -2384,14 +2385,15 @@ export function residentAuthoredRecordForFile(file, options = {}) {
     for (const library of resolved.values()) {
       if (!(library instanceof Map)) continue;
       for (const records of library.values()) {
-        const record = (records || []).find((candidate) => recordUrlEndsWith(candidate, file));
+        const record = (records || []).find(
+          (candidate) => recordUrlEndsWith(candidate, file, options.renderer));
         if (record) return record;
       }
     }
   }
   const decoded = peekSettledAuthoredRecords(options.renderer);
   return decoded.find((candidate) => (
-    recordIsResident(candidate)
+    recordIsResident(candidate, options.renderer)
       && typeof candidate.url === 'string'
       && normalizePartUrl(candidate.url).endsWith(file)
   )) || null;
@@ -6048,7 +6050,7 @@ function authoredUpgradeEstimatedBytes(job) {
 function authoredUpgradeCacheStatus(job) {
   const library = resolvedCanonicalLibrary(job && job.renderer, job && job.options || {});
   if (!library) return 'miss';
-  return libraryHasPreloadPlan(library, authoredUpgradePlan(job)) ? 'hit' : 'miss';
+  return libraryHasPreloadPlan(library, authoredUpgradePlan(job), job && job.renderer) ? 'hit' : 'miss';
 }
 
 function cleanupQueuedJob(state, job) {
@@ -8132,7 +8134,7 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
     typeof options.isResidencyOwnerActive === 'function' && options.isResidencyOwnerActive() !== true
   );
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+    if (ownerInactive() && !libraryHasPreloadPlan(library, plan, renderer)) {
       // A departure while the demand still waits in the admission lane - owner already gone before
       // this demand's own retain/admit began (attempt 0) - is a quiet cancellation, not an
       // incomplete asset failure: the queued job is discarded as cancelled-before-load before any
@@ -8148,11 +8150,11 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
     }
     retainLibraryPlan(renderer, library, plan, options);
     await admitEntityPlan(renderer, options, library, plan);
-    if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+    if (ownerInactive() && !libraryHasPreloadPlan(library, plan, renderer)) {
       throw new Error('Authored visual preparation owner became inactive during entity admission');
     }
     const currentPlan = authoredPreloadPlanForEntity(entity, options);
-    if (libraryHasPreloadPlan(library, currentPlan)) {
+    if (libraryHasPreloadPlan(library, currentPlan, renderer)) {
       retainLibraryPlan(renderer, library, currentPlan, options);
       return library;
     }
@@ -8184,7 +8186,7 @@ function admitEntityPlan(renderer, options, library, plan) {
         // Re-check only after earlier demand has committed its records. Checking before joining
         // the lane permits duplicate decodes; copying slot arrays outside the lane permits
         // last-writer data loss.
-        if (!libraryHasPreloadPlan(library, plan)) {
+        if (!libraryHasPreloadPlan(library, plan, renderer)) {
           // An ambient run still occupying the lane must not hold a queued deadline entry
           // for the rest of its plan — break between files so the spliced entry runs next;
           // the unfinished remainder re-queues through the ordinary demand path. Deadline
@@ -8254,14 +8256,15 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
   const pendingFiles = [];
   const recordsBySlot = new Map();
   for (const [slot, files] of Object.entries(plan || {})) {
-    const records = Array.isArray(library.get(slot)) ? library.get(slot).filter(recordIsResident) : [];
+    const records = Array.isArray(library.get(slot))
+      ? library.get(slot).filter((record) => recordIsResident(record, renderer)) : [];
     recordsBySlot.set(slot, records);
     for (const file of files || []) pendingFiles.push({ slot, file });
   }
   for (let i = 0; i < pendingFiles.length; i++) {
     const { slot, file } = pendingFiles[i];
     const records = recordsBySlot.get(slot);
-    if (records.some((record) => recordUrlEndsWith(record, file))) continue;
+    if (records.some((record) => recordUrlEndsWith(record, file, renderer))) continue;
     if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
     // A deadline entry queued behind this ambient run takes the lane at the next file
     // boundary; the remaining files re-admit on their own demand.
@@ -8336,25 +8339,43 @@ function finishDecodeAdmission(renderer, entry) {
   diagnostics.active = Math.max(0, diagnostics.active - 1);
 }
 
-function libraryHasPreloadPlan(library, plan) {
+function libraryHasPreloadPlan(library, plan, renderer = null) {
   if (!(library instanceof Map)) return false;
   for (const [slot, files] of Object.entries(plan || {})) {
     const records = library.get(slot);
     if (!Array.isArray(records)) return false;
     for (const file of files || []) {
-      if (!records.some((record) => recordUrlEndsWith(record, file))) return false;
+      if (!records.some((record) => recordUrlEndsWith(record, file, renderer))) return false;
     }
   }
   return true;
 }
 
-function recordUrlEndsWith(record, file) {
-  if (!recordIsResident(record) || typeof record.url !== 'string' || !record.url) return false;
+// Stand-in borrows: a record reaches lodStandInFor through call chains that never carry the
+// renderer, so the resident check registers which residency registry answered it. The mount
+// site then re-verifies + retains through that registry instead of trusting the frozen stamp —
+// record.residency.state is written once at decode and never flipped on later eviction.
+const standInRecordRegistry = new WeakMap();
+
+export function residencyRegistryForStandInRecord(record) {
+  return (record && standInRecordRegistry.get(record)) || null;
+}
+
+function recordUrlEndsWith(record, file, renderer = null) {
+  if (!recordIsResident(record, renderer) || typeof record.url !== 'string' || !record.url) return false;
   return normalizePartUrl(record.url).endsWith(file);
 }
 
-function recordIsResident(record) {
-  return !!record && (!record.residency || record.residency.state === 'resident');
+function recordIsResident(record, renderer = null) {
+  if (!record) return false;
+  const residency = record.residency;
+  if (!residency) return true;
+  const registry = renderer && residency.key ? getAssetResidency(renderer) : null;
+  if (registry) {
+    standInRecordRegistry.set(record, registry);
+    return registry.has(residency.key);
+  }
+  return residency.state === 'resident';
 }
 
 function bootstrapResidencyOwner(renderer) {
@@ -8375,7 +8396,7 @@ function retainLibraryPlan(renderer, library, plan, options = {}) {
   for (const [slot, files] of Object.entries(plan || {})) {
     const records = library.get(slot) || [];
     for (const file of files || []) {
-      const record = records.find((candidate) => recordUrlEndsWith(candidate, file));
+      const record = records.find((candidate) => recordUrlEndsWith(candidate, file, renderer));
       const key = record && record.residency && record.residency.key;
       if (key && residency.retain(key, owner, {
         role: options.residencyRole || 'live-boundary',

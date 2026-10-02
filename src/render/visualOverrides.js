@@ -35,6 +35,7 @@ import {
   staleAuthoredRunVerdict,
   requiresProductionWholeShipForEntity,
   residencyOptionsForBoundary,
+  residencyRegistryForStandInRecord,
   waitForOpeningGraphPublicationRelease,
   wrapShipWithAuthoredParts,
 } from './partsLibrary.js';
@@ -303,6 +304,16 @@ function lodStandInFor(entity, record, target = null) {
     group.add(mesh);
   }
   if (!group.children.length) return null;
+  // Live-residency borrow: record.residency.state was stamped once at decode and never flips,
+  // so byte eviction can dispose these shared buffers mid-pending while the stand-in keeps
+  // drawing them (a re-upload inside the presented frame). Retain the record against the
+  // stand-in group's own lifecycle — 'removed' self-releases, and the detached-owner sweep
+  // covers a substrate detached with the marker still parented inside.
+  const borrowKey = record.residency && record.residency.key;
+  const borrowRegistry = residencyRegistryForStandInRecord(record);
+  if (borrowKey && borrowRegistry && typeof borrowRegistry.retain === 'function') {
+    borrowRegistry.retain(borrowKey, group, { role: 'resolving-stand-in' });
+  }
   // Preview the commit's transform, not the authored frame: place/station bodies recenter the
   // record's bounds-center onto X,Z origin (payloads/packaged all three axes) and station
   // commits can yaw the approach channel — a stand-in drawn at authored offset snaps sideways

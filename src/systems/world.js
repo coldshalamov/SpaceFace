@@ -179,6 +179,7 @@ import {
   dropDressingSector,
   insertDressingRow,
   getDressingRow,
+  markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
@@ -3155,6 +3156,9 @@ export const world = {
       const ent = (entities && entities.get && entities.get(row.id))
         || getDressingRow(this.state, row.id);
       if (ent) ent.rot += row.spin * dt;
+      // Dormant dressing rows (no live entity) need the journal for the renderer pose
+      // gate; live ids no-op inside the mark. Otherwise the prop freezes at insert yaw.
+      markDressingRowPoseDirty(this.state, row.id);
     }
   },
 

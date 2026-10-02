@@ -2595,6 +2595,20 @@ function kickDecodeRunwayAssets(owner, entities) {
   const decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
   const decodeSeconds = (entity) => entityTimeToGlassSeconds(
     entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
+  // Player-anchored twin of the focus-anchored measure: after a relocate the focus can
+  // trail the player by thousands of WU while it crawls over, and rows the collect disc
+  // unioned in on the player leg would otherwise never satisfy the runway horizon until
+  // the glass lands. Same cook-from-the-player precedent as isInboundDecodeHull.
+  const kickPlayer = playerEntityForRenderState(state);
+  const kickPlayerX = Number(kickPlayer && kickPlayer.pos && kickPlayer.pos.x) || 0;
+  const kickPlayerZ = Number(kickPlayer && kickPlayer.pos && kickPlayer.pos.z) || 0;
+  const envPlayer = (env.anchorX === kickPlayerX && env.anchorZ === kickPlayerZ)
+    ? null
+    : { glassR: env.glassR, anchorX: kickPlayerX, anchorZ: kickPlayerZ, pvx: env.pvx, pvz: env.pvz };
+  const decodeSecondsPlayer = envPlayer
+    ? (entity) => entityTimeToGlassSeconds(
+        entity, envPlayer, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad)
+    : null;
   // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
   // the earliest glass deadline: the plan decode lane is serial, so the hull closest
   // to contact always claims it first. Only the first two in that order can ever
@@ -2630,12 +2644,14 @@ function kickDecodeRunwayAssets(owner, entities) {
     // it is still off the glass rather than reaching contact as a resolving marker.
     const wave = entityMatchesWaveHullRunway(entity, state);
     const seconds = decodeSeconds(entity);
+    const secondsPlayer = decodeSecondsPlayer ? decodeSecondsPlayer(entity) : Infinity;
+    const effective = Math.min(seconds, secondsPlayer);
     if (!wave
         && !isEntityAuthoredUpgradeRelevant(entity, state)
-        && !(seconds <= TABLE_DECODE_RUNWAY_SECONDS)) return false;
+        && !(effective <= TABLE_DECODE_RUNWAY_SECONDS)) return false;
     if (resolved) resolvedFiles.set(entity.id, resolved);
     key.wave = wave ? 0 : 1;
-    key.seconds = seconds;
+    key.seconds = effective;
     return true;
   });
   // The decode runway warms the LIBRARY half only — a mounted substrate would otherwise
@@ -7674,7 +7690,12 @@ export const render = {
     try {
       const drawhist = query && query.get('drawhist');
       this._drawHistogramWindow = drawhist != null ? Math.max(1, +drawhist || 120) : 0;
-      if (this._drawHistogramWindow) console.info(`[drawhist] armed: window=${this._drawHistogramWindow}f — result lands on globalThis.__sfDrawHistogram each window`);
+      if (this._drawHistogramWindow) {
+        // accumulate info.render.calls across the whole frame's passes; the sampler
+        // reads + resets once per frame so glCalls covers shadow/post/producer too.
+        if (renderer && renderer.info) renderer.info.autoReset = false;
+        console.info(`[drawhist] armed: window=${this._drawHistogramWindow}f — result lands on globalThis.__sfDrawHistogram each window`);
+      }
     } catch (_) { this._drawHistogramWindow = 0; }
 
     state.render.scene = scene;
@@ -17741,11 +17762,13 @@ export const render = {
       || (this._drawHistState = {
         frames: 0,
         draws: 0,
+        glCalls: 0,
         frustum: new THREE.Frustum(),
         projScreen: new THREE.Matrix4(),
         byGeom: new Map(),
         stack: [],
       });
+    const hiddenDrawn = this.renderer && this.renderer.__sfLastHiddenDrawables;
     cam.updateMatrixWorld();
     st.projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     st.frustum.setFromProjectionMatrix(st.projScreen);
@@ -17755,20 +17778,27 @@ export const render = {
     st.stack.push(this.scene);
     while (st.stack.length) {
       const obj = st.stack.pop();
-      if (obj.visible === false) continue;
+      // Objects the unready-drawable guard hid during the actual pass are visible
+      // again by the time this sampler runs — consult the guard's record, or the
+      // histogram over-reports precisely during the link windows it exists to see.
+      if (obj.visible === false || (hiddenDrawn && hiddenDrawn.has(obj))) continue;
       const children = obj.children;
       for (let i = 0; i < children.length; i++) st.stack.push(children[i]);
-      if (obj.isMesh !== true) continue;
-      if (obj.material && obj.material.visible === false) continue;
+      if (!(obj.isMesh === true || obj.isPoints === true || obj.isLine === true
+          || obj.isSprite === true)) continue;
+      if (obj.material && !Array.isArray(obj.material) && obj.material.visible === false) continue;
       // Honest counting: a mesh outside the camera's layers or an instanced mesh
       // with count<=0 submits nothing; a material array submits one call per
-      // non-empty geometry group, not one call per mesh.
+      // non-empty geometry group whose own material is visible, not one call per mesh.
       if (!cam.layers.test(obj.layers)) continue;
       if (obj.isInstancedMesh === true && !(obj.count > 0)) continue;
       if (obj.frustumCulled !== false && !st.frustum.intersectsObject(obj)) continue;
       const groups = Array.isArray(obj.material)
         ? (obj.geometry && Array.isArray(obj.geometry.groups)
-          ? Math.max(1, obj.geometry.groups.filter((g) => g && g.count > 0).length || 1)
+          ? Math.max(1, obj.geometry.groups.filter(
+              (g) => g && g.count > 0
+                && !(obj.material[g.materialIndex] && obj.material[g.materialIndex].visible === false),
+            ).length || 1)
           : Math.max(1, obj.material.length))
         : 1;
       st.draws += groups;
@@ -17783,6 +17813,14 @@ export const render = {
       if (obj.isInstancedMesh === true) row.instanced++;
       if (obj.name && row.names.size < 8) row.names.add(obj.name);
     }
+    // The scene-model count above only sees the color pass's subjects; renderer.info
+    // counts what GL actually submitted this frame — color + shadow-caster + producer +
+    // post/fullscreen quads — the gap between the two is the shadow/post overhead.
+    const frameInfo = this.renderer && this.renderer.info;
+    const glCalls = frameInfo && frameInfo.render ? (Number(frameInfo.render.calls) || 0) : 0;
+    if (frameInfo && typeof frameInfo.reset === 'function') frameInfo.reset();
+    st.glCalls += glCalls;
+    if (hiddenDrawn) hiddenDrawn.clear();
     st.frames++;
     if (st.frames >= this._drawHistogramWindow) {
       const rows = [...st.byGeom.entries()]
@@ -17796,11 +17834,18 @@ export const render = {
           names: [...r.names].slice(0, 4),
         }));
       const total = +(st.draws / st.frames).toFixed(1);
-      globalThis.__sfDrawHistogram = { frames: st.frames, totalDrawsPerFrame: total, topClusters: rows };
-      console.info(`[drawhist] ${st.frames}f total=${total}/f top=${rows.map((r) => `${r.avg}x${r.type}`).join(' ')}`);
+      const glTotal = +(st.glCalls / st.frames).toFixed(1);
+      globalThis.__sfDrawHistogram = {
+        frames: st.frames,
+        totalDrawsPerFrame: total,
+        glDrawCallsPerFrame: glTotal,
+        topClusters: rows,
+      };
+      console.info(`[drawhist] ${st.frames}f scene=${total}/f gl=${glTotal}/f top=${rows.map((r) => `${r.avg}x${r.type}`).join(' ')}`);
       st.byGeom.clear();
       st.frames = 0;
       st.draws = 0;
+      st.glCalls = 0;
     }
   },
 
