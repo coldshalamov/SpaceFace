@@ -44,6 +44,7 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { laneCommandSink, laneRpc } from '../../../core/simLaneCommands.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
@@ -399,8 +400,8 @@ function demandWord(level) { return level >= 3 ? 'high' : level === 1 ? 'low' : 
 const TEN_MIN_S = 600;
 const TEN_MIN_SAMPLES = 40;
 
-function parseHistoryPoints(entry) {
-  const points = entry && Array.isArray(entry.history) ? entry.history : [];
+function parseHistoryPoints(points) {
+  points = Array.isArray(points) ? points : [];
   const out = [];
   for (const point of points) {
     if (point && typeof point === 'object') {
@@ -430,8 +431,8 @@ function windowHistory(points, nowS) {
   return points.length > TEN_MIN_SAMPLES ? points.slice(-TEN_MIN_SAMPLES) : points;
 }
 
-function priceHistory(entry, def, nowS) {
-  const values = windowHistory(parseHistoryPoints(entry), nowS).map((point) => point.mid);
+function priceHistory(points, entry, def, nowS) {
+  const values = windowHistory(parseHistoryPoints(points), nowS).map((point) => point.mid);
   if (values.length > 1) return values;
   // The economy seeds every listing before this screen opens. This is only a defensive
   // degradation for malformed legacy data; it never invents a shared trend.
@@ -439,8 +440,8 @@ function priceHistory(entry, def, nowS) {
   return [current, current];
 }
 
-function priceHistorySeries(entry, def, nowS) {
-  const windowed = windowHistory(parseHistoryPoints(entry), nowS);
+function priceHistorySeries(points, entry, def, nowS) {
+  const windowed = windowHistory(parseHistoryPoints(points), nowS);
   if (windowed.length > 1) return windowed;
   const current = Math.max(1, unitBuy(entry, def));
   const now = Number(nowS);
@@ -759,13 +760,56 @@ export function createMarketScreen(ctx) {
   }
 
   // One register row: name (◆ before it when tracked), buy + trend, sell, stock, held.
+  // Worker lane: the commodity wire mirror projects `history` out of market leaves —
+  // the 64-point rings stay sim-side and arrive via the marketHistory rpc (stage-7
+  // item B). The render stays synchronous: a miss draws the entry's own history field
+  // (main lane keeps it inline) or the flat fallback; the resolved ack repaints once.
+  // Station-scoped per dock session — a ring drifts one point per economy sample, far
+  // inside the sparkline's ten-minute window.
+  const historyBackfill = new Map();   // commodityId -> points[]
+  let historyBackfillSid = null;
+  let historyBackfillState = 'idle';   // 'idle' | 'inflight' | 'done' — one fetch per station per screen
+  let historyBackfillSeq = 0;
+  function laneHistoryPoints(sid, commodityId, entry) {
+    if (sid && sid === historyBackfillSid) {
+      const cached = historyBackfill.get(commodityId);
+      if (cached) return cached;
+    }
+    return entry && entry.history;
+  }
+  function ensureMarketHistory(state, sid) {
+    if (!sid || !laneCommandSink() || disposed) return;
+    if (historyBackfillSid !== sid) {
+      historyBackfillSid = sid;
+      historyBackfill.clear();
+      historyBackfillState = 'idle';
+    }
+    if (historyBackfillState !== 'idle') return;
+    const market = state && state.economy && state.economy.markets && state.economy.markets[sid];
+    if (!market) return;
+    historyBackfillState = 'inflight';
+    const seq = ++historyBackfillSeq;
+    Promise.resolve(laneRpc('marketHistory', { stationId: sid })).then((ack) => {
+      historyBackfillState = 'done';
+      if (disposed || seq !== historyBackfillSeq) return;
+      const rows = ack && (ack.histories || (ack.result && ack.result.histories));
+      if (rows && typeof rows === 'object') {
+        for (const cid of Object.keys(rows)) {
+          if (Array.isArray(rows[cid]) && rows[cid].length) historyBackfill.set(cid, rows[cid]);
+        }
+        if (visible) renderAll(ctx.state || {});
+      }
+    }, () => { historyBackfillState = 'done'; });
+  }
+
   function commodityRowHtml(r, state, tracked_, selected) {
-    const hist = priceHistory(r.entry, r.def, state && state.simTime);
+    const sid = stationId(state);
+    const hist = priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state && state.simTime);
     const buy = unitBuy(r.entry, r.def);
     const sell = unitSell(r.entry, r.def);
     const stock = Math.max(0, Math.floor(Number(r.entry && r.entry.stock) || 0));
     const demand = demandLevel(r.entry);
-    const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: r.def, entry: r.entry });
+    const drivers = presentMarketDrivers({ state, stationId: sid, commodity: r.def, entry: r.entry });
     const held = heldQty(state, r.id);
     return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
@@ -891,6 +935,8 @@ export function createMarketScreen(ctx) {
   }
 
   function renderList(state) {
+    const sid = stationId(state);
+    ensureMarketHistory(state, sid);
     const rows = tradedList(state);
     const tracked_ = trackedCmdty(state);
     const query = marketQuery.trim().toLocaleLowerCase();
@@ -925,7 +971,7 @@ export function createMarketScreen(ctx) {
     const signature = JSON.stringify({
       marketFilter, marketQuery, cargoOnly, tracked: tracked_,
       rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), unitSell(r.entry, r.def), r.entry && r.entry.stock,
-        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def, state.simTime).at(-1),
+        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state.simTime).at(-1),
         // The badge moves with the cost basis, not only the price — include it so a fresh buy
         // reprices the row even when quantity is unchanged.
         Math.round(heldProfitPct(state, r.id, unitSell(r.entry, r.def), r.def) || 0)]),
@@ -1015,7 +1061,8 @@ export function createMarketScreen(ctx) {
     pinSealedSellQuantity(state, r.id);
     const def = r.def, entry = r.entry;
     const sid = stationId(state);
-    const hist = priceHistorySeries(entry, def, state && state.simTime);
+    ensureMarketHistory(state, sid);
+    const hist = priceHistorySeries(laneHistoryPoints(sid, r.id, entry), entry, def, state && state.simTime);
     const forecast = sid ? predictPriceCurve(state, sid, r.id) : [];
     const buy = unitBuy(entry, def), sell = unitSell(entry, def);
     const avg = Number(def.basePrice) || buy;
