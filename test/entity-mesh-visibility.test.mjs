@@ -107,6 +107,28 @@ test('visibility helper only writes when the flag changes', () => {
   assert.equal(mesh.visible, true);
 });
 
+test('the live camera owns submission in both directions, independent of sim glass membership', () => {
+  const activityFrame = {
+    complete: true,
+    renderGlassIds: new Set([7]),
+    renderRunwayIds: new Set([8]),
+  };
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, onLiveGlass: false }), false,
+    'the wider deterministic sim glass must not submit an off-camera body');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, ledgerRow: true, onLiveGlass: false }), false,
+    'an off-camera ledger root stays resident without being submitted');
+  assert.equal(shouldSubmitEntityMesh({ entityId: 8, presentationTier: 'R1_RUNWAY', onLiveGlass: true }), true,
+    'a live camera arrival draws before the next activity-frame publication');
+  assert.equal(shouldSubmitEntityMesh({ entityId: 9, presentationTier: 'R2_METADATA', onLiveGlass: true }), true,
+    'a retained ready root on the real screen does not disappear on a stale sim tier');
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, onLiveGlass: false }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, onLiveGlass: false }), true);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, authoredPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, pipelinesPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, geometryPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, snapshotMissing: true }), false);
+});
+
 test('authored station and place commits merge static plates before freeze', async () => {
   const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
   // Place-prop HLOD substrate is unique per place: safe to merge before freeze.

@@ -14341,8 +14341,7 @@ export const render = {
       } else {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       }
-      const linkOnGlass = this.state.mode === 'flight' && entityIsOnReadableGlass(e, this.state);
-      const compileAsteroid = e.type === 'asteroid';
+      const linkOnGlass = this.state.mode === 'flight' && entityIsOnDeadlineGlass(e, this.state);
       // Do not compile or 1x1-upload held first-flight rocks during the live
       // frame. That was the leftover Intel context-loss: several residency
       // prepares stacked on the first present. Cooked roots are stamped behind
@@ -14357,13 +14356,23 @@ export const render = {
           const data = m.userData || (m.userData = {});
           data.pipelinesPending = true;
           const subject = m;
+          const capturedState = this.state;
+          const capturedRender = capturedState.render;
+          const capturedRenderer = capturedRender.renderer;
+          const capturedGeneration = capturedRender.admissionRunGeneration;
+          const isActive = () => this.state === capturedState
+            && capturedState.render === capturedRender
+            && capturedRender.renderer === capturedRenderer
+            && capturedRender.admissionRunGeneration === capturedGeneration
+            && capturedRender.compileObjectPipelines === compileFn
+            && e.alive !== false && e.mesh === subject && !!subject.parent;
           void yieldAfterPresent().then(() => {
-            const compile = this.state && this.state.render
-              && this.state.render.compileObjectPipelines;
-            if (typeof compile === 'function' && subject && subject.parent) {
-              return compile(subject);
-            }
-            if (subject && subject.userData) subject.userData.pipelinesPending = false;
+            if (!isActive()) return;
+            // A freshly built on-camera body has the same deadline as an authored
+            // upgrade. Ambient FIFO priority here left its root hidden for seconds.
+            return compileFn(subject, {
+              urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
+            });
           });
         } else {
           void compileFn(m);
