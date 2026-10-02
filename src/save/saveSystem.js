@@ -3008,6 +3008,10 @@ export const save = {
     let raw = null;
     try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
     catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+    // NXI-234: capture the load generation before the worker roundtrip. A restore that
+    // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
+    // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
+    const acceptSeq = this._restoreSequence;
     const primaryPromise = this._prepareEnvelopeStringAsync(raw);
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
     // is main-thread serialize work that used to serialize after the roundtrip. A failed
@@ -3030,6 +3034,7 @@ export const save = {
       }
       return this._restorePreparedEnvelopeAsync(primary, slot, {
         ...(skippedNewer ? { skippedNewer } : null),
+        acceptSeq,
         rollbackSnapshot,
         rollbackSnapshotError,
       });
@@ -3046,7 +3051,7 @@ export const save = {
       const restored = await this._restorePreparedEnvelopeAsync(backup, slot, Object.assign(
         { emitError: false, recovered: true },
         skippedNewer ? { skippedNewer } : null,
-        { rollbackSnapshot, rollbackSnapshotError }));
+        { acceptSeq, rollbackSnapshot, rollbackSnapshotError }));
       if (restored) {
         let promoted = false;
         try {
@@ -3214,6 +3219,13 @@ export const save = {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
 
+    // NXI-234: a request stamped before a newer restore committed is stale — it resolves
+    // handled without touching the newer world. Checked on every entry, including the
+    // deferred re-run below, because the queue only survives until a session closes.
+    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return true;
+    }
+
     // SFQ-B223: a load arriving inside the restore window defers whole — the deferred call
     // re-runs this full path, so its rollback snapshot reads the now-restored world instead
     // of being captured half-restored here and discarded. Rollback restores are internal and
@@ -3328,6 +3340,12 @@ export const save = {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
 
+    // NXI-234: the worker prepare is the slow leg — a newer load may have committed while it
+    // ran. Bail before capturing a rollback snapshot over a world this load must not touch.
+    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return true;
+    }
+
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (!rollbackAttempt) {
@@ -3410,7 +3428,7 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot);
+          return this._restore(data, slot, options);
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -3418,6 +3436,12 @@ export const save = {
         }
       });
       return marker;
+    }
+
+    // NXI-234: last gate before the destructive session — a request whose captured generation
+    // no longer matches was superseded by a newer committed restore while it waited.
+    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return { restored: false, superseded: true, stale: true, slot };
     }
 
     const s = this._openRestoreSession(data, slot, options);
@@ -3440,7 +3464,7 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot);
+          return this._restore(data, slot, options);
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -3448,6 +3472,12 @@ export const save = {
         }
       });
       return marker;
+    }
+
+    // NXI-234: last gate before the destructive session — a request whose captured generation
+    // no longer matches was superseded by a newer committed restore while it waited.
+    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return { restored: false, superseded: true, stale: true, slot };
     }
 
     const s = this._openRestoreSession(data, slot, options);

@@ -233,3 +233,45 @@ test('rollback serializer failure rejects before target deserialize or mutation'
     error: 'synthetic rollback snapshot failure',
   });
 });
+
+// NXI-234: the load generation is captured when the async prepare starts — a load whose
+// prepare completes after a newer run already committed is superseded at the destructive
+// boundary and cannot overwrite it.
+test('a late-completing load cannot overwrite a newer accepted run', async () => {
+  const harness = makeHarness();
+  // Warmup: the harness's first deserialize always throws, so this load exercises its
+  // rollback and leaves the live world on marker 'original'.
+  assert.equal(harness.save.loadEnvelope(targetEnvelope(harness), 'warm-slot'), false);
+  assert.equal(harness.state.economy.marker, 'original');
+  assert.equal(harness.deserializeCalls, 2, 'warmup is one failed target + one rollback');
+
+  // Load A captures the generation while its async prepare is still in flight.
+  const aSeq = harness.save._restoreSequence;
+
+  // Load B is accepted later and commits its world first.
+  const bEnvelope = targetEnvelope(harness);
+  bEnvelope.data.economy = { marker: 'world-b' };
+  assert.equal(harness.save.loadEnvelope(bEnvelope, 'b-slot'), true);
+  assert.equal(harness.state.economy.marker, 'world-b');
+  assert.ok(harness.save._restoreSequence > aSeq, 'committing B must advance the load generation');
+
+  // A's stale completion reaches the destructive commit — superseded, and B survives.
+  const aEnvelope = targetEnvelope(harness);
+  aEnvelope.data.economy = { marker: 'world-a' };
+  const preparedA = harness.save._prepareEnvelope(aEnvelope);
+  assert.equal(preparedA.ok, true);
+  const late = await harness.save._restorePreparedEnvelopeAsync(preparedA, 'a-slot', { acceptSeq: aSeq });
+  assert.equal(late, true, 'a superseded load reports handled, not failed');
+  assert.equal(harness.state.economy.marker, 'world-b', 'the newer run must survive the stale load');
+  assert.equal(harness.state.save.currentSlot, 'b-slot');
+  assert.equal(harness.deserializeCalls, 3, 'a superseded load never reaches deserialize');
+  assert.equal(harness.events.filter((e) => e.name === 'save:error').length, 1,
+    'supersession emits no error receipt (only the warmup failure is logged)');
+
+  // Neighboring legitimate success: a request stamped with the current generation still loads.
+  const preparedC = harness.save._prepareEnvelope(aEnvelope);
+  const fresh = await harness.save._restorePreparedEnvelopeAsync(
+    preparedC, 'a-slot', { acceptSeq: harness.save._restoreSequence });
+  assert.equal(fresh, true);
+  assert.equal(harness.state.economy.marker, 'world-a', 'a current-generation load still restores');
+});
