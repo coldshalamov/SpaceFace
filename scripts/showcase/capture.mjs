@@ -368,7 +368,7 @@ async function runItem(id, spec) {
     rec.statDiff = await derivedDiff(before, after);
     // Flag-value fittings (filters, ecology kit, racks) contribute a use-time `mods`
     // entry rather than a derived field: read the fitted def's mods as the second proof.
-    rec.mods = await sh((d) => window.__showcase.modsFor(d), id);
+    rec.mods = (await sh((d) => window.__showcase.modsFor(d), id)) || null;
     const sceneName = DEMO_SCENE[spec.demo];
     if (sceneName && SCENES[sceneName]) await SCENES[sceneName](spec);
     await settle(500);

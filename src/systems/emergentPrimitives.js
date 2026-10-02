@@ -104,6 +104,7 @@ export function ensureEmergent(state) {
     flashes: [],
     owners: Object.create(null),
     ray: null,
+    rayTargetId: null,
     presentation,
     presentationCount: 0,
     audio,
@@ -438,24 +439,14 @@ export function setEmergentRay(state, owner, def, angle) {
   if (!state || !owner) return;
   const world = ensureEmergent(state);
   const aim = Number.isFinite(angle) ? angle : num(owner.rot);
-  const fresh = !world.ray || world.ray.ownerId !== owner.id || world.ray.weaponId !== (def && def.id);
   world.ray = {
     ownerId: owner.id,
     angle: aim,
+    kind: (def && def.emergentPrimitive) || 'ray',
     weaponId: def && def.id,
     range: def && Number.isFinite(def.range) ? def.range : T.thermalRange,
   };
   world.hot = true;
-  if (fresh) {
-    const rBus = stampBus(world);
-    if (rBus && typeof rBus.emit === 'function') {
-      rBus.emit('emergent:applied', {
-        kind: (def && def.emergentPrimitive) || 'ray',
-        ownerId: owner.id,
-        weaponId: def && def.id,
-      });
-    }
-  }
 }
 
 export function clearEmergentRay(state, ownerId) {
@@ -1038,14 +1029,34 @@ function tickGongs(state, sys) {
 }
 
 function tickRay(state, dt, sys) {
-  const ray = state.emergent.ray;
-  if (!ray) return;
+  const world = state.emergent;
+  const ray = world.ray;
+  // A dead/air tick clears the acquisition stamp so re-aiming at the same hull later
+  // reports as a fresh application instead of being swallowed by the dedupe below.
+  if (!ray) { world.rayTargetId = null; return; }
   const owner = ent(state, ray.ownerId);
-  state.emergent.ray = null;
-  if (!owner || !owner.pos) return;
+  world.ray = null;
+  if (!owner || !owner.pos) { world.rayTargetId = null; return; }
   const from = muzzle(owner, ray.angle);
   const hit = traceRay(state, from.x, from.z, ray.angle, ray.range, owner.id);
-  flash(state.emergent, 'arc', from.x, from.z, hit ? hit.x : from.x + Math.cos(ray.angle) * 24, hit ? hit.z : from.z + Math.sin(ray.angle) * 24, 1);
+  flash(world, 'arc', from.x, from.z, hit ? hit.x : from.x + Math.cos(ray.angle) * 24, hit ? hit.z : from.z + Math.sin(ray.angle) * 24, 1);
+  // The ray is re-asserted every tick it is held, so emitting on setEmergentRay would
+  // report ~60 applications a second and would also fire on a ray that hits nothing.
+  // The application event therefore lives here, on the rising edge of an acquired
+  // target — one emit per hull the beam starts cooking, matching the bolt contract.
+  const targetId = hit ? hit.entity.id : null;
+  if (targetId != null && targetId !== world.rayTargetId) {
+    const rBus = stampBus(world);
+    if (rBus && typeof rBus.emit === 'function') {
+      rBus.emit('emergent:applied', {
+        kind: ray.kind || 'ray',
+        targetId,
+        ownerId: ray.ownerId,
+        weaponId: ray.weaponId,
+      });
+    }
+  }
+  world.rayTargetId = targetId;
   if (!hit) return;
   addHeat(state, hit.entity, T.thermalHeatPerSec * dt, sys);
   const j = 6 * dt * 60;

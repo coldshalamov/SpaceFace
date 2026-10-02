@@ -428,6 +428,7 @@ async function installShowcaseApi(page) {
           turnRate: d.turnRate, boostMaxSpeed: d.flightModel?.boostMaxSpeed,
           boostMult: d.flightModel?.boostMult, weaponRangeMult: d.weaponRangeMult,
           weaponDmgMult: d.weaponDmgMult, weaponHeatDissipMult: d.weaponHeatDissipMult,
+          weaponHeatDissipPct: d.weaponHeatDissipPct,
           radarRangeMult: d.radarRangeMult, radarRange: d.radarRange,
           tetherSpoolMult: d.tetherSpoolMult, tetherReelRateMult: d.tetherReelRateMult,
           masslineHeadId: d.masslineHeadId, magnetRange: d.magnetRange,

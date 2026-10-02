@@ -12,7 +12,6 @@
 import { WEAPONS } from './weapons.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
-import { buildSlotList } from '../systems/ships.js';
 import { FITTING_MEDIA_IDS } from './fittingMediaManifest.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
@@ -691,6 +690,12 @@ function moduleStats(def) {
   push('Loot range', m.lootMagnetRange != null ? num(m.lootMagnetRange) : null);
   push('Scan range', m.scanRangeMult != null ? `×${num(m.scanRangeMult, 2)}` : null);
   push('Anomaly fix', m.anomalyPingReduction != null ? `−${m.anomalyPingReduction} scan` : null);
+  push('Hull burst', m.hullBurst ? `${m.hullBurst} · rank ${m.hullBurstRank || 1}` : null);
+  push('Ram damage', m.ramDamageDealtMult != null && m.ramDamageDealtMult !== 1 ? `×${num(m.ramDamageDealtMult, 2)}` : null);
+  push('Tow flail', m.towFlail === true ? 'rigged' : null);
+  // A def whose mods are all identity (the stock thruster cluster) has no numeric stat
+  // to quote — the truthful chip is that it grants the hull's unmodified handling.
+  if (out.length === 0) out.push({ label: 'Handling', value: 'stock baseline' });
   return out;
 }
 
