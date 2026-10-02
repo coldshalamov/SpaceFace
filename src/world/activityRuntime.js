@@ -871,6 +871,106 @@ export function getClassifyFrameQuietRetainForBench() {
   return CLASSIFY_FRAME_QUIET_RETAIN !== false;
 }
 
+/**
+ * Bench A/B: production default ON. Early quiet latch short-circuits classifyWorld before
+ * extents / rebuildPinFacts / selectClassify / frame-retain re-arm when the parked frame is
+ * already proven stable. Different angle from held selectClassify id-replay (~1.16×) which
+ * still paid extents+pinFacts+retain walk.
+ */
+let CLASSIFY_EARLY_QUIET_LATCH = true;
+export function setClassifyEarlyQuietLatchForBench(enabled) {
+  CLASSIFY_EARLY_QUIET_LATCH = enabled !== false;
+}
+export function getClassifyEarlyQuietLatchForBench() {
+  return CLASSIFY_EARLY_QUIET_LATCH !== false;
+}
+
+/** Rescan while early-latched (0.5 s @ 60 Hz). */
+const CLASSIFY_EARLY_QUIET_RESCAN_TICKS = 30;
+
+function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
+  if (CLASSIFY_EARLY_QUIET_LATCH === false) return false;
+  const latch = runtime._earlyQuietLatch;
+  if (!latch || latch.armed !== true) return false;
+  if (!player || !player.pos) return false;
+  const pvx = finite(player.vel && player.vel.x);
+  const pvz = finite(player.vel && player.vel.z);
+  if ((pvx * pvx + pvz * pvz) > 0.25) return false;
+  const tick = state.tick | 0;
+  if ((tick - (latch.armedTick | 0)) >= CLASSIFY_EARLY_QUIET_RESCAN_TICKS) return false;
+  if (latch.originX !== origin.x || latch.originZ !== origin.z) return false;
+  const cam = simCamera(state);
+  if (latch.zoom !== cam.zoom || latch.fov !== cam.fov || latch.tilt !== cam.tilt) return false;
+  const membership = entityIndexVersion(state);
+  if (latch.membership !== membership) return false;
+  const staticAuthority = entityIndexPhysicsStaticVersion(state);
+  if (latch.staticAuthority !== staticAuthority) return false;
+  const maxSpeed = Math.max(TABLE_REFERENCE_SPEED_WU, finite(player.maxSpeed));
+  if (latch.maxSpeed !== maxSpeed) return false;
+  // Cheap pin-intent smoke: mining/dock/hail/target flips must wake without waiting for rescan.
+  const data = player.data || {};
+  const combat = data.combat || {};
+  if (latch.miningId !== (data.miningTargetId ?? null)) return false;
+  if (latch.dockId !== (data.dockTargetId ?? null)) return false;
+  if (latch.hailId !== (data.hailTargetId ?? null)) return false;
+  if (latch.targetId !== (combat.targetId ?? data.targetId ?? null)) return false;
+  // Pose-key verify (same contract as frame-retain): any visit pose drift wakes so a
+  // teleported rock cannot keep a stale glass/runway stamp under the early latch.
+  const retain = runtime._rockVisitRetain;
+  if (!retain || retain.framePrimed !== true) return false;
+  const n = retain.frameVisitCount | 0;
+  const ids = retain.frameVisitIds;
+  const poseKeys = retain.poseKeys;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function' || !Array.isArray(ids) || !poseKeys) {
+    return false;
+  }
+  for (let i = 0; i < n; i++) {
+    const id = ids[i];
+    const entity = entities.get(id);
+    if (!entity || entity.alive === false) return false;
+    if (poseKeys.get(id) !== rockPoseRetainKey(entity)) return false;
+  }
+  runtime.classifyMode = 'early-quiet-latch';
+  runtime.classifyVisits = 0;
+  runtime.changedIds.length = 0;
+  runtime.wakeCandidates.length = 0;
+  runtime.wakeTokensById.clear();
+  runtime.wakeEventsById.clear();
+  runtime.wakeBoundaryTick = -1;
+  return true;
+}
+
+function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
+  if (CLASSIFY_EARLY_QUIET_LATCH === false) {
+    runtime._earlyQuietLatch = null;
+    return;
+  }
+  const cam = simCamera(state);
+  const data = player && player.data || {};
+  const combat = data.combat || {};
+  runtime._earlyQuietLatch = {
+    armed: true,
+    armedTick: state.tick | 0,
+    originX: origin.x,
+    originZ: origin.z,
+    zoom: cam.zoom,
+    fov: cam.fov,
+    tilt: cam.tilt,
+    membership: entityIndexVersion(state),
+    staticAuthority: entityIndexPhysicsStaticVersion(state),
+    maxSpeed: Math.max(TABLE_REFERENCE_SPEED_WU, finite(player && player.maxSpeed)),
+    miningId: data.miningTargetId ?? null,
+    dockId: data.dockTargetId ?? null,
+    hailId: data.hailTargetId ?? null,
+    targetId: combat.targetId ?? data.targetId ?? null,
+  };
+}
+
+function clearEarlyQuietClassifyLatch(runtime) {
+  if (runtime && runtime._earlyQuietLatch) runtime._earlyQuietLatch = null;
+}
+
 /** Quantize XZ to ~0.25 wu so quiet parked rocks share a stable retain key. */
 function rockPoseRetainKey(entity) {
   const pos = entity && entity.pos;
@@ -1020,6 +1120,9 @@ function classifyWorld(state, runtime) {
     ? state.entities.get(state.playerId)
     : null;
   const origin = player && player.pos ? player.pos : { x: 0, z: 0 };
+  // Early quiet latch: parked + prior frame-retain proven → skip extents / pinFacts /
+  // selectClassify / retain re-arm. Wakes on move, camera, membership, pin intent, rescan.
+  if (tryEarlyQuietClassifyLatch(state, runtime, player, origin)) return;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
   const cam = simCamera(state);
   const glass = glassHalfExtents(cam.zoom, cam.fov, TABLE_SIM_ASPECT, cam.tilt);
@@ -1074,10 +1177,14 @@ function classifyWorld(state, runtime) {
     if ((pvx * pvx + pvz * pvz) <= 0.25) {
       armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
       armClassifyFrameVisit(runtime, visit);
+      armEarlyQuietClassifyLatch(state, runtime, player, origin);
     } else if (runtime._rockVisitRetain) {
       runtime._rockVisitRetain.primed = false;
       runtime._rockVisitRetain.framePrimed = false;
+      clearEarlyQuietClassifyLatch(runtime);
     }
+  } else {
+    clearEarlyQuietClassifyLatch(runtime);
   }
   if (!frameRetained) {
   statics.length = 0;
@@ -1299,9 +1406,12 @@ function classifyWorld(state, runtime) {
     if ((pvx * pvx + pvz * pvz) <= 0.25) {
       armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
       armClassifyFrameVisit(runtime, visit);
+      // Do not arm early latch here — first parked pass must prove frame-retain next tick.
+      clearEarlyQuietClassifyLatch(runtime);
     } else if (runtime._rockVisitRetain) {
       runtime._rockVisitRetain.primed = false;
       runtime._rockVisitRetain.framePrimed = false;
+      clearEarlyQuietClassifyLatch(runtime);
     }
   }
   } // end !frameRetained visit path
@@ -1313,7 +1423,8 @@ function classifyWorld(state, runtime) {
 
   // frame-retain keeps the prior incremental lists — same prune gate as incremental.
   const pruneLikeIncremental = runtime.classifyMode === 'incremental'
-    || runtime.classifyMode === 'frame-retain';
+    || runtime.classifyMode === 'frame-retain'
+    || runtime.classifyMode === 'early-quiet-latch';
   for (const id of runtime.signaturesById.keys()) {
     const stillLive = pruneLikeIncremental
       ? !!(state.entities && typeof state.entities.get === 'function'

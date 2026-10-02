@@ -70,7 +70,8 @@ test('frame quiet retain keeps glass/runway and reports frame-retain mode', () =
   step(state); // arm
   step(state); // first retain opportunity
   const rt = step(state);
-  assert.equal(rt.classifyMode, 'frame-retain');
+  assert.ok(rt.classifyMode === 'frame-retain' || rt.classifyMode === 'early-quiet-latch',
+    `expected frame-retain or early-quiet-latch, got ${rt.classifyMode}`);
   const glassA = state.activityRuntime.glassCount;
   const runwayA = state.activityRuntime.runwayCount;
   assert.ok(glassA + runwayA > 0, 'expected rocks on glass/runway');
@@ -93,7 +94,8 @@ test('frame quiet retain wakes on rock pose change', () => {
   const rock = state.rocks[0];
   rock.pos.x += 12;
   const rt = step(state);
-  assert.notEqual(rt.classifyMode, 'frame-retain');
+  assert.ok(rt.classifyMode !== 'frame-retain' && rt.classifyMode !== 'early-quiet-latch',
+    `pose jump must leave quiet retain, got ${rt.classifyMode}`);
 });
 
 test('frame quiet retain wakes on player speed', () => {
