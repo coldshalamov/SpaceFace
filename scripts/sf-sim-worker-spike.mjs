@@ -66,6 +66,7 @@ import {
   applyDomainPathUpdate,
   applySpawnInfos,
   canonicalSignature,
+  configureDomainMirroring,
   createDomainProbeChecker,
   createReadModel,
   digestIds,
@@ -116,6 +117,11 @@ const OPT = {
   consumeBatch: Math.max(0, argInt('--consume-batch', 0)),
   journalCapacity: argInt('--journal-capacity', null),
   ringBound: Math.max(0, argInt('--ring-bound', COMPLETED_TICK_RING_DEPTH)),
+  // Stage-7 item B: 'commodity' mirrors economy.markets at commodity-row
+  // granularity with the 64-point history rings projected off the wire (the
+  // 'marketHistory' rpc backfills them on demand); 'station' is the stage-6
+  // whole-station shape — byte-identical revert.
+  marketWire: argValue('--market-wire', 'commodity'),
   ackStall: argv.includes('--ack-stall'),
   probe: argValue('--probe', null),
   simLane: argValue('--sim-lane', process.env.SIM_LANE || 'worker'),
@@ -380,6 +386,34 @@ async function runOnce(options = {}) {
 async function runBody(client, frames, options = {}) {
   const journal = createTransportJournal();
   const readModel = createReadModel();
+  // Item B wire profile — installed in THIS realm before the facade probe
+  // exists, and shipped on init so the worker realm's differ signs/projects
+  // identically. 'station' sends an empty profile = stage-6 byte-identical.
+  const marketWireProfile = OPT.marketWire === 'station' ? {} : {
+    expandPaths: [
+      { segs: ['economy', 'markets'], depth: 3 },
+      { segs: ['economy', 'cycles'], depth: 3 },
+    ],
+    leafViews: [
+      // 'commodity' keeps every render-lane-consumed path on the wire (the
+      // market screen charts entry.history — census contract). The
+      // 'commodity-nohist' variant projects the 64-point price history ring
+      // off the wire instead (89.7% of a station leaf's canonical bytes) to
+      // measure the ceiling; it is only safe once the two no-op-safe readers
+      // (priceHistory backfill, market screen chart) switch to the
+      // 'marketHistory' rpc.
+      {
+        segs: ['economy', 'markets'], leafSegs: 4,
+        drop: OPT.marketWire === 'commodity-nohist' ? ['history'] : [],
+        deferFirstSign: true, firstSignTicks: 60,
+      },
+      // cycles: no projected field — expansion + deferred mints alone kill the
+      // ~24KB-per-station mint bursts (~440KB single ticks measured).
+      { segs: ['economy', 'cycles'], leafSegs: 4, drop: [], deferFirstSign: true, firstSignTicks: 60 },
+    ],
+    staggerCold: true,
+  };
+  configureDomainMirroring(marketWireProfile);
   const world = createPresentationWorld();
   const publisher = createPresentationPublisher(world, readModel, { journal });
 
@@ -416,7 +450,7 @@ async function runBody(client, frames, options = {}) {
   const timing = {
     packMs: [], wireMs: [], consumeMs: [], transportMs: [],
     workMs: [], directiveWireMs: [], rttMs: [], transportTicks: [],
-    domainDiffMs: [], domainShipBytes: [],
+    domainDiffMs: [], domainShipBytes: [], domainMarketShipBytes: [],
   };
   let eventsReceived = 0;
   // Stage-2 bridge parity: per-type receipts vs the worker's emitted counts.
@@ -496,6 +530,7 @@ async function runBody(client, frames, options = {}) {
     aux: OPT.probe === 'aux',
     auxVerify: OPT.probe === 'aux',
     domainProbe: OPT.probe === 'domains',
+    domainMirroring: marketWireProfile,
     crashAt: Number.isSafeInteger(options.crashAt) ? options.crashAt : null,
   });
   assert.equal(init.kind, 'ready');
@@ -573,6 +608,10 @@ async function runBody(client, frames, options = {}) {
       { id: 'pi-ceres-specimen', op: 'inspectListing', args: { stationId: 'station_ceres', commodityId: 'cmdty_live_specimen' } },
       { id: 'pi-helios-filament', op: 'inspectListing', args: { stationId: 'station_helios', commodityId: 'cmdty_calcified_filament' } },
       { id: 'pi-control', op: 'inspectListing', args: { stationId: 'station_helios', commodityId: 'cmdty_ore_iron' } },
+      // Item-B rpc surface: marketHistory backfills the projected-off history
+      // rings — one whole-station read + one per-commodity read.
+      { id: 'pmhist-helios', op: 'marketHistory', args: { stationId: 'station_helios' } },
+      { id: 'pmhist-ceres-iron', op: 'marketHistory', args: { stationId: 'station_ceres', commodityId: 'cmdty_ore_iron' } },
     ]],
   ]);
 
@@ -926,6 +965,7 @@ async function runBody(client, frames, options = {}) {
     timing.transportTicks.push({ tick: meta.tick, ms: Number(transportNs) / 1e6 });
     timing.domainDiffMs.push(frame.domainDiffMs || 0);
     timing.domainShipBytes.push(frame.domainShipBytes || 0);
+    timing.domainMarketShipBytes.push(frame.domainMarketShipBytes || 0);
   }
 
   let pauseReplyOk = false;
@@ -1226,7 +1266,8 @@ async function main() {
     const offAcks = new Map(off.observedRpcAcks.map((a) => [a && a.id, a]));
     const onAcks = new Map(on.observedRpcAcks.map((a) => [a && a.id, a]));
     const parityIds = ['pq-mint-market', 'pq-mint-listing-deferred', 'pq-listing-defer-live', 'pq-control',
-      'pi-ceres-iron', 'pi-ceres-specimen', 'pi-helios-filament', 'pi-control'];
+      'pi-ceres-iron', 'pi-ceres-specimen', 'pi-helios-filament', 'pi-control',
+      'pmhist-helios', 'pmhist-ceres-iron'];
     parity.hashEqual = on.sha256 === off.sha256;
     parity.onHash = on.sha256;
     parity.offHash = off.sha256;
@@ -1423,6 +1464,7 @@ async function main() {
   // across same-kind updates (mutate-in-place contract).
   const domainDiffStats = stats(results.flatMap((r) => r.timing.domainDiffMs));
   const domainShipStats = stats(results.flatMap((r) => r.timing.domainShipBytes));
+  const domainMarketShipStats = stats(results.flatMap((r) => r.timing.domainMarketShipBytes));
   // GATE G — stage-5 command surface (--probe commands): every new lane kind
   // must have been injected via the production emitters, applied worker-side
   // (commandProbe applied list), and acked ok. spawn→ack→remove and
@@ -1486,6 +1528,13 @@ async function main() {
       meanPerTick: round(domainShipStats.mean, 1),
       p95PerTick: round(domainShipStats.p95, 1),
       maxPerTick: round(domainShipStats.max, 1),
+    },
+    // economy.markets.* component of the per-tick ship — item B's target:
+    // station-mode wire tail was ~230-280KB whole-station leaves.
+    marketShipBytes: {
+      meanPerTick: round(domainMarketShipStats.mean, 1),
+      p95PerTick: round(domainMarketShipStats.p95, 1),
+      maxPerTick: round(domainMarketShipStats.max, 1),
     },
     oversizeKeys: run.domainOversize,
     domainDiffMs: {

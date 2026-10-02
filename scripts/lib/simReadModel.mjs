@@ -428,7 +428,7 @@ export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, in
 // economy.markets one more level (per-commodity rows) balloons the leaf set
 // from ~150 to ~1300 and the fixed per-pass walk (~1µs/leaf) costs more than
 // the ship bytes it saves. Kept as a tuning knob for stage 5+.
-export const DOMAIN_EXPAND_PATHS = Object.freeze([]);
+
 export const DOMAIN_COLD_BYTES = 4 * 1024;
 export const DOMAIN_COLD_TICKS = 60;
 export const DOMAIN_WARM_BYTES = 1024;
@@ -473,9 +473,62 @@ function domainCadenceFor(rootKey) {
   return ticks;
 }
 
+// Mutable mirroring profile (stage-7 item B): the differ consumes this in the
+// worker realm; the facade probe/checker consumes it in the main realm. Both
+// realms must install the SAME profile before the first diff pass or the probe
+// path sets diverge — the runner ships it on the init directive so the two
+// realms can't drift. Empty profile reproduces the stage-6 shape byte-for-byte.
+//   expandPaths: [{segs, depth}] — prefix expansion overrides (was the frozen
+//     DOMAIN_EXPAND_PATHS knob; a matching prefix raises expand depth).
+//   leafViews: [{segs, leafSegs, drop, deferFirstSign, firstSignTicks}] — leaf
+//     projections: at a leaf path of length leafSegs matching prefix segs,
+//     sign/ship the leaf minus the named keys; deferFirstSign spreads
+//     first-signs onto a slot schedule (firstSignTicks ticks — defaults to the
+//     root cadence, DOMAIN_COLD_TICKS flattens a mass-mint hardest).
+//   staggerCold: cold leaves join the staggered schedule instead of firing in
+//     the aligned DOMAIN_COLD_OFFSET burst.
+const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: false };
+
+export function configureDomainMirroring(config = {}) {
+  activeDomainConfig.expandPaths = Array.isArray(config.expandPaths) ? config.expandPaths : [];
+  activeDomainConfig.leafViews = Array.isArray(config.leafViews) ? config.leafViews : [];
+  activeDomainConfig.staggerCold = config.staggerCold === true;
+}
+
+// Find the leaf-view rule covering a leaf path, or null. leafSegs must equal
+// the full segment count (rule prefix + path suffix) so a rule can't reach
+// deeper into a subtree than it declared.
+function domainLeafViewFor(segs) {
+  for (const rule of activeDomainConfig.leafViews) {
+    if (segs.length !== rule.leafSegs) continue;
+    const p = rule.segs;
+    let match = true;
+    for (let i = 0; i < p.length; i++) {
+      if (segs[i] !== p[i]) { match = false; break; }
+    }
+    if (match) return rule;
+  }
+  return null;
+}
+
+// Shallow key-drop projection for a leaf-view rule. Returns a copy minus the
+// dropped keys — never mutates the live value; callers sign/clone the result
+// so the facade stores exactly the projected (shipped) content.
+function projectDomainLeaf(rule, v) {
+  if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
+  let has = false;
+  for (const k of rule.drop) {
+    if (Object.hasOwn(v, k)) { has = true; break; }
+  }
+  if (!has) return v;
+  const out = {};
+  for (const k of Object.keys(v)) if (!rule.drop.includes(k)) out[k] = v[k];
+  return out;
+}
+
 function expandDepthFor(segs) {
   let depth = DOMAIN_EXPAND[segs[0]] || 0;
-  for (const rule of DOMAIN_EXPAND_PATHS) {
+  for (const rule of activeDomainConfig.expandPaths) {
     const p = rule.segs;
     if (p.length >= segs.length) continue;
     let match = true;
@@ -951,21 +1004,34 @@ export function createDomainDiffer(options = {}) {
       node.kids = null;
     }
     node.leaf = true;
+    const leafRule = domainLeafViewFor(segs);
     if (node.lastSign >= 0) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       const interval = Math.max(tierTicks, domainCadenceFor(segs[0]));
       if (interval > 1) {
-        // Cold leaves keep their aligned burst (the amortized pass the p95
-        // exclusion covers); every other interval staggers by node slot.
-        if (tierTicks === DOMAIN_COLD_TICKS && interval === DOMAIN_COLD_TICKS) {
+        // Stage-6 semantics: cold leaves fire in an aligned burst (the
+        // amortized pass the p95 exclusion covers); every other interval
+        // staggers by node slot. staggerCold moves cold onto the same
+        // staggered schedule — the burst becomes a flat per-pass cost.
+        if (!activeDomainConfig.staggerCold
+            && tierTicks === DOMAIN_COLD_TICKS && interval === DOMAIN_COLD_TICKS) {
           if (tick % DOMAIN_COLD_TICKS !== DOMAIN_COLD_OFFSET) return;
         } else if (tick % interval !== node.slot % interval) {
           return;
         }
       }
+    } else if (leafRule && leafRule.deferFirstSign) {
+      // Mass-mint smoothing for leaf-view rules: a first sign waits for the
+      // leaf's slot instead of firing immediately, spreading mint bursts
+      // (e.g. station markets materializing on one economy:tick) over
+      // firstSignTicks — default the root cadence. Kept paths only — non-rule
+      // leaves still mint eagerly.
+      const interval = Math.max(1, leafRule.firstSignTicks || domainCadenceFor(segs[0]));
+      if (interval > 1 && tick % interval !== node.slot % interval) return;
     }
-    const sig = canonicalSignature(v, sigScratch);
+    const pv = projectDomainLeaf(leafRule, v);
+    const sig = canonicalSignature(pv, sigScratch);
     const digest = domainSigDigest(sig);
     stats.signedBytes += sig.length;
     node.lastSign = tick;
@@ -975,7 +1041,7 @@ export function createDomainDiffer(options = {}) {
     if (digest !== node.digest) {
       node.digest = digest;
       node.probeChanged = true;
-      updates.push({ segs, v: canonicalClone(v, cloneScratch), bytes: sig.length });
+      updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sig.length });
       stats.shipBytes += sig.length;
       stats.ships++;
       if (sig.length > DOMAIN_SHIP_CAP_BYTES && stats.oversize.length < 32) {

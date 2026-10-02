@@ -54,6 +54,7 @@ import { farLedgerScanRadius, tableLookAtOrigin } from '../../src/render/tableto
 import { liveSectorFullExtrasStubs } from '../../src/render/saveEnvelopeSectorWarm.js';
 import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
 import {
+  configureDomainMirroring,
   createDomainDiffer,
   digestIds,
   DOMAIN_MIRROR_KEYS,
@@ -450,13 +451,16 @@ export function createSimHost() {
     for (const o of r.oversize) {
       if (host.domainOversize.length < 32) host.domainOversize.push(o);
     }
+    let marketShipBytes = 0;
     for (const u of r.updates) {
       const p = u.segs.join('.');
       const rec = host.domainShipPerPath.get(p) || { ships: 0, bytes: 0 };
       rec.ships++;
       rec.bytes += u.del ? 0 : (u.bytes || 0);
       host.domainShipPerPath.set(p, rec);
+      if (u.segs[0] === 'economy' && u.segs[1] === 'markets') marketShipBytes += u.del ? 0 : (u.bytes || 0);
     }
+    r.marketShipBytes = marketShipBytes;
     return r;
   }
 
@@ -512,6 +516,10 @@ export function createSimHost() {
     host.crashAt = Number.isSafeInteger(msg.crashAt) ? msg.crashAt : null;
     host.auxVerify = msg.auxVerify === true;
     host.domainProbeEnabled = msg.domainProbe === true;
+    // Stage-7 item B: the market-wire profile travels on init so the worker
+    // realm's differ expands/projects identically to the main realm's facade
+    // probe (module-local state — realms stay in lockstep via the directive).
+    configureDomainMirroring(msg.domainMirroring || {});
     host.domainDiffer = createDomainDiffer({ probe: host.domainProbeEnabled });
 
     const scenarioContract = loadScenarioContract(msg.scenarioContractPath || 'src/data/scenarios/47a.scenario.json');
@@ -631,6 +639,23 @@ export function createSimHost() {
           cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
           pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
         };
+      }],
+      // Station market history — the render lane's on-demand backfill for the
+      // 'history' field the commodity wire mode projects out of market leaves
+      // (stage-7 item B): iterate-all readers keep mid/buy/sell/stock on the
+      // wire, the 64-point rings come through here only when a UI asks.
+      ['marketHistory', (args) => {
+        const market = (state.economy.markets || {})[(args && args.stationId) || ''];
+        if (!market) return { stationId: args && args.stationId, histories: null };
+        if (args && args.commodityId) {
+          const entry = market[args.commodityId];
+          return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
+        }
+        const histories = {};
+        for (const cid of Object.keys(market)) {
+          histories[cid] = (market[cid] && market[cid].history) || null;
+        }
+        return { stationId: args.stationId, histories };
       }],
       ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
       // Sandbox/lab ops converted off the direct-call surface. Each replays the
@@ -995,6 +1020,7 @@ export function createSimHost() {
       domainUpdates: domains.updates,
       domainProbe: (completedTick && host.domainProbeEnabled) ? domains.probe : null,
       domainShipBytes: domains.shipBytes,
+      domainMarketShipBytes: domains.marketShipBytes || 0,
       domainDiffMs: domains.diffMs,
       journalStart,
       journalEnd,
