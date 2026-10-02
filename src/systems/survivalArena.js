@@ -92,6 +92,8 @@ import { FOUNDRY_ARENA_ID } from './swarmArena.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
   CRYO_ARENA_ID,
+  CRYO_PROP_HOME_EPS,
+  CRYO_PROP_VENT_TICKS,
   applyCryoDrift,
   createCryoRoomLineage,
   planCryoInstall,
@@ -104,6 +106,7 @@ import {
   STORM_RELAY_PERIOD,
   placeStormRelays,
   planStormInstall,
+  stormRelayGuide,
 } from './stormLatticeArena.js';
 import { orbitNodePose } from '../combat/orbitNodes.js';
 import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarmEvents.js';
@@ -145,6 +148,7 @@ export const ARENA_MINE_MAX = 4;
 
 const _arenaBodiesScratch = [];
 const _arenaProjectileScratch = [];
+const _heldBodyScratch = new Set();
 
 const ARENA_MINE_ARM_DELAY_S = 3;
 const TAU = Math.PI * 2;
@@ -927,6 +931,18 @@ export const survivalArena = {
         verb: toy.verb,
         hazardType: toy.hazardType,
       })),
+      // FB-022: live prop positions — the law follows the bodies, and so must anyone asking.
+      relayPositions: this._relayLive && this._relayLive.size
+        ? Object.fromEntries([...this._relayLive].map(([k, v]) => [k, { ...v }]))
+        : null,
+      propBodies: (this._roomSolids ? [...this._roomSolids] : [])
+        .filter(([, e]) => e && e.data && e.data.propRole)
+        .map(([toyId, e]) => ({
+          toyId,
+          propRole: e.data.propRole,
+          alive: e.alive !== false,
+          pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null,
+        })),
     });
   },
 
@@ -997,9 +1013,25 @@ export const survivalArena = {
     this._cycleMachinery = run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase);
     this._authoredStrength = 0;
     this._cryoRoom = run.arenaId === CRYO_ARENA_ID ? install : null;
+    // FB-022: each prop pocket remembers its docked spot and its vented charge. The pocket
+    // rides the live body while the body is away — a bounded window, not a moved law.
+    this._cryoVents = new Map();
+    if (this._cryoRoom && this._cryoRoom.props) {
+      for (const role of ['coolant', 'heat']) {
+        const spot = this._cryoRoom.props[role] && this._cryoRoom.props[role][0];
+        if (spot) {
+          this._cryoVents.set(role, {
+            toyId: role === 'coolant' ? 'coolant_tank' : 'heat_manifold',
+            home: { x: spot.x, z: spot.z },
+            charge: CRYO_PROP_VENT_TICKS,
+          });
+        }
+      }
+    }
     this._stormAt = run.arenaId === STORM_ARENA_ID
       ? { x: install.at ? install.at.x : playerAnchor(state).x, z: install.at ? install.at.z : playerAnchor(state).z }
       : null;
+    this._relayLive = new Map();
     this._cryoShocked = new Set();
     if (this._cycleMachinery) {
       const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
@@ -1249,9 +1281,49 @@ export const survivalArena = {
     return true;
   },
 
+  /**
+   * FB-022: the coolant tank and heat manifold are live bodies; the pocket rides the body.
+   * At its dock a prop's pocket is the authored room; displaced, it vents a bounded charge —
+   * a thrown tank cools a window of a hot quadrant, then is spent inert debris. A dead body's
+   * pocket is gone. The occupancy field marker follows the pocket.
+   */
+  _syncCryoProps(state) {
+    const room = this._cryoRoom;
+    if (!room || !room.props || !this._cryoVents) return;
+    const system = this._fieldsSystem();
+    let slot = 0;
+    for (const [role, vent] of this._cryoVents) {
+      const slotId = ARENA_FIELD_SLOT_IDS[slot++];
+      const body = this._roomSolids.get(vent.toyId);
+      const alive = body && body.alive !== false && body.pos
+        && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z);
+      if (!alive) {
+        room.props[role] = [];
+        continue;
+      }
+      const dx = body.pos.x - vent.home.x;
+      const dz = body.pos.z - vent.home.z;
+      const displaced = dx * dx + dz * dz > CRYO_PROP_HOME_EPS * CRYO_PROP_HOME_EPS;
+      if (!displaced) {
+        vent.charge = CRYO_PROP_VENT_TICKS;
+        room.props[role] = [{ x: vent.home.x, z: vent.home.z }];
+      } else if (vent.charge > 0) {
+        vent.charge -= 1;
+        room.props[role] = [{ x: body.pos.x, z: body.pos.z }];
+      } else {
+        room.props[role] = [];
+      }
+      if (system && typeof system.updateExternal === 'function') {
+        const center = room.props[role][0] || vent.home;
+        system.updateExternal(slotId, { center: { x: center.x, z: center.z } });
+      }
+    }
+  },
+
   _tickCryo(state) {
     const room = this._cryoRoom;
     if (!room) return;
+    this._syncCryoProps(state);
     const bodies = liveArenaBodies(state);
     const lineage = createCryoRoomLineage(Number.isInteger(state && state.tick) ? state.tick : 0);
     for (let i = 0; i < bodies.length; i++) {
@@ -1380,7 +1452,10 @@ export const survivalArena = {
       if (this._findRoomSolid(solidId)) continue;
       const dynamic = toy.dynamic === true;
       const radius = Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
-      const mass = dynamic ? SHUTTER_MASS : Math.max(400, Math.round(radius * radius * 2.5));
+      // FB-022: a toy may author its own mass (prop class); shutters keep SHUTTER_MASS.
+      const mass = dynamic
+        ? Math.max(1, Number.isFinite(toy.mass) ? toy.mass : SHUTTER_MASS)
+        : Math.max(400, Math.round(radius * radius * 2.5));
       const hull = 100000 + Math.round(radius * 40);
       const entity = helpers.spawnEntity({
         type: 'station',
@@ -1411,6 +1486,7 @@ export const survivalArena = {
           roomToyId: toy.id,
           roomKind: toy.kind,
           roomDynamic: dynamic,
+          propRole: typeof toy.propRole === 'string' ? toy.propRole : null,
           surfaceMaterial: typeof toy.material === 'string' && toy.material
             ? toy.material
             : 'station',
@@ -1459,22 +1535,69 @@ export const survivalArena = {
     return n;
   },
 
+  /**
+   * FB-022: the relays are live bodies. While a body lives, the law follows IT — the occupancy
+   * field and the graph node sit where the Massline dragged the relay, not where the orbit
+   * would have put it. A free relay that has left its band gets a bounded servo pull back
+   * through the SG-02 membrane; a tethered relay is the player's, untouched. A dead relay's
+   * marker stays at its last live position — the wreck is the truth.
+   */
   _tickStorm(state) {
     const at = this._stormAt;
     if (!at) return;
     const system = this._fieldsSystem();
-    if (!system || typeof system.updateExternal !== 'function') return;
     const host = { x: at.x, z: at.z };
     const simTime = simTimeOf(state);
-    const relays = placeStormRelays(at, simTime);
+    const poses = placeStormRelays(at, simTime);
+    const held = this._heldBodyIds(state);
     for (let i = 0; i < STORM_RELAY_COUNT; i++) {
-      const pose = relays[i] || orbitNodePose(host, i, STORM_RELAY_COUNT, STORM_RELAY_ORBIT, simTime, STORM_RELAY_PERIOD);
-      const pos = pose.pos || pose;
-      system.updateExternal(ARENA_FIELD_SLOT_IDS[i], {
-        center: { x: pos.x, z: pos.z },
-        strength: 0,
-      });
+      const pose = poses[i] || orbitNodePose(host, i, STORM_RELAY_COUNT, STORM_RELAY_ORBIT, simTime, STORM_RELAY_PERIOD);
+      const posePos = pose.pos || pose;
+      const body = this._roomSolids.get(`relay_${i}`);
+      const alive = body && body.alive !== false && body.pos
+        && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z);
+      // The marker sits at the body whenever a body exists — live relay at its dragged spot,
+      // dead relay at its wreck. Only a never-materialized relay rides the pure pose.
+      const pos = body && body.pos && Number.isFinite(body.pos.x) ? body.pos : posePos;
+      if (alive) {
+        if (this._relayLive) this._relayLive.set(`relay_${i}`, { x: pos.x, z: pos.z });
+        const guide = stormRelayGuide(pos, body.vel, posePos, body.mass);
+        if (held.has(body.id)) {
+          writePhysicsControl(body, { mode: 'relay_held', force: { x: 0, y: 0, z: 0 }, source: 'survival-arena' });
+        } else {
+          writePhysicsControl(body, {
+            mode: guide.mode,
+            force: guide.force,
+            source: 'survival-arena',
+            maxSpeed: guide.maxSpeed,
+          });
+        }
+      }
+      if (system && typeof system.updateExternal === 'function') {
+        system.updateExternal(ARENA_FIELD_SLOT_IDS[i], {
+          center: { x: pos.x, z: pos.z },
+          strength: 0,
+        });
+      }
     }
+  },
+
+  /** Entity ids currently held by an active Massline attachment (attachment targetIds). */
+  _heldBodyIds(state) {
+    const byId = state && state.combat && state.combat.attachments
+      ? state.combat.attachments.byId
+      : null;
+    const held = _heldBodyScratch;
+    held.clear();
+    if (!byId || typeof byId !== 'object') return held;
+    for (const id in byId) {
+      if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
+      const attachment = byId[id];
+      if (attachment && attachment.state === 'active' && attachment.targetId != null) {
+        held.add(attachment.targetId);
+      }
+    }
+    return held;
   },
 
   /** The director's overdrive factor for an installed field — 1 while nothing runs hot. */
@@ -1497,7 +1620,9 @@ export const survivalArena = {
     this._cycleMachinery = false;
     this._authoredStrength = 0;
     this._cryoRoom = null;
+    this._cryoVents = new Map();
     this._stormAt = null;
+    this._relayLive = new Map();
     this._cryoShocked = new Set();
     this._roomIds = [];
     this._roomSolids = new Map();

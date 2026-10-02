@@ -180,9 +180,11 @@ test('seed 17501: every live arena installs at least three usable toys, all five
     }
     h.system.destroy();
   }
+  // FB-022: 'prop' joins the vocabulary — Cryo's coolant tank / heat manifold are movable
+  // fixtures the Massline can drag, anchored pockets that ride their bodies.
   assert.deepEqual(
     Array.from(kinds).sort(),
-    ['crusher', 'current', 'plate', 'relay', 'shutter'],
+    ['crusher', 'current', 'plate', 'prop', 'relay', 'shutter'],
   );
 });
 
