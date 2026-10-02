@@ -898,6 +898,9 @@ export const scanner = {
 
   newGame() {
     this._resetContactHail('new_game');
+    // The pulse cooldown is keyed on absolute simTime; a fresh run restarts the clock at 0,
+    // so a late-run pulse must not keep scanning locked for the whole old timestamp.
+    this._cooldownUntil = 0;
     if (this.state) this.state.signalInvestigation = freshSignalState();
   },
 
@@ -1610,6 +1613,9 @@ export const scanner = {
 
   deserialize(data) {
     this._resetContactHail('load');
+    // Transient cooldown is not serialized; the restored clock can be far below the old
+    // deadline, so carry no lockout across a load.
+    this._cooldownUntil = 0;
     this.state.signalInvestigation = normalizeSignalState(data);
   },
 
@@ -1626,6 +1632,7 @@ export const scanner = {
         this.bus.off('dock:docked', this._onContactHailReset);
         this.bus.off('mode:changed', this._onContactHailReset);
       }
+      if (this._onSensorGhostSwarm) this.bus.off('sensorGhost:swarm', this._onSensorGhostSwarm);
     }
     this._contactHail = null;
     this._contactHailAvailability = null;
@@ -1636,6 +1643,7 @@ export const scanner = {
     this._onContactHailRequest = null;
     this._onContactHailChoice = null;
     this._onContactHailReset = null;
+    this._onSensorGhostSwarm = null;
   },
 };
 

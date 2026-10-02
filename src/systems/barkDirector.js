@@ -302,6 +302,12 @@ export const barkDirector = {
     this._barkWakeSeq = 0;
     this._onEntitySpawnedBark = (payload) => {
       const entity = payload && payload.entity;
+      // core recycles entity ids; a new occupant must not inherit the previous actor's
+      // said/lastSituation receipt cache or its first warnings go silently deduped.
+      const id = entity && entity.id != null ? entity.id : payload && payload.id;
+      const cache = id != null && this.state && this.state.barkDirector
+        && this.state.barkDirector.entities;
+      if (cache && cache[String(id)]) delete cache[String(id)];
       if (!isBarkQuietWakeCandidate(entity)) return;
       this.noteBarkWake();
     };
@@ -397,7 +403,16 @@ export const barkDirector = {
   },
 
   newGame() {
-    if (this.state) this.state.barkDirector = freshState();
+    if (this.state) {
+      this.state.barkDirector = freshState();
+      // Ephemeral absolute-simTime deadlines must not carry into the fresh clock — the
+      // save-load path already runs this same reset for near-miss bodies and voice/danger.
+      this._onStuntLoad?.();
+    }
+    this._npcCounterplayAt = null;
+    if (Array.isArray(this._npcCounterplayBarks)) this._npcCounterplayBarks.length = 0;
+    if (Array.isArray(this._harasserDepartures)) this._harasserDepartures.length = 0;
+    this.noteBarkWake();
   },
 
   /** External wake when bark-relevant activity is stamped without a membership bump. */
@@ -518,12 +533,8 @@ export const barkDirector = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
-    rec.lastSituation = situation;
-    rec.said[situation] = true;
-    rec.lastSpokenAt = state.simTime || 0;
-    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
-    if (rec.history.length > 8) rec.history.shift();
-
+    // A refused voice request must not consume the situation — mark the slot only
+    // after acceptance, the same carve-out _speakEventLine already uses.
     const accepted = voice.say({
       channel: 'bark',
       text,
@@ -532,18 +543,22 @@ export const barkDirector = {
       id: `barkDirector:${entityId}:${situation}`,
       factionId,
     });
-    if (accepted) {
-      this._emit('barkDirector:voice', {
-        entityId: entity.id,
-        situation,
-        reason,
-        text,
-        factionId,
-        t: rec.lastSpokenAt,
-        ...(extra ? { source: extra.sourceEvent || null } : {}),
-      });
-    }
-    return !!accepted;
+    if (!accepted) return false;
+    rec.lastSituation = situation;
+    rec.said[situation] = true;
+    rec.lastSpokenAt = state.simTime || 0;
+    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id,
+      situation,
+      reason,
+      text,
+      factionId,
+      t: rec.lastSpokenAt,
+      ...(extra ? { source: extra.sourceEvent || null } : {}),
+    });
+    return true;
   },
 
   // ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
