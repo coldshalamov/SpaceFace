@@ -9,7 +9,7 @@ import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
-import { projectileSkipsVisualFactoryMesh } from './render/weapons/recipes.js';
+import { entityIsJournaled } from './world/presentationSources.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
@@ -139,8 +139,7 @@ async function boot() {
     // suppressed during a pending rebuild would otherwise leave the entity
     // permanently journaled-out, tripping a rebuild once per tick for life.
     const presentationJournal = createPresentationJournal(undefined, {
-      isEntityJournaled: (e) => !!(e && e._noMesh !== true
-        && !(e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e))),
+      isEntityJournaled: entityIsJournaled,
     });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
     const failurePresenter = createRuntimeFailurePresenter({ document });

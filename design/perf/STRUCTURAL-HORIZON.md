@@ -90,6 +90,28 @@ Phase-B gap list (mechanical plumbing, not conceptual risk):
 3. **S5** — audit-gated M win (2-deep sector lookahead).
 4. ~~S3~~ — partially landed (asteroidInstancePool); residual = density census only. ~~S4~~ — verified landed (shared class-priority decode budget). ~~S6~~ — verified landed. ~~S7~~ — save:loaded half landed; econTick slicing proven illegal. **S0** — gated on W4 revisit conditions.
 
+### W28 structural audit — Phase-B decomposed (lane report `w28-structural-horizon.md`)
+
+**Scope gate verdict: OPEN.** ~50 seam classes censused; exactly **3 hard-synchronous** surfaces — `economy.quote` (mutating read: lazy `ensureMarket`/`mintUnseededListing`/`getCycle` draws `state.economy.rngSeed`), `promoteAsteroidFieldRock`/`promoteFarActor` (sync-returning mutations — legal via command+ack: promotion was never same-frame-visible anyway), `physicsPrep/finalize` (already async → RPC). All three have legal resolutions; nothing blocks the flip.
+
+**9-stage plan** (each flag-gated, independently revertable; stages 0–5 rehearse without the worker driving live flight; stage 6 is the flip):
+
+| # | Stage | Gate | Risk |
+|---|---|---|---|
+| 0 | Shared sim-driver lib — extract ~290 LOC of 47a orchestration into `scripts/lib/simScenarioDriver.mjs` consumed by CLI + worker | golden via CLI AND worker | LOW |
+| 1 | Command ring + input channel — `{input\|bus\|settings\|rpc}` per directive; input fold unchanged worker-side; gamepad sampled main-side | golden in-worker + `inputCommandHistory.toTape()` A/B | MEDIUM |
+| 2 | Deep-flat event bridge — depth-4 projection, entity→read-model ref, per-type adapters only for live-object payloads; presentation tier re-enqueues into main's `presentationQueue` | 0 unintentional drops (was 437/7); listener-invocation parity probe | MEDIUM |
+| 3 | Read model v1 — entities + aux rows (ledger/farActor/dressing journal transform records; `appendNearbyLedgerRows`→windowed query; `_syncWorldPresentationTableMeshes` dies) | collect-set equality vs live walk | MEDIUM-HIGH |
+| 4 | Read model v2 — domain mirrors (player/missions/economy/cargo facades, mutate-in-place never swap) | DOM-diff probe on fixed-seed replay | MEDIUM |
+| 5 | Hard-sync remediation — flag-gated eager market mint (commodity order → quote pure), promote→command+ack, physicsPrep→RPC | golden + market parity probe; save-compat review on mint ordering | HIGH(quote)/MEDIUM |
+| 6 | **The flip** — `advanceSimulation`→directive send (accumulator math stays main; steps count crosses), `consumeLatestCompletedTick` reads transport ring, `SIM_LANE=main` revert flag | identical journal streams tick-for-tick + digest canary | HIGHEST |
+| 7 | Ring + backpressure — depth 8, starvation→`completed-tick queue overflow`→`onSimulationFailure` (fail-closed, mirroring main today) | hold-consume probe throws at depth 9 | LOW |
+| 8 | WASM init + optional SAB — `loadRapierCompatRuntime` worker-side (CSP bridge verify in Electron); SAB journal double-buffer opt-in (0.2ms baseline → polish) | rapier-dynamic golden in-worker | LOW-MEDIUM |
+
+**Compounding finds**: worker-side `serializeData` is atomic *by construction* between directives (the live-lane coherent brick `saveSystem.js:4110-4113` becomes free); encode+checksum folds in — envelope worker keeps load-lane `restorePrepareSaveJson`, its encode half retires. **New items**: `stateDigestMarker` canary (rolling `snapshotSimState` FNV stamped on completed ticks → live golden-parity), `isEntityJournaled` consolidation (main.js:141 predicate vs worker copy — the drift class that produced the bd6cfadbc defect), eager market mint (kills the census's only mutating read + hardens determinism: today quote draw order depends on UI gesture order), GC isolation measurement plan (`monitorEventLoopDelay` + `externalCallbackGapMs`/`untrackedMs` A/B delta = the GC-share reading).
+
+**?drawhist reopen condition** (S3-beyond-rocks): a `topClusters` row with `avg ≥ 2` draws/f on a SHARED geometry in a bloom-sector window AND `instanced === 0` — offline proxy: ≥2 live bodies sharing `data.archetypeGlb`/`authoredCompositionId` in a captured bloom state. Stations/dressing are expected unique; the histogram decides.
+
 ## A/B verification protocol (all levers)
 
 - Golden `47a` sha256 `e517a97b…` bit-identical after every change.
