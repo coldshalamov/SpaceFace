@@ -1099,9 +1099,8 @@ export function syncEntityTypeLaneMembership(index, e) {
  */
 export function syncEntityActivitySlotMembership(index, e) {
   if (!index || index.__spacefaceEntityIndexV1 !== true || !e) return;
-  if (!(index.byActivityObjectSlotId instanceof Map)
-    || !(index.byActivityActorSlotId instanceof Map)) return;
-  if (e.id != null && index._indexedIds instanceof Set && !index._indexedIds.has(e.id)) return;
+  repairEntityIndex(index);
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
   const data = e.data;
   const objectSlotId = data ? data.activityObjectSlotId : undefined;
   if (e._indexActivityObjectSlotId !== objectSlotId) {
