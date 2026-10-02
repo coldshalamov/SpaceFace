@@ -127,6 +127,29 @@ Main-thread writes into sim-owned state that must become commands, bus events, o
 - Boot-warm stubs read ~12 world internals (`sectorId`, zone tables, roster records) — read-model v1 must carry them or the warm passes move worker-side wholesale.
 - `isEntityJournaled` flag reads on the render lane (journal predicate — consolidate per the W28 new-items note; drift class already produced one defect).
 
+### W29 stage-5 census — synchronous main→sim call/write surface (verified by grep)
+
+The flip's command/facade conversion list. Trade EXECUTION is already evented (`bus.emit('ui:buy'|'ui:sell', payload)` at market.js:1616 — no conversion needed); the remaining synchronous surface:
+
+**Mutating reads (hard-sync, need eager-mint or RPC-ack):**
+- `economy.quote(sid, cmdtyId, side, qty)` — market.js:677/687, tradeLogic.js:94 via `ctx.registry.get('economy')`. THE documented mutating read: quote() draws rng/advances market state on call order → UI gesture order affects sim outcome. Fix = eager market mint at tick end (commodity order canonical) so quote becomes pure projection — also a determinism hardening win.
+
+**Registry-facade seam (the conversion point):** UI mutates sim via `ctx.registry.get('<sys>')` — economy, drill, asteroidSites, mining, claims, cargo, world, audio. Post-flip each returns a main-side facade: reads served from read-model v2 mirrors; mutating methods forward `{kind:'rpc'}` envelopes over the command ring (stage-1 channel already exists — RPC acks for result-returning calls). Non-registry direct mutation sites:
+
+**Direct `state.*` writes that must become commands (or fold into the input directive):**
+- `state.player.targetId` — ~11 sites: uiRoot.js:1600/1614/1622/1742/1765/1769, hud.js:4459, commsRadial.js:304, worldObjectInteraction.js:54/67/196/355 (input-adjacent — fold into the input directive fold rather than a new command kind).
+- `state.input.*` — uiRoot.js:1248/1259/1269 `.blocked`, :1625/1626 `targetAssistDisabled`/`autoAim`, hud.js:4460, worldObjectInteraction.js:61/72, crucibleLabControls.js:364 `input.actions` (input fold — same directive).
+- `state.nav.waypoint` + `state.nav = {}` — tradeLogic.js:463/483 (command).
+- `state.mode` — pause.js:977/985/998 (unevented, command); screenManager.js:~466 (redundant with evented path — drop, don't twin).
+- `state.settings.ui.*` — hud.js:4365-4372, hudLayout.js:137, camera.js:245 (settings envelope — stage-1 channel).
+- `helpers.spawnEntity`/`removeEntity` — sandboxSetup.js (5+ sites), crucibleLabControls.js:204/405 (sandbox/lab screens — spawn/remove commands; same envelope kind as scenario spawns).
+- `main.js:521` spawnEntity, `:531` world.enterSector, `:559-568` misc mutations — commands.
+- `main.js:535` `state.rng()` on main — MUST move worker-side (main-side draw forks the stream); stage-5 audit verifies no main-side rng consumers remain.
+
+**Reads that stage-4 mirrors cover** (no command needed): economy.markets/marketIntel, missions, nav, player, factions, story, drill, sectorSim, npcJobs, world.currentSectorId/sectors/discovery/frameOrigin/scanPings/frontierRumors — all in the stage-4 mirrored key list.
+
+**Non-migrating** (move WITH the render lane or already channels): bus listeners (event bridge), settings (channel), helpers.worldToScreen/socketWorldPose/entityMeshMeta/player() (pose reads → snapshot poses, not sim), ui/render-local state keys.
+
 ## A/B verification protocol (all levers)
 
 - Golden `47a` sha256 `e517a97b…` bit-identical after every change.
