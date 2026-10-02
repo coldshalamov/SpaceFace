@@ -127,12 +127,16 @@ export async function installFrameSolidSampler() {
           owner,
           previous,
           instanced: !!(drawn && drawn.isInstancedMesh),
+          // renderBufferDirect also runs during the off-camera admission touch.
+          // Only the presented scene passes bracket draws with this guard.
+          presentedDraw: !!(drawn && SF.state.render && SF.state.render.renderer
+            && SF.state.render.renderer.__sfUnreadyDrawGuardDepth > 0),
           subject: typeof tier1.admissionSubject === 'string' || typeof tier1.admissionSubject === 'number'
             ? String(tier1.admissionSubject) : null,
           draw: drawn ? `${drawn.name || drawn.type || 'unnamed'}${drawn.isInstancedMesh ? ':instanced' : ''}` : null,
           material: material ? `${material.type}${material.name ? `:${material.name}` : ''}` : null,
           depthPass: !!(drawn && material && (drawn.customDepthMaterial || /Depth|Distance/.test(material.type))),
-          stack: stack.slice(0, 8),
+          stack,
         });
         linkHandles.push(args[2] || null);
       }
@@ -427,8 +431,9 @@ function laneSummary(lanes) {
 // --strict-timing (the owner's laptop is shared with other agents and the CPU is often saturated).
 const COUNT_KEYS = ['blinks', 'rootSwaps', 'regressions', 'stuckMissing', 'stationNoCollider', 'flightShaderLinks', 'inFrameShaderLinks', 'leftUndrawn'];
 
-/** A link whose stack runs through a presented draw (renderObjects / renderBufferDirect): a freeze. */
+/** A link during a presented draw, excluding admission's off-camera GPU touch. */
 export function isInFrameLink(link) {
+  if (link && typeof link.presentedDraw === 'boolean') return link.presentedDraw;
   return !!(link && Array.isArray(link.stack)
     && link.stack.some((line) => /renderObjects|renderBufferDirect/.test(line)));
 }
