@@ -8373,7 +8373,14 @@ function recordIsResident(record, renderer = null) {
   const registry = renderer && residency.key ? getAssetResidency(renderer) : null;
   if (registry) {
     standInRecordRegistry.set(record, registry);
-    return registry.has(residency.key);
+    // Only positive registry knowledge overrides the record's stamp: an entry that exists
+    // and is no longer 'resident' means the bytes genuinely went away. An absent key means
+    // the record was never tracked here (settled-cache peeks, synthetic records, records
+    // decoded before this registry existed) — the stamp stays the source of truth, as it
+    // was before the live check.
+    if (typeof registry.knownNonResident === 'function' && registry.knownNonResident(residency.key)) {
+      return false;
+    }
   }
   return residency.state === 'resident';
 }

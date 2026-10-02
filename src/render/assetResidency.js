@@ -998,6 +998,14 @@ export function createAssetResidencyRegistry(options = {}) {
     return !!entry && entry.state === 'resident';
   }
 
+  // Positive knowledge of a non-resident lifecycle (evicted/disposed/abandoned/in-flight).
+  // Distinguishes "tracked and gone" from "never registered" — callers that also trust a
+  // record's own residency stamp must not treat an absent key as proof of eviction.
+  function knownNonResident(key) {
+    const entry = assets.get(String(key || ''));
+    return !!entry && entry.state !== 'resident';
+  }
+
   function governorEntry(entry, kind = 'gpu') {
     const activeRequest = [...pendingRequests].some((request) => (
       request.active && request.key === entry.key
@@ -1154,6 +1162,7 @@ export function createAssetResidencyRegistry(options = {}) {
     contextLossResources() { return [...resources.keys()]; },
     disposeAll,
     has,
+    knownNonResident,
     enforceBudget,
     diagnostics,
     canonicalDiagnostics,
