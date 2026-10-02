@@ -69,6 +69,23 @@ Audited at `presentationRunner.js:830-985`: the rAF frame already orders **sim a
 ## Execution order (by ceiling × tractability)
 
 1. **S1** — the XL spike and the only remaining big game: render-worker transport. Prototype scope: pose/identity transport for ship-like bodies only (the ~12-key census is the contract surface), SAB columns for pos/vel/flags + mount/unmount event ring, OffscreenCanvas submit. Gate on a measured read-model cost < the hitches it removes.
+
+### S1 Phase-A verdict — GO (all three gates PASS, spike `devin/s1-sim-worker-spike` `f913823d5`+`e504b25f9`)
+
+Whole-sim-in-worker (not render-in-worker): the worker runs the sim, journal records cross to the presentation lane, everything else stays main.
+- **Golden-in-worker**: 47a inside a real `worker_threads` Worker → `sha256 e517a97b…` bit-identical, `deterministic:true`, allEqual across every repeat/pipeline/pause run.
+- **Journal transport**: pack + postMessage + consume through the real publisher/world — mean **0.21–0.26 ms**, p95 0.33–0.42 ms over 720–2160-tick samples (wire ~0.21 ms dominates; pack ~0.01; consume ~0.013). Two orders under the frame budget.
+- **Ring bounds**: completedTick ring bounded at 8 (`hw=8/8` under `--pipeline 8 --consume-batch 8`); journal overflow→rebuild exercised (66 rebuilds, 0 failures, pending bounded).
+- **Real defect found + fixed on-branch, backported to the perf lane (`bd6cfadbc`)**: spawn-suppressed-during-rebuild entities the collect set can't republish (mesh-less lanes) tripped `*-without-spawn`→rebuild→suppress once per tick for life (~120 rebuilds per projectile flight → 2). `presentationJournal.isEntityJournaled` predicate; `sim.js` ctx gains `options.presentationJournal` (headless parity).
+
+Phase-B gap list (mechanical plumbing, not conceptual risk):
+1. 47a orchestration isn't just `registry.step` — tape commands, per-tick pre-step hooks, save-reload, phase-0 metrics needed ~290 LOC replicated worker-side; Phase-B extracts a shared sim-driver lib (the CLI self-executes on import — can't rewire it).
+2. Read-model census was short — `presentationFlags` also needs `isPlayer`/`farResident`/`fieldResident`; asteroid/dressing/farActor tables resolve outside `entities` Map (unexercised by 47a) — projection/journaling of those tables is open work.
+3. Ring bound holds only if the consumer drains — production needs drain-on-arrival backpressure (or a deeper ring).
+4. Live-payload events: 437 dropped across 7 types in the spike run (`ship:thrust` 360, `entity:spawned` 48, `combat:damage`, `projectile:hit`, presentation cues) — 42 flat events bridged; id-resolution shims needed for HUD/cue consumers.
+5. Command drain must move out of `advanceFixedTimestep` to runner level regardless of the scale gate.
+6. Physics WASM is thread-local — init inside the worker, can't transfer (trivial).
+7. Journal-over-postMessage suffices for the gate; SAB (`simWorkerProtocol`/`snapshotFence`) is an optional transport optimization, not a requirement.
 2. **S2** — SoA sidecar: implement *inside* the S1 spike as its transport layout (a standalone sidecar without S1 is marginal on this hardware profile — sim is already sub-ms/tick).
 3. **S5** — audit-gated M win (2-deep sector lookahead).
 4. ~~S3~~ — partially landed (asteroidInstancePool); residual = density census only. ~~S4~~ — verified landed (shared class-priority decode budget). ~~S6~~ — verified landed. ~~S7~~ — save:loaded half landed; econTick slicing proven illegal. **S0** — gated on W4 revisit conditions.
