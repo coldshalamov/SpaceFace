@@ -531,6 +531,11 @@ function ensureEntityIndex(state) {
     radarAsteroids: [],
     byStationId: new Map(),
     byWorldSiteId: new Map(),
+    // Ceres activity slot ids: slotId -> Set<entity>. Spawn literals carry them, and the
+    // durable-identity stamp helpers write them post-append via
+    // syncEntityActivitySlotMembership — the same coverage contract byWorldRecordId keeps.
+    byActivityObjectSlotId: new Map(),
+    byActivityActorSlotId: new Map(),
     capitalBossCast: new Set(),
     byWorldRecordId: new Map(),
     // Parallel carrier count for byWorldRecordId: O(1) "exactly one carrier" answers — any
@@ -599,6 +604,8 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.radarAsteroids)) index.radarAsteroids = [];
   if (!(index.byStationId instanceof Map)) index.byStationId = new Map();
   if (!(index.byWorldSiteId instanceof Map)) index.byWorldSiteId = new Map();
+  if (!(index.byActivityObjectSlotId instanceof Map)) index.byActivityObjectSlotId = new Map();
+  if (!(index.byActivityActorSlotId instanceof Map)) index.byActivityActorSlotId = new Map();
   if (!(index.capitalBossCast instanceof Set)) index.capitalBossCast = new Set();
   if (!(index.byWorldRecordId instanceof Map)) {
     index.byWorldRecordId = new Map();
@@ -657,6 +664,8 @@ function clearEntityIndex(index) {
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
   index.byWorldSiteId.clear();
+  index.byActivityObjectSlotId.clear();
+  index.byActivityActorSlotId.clear();
   index.capitalBossCast.clear();
   index.byWorldRecordId.clear();
   index.byWorldRecordIdCount.clear();
@@ -738,6 +747,20 @@ function appendEntityIndex(index, e) {
   // this handful instead of the whole entity map per boss fight.
   if (e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)) {
     if (!index.capitalBossCast.has(e)) { index.capitalBossCast.add(e); bumpLaneVersion(index, 'capitalBossCast'); }
+  }
+  // Ceres activity slot ids — spawn-literal carriers index here; post-append writers
+  // (durable-identity stamps, ore-carrier reclassify, faction presence, helios starters)
+  // sync through syncEntityActivitySlotMembership. The stamp on the entity records the
+  // indexed key so removal vacates the same slot a later re-stamp moved it out of.
+  const activityObjectSlotId = e.data && e.data.activityObjectSlotId;
+  if (activityObjectSlotId != null) {
+    indexSlotMember(index.byActivityObjectSlotId, activityObjectSlotId, e);
+    e._indexActivityObjectSlotId = activityObjectSlotId;
+  }
+  const activityActorSlotId = e.data && e.data.activityActorSlotId;
+  if (activityActorSlotId != null) {
+    indexSlotMember(index.byActivityActorSlotId, activityActorSlotId, e);
+    e._indexActivityActorSlotId = activityActorSlotId;
   }
 
   appendTypedLaneMembership(index, e);
@@ -873,6 +896,14 @@ function removeEntityIndex(index, e) {
       && index.capitalBossCast.delete(e)) {
     bumpLaneVersion(index, 'capitalBossCast');
   }
+  if (e._indexActivityObjectSlotId !== undefined) {
+    unindexSlotMember(index.byActivityObjectSlotId, e._indexActivityObjectSlotId, e);
+    e._indexActivityObjectSlotId = undefined;
+  }
+  if (e._indexActivityActorSlotId !== undefined) {
+    unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
+    e._indexActivityActorSlotId = undefined;
+  }
   // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
   // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
   // Decrement the id the entity was COUNTED under — a post-spawn re-stamp can leave
@@ -910,6 +941,21 @@ function removeEntityIndex(index, e) {
 function bumpLaneVersion(index, lane) {
   const laneVersions = index.laneVersions;
   if (laneVersions) laneVersions[lane] = (laneVersions[lane] || 0) + 1;
+}
+
+// Multi-member keyed maps (slotId -> Set<entity>) — the ceres activity predicates require
+// an exactly-one answer, so a key keeps every carrier, not just the first holder.
+function indexSlotMember(map, key, e) {
+  let bucket = map.get(key);
+  if (!bucket) { bucket = new Set(); map.set(key, bucket); }
+  bucket.add(e);
+}
+
+function unindexSlotMember(map, key, e) {
+  const bucket = map.get(key);
+  if (!bucket) return;
+  bucket.delete(e);
+  if (bucket.size === 0) map.delete(key);
 }
 
 function removeFromIndexArray(list, e) {
@@ -1044,6 +1090,37 @@ export function syncEntityTypeLaneMembership(index, e) {
   index.version++;
 }
 
+/**
+ * Post-spawn activity slot-id writes. data.activityObjectSlotId / data.activityActorSlotId
+ * arrive in spawn literals (append-covered) and in the durable-identity stamp helpers that
+ * mutate live entity.data — those call sites run this so the keyed maps re-key exactly like
+ * the type-lane sync does for type flips. Keys are compared against the indexed stamp the
+ * same way removal is, so an entity stamped twice vacates the slot it actually occupies.
+ */
+export function syncEntityActivitySlotMembership(index, e) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || !e) return;
+  if (!(index.byActivityObjectSlotId instanceof Map)
+    || !(index.byActivityActorSlotId instanceof Map)) return;
+  if (e.id != null && index._indexedIds instanceof Set && !index._indexedIds.has(e.id)) return;
+  const data = e.data;
+  const objectSlotId = data ? data.activityObjectSlotId : undefined;
+  if (e._indexActivityObjectSlotId !== objectSlotId) {
+    if (e._indexActivityObjectSlotId !== undefined) {
+      unindexSlotMember(index.byActivityObjectSlotId, e._indexActivityObjectSlotId, e);
+    }
+    e._indexActivityObjectSlotId = objectSlotId != null ? objectSlotId : undefined;
+    if (objectSlotId != null) indexSlotMember(index.byActivityObjectSlotId, objectSlotId, e);
+  }
+  const actorSlotId = data ? data.activityActorSlotId : undefined;
+  if (e._indexActivityActorSlotId !== actorSlotId) {
+    if (e._indexActivityActorSlotId !== undefined) {
+      unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
+    }
+    e._indexActivityActorSlotId = actorSlotId != null ? actorSlotId : undefined;
+    if (actorSlotId != null) indexSlotMember(index.byActivityActorSlotId, actorSlotId, e);
+  }
+}
+
 // Radar split at append (excluded types, then asteroid vs everything else) — evaluated under
 // whatever type the caller needs so the type-flip sync can diff old vs new membership.
 function radarLaneForEntity(e) {
@@ -1161,6 +1238,14 @@ function removeEntitiesFromIndex(index, corpses) {
     if (e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)
         && index.capitalBossCast.delete(e)) {
       index.laneVersions.capitalBossCast = (index.laneVersions.capitalBossCast || 0) + 1;
+    }
+    if (e && e._indexActivityObjectSlotId !== undefined) {
+      unindexSlotMember(index.byActivityObjectSlotId, e._indexActivityObjectSlotId, e);
+      e._indexActivityObjectSlotId = undefined;
+    }
+    if (e && e._indexActivityActorSlotId !== undefined) {
+      unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
+      e._indexActivityActorSlotId = undefined;
     }
   }
   removeCorpsesFromIndexArray(index.mineables, removed);

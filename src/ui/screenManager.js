@@ -217,10 +217,24 @@ export function createScreenManager(ctx) {
       screensRoot.appendChild(el);
       rec.el = el;
       try { if (rec.def.mount) rec.def.mount(el, ctx); }
-      catch (err) { console.error(`[screenManager] mount("${id}") failed:`, err); }
+      catch (err) {
+        console.error(`[screenManager] mount("${id}") failed:`, err);
+        // A throwing mount leaves a half-built root — drop it and keep mounted:false so the
+        // next push rebuilds from scratch instead of presenting the partial tree forever.
+        rec.el = null;
+        if (el.parentNode) el.parentNode.removeChild(el);
+        return rec;
+      }
       rec.mounted = true;
     }
     return rec;
+  }
+
+  // Mount a registered-but-unbuilt screen while its root stays hidden — the prewarm path
+  // lets menu dwell pay the DOM/stylesheet cost that would otherwise land inside the first
+  // open's flight frame. build() itself is failure-safe; a throwing mount stays unmounted.
+  function prewarm(id) {
+    return build(id);
   }
 
   function syncVisibility() {
@@ -684,7 +698,7 @@ export function createScreenManager(ctx) {
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll, releaseScreen,
     isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
-    isLiveOverlay, locked, destroy,
+    isLiveOverlay, locked, destroy, prewarm,
     screenMemory,
   };
 }

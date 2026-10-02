@@ -44,6 +44,7 @@ import { getFarActor } from '../world/farActorTable.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import {
   RECORD_KIND,
   stableRecordId,
@@ -2145,6 +2146,7 @@ export const traffic = {
     data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
     data.sectorId = CERES_ACTIVITY_SECTOR_ID;
     this._indexWorldRecordId(entity);
+    syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
   },
 
   _captureCeresActivityCast() {
@@ -2281,6 +2283,7 @@ export const traffic = {
     data.homeSectorId = sectorId;
     data.sectorId = sectorId;
     this._indexWorldRecordId(entity);
+    syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
   },
 
   _assignActivityJob(entity, entry) {
@@ -4269,6 +4272,7 @@ export const traffic = {
     if (sectorId === 'sector_helios_prime' && role === 'ore_carrier') {
       ent.data = ent.data || {};
       ent.data.activityActorSlotId = 'helios_starter_ore_carrier';
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
       requestActivityReclassify(this.state, ent);
     }
     if (!ent.data) ent.data = {};
@@ -4344,6 +4348,7 @@ export const traffic = {
       if (tracked.has(e.id)) return;
       if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
         d.activityActorSlotId = 'helios_starter_ore_carrier';
+        syncEntityActivitySlotMembership(this.state && this.state.entityIndex, e);
         requestActivityReclassify(this.state, e);
       }
       // Ensure durable stamps survive even if rematerialize omitted a field.
@@ -7570,17 +7575,30 @@ export const traffic = {
       return { kind: 'activity', id: null };
     }
 
+    const index = this.state.entityIndex;
+    // Keyed answers are exact only under full coverage: when every entities-map member is an
+    // indexed carrier (entities.size === _indexedIds.size), the slot sets and type lanes
+    // enumerate the whole candidate population. A bare-map/unindexed member shrinks the keyed
+    // view — fall back to the whole-map walk, preserving the old result for every member.
+    // (No _indexedIds on a partial index shape means coverage can't be proven — walk.)
+    const entitiesMap = this.state.entities;
+    const covered = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index._indexedIds instanceof Set && entitiesMap
+      && entitiesMap.size === index._indexedIds.size;
     let predicate = null;
+    let keyed = null;
     let kind = namespace;
     if (namespace === 'field' && parts.length === 3 && parts[1] === 'slot') {
       const slotId = parts[2];
       predicate = (entity) => entity.type === 'asteroid'
         && entity.data && entity.data.activityObjectSlotId === slotId;
       kind = 'field-slot';
+      if (covered) keyed = index.byActivityObjectSlotId.get(slotId) || null;
     } else if (namespace === 'object' && parts.length === 2) {
       const slotId = parts[1];
       predicate = (entity) => entity.type === 'fx'
         && entity.data && entity.data.activityObjectSlotId === slotId;
+      if (covered) keyed = index.byActivityObjectSlotId.get(slotId) || null;
     } else if (namespace === 'actor' && parts.length === 2) {
       const slotId = parts[1];
       const activityEntry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
@@ -7601,23 +7619,37 @@ export const traffic = {
         && entity.data.activityActorSlotId === slotId
         && entity.data.worldRecordId === expectedWorldRecordId
         && !terminalWorldRecord(durableRecord);
+      if (covered) keyed = index.byActivityActorSlotId.get(slotId) || null;
     } else if ((namespace === 'dest' || namespace === 'station') && parts.length >= 2) {
       const stationId = parts[1];
       predicate = (entity) => entity.type === 'station'
         && entity.data && entity.data.stationId === stationId;
       kind = 'station';
+      if (covered) keyed = index.stations.length ? index.stations : null;
     } else if (namespace === 'world-site' && parts.length === 2) {
       const worldRecordId = `${parts[1]}/root`;
       predicate = (entity) => entity.type === 'fx'
         && entity.data && entity.data.worldRecordId === worldRecordId;
       kind = 'world-site';
+      const counted = covered ? (index.byWorldRecordIdCount.get(worldRecordId) || 0) : -1;
+      if (counted === 1) {
+        keyed = [index.byWorldRecordId.get(worldRecordId)];
+      } else if (counted > 1 && index.fx.length) {
+        // Duplicate keepers exist — the fx lane is the type-filtered superset of every
+        // indexed candidate, so the exactly-one count below sees the same population.
+        keyed = index.fx;
+      }
     } else {
       return null;
     }
 
-    const source = this.state.entities && this.state.entities.values
-      ? this.state.entities.values()
-      : [];
+    // A present keyed set/bucket answers O(1); its absence falls back to the whole-map walk so
+    // an unindexed carrier (harness, bare-map write) still resolves exactly like before. Keyed
+    // answers carry the byWorldRecordId coverage contract: every writer of the slot fields is
+    // either a spawn literal (append-covered) or a sync-armed stamp site — a new unregistered
+    // write would need its own syncEntityActivitySlotMembership arm.
+    const source = keyed
+      || (this.state.entities && this.state.entities.values ? this.state.entities.values() : []);
     const matches = [];
     for (const entity of source) {
       if (!entity || entity.alive === false || !predicate(entity)

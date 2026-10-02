@@ -213,8 +213,25 @@ function exactTargetEntity(entity, contractEntry, state, seed) {
 }
 
 function uniqueExactTargetEntity(entities, contractEntry, state, seed) {
+  // Keyed-map fast path, exact only under full coverage: entities.size === _indexedIds.size
+  // means every map member is an indexed carrier, so the slot sets enumerate the entire
+  // candidate population. A bare-map/unindexed member shrinks the keyed view — fall back to
+  // the historical whole-map walk, preserving the old result for every member.
+  const index = state && state.entityIndex;
+  const indexReady = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index._indexedIds instanceof Set && entities
+    && entities.size === index._indexedIds.size;
+  let keyed = null;
+  if (indexReady) {
+    if (contractEntry.targetMatch === 'field-slot') {
+      keyed = index.byActivityObjectSlotId.get(contractEntry.targetValue) || null;
+    } else if (contractEntry.targetMatch === 'actor-slot') {
+      keyed = index.byActivityActorSlotId.get(contractEntry.targetValue) || null;
+    }
+  }
+  const source = keyed || entities.values();
   let unique = null;
-  for (const entity of entities.values()) {
+  for (const entity of source) {
     if (!exactTargetEntity(entity, contractEntry, state, seed)) continue;
     if (unique !== null) return null;
     unique = entity;

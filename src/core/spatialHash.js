@@ -283,6 +283,13 @@ export class SpatialHash {
    * entries are invalidated only where their cell rectangle intersects a changed span — a
    * staticVersion bump that changed no real membership leaves every cache warm.
    */
+  // Incremental static sync. Ordering caveat (adjudicated, W27): a member removed and
+  // reinserted lands at its cells' tail rather than its original slot, so bucket iteration
+  // order is history-dependent — not equivalent to a from-scratch rebuild. That is legal
+  // because every consumer treats results as sets; the only order-observing reader is the
+  // strict first-wins `hit.t < bestHit.t` tie-break (physics.js ~869) on exact ties, which
+  // stays deterministic for any given history. If a live full rebuild is ever introduced
+  // alongside this incremental path, either preserve order on reinsert or sort on read.
   _syncStaticLayer(staticEntities) {
     this._pending.rebuilds++;
     this.diagnostics.rebuilds++;
@@ -971,13 +978,16 @@ export class SpatialHash {
       p.dynamicFullRebuilds = 0;
       p.dynamicReinserts = 0;
       p.dynamicUnchanged = 0;
+      p.staticReinserts = 0;
+      p.staticUnchanged = 0;
       p.queries = 0;
       p.candidates = 0;
       return;
     }
     if (
       !p.rebuilds && !p.dynamicRebuilds && !p.dynamicFullRebuilds &&
-      !p.dynamicReinserts && !p.dynamicUnchanged && !p.queries && !p.candidates
+      !p.dynamicReinserts && !p.dynamicUnchanged && !p.queries && !p.candidates &&
+      !p.staticReinserts && !p.staticUnchanged
     ) return;
     perfRuntime.recordSpatialHash(p);
     p.rebuilds = 0;
@@ -985,6 +995,8 @@ export class SpatialHash {
     p.dynamicFullRebuilds = 0;
     p.dynamicReinserts = 0;
     p.dynamicUnchanged = 0;
+    p.staticReinserts = 0;
+    p.staticUnchanged = 0;
     p.queries = 0;
     p.candidates = 0;
   }

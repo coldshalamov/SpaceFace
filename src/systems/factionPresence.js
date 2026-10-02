@@ -5,6 +5,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -637,10 +638,14 @@ export const factionPresence = {
       // stampCeresTenderIdentity stamps data.worldRecordId post-append on this live indexed
       // entity — register it or the new id stays a miss-memo'd negative / walk-only carrier.
       registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
     } else if (typeof this.helpers.spawnEntity === 'function') {
       entity = this.helpers.spawnEntity(canonicalSpec);
       spawned = !!entity;
-      if (entity) stampCeresTenderIdentity(entity, context);
+      if (entity) {
+        stampCeresTenderIdentity(entity, context);
+        syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+      }
     }
     if (!entity) return null;
     // World rematerializes every durable NPC through its generic FULL-extra bag. This tender is

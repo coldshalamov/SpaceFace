@@ -7287,11 +7287,28 @@ export const vfx = {
       return slot.contactTarget;
     }
     if (!field) return null;
+    // Keyed maps under the entity index's coverage contract: slot refs name an
+    // activityObjectSlotId (indexed set enumerates every indexed carrier), and a world-site
+    // ref is a worldRecordId with a counted holder — count>1 keeps the lane scan so duplicate
+    // carriers still resolve the same answer the walk gives.
+    let keyed = null;
+    const index = this.state.entityIndex;
+    // Only under full coverage (every entities-map member indexed) do the keyed sets
+    // enumerate the whole candidate population — otherwise keep the historical lane scan.
+    if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index._indexedIds instanceof Set && this.state.entities
+      && this.state.entities.size === index._indexedIds.size) {
+      if (field === 'activityObjectSlotId') {
+        keyed = index.byActivityObjectSlotId.get(value) || null;
+      } else if (field === 'worldRecordId'
+        && (index.byWorldRecordIdCount.get(value) || 0) === 1) {
+        keyed = [index.byWorldRecordId.get(value)];
+      }
+    }
     // Indexed type bucket when available — the predicate below still re-checks `body.type`,
     // so an unknown type simply falls back to the full entity list.
-    const list = indexedTypeScan(this.state, INDEX_BUCKET_BY_TYPE[type]);
-    for (let i = 0; i < list.length; i++) {
-      const body = list[i];
+    const list = keyed || indexedTypeScan(this.state, INDEX_BUCKET_BY_TYPE[type]);
+    for (const body of list) {
       if (body === ent || body.alive === false || body.type !== type
         || !body.data || body.data[field] !== value || !body.pos) continue;
       if (slot.contactTarget) { slot.contactTarget = null; break; }

@@ -55,6 +55,7 @@ import {
   NPC_JOB_SCHEMA,
 } from './npcJobs.js';
 import { hash32 } from '../core/rng.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activityScheduler.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
@@ -3291,6 +3292,7 @@ export const npcJobsRuntime = {
     if (entry) entry.heliosShiftStopped = false;
     miner.data.minerShiftRockId = live.id;
     miner.data.activityActorSlotId = 'helios_starter_cutter';
+    syncEntityActivitySlotMembership(this.state && this.state.entityIndex, miner);
     requestActivityReclassify(this.state, miner);
     return true;
   },

@@ -138,6 +138,11 @@ const BOOT_SCREEN_EXPORTS = new Set([
   'crucibleScreen', 'crucibleResultsScreen', 'demoEndScreen',
 ]);
 
+// Screens whose mounts stay deferred even during menu dwell: 'station' is a whole app whose
+// open is already masked by the dock ceremony, and 'ship' mounts the shared stage (the second
+// GL context) which is itself shared with the dock shipworks host.
+const SCREEN_PREWARM_DEFER = new Set(['station', 'ship']);
+
 function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
     // A hidden or occluded tab never fires rAF; without a timeout the deferred registration waves
@@ -1346,6 +1351,16 @@ export const ui = {
         }
         if (!this._registeredScreens) this._registeredScreens = new Set();
         this._registeredScreens.add(def.id);
+        // Menu dwell is the warm window: mount the screen's hidden root now so the first
+        // in-flight open doesn't pay mount() inside a live frame. station (a whole app, and
+        // masked by the dock ceremony) and ship (the shared stage owns the second GL context)
+        // keep their deferred mounts. Every other screen's mount is DOM/canvas and already
+        // re-sizes on show, so a display:none mount is the same state they sit in while cached.
+        if (this.state.mode === 'menu' && !SCREEN_PREWARM_DEFER.has(def.id) &&
+          this.screenManager && typeof this.screenManager.prewarm === 'function') {
+          try { this.screenManager.prewarm(def.id); }
+          catch (e) { console.error(`[ui] prewarm("${def.id}")`, e); }
+        }
         if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
           try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
         }
