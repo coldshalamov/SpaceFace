@@ -107,6 +107,13 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   let hoverRootPublished = null;
   let insideCanvas = false;
   let lastPoint = null;
+  // A motionless cursor does not need a full scene re-raycast every frame — the pick walks every
+  // presented leaf (~0.6 ms on the iGPU floor, pure CPU). Repick immediately when the pointer
+  // moved; while it sits still the world under it is re-sampled at ~8 Hz, an imperceptible lag
+  // for hover feedback. Click/gesture picks stay synchronous and are untouched.
+  let repickIdleS = Infinity;
+  let lastRepickX = null;
+  let lastRepickY = null;
   let previewTextKey = '';
 
   let tag = null;
@@ -263,6 +270,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   function markViewportDirty() {
     if (destroyed) return;
     viewportDirty = true;
+    // A layout change can move the body under a motionless cursor — bypass the idle
+    // repick cadence so the next tick re-measures and raycasts fresh.
+    repickIdleS = Infinity;
   }
 
   function pickAt(pt) {
@@ -450,7 +460,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     tag.el.hidden = false;
   }
 
-  function tick() {
+  function tick(dt) {
     if (destroyed) return;
     hoverPresentation.update();
     if (!acceptingInput()) {
@@ -476,10 +486,24 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const inp = state.input;
       const ps = inp && inp.pointerScreen;
       if (!pt || !ps || !ps.active) {
+        repickIdleS = Infinity;
+        lastRepickX = null;
+        lastRepickY = null;
         setHover(null);
       } else {
-        const hit = pickAt(pt);
-        setHover(hit && hit.entity ? hit.entity : null);
+        repickIdleS += Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
+        const moved = lastRepickX == null
+          || Math.abs(pt.x - lastRepickX) > 0.5
+          || Math.abs(pt.y - lastRepickY) > 0.5;
+        // Without a ResizeObserver the cached bounds can lie at any time; only the
+        // observed path may sit out a repick.
+        if (moved || !viewportObserved || repickIdleS >= 0.125) {
+          repickIdleS = 0;
+          lastRepickX = pt.x;
+          lastRepickY = pt.y;
+          const hit = pickAt(pt);
+          setHover(hit && hit.entity ? hit.entity : null);
+        }
       }
     }
     publishHover();
