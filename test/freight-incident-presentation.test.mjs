@@ -67,7 +67,7 @@ test('freight-custody pickups use the sealed canister presentation while remaini
     'the sealed payload collars must remain part of the freight read');
 });
 
-test('ordinary pickups retain the glowing octahedral gem presentation', () => {
+test('ordinary pickups are their category\'s authored solid: one glowing mesh, no freight/chip language', () => {
   const root = createVisualFactory().build({
     id: 'ordinary:cargo-pickup',
     type: 'pickup',
@@ -78,6 +78,7 @@ test('ordinary pickups retain the glowing octahedral gem presentation', () => {
 
   assert.equal(root.userData.kind, 'pickup');
   assert.equal(root.userData.visualLanguage, undefined);
-  assert.equal(root.userData.gem?.geometry?.type, 'OctahedronGeometry');
-  assert.deepEqual(ordinaryMeshes.map((mesh) => mesh.geometry?.type), ['OctahedronGeometry']);
+  assert.equal(root.userData.pickupShape, 'refined', 'refined metals read as the ingot stack (GFX-16 pickup kit)');
+  assert.equal(root.userData.gem?.geometry?.type, 'BufferGeometry');
+  assert.deepEqual(ordinaryMeshes.map((mesh) => mesh.geometry?.type), ['BufferGeometry']);
 });

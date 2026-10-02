@@ -9,6 +9,7 @@ import {
   sampleThrottleInto,
   integrateDriveState,
   compileDriveRates,
+  integrateModeWeights,
   resolveDriveMode,
 } from './throttleResponse.js';
 import {
@@ -373,6 +374,8 @@ export class PlumeSlotPool {
     tf.mode = signals && signals.mode ? signals.mode : null;
     // No object literal: mode resolver reads the same scratch.
     if (!tf.mode) tf.mode = resolveDriveMode(tf, this.recipe);
+    // Crossfade the structural mode (brake x0.42, reverse x0.08, ...) instead of stepping it.
+    tf.modeWeights = integrateModeWeights(state, tf.mode, dt || 0);
     sampleThrottleInto(this.recipe, state.plumeDrive, tf, this._scratchSample);
 
     if (state.boostBlend > this._batchBoostMax) this._batchBoostMax = state.boostBlend;

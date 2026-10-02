@@ -48,12 +48,34 @@ export const RETRO_BITE_TRIGGER_RATE = 3.0;
 export const RETRO_BITE_DECAY_PER_S = 3.4;
 
 /**
+ * BORN FROM NOTHING, GONE TO NOTHING (slice 1, thruster lifecycle).
+ *
+ * The retro pair used to be floored at 55% length / 60% radiance (plus a x1.22 "wither" lengthening),
+ * so the first frame of a brake showed a jet at ~67% of its held length, and on release it froze at
+ * ~64% length for about three quarters of a second before `reset()` hid it in a single frame. The
+ * jet now ramps from zero length and zero radiance with the spool (`RETRO_BORN_SPAN`), shrinks the
+ * same way on the way out, and is hidden only once it has less than `RETRO_MIN_VISIBLE_WU` of
+ * length left (about 2 px at the chase camera). Length and radiance are the only channels that
+ * move; opacity is never a throttle channel (VFX technique standard B10/B17).
+ */
+export const RETRO_BORN_SPAN = 0.5;
+export const RETRO_MIN_VISIBLE_WU = 0.3;
+
+function smooth01(edge0, edge1, x) {
+  if (!(edge1 > edge0)) return x >= edge1 ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
  * Asymmetric one-pole spool for the retro pair, plus the bite transient. The spool lives on the
  * volume instance so the release keeps the last held pose while the demand decays to exactly zero
  * (no idle stub); the bite lives there for the same reason.
  */
 export function integrateRetroSpool(volume, demand, dt) {
   const target = Math.max(0, Math.min(1.4, Number(demand) || 0));
+  // Published so the renderer's idle-sleep gate can tell "braking" from "still shrinking away".
+  volume.demand = target;
   const current = Number.isFinite(volume.spool) ? volume.spool : 0;
   const tau = target > current ? RETRO_SPOOL_RISE_TAU : RETRO_SPOOL_FALL_TAU;
   const d = Math.max(0, Math.min(0.1, Number.isFinite(dt) ? dt : 0));
@@ -84,8 +106,9 @@ export function retroEnvelopeForDemand(peak, a11y = null, bite = 0, variant = nu
   const drive = Math.max(0, Math.min(1.4, Number(peak) || 0));
   const punch = Math.max(0, Math.min(1, Number(bite) || 0));
   const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
+  const born = smooth01(0, RETRO_BORN_SPAN, drive);
   const lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (variant?.length || 1)
-    * visualScale * (0.55 + drive * 0.5);
+    * visualScale * (0.55 + drive * 0.5) * born;
   const exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU
     * (variant?.width || 1) * visualScale;
   return {
@@ -99,7 +122,7 @@ export function retroEnvelopeForDemand(peak, a11y = null, bite = 0, variant = nu
     exitRadiusWU,
     tailRadiusWU: exitRadiusWU * PLAYER_RETRO_VOLUME_RECIPE.tailFlare,
     radiance: (PLAYER_RETRO_VOLUME_RECIPE.radiance || 1.12) * flashScale
-      * (0.6 + drive * 0.55) * (1 + punch * 0.5 * flashScale),
+      * (0.6 + drive * 0.55) * (1 + punch * 0.5 * flashScale) * born,
     spread: PLAYER_RETRO_VOLUME_RECIPE.spread * (variant?.width || 1)
       * visualScale * (1 - punch * 0.18),
     opacity: PLAYER_RETRO_VOLUME_RECIPE.opacity,
@@ -383,6 +406,12 @@ export class PlayerRetroJets {
       this.reset();
       return { live: 0, construction: RETRO_JET_CONSTRUCTION };
     }
+    // The only hide that is not a lost demand: the jet has run out of length (see RETRO_BORN_SPAN).
+    const demandedLength = p.lengthWU != null ? p.lengthWU : this.recipe.lengthWU;
+    if (!(demandedLength >= RETRO_MIN_VISIBLE_WU)) {
+      this.reset();
+      return { live: 0, construction: RETRO_JET_CONSTRUCTION };
+    }
 
     const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
     const anim = p.animRate != null ? p.animRate : 1;
@@ -390,7 +419,7 @@ export class PlayerRetroJets {
     shape.drive = p.drive;
     shape.boost = p.boost || 0;
     shape.dash = 0;
-    shape.jetLength = Math.max(0.75, p.lengthWU || this.recipe.lengthWU);
+    shape.jetLength = Math.max(RETRO_MIN_VISIBLE_WU, p.lengthWU || this.recipe.lengthWU);
     shape.throatRadius = Math.max(0.4, p.exitRadiusWU || this.recipe.exitRadiusWU);
     shape.spread = p.spread != null ? p.spread : this.recipe.spread;
     let radiance = p.radiance != null ? p.radiance : this.recipe.radiance;
@@ -415,11 +444,12 @@ export class PlayerRetroJets {
     // instead of the live jet shrinking into the throat like a dial. The same shred covers the
     // first frames of ignition: a catching jet sputters before it stabilizes. One parameter
     // feeds both ends of the life cycle.
+    // The fraying is structural (coherence/wobble below) and radiance cools with it; the jet never
+    // LENGTHENS as it dies and its opacity is untouched (the old x1.22 length and x0.8 opacity
+    // are what froze the plume at ~64% before it was hidden).
     const wither = Math.max(0, Math.min(1, 1 - shape.drive / 0.45));
     shape.wither = wither;
-    shape.jetLength *= 1 + wither * 0.22;
     shape.radiance *= 1 - wither * 0.3;
-    shape.opacity *= 1 - wither * 0.2;
 
     this.group.visible = true;
     this._liveCount = count;
@@ -473,6 +503,15 @@ export class PlayerRetroJets {
       lengthWU: shape.jetLength,
       exitRadiusWU: shape.throatRadius,
     };
+  }
+
+  /**
+   * True while a released brake is still shrinking away (the spool has not run out). The renderer's
+   * idle-sleep gate asks this so it does not `reset()` the pair (a hard hide) mid-taper.
+   */
+  isFading() {
+    return !this._disposed && !!this.group && this.group.visible && this.spool > 1e-4
+      && !((this.demand || 0) > 0.001);
   }
 
   inspect() {
