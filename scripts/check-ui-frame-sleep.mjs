@@ -123,7 +123,15 @@ function checkFloatingTextSleepsWhenInactive() {
   assert.equal(projectionCalls, 0, 'inactive floating text should not project or scan the DOM pool');
   assert.equal(ft._activeCount(), 0, 'floating text should start asleep');
 
-  bus.emit('combat:damage', { targetId: 2, amount: 5 });
+  // The fixture pins a NON-player-caused hit (attackerId 99, playerId unset): since FB-019 landed
+
+  // in 183b91a57, a player-caused combat:damage legitimately wakes TWO pool nodes  the layer hit
+
+  // pip (control receipt) plus the damage number. This check owns the sleep contract, not the pip,
+
+  // so one event still means one number here.
+
+  bus.emit('combat:damage', { targetId: 2, amount: 5, attackerId: 99 });
   assert.equal(ft._activeCount(), 1, 'floating text should wake when a combat number spawns');
   ft.update(1 / 60);
   assert.equal(projectionCalls, 1, 'active floating text should still project live numbers');
