@@ -31,7 +31,7 @@ stops being "Vampire Survivors in space" and becomes something people describe t
 | Slay the Spire / FTL | a route map of choices between fights: elite, shop, event, rest | the run as a journey on a route map (B5) |
 | Dead Cells / Enter the Gungeon | biomes with personality, branching paths, secrets, bosses with patterns | biomes (B4), bosses (B3), secret routes |
 | Bloons TD / Kingdom Rush | a ladder of levels, an upgrade beat between waves, stars per level, every level a step up | the level-and-upgrade rhythm (B6), stars (SWARM_ARCADE §6.3) |
-| Orcs Must Die / Sanctum / Dungeon Defenders | you fight *and* build traps | **not taken** — placeable turrets/pylons are a separate, later job (owner, 2026-10-02) |
+| Orcs Must Die / Sanctum / Dungeon Defenders | you fight *and* build traps; kill funnels are the joy | **later**: Fortify — build in the arena, then fly the swarm through it (B13), after the core builds land |
 | CoD Zombies / Gears Horde | farthest round wins, mystery box, perk machines, barricades, easter eggs, secret bosses | mystery box, perk stations, hidden easter-egg bosses (B10) |
 | Left 4 Dead | an AI director and special infected that break your plan | specialist enemies with hard counters (B2) |
 | Helldivers 2 | call-in stratagems, mission objectives, friendly-fire comedy | call-ins (B7), round objectives (B5) |
@@ -172,9 +172,8 @@ upgrade intermittently" — not about building towers. The beat to nail is: **cl
 - **Proof you got stronger.** The results of each level compare to the last: faster clear, bigger
   chain, more room kills. The next level's preview says how much harder it is.
 - **Stars and the ladder** (SWARM_ARCADE §6.3) give every level a reason to be replayed.
-- **Placeable help is parked.** Turrets, pylons or barricades you place in the arena would be fun,
-  but are a separate job and miss the point of a physics-blast arcade swarm game. Not in this
-  program.
+- **Building in the arena comes later** (B13). The first builds nail the physics-blast arcade
+  game on its own; construction and tower defense are added on top once that is solid.
 
 ### B7 — The arcade arsenal (L)
 - **Swarm-native weapons** built for density: Arc Caster (chain lightning) · Disc Launcher
@@ -205,6 +204,7 @@ upgrade intermittently" — not about building towers. The beat to nail is: **cl
   - *The Gunner* — fire rate; ult Bullet Storm.
   - *The Ace* — dash resets on every kill.
   - *The Juggler* — thrown hulls fly further and bounce once more.
+  - *The Engineer* — arrives with Fortify (B13): cheaper, stronger constructions.
   - *The Scavenger* — chips are worth double; ult Magnet Storm.
   - *The Zealot* — ex-Choir; heals on kills; ult Hymn (the room freezes).
   - *The Saboteur* — traps and mines.
@@ -228,7 +228,7 @@ Give the Crucible a reason to exist, and the gratuitous effects a reason to be o
 
 ### B10 — Modes (M each)
 - **Circuit** (the main run, B5) · **Overtime** (endless after a Circuit) · **Boss Rush** (exists
-  as Boss Circuit) · **Daily / Weekly** (exist).
+  as Boss Circuit) · **Daily / Weekly** (exist) · **Hold the Line** (arrives with B13).
 - **Chaos** — 1,000 mites, everything maxed, for laughs.
 - **Duel** — 1v1 rivals.
 - **Time Attack** — fastest Circuit.
@@ -246,11 +246,29 @@ leaderboards, the daily and weekly boards, shared run codes.
 An arena editor: place rocks, force fields, machines and spawn gates, script waves, and share them
 by code (share codes already exist). Feature community arenas as the daily challenge.
 
+### B13 — Fortify: building and tower defense (L, a later phase)
+Owner, 2026-10-02: a really good idea that needs a lot of attention, so it is **not** in the
+immediate builds — "we have to get to that point". It is an additive feature on top of a finished
+arcade core, not a substitute for it.
+- Between rounds, **build in the arena**: Turret · Repulsor Pylon · Gravity Beacon · Mine Field ·
+  Barricade (rocks you place to make funnels) · Tesla pair (lightning between two posts) · Drone
+  Bay · Chip Magnet · Shield Emitter.
+- Constructions **persist** across rounds, take damage, can be repaired, and **upgrade along 2–3
+  paths** (Bloons): a Repulsor that throws harder, or wider, or pulses.
+- The physics edge makes it unique: build a pinball machine of pylons and rocks, then fly the
+  swarm through it.
+- **Hold the Line** mode: defend a reactor core while enemies path toward it; you fly, fight and
+  build.
+- Constructions unlock in the Hangar, so building also feeds the additive meta. The Engineer pilot
+  arrives with it.
+- In Adventure, the same layer lets you fortify a station against an incursion (§5).
+
 ## 5. Expanding Adventure with the same work
 
 One game path means most of this lands in Adventure too:
 - **The Brood and the Machine become Adventure threats.** Incursions are sector events where the
-  swarm overruns a station and you fight it off — the Brood tier reused in the open world.
+  swarm overruns a station and you fight it off — the Brood tier reused in the open world, and
+  later the Fortify layer (B13) to build its defences.
   Infestation zones can use the contamination bands that already exist (`alienEcology.js`,
   C0–C5).
 - **Swarm bosses become world bosses**: a Brood Queen that roams, bounty contracts on the Tendril.
@@ -285,7 +303,9 @@ One game path means most of this lands in Adventure too:
    evolutions, legendaries and abilities (B7).
 4. **A world** — the Show (B9), pilots (B8), the Machine faction, the rest of the biomes and
    bosses; Adventure incursions (§5).
-5. **Sharing** — arena editor (B12), global boards.
+5. **Build and defend** — Fortify (B13): constructions, upgrade paths, Hold the Line, the Engineer
+   pilot. Only once phases 1–4 have made the arcade game great on its own.
+6. **Sharing** — arena editor (B12), global boards.
 
 ## 8. Laws that still hold
 
@@ -302,6 +322,8 @@ One game path means most of this lands in Adventure too:
    alien lore says the fungus colonises dead hulls but never flies a ship (`alienEcology.js`), so
    the Brood is written as its own creature, not as that fungus, unless the owner later rules the
    lore changes.
-3. **Tower defense.** The *feeling* only: levels you clear and upgrade between (B6). No placeable
-   turrets or pylons in this program; "environmental help" like that is a separate, later job.
+3. **Tower defense.** Both, in order. First the *feeling*: levels you clear and upgrade between
+   (B6), in the immediate builds. Then real construction and tower defense (B13) as a later,
+   additive phase — "a really good idea", deliberately not in the first builds because it needs a
+   lot of attention.
 4. **Co-op.** Never. Swarm is single-player (B11).
