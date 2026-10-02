@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-01",
+  "updated": "2026-10-02",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,58 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "verb-10-latched-pickup-vacuum",
-      "date": "2026-09-23",
-      "wf": "WF-06",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "skip updatePickups vacuum on Massline-latched pickup",
-      "fingerprint": "verb=latch,subject=pickup,sector=any,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "ce206fb31",
-      "verification": "focused_green"
-    },
-    {
-      "id": "verb-04-first-well-hint",
-      "date": "2026-09-23",
-      "wf": "WF-03",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "first player well deployment emits one-shot contextual hint",
-      "fingerprint": "verb=deploy,subject=well,sector=any,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "5b19fa765",
-      "verification": "focused_green"
-    },
-    {
-      "id": "world-08-dmc-contact-grammar",
-      "date": "2026-09-23",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "define Collective yard contact grammar and Ceres patrol line",
-      "fingerprint": "verb=hail,subject=collective,sector=ceres,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "44d500c8b",
-      "verification": "focused_green"
-    },
-    {
-      "id": "pic-07-wreck-camera-clearance",
-      "date": "2026-09-23",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Large wrecks now push the chase camera above their hull like stations do; skiff-sized wrecks stay under the span bar",
-      "fingerprint": "verb=clear,subject=capital-wreck-camera,sector=any,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "0619e48c4",
-      "verification": "focused_green"
-    },
     {
       "id": "world-09-mts-contact-grammar",
       "date": "2026-09-23",
@@ -1672,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "f94613bbc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "nxi-022-kinematic-proxy-not-offered",
+      "date": "2026-10-02",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A kinematic machine proxy is no longer offered as throwable cargo; the loose payload beside it still is (isAttachable applies the physicsBody:false + site-role exclusions)",
+      "fingerprint": "verb=deny-offer,subject=tow-eligibility,sector=industrial-sites,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "6eca0bd9a",
       "verification": "focused_green"
     }
   ],
