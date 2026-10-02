@@ -444,7 +444,7 @@ export function createScreenManager(ctx) {
     // hide currently-visible top
     const prevId = top();
     const prev = activeDef();
-    if (prev && prev.onHide) { try { prev.onHide(); } catch (e) { console.error(e); } }
+    if (prev && prev.onHide) { try { prev.onHide(ctx); } catch (e) { console.error(e); } }
     if (prevId) captureScroll(prevId, registry.get(prevId));
     const rec = build(id);
     stack.push(id);
@@ -462,7 +462,7 @@ export function createScreenManager(ctx) {
     const closingId = stack[stack.length - 1];
     const closingRec = closingId && registry.get(closingId);
     const closing = activeDef();
-    if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+    if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }
     // Capture AFTER onHide so a screen's own onHide write lands first and this cannot clobber it.
     if (closingId) captureScroll(closingId, closingRec);
 
@@ -503,7 +503,7 @@ export function createScreenManager(ctx) {
   function replaceScreen(id) {
     if (stack.length) {
       const closing = activeDef();
-      if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+      if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }
       stack.pop();
       focusStack.pop();
       clearModalFocus();
@@ -514,7 +514,7 @@ export function createScreenManager(ctx) {
   function closeAll() {
     while (stack.length) {
       const closing = activeDef();
-      if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+      if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }
       stack.pop();
     }
     focusStack.length = 0;
@@ -539,7 +539,7 @@ export function createScreenManager(ctx) {
       if (stacked >= 0) syncVisibility();
       return;
     }
-    if (rec.def.onHide) { try { rec.def.onHide(); } catch (e) { console.error(e); } }
+    if (rec.def.onHide) { try { rec.def.onHide(ctx); } catch (e) { console.error(e); } }
     if (rec.def.dispose) { try { rec.def.dispose(); } catch (e) { console.error(e); } }
     rec.mounted = false;
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
@@ -649,7 +649,7 @@ export function createScreenManager(ctx) {
     for (const rec of registry.values()) {
       cancelPendingExit(rec);
       if (rec && rec.mounted && rec.def && rec.def.onHide) {
-        try { rec.def.onHide(); } catch (_) {}
+        try { rec.def.onHide(ctx); } catch (_) {}
       }
       if (rec && rec.mounted && rec.def && rec.def.dispose) {
         try { rec.def.dispose(); } catch (_) {}

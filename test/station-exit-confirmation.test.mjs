@@ -153,6 +153,17 @@ class FakeElement {
     }
     return child;
   }
+  insertBefore(child, reference) {
+    if (reference == null) return this.appendChild(child);
+    if (child === reference) return child;
+    if (!this.children.includes(reference)) throw new Error('reference is not a child');
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this;
+    child.ownerDocument = this.ownerDocument || globalThis.document || null;
+    child.isConnected = this.isConnected;
+    this.children.splice(this.children.indexOf(reference), 0, child);
+    return child;
+  }
   prepend(child) {
     child.parentNode = this;
     child.ownerDocument = this.ownerDocument || globalThis.document || null;
@@ -624,7 +635,7 @@ console.log('ok   stationExitNeedsConfirm gates implicit and explicit risk-unhel
     'input.js must let external callers trigger undock via ui:undock');
   assert.match(inputSrc, /bus\.emit\('dock:undocked',\s*\{\}\);/,
     'input.js undock() emits the gated dock:undocked event');
-  assert.match(inputSrc, /if \(isConfirmOpen\(\)\)\s*\{\s*ev\.preventDefault\(\);\s*return;\s*\}/,
+  assert.match(inputSrc, /if \(isConfirmOpen\(\)\)\s*\{[^{}]*ev\.preventDefault\(\);\s*return;\s*\}/,
     'input.js must let the shared confirm dialog trap all keys');
 
   console.log('ok   input.js routes station exit through ui:undock without direct dock:undocked');
