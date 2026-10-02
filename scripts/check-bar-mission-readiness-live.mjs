@@ -49,7 +49,7 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000, polling: 250 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS, polling: 250 });
   // The main menu is the first surface painted after boot — SwiftShader is still draining the
   // serial shader-compilation backlog here, so this wait gets the boot-adjacent budget, not the
   // warm-UI one (30 s proved short under shard contention).
@@ -491,6 +491,7 @@ function spawnProbeServer(port) {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
   });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };

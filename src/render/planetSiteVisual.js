@@ -237,6 +237,8 @@ export function buildPlanetSiteVisual(e) {
   const arcs = stormArcLayout(seed);
   const stormMid = (site.bands.reentry + site.bands.danger) / 2;
   const workMid = (site.bands.danger + site.bands.skim) / 2;
+  const slingMid = site.bands.sling ? (site.bands.skim + site.bands.sling) / 2 : null;
+  const influenceRadius = site.bands.influence || null;
   const timeMats = [];
   const bandDefs = [
     { geo: makeBandGeo(R * 1.082, 42, 220, null), mat: createEnergyMaterial({ name: 'planet-reentry-band', colorA: 0xffb35c, colorB: 0xff5c5c, intensity: 1.4, opacity: 0.3, noiseScale: 0.7, flowSpeed: 0.35, core: 0.1, edgeNoise: 0.15, fresnelPower: 1.2 }) },
@@ -245,6 +247,12 @@ export function buildPlanetSiteVisual(e) {
     { geo: makeBandGeo(workMid, 44, 260, null), mat: createMasslineRibbonMaterial({ name: 'planet-working-band', color: 0xb8dff2, intensity: 1.0, opacity: 0.32, pulseSpeed: 3.4 }) },
     { geo: makeBandGeo((site.bands.skim + 30), 16, 220, null), mat: createMasslineRibbonMaterial({ name: 'planet-outer-band', color: 0x9fd8e8, intensity: 0.7, opacity: 0.18, pulseSpeed: 2.2 }) },
   ];
+  if (slingMid) {
+    bandDefs.push({ geo: makeBandGeo(slingMid, 36, 260, null, 0.35), mat: createMasslineRibbonMaterial({ name: 'planet-sling-band', color: 0x69b7ff, intensity: 0.65, opacity: 0.18, pulseSpeed: 1.8 }) });
+  }
+  if (influenceRadius) {
+    bandDefs.push({ geo: makeBandGeo(influenceRadius, 48, 300, null, 0.2), mat: createMasslineRibbonMaterial({ name: 'planet-influence-edge', color: 0x4fa8ff, intensity: 0.5, opacity: 0.14, pulseSpeed: 1.2 }) });
+  }
   for (const def of bandDefs) {
     const mesh = new THREE.Mesh(def.geo, def.mat);
     mesh.renderOrder = 12;

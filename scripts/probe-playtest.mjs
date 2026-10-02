@@ -709,9 +709,11 @@ const ROUTES = {
       const hasContinue = (s0.controls || []).some((c) => /continue/i.test(c.text || ''));
       if (!hasContinue) return { screen: s0.screen, continueAvailable: false };
       await clickWord(ctx, /continue/i, 10_000);
-      await sleep(3000);
+      // Continue passes through the intentional loading gate (mode='loading' while the world
+      // rebuilds); a fixed 3s sleep flags slow-but-healthy resumes on contended hosts.
+      try { await waitMode(ctx, 'flight', 60_000); } catch { /* assert below reports the stuck mode */ }
       const s = await snap(ctx);
-      if (s.mode !== 'flight') observe(ctx, 'defect', 'lifecycle', `Continue landed mode=${s.mode} screen=${s.screen}, expected flight`);
+      if (s.mode !== 'flight') observe(ctx, 'defect', 'lifecycle', `Continue never reached flight (mode=${s.mode} screen=${s.screen})`);
       return { screen: s.screen, mode: s.mode, continueAvailable: true, simTime: s.simTime, player: s.player };
     });
 
@@ -1006,17 +1008,30 @@ const ROUTES = {
       await ctx.page.evaluate((t) => window.SF.bus.emit('world:requestJump', { targetSectorId: t, via: 'gate' }), target);
       await sleep(400);
       const j0 = await ctx.page.evaluate(() => ({ state: window.SF.state.jump.state, chargeNeeded: window.SF.state.jump.chargeNeeded }));
-      // GATE_CHARGE is 3s; poll up to 40s for the arrive transition.
-      let arrived = false, sector = null;
-      for (let i = 0; i < 80 && !arrived; i++) {
-        sector = await ctx.page.evaluate(() => window.SF.state.world.currentSectorId);
-        arrived = sector === target;
-        if (!arrived) await sleep(500);
+      // GATE_CHARGE is 3 SIM seconds — hitch-shedding under a loaded host stretches that to
+      // minutes of wall time (chargeT ticks on simTime). Poll sim progress, not wall iterations,
+      // so a slow-but-healthy jump isn't flagged as a wedge; still bail if the charge aborts.
+      const s0t = await ctx.page.evaluate(() => window.SF.state.simTime || 0);
+      const simDeadline = s0t + (Number(j0.chargeNeeded) || 3) + 10;
+      const wallDeadline = Date.now() + 5 * 60_000;
+      let arrived = false, sector = null, jumpState = j0.state;
+      while (!arrived && Date.now() < wallDeadline) {
+        const r = await ctx.page.evaluate(() => ({
+          sector: window.SF.state.world.currentSectorId,
+          t: window.SF.state.simTime || 0,
+          jump: window.SF.state.jump && window.SF.state.jump.state,
+        }));
+        sector = r.sector;
+        jumpState = r.jump;
+        arrived = r.sector === target;
+        if (arrived || r.t > simDeadline) break;
+        if (jumpState && jumpState !== 'CHARGING' && jumpState !== 'RUNNING') break;
+        await sleep(500);
       }
       await sleep(1500);
       await shotNow(ctx, 'l06-arrived');
       const s = await snap(ctx);
-      if (!arrived) observe(ctx, 'defect', 'travel', `gate jump to ${target} never arrived (state=${j0.state})`);
+      if (!arrived) observe(ctx, 'defect', 'travel', `gate jump to ${target} never arrived after ${(Number(j0.chargeNeeded) || 3) + 10}s sim (jump=${jumpState} sector=${sector})`);
       else if (!/helios/i.test(sector) === /helios/i.test(from)) { /* same-sector guard */ }
       return { from, target, jumpStart: j0, arrived, sector, mode: s.mode, saveNow: !!(await ctx.page.evaluate(() => window.SF.state.meta && window.SF.state.meta.lastSavedAt)) };
     });
@@ -1154,11 +1169,24 @@ const ROUTES = {
         return await snap(ctx);
       };
       for (const re of [/share codes/i, /practice room/i]) {
+        // The preparation wizard files secondary rows under the "Challenges, seed & records"
+        // disclosure — display:none until a player opens the summary. Open it like a player
+        // (and scroll the row into the rail's clipped window) before judging the control dead.
         const opened = await ctx.page.evaluate((src) => {
           const rx = new RegExp(src, 'i');
-          const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
-          if (!b) return null; b.click(); return (b.textContent || '').trim();
+          const find = () => [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+            .filter((e) => !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
+          const b = find();
+          if (!b) return null;
+          const d = b.closest('details');
+          if (d && !d.open) {
+            const summary = d.querySelector('summary');
+            if (summary) summary.click(); else d.open = true;
+          }
+          b.scrollIntoView({ block: 'center' });
+          if (!window.__SF_PT_HELPERS__.isVis(b)) return null;
+          b.click();
+          return (b.textContent || '').trim();
         }, re.source);
         // Practice room goes through a loading transition into flight; wait for the launch to
         // resolve (or the sub-screen to settle) before snapping, so backToDoor starts stable.
@@ -1184,6 +1212,30 @@ const ROUTES = {
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(2500);
+      // Swarm opens in the armory (phase 'draft' at wave 0), not the arena — the fight beats
+      // that follow would poll a paused menu unless the run is launched through the real key.
+      // The warm hold can leave it disabled for a breath, so wait for it to arm first.
+      try {
+        await ctx.page.waitForFunction(
+          () => window.SF.ctx.screenManager.top() === 'crucibleDraft'
+            && window.SF.state.run && window.SF.state.run.phase === 'draft',
+          null, { timeout: 30_000 });
+        await ctx.page.waitForFunction(() => {
+          const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+          const b = [...document.querySelectorAll('#screens button')]
+            .find((x) => norm(x.textContent).includes('Launch round'));
+          return !!b && !b.disabled;
+        }, null, { timeout: 30_000 });
+        await ctx.page.evaluate(() => {
+          const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+          const b = [...document.querySelectorAll('#screens button')]
+            .find((x) => norm(x.textContent).includes('Launch round'));
+          b.click();
+        });
+        await ctx.page.waitForFunction(
+          () => window.SF.state.run && window.SF.state.run.phase === 'active',
+          null, { timeout: 60_000 });
+      } catch { /* a path that starts in flight already needs no dismissal */ }
       const s = await snap(ctx);
       return { verb: clicked, screen: s.screen, mode: s.mode };
     });

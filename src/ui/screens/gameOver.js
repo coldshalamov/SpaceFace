@@ -823,6 +823,10 @@ export const gameOverScreen = {
     // (player:recoveryFailed) lands in the receipt fields the signature covers. An unchanged
     // signature means the DOM already says it: no 14-node recap rebuild, no recovery innerHTML
     // re-parse.
+    // The drawer the verbs describe is a signature input too: a save landing (or rotating) while
+    // the sheet is open must re-run the paint so "Load latest" re-settles instead of staying
+    // grey over a save that now exists.
+    const latestSlot = selectLatestOccupiedSlot((state.save && state.save.slots) || {});
     const sig = [
       difficulty, death.cause, death.lifespan, state.meta && state.meta.playtimeS,
       stats.missionsDone, stats.kills, stats.tradesCount,
@@ -835,6 +839,7 @@ export const gameOverScreen = {
       recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
       recovery.insuranceStatus, recovery.coverageNote,
       recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
+      latestSlot,
     ].join('|');
     if (sig === this._summarySig) return;
     this._summarySig = sig;
@@ -931,5 +936,9 @@ export const gameOverScreen = {
     setWordHidden(this._menuButton, recoverable);
     this._defaultButton = recoverable ? this._retryButton : ironman ? this._newButton : this._loadButton;
     this._dressRestore(this._defaultButton);
+    // Re-settle the verb here too, not only at build/recoveryFailed: with the slot in the
+    // signature, the periodic repaint reaches this line the moment an autosave lands on an
+    // open sheet — the disabled-looking "Load latest" arms itself without a wasted click.
+    this._syncLoadLatest(ctx);
   },
 };

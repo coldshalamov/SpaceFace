@@ -49,6 +49,49 @@ export function capitalOpeningAnnouncement(previousTransitionId, opening) {
   return { cue: 'combat.subsystem.weapon.disabled', transitionId: id, close: false };
 }
 
+/**
+ * Count destroyed/disabled turrets on an entity (e.g. dreadnought capital).
+ * Supports both entity.subsystems and entity.data.subsystems.turrets.
+ */
+export function countTurretsLost(source) {
+  if (!source || typeof source !== 'object') return 0;
+  const bag = (source.data && source.data.subsystems && source.data.subsystems.turrets) || subsystemBag(source);
+  if (!bag) return 0;
+  let lost = 0;
+  for (const [id, sub] of Object.entries(bag)) {
+    if (id.startsWith('turret_') || (sub && sub.isTurret)) {
+      if (sub.destroyed === true || sub.effectiveDisabled === true || (Number.isFinite(sub.health) && sub.health <= 0)) {
+        lost++;
+      }
+    }
+  }
+  return lost;
+}
+
+/**
+ * Scripted or direct turret disable on an entity.
+ */
+export function destroyTurret(source, turretId) {
+  if (!source || typeof source !== 'object') return false;
+  const dataTurrets = source.data && source.data.subsystems && source.data.subsystems.turrets;
+  const bag = dataTurrets || subsystemBag(source);
+  if (!bag) return false;
+  const key = typeof turretId === 'number' ? `turret_${turretId}` : turretId;
+  const sub = bag[key];
+  if (sub) {
+    sub.health = 0;
+    sub.destroyed = true;
+    sub.effectiveDisabled = true;
+    if (source.subsystems && source.subsystems[key]) {
+      source.subsystems[key].health = 0;
+      source.subsystems[key].destroyed = true;
+      source.subsystems[key].effectiveDisabled = true;
+    }
+    return true;
+  }
+  return false;
+}
+
 // Subsystem id sets are fixed at ensureCombatant(); damage toggles destroyed flags but never
 // adds/removes keys. Cache the sorted id list on the runtime so applyPending + recompute skip
 // Object.keys().sort() every combat prePhysics (fresh profile: ~36 ms self).

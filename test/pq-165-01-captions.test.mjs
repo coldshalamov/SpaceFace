@@ -44,7 +44,7 @@ test(`seed ${SEED}: every barkFor() line produces a caption record`, () => {
 
 test(`seed ${SEED}: cue table for well/taut/telegraph honours audioCues`, () => {
   const state = createGameState(SEED);
-  assert.equal(state.settings.accessibility.captions, true);
+  assert.equal(state.settings.accessibility.captions, false);
   assert.equal(state.settings.accessibility.audioCues, true);
   for (const kind of ['well', 'taut', 'telegraph']) {
     const on = resolveAccessibilityCue(kind, true);

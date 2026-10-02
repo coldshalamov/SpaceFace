@@ -18,14 +18,14 @@ import { test } from 'node:test';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { SHIPS } from '../src/data/ships.js';
-import { SWARM_BOSS_ROTATION, SWARM_ROSTER } from '../src/data/swarmMode.js';
+import { SWARM_BOSS_ROTATION, SWARM_ROSTER, bossPackagesFor } from '../src/data/swarmMode.js';
 import { buildSlotList, getDerivedStats, outfitBudgetForFittings } from '../src/systems/ships.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
 
 /** Every archetype a swarm run can put on the board, chaff and champions alike. */
 function swarmEnemyIds() {
-  const champions = SWARM_BOSS_ROTATION.flatMap((b) => b.packages.map((p) => p.enemyId));
+  const champions = SWARM_BOSS_ROTATION.flatMap((b) => bossPackagesFor(b).map((p) => p.enemyId));
   return [...new Set([...SWARM_ROSTER.map((r) => r.enemyId), ...champions])];
 }
 

@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5d74689103c7ee05624ffed11f60525e064759f6de80242b5ae598ba5fe323dd",
+  "contentHash": "deb10b82d32263b5652b39f1f8ced99f99e2dce9497bf44f9675a04f9e94466c",
   "dynamicGroups": [
     {
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-hook-nav-port.dynamic",
@@ -2627,7 +2627,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "535a6ef27b8394c9ba3bcf5f9e446a572e198fa914b25227b69b4ca0c5cf12e6",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -3650,7 +3650,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb"
   },
-  "runtimeHash": "ace1c8ab9a97c7c4bf626bd6738d83e28c1da61414e09a32d8ad14504a77244c",
+  "runtimeHash": "c4997a8a19669eff58ef48c00620c36799f9715b2d90afdaba7d1e4200cac952",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

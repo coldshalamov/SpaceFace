@@ -238,4 +238,100 @@ export const COMMODITY_FLAVOR = {
     desc: 'High-yield breaching charges in mag-safe foam cradles.',
     lore: 'Meridian ordnance fills military racks first. Blackmarket charges match serials to wrecks nobody reports missing.',
   },
+  // ── Alien-ecology harvest + precursor-protocol goods ───────────────────────────────────────
+  cmdty_filament_sample: {
+    displayName: 'Living Filament Sample, Charon Cinder Nursery',
+    desc: 'A still-growing strand sealed in a field-stasis vial.',
+    lore: 'Nursery collectors pay per viable meter. Research labs bid against Vael brokers who resell to no-questions buyers.',
+  },
+  cmdty_live_specimen: {
+    displayName: 'Cradled Live Specimen, Sker Deep Catch',
+    desc: 'A sedated fauna juvenile breathing inside a pressure cradle.',
+    lore: 'Keep it alive and Meridian research desks pay triple. Let the cradle fail and it is just exotic meat nobody insures.',
+  },
+  cmdty_dmc_black_box: {
+    displayName: 'DMC Flight Recorder, Charon Nursery Wreck',
+    desc: 'A battered voice-and-telemetry capsule in its crash cradle.',
+    lore: 'DMC pays finders for the tape, not the housing. Concord investigators quietly double the bounty when a crew list is missing.',
+  },
+  cmdty_calcified_filament: {
+    displayName: 'Calcified Filament, Ashfall Bonefields',
+    desc: 'Stone-hard strand sheaths cut from anchor-beast moorings.',
+    lore: 'Reach foundries grind it into abrasion liners. Harvest crews sell by the coil; refineries assay it like low-grade ore.',
+  },
+  cmdty_conductive_fiber: {
+    displayName: 'Conductive Fiber, Charon Swarm Harvest',
+    desc: 'Spun filaments that carry charge, wound on ceramic spools.',
+    lore: 'Needle-swarm sheds braid themselves into this. Meridian fabs pay clean rates for spools that still pass a current.',
+  },
+  cmdty_relay_nodule: {
+    displayName: 'Relay Nodule, Veil Shepherd Pods',
+    desc: 'A fist-sized signal organ that still answers a ping.',
+    lore: 'Blind shepherds use them to talk across a pocket. Meridian comms techs buy them intact; dead nodules sell as scrap glass.',
+  },
+  cmdty_membrane_laminate: {
+    displayName: 'Membrane Laminate, Sker Sail Cuts',
+    desc: 'Layered pressure skin peeled from a black sail\'s wing edge.',
+    lore: 'Sail cuts make superb gasket stock. Helios yard buyers sort by scarring; the unmarked panels go to military tenders.',
+  },
+  cmdty_cyst_resin: {
+    displayName: 'Cyst Resin, Lantern Cyst Harvest',
+    desc: 'Amber bio-resin set in chilled containment bricks.',
+    lore: 'Chem shops distill it into sealants and sedatives. Vael lockers pay cash for bricks with the cyst stamp intact.',
+  },
+  cmdty_nerve_glass: {
+    displayName: 'Mineralized Nerve Glass, Ashfall Rare Cut',
+    desc: 'Translucent neural lattice fused into silica plates.',
+    lore: 'One plate in a hundred reads as circuitry. Meridian labs pay assay rates; everyone else buys it for the rumor.',
+  },
+  cmdty_host_archive_sample: {
+    displayName: 'Host Archive Sample, Archive Crab Roosts',
+    desc: 'Tissue etched with a dead ecology\'s stored patterns.',
+    lore: 'Archive crabs carry a whole roost\'s memory in one organ. Ceres research desks bid by legibility, not weight.',
+  },
+  cmdty_sterile_shell: {
+    displayName: 'Sterile Shell, Veil Nursery Leavings',
+    desc: 'A spotless hatchery casing that never opened on schedule.',
+    lore: 'Sterile shells are the ones Concord lets collectors hold. Refineries ignore them; Meridian museums do not.',
+  },
+  cmdty_spore_chimney_core: {
+    displayName: 'Spore Chimney Core, Stone Lung Vents',
+    desc: 'A vent throat packed with dormant spore strata.',
+    lore: 'Cut it warm and the strata bloom worthless. Sold cold to Helios bio labs, a single core funds a crew for a month.',
+  },
+  cmdty_interface_tissue: {
+    displayName: 'Preserved Interface Tissue, Pilgrim Spine Grafts',
+    desc: 'Neural graft tissue suspended in buffered gel packs.',
+    lore: 'Pilgrim spines grew it to talk to their riders. Vael cybernetic labs pay on response latency; expired gel is compost.',
+  },
+  cmdty_glass_back_scale: {
+    displayName: 'Glassback Scale Plate, Veil Shatter Yards',
+    desc: 'A translucent armor plate shed by a glassback alpha.',
+    lore: 'The plates dampen sensor noise better than Meridian fab stock. Warship tenders buy discreetly; souvenir stalls sell the chipped ones.',
+  },
+  cmdty_spore_catalyst: {
+    displayName: 'Spore Catalyst, Harvest Deep Bloom',
+    desc: 'A compressed bloom-heart that wakes dormant cultures.',
+    lore: 'Helios labs use it to kick-start colony vats. Trade desks move it fast; a cracked catalyst is a hull-wide problem.',
+  },
+  cmdty_gate_handshake: {
+    displayName: 'Gate Handshake Token, Veil Relay Cache',
+    desc: 'A physical authorization spool lifted from a relay intercept.',
+    lore: 'Gate networks still honor the old handshake. Couriers lose them; Concord toll lanes pay premiums for ones that still answer.',
+  },
+  cmdty_inertial_datum: {
+    displayName: 'Inertial Datum, Precursor Measure Engine',
+    desc: 'A dense reference mass sealed in a machined gyro cage.',
+    lore: 'Precursor engines calibrated against it. Meridian nav fabs cannot synthesize one and pay standing bounty on intact cages.',
+  },
+  cmdty_revocation_beacon: {
+    displayName: 'Revocation Beacon, Veil Revoked Gate',
+    desc: 'A decommissioned kill-signal emitter, cold but intact.',
+    lore: 'It once told a gate to die. Collectors call it relic; Concord gate engineers call it evidence and pay accordingly.',
+  },
+  cmdty_unbroken_lens: {
+    displayName: 'Unbroken Lens, Veil Exception Chamber',
+    desc: 'A flawless optical element pulled from a sealed chamber.',
+    lore: 'Nothing in the catalog focuses like it. Research outposts write blank bids; Concord asks where you found it.',
+  },
 };

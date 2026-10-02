@@ -50,7 +50,10 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  // The budget shares --start-timeout (default 90s): on a loaded shared host the serial-compile
+  // boot has been measured at ~56s here, so a fixed 30s dies before boot finishes. Everything the
+  // check asserts still happens after this point; only the environment allowance moves.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   await waitForBootOverlayGone(page);
   await sample(page, 'main-menu', 'The canonical title route is loaded and interactive.');
@@ -90,15 +93,23 @@ try {
   await page.waitForTimeout(400);
   await sample(page, 'station-market', 'Station Market tab after real station-hub tab click.');
 
-  await clickStationTab(page, 'missions');
+  // The station rail ids are the live destinations (src/ui/station/stationApp.js DESTINATIONS):
+  // the player-facing "Missions" screen rides the contracts rail, and there is no "services"
+  // destination anymore — repair/refuel/sell are verbs on the fascia vitals, so the ship-service
+  // surface worth evidence is Shipworks.
+  await clickStationTab(page, 'contracts');
   await page.waitForTimeout(400);
-  await sample(page, 'station-missions', 'Station Missions tab after real station-hub tab click.');
+  await sample(page, 'station-missions', 'Station Missions tab (contracts rail) after real station-hub tab click.');
 
-  await clickStationTab(page, 'services');
+  await clickStationTab(page, 'shipworks');
   await page.waitForTimeout(400);
-  await sample(page, 'station-services', 'Station Services tab after real station-hub tab click.');
+  await sample(page, 'station-shipworks', 'Station Shipworks tab after real station-hub tab click.');
 
-  await page.evaluate(() => window.SF && window.SF.bus && window.SF.bus.emit('dock:undocked', {}));
+  // Undock is gated (installStationExitGate): a bare dock:undocked while docked is rewritten to
+  // station:exitRequest and only opens the Departure Check. The committed shape — what the dock's
+  // own commitUndock emits — carries committed:true past the gate.
+  await page.evaluate(() => window.SF && window.SF.bus
+    && window.SF.bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'experience-probe' }));
   await page.waitForFunction(() => {
     const sf = window.SF;
     return !!(sf && sf.state && sf.state.mode === 'flight' && sf.state.ui && sf.state.ui.docked === false);
@@ -208,6 +219,16 @@ async function exerciseMechanicsProbe(page) {
     const kernel = combat && (combat.kernel || (typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null));
     if (!state || !player || !target || !kernel || !kernel.attachments || typeof kernel.attachments.create !== 'function') {
       throw new Error('Mechanics probe could not access live attachment service');
+    }
+    // Space is the primary Massline binding, so the input sequence above can legitimately latch
+    // a real tether (e.g. the opening scene's tow payload). The player hull carries exactly one
+    // tether_spool socket (maxAttachments 1), so that stray line would make the probe's own
+    // create fail source_socket_unavailable. Cut live player-owned lines first — same authority
+    // call the in-game cut path uses — then attach clean.
+    for (const attachment of Object.values((state.combat && state.combat.attachments && state.combat.attachments.byId) || {})) {
+      if (attachment && attachment.state === 'active' && attachment.ownerId === player.id) {
+        kernel.attachments.cut(attachment.id, player.id, 'probe_reset');
+      }
     }
     const result = kernel.attachments.create({
       defId: 'tether_standard',
@@ -339,9 +360,10 @@ async function dockAtFirstStation(page) {
 }
 
 async function clickStationTab(page, tabId) {
+  // The command dock's destination tiles are `<button role="tab" data-nav="...">`
+  // (src/ui/station/dock.js) — every live station check keys on data-nav, not data-tab.
   const ok = await page.evaluate((id) => {
-    const tab = document.querySelector(`[data-screen="station"] [role="tab"][data-tab="${id}"]`)
-      || document.querySelector(`[data-screen="station"] [data-tab="${id}"]`);
+    const tab = document.querySelector(`[data-screen="station"] .sx-dock [data-nav="${id}"]`);
     if (!tab || tab.disabled) return false;
     tab.click();
     return true;
@@ -537,8 +559,8 @@ async function sample(page, label, note) {
         visible: visible(root),
         stationId: s.ui && s.ui.dockedStationId || null,
         activeTab: s.ui && s.ui.activeStationTab || null,
-        tabs: [...root.querySelectorAll('[role="tab"][data-tab]')].map((tab) => ({
-          id: tab.getAttribute('data-tab'),
+        tabs: [...root.querySelectorAll('[role="tab"][data-nav], [role="tab"][data-tab]')].map((tab) => ({
+          id: tab.getAttribute('data-nav') || tab.getAttribute('data-tab'),
           text: shortText(tab.textContent, 90),
           selected: tab.getAttribute('aria-selected') === 'true',
         })),
@@ -722,7 +744,7 @@ function gradeExperience(report) {
     'station-hub',
     'station-market',
     'station-missions',
-    'station-services',
+    'station-shipworks',
     'flight-after-undock',
   ];
 

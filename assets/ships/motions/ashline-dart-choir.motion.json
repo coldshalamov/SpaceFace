@@ -35,7 +35,7 @@
  "clips": [
   {
    "name": "hull_idle",
-   "durationS": 6.89030943686437,
+   "durationS": 6.883333333333334,
    "loop": true,
    "endMode": "rest",
    "channels": [
@@ -142,7 +142,7 @@
   },
   {
    "name": "hull_brace",
-   "durationS": 1.0335464155296554,
+   "durationS": 1.0333333333333334,
    "loop": false,
    "endMode": "rest",
    "channels": [
@@ -213,7 +213,7 @@
   },
   {
    "name": "hull_kick",
-   "durationS": 0.7751598116472416,
+   "durationS": 0.7833333333333333,
    "loop": false,
    "endMode": "rest",
    "channels": [
@@ -275,7 +275,7 @@
   },
   {
    "name": "hull_veer",
-   "durationS": 1.2058041514512647,
+   "durationS": 1.2,
    "loop": false,
    "endMode": "rest",
    "channels": [
@@ -334,7 +334,7 @@
   },
   {
    "name": "hull_wag",
-   "durationS": 1.378061887372874,
+   "durationS": 1.3833333333333333,
    "loop": false,
    "endMode": "rest",
    "channels": [

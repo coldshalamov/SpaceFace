@@ -53,10 +53,10 @@ test('driver presenter explains structural, geographic, conflict, and cycle forc
 
   assert.deepEqual(drivers.primary.map((driver) => driver.id), ['role', 'geography', 'conflict', 'cycle']);
   assert.deepEqual(drivers.primary.map((driver) => driver.shortLabel), [
-    'Role · demand ↑',
-    'Core · tight',
+    'Demand ↑',
+    'Tight core',
     'War · weapons ↑',
-    'Cycle · Rising',
+    'Rising',
   ]);
   assert.equal(new Set(drivers.primary.map((driver) => `${driver.shortLabel}|${driver.label}`)).size, 4,
     'the expanded ribbon should add meaning rather than repeat the compact label');
@@ -116,5 +116,5 @@ test('driver presenter prefers runtime station role and security overrides', () 
   });
 
   assert.match(drivers.primary[0].label, /blackmarket/i);
-  assert.equal(drivers.primary[1].shortLabel, 'Frontier · wide');
+  assert.equal(drivers.primary[1].shortLabel, 'Wide spread');
 });

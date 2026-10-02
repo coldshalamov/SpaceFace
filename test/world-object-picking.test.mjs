@@ -418,3 +418,106 @@ test('a field-only rock is inspectable through presentation resolution', () => {
   assert.ok(hit);
   assert.equal(hit.entity.id, rec.id);
 });
+
+// Exact-pass pruning: a candidate whose bounding sphere's nearest ray contact already loses to
+// the running best cannot win or tie, so its triangles must never run. Counted through the real
+// Mesh.raycast path the picker drives.
+function overlappedPair() {
+  const near = { id: 1, type: 'asteroid', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const far = { id: 2, type: 'station', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const entities = new Map([[near.id, near], [far.id, far]]);
+  const nearRoot = new THREE.Group();
+  const nearMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial());
+  nearMesh.position.set(0, 40, 0);
+  nearRoot.add(nearMesh);
+  const farRoot = new THREE.Group();
+  const farMesh = new THREE.Mesh(new THREE.BoxGeometry(30, 10, 30), new THREE.MeshBasicMaterial());
+  farMesh.position.set(0, 0, 0);
+  farRoot.add(farMesh);
+  nearRoot.updateMatrixWorld(true);
+  farRoot.updateMatrixWorld(true);
+  return { entities, near, far, nearMesh, farMesh, nearRoot, farRoot };
+}
+
+test('a nearer surface win skips raycasts a farther candidate cannot win', () => {
+  const { entities, near, far, nearMesh, farMesh, nearRoot, farRoot } = overlappedPair();
+  // Near leaf iterates first, wins, and prunes the far leaf's triangle pass.
+  const meshes = new Map([[near.id, nearRoot], [far.id, farRoot]]);
+  const { picker } = makePicker(entities, meshes);
+
+  const realRaycast = THREE.Mesh.prototype.raycast;
+  let nearCalls = 0;
+  let farCalls = 0;
+  THREE.Mesh.prototype.raycast = function (...args) {
+    if (this.geometry === farMesh.geometry) farCalls += 1;
+    if (this.geometry === nearMesh.geometry) nearCalls += 1;
+    return realRaycast.apply(this, args);
+  };
+  try {
+    const hit = picker.pick(VP.width / 2, VP.height / 2);
+    assert.ok(hit);
+    assert.equal(hit.entity.id, near.id, 'the surface the ray strikes first wins');
+    assert.equal(nearCalls, 1, 'the winning candidate still ran its real geometry raycast');
+    assert.equal(farCalls, 0, 'the far bounding sphere already loses — no triangle work');
+  } finally {
+    THREE.Mesh.prototype.raycast = realRaycast;
+  }
+});
+
+test('reverse candidate order still selects the nearer surface', () => {
+  const { entities, near, far, farMesh, nearRoot, farRoot } = overlappedPair();
+  // Far leaf iterates first and must actually raycast — nothing is best yet — then loses.
+  const meshes = new Map([[far.id, farRoot], [near.id, nearRoot]]);
+  const { picker } = makePicker(entities, meshes);
+
+  const realRaycast = THREE.Mesh.prototype.raycast;
+  let farCalls = 0;
+  THREE.Mesh.prototype.raycast = function (...args) {
+    if (this.geometry === farMesh.geometry) farCalls += 1;
+    return realRaycast.apply(this, args);
+  };
+  try {
+    const hit = picker.pick(VP.width / 2, VP.height / 2);
+    assert.ok(hit);
+    assert.equal(hit.entity.id, near.id, 'iteration order must not decide the winner');
+    assert.equal(farCalls, 1, 'the first-seen candidate still raycasts before a best exists');
+  } finally {
+    THREE.Mesh.prototype.raycast = realRaycast;
+  }
+});
+
+test('equal-distance candidates still raycast and resolve by stable key', () => {
+  const loser = { id: 3, type: 'asteroid', alive: true, pos: { x: 0, z: 0 }, stableKey: 'zz', data: {} };
+  const winner = { id: 4, type: 'asteroid', alive: true, pos: { x: 0, z: 0 }, stableKey: 'aa', data: {} };
+  const entities = new Map([[loser.id, loser], [winner.id, winner]]);
+  const loserRoot = new THREE.Group();
+  const loserMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial());
+  loserRoot.add(loserMesh);
+  const winnerRoot = new THREE.Group();
+  const winnerMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial());
+  winnerRoot.add(winnerMesh);
+  loserRoot.updateMatrixWorld(true);
+  winnerRoot.updateMatrixWorld(true);
+  // The higher stable key iterates first and wins provisionally; the tie band must still run
+  // the second candidate's triangles so the lower key can claim the pick.
+  const meshes = new Map([[loser.id, loserRoot], [winner.id, winnerRoot]]);
+  const { picker } = makePicker(entities, meshes);
+
+  const realRaycast = THREE.Mesh.prototype.raycast;
+  let loserCalls = 0;
+  let winnerCalls = 0;
+  THREE.Mesh.prototype.raycast = function (...args) {
+    if (this.geometry === loserMesh.geometry) loserCalls += 1;
+    if (this.geometry === winnerMesh.geometry) winnerCalls += 1;
+    return realRaycast.apply(this, args);
+  };
+  try {
+    const hit = picker.pick(VP.width / 2, VP.height / 2);
+    assert.ok(hit);
+    assert.equal(hit.entity.id, winner.id, 'equal hits resolve to the lower stable key');
+    assert.equal(loserCalls, 1);
+    assert.equal(winnerCalls, 1, 'a true tie is evaluated, never pruned');
+  } finally {
+    THREE.Mesh.prototype.raycast = realRaycast;
+  }
+});

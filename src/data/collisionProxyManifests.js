@@ -24,7 +24,12 @@
 // it never teleports, never writes velocity directly, and never seizes control (player input always
 // blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
 
-import { modelTruthProxyManifest, modelTruthSkinHull, modelTruthSkinPolygon } from './modelTruth.js';
+import {
+  modelTruthProxyManifest,
+  modelTruthProxyRowForEntity,
+  modelTruthSkinHull,
+  modelTruthSkinPolygon,
+} from './modelTruth.js';
 import { isDynamicPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
 import { PHYSICS_MATERIALS } from './physicsMaterials.js';
 
@@ -283,10 +288,15 @@ export function resolveCollisionProxyManifest(entity) {
   // the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
   if (!measuredSkinAllowedFor(entity)) return declared;
   const dynamic = isDynamicPhysicsBodyEntity(entity);
+  // Canonical identity is mutable in place — a hull swap rewrites data.defId on the SAME data
+  // object — so the data shell, stamped id, and type are not enough: the resolved row is the
+  // identity, and any change to it must invalidate the cached manifest.
+  const row = modelTruthProxyRowForEntity(entity);
   const cached = MEASURED_PROXY_CACHE.get(entity);
-  if (cached && cached.data === data && cached.id === id && cached.type === entity.type && cached.dynamic === dynamic) return cached.manifest;
+  if (cached && cached.data === data && cached.id === id && cached.type === entity.type
+    && cached.dynamic === dynamic && cached.row === row) return cached.manifest;
   const manifest = resolveMeasuredProxyManifest(entity, id, declared);
-  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, manifest });
+  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, row, manifest });
   return manifest;
 }
 

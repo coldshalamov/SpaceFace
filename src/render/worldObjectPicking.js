@@ -327,8 +327,11 @@ export function createWorldObjectPicker(env) {
         const tiny = (radiusPx * 2) <= TINY_BODY_PX;
         if (overhang <= 0 || tiny) {
           let c = candidates[candCount];
-          if (!c) { c = { leaf: null, entity: null, overhang: 0, t: 0, radiusPx: 0, tiny: false }; candidates[candCount] = c; }
+          if (!c) { c = { leaf: null, entity: null, overhang: 0, t: 0, radiusPx: 0, tiny: false, near: 0 }; candidates[candCount] = c; }
           c.leaf = leaf; c.entity = entity; c.overhang = overhang; c.t = t; c.radiusPx = radiusPx; c.tiny = tiny;
+          // Conservative lower bound on the ray's first contact with this sphere: no real
+          // hit from this leaf can land closer than t - r.
+          c.near = t - r;
           candCount += 1;
         }
       }
@@ -338,6 +341,9 @@ export function createWorldObjectPicker(env) {
     for (let i = 0; i < candCount; i++) {
       const c = candidates[i];
       if (c.overhang > 0) continue;
+      // Once a nearer surface has won past the tie band, a candidate whose earliest possible
+      // contact already loses can never produce a winning or tying hit — skip its triangles.
+      if (haveBest && c.near > bestRec.distance + TIE_EPSILON_WU) continue;
       const scratch = scratchFor(i);
       scratch.geometry = c.leaf.geometry;
       scratch.material = c.leaf.material || scratch.material;

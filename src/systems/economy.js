@@ -2720,9 +2720,26 @@ export const economy = {
 
     // Commit the accepted transaction BEFORE the stock write and publication, so a re-entrant
     // retry anywhere inside this call already observes the settled record.
+    // NXI-108: read the posted shortage BEFORE the write — the relief cue must cite this
+    // delivery, and only a write that actually lifts the starving leg across the threshold
+    // earns one (a rejected or duplicate republish moves no stock and yields none).
+    const preNeed = info && starvedIndustryNeedFor(info.type, info.tier || 0, market);
+    const relievingPostedLeg = !!(preNeed && preNeed.inputId === commodityId);
     const accepted = { receiptId, stationId, commodityId, qty, source: 'mission_delivery' };
     intents[intentKey] = { receipt: { ...accepted }, result: { ok: true, qty } };
     this.applyStockPressure(stationId, commodityId, 'sell', qty);
+    if (relievingPostedLeg) {
+      const entry = market[commodityId];
+      const fillAfter = entry && entry.baseEq > 0 ? entry.stock / entry.baseEq : 0;
+      if (fillAfter >= INDUSTRY_STARVED_FILL) {
+        this.bus.emit('economy:shortageRelieved', {
+          receiptId, stationId, commodityId, qty,
+          jobId: preNeed.jobId,
+          fillBefore: preNeed.fill,
+          fillAfter,
+        });
+      }
+    }
     this.bus.emit('economy:freightAccepted', { ...accepted });
     return { ok: true, duplicate: false, receiptId, qty };
   },

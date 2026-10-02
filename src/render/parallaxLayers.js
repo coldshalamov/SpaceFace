@@ -3,7 +3,7 @@ import {
   createFracturedDebrisGeometry, installDebrisVariantAttribute, decorateDebrisMaterial,
   resolveDebrisFinish,
 } from './deepFieldPresentation.js';
-import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
+import { getReadyRockSurfaceTextures, waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { CAMERA_ZOOM_MAX, PHYSICS_EARNED_SPEED_ZOOM_MAX, CONTEXT_ZOOM_MAX, BOOST_CAMERA_ZOOM_TARGET } from './camera.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
@@ -91,6 +91,14 @@ export function dispose() {
   active = null;
 }
 
+export function seatReadyRockSurfaceTextures() {
+  if (active) active.seatReadyRockSurfaceTextures();
+}
+
+export function activeGroups() {
+  return active ? active.groups : [];
+}
+
 /** GLSL-equivalent scalar wrap, exported for continuity tests and diagnostics. */
 export function wrapParallaxCoordinate(base, globalFocus, factor, tile) {
   const period = Number.isFinite(tile) && tile > 0 ? tile : 1;
@@ -142,11 +150,14 @@ class ParallaxLayers {
     this._motionReduce = null;
 
     this._chipTemplate = createFracturedDebrisGeometry();
-    // First boot constructs us before preloadRockSurfaceLibrary resolves (renderer init order),
-    // so the bands are built with bare clay materials. update() re-checks each frame and seats
-    // the shared maps into the existing materials the moment the library publishes — the chips
-    // gain their rock surface a few frames in instead of staying untextured for the session.
     this._sharedMaps = getReadyRockSurfaceTextures();
+    if (!this._sharedMaps) {
+      waitForRockSurfaceLibraryReady().then((maps) => {
+        if (maps && !this._sharedMaps) {
+          this._seatRockSurfaceMaps(maps);
+        }
+      }).catch(() => {});
+    }
 
     this._debrisSpinUniforms = {
       primaryTime: { value: 0 },
@@ -342,6 +353,13 @@ class ParallaxLayers {
     return { group, mesh, motionUniforms };
   }
 
+  seatReadyRockSurfaceTextures() {
+    if (this._sharedMaps) return;
+    const maps = getReadyRockSurfaceTextures();
+    if (!maps) return;
+    this._seatRockSurfaceMaps(maps);
+  }
+
   // Wire the shared common-rock maps into the existing band materials, matching the texture
   // slots createChipMaterial fills when the library is already decoded at construction. The
   // palette finish keeps owning the roughness/metalness scalars (_applyPaletteColor wrote them
@@ -360,6 +378,7 @@ class ParallaxLayers {
       material.aoMap = maps.orm || null;
       material.needsUpdate = true;
     }
+    this._publishOpeningSubmissionPackages();
   }
 
   _syncQuality() {

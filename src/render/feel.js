@@ -33,6 +33,19 @@ import { resolveMasslineFeelPunch } from './masslinePresentation.js';
 import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
 import { fillSpeedLineStreak, speedLineStreakGradient } from './speedLineStrokeCache.js';
 
+/**
+ * Player Screen Shake slider (0–100). Absent means full shake, matching the slider's
+ * displayed default. 0 is a real choice: impacts still register, the camera does not shudder.
+ */
+export function screenShakeScale(settings) {
+  const video = settings && settings.video;
+  const raw = video && video.screenShake;
+  if (raw == null || raw === '') return 1;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(0, Math.min(1, n / 100));
+}
+
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
 // response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
 // weapon size (S/M/L) and damage type (explosive/kinetic hit harder than energy/thermal), and by

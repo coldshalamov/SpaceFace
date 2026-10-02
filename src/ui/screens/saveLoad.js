@@ -31,6 +31,7 @@ import { hullPosterUrl } from '../hullPosters.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
+const RECOVERY_PREFIX = 'sf.recovery.';
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
 const ACE_MEMORY_META = new Set([
   'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle', 'aces',
@@ -234,8 +235,14 @@ function readSlots(ctx) {
         if (!k || !k.startsWith(LS_PREFIX)) continue;
         const slot = k.slice(LS_PREFIX.length);
         if (slot === 'index') continue;
+        // sf.save.* also carries deletion tombstones and side-channel records (achievements,
+        // crucible meta) — only a real save envelope may claim a slot row.
         let meta = null;
-        try { const env = JSON.parse(localStorage.getItem(k)); meta = env && (env.meta || { savedAt: env.savedAt, playtimeS: env.playtimeS }); } catch (e) {}
+        try {
+          const env = JSON.parse(localStorage.getItem(k));
+          if (!env || env.fmt !== 'spaceface-save') continue;
+          meta = env.meta || { savedAt: env.savedAt, playtimeS: env.playtimeS };
+        } catch (e) { continue; }
         out[slot] = meta || {};
       }
     }
@@ -1247,7 +1254,23 @@ export const saveLoadScreen = {
       let deleted = false;
       if (sys && typeof sys.deleteSlot === 'function') { try { sys.deleteSlot(id); deleted = true; } catch (e) {} }
       if (!deleted) {
-        try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(LS_PREFIX + id); deleted = true; } } catch (e) {}
+        // Bare-storage fallback: removing only the primary leaves the recovery copy and the index
+        // row behind, and the deleted slot resurrects on the next render/Continue scan.
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(LS_PREFIX + id);
+            localStorage.removeItem(RECOVERY_PREFIX + id);
+            const idxRaw = localStorage.getItem(LS_PREFIX + 'index');
+            if (idxRaw) {
+              const idx = JSON.parse(idxRaw);
+              if (idx && typeof idx === 'object' && !Array.isArray(idx)) {
+                delete idx[id];
+                localStorage.setItem(LS_PREFIX + 'index', JSON.stringify(idx));
+              }
+            }
+            deleted = true;
+          }
+        } catch (e) {}
       }
       ctx.bus.emit('toast', { text: deleted ? slotLabel(id) + ' deleted' : 'Delete failed', kind: deleted ? 'info' : 'warn', ttl: 2500 });
       this._render(ctx);

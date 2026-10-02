@@ -7,7 +7,9 @@
 // or says plainly when the spawn cap starved a wave so the player never mistakes it for a clear.
 //
 // It is READ-ONLY over the run. It never writes state.run (runSession owns that), never spawns,
-// never ticks, and uses no RNG at all — every line is a pure function of the plan and the receipts.
+// and uses no RNG at all — every line is a pure function of the plan and the receipts. FB-025
+// added the one tick it keeps: update() counts the intro windows down and emits
+// run:arenaIntroComplete / run:waveIntroComplete when the beat it spoke has played.
 //
 // Seams used, all pre-existing and public:
 //   voice:say    src/ui/voiceArbiter.js:316 — the one-voice authority. Channels/priorities at :38.
@@ -29,6 +31,10 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
 import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
 import { validateRunState } from '../core/runState.js';
+import {
+  SURVIVAL_ARENA_INTRO_TICKS,
+  SURVIVAL_WAVE_INTRO_TICKS,
+} from './survivalRun.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -216,15 +222,24 @@ export function waveOpeningLine(wave, plan) {
     const wall = typeof swarm.wallLine === 'string' && swarm.wallLine
       ? ` ${swarm.wallLine}`
       : '';
+    // NXB-017: an act round names its question — the physical decision, not the answer.
+    const actLine = swarm.act && typeof swarm.act.question === 'string'
+      ? ` ${swarm.act.question}`
+      : '';
+    // The first-run lesson names what is on the field, not the held pack: one hull, one rock
+    // worth throwing, and the pack still on its way.
+    if (plan.openingLesson) {
+      return `Wave ${wave}. One hostile on the field — the rest are holding. The rock beside you is ammunition: line it and throw it.`;
+    }
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall} Break the pack.`;
+      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall}${actLine} Break the pack.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall} Break the pack.`;
+    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall}${actLine} Break the pack.`;
   }
 
   let bodies = 0;
@@ -308,6 +323,8 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveMaterialized', (p) => this._onWaveMaterialized(p)));
+    this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
+    this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
@@ -331,6 +348,8 @@ export const survivalAnnounce = {
     this._plan = null;
     this._planWave = 0;
     this._muted = false;
+    this._arenaIntroArmed = false;
+    this._arenaIntroTicks = 0;
     this._resetWave(0);
   },
 
@@ -341,6 +360,8 @@ export const survivalAnnounce = {
     this._openedWave = 0;
     this._bossAnnouncedWave = 0;
     this._closedWave = 0;
+    this._waveIntroArmed = 0;
+    this._waveIntroTicks = 0;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -379,6 +400,46 @@ export const survivalAnnounce = {
 
   // ── run events ────────────────────────────────────────────────────────────────────────────────
 
+  /**
+   * FB-025 — the intro window's one timed job: count the beat the machine authored and emit the
+   * completion when it has played. Everything else in this voice stays event-driven. The phase
+   * machine's own tick floor is the same constant, so a muted or absent announce can never stall
+   * a wave; the emit is the announce's receipt that the line went out inside the window.
+   */
+  update() {
+    if (this._muted) return;
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    if (run.phase === 'arena_intro') {
+      if (this._arenaIntroArmed) {
+        this._arenaIntroTicks += 1;
+        if (this._arenaIntroTicks >= SURVIVAL_ARENA_INTRO_TICKS) {
+          this._arenaIntroArmed = false;
+          this._emitComplete('run:arenaIntroComplete', {});
+        }
+      }
+    } else {
+      this._arenaIntroArmed = false;
+    }
+    if (run.phase === 'wave_intro') {
+      if (this._waveIntroArmed > 0) {
+        this._waveIntroTicks += 1;
+        if (this._waveIntroTicks >= SURVIVAL_WAVE_INTRO_TICKS) {
+          const wave = this._waveIntroArmed;
+          this._waveIntroArmed = 0;
+          this._emitComplete('run:waveIntroComplete', { wave });
+        }
+      }
+    } else {
+      this._waveIntroArmed = 0;
+    }
+  },
+
+  _emitComplete(event, payload) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit(event, payload);
+  },
+
   _onWavePlanned(payload) {
     if (this._muted) return;
     if (!liveSurvivalRun(this.state)) return;
@@ -388,19 +449,19 @@ export const survivalAnnounce = {
     // allowed to describe the wrong wave.
     this._plan = payload.plan || null;
     this._planWave = wave;
+    // FB-025 — the opening line IS the intro window's content: it is spoken when the plan lands
+    // (window start), so it has already been read by the time the first body spawns. The window's
+    // completion emit is armed at the same moment.
+    if (this._openedWave !== wave) {
+      this._resetWave(wave);
+      this._openedWave = wave;
+      this._speakOpening(wave);
+    }
+    this._waveIntroTicks = 0;
+    this._waveIntroArmed = wave;
   },
 
-  _onWaveStarted(payload) {
-    if (this._muted) return;
-    if (!liveSurvivalRun(this.state)) return;
-    const wave = payload && payload.wave;
-    if (!Number.isInteger(wave) || wave < 1) return;
-    if (this._openedWave === wave) return;
-
-    this._resetWave(wave);
-    this._openedWave = wave;
-    if (this._planWave !== wave) return;
-
+  _speakOpening(wave) {
     const line = waveOpeningLine(wave, this._plan);
     // 'objective' (60) — this IS the objective nudge: it yields to danger and story, and outranks
     // enemy chatter. voiceArbiter.js:41.
@@ -413,6 +474,21 @@ export const survivalAnnounce = {
       const question = questionClauseFor(wave, this._plan, arenaId);
       if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
     }
+  },
+
+  _onWaveStarted(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    if (this._openedWave === wave) return;
+
+    // Fallback for a wave whose plan this voice never saw (e.g. a direct waveStarted): it still
+    // opens on time, and only a plan for THIS wave may name it.
+    this._resetWave(wave);
+    this._openedWave = wave;
+    if (this._planWave !== wave) return;
+    this._speakOpening(wave);
   },
 
   _onWaveMaterialized(payload) {
@@ -428,6 +504,25 @@ export const survivalAnnounce = {
 
     if (this._tryBossArrival(wave, enemyId)) return;
     this._tryCounterHint(enemyId);
+  },
+
+  _onPressureTelegraph(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
+    const countText = stored > 0 ? `${capitalize(countWord(stored))} hostiles` : 'Hostile reinforcement';
+    this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
+  },
+
+  /** The lesson's held pack arriving early is still an arrival — name it, or the room fills silently. */
+  _onOpeningLessonReleased(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave !== this._wave) return;
+    this._say('objective', `survival:w${wave}:pack`, 'The pack is inbound. Anything you can throw is ammunition.', 4);
   },
 
   /**
@@ -520,6 +615,12 @@ export const survivalAnnounce = {
     }
     // A fresh wave_intro means the previous wave's line budget is spent and gone.
     if (phase === 'wave_intro') this._hintsThisWave = 0;
+    // FB-025 — the arena intro beat is armed on entry and its completion emitted from update()
+    // at the authored window end. The machine's floor covers a muted or absent announce.
+    if (phase === 'arena_intro') {
+      this._arenaIntroArmed = true;
+      this._arenaIntroTicks = 0;
+    }
   },
 
   /**

@@ -120,7 +120,10 @@ export function pickupCustodyAllowsCollector(pickup, collector, playerId) {
   if (!collector) return false;
   if (playerId != null && collector.id === playerId) return true;
   const ids = collectorIdentityIds(collector);
-  if (custody.ownerId && ids.has(custody.ownerId)) return true;
   if (custody.claimantId && ids.has(custody.claimantId)) return true;
-  return isOutlawPickupCollector(collector);
+  if (isOutlawPickupCollector(collector)) return true;
+  // Spilled freight pods in distress cannot be contact-vacuumed by the carrier that lost them.
+  if (pickup && pickup.data && pickup.data.spillNoticed === true) return false;
+  if (custody.ownerId && ids.has(custody.ownerId)) return true;
+  return false;
 }

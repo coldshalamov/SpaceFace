@@ -14,7 +14,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-import { evaluateMotionClip, validateMotionBank } from '../src/contracts/motionBank.js';
+import * as THREE from 'three';
+
+import { bindAuthoredMotion, evaluateMotionClip, validateMotionBank } from '../src/contracts/motionBank.js';
+import { attachAuthoredMotionDriver, installAuthoredMotionBus } from '../src/render/authoredMotion.js';
 import { judgeBank } from '../scripts/judge-motion-banks.mjs';
 
 const BANK_DIR = process.env.S4_BANK_DIR || 'assets/ships/motions';
@@ -156,4 +159,144 @@ for (const station of STATIONS) {
         `${binding.id} rest q[${i}]`));
     }
   });
+}
+
+// ── dock:range retrigger mid-sweep ───────────────────────────────────────────────────────────────
+//
+// Defect: a second `dock:range` (or the military `dock:denied`, which maps to the same clip) that landed
+// while a station's dish/arm sweep was still playing went through motionBank.setState, which auto-bridges
+// the live pose to the clip's first key (rest) and then replays the whole sweep: the dish visibly snapped
+// back toward rest and started over. The bus now ignores a retrigger of the clip the event would start
+// while that clip still drives the rig, and lets it play again once the sweep has finished.
+//
+// These tests drive the REAL banks through the real bus + controller (no GPU): every group pivot carries a
+// visible mesh (update() parks a pivot with no visible mesh at rest, which would make "did not snap" vacuous).
+
+function stationRig(bank) {
+  const root = new THREE.Object3D();
+  const nodes = new Map();
+  for (const binding of bank.bindings) {
+    const pivot = new THREE.Object3D();
+    pivot.name = binding.node;
+    pivot.position.set(...binding.restPose.translation);
+    pivot.quaternion.set(...binding.restPose.rotation);
+    pivot.add(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial()));
+    root.add(pivot);
+    nodes.set(binding.id, { pivot, binding });
+  }
+  return { root, nodes };
+}
+
+function stationBus() {
+  const handlers = new Map();
+  const bus = {
+    on: (type, fn) => {
+      const list = handlers.get(type) || [];
+      list.push(fn);
+      handlers.set(type, list);
+      return () => handlers.set(type, (handlers.get(type) || []).filter((f) => f !== fn));
+    },
+  };
+  const emit = (type, payload) => {
+    for (const fn of handlers.get(type) || []) fn(payload);
+  };
+  return { bus, emit };
+}
+
+/** How far a pivot is from where the clip says it should be at `localT`, in WU + radians. */
+function poseError(bank, clip, localT, nodes) {
+  let worst = 0;
+  for (const [group, delta] of evaluateMotionClip(bank, clip, localT)) {
+    const { pivot, binding } = nodes.get(group);
+    const t = delta.translation || [0, 0, 0];
+    const q = delta.rotation || [0, 0, 0, 1];
+    const rest = binding.restPose.translation;
+    const posErr = Math.hypot(
+      pivot.position.x - (rest[0] + t[0]),
+      pivot.position.y - (rest[1] + t[1]),
+      pivot.position.z - (rest[2] + t[2]),
+    );
+    const want = new THREE.Quaternion(...binding.restPose.rotation).multiply(new THREE.Quaternion(...q));
+    worst = Math.max(worst, posErr, pivot.quaternion.angleTo(want));
+  }
+  return worst;
+}
+
+/** The biggest distance any of the clip's groups sits from rest at `localT` (to prove the probe is not vacuous). */
+function clipDeparture(bank, clip, localT) {
+  let far = 0;
+  for (const delta of evaluateMotionClip(bank, clip, localT).values()) {
+    const t = delta.translation || [0, 0, 0];
+    const q = delta.rotation || [0, 0, 0, 1];
+    far = Math.max(far, Math.hypot(...t), 2 * Math.acos(Math.min(1, Math.abs(q[3]))));
+  }
+  return far;
+}
+
+for (const station of STATIONS) {
+  for (const retrigger of Object.keys(station.events)) {
+    // dock:denied only shares a clip with dock:range on the military bank; every other denied clip is a
+    // different verb (blackmarket jaw_refuse answers a refusal while the welcome is still playing).
+    const sweepName = station.events['dock:range'];
+    if (station.events[retrigger] !== sweepName) continue;
+
+    test(`${station.key}: a ${retrigger} retrigger mid-${sweepName} neither resets the pose nor restarts the clip`, () => {
+      const bank = readBank(station);
+      const clip = bank.clips.find((c) => c.name === sweepName);
+      const { root, nodes } = stationRig(bank);
+      const controller = bindAuthoredMotion(root, bank);
+      const entity = { id: `station-${station.key}`, data: { stationId: station.key } };
+      const ship = new THREE.Object3D();
+      const detach = attachAuthoredMotionDriver(ship, entity, [controller]);
+      let now = 1000;
+      const { bus, emit } = stationBus();
+      const unbind = installAuthoredMotionBus(bus, {
+        clock: () => now,
+        playerEntityId: () => 'player-1',
+        entityForStationId: (id) => (id === station.key ? entity.id : null),
+      });
+      const tick = () => ship.userData.updateAuthoredMotion(entity, now, {});
+      tick();
+
+      // The first range event starts the sweep.
+      emit('dock:range', { stationId: station.key, shipId: 'player-1', inRange: true });
+      assert.ok(controller.clipActive(sweepName), 'the sweep plays on the first dock:range');
+      const startedAt = now;
+
+      // Mid-sweep, where the dish is demonstrably away from rest.
+      now = startedAt + clip.durationS * 0.42;
+      tick();
+      assert.ok(clipDeparture(bank, clip, now - startedAt) > 0.02,
+        `${sweepName} is away from rest at 42% (so a reset would be visible)`);
+      assert.ok(poseError(bank, clip, now - startedAt, nodes) < 1e-3, 'the rig follows the clip before the retrigger');
+
+      emit(retrigger, { stationId: station.key, shipId: 'player-1', inRange: true });
+      assert.deepEqual(controller.activeClipNames().filter((n) => n.startsWith('__settle__')), [],
+        'no bridge back to the first key was started');
+      assert.ok(Math.abs(controller.clipElapsed(sweepName, now) - (now - startedAt)) < 1e-6,
+        'the clip kept its original start (it was not restarted)');
+      // And the pose keeps following the ORIGINAL sweep from here on: a reset would have bridged to rest.
+      for (const dt of [0.05, 0.2, 1.0, 3.0]) {
+        now = startedAt + clip.durationS * 0.42 + dt;
+        tick();
+        assert.ok(poseError(bank, clip, now - startedAt, nodes) < 1e-3,
+          `${sweepName} still on its own curve ${dt}s after the retrigger`);
+      }
+
+      // Once the sweep has finished the verb is available again.
+      now = startedAt + clip.durationS + 2;
+      tick();
+      assert.equal(controller.clipActive(sweepName), false, 'the sweep has finished');
+      const replayAt = now;
+      emit('dock:range', { stationId: station.key, shipId: 'player-1', inRange: true });
+      assert.ok(controller.clipActive(sweepName), 'a retrigger after the clip finished plays it again');
+      assert.ok(Math.abs(controller.clipElapsed(sweepName, now) - 0) < 1e-6, 'from its first key');
+      now = replayAt + clip.durationS * 0.3;
+      tick();
+      assert.ok(poseError(bank, clip, now - replayAt, nodes) < 1e-3, 'and follows the replayed curve');
+      unbind();
+      detach();
+      controller.dispose();
+    });
+  }
 }

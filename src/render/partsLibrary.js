@@ -11,7 +11,7 @@ import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/ship
 import { SHIPS } from '../data/ships.js';
 import { modelTruthMountFractions, modelTruthPlaceDrawScale } from '../data/modelTruth.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
-import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
+import { SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
@@ -2414,6 +2414,14 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
   boundary.userData.authoredVisualRoot = 'none-pending-admission';
   boundary.userData.authoredReadmissionReason = reason || 'owner-inactive';
   delete boundary.userData.authoredUpgradePromise;
+  // A lifecycle re-arm is a new admission episode: restore the retry budget the last one may
+  // have spent, or a boundary that once exhausted its retries would strand 'unavailable' the
+  // moment a post-restore admission failed. Only the poll's own re-arm keeps counting, so the
+  // per-episode cap still bounds churn on a genuinely missing asset.
+  if (reason !== 'transient-admission-retry') {
+    delete boundary.userData.authoredAdmissionRetryCount;
+    delete boundary.userData.authoredAdmissionNextRetryAt;
+  }
   return true;
 }
 
@@ -7728,7 +7736,11 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
     }
     plan = currentPlan;
   }
-  throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
+  const missing = missingAuthoredPreloadEntries(library, plan);
+  throw new Error(
+    `Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}`
+    + (missing.length ? `: missing ${missing.join(', ')}` : '.'),
+  );
 }
 
 function admitEntityPlan(renderer, options, library, plan) {
@@ -8003,9 +8015,36 @@ function libraryCacheKey(partRoot, options = {}, bootstrapPlan = bootstrapPlanFo
   return `${partRoot}#${scope}#${planKey}`;
 }
 
+// Diagnostic for the AUTHORED_LIBRARY_UNAVAILABLE gate: name which plan entries never became
+// usable instead of failing closed with a bare "incomplete". A record whose URL is in the slot
+// but whose residency is not 'resident' was decoded then dropped (owner cancellation, residency
+// churn); a slot/URL with no record at all never arrived (decode failure or a plan/map drift).
+export function missingAuthoredPreloadEntries(library, plan, limit = 12) {
+  const missing = [];
+  for (const [slot, files] of Object.entries(plan || {})) {
+    const records = library instanceof Map ? library.get(slot) : null;
+    for (const file of files || []) {
+      if (Array.isArray(records) && records.some((record) => recordUrlEndsWith(record, file))) continue;
+      const arrived = Array.isArray(records) && records.some(
+        (record) => record && typeof record.url === 'string' && normalizePartUrl(record.url).endsWith(file),
+      );
+      missing.push(`${slot}:${file}${arrived ? ' (not resident)' : ''}`);
+      if (missing.length >= limit) {
+        missing.push('…');
+        return missing;
+      }
+    }
+  }
+  return missing;
+}
+
 function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
-  if (!libraryHasPreloadPlan(library, plan)) {
-    throw new Error(`Authored ${scope || 'canonical'} library is incomplete for its required preload plan.`);
+  const missing = missingAuthoredPreloadEntries(library, plan);
+  if (missing.length) {
+    throw new Error(
+      `Authored ${scope || 'canonical'} library is incomplete for its required preload plan: `
+      + `missing ${missing.join(', ')}`,
+    );
   }
   return library;
 }
@@ -11098,7 +11137,7 @@ function swarmRosterEnemyDefs() {
     if (entry && entry.enemyId) ids.add(entry.enemyId);
   }
   for (const boss of SWARM_BOSS_ROTATION || []) {
-    for (const pkg of (boss && boss.packages) || []) {
+    for (const pkg of bossPackagesFor(boss)) {
       if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
     }
   }
@@ -12489,6 +12528,27 @@ function createInstanceCullContext() {
   };
 }
 
+// Chase follow damping moves the camera every frame by <<1 WU. Exact matrix equality
+// marked cameraDirty continuously, forcing every active authored-instance owner through
+// syncOwnerSlots (frustum + matrix compare) under prepareFrame. Quantize translation to
+// 0.25 WU and basis/projection to 1e-3 so micro-moves reuse the stable owner path; real
+// pans/zooms still dirty.
+const CAMERA_CULL_POS_QUANT_WU = 0.25;
+const CAMERA_CULL_BASIS_EPS = 1e-3;
+// Bench-only: force exact matrix compare (pre-quantize residual).
+let _cameraCullExactCompare = false;
+export function setAuthoredInstanceCameraCullExactCompare(enabled) {
+  _cameraCullExactCompare = enabled === true;
+}
+
+function quantizeCullCameraValue(value, index) {
+  const n = Number(value) || 0;
+  if (index === 12 || index === 13 || index === 14) {
+    return Math.round(n / CAMERA_CULL_POS_QUANT_WU) * CAMERA_CULL_POS_QUANT_WU;
+  }
+  return Math.round(n / CAMERA_CULL_BASIS_EPS) * CAMERA_CULL_BASIS_EPS;
+}
+
 function captureCullCameraState(camera, snapshot) {
   const present = !!camera;
   let changed = !snapshot.initialized || snapshot.present !== present;
@@ -12497,13 +12557,16 @@ function captureCullCameraState(camera, snapshot) {
   if (!camera) return changed;
   const world = camera.matrixWorld && camera.matrixWorld.elements;
   const projection = camera.projectionMatrix && camera.projectionMatrix.elements;
+  const exact = _cameraCullExactCompare;
   for (let index = 0; index < 16; index++) {
-    const value = world ? Number(world[index]) || 0 : 0;
+    const raw = world ? Number(world[index]) || 0 : 0;
+    const value = exact ? raw : quantizeCullCameraValue(raw, index);
     if (snapshot.values[index] !== value) changed = true;
     snapshot.values[index] = value;
   }
   for (let index = 0; index < 16; index++) {
-    const value = projection ? Number(projection[index]) || 0 : 0;
+    const raw = projection ? Number(projection[index]) || 0 : 0;
+    const value = exact ? raw : quantizeCullCameraValue(raw, -1);
     if (snapshot.values[index + 16] !== value) changed = true;
     snapshot.values[index + 16] = value;
   }
@@ -12593,6 +12656,91 @@ function drainOwnerReleaseCallbacks(state) {
  * the same private allocator, release listeners, visibility logic, InstancedMesh attribute, and
  * fallback sync as live authored ships; only the two tiny geometry proxies are synthetic.
  */
+export function runAuthoredInstanceCameraDirtyMicrobench(options = {}) {
+  const ownerCount = Math.max(2, Math.floor(Number(options.ownerCount) || 80));
+  const frames = Math.max(10, Math.floor(Number(options.frames) || 2000));
+  const jitterWu = Number.isFinite(Number(options.jitterWu)) ? Number(options.jitterWu) : 0.05;
+  const exact = options.exactCameraDirty === true;
+  const scene = new THREE.Scene();
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const material = new THREE.MeshStandardMaterial();
+  const owners = [];
+  for (let i = 0; i < ownerCount; i++) {
+    const owner = new THREE.Group();
+    const proxy = new THREE.Object3D();
+    owner.position.set((i % 20) * 40, 0, Math.floor(i / 20) * 40);
+    owner.add(proxy);
+    scene.add(owner);
+    allocateInstance(scene, owner, proxy, geometry, material, 'CameraDirtyMicrobench');
+    owners.push(owner);
+  }
+  const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 8000);
+  camera.position.set(0, 120, 180);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  camera.updateProjectionMatrix();
+  const poolState = sceneStates.get(scene);
+  const frameFor = (frameId) => ({
+    frameId,
+    authored: owners.map((mesh) => ({
+      mesh,
+      visible: true,
+      viewCulled: false,
+      renderDirty: false,
+    })),
+  });
+  const priorExact = _cameraCullExactCompare;
+  _cameraCullExactCompare = exact;
+  try {
+    // Reset camera snapshot so the first capture matches the compare mode.
+    if (poolState && poolState.cameraState) {
+      poolState.cameraState.initialized = false;
+      poolState.cameraState.values.fill(0);
+    }
+    const prime = frameFor(0);
+    syncAuthoredInstancePools(scene, {
+      entityFrame: prime,
+      authoredRecords: prime.authored,
+      camera,
+    });
+    let dirtyFrames = 0;
+    let ownersVisited = 0;
+    const t0 = performance.now();
+    for (let f = 0; f < frames; f++) {
+      camera.position.x += jitterWu * Math.sin(f * 0.17);
+      camera.position.z += jitterWu * 0.5 * Math.cos(f * 0.13);
+      camera.updateMatrixWorld(true);
+      const entry = frameFor(f + 1);
+      const stats = syncAuthoredInstancePools(scene, {
+        entityFrame: entry,
+        authoredRecords: entry.authored,
+        camera,
+      });
+      if (poolState && poolState.cullContext && poolState.cullContext.cameraDirty) dirtyFrames++;
+      ownersVisited += stats && Number(stats.ownersVisited) || 0;
+    }
+    const ms = performance.now() - t0;
+    return {
+      ownerCount,
+      frames,
+      jitterWu,
+      exact,
+      ms,
+      dirtyFrames,
+      dirtyRate: dirtyFrames / frames,
+      ownersVisited,
+    };
+  } finally {
+    _cameraCullExactCompare = priorExact;
+    for (const owner of owners) {
+      scene.remove(owner);
+      releaseOwnerInstances(owner);
+    }
+    geometry.dispose();
+    material.dispose();
+  }
+}
+
 export function runAuthoredInstanceFrameContractProbe() {
   const scene = new THREE.Scene();
   const geometry = new THREE.BoxGeometry(1, 1, 1);

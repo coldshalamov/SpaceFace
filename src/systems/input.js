@@ -958,6 +958,13 @@ export const input = {
       this._kbmActivityPending = true;
     });
     listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } });
+    listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
+    const pointerLockTarget = typeof document !== 'undefined' ? document : null;
+    listen(pointerLockTarget, 'pointerlockchange', () => {
+      if (!pointerLockTarget || !pointerLockTarget.pointerLockElement) {
+        this.releaseHeldControls('pointerlock-released');
+      }
+    });
     listen(pointerSurface, 'contextmenu', (e) => e.preventDefault());
   },
 
@@ -1053,6 +1060,14 @@ export const input = {
     if (committedInput?.autoFire || committedInput?.drawFlight) resetAutoTargetPath(this);
     if (committedInput && committedInput.pointerScreen) {
       committedInput.pointerScreen.active = false;
+    }
+    if (committedInput) {
+      committedInput.moveX = 0;
+      committedInput.moveZ = 0;
+      committedInput.turnIntent = 0;
+      committedInput.fire = false;
+      committedInput.boost = false;
+      committedInput.brake = false;
     }
     if (committedInput
       && Object.prototype.hasOwnProperty.call(committedInput, 'aimIntentActive')) {

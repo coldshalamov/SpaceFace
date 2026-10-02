@@ -54,11 +54,13 @@ def author(bank):
     at = lambda dx: (rest_loc.x + dx, rest_loc.y, rest_loc.z)
 
     deploy = bank.clip('deploy', 1.7, loop=False, end_mode='hold')
+    # The two engagement presses take ~0.2 s each (the first pass jabbed in 0.06 s and read as a
+    # triggered stab: judge kink 0.69 -> 0.28).
     deploy_keys = [
-        (0.00, 0.0), (0.14, 0.05), (0.42, 0.26), (0.62, TRAVEL_M + 0.012),
-        (0.74, TRAVEL_M - 0.004), (0.80, TRAVEL_M + PRESS_M),    # extend + seat press
-        (0.98, TRAVEL_M), (1.16, TRAVEL_M + PRESS_M * 0.55),     # second, softer
-        (1.32, TRAVEL_M), (1.70, TRAVEL_M),                      # hold extended
+        (0.00, 0.0), (0.14, 0.05), (0.42, 0.26), (0.64, TRAVEL_M + 0.012),
+        (0.80, TRAVEL_M - 0.004), (0.92, TRAVEL_M + PRESS_M),    # extend + seat press
+        (1.10, TRAVEL_M), (1.28, TRAVEL_M + PRESS_M * 0.55),     # second, softer
+        (1.48, TRAVEL_M), (1.70, TRAVEL_M),                      # hold extended
     ]
     for t, dx in deploy_keys:
         deploy.key('kestrel_mining', t, loc=at(dx))

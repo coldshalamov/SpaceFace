@@ -49,6 +49,7 @@ function shipLikeHasDespawnAt(index) {
   return false;
 }
 
+
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
 export const core = {

@@ -57,10 +57,25 @@ test('render controller attaches to verified sockets, animates render-only, hono
 
   const animated = meshes.find((mesh) => mesh.userData.worldSitePresentationFixtureId === 'relay_status');
   controller.update(entity, 0.0, { reducedMotion: false, reducedFlash: false });
-  const fullA = animated.parent.scale.x;
+  const fullA = animated.material.opacity;
   controller.update(entity, 0.25, { reducedMotion: false, reducedFlash: false });
-  const fullB = animated.parent.scale.x;
-  assert.notEqual(fullA, fullB, 'full presentation animates from simulation time');
+  const fullB = animated.material.opacity;
+  assert.notEqual(fullA, fullB, 'damaged fixture stutters on opacity from simulation time');
+
+  // A damaged fixture suppresses the healthy scale pulse (the opacity stutter carries the
+  // failure signal); once its component is repaired the authored pulse channel returns.
+  entity.data.worldSitePresentation = {
+    ...entity.data.worldSitePresentation,
+    componentStatuses: {
+      ...entity.data.worldSitePresentation.componentStatuses,
+      relay_core: 'operational',
+    },
+  };
+  controller.update(entity, 0.0, { reducedMotion: false, reducedFlash: false });
+  const healedA = animated.parent.scale.x;
+  controller.update(entity, 0.25, { reducedMotion: false, reducedFlash: false });
+  assert.notEqual(animated.parent.scale.x, healedA, 'restored fixture pulses on scale from simulation time');
+  entity.data.worldSitePresentation = before;
 
   controller.update(entity, 0.0, { reducedMotion: true, reducedFlash: true });
   const reducedA = { scale: animated.parent.scale.x, opacity: animated.material.opacity };

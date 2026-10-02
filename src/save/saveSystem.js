@@ -24,6 +24,8 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
+import { stampIronmanLatch } from './ironmanChoice.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
@@ -809,6 +811,7 @@ export const save = {
     if (settings && settings.gameplay && Object.prototype.hasOwnProperty.call(settings.gameplay, 'runtimeProfile')) {
       delete settings.gameplay.runtimeProfile;
     }
+    stampIronmanLatch(settings, this.state && this.state.simTime);
     return settings;
   },
 
@@ -931,10 +934,19 @@ export const save = {
     slot = slot || 'quick';
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
+    // SFQ-B223: a write inside the restore window would serialize half-restored live state over
+    // the very slot being loaded. requestAutosave already refuses while _restoring; the direct
+    // path must refuse too, before it can supersede a queued autosave or touch a journal.
+    if (this._restoring) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
+      this._recordSaveTiming(timing);
+      this.bus.emit('save:error', timing);
+      return false;
+    }
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
     // the old token and becomes a no-op, so the player never pays two back-to-back full writes.
     if (!autosave && this._autosavePending) this._autosavePending = null;
-    const started = nowMs();
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
       this._recordSaveTiming(timing);
@@ -945,6 +957,8 @@ export const save = {
     // Establish the save boundary before any serializer reads live state. Manual saves are
     // synchronous; autosaves use the same boundary in their chunked capture below. The journal
     // remains pending until the write succeeds, so a failed save can retry the same facts.
+    beginFocusLossSaveWrite(this.state);
+    try {
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
     let envelope;
     let serializeMs = 0;
@@ -983,6 +997,9 @@ export const save = {
     const ok = this._publishSaveResult(slot, envelope, write, timing);
     if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
     return ok;
+    } finally {
+      endFocusLossSaveWrite(this.state);
+    }
   },
 
   _writeSlot(slot, envelope, options = {}) {
@@ -3197,6 +3214,23 @@ export const save = {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
 
+    // SFQ-B223: a load arriving inside the restore window defers whole — the deferred call
+    // re-runs this full path, so its rollback snapshot reads the now-restored world instead
+    // of being captured half-restored here and discarded. Rollback restores are internal and
+    // must never defer.
+    if (this._restoring && !rollbackAttempt) {
+      this.deferRunTransition(() => {
+        try {
+          return this._restorePreparedEnvelope(prepared, slot, options);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return true;
+    }
+
     let rollbackSnapshot = null;
     if (!rollbackAttempt && this._hasPlayerEntity()) {
       try {
@@ -5403,6 +5437,10 @@ function sanitizeRestoredSettings(settings) {
   // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
   // old save pin Off forever.
   if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  s.gameplay.pauseOnFocusLoss = s.gameplay.pauseOnFocusLoss !== false;
+  if (s.gameplay.ironmanChoiceLocked !== true) delete s.gameplay.ironmanChoiceLocked;
+  if (!s.audio || typeof s.audio !== 'object' || Array.isArray(s.audio)) s.audio = {};
+  s.audio.muteOnFocusLoss = s.audio.muteOnFocusLoss === true;
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
@@ -5434,6 +5472,14 @@ function sanitizeRestoredSettings(settings) {
   }
   const tc = s.controls.touch;
   if (tc.enabled !== true && tc.enabled !== false) tc.enabled = null;
+  // PRO-08: the overlay's own size and thumb placement ride along in the same object. Sanitizing
+  // them here (rather than letting the builder clamp) is what makes the choice survive a reload,
+  // and it keeps a hand-edited save from writing CSS it should not.
+  if (typeof tc.scale !== 'number' || !Number.isFinite(tc.scale) || tc.scale <= 0) delete tc.scale;
+  // Clamp in the slider's own units first, then snap by scaling by 20 and rounding an integer:
+  // 0.05 is not exactly representable, so dividing by it would persist 1.2500000000000002.
+  else tc.scale = Math.round(Math.min(1.6, Math.max(0.8, tc.scale)) * 20) / 20;
+  if (tc.layout !== 'standard' && tc.layout !== 'lefty' && tc.layout !== 'compact') delete tc.layout;
   return s;
 }
 
@@ -5460,6 +5506,7 @@ function profileSettingsSnapshot(settings) {
       damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
+      pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
     },
   };
 }

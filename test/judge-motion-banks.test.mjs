@@ -90,6 +90,19 @@ test('judge: a loop that does not close, a clip that does not come home, and an 
   const hold = { ...noHome, name: 'hold', endMode: 'hold' };
   assert.ok(!rowFor(hold).flags.includes('no-settle'), 'a hold clip is not expected to come home');
 
+  // Channels are rest-relative: a stow/close clip starts away from rest and must END on it. Judging
+  // end-vs-start would flag every honest stow clip (the first version did, 17 times).
+  const stow = {
+    name: 'stow', durationS: D, loop: false, endMode: 'rest',
+    channels: [denseChannel('translation', D, (t) => [0.3 * (1 - Math.sin((Math.PI * t) / 2)), 0, 0])],
+  };
+  assert.ok(!rowFor(stow).flags.includes('no-settle'), 'a clip that ends at rest has settled, wherever it started');
+
+  // An overlay returns to whatever base pose runs underneath it (the gate emitter's charge surge
+  // orbits the held index pose), so it is exempt from the rest test.
+  const surge = { ...noHome, name: 'surge', overlay: true };
+  assert.ok(!rowFor(surge).flags.includes('no-settle'), 'an overlay clip is exempt from the rest test');
+
   const whip = {
     name: 'whip', durationS: D, loop: true, endMode: 'rest',
     channels: [denseChannel('rotation', D, (t) => rotZ(2 * Math.PI * 2 * t))], // 2 rev/s = 720 deg/s
