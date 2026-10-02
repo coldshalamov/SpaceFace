@@ -32,16 +32,13 @@ Entities are object literals in `entities:Map` + `entityList:Array` + index lane
 - **Ceiling**: M (GC pressure + cache misses on per-tick iteration) now; unlocks S1's cheap transport later.
 - **Effort**: L. **Contract**: sim-visible behavior unchanged if writes stay single-source (sim writes columns; objects become views or are stamped from columns at the same tick point).
 
-## S3. Instanced/BatchedMesh for repeated static geometry — needs new density evidence
+## S3. Instanced/BatchedMesh for repeated static geometry — PARTIALLY LANDED, residual audit-gated
 
-Adjudicated-deferred since W4. Re-open condition: measure the actual per-frame draw-call/vertex cost of repeated static bodies (asteroid field, debris, dressing props) at current population. If a scene draws N>~50 same-geometry statics, instancing is a real draw-call win with zero visual change. **Effort**: audit S + implementation M. Only proceed past audit if the density evidence says yes.
+`src/render/asteroidInstancePool.js` already instances untinted common-rock bodies into keyed InstancedMesh buckets (warmed per-variant pre-flight; adopted bodies republish `leaf.matrixWorld`). What the W4 deferral still covers: BatchedMesh for heterogeneous repeated statics (dressing props, debris, station parts) — re-open only if a density census shows N≳50 same-geometry unbatched statics drawing per frame. **Effort**: census S. **Ceiling**: gated on the census.
 
-## S4. Decode/compile fan-out depth
+## S4. Decode/compile fan-out depth — VERIFIED LANDED
 
-The runway already class-orders decodes (visible→deadline→ambient) through worker prepass. What remains: the pool width and transcode/program-link serialization points.
-
-- Audit: worker pool size vs decode queue depth during an admission burst; KTX2 transcoder parallelism; whether the GL program link step is still main-thread-serialized per program (compileAsync/`KHR_parallel_shader_compile` coverage — already partly landed via precompile salvos).
-- **Ceiling**: M — shaves the tail of admission bursts; doesn't change what the magic frame needs, only how fast the deadline cohort clears.
+`src/render/decodeTaskBudget.js` is already a shared FIFO gate across decoder pools with class-priority release (`visible > deadline > ambient`, FIFO within class), sized `cores−2` so bursts can't starve the present thread; KTX2 pool `max(4,min(8,cores−2))`, glbPrepass pool `resolveDecodeTaskBudgetLimit`. Program-link precompiles ride dedicated salvos. Only remaining question is pool-width tuning — a measurement, not a structural lever.
 
 ## S5. Residency horizon — sector-graph lookahead
 
@@ -58,12 +55,10 @@ Audited at `presentationRunner.js:830-985`: the rAF frame already orders **sim a
 
 ## Execution order (by ceiling × tractability)
 
-1. **S2** — SoA sidecar; both a modest direct win and the S1/PQ-067 precondition.
-2. **S4/S5** — audit-gated; implement only where evidence clears the bar.
-3. **S3** — audit only; density evidence decides.
-4. **S1** — the XL spike: render-worker transport prototype, only after S2's columns exist to make transport cheap.
-5. **S0** — stays gated on the W4 revisit conditions.
-6. ~~S6~~ — verified landed. ~~S7~~ — save:loaded half landed; econTick slicing proven illegal (recorded so it isn't re-proposed).
+1. **S1** — the XL spike and the only remaining big game: render-worker transport. Prototype scope: pose/identity transport for ship-like bodies only (the ~12-key census is the contract surface), SAB columns for pos/vel/flags + mount/unmount event ring, OffscreenCanvas submit. Gate on a measured read-model cost < the hitches it removes.
+2. **S2** — SoA sidecar: implement *inside* the S1 spike as its transport layout (a standalone sidecar without S1 is marginal on this hardware profile — sim is already sub-ms/tick).
+3. **S5** — audit-gated M win (2-deep sector lookahead).
+4. ~~S3~~ — partially landed (asteroidInstancePool); residual = density census only. ~~S4~~ — verified landed (shared class-priority decode budget). ~~S6~~ — verified landed. ~~S7~~ — save:loaded half landed; econTick slicing proven illegal. **S0** — gated on W4 revisit conditions.
 
 ## A/B verification protocol (all levers)
 
