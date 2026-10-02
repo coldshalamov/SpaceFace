@@ -81,6 +81,11 @@ const WORKER_PATH = resolve(ROOT, 'scripts/lib/wholeSimWorker.mjs');
 // must still produce bit-identically.
 const GOLDEN_HASH = 'f589bdd53360693b76d89ea54db2dd5816f45feb00c5f203d882a9637d729cdb';
 const COMPLETED_TICK_RING_DEPTH = 8;
+// Stage 7 item A: the completed-tick reply channel gets a hard bound — resolved
+// replies carrying a completedTick count as outstanding until the present side
+// drains them (drain = free, whether the tick presents or is superseded). At
+// bound+1 outstanding the run fails closed with a completedTickQueue diagnostic,
+// the same surface an in-process step throw produces. --ring-bound 0 disables.
 
 // The production rAF schedule can't be measured on a benchmark headless box,
 // so the spike drives a deterministic frame-DT pattern: 12 frames = 12 steps,
@@ -110,6 +115,7 @@ const OPT = {
   // reply); N>0 caps replies consumed per frame to model present-side lag.
   consumeBatch: Math.max(0, argInt('--consume-batch', 0)),
   journalCapacity: argInt('--journal-capacity', null),
+  ringBound: Math.max(0, argInt('--ring-bound', COMPLETED_TICK_RING_DEPTH)),
   ackStall: argv.includes('--ack-stall'),
   probe: argValue('--probe', null),
   simLane: argValue('--sim-lane', process.env.SIM_LANE || 'worker'),
@@ -384,6 +390,29 @@ async function runBody(client, frames, options = {}) {
   let ringHighWater = 0;
   let ackedJournalEnd = 0;
   let simulationFailure = null;
+  // Stage-7 item A bound: outstanding = resolved replies holding a completedTick
+  // that the present side has NOT drained. A drained reply frees its slot —
+  // presentation (or supersession) is a consume-side decision, not outstanding.
+  // Worker lane only: the in-process client has no reply channel to back up.
+  const flipLane = options.lane || OPT.simLane;
+  let outstandingCompletedTicks = 0;
+  let outstandingCompletedTicksMax = 0;
+  let completedTickOverflows = 0;
+  // Recorded at the first instant the count crosses the bound — the violation
+  // depth is bound+1 even when several replies land between bound checks.
+  let pendingCompletedTickOverflow = null;
+  function enforceCompletedTickBound() {
+    if (OPT.ringBound <= 0 || flipLane !== 'worker') return;
+    if (!pendingCompletedTickOverflow) return;
+    const depth = pendingCompletedTickOverflow.depth;
+    completedTickOverflows++;
+    const message = `completed-tick queue overflow: ${depth} outstanding completed ticks exceed bound ${OPT.ringBound} (fail-closed)`;
+    simulationFailure = { site: 'completedTickQueue', tick: nextTick > 0 ? nextTick - 1 : 0, message };
+    const err = new Error(message);
+    err.completedTickQueueOverflow = { depth, bound: OPT.ringBound };
+    err.simulationFailure = simulationFailure;
+    throw err;
+  }
   const timing = {
     packMs: [], wireMs: [], consumeMs: [], transportMs: [],
     workMs: [], directiveWireMs: [], rttMs: [], transportTicks: [],
@@ -723,7 +752,20 @@ async function runBody(client, frames, options = {}) {
     };
     if (steps === 0) flip.drainDirectives++;
     p.then(
-      (reply) => { entry.resolved = true; entry.reply = reply; },
+      (reply) => {
+        entry.resolved = true;
+        entry.reply = reply;
+        if (reply && reply.completedTick != null) {
+          outstandingCompletedTicks++;
+          if (outstandingCompletedTicks > outstandingCompletedTicksMax) {
+            outstandingCompletedTicksMax = outstandingCompletedTicks;
+          }
+          if (OPT.ringBound > 0 && outstandingCompletedTicks === OPT.ringBound + 1
+              && !pendingCompletedTickOverflow) {
+            pendingCompletedTickOverflow = { depth: outstandingCompletedTicks, bound: OPT.ringBound, tick: reply.tick };
+          }
+        }
+      },
       (error) => { entry.resolved = true; entry.failed = error; },
     );
     pendingDirectives.push(entry);
@@ -788,6 +830,7 @@ async function runBody(client, frames, options = {}) {
       const entry = pendingDirectives.shift();
       drained++;
       flip.repliesConsumed++;
+      if (entry.reply && entry.reply.completedTick != null) outstandingCompletedTicks--;
       // SPSC ordering proof: reply stream must drain in strict post order.
       if (entry.order <= lastDrainedOrder) flip.orderViolations++;
       lastDrainedOrder = entry.order;
@@ -935,11 +978,22 @@ async function runBody(client, frames, options = {}) {
     }
     // Bounded in-flight window: block only when the pipeline bound is hit AND
     // the oldest reply hasn't landed; otherwise drain whatever resolved.
-    while (pendingDirectives.length >= OPT.pipeline && !pendingDirectives[0].resolved) {
-      await pendingDirectives[0].p.then(() => {}, () => {});
+    // Under --probe hold-consume the head never drains, so pace production on
+    // the newest directive's reply instead — the producer keeps sim rate while
+    // resolved replies accumulate undrained to the item-A bound.
+    if (OPT.probe === 'hold-consume') {
+      const tail = pendingDirectives[pendingDirectives.length - 1];
+      if (tail && !tail.resolved) await tail.p.then(() => {}, () => {});
+    } else {
+      while (pendingDirectives.length >= OPT.pipeline && !pendingDirectives[0].resolved) {
+        await pendingDirectives[0].p.then(() => {}, () => {});
+      }
     }
     const beforeConsumed = flip.repliesConsumed;
-    consumeResolved();
+    // --probe hold-consume: the present side stops draining entirely. Resolved
+    // replies pile up until the item-A bound fails the run closed at depth 9.
+    if (OPT.probe !== 'hold-consume') consumeResolved();
+    enforceCompletedTickBound();
     if (flip.repliesConsumed === beforeConsumed) flip.rePresents++;
   }
   // Final drain — every posted directive resolves and consumes.
@@ -948,6 +1002,7 @@ async function runBody(client, frames, options = {}) {
       await pendingDirectives[0].p.then(() => {}, () => {});
     }
     consumeResolved();
+    enforceCompletedTickBound();
   }
 
   const fin = await client.send({ kind: 'finalize' });
@@ -1024,6 +1079,8 @@ async function runBody(client, frames, options = {}) {
     timing,
     ringHighWater,
     ringDepth: COMPLETED_TICK_RING_DEPTH,
+    outstandingCompletedTicksMax,
+    completedTickOverflows,
     ackedJournalEnd,
     transportDiag: journal.getDiagnostics(),
     requestRebuildCount: journal.getRequestRebuildCount(),
@@ -1109,6 +1166,49 @@ async function main() {
       console.log(`verdict: ${verdict}`);
     }
     process.exitCode = crash.pass ? 0 : 1;
+    return;
+  }
+
+  // --probe hold-consume (stage-7 item A): the present side never drains, so
+  // resolved completed ticks pile up until the bound fails the run closed at
+  // exactly bound+1 outstanding — the same simulationFailure surface a step
+  // throw produces. Gate evidence = the overflow firing at depth ringBound+1.
+  if (OPT.probe === 'hold-consume') {
+    let err = null;
+    let run = null;
+    try {
+      run = await runOnce();
+    } catch (e) {
+      err = e;
+    }
+    const ov = err && err.completedTickQueueOverflow;
+    const sf = err && err.simulationFailure;
+    const pass = !!ov && ov.depth === OPT.ringBound + 1 && ov.bound === OPT.ringBound
+      && !!sf && sf.site === 'completedTickQueue'
+      && /completed-tick queue overflow/.test(String(err && err.message));
+    const out = {
+      schema: 'spaceface.s1WorkerSpike.v1', mode: 'hold-consume-probe', options: OPT,
+      gate: {
+        pass,
+        expectedDepth: OPT.ringBound + 1,
+        overflow: ov || null,
+        simulationFailure: sf || null,
+        error: err ? String(err.message) : null,
+        completedWithoutOverflow: run !== null,
+      },
+      verdict: pass ? 'ALL PASS' : 'GATE FAILURE',
+    };
+    if (OPT.json) {
+      console.log(JSON.stringify(out, null, 2));
+    } else {
+      console.log(`\n=== S1 Phase-B stage-7 spike: hold-consume probe ===`);
+      console.log(`GATE A hold-consume: ${pass ? 'PASS' : 'FAIL'}  bound=${OPT.ringBound} expectedDepth=${OPT.ringBound + 1}`);
+      console.log(`  overflow=${JSON.stringify(ov || null)}`);
+      console.log(`  simulationFailure=${JSON.stringify(sf || null)}`);
+      if (!err) console.log(`  run completed with no overflow (completedTicks consumed)`);
+      console.log(`verdict: ${out.verdict}`);
+    }
+    process.exitCode = pass ? 0 : 1;
     return;
   }
 
@@ -1233,10 +1333,16 @@ async function main() {
   const ringBound = OPT.ackStall || OPT.journalCapacity
     ? rebuildCount > 0
     : lastDiag.pending != null && lastDiag.pending <= (lastDiag.capacity || Infinity);
+  const completedTickOutstandingMax = Math.max(...results.map((r) => r.outstandingCompletedTicksMax || 0));
+  const completedTickOverflows = results.reduce((a, r) => a + (r.completedTickOverflows || 0), 0);
   const gateC = {
-    pass: maxRing <= COMPLETED_TICK_RING_DEPTH && ringBound,
+    pass: maxRing <= COMPLETED_TICK_RING_DEPTH && ringBound && completedTickOverflows === 0
+      && (OPT.ringBound <= 0 || completedTickOutstandingMax <= OPT.ringBound),
     completedTickHighWater: maxRing,
     completedTickDepth: COMPLETED_TICK_RING_DEPTH,
+    ringBound: OPT.ringBound,
+    completedTickOutstandingMax,
+    completedTickOverflows,
     journalRebuilds: rebuildCount,
     journalDiag: lastDiag,
     transportDiag: lastTransportDiag,
@@ -1461,7 +1567,7 @@ async function main() {
       `mean=${gateB.transport.mean} p95=${gateB.transport.p95} max=${gateB.transport.max}`);
     console.log(`                     pack mean=${gateB.pack.mean} p95=${gateB.pack.p95} | wire mean=${gateB.wire.mean} p95=${gateB.wire.p95} | consume mean=${gateB.consume.mean} p95=${gateB.consume.p95}`);
     console.log(`                     >0.5ms ticks: ${gateB.overThresholdCount}  ${JSON.stringify(gateB.overThresholdTicks)}`);
-    console.log(`GATE C rings       : ${gateC.pass ? 'PASS' : 'FAIL'}  completedTick hw=${gateC.completedTickHighWater}/8  journalRebuilds=${gateC.journalRebuilds}`);
+    console.log(`GATE C rings       : ${gateC.pass ? 'PASS' : 'FAIL'}  completedTick hw=${gateC.completedTickHighWater}/8  outstandingMax=${gateC.completedTickOutstandingMax}/${gateC.ringBound} overflows=${gateC.completedTickOverflows} journalRebuilds=${gateC.journalRebuilds}`);
     console.log(`                     journalDiag.pending=${gateC.journalDiag && gateC.journalDiag.pending} capacity=${gateC.journalDiag && gateC.journalDiag.capacity} published=${gateC.journalDiag && gateC.journalDiag.publishedCount} coalesced=${gateC.journalDiag && gateC.journalDiag.transformCoalesceCount} suppressed=${gateC.journalDiag && gateC.journalDiag.suppressedCount} rebuildReqs=${gateC.journalDiag && gateC.journalDiag.rebuildRequestCount} failures=${gateC.journalDiag && gateC.journalDiag.rebuildFailureCount} discarded=${gateC.journalDiag && gateC.journalDiag.discardCount}`);
     console.log(`GATE D cmd channel : ${gateD.pass ? 'PASS' : 'FAIL'}  tapeParity=${gateD.tapeParity} frames=${gateD.workerTapeFrames}/${gateD.refTapeFrames} dropped=${gateD.commandDropped}`);
     console.log(`                     rpcAcks=${JSON.stringify(gateD.rpcAcks)} settingsAcks=${JSON.stringify(gateD.settingsAcks)}`);
