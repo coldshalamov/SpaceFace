@@ -384,17 +384,22 @@ async function runItem(id, spec) {
       } catch (e) { rec.errors.push(`poster: ${e.message}`); }
     } else {
       await ACTS[spec.demo]?.(page, spec, clipS * 1000);
+      // Skipping the re-record keeps the verified clip/poster we already shipped.
+      const prior = evidence[id];
+      if (skipClips && prior && prior.clip) { rec.clip = prior.clip; if (prior.poster) rec.poster = prior.poster; }
     }
     const ev = await sh(() => window.__showcase.evidence());
     rec.events = ev.counts;
     rec.evidenceSamples = ev.samples;
     const evList = spec.ev || [];
     const evOk = evList.length ? evList.some((e) => (ev.counts[e] || 0) > 0) : true;
+    // `must` pins the signature event: an item may not pass on ambient damage/toasts alone.
+    const mustOk = (spec.must || []).every((e) => (ev.counts[e] || 0) > 0);
     // The stat is proven either by a derived-field diff (numbers that live on the hull)
     // or by the fitted def carrying the same key in its mods (use-time flags).
     const statOk = spec.stat ? (rec.statDiff[spec.stat] !== undefined
       || (rec.mods != null && rec.mods[spec.stat] != null && rec.mods[spec.stat] !== false)) : true;
-    rec.ok = rec.fitOk !== false && evOk && statOk && (evList.length > 0 || !!spec.stat);
+    rec.ok = rec.fitOk !== false && evOk && mustOk && statOk && (evList.length > 0 || !!spec.stat);
     // teardown
     await sh(() => window.__showcase.setAutoFire(false));
     await sh(() => window.__showcase.removeSpawned());

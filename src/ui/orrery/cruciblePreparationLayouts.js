@@ -266,6 +266,19 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .sf-crd-arenas .fh-tile-art img { height:32px !important; }
  ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:6px !important; }
  ${D} .orr-prep-disclosure { padding:8px 0; }
+ /* the armory pane shrinks with the plate: smaller band, tighter dossier words,
+    so the buy row is reachable without a second scroll. */
+ ${A} .orr-armory-item { min-height:150px; height:180px; }
+ ${A} .orr-armory-item::before { inset:10px; }
+ ${A} .orr-armory-item > .orr-equipment-glyph { width:130px; height:130px; }
+ ${A} .orr-armory-reading__jig { height:170px !important; min-height:140px; }
+ ${A} .orr-armory-reading__name { font-size:clamp(20px,2vw,26px) !important; margin:6px 0 10px !important; }
+ ${A} .orr-armory-reading__blurb { font-size:13px !important; }
+ ${A} .orr-armory-reading__detail { font-size:13px !important; }
+ ${A} .orr-armory-reading__stats { margin-top:8px !important; }
+ ${A} .orr-armory-reading__buy { margin:10px 0 8px !important; }
+ ${A} .orr-armory-purchase { min-height:44px !important; padding:9px 14px !important; }
+ ${A} .orr-armory-reading__demo-word { min-height:30px; padding:5px 0; }
 }
 @media (max-width:1150px) {
  ${D}, ${A} { padding:24px !important; column-gap:24px !important; }
@@ -282,6 +295,14 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__jig { width:calc(55% - 10px) !important; min-width:0; flex:none; height:180px !important; }
  ${A} .orr-armory-object-label { display:none; }
  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
+}
+/* narrow AND short: the stacked clip shrinks further so the dossier words begin
+   above the fold instead of a scroll below the band. */
+@media (max-width:1150px) and (max-height:720px) {
+ ${A} .orr-armory-item { height:120px; min-height:104px; }
+ ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
+ ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
+ ${A} .orr-armory-reading__name { font-size:20px !important; margin:4px 0 8px !important; }
 }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }

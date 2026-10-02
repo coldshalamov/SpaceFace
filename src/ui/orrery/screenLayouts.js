@@ -481,6 +481,21 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
     grid-template-columns:minmax(0, clamp(300px, 27vw, 420px)) minmax(0, 1fr) !important; }
   html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.sf-cru-card { grid-template-columns:18px 82px minmax(0, 1fr) auto !important; }
 }
+/* a short plate keeps the dossier in view: the visual band shrinks, the words tighten,
+   so detail + tip + stats still start above the fold instead of a scroll away. */
+@media (max-height:720px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading.orr-armory-reading { top:clamp(104px, 14vh, 170px) !important;
+    grid-template-columns:minmax(0, clamp(190px, 24vw, 320px)) minmax(0, 420px) !important; column-gap:clamp(16px, 2vw, 32px) !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__jig { max-height:240px; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__words { padding-top:4px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__name { font-size:clamp(20px, 3.2vh, 28px) !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__blurb { margin-top:8px !important; font-size:13px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__act { margin-top:5px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__detail { margin-top:7px !important; font-size:13px !important; line-height:1.4 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__tip { margin-top:4px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__stats { margin-top:9px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__compare, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__budget { margin-top:10px !important; }
+}
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage > .sf-cru-cards { flex:1 1 auto; min-height:0; max-height:none !important;
   -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 36px), transparent); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale { position:absolute; left:-18px; top:64px; bottom:6px; width:10px; pointer-events:none; }

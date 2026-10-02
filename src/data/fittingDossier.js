@@ -484,6 +484,10 @@ export const FITTING_DOSSIER = Object.freeze({
     detail: 'A hardener that takes a cut out of every hit — the shield shrugs all flavors of fire.',
     tip: 'For the hull that expects to take fire from every direction at once.',
   },
+  mod_triangulation_suite_s: {
+    detail: 'A bearing solver that closes an anomaly fix in two scan pulses instead of three.',
+    tip: 'For the surveyor — anomalies resolve a pulse sooner, out of harm\'s way.',
+  },
   mod_thermal_sink_s: {
     detail: 'A heatsink that dumps gun heat faster — the burst lasts longer before the cutoff.',
     tip: 'For the trigger-happy build: the guns stay hot less.',
@@ -614,10 +618,17 @@ function pct(v) {
   return `${Math.round(v * 100)}%`;
 }
 
+// A chip that only restates zero is noise on the card ("Heat 0/shot" tells the
+// reader nothing they didn't assume). Skips '0', '0.0/shot', '+0%', and so on.
+function deadZero(value) {
+  const m = String(value).match(/^[-+−×]?\s*(\d*\.?\d+)/);
+  return !!m && parseFloat(m[1]) === 0;
+}
+
 /** Weapon spec chips. */
 function weaponStats(def) {
   const out = [];
-  const push = (label, value) => { if (value != null && value !== '') out.push({ label, value }); };
+  const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   push('Damage', num(def.damage));
   push('DPS', num(def.dps));
   push('Rate', def.fireRate != null ? `${num(def.fireRate, 1)}/s` : null);
@@ -636,7 +647,7 @@ function weaponStats(def) {
 /** Module spec chips — a label per meaningful mods key. */
 function moduleStats(def) {
   const out = [];
-  const push = (label, value) => { if (value != null && value !== '' && value !== '0') out.push({ label, value }); };
+  const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   const m = def.mods || {};
   push('Shield', m.shieldFlat != null ? `+${num(m.shieldFlat)}` : null);
   push('Shield regen', m.shieldRegenFlat != null ? `+${num(m.shieldRegenFlat)}/s` : null);
@@ -686,7 +697,7 @@ function moduleStats(def) {
 /** Hull spec chips. */
 function hullStats(def) {
   const out = [];
-  const push = (label, value) => { if (value != null && value !== '') out.push({ label, value }); };
+  const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   push('Hull', num(def.hull));
   push('Shield', num(def.shield));
   push('Shield regen', num(def.baseShieldRegen));

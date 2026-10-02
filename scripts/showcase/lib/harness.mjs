@@ -61,9 +61,10 @@ async function installShowcaseApi(page) {
       listening = true;
       const on = sf.bus.on.bind(sf.bus);
       for (const ev of [
-        'combat:hit', 'combat:damage', 'combat:status', 'combat:kill', 'entity:killed',
+        'combat:hit', 'combat:damage', 'combat:statusApplied', 'combat:statusExpired',
+        'combat:kill', 'entity:killed',
         'projectile:hit', 'combat:shove', 'combat:tumbled', 'combat:weak', 'combat:warded',
-        'combat:beam', 'combat:emp', 'combat:base', 'combat:outcome', 'combat:fire',
+        'combat:beamStop', 'combat:emp', 'combat:base', 'combat:outcome', 'combat:fire',
         'fields:hitchLatched', 'fields:hitchCut', 'fields:deployed', 'fields:ended',
         'fields:deployDenied', 'well:capture', 'well:fling',
         'hullBurst:hit', 'hullBurst:ended',
@@ -74,7 +75,8 @@ async function installShowcaseApi(page) {
         'charge:thrown', 'charge:stuck', 'charge:detonated', 'charge:armed', 'charge:aftDropped', 'charge:combo',
         'tether:latchDenied', 'alienEcology:lureDropped', 'toast', 'alert',
         'cloak:engaged', 'cloak:dropped', 'cloak:burned',
-        'bombs:dropped', 'bombs:released', 'bombs:detonated', 'bombs:armed',
+        'weapons:mineDeployed', 'weapons:mineArmed', 'weapons:mineDetonated', 'weapons:mineExpired',
+        'emergent:applied', 'emergent:contact',
         'scan:pulse', 'scan:completed', 'pds:intercept',
         'loot:drop', 'loot:magnetCaptured', 'cargo:changed', 'cargo:caughtByNet',
         'mining:start', 'mining:beamLocked', 'mining:yield', 'mining:tick', 'mining:seamHit',

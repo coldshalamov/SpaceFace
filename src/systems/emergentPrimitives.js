@@ -388,6 +388,10 @@ export function launchEmergent(state, owner, def, angle) {
     const drop = kind === 'prism' ? T.prismDrop : T.fieldDrop;
     const x = owner.pos.x + Math.cos(aim) * drop;
     const z = owner.pos.z + Math.sin(aim) * drop;
+    const dBus = stampBus(world);
+    if (dBus && typeof dBus.emit === 'function') {
+      dBus.emit('emergent:applied', { kind, ownerId: owner.id, weaponId: def && def.id });
+    }
     if (kind === 'viscosity') {
       pushCap(world.fields, {
         x, z,
@@ -434,6 +438,7 @@ export function setEmergentRay(state, owner, def, angle) {
   if (!state || !owner) return;
   const world = ensureEmergent(state);
   const aim = Number.isFinite(angle) ? angle : num(owner.rot);
+  const fresh = !world.ray || world.ray.ownerId !== owner.id || world.ray.weaponId !== (def && def.id);
   world.ray = {
     ownerId: owner.id,
     angle: aim,
@@ -441,6 +446,16 @@ export function setEmergentRay(state, owner, def, angle) {
     range: def && Number.isFinite(def.range) ? def.range : T.thermalRange,
   };
   world.hot = true;
+  if (fresh) {
+    const rBus = stampBus(world);
+    if (rBus && typeof rBus.emit === 'function') {
+      rBus.emit('emergent:applied', {
+        kind: (def && def.emergentPrimitive) || 'ray',
+        ownerId: owner.id,
+        weaponId: def && def.id,
+      });
+    }
+  }
 }
 
 export function clearEmergentRay(state, ownerId) {
@@ -549,6 +564,17 @@ function hitEntities(state, slot) {
 
 function onHit(state, slot, target, sys) {
   const kind = slot.kind;
+  // Emergent bolts never raise projectile:hit/combat:damage — one application event
+  // is the only bus signal a landed bolt gives downstream listeners (HUD, audio, telemetry).
+  const bus = state && state.emergent ? stampBus(state.emergent) : null;
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('emergent:applied', {
+      kind,
+      targetId: target && target.id,
+      ownerId: slot && slot.ownerId,
+      weaponId: slot && slot.weaponId,
+    });
+  }
   if (kind === 'sticky') {
     pushCap(state.emergent.stickies, {
       hostId: target.id,
