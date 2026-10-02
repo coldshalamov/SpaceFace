@@ -9,6 +9,7 @@ import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
+import { projectileSkipsVisualFactoryMesh } from './render/weapons/recipes.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
@@ -133,7 +134,14 @@ async function boot() {
       seedOf: () => state && state.meta && state.meta.seed,
       tickOf: () => state && state.tick,
     });
-    const presentationJournal = createPresentationJournal();
+    // Mirrors pushAlive()'s mesh test in presentationSources.js: entities the
+    // rebuild collect can never republish must never journal — a spawn
+    // suppressed during a pending rebuild would otherwise leave the entity
+    // permanently journaled-out, tripping a rebuild once per tick for life.
+    const presentationJournal = createPresentationJournal(undefined, {
+      isEntityJournaled: (e) => !!(e && e._noMesh !== true
+        && !(e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e))),
+    });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
     const failurePresenter = createRuntimeFailurePresenter({ document });
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,

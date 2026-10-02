@@ -128,6 +128,14 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       ? options.entityCapacity
       : DEFAULT_ENTITY_CAPACITY),
   );
+  // Writer-side eligibility: entities the rebuild collect set can never republish
+  // (e.g. mesh-less projectile lanes) must be skipped silently here, else a spawn
+  // suppressed during a pending rebuild leaves the entity permanently journaled-
+  // out — every later transform trips '*-without-spawn' → rebuild → suppress,
+  // a once-per-tick rebuild storm for the entity's remaining lifetime.
+  const isEntityJournaled = typeof options.isEntityJournaled === 'function'
+    ? options.isEntityJournaled
+    : () => true;
   const records = Array.from({ length: size }, () => createPresentationJournalRecord());
 
   let generations = new Uint32Array(initialEntityCapacity + 1);
@@ -319,11 +327,13 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
   function recordSpawn(tick, entity) {
     assertOpen();
+    if (!isEntityJournaled(entity)) return 0;
     return publishSpawn(tick, entity, false);
   }
 
   function recordDestroy(tick, source) {
     assertOpen();
+    if (!isEntityJournaled(source)) return 0;
     if (!prepareRecord(tick)) return 0;
     const entityId = ensureEntityId(source);
     if (entityId === 0 || rebuildRequired) return 0;
@@ -351,6 +361,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function recordCoalescible(kind, tick, entity, sequenceTable) {
+    if (!isEntityJournaled(entity)) return 0;
     if (rebuildRequired) {
       suppressedCount++;
       return 0;
