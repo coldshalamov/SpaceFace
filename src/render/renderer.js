@@ -2100,12 +2100,25 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
   let glassCount = 0;
   let reordered = false;
   let seenNonGlass = false;
+  let firstNonGlassIdx = -1;
+  // Verdict scratch: 0 non-glass, 1 glass, 2 not-yet-evaluated — allocated only on the first
+  // proven out-of-order element so an already-ordered tail keeps the zero-alloc path.
+  let verdicts = null;
   for (let i = head; i < queue.length; i++) {
-    if (entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, queue[i]), owner.state, scan)) {
+    const glass = entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, queue[i]), owner.state, scan);
+    if (verdicts) verdicts[i - head] = glass ? 1 : 0;
+    if (glass) {
       glassCount++;
-      if (seenNonGlass) reordered = true;
-    } else {
+      if (seenNonGlass && !reordered) {
+        reordered = true;
+        verdicts = new Uint8Array(tail).fill(2);
+        for (let j = 0; j < firstNonGlassIdx - head; j++) verdicts[j] = 1;
+        verdicts[firstNonGlassIdx - head] = 0;
+        verdicts[i - head] = 1;
+      }
+    } else if (!seenNonGlass) {
       seenNonGlass = true;
+      firstNonGlassIdx = i;
     }
   }
   if (reordered) {
@@ -2113,7 +2126,8 @@ export function hoistDeadlineGlassMeshBuilds(owner) {
     const remainder = [];
     for (let i = head; i < queue.length; i++) {
       const id = queue[i];
-      if (entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan)) {
+      const v = verdicts[i - head];
+      if (v === 1 || (v === 2 && entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan))) {
         hoisted.push(id);
       } else {
         remainder.push(id);

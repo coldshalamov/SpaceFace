@@ -20,7 +20,7 @@ import {
   GENERIC_TOW_PACKAGED_PROP,
   SCENARIO_47A_PACKAGED_PROPS,
 } from '../data/scenarios/47aLiveScene.js';
-import { modelTruthRow } from '../data/modelTruth.js';
+import { modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import {
   admissionOwnerInactive,
   authoredReadmissionStatus,
@@ -404,27 +404,31 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   // Z/Y-dominant records (spindle worst) the octahedron proportions under-cover its
   // silhouette, so union per axis with the record's scaled bounds where census covers
   // the armed file.
-  const recordHalf = boundaryStandInScaledHalf(data, entity);
-  const half = [
-    Math.max(markerX * 0.5, recordHalf ? recordHalf[0] : 0),
-    Math.max(markerX * (0.3 / 3.4), recordHalf ? recordHalf[1] : 0),
-    Math.max(markerX * 0.25, recordHalf ? recordHalf[2] : 0),
-  ];
+  const markerHalf = [markerX * 0.5, markerX * (0.3 / 3.4), markerX * 0.25];
+  // The stand-in previews the committed frame (recenter + approach yaw): its drawn box is
+  // the record's scaled bounds rotated by the armed yaw about a possibly-displaced center,
+  // not the unrotated authored box — a square yaw-armed record can outgrow an axis by ~41%.
+  const stand = boundaryStandInDrawnEnvelope(data, entity);
   const existing = data.visualBounds;
-  if (existing && Array.isArray(existing.size)) {
-    const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
-    const nextCenter = [0, 0, 0];
-    const nextSize = [0, 0, 0];
-    for (let i = 0; i < 3; i++) {
-      const lo = Math.min((Number(center[i]) || 0) - (Number(existing.size[i]) || 0) / 2, -half[i]);
-      const hi = Math.max((Number(center[i]) || 0) + (Number(existing.size[i]) || 0) / 2, half[i]);
-      nextCenter[i] = (lo + hi) / 2;
-      nextSize[i] = hi - lo;
+  const hasExisting = !!(existing && Array.isArray(existing.size));
+  const existingCenter = hasExisting && Array.isArray(existing.center) ? existing.center : null;
+  const nextCenter = [0, 0, 0];
+  const nextSize = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    let lo = -markerHalf[i];
+    let hi = markerHalf[i];
+    if (stand) {
+      lo = Math.min(lo, stand.center[i] - stand.half[i]);
+      hi = Math.max(hi, stand.center[i] + stand.half[i]);
     }
-    data.visualBounds = { center: nextCenter, size: nextSize };
-  } else {
-    data.visualBounds = { center: [0, 0, 0], size: [half[0] * 2, half[1] * 2, half[2] * 2] };
+    if (hasExisting) {
+      lo = Math.min(lo, (Number(existingCenter ? existingCenter[i] : 0) || 0) - (Number(existing.size[i]) || 0) / 2);
+      hi = Math.max(hi, (Number(existingCenter ? existingCenter[i] : 0) || 0) + (Number(existing.size[i]) || 0) / 2);
+    }
+    nextCenter[i] = (lo + hi) / 2;
+    nextSize[i] = hi - lo;
   }
+  data.visualBounds = { center: nextCenter, size: nextSize };
   return data.wantsBoundaryResolvingMarker === true ? data : null;
 }
 
@@ -527,13 +531,13 @@ function boundaryStandInDrawnX(data, target) {
 }
 
 /**
- * Half-extents the resident same-identity stand-in actually draws for this arm: the
- * census row's authored bounds scaled by the same factor lodStandInFor applies
- * (entityScale / sourceLength). Returns null when the armed file sits outside the
- * census or the target carries no scaleable basis — callers then keep the octahedron
- * proportions per axis, as before.
+ * The stand-in's actual drawn box in boundary-local space: the census row's authored bounds
+ * scaled by the factor lodStandInFor applies, then folded through the committed-frame arms
+ * (recenter shifts the drawn center; approach yaw rotates half-extents and sweeps a
+ * non-recentered center about the boundary origin). Returns { half, center } or null when
+ * the armed file sits outside the census or the target carries no scaleable basis.
  */
-function boundaryStandInScaledHalf(data, entity) {
+function boundaryStandInDrawnEnvelope(data, entity) {
   const file = data && data.boundaryResolvingStandInFile;
   if (typeof file !== 'string' || !file) return null;
   const row = modelTruthRow(file.replace(/^.*\//, '').replace(/\.glb$/i, ''));
@@ -549,11 +553,34 @@ function boundaryStandInScaledHalf(data, entity) {
   else if (Number.isFinite(target.x)) entityScale = target.x;
   if (!Number.isFinite(entityScale) || !(entityScale > 0)) return null;
   const factor = entityScale / sourceLength;
-  return [
+  const half = [
     (Number(size[0]) || 0) * factor * 0.5,
     (Number(size[1]) || 0) * factor * 0.5,
     (Number(size[2]) || 0) * factor * 0.5,
   ];
+  const bc = row.bounds && row.bounds.center;
+  const cx = (Array.isArray(bc) ? Number(bc[0]) || 0 : 0) * factor;
+  const cy = (Array.isArray(bc) ? Number(bc[1]) || 0 : 0) * factor;
+  const cz = (Array.isArray(bc) ? Number(bc[2]) || 0 : 0) * factor;
+  // lodStandInFor's frame order: translate by -center·scale for armed recenter axes, then
+  // rotation.y about the (translated) group origin — equivalent net geometry for the box.
+  let c0x = cx;
+  let c0y = cy;
+  let c0z = cz;
+  if (target.recenter === 'xz') { c0x = 0; c0z = 0; }
+  else if (target.recenter === 'xyz') { c0x = 0; c0y = 0; c0z = 0; }
+  const yaw = Number.isFinite(target.yawDeg) && target.yawDeg !== 0 ? target.yawDeg * (Math.PI / 180) : 0;
+  if (yaw === 0) return { half, center: [c0x, c0y, c0z] };
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  return {
+    half: [
+      half[0] * Math.abs(cos) + half[2] * Math.abs(sin),
+      half[1],
+      half[0] * Math.abs(sin) + half[2] * Math.abs(cos),
+    ],
+    center: [c0x * cos + c0z * sin, c0y, -c0x * sin + c0z * cos],
+  };
 }
 
 /**
@@ -717,10 +744,19 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   // with the substrate when the authored body swaps in.
   {
     const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-    root.userData.visualBounds = {
-      center: [0, 0, 0],
-      size: [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7],
-    };
+    const size = [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7];
+    // Union the measured hull axes at the committed X basis — the fixed margins under-cover
+    // Z/Y-dominant hulls (ship_saucer commits ~1.81r on Z, ~0.62r on Y).
+    const row = modelTruthRowForEntity(entity);
+    const rowSize = row && row.bounds && row.bounds.size;
+    const sourceLength = rowSize && Number(rowSize[0]);
+    if (rowSize && sourceLength > 0) {
+      const factor = (r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH) / sourceLength;
+      size[0] = Math.max(size[0], (Number(rowSize[0]) || 0) * factor);
+      size[1] = Math.max(size[1], (Number(rowSize[1]) || 0) * factor);
+      size[2] = Math.max(size[2], (Number(rowSize[2]) || 0) * factor);
+    }
+    root.userData.visualBounds = { center: [0, 0, 0], size };
   }
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',

@@ -396,14 +396,14 @@ export function applySpecialistCounterplay({
       ? state.entities.get(state.playerId)
       : null;
     if (!player) return null;
-    // Screen targets resolve to hulls — the roster lanes (ships/drones/stations) when the
-    // index is ready, the full pool when it is not. The lanes iterate as two passes so a
-    // routed eval doesn't allocate a concat per attempt.
+    // Screen targets resolve to hulls — wardScreenTarget gates on type==='ship', so the
+    // stations lane is dead iteration: every member is rejected at the type check. The
+    // shipLike lane alone answers identically; the unindexed pool keeps its full walk.
     const index = state && state.entityIndex;
     const indexed = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
-      && Array.isArray(index.shipLike) && Array.isArray(index.stations);
+      && Array.isArray(index.shipLike);
     const pool = indexed ? null : shipsOf(state);
-    const lanes = indexed ? [index.shipLike, index.stations] : [pool];
+    const lanes = indexed ? [index.shipLike] : [pool];
     for (const lane of lanes) {
       for (const ent of lane) {
         if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
