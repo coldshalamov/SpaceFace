@@ -988,6 +988,9 @@ export const lawSecurity = {
     incident.rankFromVictim = jurisdiction.rankFromVictim === true;
     incident.challengeWindowS = policy.challengeWindowS * patrolResponse;
     own.incidents[key] = incident;
+    if (attacker && attacker.id === state.playerId) {
+      for (const other of state.entityList || []) reopenLawFireForNewCause(other, incident.id);
+    }
     this._say('alert', `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
     this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
@@ -4393,6 +4396,9 @@ export const lawSecurity = {
       }
     }
     const priceCr = hold.priceCr;
+    for (const other of state.entityList || []) {
+      applyAcceptedSurrenderStandDown(other, { playerId: state.playerId, causeId: hold.causeId });
+    }
     this._emit('combat:surrendered', {
       player: true,
       accepted: true,
@@ -4929,6 +4935,55 @@ function isPirateLike(entity) {
   const words = `${ai.archetype || ''} ${ai.doctrine || ''} ${ai.role || ''} ${data.role || ''} ${entity.factionId || ''}`.toLowerCase();
   return words.includes('pirate') || words.includes('raider') || words.includes('scavenger')
     || words.includes('corsair') || entity.factionId === 'faction_reach';
+}
+
+/** Clear an uncommitted lawful shot. Already-fired ordnance is left where it is. */
+export function applyAcceptedSurrenderStandDown(ship, { playerId = null, causeId = null } = {}) {
+  if (!ship || !ship.data || !ship.data.ai || ship.data.ai.lawful !== true) {
+    return { stoodDown: false, reason: 'not_lawful' };
+  }
+  const ai = ship.data.ai;
+  const combat = ship.data.combat;
+  const intent = ship.data.intent;
+  const engaging = !!(combat && (combat.targetId === playerId || combat.lockTarget === playerId))
+    || !!(intent && intent.fire === true);
+  if (!engaging) return { stoodDown: false, reason: 'not_engaging' };
+  if (ai.stoodDownCause && causeId && ai.stoodDownCause !== causeId) {
+    return { stoodDown: false, reason: 'newer_cause', causeId: ai.stoodDownCause };
+  }
+  ai.roe = 'hold_fire';
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.stoodDownCause = causeId || ai.stoodDownCause || null;
+  if (intent) intent.fire = false;
+  if (combat && combat.targetId === playerId) {
+    combat.targetId = null;
+    combat.lockTarget = null;
+  }
+  return { stoodDown: true, causeId: ai.stoodDownCause, projectilesUntouched: true };
+}
+
+/** A later crime uses its own cause. The settled surrender accusation is not reapplied. */
+export function reopenLawFireForNewCause(ship, newCauseId) {
+  const ai = ship && ship.data && ship.data.ai;
+  if (!ai || !ai.stoodDownCause) return { reopened: false, reason: 'not_stood_down' };
+  if (!newCauseId || newCauseId === ai.stoodDownCause) {
+    return { reopened: false, reason: 'same_accusation' };
+  }
+  ai.stoodDownCause = null;
+  ai.passive = false;
+  ai.roe = 'weapons_free';
+  return { reopened: true, causeId: newCauseId };
+}
+
+export function composedRemainingText(composed) {
+  const rows = composed && typeof composed === 'object' ? Object.values(composed) : [];
+  const open = rows.filter((row) => row && row.status !== 'paid' && row.remainingCr > 0);
+  if (!open.length) return 'No open obligations.';
+  return open.map((row) => {
+    const what = row.forPerson ? `${row.kind} for ${row.forPerson}` : `${row.label || row.kind} (${row.causeId})`;
+    return `${what} — ${row.remainingCr} cr`;
+  }).join('; ');
 }
 
 function isLawful(entity) {

@@ -1199,6 +1199,15 @@ export const survivalDraft = {
    * Combat Lab setup take; there is no Survival-only fitting path.
    */
   _applyOffer(offer) {
+    const run = liveSurvivalRun(this.state);
+    if (isNoOpDuplicateOffer(offer, heldDefIds(this.state), run && run.ruleset)) {
+      return { ok: false, reason: 'duplicate' };
+    }
+    const drawn = this._draftInput && Array.isArray(this._draftInput.fittings) ? this._draftInput.fittings : null;
+    const live = this._activeLoadout();
+    if (drawn && live && JSON.stringify(drawn) !== JSON.stringify(live.fittings || [])) {
+      return { ok: false, reason: 'stale_fit' };
+    }
     const ships = this._ships();
     if (!ships || typeof ships.grantModule !== 'function' || typeof ships.fitModule !== 'function') {
       return { ok: false, reason: 'no_ships_owner' };

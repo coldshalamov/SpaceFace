@@ -202,6 +202,18 @@ export function buildNewGamePlusOverlay(data, selection = {}, source = {}) {
   };
 }
 
+/** One keepsake instance. A second transition must not grant the same item again. */
+export function shouldGrantKeepsake(player, defId) {
+  if (!defId || !player) return false;
+  const inventory = Array.isArray(player.moduleInventory) ? player.moduleInventory : [];
+  if (inventory.some((item) => item && item.defId === defId)) return false;
+  const owned = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  for (const ship of owned) {
+    if (ship && Array.isArray(ship.fittings) && ship.fittings.includes(defId)) return false;
+  }
+  return true;
+}
+
 export function storyNewGamePlusRecord(overlay, seed = 0) {
   if (!overlay || overlay.schema !== NEW_GAME_PLUS_SCHEMA) return null;
   const sourceEnding = String(overlay.sourceEnding || '').toUpperCase();

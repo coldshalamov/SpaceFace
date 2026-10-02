@@ -31,6 +31,44 @@ for(const style of Object.values(BURST_STYLE)){COLORS.set(style.color,new THREE.
 const FIELD_LANGUAGE_FULL_RADIUS = 170;
 const FIELD_LANGUAGE_MIN_PRESENCE = 0.30;
 
+/** One ring at a registered anchor. `fields:cleared` removes it. Not drawn for anchors the player cannot see. */
+export function noteFieldAnchorRing(rings, payload) {
+  if (!rings || !payload || payload.fieldId == null) return rings;
+  const pos = payload.pos || null;
+  rings.set(payload.fieldId, {
+    fieldId: payload.fieldId,
+    kind: payload.kind || null,
+    radius: Number(payload.radius) || 0,
+    x: pos && Number.isFinite(pos.x) ? pos.x : 0,
+    z: pos && Number.isFinite(pos.z) ? pos.z : 0,
+  });
+  return rings;
+}
+
+export function bindFieldAnchorRings(bus, rings) {
+  if (!bus || typeof bus.on !== 'function' || !rings) return () => {};
+  const onRegistered = (payload) => {
+    if (payload && payload.playerVisible === false) return;
+    noteFieldAnchorRing(rings, payload);
+  };
+  const onCleared = (payload) => clearFieldAnchorRings(rings, payload);
+  bus.on('fields:anchorRegistered', onRegistered);
+  bus.on('fields:cleared', onCleared);
+  return () => {
+    if (typeof bus.off === 'function') {
+      bus.off('fields:anchorRegistered', onRegistered);
+      bus.off('fields:cleared', onCleared);
+    }
+  };
+}
+
+export function clearFieldAnchorRings(rings, payload) {
+  if (!rings) return rings;
+  if (payload && payload.fieldId != null) rings.delete(payload.fieldId);
+  else rings.clear();
+  return rings;
+}
+
 /** A read-only adapter over fields.active and massSeed. No event listeners, forces or RNG. */
 export class FieldForcePresentation {
   constructor(scene,{toLocal=null}={}){

@@ -54,6 +54,15 @@ export function npcCounterplayBark(payload) {
 }
 
 /** At most one contest bark per ambient gap. */
+/** One departing line per disengage. Null when the event has no attacker. */
+export function harasserDepartingBark(payload) {
+  if (!payload || payload.attackerId == null) return null;
+  return {
+    attackerId: payload.attackerId,
+    text: 'Breaking off. This chase is going nowhere.',
+  };
+}
+
 export function admitNpcCounterplayBark(host, payload, now) {
   const bark = npcCounterplayBark(payload);
   if (!bark || !host) return null;
@@ -371,6 +380,17 @@ export const barkDirector = {
         }
       };
       this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
+      this._onHarasserDisengaged = (payload) => {
+        const bark = harasserDepartingBark(payload);
+        if (!bark) return;
+        const voice = this.helpers && this.helpers.voice;
+        if (voice && typeof voice.say === 'function') {
+          voice.say({ channel: 'bark', text: bark.text, kind: 'departing', ttl: 3, id: bark.attackerId });
+        }
+        if (!Array.isArray(this._harasserDepartures)) this._harasserDepartures = [];
+        this._harasserDepartures.push(bark);
+      };
+      this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       this.bus.on('physics:impact', this._onBodyImpact);
     }
@@ -1303,6 +1323,7 @@ export const barkDirector = {
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onNpcCounterplay) this.bus.off('massline:npcCounterplay', this._onNpcCounterplay);
+      if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
     }
