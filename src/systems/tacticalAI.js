@@ -52,6 +52,8 @@ import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrin
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { stepEgressExits } from '../ai/egressExit.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { countTurretsLost } from '../combat/subsystems.js';
+import { isPdScreenActor, resolvePdCharge, pdScreenPosition } from '../ai/pdScreen.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
 const HEAVY_MASS_THRESHOLD = 150;
@@ -508,6 +510,7 @@ export function createTacticalAISystem({
         }
         applyChoreographyFireWindow(liveStack, decision);
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
+        if (entity) applyDreadnoughtTurretLossPhases(entity, state, ctxRef, tick);
         applyMindAwareFiringIntent(decision, state);
         applyNemesisFireGate(entity, state);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
@@ -635,11 +638,113 @@ function applyNemesisFireGate(entity, state) {
   }
 }
 
+export function applyDreadnoughtTurretLossPhases(entity, state, ctxRef, tick) {
+  if (!entity || entity.alive === false || !entity.data) return;
+  const subs = entity.data.subsystems;
+  const thresholds = subs && subs.phaseAtTurretsLost;
+  if (!Array.isArray(thresholds) || thresholds.length < 2) return;
+  const lost = countTurretsLost(entity);
+  const phase = entity.data.turretLossPhase | 0;
+
+  if (lost >= thresholds[0] && phase < 1) {
+    entity.data.turretLossPhase = 1;
+    entity.data.broadsideShortened = true;
+    if (entity.data.combatDoctrine) {
+      entity.data.combatDoctrine.fireTicks = Math.floor((entity.data.combatDoctrine.fireTicks || 60) * 0.7);
+    }
+    if (!entity.data.swarmersVented) {
+      entity.data.swarmersVented = true;
+      const reinf = entity.data.reinforcements;
+      const count = (reinf && reinf.count && reinf.count[0]) || 3;
+      if (state && state.spawnBudget && typeof state.spawnBudget.request === 'function') {
+        state.spawnBudget.request({
+          type: (reinf && reinf.type) || 'wasp_swarmer',
+          count,
+          parentId: entity.id,
+          pos: entity.pos,
+        });
+      }
+      if (ctxRef && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+        ctxRef.bus.emit('swarm:spawnRequest', {
+          packageId: (reinf && reinf.packageId) || 'iron_maw_screen',
+          type: (reinf && reinf.type) || 'wasp_swarmer',
+          count,
+          pos: entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null,
+          parentId: entity.id,
+        });
+      }
+    }
+    if (ctxRef && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+      ctxRef.bus.emit('ai:doctrinePhase', {
+        entityId: entity.id,
+        phase: 'phase_4_turrets_lost',
+        turretsLost: lost,
+        edge: 1,
+        tick,
+      });
+      ctxRef.bus.emit('ai:telegraph', {
+        entityId: entity.id,
+        phase: 'phase_4_turrets_lost',
+        cue: 'broadside_charge',
+        kind: 'broadside_charge',
+        line: (entity.data.telegraph && entity.data.telegraph.line) || 'Iron Maw broadside disrupted — swarmers venting!',
+        tick,
+      });
+    }
+  }
+
+  if (lost >= thresholds[1] && phase < 2) {
+    entity.data.turretLossPhase = 2;
+    entity.data.prowSurfaceOpen = true;
+    entity.data.prowSurface = { exposed: true, startTick: tick };
+    const currentTurn = Number(entity.turnRate) || Number(entity.data.turnRate) || 0.3;
+    entity.turnRate = currentTurn * 0.5;
+    if (entity.data.derived) {
+      entity.data.derived.turnRate = (Number(entity.data.derived.turnRate) || 0.3) * 0.5;
+    }
+    entity.data.turnAuthorityScale = 0.5;
+
+    if (ctxRef && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+      ctxRef.bus.emit('ai:doctrinePhase', {
+        entityId: entity.id,
+        phase: 'phase_10_turrets_lost',
+        turretsLost: lost,
+        edge: 2,
+        tick,
+      });
+      ctxRef.bus.emit('ai:telegraph', {
+        entityId: entity.id,
+        phase: 'phase_10_turrets_lost',
+        cue: 'broadside_desperation',
+        kind: 'broadside_desperation',
+        line: 'Prow armor shattered! Turn authority lost!',
+        tick,
+      });
+    }
+  }
+}
+
 export function applyEngagementPosture(entity, doctrine, state) {
   if (!entity || !entity.data) return;
   const ai = entity.data.ai;
   if (!ai || ai.passive === true || ai.roe !== 'weapons_free') return;
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  if (isPdScreenActor(entity)) {
+    const charge = resolvePdCharge(entity, state);
+    if (charge && charge.id !== entity.id) {
+      ai.escortTargetId = charge.id;
+      if (!ai.activity || ai.activity.kind !== 'screen') {
+        ai.activity = {
+          kind: 'screen',
+          reason: 'pd_screen',
+          targetId: charge.id,
+          anchor: charge.pos ? { x: charge.pos.x, z: charge.pos.z } : { x: entity.pos.x, z: entity.pos.z },
+          leashRadius: 2600,
+          startedTick: tick,
+        };
+      }
+    }
+  }
   const current = ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
   if (!doctrine || !POSTURE_EGRESS_PHASES.has(doctrine.phase)) {
     // Re-commit (or doctrine dropped): hand the authored activity back exactly once.
@@ -757,7 +862,15 @@ export function stampManeuverIdentities(state, shipLikeList = indexedShipLikeSca
     const enemyId = data.lootTableId || data.enemyTypeId || null;
     if (enemyId == null && data.missionTag == null) continue;
     let wanted = null;
-    if (data.missionTag && MISSION_TAG_BOSS_DOCTRINE[data.missionTag]) {
+    if (isPdScreenActor(entity)) {
+      wanted = 'escort_screen';
+      if (ai.escortTargetId == null) {
+        const charge = resolvePdCharge(entity, state);
+        if (charge && charge.id !== entity.id) {
+          ai.escortTargetId = charge.id;
+        }
+      }
+    } else if (data.missionTag && MISSION_TAG_BOSS_DOCTRINE[data.missionTag]) {
       wanted = MISSION_TAG_BOSS_DOCTRINE[data.missionTag];
     } else if (enemyId && ENEMY_DOCTRINE_OVERRIDES[enemyId]) {
       wanted = ENEMY_DOCTRINE_OVERRIDES[enemyId];

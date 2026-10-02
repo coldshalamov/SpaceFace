@@ -31,6 +31,8 @@
 // state — the VFX (chaff puff / ECM shimmer) is emitted via bus events for the renderer to pick up.
 
 import { MODULES } from '../data/modules.js';
+import { WEAPONS } from '../data/weapons.js';
+import { wrapAngle } from '../core/rng.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { entityIndexVersion } from '../world/livingWorldViews.js';
 import { suppressDefeatedLock, targetIdentityGeneration } from '../ai/perception.js';
@@ -83,6 +85,38 @@ function equippedPointDefense(fittings) {
   return null;
 }
 
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+
+export function equippedInterceptWeapons(ship) {
+  if (!ship || !ship.data) return [];
+  const list = [];
+  const ws = Array.isArray(ship.data.weapons) ? ship.data.weapons : null;
+  if (ws && ws.length > 0) {
+    for (const w of ws) {
+      const def = WEAPON_BY_ID.get(w.defId || w.id);
+      if (def && def.intercepts) {
+        list.push({ w, def });
+      }
+    }
+  } else if (Array.isArray(ship.data.fittings)) {
+    for (let i = 0; i < ship.data.fittings.length; i++) {
+      const id = ship.data.fittings[i];
+      if (!id) continue;
+      const def = WEAPON_BY_ID.get(id);
+      if (def && def.intercepts) {
+        if (!ship.data._interceptionWeapons) ship.data._interceptionWeapons = [];
+        let w = ship.data._interceptionWeapons.find((x) => x.defId === id && x.slotIndex === i);
+        if (!w) {
+          w = { defId: id, slotIndex: i, _cooldown: 0, _heat: 0 };
+          ship.data._interceptionWeapons.push(w);
+        }
+        list.push({ w, def });
+      }
+    }
+  }
+  return list;
+}
+
 const CM_KIND_WORD = Object.freeze({ chaff: 'Chaff deployed', ecm: 'ECM jamming active', decoy: 'Decoy buoy broadcasting' });
 const CM_KIND_AUDIO = Object.freeze({ chaff: 'cm_chaff', ecm: 'cm_ecm', decoy: 'cm_chaff' });
 
@@ -130,9 +164,11 @@ function shipHasCountermeasureInterest(e) {
   const pds = data.pds;
   if (pds && pds.cooldownT > 0) return true;
   const fittings = data.fittings;
-  if (!fittings) return false;
-  if (equippedCountermeasure(fittings)) return true;
-  if (equippedPointDefense(fittings)) return true;
+  if (fittings) {
+    if (equippedCountermeasure(fittings)) return true;
+    if (equippedPointDefense(fittings)) return true;
+  }
+  if (equippedInterceptWeapons(e).length > 0) return true;
   return false;
 }
 
@@ -314,46 +350,107 @@ export const countermeasures = {
         }
       }
     }
-    // 5. Point-defense servos (mod_pds_servo_s): an autonomous intercept verb. Each armed servo
-    //    watches its ring and kills the nearest hostile projectile inside it — missiles first,
-    //    then the closest slug — on its cooldown. No lock/permission is asked; the module owns
-    //    the trigger and the player owns the positioning. Scan only runs when the servo is ready,
-    //    so an idle fleet with no servos pays nothing here.
+    // 5. Point-defense servos (mod_pds_servo_s) and fitted intercept weapons (e.g. wpn_flak_turret_s).
     for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive) continue;
       const eq = equippedPointDefense(e.data && e.data.fittings);
-      if (!eq) continue;
-      const pds = e.data.pds || (e.data.pds = { cooldownT: 0 });
-      if (pds.cooldownT > 0) {
-        pds.cooldownT = Math.max(0, pds.cooldownT - dt);
-        continue;
+      const interceptWeapons = equippedInterceptWeapons(e);
+      if (!eq && interceptWeapons.length === 0) continue;
+
+      if (eq) {
+        const pds = e.data.pds || (e.data.pds = { cooldownT: 0 });
+        if (pds.cooldownT > 0) {
+          pds.cooldownT = Math.max(0, pds.cooldownT - dt);
+        } else {
+          const cfg = eq.cfg;
+          const radius = Math.max(1, Number(cfg.radius) || 0);
+          if (radius > 0) {
+            const projectiles = projectilesNear(state, e.pos, radius, this._projectileScratch);
+            if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
+            this._diag.projectileCandidates += projectiles.length;
+            const target = nearestInterceptableProjectile(projectiles, e, radius, state.playerId);
+            if (target) {
+              const interceptPos = { x: target.pos.x, z: target.pos.z };
+              const tv = target.vel;
+              const interceptDir = tv && Number.isFinite(tv.x) && Number.isFinite(tv.z)
+                ? { x: tv.x, z: tv.z } : undefined;
+              target.alive = false;
+              pds.cooldownT = Math.max(0.1, Number(cfg.cooldownS) || 1);
+              this.bus.emit('pds:intercept', {
+                schemaVersion: 1,
+                shipId: e.id,
+                projectileId: target.id,
+                missile: !!(target.data && target.data.kind === 'missile'),
+                radius,
+                tick: state.tick,
+                pos: interceptPos,
+                dir: interceptDir,
+              });
+            }
+          }
+        }
       }
-      const cfg = eq.cfg;
-      const radius = Math.max(1, Number(cfg.radius) || 0);
-      if (!(radius > 0)) continue;
-      const projectiles = projectilesNear(state, e.pos, radius, this._projectileScratch);
-      if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
-      this._diag.projectileCandidates += projectiles.length;
-      const target = nearestInterceptableProjectile(projectiles, e, radius);
-      if (!target) continue;
-      // The receipt owns the missile's own point (and motion) — the target is about to be
-      // retired, so listeners must never have to reach back through the entity index.
-      const interceptPos = { x: target.pos.x, z: target.pos.z };
-      const tv = target.vel;
-      const interceptDir = tv && Number.isFinite(tv.x) && Number.isFinite(tv.z)
-        ? { x: tv.x, z: tv.z } : undefined;
-      target.alive = false;
-      pds.cooldownT = Math.max(0.1, Number(cfg.cooldownS) || 1);
-      this.bus.emit('pds:intercept', {
-        schemaVersion: 1,
-        shipId: e.id,
-        projectileId: target.id,
-        missile: !!(target.data && target.data.kind === 'missile'),
-        radius,
-        tick: state.tick,
-        pos: interceptPos,
-        dir: interceptDir,
-      });
+
+      if (interceptWeapons.length > 0) {
+        for (const { w, def } of interceptWeapons) {
+          if (w._cooldown > 0) {
+            w._cooldown = Math.max(0, w._cooldown - dt);
+            continue;
+          }
+          const radius = Math.max(1, Number(def.range) || 240);
+          const projectiles = projectilesNear(state, e.pos, radius, this._projectileScratch);
+          if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
+          this._diag.projectileCandidates += projectiles.length;
+          const target = nearestInterceptableProjectile(projectiles, e, radius, state.playerId);
+          if (!target) continue;
+
+          // Arc check
+          const arcDeg = Number(def.turretArcDeg) || 360;
+          if (arcDeg < 360) {
+            const angleToProj = Math.atan2(target.pos.z - e.pos.z, target.pos.x - e.pos.x);
+            const facingAngle = Number.isFinite(e.rot) ? e.rot : 0;
+            const diff = Math.abs(wrapAngle(angleToProj - facingAngle));
+            const maxHalfArc = (arcDeg * Math.PI) / 360;
+            if (diff > maxHalfArc) continue;
+          }
+
+          // Resource consumption: cooldown, heat, capacitor/energy
+          const shotInterval = 1 / (Number(def.rof) || 8.0);
+          w._cooldown = shotInterval;
+          const heatPerShot = Number(def.heatPerShot) || 1.2;
+          w._heat = (w._heat || 0) + heatPerShot;
+          if (def.energyCost && e.cap != null) {
+            e.cap = Math.max(0, e.cap - def.energyCost);
+          }
+
+          // Intercept chance check: player 100%, NPCs/escorts <= 0.85
+          const interceptChance = e.id === state.playerId ? 1.0 : (Number.isFinite(def.interceptChance) ? def.interceptChance : 0.85);
+          const roll = state.rng ? state.rng() : Math.random();
+          if (roll > interceptChance) {
+            // Missed intercept roll
+            continue;
+          }
+
+          const interceptPos = { x: target.pos.x, z: target.pos.z };
+          const tv = target.vel;
+          const interceptDir = tv && Number.isFinite(tv.x) && Number.isFinite(tv.z)
+            ? { x: tv.x, z: tv.z } : undefined;
+          target.alive = false;
+
+          this.bus.emit('pds:intercept', {
+            schemaVersion: 1,
+            shipId: e.id,
+            projectileId: target.id,
+            missile: !!(target.data && target.data.kind === 'missile'),
+            radius,
+            tick: state.tick,
+            pos: interceptPos,
+            dir: interceptDir,
+            flak: true,
+            weaponId: def.id,
+          });
+        }
+      }
     }
     state.countermeasureRuntime = state.countermeasureRuntime || {};
     state.countermeasureRuntime.diagnostics = this._diag;
@@ -607,7 +704,7 @@ function projectilesNear(state, pos, radius, out) {
 // nearest hostile projectile inside the ring, ties broken by scan order (the spatial index's
 // stable order). Own-side rounds and the servo owner's own shots are never intercepted. The
 // radius check is restated here so the choice stays correct even on a fallback (unhashed) scan.
-function nearestInterceptableProjectile(projectiles, ship, radius) {
+function nearestInterceptableProjectile(projectiles, ship, radius, playerId = null) {
   let bestMissile = null;
   let bestMissileD2 = Infinity;
   let bestOther = null;
@@ -617,6 +714,7 @@ function nearestInterceptableProjectile(projectiles, ship, radius) {
     if (p.type !== 'projectile' || !p.alive) continue;
     if (p.ownerId != null && p.ownerId === ship.id) continue;
     if (p.team != null && ship.team != null && p.team === ship.team) continue;
+    if (playerId != null && ship.id !== playerId && p.ownerId === playerId) continue;
     const dx = p.pos.x - ship.pos.x, dz = p.pos.z - ship.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 > r2) continue;

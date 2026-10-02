@@ -213,12 +213,12 @@ export const ENEMY_TYPES = [
       cue: 'broadside_charge',
     },
     counterHint: 'Cross the bow or stern during the charge; the next salvo shifts to the opposite flank.',
-    subsystems: { turretHp: 300, spawnsSwarmers: true, phases: [0.66, 0.33] },
+    subsystems: { turretHp: 300, spawnsSwarmers: true, phaseAtTurretsLost: [4, 10] },
     reinforcements: {
       packageId: 'iron_maw_screen',
       type: 'wasp_swarmer', count: [2, 4], hullThreshold: 0.5,
     },
-    behavior: 'slow fortress, destructible turrets, spawns swarmers, phases at 66%/33%',
+    behavior: 'slow fortress, destructible turrets, spawns swarmers, phases on turret loss [4, 10]',
     bountyCr: 12000, shipClass: 'capital',
     loot: {
       creditsRange: [4000, 9000],
