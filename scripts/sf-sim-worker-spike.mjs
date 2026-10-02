@@ -12,6 +12,9 @@
 //   (b) transport — pack(worker) + post/decode + consume(main) < 0.5 ms/tick
 //   (c) ring bounds — completedTick ring ≤ 8; journal overflow→rebuild exercised
 //       via --journal-capacity / --ack-stall; pause gate via --probe pause
+//   (d) command channel — stage 1: every directive mutation crosses as a typed
+//       {input|bus|settings|rpc} envelope; worker-side inputCommandHistory.toTape()
+//       must byte-match the main-side reference recording (lossless transport)
 //
 // Usage:
 //   node scripts/sf-sim-worker-spike.mjs [--ticks 720] [--seed 47]
@@ -26,8 +29,10 @@ import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 
 import { createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../src/core/presentationJournal.js';
+import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
 import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
 import { createPresentationWorld } from '../src/render/presentationWorld.js';
+import { createSimCommandRing } from './lib/simCommandChannel.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WORKER_PATH = resolve(ROOT, 'scripts/lib/wholeSimWorker.mjs');
@@ -339,21 +344,33 @@ async function runBody(client, frames) {
   let currentInput = frames[0] ? frames[0].input : {};
   const pendingTicks = []; // promises, in-order
   const tickMeta = new Map();
+  // Stage-1 command channel: all directive-side mutations cross as typed
+  // {input|bus|settings|rpc} envelopes. refInputHistory records every input
+  // envelope main-side so the worker's own history.toTape() proves lossless
+  // transport at finalize (gate d).
+  const commandRing = createSimCommandRing();
+  const refInputHistory = createInputCommandHistory();
+  const observedRpcAcks = [];
+  const observedSettingsAcks = [];
 
-  function postTick(tick, steps, extraCommands) {
-    const commands = [];
+  function enqueueFrameEnvelopes(tick) {
     while (frameIndex < frames.length && frames[frameIndex].tick <= tick) {
       const frame = frames[frameIndex];
       currentInput = frame.input || {};
-      commands.push(...frame.commands);
+      for (const c of frame.commands) commandRing.pushBus(c);
       frameIndex++;
     }
-    if (extraCommands) commands.push(...extraCommands);
+    const seq = commandRing.pushInput(currentInput, { wallMs: Date.now() });
+    refInputHistory.record(tick, currentInput, { sequence: seq });
+  }
+
+  function postTick(tick, steps) {
+    enqueueFrameEnvelopes(tick);
+    const commands = commandRing.drain();
     const sendNs = Number(process.hrtime.bigint());
     const p = client.send({
       kind: 'tick',
       tick,
-      input: currentInput,
       commands,
       steps,
       ackJournalEnd: OPT.ackStall ? 0 : ackedJournalEnd,
@@ -418,6 +435,8 @@ async function runBody(client, frames) {
     tickMeta.delete(p);
     const reply = await p;
     reply._meta = meta;
+    if (Array.isArray(reply.rpcAcks)) observedRpcAcks.push(...reply.rpcAcks);
+    if (Array.isArray(reply.settingsAcks)) observedSettingsAcks.push(...reply.settingsAcks);
     ringPush(reply); // tickDone envelope = completedTick + journal byte-range
     ringHighWater = Math.max(ringHighWater, completedTickRing.length);
     consumeRing(OPT.consumeBatch);
@@ -431,20 +450,22 @@ async function runBody(client, frames) {
   for (let tick = 0; tick < OPT.ticks; tick++) {
     if (tick === pauseAt) {
       pauseProbed = true;
-      const commands = [];
-      while (frameIndex < frames.length && frames[frameIndex].tick <= tick) {
-        const frame = frames[frameIndex];
-        currentInput = frame.input || {};
-        commands.push(...frame.commands);
-        frameIndex++;
-      }
+      enqueueFrameEnvelopes(tick);
+      // Settings + rpc kinds exercise the same steps:0 drain: an idempotent
+      // timeScale write and a noop rpc must land even with no tick advancing,
+      // and their acks must come back on the directive reply.
+      commandRing.pushSettings('timeScale', 1);
+      commandRing.pushRpc('pause-probe-1', 'noop');
+      const commands = commandRing.drain();
       const paused = await client.send({
-        kind: 'tick', tick, input: currentInput, commands, steps: 0,
+        kind: 'tick', tick, commands, steps: 0,
         ackJournalEnd: OPT.ackStall ? 0 : ackedJournalEnd,
       });
       assert.equal(paused.kind, 'tickDone');
       assert.equal(paused.completedTick, null, 'steps:0 must not publish a completedTick');
       assert.equal(paused.stateTick, tick, 'steps:0 must not advance state.tick');
+      if (Array.isArray(paused.rpcAcks)) observedRpcAcks.push(...paused.rpcAcks);
+      if (Array.isArray(paused.settingsAcks)) observedSettingsAcks.push(...paused.settingsAcks);
       postTick(tick, 1);
       while (pendingTicks.length) await drainOne();
       continue;
@@ -460,6 +481,11 @@ async function runBody(client, frames) {
 
   return {
     sha256: fin.sha256,
+    inputTape: fin.inputTape,
+    refTape: refInputHistory.toTape(),
+    observedRpcAcks,
+    observedSettingsAcks,
+    commandDropped: fin.commandDropped,
     stateTick: fin.stateTick,
     entityCount: fin.entityCount,
     journalDiag: fin.journalDiag,
@@ -560,12 +586,33 @@ async function main() {
     pauseProbed: results[0].pauseProbed,
   };
 
+  // Gate (d): stage-1 command channel — the worker's inputCommandHistory.toTape()
+  // must byte-match the main-side reference recording of the same envelopes
+  // (lossless envelope transport), and ack envelopes must come back.
   const run = results[0];
+  const workerTapeJson = JSON.stringify(run.inputTape);
+  const refTapeJson = JSON.stringify(run.refTape);
+  const rpcAckOk = OPT.probe === 'pause'
+    ? run.observedRpcAcks.some((a) => a && a.id === 'pause-probe-1' && a.ok === true)
+    : true;
+  const settingsAckOk = OPT.probe === 'pause'
+    ? run.observedSettingsAcks.some((a) => a && a.path === 'timeScale' && a.ok === true)
+    : true;
+  const gateD = {
+    pass: workerTapeJson === refTapeJson && rpcAckOk && settingsAckOk && run.commandDropped === 0,
+    workerTapeFrames: run.inputTape && run.inputTape.frames ? run.inputTape.frames.length : 0,
+    refTapeFrames: run.refTape && run.refTape.frames ? run.refTape.frames.length : 0,
+    tapeParity: workerTapeJson === refTapeJson,
+    rpcAcks: run.observedRpcAcks,
+    settingsAcks: run.observedSettingsAcks,
+    commandDropped: run.commandDropped,
+  };
+
   const summary = {
     schema: 'spaceface.s1WorkerSpike.v1',
     mode: 'whole-sim-in-worker',
     options: OPT,
-    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC },
+    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD },
     run: {
       entityCount: run.entityCount,
       droppedEventCount: run.droppedEventCount,
@@ -576,7 +623,7 @@ async function main() {
       workerHeapMb: round((run.workerHeapUsedBytes || 0) / 1e6, 1),
       journalRebuildCount: run.journalRebuildCount,
     },
-    verdict: gateA.pass && gateB.pass && gateC.pass ? 'ALL PASS' : 'GATE FAILURE',
+    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass ? 'ALL PASS' : 'GATE FAILURE',
   };
 
   if (OPT.json) {
@@ -591,6 +638,8 @@ async function main() {
     console.log(`                     >0.5ms ticks: ${gateB.overThresholdCount}  ${JSON.stringify(gateB.overThresholdTicks)}`);
     console.log(`GATE C rings       : ${gateC.pass ? 'PASS' : 'FAIL'}  completedTick hw=${gateC.completedTickHighWater}/8  journalRebuilds=${gateC.journalRebuilds}`);
     console.log(`                     journalDiag.pending=${gateC.journalDiag && gateC.journalDiag.pending} capacity=${gateC.journalDiag && gateC.journalDiag.capacity} published=${gateC.journalDiag && gateC.journalDiag.publishedCount} coalesced=${gateC.journalDiag && gateC.journalDiag.transformCoalesceCount} suppressed=${gateC.journalDiag && gateC.journalDiag.suppressedCount} rebuildReqs=${gateC.journalDiag && gateC.journalDiag.rebuildRequestCount} failures=${gateC.journalDiag && gateC.journalDiag.rebuildFailureCount} discarded=${gateC.journalDiag && gateC.journalDiag.discardCount}`);
+    console.log(`GATE D cmd channel : ${gateD.pass ? 'PASS' : 'FAIL'}  tapeParity=${gateD.tapeParity} frames=${gateD.workerTapeFrames}/${gateD.refTapeFrames} dropped=${gateD.commandDropped}`);
+    console.log(`                     rpcAcks=${JSON.stringify(gateD.rpcAcks)} settingsAcks=${JSON.stringify(gateD.settingsAcks)}`);
     console.log(`run: entities=${run.entityCount} events=${run.eventsReceived} dropped=${run.droppedEventCount} avgWorkMs=${round(run.avgWorkMs)} workerHeap=${round((run.workerHeapUsedBytes || 0) / 1e6, 1)}MB`);
     console.log(`rebuild reasons: ${JSON.stringify(run.rebuildReasons)}`);
     console.log(`identity offenders: ${JSON.stringify((run.identityOffenders || []).slice(0, 12))}`);

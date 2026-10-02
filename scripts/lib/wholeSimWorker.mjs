@@ -40,9 +40,8 @@ import {
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
 import { collectJournalPresentationEntities, entityIsJournaled, resolveWorldPresentationEntity } from '../../src/world/presentationSources.js';
+import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
 import {
-  applyInput,
-  applyTapeCommands,
   finite,
   hashSnapshot,
   loadScenarioContract,
@@ -50,6 +49,7 @@ import {
   reloadThroughSave,
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
+import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
 
 
 
@@ -217,6 +217,11 @@ const host = {
   scratch: null,
   journalRebuildCount: 0,
   rebuildReasons: {},
+  // stage-1 command channel: per-directive attribution + input tape recording
+  lastInputSeq: 0,
+  lastInputWallMs: 0,
+  inputHistory: createInputCommandHistory(),
+  commandDropped: 0,
   // timing
   totalWorkNs: 0n,
   totalPackNs: 0n,
@@ -252,8 +257,8 @@ function makeCompletedTick(journalStart, journalEnd) {
     simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
     stateDigestMarker: Number.isSafeInteger(state.tick) ? state.tick : 0,
     inputSequence: host.completedSequence,
-    inputCommandSeq: 0,
-    inputWallMs: 0,
+    inputCommandSeq: host.lastInputSeq,
+    inputWallMs: host.lastInputWallMs,
     lifecycleGeneration: 0,
     journalStart,
     journalEnd,
@@ -426,9 +431,21 @@ async function handleTick(msg) {
 
   // Command drain + input application happen per directive even when steps === 0 —
   // the runner-level gate (timeScale<=0 skips advanceFixedTimestep) must not strand
-  // unpause/load commands addressed to a non-ticking worker.
-  applyTapeCommands(state, sim.helpers, msg.commands || []);
-  if (msg.input) applyInput(state, msg.input);
+  // unpause/load commands addressed to a non-ticking worker. Stage 1: every
+  // directive-side mutation arrives as a typed {input|bus|settings|rpc} envelope
+  // folded in wire order through the shared channel.
+  const drain = drainSimCommandEnvelopes(msg.commands || [], {
+    state,
+    helpers: sim.helpers,
+  });
+  host.lastInputSeq = drain.inputSeq || 0;
+  host.lastInputWallMs = drain.inputWallMs || 0;
+  host.commandDropped += drain.dropped;
+  for (const env of msg.commands || []) {
+    if (env && env.t === 'input' && env.p && env.p.input) {
+      host.inputHistory.record(state.tick, env.p.input, { sequence: env.seq });
+    }
+  }
   const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
 
   // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
@@ -522,6 +539,8 @@ async function handleTick(msg) {
     pack,
     spawnInfos,
     events,
+    rpcAcks: drain.rpcAcks,
+    settingsAcks: drain.settingsAcks,
     workMs: Number(workNs) / 1e6,
     packMs: Number(packNs) / 1e6,
     sendNs: 0, // stamped just before postMessage by the dispatcher
@@ -553,6 +572,8 @@ async function handleFinalize() {
     identityOffenders: host.identityOffenders,
     droppedEventCount: host.droppedEventCount,
     droppedEventTypes: host.droppedEventTypes,
+    commandDropped: host.commandDropped,
+    inputTape: host.inputHistory ? host.inputHistory.toTape() : null,
     tickCount: host.tickCount,
     avgWorkMs: host.tickCount > 0 ? Number(host.totalWorkNs) / 1e6 / host.tickCount : 0,
     avgPackMs: host.tickCount > 0 ? Number(host.totalPackNs) / 1e6 / host.tickCount : 0,
