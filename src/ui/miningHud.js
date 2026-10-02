@@ -358,7 +358,7 @@ export const miningHud = {
     // Bloom head rides the arc tip (write-on-change; quantized event stream keeps this quiet).
     const deg = pct * 360;
     const [hx, hy] = polar(DIAL / 2, DIAL / 2, HEAT_R, deg);
-    const headTransform = `translate(${hx.toFixed(1)}px, ${hy.toFixed(1)}px)`;
+    const headTransform = `translate(${hx.toFixed(1)} ${hy.toFixed(1)})`;
     if (headTransform !== this._lastHeadTransform) {
       this._lastHeadTransform = headTransform;
       dom.head.setAttribute('transform', headTransform);

@@ -249,6 +249,10 @@ test('the three rhythms render at the beam contact, from the seams mining alread
     assert.equal(dashOf(t.dom.heat), '70.0 100', 'the arc IS the percentage (pathLength 100)');
     assert.ok(classesOf(t.mark).includes('mining-vent'), 'the band is lit — release cue');
     assert.ok(dashOf(t.dom.heatBloom), 'bloom stroke rides the fill (geometry, not a filter)');
+    // The bloom head circles the arc tip via a transform ATTRIBUTE — SVG attribute syntax takes
+    // user units, never CSS px ("translate(28.0px, 4.0px)" throws and strands the dot at 0,0).
+    assert.match(t.dom.head.attributes.transform || '', /^translate\(-?[\d.]+[ ,]-?[\d.]+\)$/,
+      'bloom head transform is SVG user units (a px suffix is rejected silently by the parser)');
 
     // The band edge comes from the event, and 2.82 s of beam-on time is exactly how it was crossed.
     assert.ok(Math.abs(0.62 - VENT_BAND_LO) < 1e-9);
