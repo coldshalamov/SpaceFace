@@ -343,7 +343,9 @@ test('renderer selects a distinct minted credit-chip object', () => {
     radius: 2.2,
     data: { kind: CREDIT_CHIP_KIND, amount: 80, credits: 80 },
   });
-  assert.equal(ore.userData.gem?.geometry?.type, 'OctahedronGeometry');
+  // GFX-16: a commodity pickup is its category's authored solid (scrap metal -> salvage), never the chip
+  assert.equal(ore.userData.pickupShape, 'salvage');
+  assert.equal(ore.userData.gem?.geometry?.type, 'BufferGeometry');
   assert.equal(chip.userData.pickupVisual, 'credit_chip');
   assert.equal(chip.userData.visualLanguage, 'minted-credit-chip');
   assert.equal(chip.userData.gem, undefined);
