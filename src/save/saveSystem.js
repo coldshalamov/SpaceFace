@@ -474,6 +474,7 @@ export const save = {
       ['cargo', () => this._serializeCargo()],
       // Salvage must restore before world enterSector rematerializes an authored wreck. Its own
       // serializer owns the bounded source ledger; save only preserves the dependency order.
+      ['morrow', () => this._callSerialize('morrow') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -552,6 +553,7 @@ export const save = {
     data.meta = this._serializeMeta();
     data.player = this._serializePlayer();
     data.cargo = this._serializeCargo();
+    data.morrow = this._callSerialize('morrow') || {};
     data.salvage = this._callSerialize('salvage') || {};
     data.survivorPod = this._callSerialize('survivorPod') || {};
     data.economy = this._callSerialize('economy') || {};
@@ -3596,6 +3598,7 @@ export const save = {
       // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
       this._restoreCargo(data.cargo);
+      this._callDeserialize('morrow', data.morrow);
       this._callDeserialize('salvage', data.salvage);
       // Before enterSector: the sector replan re-derives points/entities and the promotion
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps

@@ -6059,3 +6059,14 @@ any order, and fix whatever else in the area falls short — the open-ended revi
 lane, not a phase after it. Acceptance batches at the area level. The queue still owns unit
 truth; grunt-sized sittings still take `--next` or an INFERENCE line; §22 and §23 remain the
 lanes' detailed wording. Lane order, briefs, gates and the coverage map live in the program file.
+
+## 28. Morrow / R-07 — owner-requested character (2026-10-02)
+
+A recurring, nonhostile rescue machine beside the Helios starter corridor: original articulated
+geometry, scanner greeting, opt-in physical momentum return, persistent acquaintance and small
+social rituals. Implementation and contracts: [`design/characters/MORROW.md`](design/characters/MORROW.md).
+Production owner `morrow` runs before physics; this is not a review-bench-only actor. The packet
+contains focused simulation/model/real-Rapier proof and explicitly records its GPU acceptance
+limits. Preserve the character instead of rebuilding it in response to a generic polish prompt.
+MORROW-01…03 at the end of that document are **retained optional expansion briefs**, not claims
+that those missions are already implemented or new entries in the active finish-lane queue.

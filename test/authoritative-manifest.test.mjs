@@ -71,8 +71,9 @@ test('production init + update order lengths match the live browser baseline', (
   // 164 -> 165 init / 123 -> 124 update: hullBurst (hull-burst overhaul slice C) — the Gravity
   // Bumper's timed front wedge; one system in both orders, right after impulseCharges so both blast
   // verbs sit before physics. Absent from the frozen legacy47a list, so the 47-A golden cannot see it.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 165);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 124);
+  // Morrow adds one fixed-step character owner before physics.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 166);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 125);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -221,7 +222,7 @@ test('browser production system set is unchanged vs production manifest constant
   // 164 with miningHud (INF lane): the mining instrument joins both orders beside the
   // other DOM-guarded HUDs (massSeedHud/fieldHud/planetHud posture).
   // 165 with hullBurst (hull-burst overhaul slice C; one system in both orders).
-  assert.equal(registry.systems.length, 165);
+  assert.equal(registry.systems.length, 166);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

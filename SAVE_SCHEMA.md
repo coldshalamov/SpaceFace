@@ -9,6 +9,7 @@ Current save version: `14`
 - `meta`
 - `player`
 - `cargo`
+- `morrow`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -235,6 +236,7 @@ Current save version: `14`
 | `$.missions.story.persistentCargo` | array | length 0 |
 | `$.missions.story.phase` | number | 1 |
 | `$.missions.story.seenComms` | object | {} |
+| `$.morrow` | object | {} |
 | `$.nav` | object | {} |
 | `$.nav.autopilot` | object | {} |
 | `$.nav.autopilot.active` | boolean | false |

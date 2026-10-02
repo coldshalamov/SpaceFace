@@ -131,6 +131,7 @@ import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js'; // M4 six
 import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B12 zone pirate rumors from real events
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
 import { bountyHunt } from '../systems/bountyHunt.js';               // BP-13/B16 neutral bounty hunter contracts
+import { morrow } from '../systems/morrow.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -497,6 +498,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['stationServices', stationServices],
     ['difficultyDirector', difficultyDirector],
     ['gateControlDirector', gateControlDirector],
+    ['morrow', morrow],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
