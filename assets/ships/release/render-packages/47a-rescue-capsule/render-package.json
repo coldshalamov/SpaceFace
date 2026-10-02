@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "97c895a8a0be0cbc34644d69aebd11fbfa3ebb93541ba7075ddd7c80318b696f",
+  "contentHash": "9a86a9b2b66be31273ea9367be585f5e1791eebb4f4df1c9bd79e808a00d366c",
   "dynamicGroups": [
     {
       "id": "sf.render.47a-rescue-capsule.node.lod0-hook-nav-port.dynamic",
@@ -2405,7 +2405,7 @@
     },
     "sourceManifest": {
       "bytes": 214095,
-      "sha256": "b9b3fba23aa946c4f73860dced34a60cfe4a6f87a9fdd918131fe86c3480defd",
+      "sha256": "9fcb8ac0c7ecf41d30b51d4a867f45521d93ff169385298a596ee16a68e9af11",
       "uri": "pilots.json"
     }
   },
@@ -3357,7 +3357,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb"
   },
-  "runtimeHash": "b2790f3879894059c1d8680df522da23c6649dc49d4efe6100fa1d6b5cbea84a",
+  "runtimeHash": "b2a8675c3554cb6856ec84f7a16b3054f6baade5cf4eb380f2d5a776a3e5fee0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

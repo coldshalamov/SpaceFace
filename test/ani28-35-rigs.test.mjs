@@ -1,5 +1,5 @@
 // Group B banks: ANI-28 ore-barge claw gantry, ANI-29 freight-platform crane,
-// ANI-30 inspection-cutter arm.
+// ANI-30 inspection-cutter arm. ANI-37 adds the customs patrol hull (hornet).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -21,7 +21,7 @@ const delta = (b, name, t, group) => evaluateMotionClip(b, clip(b, name), t).get
 const REST = { rotation: [0, 0, 0, 1] };
 const nearRestRot = (q) => REST.rotation.every((v, i) => Math.abs(q[i] - v) < 1e-3);
 
-for (const key of ['ore-barge', 'freight-platform', 'inspection-cutter']) {
+for (const key of ['ore-barge', 'freight-platform', 'inspection-cutter', 'hornet-production-v1']) {
   test(`${key} bank schema + bindings + rest poses`, () => {
     const b = bank(key);
     assert.equal(b.schema, 'spaceface.rigidMotionBank.v1');
@@ -66,6 +66,31 @@ test('ANI-30 arm_extend reaches out and holds through the inspection', () => {
   assert.equal(clip(b, 'arm_extend').endMode, 'hold');
   assert.ok(b.events['lawfulInspection:choose'] === 'arm_extend'
     || b.events['customs:submit'] === 'arm_extend');
+});
+
+test('ANI-37 hornet brace pitches canards, spread pods; sweep ripples flaps', () => {
+  const b = bank('hornet-production-v1');
+  // brace: canards bite up about their root pivots, tip pods yaw out
+  assert.ok(Math.abs(delta(b, 'hornet_brace', 0.3, 'hornet_canard_p').rotation[3] - 1) > 1e-3
+    || delta(b, 'hornet_brace', 0.3, 'hornet_canard_p').rotation
+      .slice(0, 3).some((v) => Math.abs(v) > 1e-3),
+    'canards pitch up during the brace');
+  const podP = delta(b, 'hornet_brace', 0.45, 'hornet_tippod_p').rotation;
+  const podS = delta(b, 'hornet_brace', 0.45, 'hornet_tippod_s').rotation;
+  assert.ok(podP[1] * podS[1] < 0, `pods yaw mirrored (p=${podP[1]}, s=${podS[1]})`);
+  // sweep: port flap row leads, starboard follows
+  assert.ok(delta(b, 'hornet_sweep', 0.3, 'hornet_flap_p').rotation
+    .slice(0, 3).some((v) => Math.abs(v) > 1e-3), 'port flaps lead the sweep');
+  // lunge: tip pods punch forward on their rail
+  const punch = delta(b, 'hornet_lunge', 0.2, 'hornet_tippod_p').translation;
+  assert.ok(punch[0] > 0.2, `tip barrel punched out (x=${punch[0]})`);
+  // yield returns to rest by clip end
+  for (const g of ['hornet_canard_p', 'hornet_tippod_p']) {
+    assert.ok(nearRestRot(delta(b, 'hornet_yield', 1.2, g).rotation),
+      `${g} stands down to rest`);
+  }
+  assert.equal(b.events['lawfulInspection:choose'], 'hornet_brace');
+  assert.equal(b.events['customs:breakScan'], 'hornet_yield');
 });
 
 test('every committed motion bank passes validateMotionBank', () => {

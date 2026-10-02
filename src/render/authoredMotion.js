@@ -596,17 +596,29 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
   // id, so it fans out to the live cutter rigs (the patrol on screen is the one that
   // served you). While the arm is extended, breakScan stows it.
   const cutterArmOut = (c) => c.clipActive?.('arm_extend');
-  const onLawfulChoose = (payload) => fanoutRig('inspection_cutter', 'lawfulInspection:choose', payload);
+  // A served inspection is live on either hull: the cutter's arm is out, or the
+  // patrol hornet is still braced/sweeping. breakScan only reaches rigs holding one.
+  const customsVerbLive = (c) => cutterArmOut(c)
+    || c.clipActive?.('hornet_brace') || c.clipActive?.('hornet_sweep');
+  const onLawfulChoose = (payload) => {
+    fanoutRig('inspection_cutter', 'lawfulInspection:choose', payload);
+    // Patrols spawn ship_hornet — every hornet in scope answers the callout too
+    // (its bank maps the same verb onto a canard/pod brace).
+    fanoutRig('hornet', 'lawfulInspection:choose', payload);
+  };
   const onCustomsSubmit = (payload) => {
-    // The patrol addressing the player can be an unbanked hull (the hornet has no rig):
-    // when the addressed dispatch reaches nothing, hand the verb to the live cutter.
+    // The patrol addressing the player can still be an unbanked hull — when the
+    // addressed dispatch reaches nothing, hand the verb to the live cutter.
     const hits = dispatch('customs:submit', payload && payload.patrolId, payload, () => true);
     if (!hits) fanoutRig('inspection_cutter', 'customs:submit', payload);
   };
   const onCustomsBreak = (payload) => {
     const hits = dispatch('customs:breakScan', payload && payload.patrolId, payload,
-      (c) => cutterArmOut(c));
-    if (!hits) fanoutRig('inspection_cutter', 'customs:breakScan', payload, (c) => cutterArmOut(c));
+      (c) => customsVerbLive(c));
+    if (!hits) {
+      fanoutRig('inspection_cutter', 'customs:breakScan', payload, (c) => cutterArmOut(c));
+      fanoutRig('hornet', 'customs:breakScan', payload, customsVerbLive);
+    }
   };
   const onScannedByPatrol = (payload) => {
     const hits = dispatch('player:scannedByPatrol', payload && payload.patrolId, payload, () => true);

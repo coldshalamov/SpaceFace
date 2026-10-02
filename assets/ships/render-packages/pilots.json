@@ -3881,8 +3881,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-      "releaseSha256": "589469d4c4295bc795413ca4e1a5bc79ac707fd078e4d1652f6466adf0096671",
-      "releaseBytes": 513892,
+      "releaseSha256": "09a42ee96c640e699017f7e39a4e2995ca9c24c57caab00403512f357b42e56d",
+      "releaseBytes": 527796,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4322,8 +4322,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-      "releaseSha256": "93ab7d4ac84ee66b266ad3c4899aa2764177c3a16531c7ee4599117e82904c01",
-      "releaseBytes": 418916,
+      "releaseSha256": "069abf42f72c539f4bd9a5f8fd6e73d661d8b3ccf62a3ade8b52a1fab4480307",
+      "releaseBytes": 435628,
       "rootNode": "HORNET_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4343,8 +4343,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-      "releaseSha256": "cd65c7f5d7b72e48a6a389979f8a32c31c5f8118836c7d8c40954f9cff191c18",
-      "releaseBytes": 363132,
+      "releaseSha256": "b7b5250882f6abbdede07b3b220331ba94e663af0af58675d6f0c8d60e2496e5",
+      "releaseBytes": 372808,
       "rootNode": "HORNET_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

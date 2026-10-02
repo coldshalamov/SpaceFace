@@ -3149,7 +3149,7 @@
       "priority": "P2",
       "file": "places/place_drill_platform.glb",
       "tris": 7088,
-      "bytes": 1051828,
+      "bytes": 1053960,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -3266,7 +3266,7 @@
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
       "tris": 54052,
-      "bytes": 6275784,
+      "bytes": 6278108,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6979,7 +6979,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 13728,
-      "bytes": 938188,
+      "bytes": 945184,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

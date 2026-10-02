@@ -264,6 +264,12 @@ const SEQUENCES = {
     ['ev', 'lawfulInspection:choose'], ['wait', 1.6], ['ev', 'player:scannedByPatrol'],
     ['wait', 2.2], ['ev', 'customs:breakScan'], ['wait', 1.6], ['expectDrives', 'scan_idle'],
   ],
+  'hornet-production-v1': [
+    // The customs hull in flight: brace interrupted by the scan pass, then stand-down.
+    ['ev', 'lawfulInspection:choose'], ['wait', 0.7], ['ev', 'player:scannedByPatrol'],
+    ['wait', 1.2], ['ev', 'customs:breakScan'], ['wait', 1.8],
+    ['expectDrives', 'hornet_idle_drift'],
+  ],
   'freight-platform': [
     // Handlers gate throughput on pickBusy; the raw probe still fires it mid-pick to
     // prove the claim hand-off can't pop — then waits out the bridged 3.2s sweep.
