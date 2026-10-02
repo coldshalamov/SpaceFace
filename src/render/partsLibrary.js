@@ -3953,24 +3953,39 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
     // a resident stand-in must not under-draw the marker it replaces.
     const row = stampRow;
     const size = row && row.bounds && row.bounds.size;
+    const committedScaleGuess = resolvePlaceDrawScale(entity && entity.data || {}, {
+      targetRadius,
+      authoredEnvelope: Array.isArray(size)
+        ? Math.max(1e-6, ...size.map((value) => Number(value) || 0))
+        : 1e-6,
+      censusScale: placeDrawScaleFromRow(row, entity),
+    });
+    const measuredSize = measuredCommittedSize(resolvedStem, committedScaleGuess);
     if (Array.isArray(size)) {
-      const committedScale = resolvePlaceDrawScale(entity && entity.data || {}, {
-        targetRadius,
-        authoredEnvelope: Math.max(1e-6, ...size.map((value) => Number(value) || 0)),
-        censusScale: placeDrawScaleFromRow(row, entity),
-      });
       const union = placeVisualUnionWithOverlay(entity, size, row.bounds && row.bounds.center);
       const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
       const stampedSize = stampedBounds && stampedBounds.size;
-      const committedX = stampedSize && Number(stampedSize[0]) * committedScale;
+      const committedX = Math.max(
+        (stampedSize && Number(stampedSize[0]) * committedScaleGuess) || 0,
+        (measuredSize && measuredSize[0]) || 0,
+      );
       if (Number.isFinite(committedX) && committedX > 0) {
         boundary.userData.boundaryResolvingCommittedX = committedX;
         boundary.userData.boundaryResolvingStandInFit = Math.max(diameter, committedX);
       } else {
         boundary.userData.boundaryResolvingStandInFit = diameter;
       }
+    } else if (measuredSize && measuredSize[0] > 0) {
+      boundary.userData.boundaryResolvingCommittedX = measuredSize[0];
+      boundary.userData.boundaryResolvingStandInFit = Math.max(diameter, measuredSize[0]);
     } else {
       boundary.userData.boundaryResolvingStandInFit = diameter;
+    }
+    if (measuredSize) {
+      const vb = boundary.userData.visualBounds;
+      if (vb && Array.isArray(vb.size)) {
+        vb.size = vb.size.map((value, i) => Math.max(Number(value) || 0, measuredSize[i] || 0));
+      }
     }
     return;
   }
@@ -3996,6 +4011,16 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
     const union = placeVisualUnionWithOverlay(entity, size, row.bounds && row.bounds.center);
     const stampedBounds = union && placeStampEnvelopeBounds(entity, union, boundary) || union;
     stampPendingCommittedVisualBounds(boundary, stampedBounds, row.bounds && row.bounds.center, scale);
+  }
+  const measuredSize = measuredCommittedSize(resolvedStem, scale);
+  if (measuredSize) {
+    const vb = boundary.userData.visualBounds;
+    if (vb && Array.isArray(vb.size)) {
+      vb.size = vb.size.map((value, i) => Math.max(Number(value) || 0, measuredSize[i] || 0));
+    }
+    if (measuredSize[0] > (Number(boundary.userData.boundaryResolvingCommittedX) || 0)) {
+      boundary.userData.boundaryResolvingCommittedX = measuredSize[0];
+    }
   }
 }
 
@@ -4048,6 +4073,22 @@ export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, ce
 
 const _composedPlaceBoundsBox = new THREE.Box3();
 const _composedPlaceBoundsVec = new THREE.Vector3();
+
+// Measured committed envelopes per resolved file stem, in authored units (committed
+// size ÷ resolvePlaceDrawScale). The pending stamp's record/census estimate covers only the
+// base part — faction overlays, depth-prepass batches, approach yaw, and authored extensions
+// draw past it (station_helios draws ~549x420 against a ~180 record stamp). Once any instance
+// of a stem has committed, its measured envelope is the honest arm for the next pending seat;
+// stored in authored units so a sibling at a different draw scale still arms correctly, and
+// unioned componentwise with the estimate because per-instance yaw varies the extents.
+const measuredPlaceAuthoredBounds = new Map();
+const MEASURED_PLACE_AUTHORED_BOUNDS_LIMIT = 64;
+
+function measuredCommittedSize(stem, scale) {
+  const measured = stem && measuredPlaceAuthoredBounds.get(stem);
+  if (!measured || !Array.isArray(measured.size) || !(scale > 0)) return null;
+  return measured.size.map((value) => (Number(value) || 0) * scale);
+}
 
 function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) {
   const palette = paletteFor(entity || {});
@@ -4164,14 +4205,27 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   _composedPlaceBoundsBox.setFromObject(root);
   if (!_composedPlaceBoundsBox.isEmpty()) {
     const measuredCenter = _composedPlaceBoundsBox.getCenter(_composedPlaceBoundsVec);
+    const measuredSize = [
+      _composedPlaceBoundsBox.max.x - _composedPlaceBoundsBox.min.x,
+      _composedPlaceBoundsBox.max.y - _composedPlaceBoundsBox.min.y,
+      _composedPlaceBoundsBox.max.z - _composedPlaceBoundsBox.min.z,
+    ];
     root.userData.visualBounds = {
       center: [measuredCenter.x, measuredCenter.y, measuredCenter.z],
-      size: [
-        _composedPlaceBoundsBox.max.x - _composedPlaceBoundsBox.min.x,
-        _composedPlaceBoundsBox.max.y - _composedPlaceBoundsBox.min.y,
-        _composedPlaceBoundsBox.max.z - _composedPlaceBoundsBox.min.z,
-      ],
+      size: measuredSize,
     };
+    const measuredStem = placeFileStem(record && record.url);
+    if (measuredStem && scale > 0) {
+      const invScale = 1 / scale;
+      measuredPlaceAuthoredBounds.delete(measuredStem);
+      measuredPlaceAuthoredBounds.set(measuredStem, {
+        center: [measuredCenter.x * invScale, measuredCenter.y * invScale, measuredCenter.z * invScale],
+        size: measuredSize.map((value) => value * invScale),
+      });
+      if (measuredPlaceAuthoredBounds.size > MEASURED_PLACE_AUTHORED_BOUNDS_LIMIT) {
+        measuredPlaceAuthoredBounds.delete(measuredPlaceAuthoredBounds.keys().next().value);
+      }
+    }
   }
   return {
     root,
@@ -8549,6 +8603,14 @@ function retainLibraryPlan(renderer, library, plan, options = {}) {
   const residency = owner && getAssetResidency(renderer);
   if (!residency || !(library instanceof Map)) return 0;
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return 0;
+  // The detached-owner sweep can release a boundary owner between the admission request's
+  // revive (residencyOptionsForBoundary) and this retain — a released mark would silently
+  // fail every pin below and leave the committed body on evictable warm/cache leases.
+  // Admission intent revives, matching the per-request contract.
+  if (typeof residency.isOwnerReleased === 'function' && residency.isOwnerReleased(owner)
+      && typeof residency.reviveOwner === 'function') {
+    residency.reviveOwner(owner);
+  }
   let retained = 0;
   for (const [slot, files] of Object.entries(plan || {})) {
     const records = library.get(slot) || [];

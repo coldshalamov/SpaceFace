@@ -567,10 +567,28 @@ export function detachBoundaryResolvingMarker(boundary) {
   delete data.wantsBoundaryResolvingMarker;
   delete data.boundaryResolvingMarkerEntity;
   const marker = data.resolvingMarker;
-  if (!marker) return false;
-  if (marker.parent) marker.parent.remove(marker);
-  delete data.resolvingMarker;
-  return true;
+  let detached = false;
+  if (marker) {
+    if (marker.parent) marker.parent.remove(marker);
+    delete data.resolvingMarker;
+    detached = true;
+  }
+  // Publish-time invariant: no authoredResolvingMarker node may survive an authored commit.
+  // The tracked field covers the normal case — this walk purges a tagged straggler whose
+  // link to `data.resolvingMarker` was lost (e.g. marker reparented under another root).
+  if (typeof boundary.traverse === 'function') {
+    const orphans = [];
+    boundary.traverse((node) => {
+      if (node !== boundary && node.userData && node.userData.authoredResolvingMarker === true) {
+        orphans.push(node);
+      }
+    });
+    for (const node of orphans) {
+      if (node.parent) node.parent.remove(node);
+      detached = true;
+    }
+  }
+  return detached;
 }
 
 /**
