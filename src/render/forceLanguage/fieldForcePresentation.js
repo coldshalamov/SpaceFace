@@ -33,14 +33,19 @@ const FIELD_LANGUAGE_MIN_PRESENCE = 0.30;
 
 /** One ring at a registered anchor. `fields:cleared` removes it. Not drawn for anchors the player cannot see. */
 export function noteFieldAnchorRing(rings, payload) {
-  if (!rings || !payload || payload.fieldId == null) return rings;
+  if (!rings || typeof rings.set !== 'function' || !payload) return rings;
+  const fieldId = payload.fieldId != null ? String(payload.fieldId) : (payload.id != null ? String(payload.id) : null);
+  if (!fieldId) return rings;
   const pos = payload.pos || null;
-  rings.set(payload.fieldId, {
-    fieldId: payload.fieldId,
-    kind: payload.kind || null,
-    radius: Number(payload.radius) || 0,
-    x: pos && Number.isFinite(pos.x) ? pos.x : 0,
-    z: pos && Number.isFinite(pos.z) ? pos.z : 0,
+  const px = pos && Number.isFinite(pos.x) ? pos.x : 0;
+  const pz = pos && Number.isFinite(pos.z) ? pos.z : 0;
+  rings.set(fieldId, {
+    fieldId,
+    kind: typeof payload.kind === 'string' ? payload.kind : null,
+    radius: Number.isFinite(payload.radius) ? payload.radius : (Number(payload.radius) || 0),
+    x: px,
+    z: pz,
+    pos: { x: px, z: pz },
   });
   return rings;
 }
@@ -64,8 +69,15 @@ export function bindFieldAnchorRings(bus, rings) {
 
 export function clearFieldAnchorRings(rings, payload) {
   if (!rings) return rings;
-  if (payload && payload.fieldId != null) rings.delete(payload.fieldId);
-  else rings.clear();
+  if (!payload) {
+    if (typeof rings.clear === 'function') rings.clear();
+    return rings;
+  }
+  const fieldId = typeof payload === 'object'
+    ? (payload.fieldId != null ? String(payload.fieldId) : (payload.id != null ? String(payload.id) : null))
+    : (payload != null ? String(payload) : null);
+  if (fieldId != null && typeof rings.delete === 'function') rings.delete(fieldId);
+  else if (typeof rings.clear === 'function') rings.clear();
   return rings;
 }
 
@@ -475,28 +487,4 @@ export class FieldForcePresentation {
     for(const body of this.batch.material.uniforms.uBodies.value)if(body.w>0){body.x+=dx;body.y+=dz;}
   } // Also safe when the next simulation dt is zero.
   dispose(){if(this.disposed)return;this.disposed=true;this._quietEmpty=false;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
-}
-
-// NXB-010 — presentation ledger of which sim field owns which anchor ring. The picture stores
-// the contributor (kind, footprint, anchor pos) and never a second copy of the force it made:
-// acceleration stays owned by core/fields/fieldKernel.js, so a stored `ax`/`az` here would be a
-// force source that escapes the kernel's ordering and cap rules.
-export function noteFieldAnchorRing(rings, spec){
-  if(!rings||typeof rings.set!=='function'||!spec)return false;
-  const fieldId=spec.fieldId!=null?String(spec.fieldId):(spec.id!=null?String(spec.id):null);
-  if(!fieldId)return false;
-  const pos=spec.pos||{};
-  rings.set(fieldId,{
-    fieldId,
-    kind:typeof spec.kind==='string'?spec.kind:null,
-    radius:Number.isFinite(spec.radius)?spec.radius:0,
-    pos:{x:Number.isFinite(pos.x)?pos.x:0,z:Number.isFinite(pos.z)?pos.z:0},
-  });
-  return true;
-}
-
-export function clearFieldAnchorRings(rings, spec){
-  if(!rings||typeof rings.delete!=='function')return false;
-  const fieldId=spec!=null&&typeof spec==='object'?(spec.fieldId!=null?String(spec.fieldId):(spec.id!=null?String(spec.id):null)):(spec!=null?String(spec):null);
-  return fieldId!=null?rings.delete(fieldId):false;
 }
