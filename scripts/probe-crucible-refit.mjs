@@ -52,6 +52,13 @@ await page.evaluate(() => {
     .find((x) => x.textContent.replace(/\s+/g, ' ').trim() === 'Crucible').click();
 });
 await page.waitForTimeout(400);
+// The door is a two-step preparation: the hull cards and the launch word live on step two
+// (Ship & kit), and Swarm's verb opens the armory rather than the arena.
+await page.evaluate(() => {
+  const b = [...document.querySelectorAll('#screens button')]
+    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Choose ship & kit'));
+  if (b) b.click();
+});
 await page.evaluate((seed) => {
   const hull = [...document.querySelectorAll('#screens .sf-crd-hull')]
     .find((b) => b.textContent.includes('Ricochet Runner'))
@@ -61,9 +68,24 @@ await page.evaluate((seed) => {
 }, SEED);
 await page.evaluate(() => {
   [...document.querySelectorAll('#screens button')]
-    .find((x) => x.textContent.replace(/\s+/g, ' ').trim() === 'Launch Swarm').click();
+    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Open armory')).click();
 });
 await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90000 });
+// Swarm's opening stop is the armory: the run waits in draft on "Launch round 1".
+await page.waitForFunction(
+  () => window.SF.state.run && window.SF.state.run.phase === 'draft'
+    && window.SF.ctx.screenManager.top() === 'crucibleDraft',
+  null, { timeout: 60000 },
+);
+await page.waitForFunction(() => {
+  const b = [...document.querySelectorAll('#screens button')]
+    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Launch round 1'));
+  return !!b && !b.disabled;
+}, null, { timeout: 30000 });
+await page.evaluate(() => {
+  [...document.querySelectorAll('#screens button')]
+    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Launch round 1')).click();
+});
 await page.waitForFunction(
   () => window.SF.state.run && window.SF.state.run.phase === 'active'
     && window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
