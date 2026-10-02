@@ -1069,6 +1069,11 @@ export const scanner = {
             simTime: now,
           });
         }
+      } else if (entity.type === 'ship' || entity.type === 'drone') {
+        // FB-121: an ordinary hull's mass class resolves on pulse contact — the target panel
+        // may print ammunition/terrain/specialist only after the hull has been scanned, so
+        // the flag is durable (learned once) rather than the wrecks' transient ping stamp.
+        data.scanned = true;
       }
     }
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ENEMY_DOCTRINE_OVERRIDES } from '../src/data/combatDefs.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { ContactKind, ObjectiveKind } from '../src/ai/contracts.js';
 import { ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
 import { CombatDoctrineRuntime, CombatDoctrineId } from '../src/ai/combatDoctrine.js';
@@ -110,7 +110,9 @@ test('the wake run telegraphs, drops exactly one verb, then recovers', () => {
 });
 
 test('the jackal is admitted to the wake doctrine', () => {
-  assert.equal(ENEMY_DOCTRINE_OVERRIDES.mine_layer_jackal, 'mine_layer_wake');
+  // The doctrine is declared on the jackal's enemy row and stamped at spawn through
+  // combat.js def.combatDoctrineId; ENEMY_DOCTRINE_OVERRIDES intentionally omits it.
+  assert.equal(ENEMY_TYPES.find((e) => e.id === 'mine_layer_jackal')?.combatDoctrineId, 'mine_layer_wake');
 });
 
 test('the production catalog validates with the mine verb armed', () => {

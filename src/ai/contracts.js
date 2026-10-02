@@ -282,6 +282,8 @@ function neutralSelf(entityId) {
     factionBehavior: null,
     ramAuthorized: false,
     woundedFallbackSpent: false,
+    turretPhaseEdges: Object.freeze([]),
+    turretsLost: 0,
     operationalMassBand: 'medium',
     mobilityBand: 'medium',
     cargoBand: 'empty',
@@ -319,6 +321,10 @@ function normalizeSelf(value, entityId) {
       : null,
     ramAuthorized: value.ramAuthorized === true,
     woundedFallbackSpent: value.woundedFallbackSpent === true,
+    turretPhaseEdges: Object.freeze(
+      (Array.isArray(value.turretPhaseEdges) ? value.turretPhaseEdges : [])
+        .filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b)),
+    turretsLost: Math.max(0, Math.floor(finite(value.turretsLost, 0))),
     operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
     mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),

@@ -121,6 +121,8 @@ export function outcomeSentence(outcome, context = {}) {
 export const TELEGRAPH_WORDS = Object.freeze({
   weapon_charge: 'Weapon charge',
   broadside_charge: 'Broadside charge',
+  swarmer_vent: 'Swarmer vent',
+  broadside_desperation: 'Desperation battery',
   attach_spool: 'Attack spool-up',
   field_spool: 'Drag-field spool',
   wake_mines: 'Mine wake',

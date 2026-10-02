@@ -194,7 +194,9 @@ test('startNewGame applies the pick after ships.newGame and before the scene boo
   assert.match(src, /resolveNewGameStarter/, 'main.js must resolve the starter pick');
   const populate = src.indexOf('ships.newGame()');
   const apply = src.indexOf('applyStarterPick(state, ships, opts);');
-  const spawn = src.indexOf('bootstrapScene(state, helpers, bus, registry);');
+  // The call site gained an options arg ({ yield: nextFrame }) for sliced loading paint —
+  // pin the awaited call, not the definition or the exact argument list.
+  const spawn = src.indexOf('await bootstrapScene(state, helpers, bus, registry');
   assert.ok(populate > -1 && apply > populate && spawn > apply,
     'starter pick must be applied between ships.newGame() and bootstrapScene()');
 });

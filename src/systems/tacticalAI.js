@@ -52,6 +52,7 @@ import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrin
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { stepEgressExits } from '../ai/egressExit.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { setThrusterHealth } from '../core/physicsAuthority.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
 const HEAVY_MASS_THRESHOLD = 150;
@@ -490,6 +491,9 @@ export function createTacticalAISystem({
             kind: doctrine.telegraph.kind,
             durationTicks: doctrine.telegraph.durationTicks,
             attackLine: doctrine.attackLine || null,
+            // FB-020: stage/edge so the listener can tell a mount-loss beat from a generic cue.
+            bossStage: doctrine.bossStage || 0,
+            turretEdge: doctrine.turretEdge || 0,
             tick,
           });
         }
@@ -503,11 +507,14 @@ export function createTacticalAISystem({
             fireWindow: doctrine.fireWindow,
             maneuverKind: doctrine.maneuverKind,
             attackLine: doctrine.attackLine || null,
+            bossStage: doctrine.bossStage || 0,
+            turretEdge: doctrine.turretEdge || 0,
             tick,
           });
         }
         applyChoreographyFireWindow(liveStack, decision);
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
+        applyTurretEdgeEffects(entity, doctrine, state);
         applyMindAwareFiringIntent(decision, state);
         applyNemesisFireGate(entity, state);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
@@ -632,6 +639,34 @@ function applyNemesisFireGate(entity, state) {
   const intent = entity && entity.data && entity.data.intent;
   if (intent && !nemesisFireAllowed(entity, state)) {
     clearAIFiringIntent(intent, 'nemesis_telegraph_or_retreat');
+  }
+}
+
+/**
+ * FB-020: a turret-loss edge is a physical wound, not a presentation flag — apply it once per
+ * crossing regardless of who owns the boss's presentation. Edge 2 tears the prow plate (the
+ * authored prowSurface stops banking shots and the PROW RIB weak point opens) and kills the RCS
+ * pods: turn authority drops through thruster health on the physics body — mass, not a gyro.
+ */
+export function applyTurretEdgeEffects(entity, doctrine, state) {
+  if (!entity || !entity.data || !doctrine || !Number.isFinite(doctrine.turretEdge)) return;
+  const data = entity.data;
+  const edge = Math.max(0, Math.floor(doctrine.turretEdge));
+  const previous = Math.max(0, Math.floor(Number(data._turretEdge) || 0));
+  if (edge <= previous) {
+    if (data._turretEdge !== edge) data._turretEdge = edge;
+    return;
+  }
+  data._turretEdge = edge;
+  if (edge >= 2 && data._prowWindowOpen !== true) {
+    data._prowWindowOpen = true;
+    setThrusterHealth(entity, 'rcs-port', 0.4);
+    setThrusterHealth(entity, 'rcs-starboard', 0.4);
+    const bus = state && state.bus;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('toast', { text: 'Iron Maw\'s bow plate is torn — cross the prow!', kind: 'warn', ttl: 3 });
+      bus.emit('audio:cue', { id: 'combat.subsystem.disabled' });
+    }
   }
 }
 
@@ -833,7 +868,7 @@ function autoRecipeForSquad(members, squadKey, seed) {
   let fast = 0;
   for (const member of members) {
     const d = normalizeCombatDoctrineId(member.data && member.data.ai && member.data.ai.combatDoctrineId);
-    if (d === CombatDoctrineId.RANGED_DISENGAGER) ranged += 1;
+    if (d === CombatDoctrineId.RANGED_DISENGAGER || d === CombatDoctrineId.RANGED_STALKER) ranged += 1;
     else if (AUTO_SQUAD_FAST_DOCTRINES.has(d)) fast += 1;
   }
   // A marksman on the squad anchors everyone behind the firing line.
@@ -890,7 +925,7 @@ function autoSocketsFor(members) {
   // Marksman doctrines ride the rear socket so the firing line keeps its support wing.
   for (const m of sorted) {
     const d = normalizeCombatDoctrineId(m.data && m.data.ai && m.data.ai.combatDoctrineId);
-    if (d === CombatDoctrineId.RANGED_DISENGAGER) take(m, SQUAD_SOCKET.REAR);
+    if (d === CombatDoctrineId.RANGED_DISENGAGER || d === CombatDoctrineId.RANGED_STALKER) take(m, SQUAD_SOCKET.REAR);
   }
   for (let i = 0; i < sorted.length; i++) {
     const m = sorted[i];
