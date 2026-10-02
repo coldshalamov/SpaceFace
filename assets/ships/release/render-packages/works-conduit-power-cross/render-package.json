@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d41ae31d9ac76391ac3e2b5b3e539dd1fa97a221af81adac68bedb01ad06b7a2",
+  "contentHash": "bffec6ee978f7c513497b29d8f02566837ad09028cf0eafeb871960ee596ea1d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -410,7 +410,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "5742b7e3a8a705a6a2ab003226dbe407c7c4e50ccb018bd9e3dcb4099c641866",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -622,7 +622,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_cross.glb"
   },
-  "runtimeHash": "8dd21e2ac76f47c63e79e1c7dc7f113b22ab96a8ca6c4c522b2a0cc629359546",
+  "runtimeHash": "026e4f98c724395574d9eee0829888798c26db8c35c2d1143c34f371cf982094",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

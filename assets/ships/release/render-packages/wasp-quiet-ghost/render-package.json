@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4b8e5c3878680a29e3172e35708c152132dd54a811a550b3a474cc27989693df",
+  "contentHash": "9e29a0e90dd6fc6ea10d9d51e041c299fc6cfac494b5e86d7a0b5623eb1c2de2",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-quiet-ghost.node.lod0-hook-armor-flap-armor.dynamic",
@@ -6406,7 +6406,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "5742b7e3a8a705a6a2ab003226dbe407c7c4e50ccb018bd9e3dcb4099c641866",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -9405,7 +9405,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_quiet_ghost.glb"
   },
-  "runtimeHash": "ee977251d2a15dd1a9588572c04a4bcf491130e900b8d2963e475a959e4a18e8",
+  "runtimeHash": "63a2e42456fe5d404357bb424a610feb0993e01162b7e4f7badce18f51862786",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

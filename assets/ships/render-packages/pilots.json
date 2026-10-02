@@ -1268,8 +1268,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb",
-      "releaseSha256": "f305c89130530a8d37a38f50aaef36f8e3a857a819e26ef50834c094a55a870f",
-      "releaseBytes": 919264,
+      "releaseSha256": "dda55a8edc45a949e60629c87112638c5370292ae55069b7d04c366d662a7c60",
+      "releaseBytes": 919564,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1289,8 +1289,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
-      "releaseSha256": "6df123e5e795879ccb0d54dc21329379bcaf399c918e88c73db4244d95feebfe",
-      "releaseBytes": 601884,
+      "releaseSha256": "ddd6fa4caed14a0231e118a81474a3f22f5053918ea5e965aa782136168fd337",
+      "releaseBytes": 602392,
       "rootNode": "KESTREL_V4_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -1310,8 +1310,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
-      "releaseSha256": "ee68f5016d171eeaa16946a65dcf352ccf0689b2bf9d2fcf8cd2decdd3653918",
-      "releaseBytes": 472160,
+      "releaseSha256": "155d3b14db5196e0490bc1d22508c4109f82e208908bf0b86c63a9194da6abe8",
+      "releaseBytes": 472592,
       "rootNode": "KESTREL_V4_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

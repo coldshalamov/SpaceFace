@@ -45087,7 +45087,7 @@
           13.260697
         ]
       },
-      "bytes": 919264,
+      "bytes": 919564,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -45213,6 +45213,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
+          "name": "Material_Emissive_Amber_beacon",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_Cyan",
           "role": "emissive"
         },
@@ -45302,7 +45310,7 @@
         "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "096e921bb71c49d2945ce7786c7d9bc030b5cce241d485b282ac95a065a841e3",
+      "meshHash": "36de30b7db60ab1ea58698a66d48ddb3f2a0709dfce45b6caae915af441e955f",
       "meshes": 40,
       "nodes": 68,
       "note": null,
