@@ -24,7 +24,7 @@ import { listArenaToys } from './arenaModuleLibrary.js';
 import { ENEMY_TYPES } from './enemies.js';
 import { SHIPS } from './ships.js';
 import { WEAPONS } from './weapons.js';
-import { SWARM_BOSS_ROTATION, swarmBossFor } from './swarmMode.js';
+import { SWARM_BOSS_ROTATION, bossPackagesFor, swarmBossFor } from './swarmMode.js';
 import { SURVIVAL_LIVE_CIRCUIT_ARENAS } from './survivalWaves.js';
 import { CINDER_ARENA_ID } from '../systems/cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
@@ -504,7 +504,8 @@ function simulateHits({ combatant, damagePerHit, intervalS, maxS, count = 1 }) {
 export function physicsBossWaves() {
   return [10, 20, 30].map((wave) => {
     const rotation = swarmBossFor(wave) || SWARM_BOSS_ROTATION[0];
-    const packages = (rotation.packages || []).map((pkg) => ({
+    // Capital champion rows carry `enemyId`, not `packages` — bossPackagesFor normalizes both.
+    const packages = bossPackagesFor(rotation).map((pkg) => ({
       enemyId: pkg.enemyId,
       count: pkg.count || 1,
       role: pkg.role || 'elite',

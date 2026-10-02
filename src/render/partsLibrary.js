@@ -12,7 +12,7 @@ import { SHIPS } from '../data/ships.js';
 import { modelTruthMountFractions, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import { placeDrawScaleFromRow } from '../data/modelTruthMounts.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
-import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
+import { SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
@@ -12008,7 +12008,7 @@ function swarmRosterEnemyDefs() {
     if (entry && entry.enemyId) ids.add(entry.enemyId);
   }
   for (const boss of SWARM_BOSS_ROTATION || []) {
-    for (const pkg of (boss && boss.packages) || []) {
+    for (const pkg of bossPackagesFor(boss)) {
       if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
     }
   }

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9fd981ada63056b34bf25f2eac4b2a3338c6f7b750a2bb99238c36c8d96cf94b",
+  "contentHash": "f134f0e1a9046ca4c4413f87f9375e1fdd42efe72871f7a697cc8dd8dd04f3f0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -345,7 +345,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
   },
-  "runtimeHash": "40e04364542673b6d8d8033f032d400a15d75335e7c8bdfb6747fc47a1153e0b",
+  "runtimeHash": "44097154049ef889236001559a2d931072dc72000cf671653b68b557d84c6c49",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

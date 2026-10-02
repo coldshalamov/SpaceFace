@@ -163,3 +163,46 @@ beacon, update `scripts/check-kestrel-wholeship-runtime.mjs`, republish those hu
 `docs/plans/2026-09-30-hull-burst-handoff.md` first); (c) Bastion + Kestrel detail layers (Kestrel needs its 5 motion rigs honoured and `check:kestrel:wholeship` re-pinned);
 (d) structure life with the salvaged banks; (e) fleet identity variants (each needs a roster-prewarm entry); (f) `hull_flinch` / no-settle clips through the judge.
 PROCESS LESSON: never make full git worktrees (assets make each ~6 GB; the disk hit 100% on 2026-10-02): sparse worktrees only, removed the same turn.
+
+### 6b. Later on 2026-10-02 (all on origin/master)
+- BLINKING BEACONS (Forge side of the lamp bus): `forge.py Ship.mat` falls back to the base finish colour for a channel variant; 18 hull recipes (24 ids with
+  variants) name `glow_amber.beacon` for their top beacon. DRAW-NEUTRAL ONLY: converted only where the beacon is the hull's sole amber user (the finish is replaced, not
+  added); hulls whose beacon shares amber with trims/window/dock lamps stay steady (apron_shuttle, ashline_*, helios_cradle, ironback, kestrel, leviathan, liner,
+  pelican, salvage_cutter, scrap_sweeper, volatiles_tanker, rescue_lifter). Bastion and saucer convert a beacon that was already its own hook mesh.
+- FIVE ANIMATED STATIONS (ANI-39..43, banks `research|ceres-refinery|mining|military|blackmarket.motion.json`): research habitat wheel 240 s/turn + telescope slews + dish
+  sweep on dock:range; refinery stack crown 180 s/turn + hab dish; military radar bar 20 s/turn + tracking turret + fire-control dish; mining cutter drum + gantry crawl +
+  hab dish; blackmarket signal yardarm + clamp jaws on dock verbs. Judge: 0 flags. COST: 2-3 MOTION_ nodes each = ~9-14 extra LOD0 draw calls per station when in view
+  (~51 across the five); NOT measured by the frame probe (its scenario is the Helios hub). Known: a second `dock:range` mid-sweep snaps the dish back toward rest
+  (fix needs a busy-gate in src/). The trade hub is NOT animated (flight-static-v3 bakes it flat).
+- SIX FACTION HULLS (palette + lit-trim variants over existing hulls, routed by EXISTING enemy ids only, in the roster prewarm list): Concord `hornet_scn_interdictor`
+  (patrol_lawman, customs_cutter), Quiet `wasp_quiet_ghost` (quiet_ghost) and `ashline_rig_quiet` (rig hostiles under faction_quiet), Choir `ashline_dart_choir`
+  (choir_zealot), Vael `ashline_lode_vael` (warden_escort), Drift Miners `helios_cradle_dmc` (miner traffic in faction_dmc sectors). NOT remapped: lancer_sniper,
+  detonator_dart, pirate wasp (test pq-193-09 pins them to the base Wasp). 3 of 14 factions' worth of identity is still missing (Archive, Fulfillment, Helix, Pitborn,
+  Understory, Verge-Layers have no early-sector presence; add variants when a sector needs them).
+- WEIGHT-AWARE CHASSIS MOTION (`ANI_38.py`): the cloud agent's chassis kit gave every hull identical breathing; it now scales by hull length around a 22 m reference:
+  angles ~ length^-0.35, durations ~ length^0.5 (pendulum), heave ~ length. A 61 m Leviathan idles on a 13.3 s cycle through 0.31 deg (was 8 s / 0.45 deg); a 15 m
+  pelican is brisker. `test/chassis-mass-scaling.test.mjs` pins it against every shipped bank and the census hull sizes. Re-baked 33 hulls.
+- FRAME GATE (software renderer, Helios hub scenario, `probe-frame-solid --headless`): PASS: 0 blinks, 0 root swaps, 0 regressions, 0 stuck frames; timings
+  (p50 65 ms) are software-render numbers, not meaningful against the GPU baseline. The first headless attempt had aborted with "authored ship asset library did not preload"
+  (transient). Run it again on the owner's GPU for real timings.
+- ARTIFACT HYGIENE: the Blender GUI connector now works when Blender is open and responsive; headless remains the production path. Disk: never full worktrees (see memory).
+### 6c. Evening of 2026-10-02 (all on origin/master)
+- DIE LAUGHING IS BACK ON THE HITCH. The Forge rebuild had dropped the hero marking (a blank ivory plaque stood in for it). `tools/blender/forge/stencil.py` builds hand-cut
+  lettering as real geometry in an existing finish (node `LOD0_Armor_ivory`, no new draw, no texture): bridged counters, chipped corners/edges, overspray, seeded,
+  conformal by ray-cast; ~620 tris, LOD0 only. It sits on the aft PORT armour course and is turned to read upright at the spawn heading: the in-game chase camera sits north
+  of the ship looking south, so at heading 0 the nose points screen-LEFT with port at the bottom (verified in the real renderer with `fleet-look`; the Blender top view alone had
+  it upside down). `test/kestrel-hero-marking.test.mjs` pins recipe, orientation and the shipped body so a rebuild cannot drop it again.
+- KESTREL DETAIL LAYER (LOD0 36.4k -> 39.2k tris, 39 draws, `check-kestrel-wholeship-runtime` re-pinned): armour bolts on the starboard courses and hull bands, access hatches with
+  coamings, cable trays along both sponson roots, seam lines (`tools/blender/forge/skin.py` seats everything on the real skin by ray-cast); canopy frame arches and coamings ride the
+  ANI-17 canopy hinge group so the lid carries its frame when a repair job opens it; the dorsal beacon is the lamp bus slow-flash channel (draw-neutral).
+- BUG FOUND AND FIXED (mine, from the chassis mass-scaling slice): mass-scaled clip durations were off the 60 fps grid (7.409 s) while the bake closed channels on the grid
+  (7.4167 s), so `validateMotionBank` threw at bind and 32 hull banks silently had NO authored motion. `Clip.duration_s` is now quantized in the bake, the shipped banks patched,
+  and `test/chassis-mass-scaling.test.mjs` pins every clip to the grid. Lesson: after any bank/bake change run the whole motion test family, not just the new test.
+- JUDGE CORRECTED: settle is END-vs-REST (channels are rest-relative), overlay clips are exempt: no-settle 17 -> 0. Kestrel `deploy` presses retimed (kink 0.69 -> 0.28) and the hit
+  flinch thinned to under the runtime's 15 keys/s line (snaps 3 -> 1). Judge now: 4 flags, all intentional: whips scanring_sweep / grindCycle / yard-tug release (fast spins), snap line_quiver (a rattle).
+- RCS JETS (helper, `23ca7fa6f`): attitude jets are born from a stub with a short press ramp and spent from the root instead of popping (thruster-continuity covers all 7 families).
+  NOT changed: the NPC RCS flash sprites (`vfx._onShipRcsPulse`): the sprite pool has no attack channel and a valve-opening puff of 0.1-0.18 s is a pulse by nature.
+- DOCK RANGE (helper, `3a0e0442c`): a `dock:range` retrigger mid-sweep no longer snaps the station dish back toward rest (busy gate on the clip, real-bank tests).
+STILL OPEN (decided, not forgotten): trade-hub life stays baked flat: it is the biggest body, ~1350 WU from spawn, and `flight-static-v3` exists to keep the opening frame sacred; a carve-out
+needs an on-GPU frame measurement first. Animated-station draw cost (+9-14 draws each) and a real-GPU look at plume ramps, nav-lamp blink and station motion still want one owner flight;
+gate spin-up for NPC traffic needs traffic that uses gates (sim); debris variety (only more shape variants would help); more faction hulls only when a sector needs them.

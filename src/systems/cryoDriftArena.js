@@ -38,11 +38,36 @@ export const CRYO_ISLAND_BOSS_RADIUS = 96;
 export const CRYO_PROP_RADIUS = 70;
 export const CRYO_PROP_RANGE = 300;
 
+// FB-022: the coolant tank and heat manifold are real dynamic bodies — throwable, shootable.
+// The pocket follows the body: a tank thrown into a hot quadrant keeps cooling a window of it
+// (a vented charge, bounded while away from its dock); a dead prop's pocket is gone.
+export const CRYO_PROP_MASS = 140;
+export const CRYO_PROP_BODY_RADIUS = 12;
+export const CRYO_PROP_VENT_TICKS = 480;
+export const CRYO_PROP_HOME_EPS = 8;
+
 function along(at, bearing, distance) {
   return { x: at.x + bearing.x * distance, z: at.z + bearing.z * distance };
 }
 
-function placeCryoToys(at, lane, across) {
+function placeCryoToys(at, lane, across, props = {}) {
+  const coolant = props.coolant && props.coolant[0];
+  const heat = props.heat && props.heat[0];
+  // A prop is verb-less like a gate: the pocket it anchors does the work, not the tank.
+  const propToy = (id, propRole, spot) => ({
+    id,
+    kind: 'prop',
+    propRole,
+    hazardType: 'debris',
+    usable: true,
+    throwable: true,
+    // FB-022: materializes as a dynamic room solid; the pocket rides its body.
+    solid: true,
+    dynamic: true,
+    pos: { x: spot.x, z: spot.z },
+    radius: CRYO_PROP_BODY_RADIUS,
+    mass: CRYO_PROP_MASS,
+  });
   return [
     {
       id: 'frost_shutter',
@@ -76,6 +101,8 @@ function placeCryoToys(at, lane, across) {
       normal: { x: -across.x, z: -across.z },
       halfWidth: 28,
     },
+    ...(coolant ? [propToy('coolant_tank', 'coolant', coolant)] : []),
+    ...(heat ? [propToy('heat_manifold', 'heat', heat)] : []),
   ];
 }
 
@@ -338,7 +365,7 @@ export function planCryoInstall({
       return out;
   }
 
-  out.toys = placeCryoToys(at, lane, across);
+  out.toys = placeCryoToys(at, lane, across, out.props);
   out.fields.push(
     occupancyField('well', coolant[0]),
     occupancyField('repulsor', heat[0]),

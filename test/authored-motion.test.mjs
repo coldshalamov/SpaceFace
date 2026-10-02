@@ -221,6 +221,60 @@ test('installAuthoredMotionBus gates foreign pulses and replays', () => {
   unbind();
 });
 
+// --- dock events: a retrigger of a clip that is still playing is not a restart ---------------
+
+test('dock:range / dock:denied retriggers mid-clip are ignored; a finished clip plays again', () => {
+  const bank = cloneBank();
+  bank.clips[0].durationS = 10;
+  bank.clips[0].channels.forEach((ch) => { ch.times = [0, 10]; });
+  bank.events = { 'dock:range': 'sweep', 'dock:denied': 'sweep' };
+  const { root, pivot } = makePivotTree();
+  const ship = new THREE.Object3D();
+  const controller = bindAuthoredMotion(root, bank);
+  assert.equal(controller.eventClip('dock:range'), 'sweep', 'the controller exposes its bank event map');
+  assert.equal(controller.eventClip('dock:docked'), null, 'and null for an event the bank does not answer');
+  const detach = attachAuthoredMotionDriver(ship, { id: 'berth-1' }, [controller]);
+
+  let now = 10;
+  const { emit, bus } = makeServiceBus();
+  const unbind = installAuthoredMotionBus(bus, {
+    clock: () => now,
+    entityForStationId: (id) => (id === 'st-1' ? 'berth-1' : null),
+  });
+  const tick = () => ship.userData.updateAuthoredMotion({ id: 'berth-1' }, now, {});
+  const expectY = (elapsed) => 2 + (evaluateMotionClip(bank, bank.clips[0], elapsed).get('test_rig').translation[1]);
+  tick();
+
+  emit('dock:range', { stationId: 'st-1', inRange: true });
+  assert.ok(controller.clipActive('sweep'));
+  now = 14;
+  tick();
+  assert.ok(pivot.position.y > 2.1, `mid-sweep, off rest (y=${pivot.position.y})`);
+
+  for (const event of ['dock:range', 'dock:denied']) {
+    now += 0.2;
+    emit(event, { stationId: 'st-1', inRange: true });
+    assert.equal(controller.activeClipNames().some((n) => n.startsWith('__settle__')), false,
+      `${event} did not bridge the live pose back to rest`);
+    assert.ok(Math.abs(controller.clipElapsed('sweep', now) - (now - 10)) < 1e-9, `${event} did not restart the clip`);
+    tick();
+    assert.ok(Math.abs(pivot.position.y - expectY(now - 10)) < 1e-6, `${event}: pose stays on the sweep curve`);
+  }
+
+  // A rig that never answered the event is untouched (no throw, no state change).
+  assert.equal(controller.generation, -1);
+
+  now = 22;
+  tick();
+  assert.equal(controller.clipActive('sweep'), false, 'the sweep finished');
+  emit('dock:range', { stationId: 'st-1', inRange: true });
+  assert.ok(controller.clipActive('sweep'), 'a retrigger after the clip ended plays it again');
+  assert.equal(controller.clipElapsed('sweep', now), 0);
+  unbind();
+  detach();
+  controller.dispose();
+});
+
 // --- ANI-06/07 service-arm + armour-cap gating ---------------------------------
 
 const SERVICE_GROUPS_FLAT = ['kestrel_pod_hatch', 'kestrel_pod_arm_shoulder', 'kestrel_pod_arm_elbow'];

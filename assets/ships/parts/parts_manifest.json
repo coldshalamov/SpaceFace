@@ -6203,7 +6203,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
       "tris": 38474,
-      "bytes": 2246484,
+      "bytes": 2246292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6308,7 +6308,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
       "tris": 37724,
-      "bytes": 2365024,
+      "bytes": 2365116,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6343,12 +6343,12 @@
           -3.105302095413208
         ],
         "max": [
-          9.641345977783203,
+          9.64134693145752,
           2.076219081878662,
           3.0450000762939453
         ],
         "dimensionsM": [
-          18.361998558044434,
+          18.36199951171875,
           2.901238799095154,
           6.150302171707153
         ]
@@ -6362,7 +6362,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
       "tris": 37810,
-      "bytes": 2352792,
+      "bytes": 2352844,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6484,7 +6484,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
       "tris": 34806,
-      "bytes": 2134060,
+      "bytes": 2134012,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6597,7 +6597,7 @@
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
       "tris": 64326,
-      "bytes": 3728332,
+      "bytes": 3728428,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6703,7 +6703,7 @@
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
       "tris": 29244,
-      "bytes": 1755208,
+      "bytes": 1755160,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6810,7 +6810,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
       "tris": 54220,
-      "bytes": 3235816,
+      "bytes": 3235768,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6864,7 +6864,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
       "tris": 54220,
-      "bytes": 3235720,
+      "bytes": 3235568,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7149,8 +7149,8 @@
         "lod1": "wholeships/kestrel_lod1.glb",
         "lod2": "wholeships/kestrel_lod2.glb"
       },
-      "tris": 36060,
-      "bytes": 2091916,
+      "tris": 39518,
+      "bytes": 2388736,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7199,8 +7199,8 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel_lod1.glb",
-      "tris": 14592,
-      "bytes": 1044064,
+      "tris": 14800,
+      "bytes": 1053952,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
@@ -7238,8 +7238,8 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel_lod2.glb",
-      "tris": 5605,
-      "bytes": 602948,
+      "tris": 5701,
+      "bytes": 607928,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
@@ -7250,12 +7250,12 @@
           -6.380000114440918
         ],
         "max": [
-          13.398127555847168,
+          13.398362159729004,
           3.7699413299560547,
           6.380000114440918
         ],
         "dimensionsM": [
-          27.518651008605957,
+          27.518885612487793,
           6.819941282272339,
           12.760000228881836
         ]
@@ -7647,7 +7647,7 @@
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
       "tris": 38670,
-      "bytes": 2285996,
+      "bytes": 2286144,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7759,7 +7759,7 @@
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
       "tris": 52822,
-      "bytes": 3106800,
+      "bytes": 3106704,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7812,7 +7812,7 @@
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
       "tris": 68503,
-      "bytes": 3905488,
+      "bytes": 3905344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7969,7 +7969,7 @@
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
       "tris": 49866,
-      "bytes": 2900504,
+      "bytes": 2900432,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8022,7 +8022,7 @@
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
       "tris": 70912,
-      "bytes": 4046644,
+      "bytes": 4046544,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8470,7 +8470,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_dart_choir.glb",
       "tris": 38474,
-      "bytes": 2246620,
+      "bytes": 2246236,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8524,7 +8524,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_lode_vael.glb",
       "tris": 32574,
-      "bytes": 2026172,
+      "bytes": 2026124,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8577,7 +8577,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig_quiet.glb",
       "tris": 37724,
-      "bytes": 2365252,
+      "bytes": 2365160,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8612,12 +8612,12 @@
           -3.105302095413208
         ],
         "max": [
-          9.64134693145752,
+          9.641345977783203,
           2.076219081878662,
           3.0450000762939453
         ],
         "dimensionsM": [
-          18.36199951171875,
+          18.361998558044434,
           2.901238799095154,
           6.150302171707153
         ]

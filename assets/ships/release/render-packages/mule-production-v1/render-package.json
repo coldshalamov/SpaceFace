@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bb9172d3ba28cba6cab5809b52db3007c2d4933d498b3c19b5cd6b44b6f360dc",
+  "contentHash": "e96793ecacdb886d488f0e32dd62319291b66870b3ca19891f28bfc3c8bc14d5",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -1193,7 +1193,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b0229c0ecfcbf26948645f88e457e71a742ef1ef3c1418674c744b54eeccc58",
+      "geometryHash": "c495e3154c421e12f87a200c6ba344f98887965c9a860073256ec7b0462367f8",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 8016,
       "indexed": true,
@@ -3299,13 +3299,13 @@
       "sha256": "4aaa6d626a86e6a66eea54666794f1d825bfd322b1078f80acff018489fb8eb3"
     },
     "sourceGlb": {
-      "bytes": 713080,
-      "sha256": "f1411ad5e2e70e21433b65f6484269295f6269f9740077102e9fb3e96e59700f",
+      "bytes": 713092,
+      "sha256": "47440cb2d6a17ebac5e12684808fc529b8b0ecd3d7c4afb658c7a9793ba68a54",
       "uri": "mule_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -4154,9 +4154,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6746,
+      "bytes": 7217,
       "rigId": "hull",
-      "sha256": "e8ad695a1c97b9c76beb3be7b920ef667c14c30614e50645cbb1c006e64fa3a4",
+      "sha256": "59213634b03cf547c78694c26d6c989637802f31a3533878280462defb1957d3",
       "uri": "assets/ships/motions/mule-production-v1.motion.json"
     },
     "nodeCount": 38,
@@ -4812,7 +4812,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
-  "runtimeHash": "485c80e9c1f80eb1206d805abb24d32fec420509dcc5e66e0d1a4db981774d2e",
+  "runtimeHash": "f608336820c68a23251f6b7926e11ed19b9607fcba35bd0fc551b56180ae73eb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -287,9 +287,14 @@ test('RCS accessibility keeps one geometric envelope and a minimum readable hot-
   const reducedFlash = new RcsImpulseSystem(THREE, KESTREL_RCS_RECIPE);
   const reducedMotion = new RcsImpulseSystem(THREE, KESTREL_RCS_RECIPE);
   for (const system of [normal, reducedFlash, reducedMotion]) system.fire([0, 0, 0], [0, 0, 1], 1);
-  normal.update(0.04, { reducedMotion: false, reducedFlash: false });
-  reducedFlash.update(0.04, { reducedMotion: false, reducedFlash: true });
-  reducedMotion.update(0.04, { reducedMotion: true, reducedFlash: true });
+  // Read the held shape (0.12 s: past the press ramp, still inside the sustain). A control jet is now
+  // born from a stub over ~0.09 s (slice 1b, RCS lifecycle), so the old single 0.04 s step sampled
+  // the middle of the ramp instead of the shape this test is about.
+  for (let i = 0; i < 3; i++) {
+    normal.update(0.04, { reducedMotion: false, reducedFlash: false });
+    reducedFlash.update(0.04, { reducedMotion: false, reducedFlash: true });
+    reducedMotion.update(0.04, { reducedMotion: true, reducedFlash: true });
+  }
 
   const slot = (system, role) => system.pool.slots.slice(0, system.pool.activeSlotCount)
     .find((entry) => entry.layerRole === role);

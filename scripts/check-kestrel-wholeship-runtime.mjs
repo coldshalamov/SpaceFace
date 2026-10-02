@@ -18,9 +18,13 @@ const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
 // primitive per finish plus the separate damage-hook parts (repair pod, sensor dish, armour cap).
 // 2026-10-02: the ANI lane's authored motion geometry (scanner dish ANI-01, mining head ANI-02/05)
 // is part of the shipped build now; bands re-measured at the ANI build +-5%.
+// 2026-10-02: the Hitch's hero detail landed (DIE LAUGHING stencil ~620 tris, armour bolts, hatches,
+// cable trays, canopy frame; LOD0 only, existing finishes): LOD0 re-measured at 39.2k +-5%.
+// The dorsal beacon is the lamp bus's slow-flash channel (glow_amber.beacon -> Material_Emissive_Amber_beacon);
+// draw-neutral, it was already the only user of amber in its own mesh.
 const FORGE_PROVENANCE = 'forge-v1';
 const FAMILY = Object.freeze([
-  Object.freeze({ lod: 'lod0', file: 'kestrel.glb', triangles: [33_790, 37_350], maxDraws: 40 }),
+  Object.freeze({ lod: 'lod0', file: 'kestrel.glb', triangles: [37_250, 41_200], maxDraws: 40 }),
   Object.freeze({ lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [13_500, 14_950], maxDraws: 40 }),
   Object.freeze({ lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [5_200, 5_760], maxDraws: 36 }),
 ]);
@@ -64,6 +68,7 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
   'Material_BrushedMetal',
   'Material_Canopy',
   'Material_Emissive_Amber',
+  'Material_Emissive_Amber_beacon',
   'Material_Emissive_Cyan',
   'Material_Emissive_NavGreen',
   'Material_Emissive_NavRed',
@@ -78,6 +83,7 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
 const FACTOR_ONLY_MATERIALS = Object.freeze([
   'Material_Canopy',
   'Material_Emissive_Amber',
+  'Material_Emissive_Amber_beacon',
   'Material_Emissive_Cyan',
   'Material_Emissive_NavGreen',
   'Material_Emissive_NavRed',

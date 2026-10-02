@@ -171,9 +171,16 @@ test('the opener describes THIS wave: real counts, real bearings, real objective
 test('a stale plan can never describe the wrong wave', () => {
   const h = boot();
   h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  // FB-025 moved the opener to plan time, so the wave-2 line is legitimately already out — the
+  // contract that must hold is that the later wave-4 start NEVER borrows it.
   h.state.run.wave = 4;
   h.bus.emit('run:waveStarted', { wave: 4, tick: 1 });
-  assert.equal(h.lines().length, 0, 'no plan for wave 4 → no opener, never wave 2s copy');
+  const texts = h.texts();
+  assert.ok(texts.some((t) => t.startsWith('Wave 2.')), 'the wave-2 plan speaks wave 2');
+  assert.ok(!texts.some((t) => t.startsWith('Wave 4.')), 'no opener ever describes wave 4 from wave 2s plan');
+  const after = h.lines().length;
+  h.bus.emit('run:waveStarted', { wave: 4, tick: 2 });
+  assert.equal(h.lines().length, after, 'a start for an unplanned wave adds nothing');
   survivalAnnounce.destroy();
 });
 

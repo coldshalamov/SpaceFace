@@ -1,6 +1,8 @@
-// PQ-174.01 HUD — the swarm readout is a countdown, not a kill quota.
+// PQ-174.01 HUD — the swarm readout is the live cohort count, not a kill quota or a clock.
 //
-// Seed 4242, Helios Core. The HUD renders `run:waveProgress` and never owns a clock.
+// Seed 4242, Helios Core. Swarm rounds complete their finite cohort: the HUD reads the run's
+// own spawned/resolved census and never invents progress; the legacy tick-based waveProgress
+// path still renders only what survivalWave publishes.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -19,7 +21,6 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import {
   SWARM_RULESET,
-  SWARM_WAVE_DURATION_TICKS,
   bindSwarmPressureContext,
   resetSwarmPressureState,
 } from '../src/data/swarmMode.js';
@@ -248,7 +249,7 @@ test('clock helpers: 0:SS from remainingTicks, fill is elapsed not kills', () =>
   assert.equal(waveElapsedFill(0, 0), 0);
 });
 
-test('seed 4242: countdown decreases across ticks and hits 0:00 at the sixty-second boundary', () => {
+test('seed 4242: the round readout counts the live cohort and the wave closes on kills', () => {
   const dom = installDom();
   try {
     const h = boot(SEED);
@@ -261,40 +262,43 @@ test('seed 4242: countdown decreases across ticks and hits 0:00 at the sixty-sec
     const t0 = paint(h);
     const progress0 = lastProgress(h);
     assert.ok(progress0, 'survivalWave published run:waveProgress');
-    assert.equal(progress0.durationTicks, SWARM_WAVE_DURATION_TICKS);
-    assert.equal(t0.word, 'NEXT WAVE');
-    assert.equal(t0.fig, '0:60');
+    // The shipped wave contract is the finite cohort: the progress payload counts bodies, not ticks.
+    assert.equal(progress0.completionKind, 'cohort');
+    assert.ok(Number.isInteger(progress0.remaining) && Number.isInteger(progress0.total),
+      `cohort progress carries remaining/total, got ${JSON.stringify(progress0)}`);
+    assert.equal(progress0.durationTicks, undefined, 'no clock rides the cohort payload');
+    assert.equal(t0.word, 'HOSTILES');
+    const cohort = progress0.total;
+    assert.equal(t0.fig, `${cohort} / ${cohort}`, `full cohort on the readout, got ${t0.fig}`);
     assert.equal(t0.fillPct, 0);
-    assert.equal(t0.aria, 'Next wave in 0:60');
-    assert.equal(t0.now, '60');
-    assert.equal(t0.max, '60');
-    assert.ok(!QUOTA_FIG.test(t0.fig), `countdown must not be a quota figure, got ${t0.fig}`);
-    assert.notEqual(t0.aria, 'Wave kill quota');
+    assert.equal(t0.aria, 'Hostiles remaining');
+    assert.equal(t0.now, String(cohort));
+    assert.equal(t0.max, String(cohort));
 
-    tick(h, 60);
-    const t1 = hud();
-    assert.equal(t1.fig, '0:59');
-    assert.ok(t1.fillPct >= 1 && t1.fillPct <= 3, `one second elapsed fill, got ${t1.fillPct}%`);
-    assert.ok(!QUOTA_FIG.test(t1.fig));
+    // Kills move the readout because kills are the finish line: each resolution drops the count.
+    let killed = 0;
+    for (let i = 0; i < 6 && killOne(h); i++) { killed += 1; tick(h, 1); }
+    assert.ok(killed > 0, 'someone had to die');
+    const t1 = paint(h);
+    const progress1 = lastProgress(h);
+    assert.equal(t1.fig, `${cohort - killed} / ${cohort}`, `kills resolved the count: ${t1.fig}`);
+    assert.equal(t1.now, String(cohort - killed));
+    assert.ok(t1.fillPct > 0, 'the bar is resolved-share, not elapsed time');
+    assert.equal(t1.aria, 'Hostiles remaining');
+    assert.ok(progress1.remaining < progress0.remaining, 'the published count fell with the kills');
 
-    tick(h, 1740);
-    const t30 = hud();
-    assert.equal(t30.fig, '0:30');
-    assert.equal(t30.fillPct, 50);
-    assert.equal(t30.now, '30');
-    assert.ok(!QUOTA_FIG.test(t30.fig));
-
-    for (let i = 0; i < 2400 && !cleared; i++) tick(h, 1);
-    assert.ok(cleared, 'wave 1 closed on the clock');
+    // The wave closes when the cohort resolves — no clock carries it over the line.
+    for (let i = 0; i < 4000 && !cleared; i++) {
+      if (i % 2 === 0) killOne(h);
+      tick(h, 1);
+    }
+    assert.ok(cleared, 'wave 1 closed when its cohort resolved');
+    assert.equal(cleared.completionKind, 'cohort');
+    assert.equal(cleared.survivors, 0, 'a resolved cohort leaves no survivors to carry');
     const tEnd = paint(h);
-    assert.equal(tEnd.fig, '0:00');
-    assert.equal(tEnd.fillPct, 100);
+    assert.match(tEnd.fig, /^0 \/ \d+$/, `cleared cohort reads empty: ${tEnd.fig}`);
     assert.equal(tEnd.now, '0');
-    assert.equal(cleared.completionKind, 'duration');
-    const remaining = lastProgress(h);
-    assert.equal(remaining.remainingTicks, 0);
-    assert.equal(SWARM_WAVE_DURATION_TICKS / 60, 60);
-    console.log(`[pq-174.01-hud] seed=${SEED} t0=${t0.fig} fill=${t0.fillPct}% t1s=${t1.fig} fill=${t1.fillPct}% t30s=${t30.fig} fill=${t30.fillPct}% tEnd=${tEnd.fig} fill=${tEnd.fillPct}%`);
+    console.log(`[pq-174.01-hud] seed=${SEED} t0=${t0.fig} t1=${t1.fig} tEnd=${tEnd.fig} fill=${tEnd.fillPct}%`);
   } finally {
     survivalHud.destroy();
     survivalWave.destroy();
@@ -303,30 +307,35 @@ test('seed 4242: countdown decreases across ticks and hits 0:00 at the sixty-sec
   }
 });
 
-test('seed 4242: readout is never x / quota and the bar is not kill-driven', () => {
+test('seed 4242: the readout IS the cohort — kills move it because kills are the finish line', () => {
   const dom = installDom();
   try {
     const h = boot(SEED);
     beginSwarm(h, SEED);
     const beforeKills = paint(h);
-    assert.equal(beforeKills.fig, '0:60');
+    const progress0 = lastProgress(h);
+    const cohort = progress0.total;
+    assert.equal(beforeKills.fig, `${cohort} / ${cohort}`);
     assert.equal(beforeKills.fillPct, 0);
-    assert.equal(beforeKills.kills, '0');
+    assert.equal(beforeKills.word, 'HOSTILES');
+    assert.ok(QUOTA_FIG.test(beforeKills.fig),
+      `the cohort readout is honest x / total, got ${beforeKills.fig}`);
 
     let killed = 0;
     for (let i = 0; i < 12; i++) {
       if (killOne(h)) killed += 1;
+      tick(h, 1);
     }
     const afterKills = paint(h);
-    assert.ok(killed >= 3, `need a handful of kills, got ${killed}`);
-    assert.equal(afterKills.fig, beforeKills.fig, 'kills must not move the countdown');
-    assert.equal(afterKills.fillPct, beforeKills.fillPct, 'kills must not move the elapsed fill');
-    assert.equal(afterKills.word, 'NEXT WAVE');
-    assert.ok(!QUOTA_FIG.test(afterKills.fig));
-    assert.ok(!QUOTA_FIG.test(afterKills.kills), 'kill count is a total, not x / quota');
-    assert.equal(afterKills.kills, String(killed));
-    assert.notEqual(afterKills.aria, 'Wave kill quota');
-    assert.match(afterKills.aria, /^Next wave in 0:\d{2}$/);
+    assert.ok(killed >= 1, `need a kill, got ${killed}`);
+    const expectedRemaining = Math.max(0, cohort - killed);
+    assert.equal(afterKills.fig, `${expectedRemaining} / ${cohort}`,
+      'the figure answers the resolved count, not a clock');
+    assert.notEqual(afterKills.fig, beforeKills.fig, 'kills move the readout — they ARE the wave');
+    assert.ok(afterKills.fillPct > beforeKills.fillPct, 'the bar is resolved share');
+    assert.equal(afterKills.word, 'HOSTILES');
+    assert.equal(afterKills.aria, 'Hostiles remaining');
+    assert.equal(afterKills.now, String(expectedRemaining));
   } finally {
     survivalHud.destroy();
     survivalWave.destroy();
@@ -335,13 +344,12 @@ test('seed 4242: readout is never x / quota and the bar is not kill-driven', () 
   }
 });
 
-test('seed 4242: HUD does not advance its own clock when run:waveProgress stops', () => {
+test('seed 4242: HUD does not advance the count itself — no resolution, no movement', () => {
   const dom = installDom();
   try {
     const h = boot(SEED);
     beginSwarm(h, SEED);
     const frozen = paint(h);
-    assert.equal(frozen.fig, '0:60');
     const progressCount = h.emitted.filter((e) => e.event === 'run:waveProgress').length;
 
     for (let i = 0; i < 180; i++) {
@@ -349,8 +357,9 @@ test('seed 4242: HUD does not advance its own clock when run:waveProgress stops'
       survivalHud.update(DT, h.state);
     }
     const still = hud();
-    assert.equal(still.fig, frozen.fig, 'no event → displayed second does not change');
+    assert.equal(still.fig, frozen.fig, 'no resolution → the cohort count does not change');
     assert.equal(still.fillPct, frozen.fillPct);
+    assert.equal(still.now, frozen.now);
     assert.equal(
       h.emitted.filter((e) => e.event === 'run:waveProgress').length,
       progressCount,
@@ -364,7 +373,7 @@ test('seed 4242: HUD does not advance its own clock when run:waveProgress stops'
   }
 });
 
-test('a duration wave announces survival with actual kills, not admissions', () => {
+test('a cohort wave announces the fight it is — contacts to break, kills that cleared', () => {
   const state = createGameState(SEED);
   const raw = createBus();
   const emitted = [];
@@ -387,21 +396,21 @@ test('a duration wave announces survival with actual kills, not admissions', () 
   bus.emit('run:wavePlanned', { wave: 1, plan });
   bus.emit('run:waveStarted', { wave: 1, tick: 1 });
   const opener = emitted.filter((e) => e.event === 'voice:say').map((e) => e.payload.text);
-  assert.ok(opener.some((t) => /Survive the minute/.test(t)), `swarm opener names the clock: ${opener[0]}`);
+  assert.ok(opener.some((t) => /Break the pack/.test(t)), `swarm opener names the pack: ${opener[0]}`);
+  assert.ok(!/Survive the minute/.test(opener.join('\n')), 'no clock on a cohort wave');
   assert.ok(!/Put down \d+/.test(opener.join('\n')), 'opener must not name a kill quota');
   emitted.length = 0;
   bus.emit('run:waveCleared', {
     wave: 1,
-    completionKind: 'duration',
-    admitted: 40,
+    completionKind: 'cohort',
+    admitted: 12,
     killed: 12,
-    survivors: 8,
+    survivors: 0,
     starved: false,
   });
   const texts = emitted.filter((e) => e.event === 'voice:say').map((e) => e.payload.text);
-  assert.equal(texts[0], 'Wave 1 survived. Twelve down.');
-  assert.ok(!/clear/.test(texts[0]));
-  assert.ok(!/Forty/.test(texts[0]), 'must not tally admissions');
+  assert.equal(texts[0], 'Wave 1 clear. Twelve down.');
+  assert.ok(!/survived/.test(texts[0]), 'a resolved cohort is a clear, not a clock-out');
   assert.equal(waveOpeningLine(1, plan), opener[0]);
   survivalAnnounce.destroy();
 });

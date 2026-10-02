@@ -378,12 +378,54 @@ export function compileDriveRates(recipe, out) {
   return out;
 }
 
+/**
+ * Extra seconds every control jet takes to arrive, ADDED to its family's own recipe attack (so a vector
+ * drive's needle still arrives sooner than an industrial one's puff, by the same margin as authored).
+ *
+ * The recipe attacks are 14-28 ms: at 60 Hz that is one or two presentation ticks, i.e. the jet's first
+ * drawn frame was already 100% of its reach with the collar flash lit (slice 1b, RCS lifecycle). With the
+ * ramp a jet takes ~5 ticks to arrive: first tick a stub, no tick above ~1/3 of its reach.
+ */
+export const IMPULSE_PRESS_RAMP_S = 0.07;
+
+/**
+ * Share of the release during which the packet still holds its whole body (the collar shuts, the head
+ * leaves) before its ROOT starts to leave the nozzle. Small on purpose: the tail has to be spent over
+ * several ticks even for the shortest-release family, so it starts almost at once and eases in.
+ */
+export const IMPULSE_TAPER_START = 0.1;
+
+const IMPULSE_DEFAULT_TIMING = Object.freeze({ attack: 0.03, sustain: 0.05, release: 0.12 });
+
+/**
+ * The ONE timing record an impulse lives and is sampled by: recipe timing with the press ramp added.
+ * The pool's life check, the envelope, the body shape and the event light all read this record, so none
+ * of them can retire an impulse while another is still drawing it (a mismatch there is a hard cut).
+ */
+export function resolveImpulseTiming(recipeTiming, out) {
+  const t = recipeTiming || IMPULSE_DEFAULT_TIMING;
+  out.attack = (t.attack || IMPULSE_DEFAULT_TIMING.attack) + IMPULSE_PRESS_RAMP_S;
+  out.sustain = t.sustain || IMPULSE_DEFAULT_TIMING.sustain;
+  out.release = t.release || IMPULSE_DEFAULT_TIMING.release;
+  out.total = out.attack + out.sustain + out.release;
+  return out;
+}
+
+/**
+ * Pressure envelope of one control-jet impulse at `age` seconds, for a timing record from
+ * resolveImpulseTiming. The attack is a smoothstep (zero slope at ignition): it used to be linear, so the
+ * first tick already carried 76% of the envelope.
+ */
 export function sampleImpulseEnvelope(age, timing) {
   if (age < 0) return 0;
   const a = timing.attack || 0.03;
   const s = timing.sustain || 0.05;
   const r = timing.release || 0.12;
-  if (age < a) return a <= 0 ? 1 : age / a;
+  if (age < a) {
+    if (a <= 0) return 1;
+    const t = age / a;
+    return t * t * (3 - 2 * t);
+  }
   if (age < a + s) return 1;
   if (age < a + s + r) {
     const u = (age - a - s) / Math.max(1e-6, r);
@@ -396,6 +438,36 @@ export function sampleImpulseEnvelope(age, timing) {
     return remain * remain;
   }
   return 0;
+}
+
+/**
+ * The BODY of one control-jet packet, the channel that actually reaches nothing.
+ *
+ * The pressure envelope cannot make a jet go dark: the fragment stage draws `0.55 + 0.9 * envelope` and
+ * the alpha has its own floor, so a card at envelope 0 is still ~26% of its peak brightness. Only
+ * length reaches nothing (the vertex stage collapses a zero-length card), so length is the lifecycle
+ * channel here exactly as it is for the main drive (ribbon/plumeSlug.js, driveEnvelope PLUME_DARK):
+ *
+ *   born   0 -> 1 across the attack: the front runs out of the nozzle, the root stays at the throat.
+ *   taper  1 -> 0 across the release: the FRONT holds where the gas got to and the ROOT leaves the nozzle
+ *          down the jet (the slug detaches and is spent), so a released jet never retracts into its
+ *          nozzle. The caller derives root = reach * born * (1 - taper).
+ *
+ * `born` is the envelope's own attack (one curve, not a parallel one). Writes into and returns `out`.
+ */
+export function sampleImpulseBody(age, timing, out) {
+  const a = timing.attack || 0.03;
+  const s = timing.sustain || 0.05;
+  const r = timing.release || 0.12;
+  out.born = age <= 0 ? 0 : sampleImpulseEnvelope(Math.min(age, a), timing);
+  const u = (age - a - s) / Math.max(1e-6, r);
+  let taper = 1;
+  if (u > IMPULSE_TAPER_START) {
+    const t = Math.min(1, (u - IMPULSE_TAPER_START) / (1 - IMPULSE_TAPER_START));
+    taper = 1 - t * t * (3 - 2 * t);
+  }
+  out.taper = taper;
+  return out;
 }
 
 /**

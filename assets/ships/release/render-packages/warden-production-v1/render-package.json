@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1bd7ce5122bdad32b9e77af6e5f5cbc48f59b1437775f3cbc26ebf21687ad93a",
+  "contentHash": "2654201b8af5b4d75a90357dd66fbda2730543235822fbcac6a97cb7eda74a5d",
   "dynamicGroups": [
     {
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-hook-armor-port-armor.dynamic",
@@ -663,7 +663,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43a534e8eb5f8befb984dfab737681b40f90ad5d6d7518be11ae79abe9bc4490",
+      "geometryHash": "56a8efb179bae740c8156897be0d705ba649db9b87b83ba47e9daec3aaddaaf0",
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 27939,
       "indexed": true,
@@ -713,7 +713,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95c370875a74e0b22c68c6d2dd6d3e480686d9e73f3e902b15016018d72f5781",
+      "geometryHash": "e266e244f70ed0448eb4f2e0068fad58d75253128fc361b6e7fdd31bc9a07969",
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-hook-armor-port-armor.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -813,7 +813,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af4355af0a706d1891f3707fc3d68e7fe7e6b892bea49d3c9e077022b3344c3b",
+      "geometryHash": "2cd9e0f0e47a9383d6ee42992dea5b508842213df9e3b1c3606f997734e74d5f",
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1434,
       "indexed": true,
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "924d72abe548150fdf231da6a8def4279a353596e0a60ecefa7e3e3110542572",
+      "geometryHash": "e4e6c9bee571b98d51f4d5fba2292f9e4b2793e5bfad036297609488d4f0cfff",
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 28041,
       "indexed": true,
@@ -1013,7 +1013,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2be6adc773ab37d07f79b25988899568b6462d7eef3dff423aa70fcb11a2302",
+      "geometryHash": "0a9858729337cb07dd2bdcb2ad0d4e6f554ed9d1930c2c576db4c5b1ee064fa2",
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-lights-cyan-gold.primitive.0",
       "indexCount": 2238,
       "indexed": true,
@@ -1088,7 +1088,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f15dde30244f1d8b58306c2fa8bab0db2cd6d644fdbae2ddd6c92872b0c846a",
+      "geometryHash": "a9fe2399a03c28261686e0fb1cc97aeefd5a28700d71e52878107cf462c2d9f1",
       "id": "sf.render.warden-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 17406,
       "indexed": true,
@@ -3105,19 +3105,19 @@
       "sha256": "e99eee2ed41ec29e8c387dd2cf7091a2e88635723acda14503054a83fe36eb67"
     },
     "sourceGlb": {
-      "bytes": 992748,
-      "sha256": "4dfa652f564cf16f15e7ce331eeeccb2d7f84a3e346cffde76f93d3c1e3827cb",
+      "bytes": 992716,
+      "sha256": "84d0e7a1625be78a612463ee52a9b259e20d1d968196f6c6e6200e4de460f1cc",
       "uri": "warden_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1730608,
-    "sha256": "96e013a590e91655edfaf154a6354cc2718cfc19ad924636728dc8b64ce3f1f7",
+    "bytes": 1730548,
+    "sha256": "87d752a08a98b25bad0fbfe352e9d74e25d44a4e5b2bf8050b6d4874419260c3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3948,9 +3948,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 6748,
+      "bytes": 7236,
       "rigId": "hull",
-      "sha256": "7b1af365f04c192bdabc433b67f7210718bda8ab947ad20918b098c4eccc1812",
+      "sha256": "b349f256abf79f33950b74e767c3b5c75fa3632241dbd24a3537f5297d6b6582",
       "uri": "assets/ships/motions/warden-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -4549,7 +4549,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1.glb"
   },
-  "runtimeHash": "02d65f9db59a91230948edc7bafa0a8c95395329a9609e1ed8f85d9a4d183f29",
+  "runtimeHash": "e6405232a8b7ff7f54c18eff8cbf43436070d8c46168d30356eef81891bf1f59",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

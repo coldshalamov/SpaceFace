@@ -48,3 +48,17 @@ test('the opening lesson keeps the body count and holds the pack for 45 seconds'
   const second = planWave({ ...BASE, wave: 2, teachOpening: true });
   assert.equal(second.openingLesson, undefined, 'only the first wave teaches');
 });
+
+// SF-061 — the promise is an offer, not a hostage. A player who shoots the hull and ignores the
+// rock clears the wave on the same kill clock as everyone else: nothing in the completion
+// contract, the objective, or the quota gates on the lesson move being performed.
+test('refusing the lesson move still clears the wave on the ordinary kill clock', () => {
+  const plain = planWave(BASE);
+  const taught = planWave({ ...BASE, teachOpening: true });
+  assert.deepEqual(taught.completionRules, plain.completionRules,
+    'the wave resolves identically whether or not the lesson is used');
+  assert.equal(taught.objective.kind, plain.objective.kind);
+  assert.equal(taught.swarm.killTarget, plain.swarm.killTarget,
+    'the quota must not grow a lesson dependency');
+  assert.equal(taught.swarm.concurrent, plain.swarm.concurrent);
+});

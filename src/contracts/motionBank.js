@@ -1281,6 +1281,16 @@ export function bindAuthoredMotion(root, bank, options = {}) {
     },
 
     /**
+     * The clip a bank-declared event would start, or null. Read-only view of the bank's own event map, so
+     * a bus gate can ask "is this event's verb already playing?" (`clipActive(eventClip(type))`) without
+     * hard-coding clip names per rig.
+     */
+    eventClip(type) {
+      const name = (checked.events || {})[type];
+      return typeof name === 'string' ? name : null;
+    },
+
+    /**
      * Optional bank-declared event map: `events: {'scan:pulse': 'scan'}`. Events without an entry
      * are ignored — the controller never guesses at gameplay semantics.
      */

@@ -34,6 +34,7 @@ import {
   sampleFieldAcceleration,
 } from '../src/core/fields/fieldKernel.js';
 import { createGameState } from '../src/core/gameState.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createRunState } from '../src/core/runState.js';
 import {
   decodeCombatLabBuildCode,
@@ -570,10 +571,23 @@ test('live Storm relays move with simTime through the field kernel', () => {
   survivalArena.update(1 / 60, h.state);
   const at1 = h.fakeFields.live.get(slot).center;
   assert.equal(h.fakeFields.live.get(slot).strength, 0);
-  assert.notDeepEqual({ x: at1.x, z: at1.z }, at0);
-  const expected = placeStormRelays({ x: ANCHOR.x, z: ANCHOR.z }, 45)[0].pos;
-  assert.equal(at1.x, expected.x);
-  assert.equal(at1.z, expected.z);
+  // FB-022: the marker follows the relay BODY, and the room drives the body along its orbit
+  // through the membrane — without a physics owner the body is still at its spawn pose, so
+  // the marker holds while the authored pose has walked away. The servo command is the proof
+  // the room is still moving the relay with simTime.
+  const relay0 = h.state.entityList.find((e) => e.data && e.data.roomToyId === 'relay_0');
+  assert.ok(relay0, 'the relay materialized as a body');
+  assert.equal(at1.x, relay0.pos.x);
+  assert.equal(at1.z, relay0.pos.z);
+  const command = consumePhysicsCommand(relay0);
+  assert.ok(command && command.control, 'the room commands the relay through the SG-02 membrane');
+  assert.ok(
+    command.control.mode === 'relay_orbit' || command.control.mode === 'relay_reanchor',
+    `relay servo mode is ${command.control.mode}`,
+  );
+  assert.equal(command.control.source, 'survival-arena');
+  const pose = placeStormRelays({ x: ANCHOR.x, z: ANCHOR.z }, 45)[0].pos;
+  assert.notDeepEqual({ x: pose.x, z: pose.z }, at0, 'the authored pose moved under it');
 });
 
 test('exit gate: one build, five distinguishable arena laws', () => {

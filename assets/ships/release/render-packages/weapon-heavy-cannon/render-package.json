@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6d120f78addbfb9c6a8b0fbf027aed9925fb10527f97cb847635ebaf6b4fcc93",
+  "contentHash": "27182d8d26bf69a34543f6ee81855458f64624504693ba6097215de775208ec1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1541,7 +1541,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -1865,7 +1865,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
-  "runtimeHash": "f8c4cf043a16692c0ba397336e2a6dc00a74e7c3b2636afa050da78188949587",
+  "runtimeHash": "8cb257e4193b1143ca33faba5a29b4d78e0b48bff1a22d3becfe5ef17b089b91",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

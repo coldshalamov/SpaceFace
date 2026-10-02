@@ -43,7 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| fight seam — §1C rows 178/179/200/202 next (flak interception, dreadnought phasing, hit confirmation landed) | devin-fight | IN PROGRESS | `src/systems/{countermeasures,weapons,fields,mines}.js`, `src/combat/`, `src/data/{enemies,combatDefs,weapons}.js`, `src/ai/combatDoctrine.js`, `test/` new focused tests, `build_map.md` §1C, `design/program/NOW.md` | rows 96+221+231+234 landed; land each row by pathspec |
+| swarm seam — §1C open rows | devin-swarm | IN PROGRESS | `src/data/swarmMode.js`, `src/systems/{survivalWavePlanner,survivalWave,survivalAnnounce,capitalBossRuntime}.js`, `test/` focused tests, `build_map.md` §1C, `design/program/NOW.md` | rows 97–101 + 180 + 203 + 232 + 233 + 235(FB-022) landed — swarm seam drained (FB-028 stays ORRERY). Capital champions live at waves 20/30, all six boss rooms authored, lawful roster + hunter tricks shipped. Next: take another §1C seam or INFERENCE row |
 
 ## Remaster machine
 

@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "79e0fc874645122903e6db7392dee94509965a10ed3f8e93ffdf20d73cdae4dc",
+  "contentHash": "040438c56cdafe0e614244e49ac1d9a2f4e062ec51aceb5f0b1a13756d520b05",
   "dynamicGroups": [
     {
       "id": "sf.render.sensor-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -2780,7 +2780,7 @@
     },
     "sourceManifest": {
       "bytes": 218953,
-      "sha256": "7d3ed33efac8c655a9830e51f34d6af8787692142af6a1f1004df6517ca967f3",
+      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
       "uri": "pilots.json"
     }
   },
@@ -3877,7 +3877,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sensor_mast.glb"
   },
-  "runtimeHash": "a629e7fdb16ac34c50c7a1c1cdc81d9b20561418b80b1df57ac21afd934ea419",
+  "runtimeHash": "e6a3050a3985ab7158117589f0d5adde06deac4140b974447f1b50a403cfc47d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
