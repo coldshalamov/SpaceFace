@@ -66,7 +66,10 @@ function main() {
 
     assert.ok(sector.stations?.length >= 1 && sector.stations.every((station) => hasXZ(station.pos)), `${sector.id}: stations`);
     assert.ok(sector.fields?.length >= 1 && sector.fields.every((field) => hasXZ(field.center)), `${sector.id}: fields`);
-    assert.ok(sector.pois?.length >= 1 && sector.pois.every((poi) => hasXZ(poi.pos)), `${sector.id}: POIs`);
+    // runtimeOwner pois are positioned by their owning program at runtime — poi_helios_choir_tender
+    // deliberately carries no pos so _spawnPOIs cannot mint a decoy beside the unique wreck.
+    assert.ok(sector.pois?.length >= 1 && sector.pois.every((poi) => hasXZ(poi.pos) || poi.runtimeOwner),
+      `${sector.id}: POIs`);
     assert.ok(sector.gates?.length >= 1 && sector.gates.every((gate) => hasXZ(gate.pos)), `${sector.id}: gates`);
     const zones = SECTOR_ZONES[sector.id];
     assert.ok(zones?.length >= 1, `${sector.id}: zones`);
