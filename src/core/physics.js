@@ -231,7 +231,7 @@ export const physics = {
           'spatial-rebuild-layers',
         );
       }
-      hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion);
+      hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion, layers.dynamicsVersion);
       return;
     }
     if (countVisits) countVisits.countEntityVisits(state.entityList.length, 'spatial-rebuild');
@@ -858,6 +858,7 @@ export const physics = {
       index.spatialStatics,
       index.spatialDynamics,
       index.spatialStaticVersion || 0,
+      index.spatialDynamicsVersion || 0,
     );
   },
 
@@ -1229,6 +1230,7 @@ export function spatialHashLayersFromState(state) {
       statics: activity.physicsStatics,
       dynamics: activity.physicsDynamics,
       staticVersion: activity.physicsStaticVersion || 0,
+      dynamicsVersion: activity.physicsDynamicsVersion || 0,
     };
   }
   const index = state && state.entityIndex;
@@ -1238,6 +1240,7 @@ export function spatialHashLayersFromState(state) {
       statics: index.spatialStatics,
       dynamics: index.spatialDynamics,
       staticVersion: index.spatialStaticVersion || 0,
+      dynamicsVersion: index.spatialDynamicsVersion || 0,
     };
   }
   return null;

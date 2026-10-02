@@ -28,6 +28,14 @@ export class SpatialHash {
     this._coherentQueryLimit = 256;
     // id -> { entity, x0, x1, z0, z1, r, stamp } — dynamic membership for incremental rehash
     this._dynamicMembers = new Map();
+    // Lane-version gate for the stale-member sweep: the dynamics lane's membership version
+    // (entityIndex.spatialDynamicsVersion / activity physicsDynamicsVersion) bumps on every
+    // enter/exit, so an unchanged version + same lane array + length proves every member is
+    // revisited this pass and the drop-unvisited sweep is a no-op. null = caller has no lane
+    // version → always sweep.
+    this._dynamicsVersion = null;
+    this._dynamicsCount = -1;
+    this._dynamicsSource = null;
     this._dynamicSyncStamp = 1;
     this._memberRemoveScratch = [];
     // id|entity -> member record — static membership for the incremental diff sync. Statics
@@ -84,6 +92,9 @@ export class SpatialHash {
     this._seenIds.clear();
     this._queryStamp = 1;
     this._staticVersion = null;
+    this._dynamicsVersion = null;
+    this._dynamicsCount = -1;
+    this._dynamicsSource = null;
     this._dynamicQueryVersion = 1;
     this._clearDynamicQueryCache();
     this._coherentQueries.clear();
@@ -140,7 +151,7 @@ export class SpatialHash {
     this._updateActiveDiagnostics();
   }
 
-  rebuildLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0) {
+  rebuildLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, dynamicsVersion = null) {
     if (this._staticVersion !== staticVersion) {
       // Incremental diff instead of clear+reinsert: only spawned/despawned/span-changed
       // statics are rehashed and only the cells they touched leave the query caches — a
@@ -149,7 +160,7 @@ export class SpatialHash {
       this._staticVersion = staticVersion;
     }
 
-    this._syncDynamicLayer(dynamicEntities);
+    this._syncDynamicLayer(dynamicEntities, dynamicsVersion);
     this._updateActiveDiagnostics();
   }
 
@@ -158,9 +169,18 @@ export class SpatialHash {
    * radius/coverage, spawn, die, or fail membership identity checks are rehashed.
    * Stamp-based queryRadius semantics are unchanged (queries always read live entity.pos).
    */
-  _syncDynamicLayer(dynamicEntities) {
+  _syncDynamicLayer(dynamicEntities, dynamicsVersion = null) {
     this._pending.dynamicRebuilds++;
     this.diagnostics.dynamicRebuilds++;
+
+    // Version + length unchanged proves the lane's membership is identical to last pass —
+    // every member gets re-stamped in the walk below, so the drop-unvisited sweep can only
+    // be a no-op. Members that die or lose collides while IN the lane are removed inline,
+    // not by the sweep. An unversioned caller (null) always sweeps.
+    const membershipStable = dynamicsVersion != null
+      && dynamicsVersion === this._dynamicsVersion
+      && dynamicEntities === this._dynamicsSource
+      && dynamicEntities.length === this._dynamicsCount;
 
     let stamp = this._dynamicSyncStamp + 1;
     if (stamp > 0x7fffffff) stamp = 1;
@@ -243,20 +263,25 @@ export class SpatialHash {
     }
 
     // Drop memberships not visited this pass (despawned / left dynamic set / id retired).
-    const removeScratch = this._memberRemoveScratch;
-    removeScratch.length = 0;
-    for (const [id, rec] of this._dynamicMembers) {
-      if (rec.stamp !== stamp) removeScratch.push(id);
+    if (!membershipStable) {
+      const removeScratch = this._memberRemoveScratch;
+      removeScratch.length = 0;
+      for (const [id, rec] of this._dynamicMembers) {
+        if (rec.stamp !== stamp) removeScratch.push(id);
+      }
+      for (let i = 0; i < removeScratch.length; i++) {
+        const id = removeScratch[i];
+        const rec = this._dynamicMembers.get(id);
+        if (!rec) continue;
+        this._removeDynamicMemberRecord(rec);
+        this._dynamicMembers.delete(id);
+        removed++;
+      }
+      removeScratch.length = 0;
     }
-    for (let i = 0; i < removeScratch.length; i++) {
-      const id = removeScratch[i];
-      const rec = this._dynamicMembers.get(id);
-      if (!rec) continue;
-      this._removeDynamicMemberRecord(rec);
-      this._dynamicMembers.delete(id);
-      removed++;
-    }
-    removeScratch.length = 0;
+    this._dynamicsVersion = dynamicsVersion;
+    this._dynamicsCount = dynamicEntities.length;
+    this._dynamicsSource = dynamicEntities;
 
     if (reinserts > 0 || removed > 0) {
       this._compactActiveBuckets(

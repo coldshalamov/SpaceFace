@@ -177,7 +177,9 @@ function ensureRuntime(state) {
       physicsStatics: [],
       physicsDynamics: [],
       physicsStaticVersion: 0,
+      physicsDynamicsVersion: 0,
       _staticEntities: [],
+      _dynamicEntities: [],
       _staticAuthorityVersion: entityIndexPhysicsStaticVersion(state),
       _staticMembershipDirty: false,
       exactIds: [],
@@ -744,6 +746,7 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     runtime.currentEntityIds.add(entity.id);
     entity._physicsPartition = 2;
     runtime.physicsDynamics.push(entity);
+    runtime.physicsDynamicsVersion++;
     runtime.exactIds.push(entity.id);
     runtime.counts.physics += 1;
   }
@@ -1119,6 +1122,20 @@ function classifyWorld(state, runtime) {
     runtime._staticAuthorityVersion = staticAuthorityVersion;
     runtime._staticMembershipDirty = false;
   }
+  // Dynamics get the same membership-version treatment: the classify pass rebuilds the lane
+  // each run, but the layered hash's stale-member sweep only needs to fire when the member
+  // set actually changed. Identity order can shuffle without membership changing — a reorder
+  // over-bumps, which only costs a sweep, never correctness.
+  const priorDynamics = runtime._dynamicEntities;
+  let dynamicMembershipChanged = priorDynamics.length !== dynamics.length;
+  for (let i = 0; !dynamicMembershipChanged && i < dynamics.length; i++) {
+    if (priorDynamics[i] !== dynamics[i]) dynamicMembershipChanged = true;
+  }
+  if (dynamicMembershipChanged) {
+    runtime.physicsDynamicsVersion++;
+    priorDynamics.length = dynamics.length;
+    for (let i = 0; i < dynamics.length; i++) priorDynamics[i] = dynamics[i];
+  }
 
 }
 
@@ -1186,6 +1203,7 @@ export function resetActivityRuntimeForRestore(state) {
   runtime.classifiedTick = -1;
   runtime.classifiedStaticAuthority = null;
   runtime._staticMembershipDirty = true;
+  if (runtime._dynamicEntities) runtime._dynamicEntities.length = 0;
   return true;
 }
 

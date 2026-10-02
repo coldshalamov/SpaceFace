@@ -1695,6 +1695,10 @@ export const world = {
       }
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
+      // Register the stamp with the counted lane — the delete path above registers its clear;
+      // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
+      // so every lookup takes the self-heal walk and the lane never bumps.
+      registerEntityWorldRecordId(state && state.entityIndex, e);
     });
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);

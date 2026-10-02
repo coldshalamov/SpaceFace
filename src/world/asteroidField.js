@@ -23,6 +23,7 @@ export function ensureAsteroidField(state) {
   let field = world.asteroidField;
   if (field && field.schema === ASTEROID_FIELD_SCHEMA && Array.isArray(field.rocks)) {
     if (!(field.byId instanceof Map)) field.byId = new Map(field.rocks.map((row) => [row.id, row]));
+    if (!(field.dirtyPoseIds instanceof Set)) field.dirtyPoseIds = new Set();
     if (!(field.grid instanceof Map)) rebuildGrid(field);
     return field;
   }
@@ -31,6 +32,7 @@ export function ensureAsteroidField(state) {
     version: 0,
     rocks: [],
     byId: new Map(),
+    dirtyPoseIds: new Set(),
     grid: new Map(),
   };
   world.asteroidField = field;
@@ -137,6 +139,7 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.rocks.push(rec);
   field.byId.set(id, rec);
   gridAdd(field, rec);
+  field.dirtyPoseIds.add(id);
   field.version++;
   return rec;
 }
@@ -205,7 +208,7 @@ export function dropAsteroidFieldSector(state, sectorId) {
   return dropped;
 }
 
-function catchUpFieldRock(rec, simTime) {
+function catchUpFieldRock(field, rec, simTime) {
   if (!rec) return rec;
   const toT = Number.isFinite(simTime) ? simTime : 0;
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
@@ -229,6 +232,7 @@ function catchUpFieldRock(rec, simTime) {
     rec.angVel = finite(advanced.angVel, rec.angVel);
   }
   rec.lastExactT = toT;
+  if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
   return rec;
 }
 
@@ -292,7 +296,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     : null;
   if (!spawn) return null;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  catchUpFieldRock(rec, simTime);
+  catchUpFieldRock(ensureAsteroidField(state), rec, simTime);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
   const optic = isOpticRockData(data);

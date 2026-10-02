@@ -16041,9 +16041,22 @@ export const render = {
         || this._worldFieldPoseVersion !== fieldVersion
         || this._worldFieldPoseCount !== fieldCount)
       && field && Array.isArray(field.rocks)) {
-      for (let i = 0; i < field.rocks.length; i++) {
-        if (poseRow(field.rocks[i])) posedField++;
+      const fieldDirty = field.dirtyPoseIds;
+      if (this._worldFieldPoseOriginSeq !== originSeq || !(fieldDirty instanceof Set)) {
+        // Origin rebase touches every row's local pose; a table without the dirty journal
+        // (pre-journal schema) can't prove which rows moved — full walk either way.
+        for (let i = 0; i < field.rocks.length; i++) {
+          if (poseRow(field.rocks[i])) posedField++;
+        }
+      } else {
+        // Membership churn bumps version without moving a single live row's pose — walk only
+        // the ids the table journaled (inserts + in-place pose writes). Removed rows miss byId.
+        for (const id of fieldDirty) {
+          const row = field.byId ? field.byId.get(id) : null;
+          if (row && poseRow(row)) posedField++;
+        }
       }
+      if (fieldDirty instanceof Set) fieldDirty.clear();
       this._worldFieldPoseOriginSeq = originSeq;
       this._worldFieldPoseVersion = fieldVersion;
       this._worldFieldPoseCount = fieldCount;
@@ -16057,7 +16070,16 @@ export const render = {
       && (this._worldDressingPoseOriginSeq !== originSeq
         || this._worldDressingPoseVersion !== dressingVersion
         || this._worldDressingPoseCount !== dressingCount)) {
-      for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
+      const dressingDirty = dressing.dirtyPoseIds;
+      if (this._worldDressingPoseOriginSeq !== originSeq || !(dressingDirty instanceof Set)) {
+        for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
+      } else {
+        for (const id of dressingDirty) {
+          const row = dressing.byId ? dressing.byId.get(id) : null;
+          if (row) poseRow(row);
+        }
+      }
+      if (dressingDirty instanceof Set) dressingDirty.clear();
       this._worldDressingPoseOriginSeq = originSeq;
       this._worldDressingPoseVersion = dressingVersion;
       this._worldDressingPoseCount = dressingCount;

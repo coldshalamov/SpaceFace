@@ -524,6 +524,7 @@ function ensureEntityIndex(state) {
     spatialStatics: [],
     spatialDynamics: [],
     spatialStaticVersion: 0,
+    spatialDynamicsVersion: 0,
     physicsBodies: [],
     physicsStatics: [],
     physicsDynamics: [],
@@ -598,6 +599,7 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.spatialStatics)) index.spatialStatics = [];
   if (!Array.isArray(index.spatialDynamics)) index.spatialDynamics = [];
   if (!Number.isFinite(index.spatialStaticVersion)) index.spatialStaticVersion = 0;
+  if (!Number.isFinite(index.spatialDynamicsVersion)) index.spatialDynamicsVersion = 0;
   if (!Array.isArray(index.physicsBodies)) index.physicsBodies = [];
   if (!Array.isArray(index.physicsStatics)) index.physicsStatics = [];
   if (!Array.isArray(index.physicsDynamics)) index.physicsDynamics = [];
@@ -660,6 +662,7 @@ function clearEntityIndex(index) {
   index.collidables.length = 0;
   index.spatialStatics.length = 0;
   index.spatialDynamics.length = 0;
+  index.spatialDynamicsVersion++;
   index.physicsBodies.length = 0;
   index.physicsStatics.length = 0;
   index.physicsDynamics.length = 0;
@@ -689,6 +692,7 @@ function appendEntityIndex(index, e) {
     index.collidables.push(e);
     if (movable) {
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
@@ -877,7 +881,7 @@ function removeEntityIndex(index, e) {
   if (e.id != null) index._indexedIds.delete(e.id);
   removeFromIndexArray(index.collidables, e);
   const removedSpatialStatic = removeFromIndexArray(index.spatialStatics, e);
-  removeFromIndexArray(index.spatialDynamics, e);
+  if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   removeFromIndexArray(index.physicsBodies, e);
   const removedPhysicsStatic = removeFromIndexArray(index.physicsStatics, e);
   removeFromIndexArray(index.physicsDynamics, e);
@@ -1063,8 +1067,9 @@ export function syncEntityTypeLaneMembership(index, e) {
     if (isMovable) {
       if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
-      removeFromIndexArray(index.spatialDynamics, e);
+      if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
     }
@@ -1157,6 +1162,7 @@ export function syncEntityCollisionIndexMembership(index, e) {
     index.collidables.push(e);
     if (isMovableEntity(e)) {
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
@@ -1164,7 +1170,7 @@ export function syncEntityCollisionIndexMembership(index, e) {
   } else {
     removeFromIndexArray(index.collidables, e);
     if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
-    removeFromIndexArray(index.spatialDynamics, e);
+    if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   }
   index.version++;
 }
@@ -1190,7 +1196,7 @@ function removeEntitiesFromIndex(index, corpses) {
   if (indexed === 0) return;
   removeCorpsesFromIndexArray(index.collidables, removed);
   index.spatialStaticVersion += removeCorpsesFromIndexArray(index.spatialStatics, removed);
-  removeCorpsesFromIndexArray(index.spatialDynamics, removed);
+  index.spatialDynamicsVersion += removeCorpsesFromIndexArray(index.spatialDynamics, removed);
   removeCorpsesFromIndexArray(index.physicsBodies, removed);
   index.physicsStaticVersion += removeCorpsesFromIndexArray(index.physicsStatics, removed);
   removeCorpsesFromIndexArray(index.physicsDynamics, removed);
