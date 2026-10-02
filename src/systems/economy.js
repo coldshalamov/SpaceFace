@@ -624,6 +624,12 @@ function deserializeEventMods(raw) {
   return out;
 }
 
+function hasValidMarketQuotes(entry) {
+  return Number.isSafeInteger(entry.lastMid) && entry.lastMid > 0
+    && Number.isSafeInteger(entry.lastBuy) && entry.lastBuy >= entry.lastMid
+    && Number.isSafeInteger(entry.lastSell) && entry.lastSell > 0 && entry.lastSell <= entry.lastMid;
+}
+
 function serializeMarketRow(cid, entry, preserveHistory) {
   const row = [
     cid,
@@ -633,7 +639,9 @@ function serializeMarketRow(cid, entry, preserveHistory) {
     MARKET_ROLE_CODE[entry.role] ?? 0,
     serializeEventMods(entry.eventMods),
   ];
-  if (preserveHistory) row.push(serializeHistory(entry.history));
+  const preserveQuotes = hasValidMarketQuotes(entry);
+  if (preserveHistory || preserveQuotes) row.push(preserveHistory ? serializeHistory(entry.history) : null);
+  if (preserveQuotes) row.push(entry.lastMid, entry.lastBuy, entry.lastSell);
   return row;
 }
 
@@ -647,6 +655,9 @@ function deserializeMarketRow(cid, raw) {
       role: raw && raw.role,
       eventMods: raw && raw.eventMods,
       history: raw && raw.history,
+      lastMid: raw && raw.lastMid,
+      lastBuy: raw && raw.lastBuy,
+      lastSell: raw && raw.lastSell,
     };
   }
   return {
@@ -657,6 +668,9 @@ function deserializeMarketRow(cid, raw) {
     role: MARKET_ROLE_FROM_CODE[raw[4]] || 'none',
     eventMods: deserializeEventMods(raw[5]),
     history: raw[6],
+    lastMid: raw[7],
+    lastBuy: raw[8],
+    lastSell: raw[9],
   };
 }
 
@@ -3756,13 +3770,21 @@ export const economy = {
           lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: deserializeEventMods(e.eventMods),
         };
         if (def) {
+          const preserveQuotes = data.balanceVersion === BALANCE.version
+            && entry.baseEq > 0 && hasValidMarketQuotes(e);
           entry.stock = Number.isFinite(entry.stock) ? Math.max(0, entry.stock) : 0;
           if (data.balanceVersion !== BALANCE.version || !(entry.baseEq > 0)) {
             const info = stationInfo(this.state, sid);
             entry.baseEq = (BALANCE.commodities[cid]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[info?.size] || 1);
             entry.equilibrium = economyEquilibriumForListing(info, cid, entry.role, entry.baseEq);
           }
-          this.recomputeLivePrices(entry, def, sid, cid);
+          // A saved quote belongs to the last economy pulse. Continue must not advance the
+          // time-varying price curve ahead of that pulse; old/invalid or rebalanced saves reprice.
+          if (preserveQuotes) {
+            entry.lastMid = e.lastMid;
+            entry.lastBuy = e.lastBuy;
+            entry.lastSell = e.lastSell;
+          } else this.recomputeLivePrices(entry, def, sid, cid);
           const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
           const restoredHistory = sanitizeHistory(e.history);
           if (restoredHistory.length >= 2) entry.history = restoredHistory;
