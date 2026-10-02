@@ -86,6 +86,8 @@ absolute metres.
 | `work_lamp(..., lens, halo=True)` | lit front lens only (matte back cap); `halo` adds a lit ring on the lens rim so the lamp reads from overhead |
 | `box(..., rot=(rx, ry, rz), mirror_flip=True)` | tilted box; mirrored copy mirrors the rotation |
 | `uv_scale=k` on `loft`, `plate`, `plate_v`, `box`, `cylinder`, `ring`, `sweep`, `beams`, `boxes`, `truss`, `ladder`, `annulus`, `sphere`, `rock` | per-part UV density: k multiplies the world-locked 4 m tile — use <1 on station-size panels |
+| `stencil.stamp(s, name, [(text, cap_height_m, tracking), ...], (x, y), surface_part, finish)` (`stencil.py`) | hand-cut hero lettering as real geometry in an existing finish: bridged counters, chipped edges, overspray, seeded, conformal to `surface_part` by ray-cast. Reads toward the nose, tops to port. The Hitch wears DIE LAUGHING from here; `test/kestrel-hero-marking.test.mjs` fails if a rebuild drops it |
+| `skin.studs / run / hatch / segments / hit` (`skin.py`) | close-zoom hardware seated on the real skin of a part (fasteners, cable runs, hatch coamings): ray-cast heights, returns points for `beams` / `boxes` / `sweep` - one mesh per class, no new draw |
 | `s.hook_part('HOOK_SECONDARY_X', obj, ...)` | keeps damage parts (shed-first secondary, sensor, armour) as their own meshes |
 | `s.detail = 1` / `2` | parts added while set are dropped at LOD2 / LOD1+ |
 | `s.hook('HOOK_DRIVE_CORE', pos)`, `s.socket(name, pos)` | override default drive / socket positions |

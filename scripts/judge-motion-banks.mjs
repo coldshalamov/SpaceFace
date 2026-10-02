@@ -121,7 +121,11 @@ export function judgeBank(bank, T = THRESHOLDS) {
     const flags = [];
     if (worst.kink > T.snapKink) flags.push('snap');
     if (clip.loop && (endPos > T.loopPosePop || endAng > T.loopAnglePopDeg || loopVel > T.loopVelPop)) flags.push('loop-pop');
-    if (!clip.loop && clip.endMode === 'rest' && (restPos > T.settlePos || restAng > T.settleAngleDeg)) flags.push('no-settle');
+    // An overlay clip (e.g. the gate emitter's charge surge) returns to whatever base pose runs under
+    // it, not to bank rest, so it is exempt from the rest test.
+    if (!clip.loop && !clip.overlay && clip.endMode === 'rest' && (restPos > T.settlePos || restAng > T.settleAngleDeg)) {
+      flags.push('no-settle');
+    }
     if (peakDeg > T.whipDegPerS) flags.push('whip');
     if (peakWu > T.dartWuPerS) flags.push('dart');
     rows.push({

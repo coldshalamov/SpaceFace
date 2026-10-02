@@ -98,6 +98,11 @@ test('judge: a loop that does not close, a clip that does not come home, and an 
   };
   assert.ok(!rowFor(stow).flags.includes('no-settle'), 'a clip that ends at rest has settled, wherever it started');
 
+  // An overlay returns to whatever base pose runs underneath it (the gate emitter's charge surge
+  // orbits the held index pose), so it is exempt from the rest test.
+  const surge = { ...noHome, name: 'surge', overlay: true };
+  assert.ok(!rowFor(surge).flags.includes('no-settle'), 'an overlay clip is exempt from the rest test');
+
   const whip = {
     name: 'whip', durationS: D, loop: true, endMode: 'rest',
     channels: [denseChannel('rotation', D, (t) => rotZ(2 * Math.PI * 2 * t))], // 2 rev/s = 720 deg/s
