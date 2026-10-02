@@ -48,6 +48,7 @@ import {
 } from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -1597,6 +1598,9 @@ export const encounterDirector = {
     data.despawnAt = this.now();
     if (entity.collides !== false) bumpCollidesFlipEpoch();
     entity.collides = false;
+    // T→F flip: vacate the collidables/spatial rows before the despawnAt sweep
+    // carries them as stale members for the remaining dwell.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, entity);
     if (entity.flags) delete entity.flags.persistent;
     return true;
   },

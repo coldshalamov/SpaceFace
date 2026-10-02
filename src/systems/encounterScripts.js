@@ -39,6 +39,7 @@ import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctri
 import { isPdScreenActor } from '../ai/pdScreen.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -1590,6 +1591,9 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
   annotation.status = status;
   if (entity.collides !== false) bumpCollidesFlipEpoch();
   entity.collides = false;
+  // T→F flip: the player_collected leg skips retireFreightPickup (which also re-keys),
+  // so this is the only place the stale collidable/spatial member gets vacated.
+  syncEntityCollisionIndexMembership(state && state.entityIndex, entity);
   if (entity.flags) delete entity.flags.persistent;
   if (status !== 'player_collected') d.retireFreightPickup(entity, status);
   publishFreightCustody(d, live, record, reason);
