@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5d1f719b314ec0cbf390f2477d19f8122064a450fbdfdea347daf94259f26cd7",
+  "contentHash": "b334e27db355e3fe2c453a6881d5186a762a1b8c04cc465faf9d036f8ec16b83",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -643,7 +643,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3737495ccf9893a9ee8713a6491d0bf61ac19e428409ec440006bd3a71be3ea",
+      "geometryHash": "ba5aeb86e722d2a5fb840a96ba40cbec6c94ef2b1e90f9cac3a7882a36882e20",
       "id": "sf.render.mule-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -652,7 +652,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.mule-production-v1.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 802
+      "vertexCount": 810
     },
     {
       "bounds": {
@@ -1133,26 +1133,26 @@
       "bounds": {
         "max": [
           7.7992753982543945,
-          1.2201882600784302,
+          1.5193257331848145,
           3.4370224475860596
         ],
         "min": [
           -8.119999885559082,
-          -1.0301882028579712,
+          -1.0303235054016113,
           -3.4370224475860596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "beecce9ff20e41174f5279855b4cf615d022dce67431158077c7aea7919e6fcd",
+      "geometryHash": "a4f34748283a48eb1e7e1d08e3fe426ca846e5e24dcc2f9bc7a7e6fdb593acde",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 19812,
+      "indexCount": 25068,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 6395
+      "vertexCount": 9707
     },
     {
       "bounds": {
@@ -1193,7 +1193,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f8f256ee78e73768d462d4f9f290c7b8ac4dfb8755167fed0028a6edefeb366",
+      "geometryHash": "7902af8a427171a7b062cc9cf6d25a2ed8773310157bf39a3057080dd9d5384a",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 8016,
       "indexed": true,
@@ -3299,19 +3299,19 @@
       "sha256": "7823e1b0807741c5418f806650c1ea5191519492d6a4939754da83d5bbdc3fa6"
     },
     "sourceGlb": {
-      "bytes": 672804,
-      "sha256": "7e41d26079e11bc8e08537c213a1b1155dc2812c44e5adcaa22e16cd4f80bbd0",
+      "bytes": 713036,
+      "sha256": "026bd9f7cb139f574fb8e28296c6a0599849497f915d57b8a991ddfb5f3f55f3",
       "uri": "mule_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 214094,
+      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1070688,
-    "sha256": "e9102243a4cac65685b5ca1d8b79277d2b529f4d3da0b3b8340cf3042bb0263c",
+    "bytes": 1129044,
+    "sha256": "6c18aaf4ed3eb76d90f7eab54c83d28e5ffdff990c80b9b190a8246da9a0398a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4156,7 +4156,7 @@
     "motionBank": {
       "bytes": 6746,
       "rigId": "hull",
-      "sha256": "67d16e034aebbf1ab237e97e8a74bdd5fb98660f2fae92535a1030d0c6cc42a4",
+      "sha256": "bb264065205b155095b150d7b218508df3d9d04b10a3e5e7e9692a1f527e26dc",
       "uri": "assets/ships/motions/mule-production-v1.motion.json"
     },
     "nodeCount": 38,
@@ -4812,7 +4812,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
-  "runtimeHash": "9f48f8850baaa97dff733e18f2aeaf5f3eb48e39f154d746b4f15e0b8621886d",
+  "runtimeHash": "423dfa747541e7d8e3bed00d1caba6a27aa3fb0cc96c644bc63d17b66b684451",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

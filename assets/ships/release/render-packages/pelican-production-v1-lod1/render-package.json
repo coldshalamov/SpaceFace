@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "448d17cc7ca90082b6c349bbc1310ce0e30a853e98ae05e4120f74bcdbc97156",
+  "contentHash": "8475b78f0be028ac26f673db7b770e69e0a38fa9d247091eb43d8d6a6421de3b",
   "dynamicGroups": [
     {
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-hip-hull.dynamic",
@@ -743,17 +743,17 @@
       "bounds": {
         "max": [
           -1.4282476902008057,
-          0.1988002840833941,
-          -1.2006730706388251
+          0.1987968680916694,
+          -1.200641703188363
         ],
         "min": [
-          -5.892555236816406,
-          -0.19848725539019493,
-          -2.349618825227569
+          -5.8924784660339355,
+          -0.19848383939847025,
+          -2.349567699849662
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b71e79999d62ce776653b4263a2ad8d86566e91ee6e46878efcd4bd5dc5d7714",
+      "geometryHash": "b63f437620371d2097eead7a015526b260624a91dece942fbc178c38fa8055b8",
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-hip-hull.primitive.0",
       "indexCount": 165,
       "indexed": true,
@@ -768,17 +768,17 @@
       "bounds": {
         "max": [
           -1.4145569801330566,
-          -0.00557427046835357,
-          -1.2008250498952115
+          -0.0055720298125110646,
+          -1.2007704777546164
         ],
         "min": [
-          -5.894683837890625,
-          -0.19863250354290074,
-          -2.3494668459711825
+          -5.894787788391113,
+          -0.1986347423360981,
+          -2.3494389252834083
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41e3eb3228f9ae71535ba9c7d6e878bc7d2f1787071a5729f189f534445fbf92",
+      "geometryHash": "ff76d27bb8fe1ce4a6a3738548a2e5b895527debd361dd4882e5c23bcf69ed39",
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-hip-mechanical.primitive.0",
       "indexCount": 147,
       "indexed": true,
@@ -978,9 +978,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ea48e76875dbc3e1acab7cbaa75e384dc025a23853c89062d72417d1d0ce4ddc",
+      "geometryHash": "252ec78100f11c6b5f1461dbf70164b4abdb9904f959e959f3ccd7e020693282",
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 7137,
+      "indexCount": 7134,
       "indexed": true,
       "materialHash": "c707cc31959c7c52977f3e31855950b1aed55e360b6f9fd2ba29357a26cf98fa",
       "materialPipelineKey": "opaque",
@@ -1078,16 +1078,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "007b17852fe414faceafa354d0daa8e5e70bfd9044237217569c90cb03672498",
+      "geometryHash": "189e4a9f05e8dfd65738df4006417f2fc0bafcae594107fc4ef5763c57f182ab",
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 4794,
+      "indexCount": 4797,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical.001",
       "nodeId": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2010
+      "vertexCount": 2011
     },
     {
       "bounds": {
@@ -1678,21 +1678,21 @@
     {
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-hip-hull",
       "localTransform": [
-        2.2321537733078003,
+        2.232115387916565,
         0,
         0,
         0,
         0,
-        2.2321537733078003,
+        2.232115387916565,
         0,
         0,
         0,
         0,
-        2.2321537733078003,
+        2.232115387916565,
         0,
-        -3.660401463508606,
+        -3.6603630781173706,
         0.00015651434659957886,
-        -1.775145947933197,
+        -1.7751047015190125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1707,42 +1707,42 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.pelican-production-v1-lod1.body",
       "worldTransform": [
-        2.2321537733078003,
+        2.232115387916565,
         0,
         0,
         0,
         0,
-        2.2321537733078003,
+        2.232115387916565,
         0,
         0,
         0,
         0,
-        2.2321537733078003,
+        2.232115387916565,
         0,
-        -3.660401463508606,
+        -3.6603630781173706,
         0.00015651434659957886,
-        -1.775145947933197,
+        -1.7751047015190125,
         1
       ]
     },
     {
       "id": "sf.render.pelican-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-hip-mechanical",
       "localTransform": [
-        2.240063428878784,
+        2.2401154041290283,
         0,
         0,
         0,
         0,
-        2.240063428878784,
+        2.2401154041290283,
         0,
         0,
         0,
         0,
-        2.240063428878784,
+        2.2401154041290283,
         0,
-        -3.654620409011841,
-        -0.10210338700562716,
-        -1.775145947933197,
+        -3.654672384262085,
+        -0.10210338607430458,
+        -1.7751047015190125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1757,21 +1757,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.pelican-production-v1-lod1.body",
       "worldTransform": [
-        2.240063428878784,
+        2.2401154041290283,
         0,
         0,
         0,
         0,
-        2.240063428878784,
+        2.2401154041290283,
         0,
         0,
         0,
         0,
-        2.240063428878784,
+        2.2401154041290283,
         0,
-        -3.654620409011841,
-        -0.10210338700562716,
-        -1.775145947933197,
+        -3.654672384262085,
+        -0.10210338607430458,
+        -1.7751047015190125,
         1
       ]
     },
@@ -2579,18 +2579,18 @@
     },
     "sourceGlb": {
       "bytes": 497840,
-      "sha256": "7447deb078179338b8049383a2ba003956de49590bb876a027d0aae9dce40b4e",
+      "sha256": "0470d153eff8b082eca129fb71059eecb7cbc3a9d32ae008972c1b01f4742027",
       "uri": "pelican_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 214094,
+      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 696708,
-    "sha256": "9d39271b79c0ee5251142ea20a53a87b0b18e51f0eb2bf09704dcde10505f1ef",
+    "bytes": 696652,
+    "sha256": "1771f951052560c5aed037811ef4375f65ce89bad2eeb3b95d9386819edd2605",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3418,7 +3418,7 @@
     "motionBank": {
       "bytes": 6749,
       "rigId": "hull",
-      "sha256": "89e19547249d33e403946a7a2447ba897399c573a2f1090d80398cf5a35033e8",
+      "sha256": "288f88a357305f0c48cfa712ae4b01a04a9af09dac285f5aa5774b8f41f7df86",
       "uri": "assets/ships/motions/pelican-production-v1.motion.json"
     },
     "nodeCount": 36,
@@ -3538,21 +3538,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2321537733078003,
+          2.232115387916565,
           0,
           0,
           0,
           0,
-          2.2321537733078003,
+          2.232115387916565,
           0,
           0,
           0,
           0,
-          2.2321537733078003,
+          2.232115387916565,
           0,
-          -3.660401463508606,
+          -3.6603630781173706,
           0.00015651434659957886,
-          -1.775145947933197,
+          -1.7751047015190125,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_HIP_Hull",
@@ -3567,21 +3567,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.240063428878784,
+          2.2401154041290283,
           0,
           0,
           0,
           0,
-          2.240063428878784,
+          2.2401154041290283,
           0,
           0,
           0,
           0,
-          2.240063428878784,
+          2.2401154041290283,
           0,
-          -3.654620409011841,
-          -0.10210338700562716,
-          -1.775145947933197,
+          -3.654672384262085,
+          -0.10210338607430458,
+          -1.7751047015190125,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_HIP_Mechanical",
@@ -4015,7 +4015,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1_lod1.glb"
   },
-  "runtimeHash": "b9c423375dd1f998b0134c6fc54031c83029d50b4b3d788f214e06836e9e09bd",
+  "runtimeHash": "8216939446013d108cb0da6a9569cba6a1d3ff945193867691c6644454b13d83",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

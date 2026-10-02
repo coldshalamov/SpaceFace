@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ca41b36ec7fa240e68963bbadd6a5174b878162f6486ee3dfe5863d4bc4f9c3d",
+  "contentHash": "d1b0256f39d023027c00df5278ddfb1a041f1be223e1360db9ad282c12417653",
   "dynamicGroups": [
     {
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -1133,7 +1133,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10c4eff83545bd134da2d40dc1a71e4077aa1484acf5e96e8c4c14e238c36ded",
+      "geometryHash": "2b6cc51e417bc3279d1f0fd9f17c282dd2520ea17c410af51cb91736192a8f8d",
       "id": "sf.render.atlas-production-v1-lod2.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 3792,
       "indexed": true,
@@ -3454,18 +3454,18 @@
     },
     "sourceGlb": {
       "bytes": 491868,
-      "sha256": "6045c6b98980e166f3204123391af1420663e779eddf632b42db0aaea96e09c9",
+      "sha256": "60416962cb3d53d5f3fcea32c9789468fd88598123d13903354ac80a0e50fdd7",
       "uri": "atlas_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 214095,
-      "sha256": "b4d3621a85652ece830bbf4472b9c15ad0088bff4964621305b2b0121195f1d6",
+      "bytes": 214094,
+      "sha256": "099da618121267c395fa2bcac94c5ee9e2362bbb3e15fb497c7cabbaf79a8be9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 655064,
-    "sha256": "799f26275d9ecf6d7e5a523bd0b1db8cf8b88d5a71285ac781d4158e4b32265c",
+    "bytes": 655056,
+    "sha256": "1ce27adefeaf2e9feb4e943c22df1b00574d68955564b852491870cc024e2e8e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4315,7 +4315,7 @@
     "motionBank": {
       "bytes": 6747,
       "rigId": "hull",
-      "sha256": "01251a2d722a8f8990734f9c3518b96296a7cacf7be37792c54f8291072f357f",
+      "sha256": "7b05561856d03fac7a9a128766bbc756af0db5240676f2e46d8d6e986a7647f5",
       "uri": "assets/ships/motions/atlas-production-v1.motion.json"
     },
     "nodeCount": 39,
@@ -4997,7 +4997,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb"
   },
-  "runtimeHash": "a8aeefd5089326d3b89c622627aa4dac525ff1fb189d610fa50ace43cf383cc6",
+  "runtimeHash": "081d688f40df3186404caef2fe5d16e7cccfbbedc6203536e2ec2c8878ee1b8a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

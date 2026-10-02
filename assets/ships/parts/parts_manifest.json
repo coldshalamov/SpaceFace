@@ -2102,7 +2102,7 @@
       "priority": "P1",
       "file": "places/place_ceres_bait_wreck.glb",
       "tris": 9355,
-      "bytes": 870020,
+      "bytes": 870052,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2160,7 +2160,7 @@
       "priority": "P1",
       "file": "places/place_ceres_grave_shard.glb",
       "tris": 5768,
-      "bytes": 616588,
+      "bytes": 617024,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2201,12 +2201,12 @@
         ],
         "max": [
           12.464390754699707,
-          10.1225004196167,
+          10.111859321594238,
           6.453981876373291
         ],
         "dimensionsM": [
           25.596129417419434,
-          11.722500443458557,
+          11.711859345436096,
           12.907963752746582
         ]
       }
@@ -2703,8 +2703,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
-      "tris": 9920,
-      "bytes": 813544,
+      "tris": 10022,
+      "bytes": 823492,
       "textureSize": 0,
       "tintable": {
         "hull": "Material_Hull",
@@ -2716,7 +2716,7 @@
         "min": [
           -4.970000267028809,
           -0.8999999761581421,
-          -3.799999952316284
+          -3.869999885559082
         ],
         "max": [
           4.970000267028809,
@@ -2726,7 +2726,7 @@
         "dimensionsM": [
           9.940000534057617,
           7.700000166893005,
-          7.669999837875366
+          7.739999771118164
         ]
       },
       "mount": "origin",
@@ -2872,7 +2872,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 15476,
-      "bytes": 1305388,
+      "bytes": 1305396,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2983,8 +2983,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
-      "tris": 11884,
-      "bytes": 919260,
+      "tris": 12276,
+      "bytes": 949688,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -3038,8 +3038,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior_grit.glb",
-      "tris": 14540,
-      "bytes": 1066396,
+      "tris": 14956,
+      "bytes": 1099292,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -3093,8 +3093,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior_military.glb",
-      "tris": 13896,
-      "bytes": 1025040,
+      "tris": 14288,
+      "bytes": 1055484,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
@@ -3975,7 +3975,7 @@
       "file": "places/place_station_billboard.glb",
       "tris": 6024,
       "triangleMetric": "lod0",
-      "bytes": 980276,
+      "bytes": 980032,
       "textureSize": 256,
       "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text.",
       "hooks": [],
@@ -3987,7 +3987,7 @@
         "min": [
           -7.449999809265137,
           -7.349999904632568,
-          -5.325865745544434
+          -5.2938432693481445
         ],
         "max": [
           7.449999809265137,
@@ -3997,7 +3997,7 @@
         "dimensionsM": [
           14.899999618530273,
           12.349999904632568,
-          9.52586555480957
+          9.493843078613281
         ]
       },
       "tintable": {
@@ -5545,8 +5545,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_47a_rescue_capsule.glb",
-      "tris": 7740,
-      "bytes": 666276,
+      "tris": 8860,
+      "bytes": 727996,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Hull",
@@ -6422,8 +6422,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
-      "tris": 38496,
-      "bytes": 2264300,
+      "tris": 39968,
+      "bytes": 2400872,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6453,18 +6453,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.02005386352539,
+          -12.02006721496582,
           -1.5,
           -3.790271282196045
         ],
         "max": [
           11.700323104858398,
-          2.986191749572754,
+          2.986192464828491,
           3.7900466918945312
         ],
         "dimensionsM": [
-          23.72037696838379,
-          4.486191749572754,
+          23.72039031982422,
+          4.486192464828491,
           7.580317974090576
         ]
       },
@@ -6978,8 +6978,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 13728,
-      "bytes": 945184,
+      "tris": 16076,
+      "bytes": 1167732,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7009,18 +7009,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.220080852508545,
+          -5.220099925994873,
           -0.4906860888004303,
           -4.400000095367432
         ],
         "max": [
           4.619999885559082,
-          0.9371601343154907,
+          0.9656911492347717,
           4.400000095367432
         ],
         "dimensionsM": [
-          9.840080738067627,
-          1.427846223115921,
+          9.840099811553955,
+          1.456377238035202,
           8.800000190734863
         ]
       },
@@ -7408,8 +7408,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
-      "tris": 33160,
-      "bytes": 1975392,
+      "tris": 35324,
+      "bytes": 2192860,
       "textureSize": 1024,
       "hooks": [
         "HOOK_DRIVE_CORE"
@@ -7435,18 +7435,18 @@
       "bounds": {
         "min": [
           -21.219999313354492,
-          -5.45702600479126,
-          -8.843141555786133
+          -5.457025527954102,
+          -8.936662673950195
         ],
         "max": [
-          18.399999618530273,
-          7.331518173217773,
-          9.542439460754395
+          18.400609970092773,
+          7.331808567047119,
+          9.583222389221191
         ],
         "dimensionsM": [
-          39.619998931884766,
-          12.788544178009033,
-          18.385581016540527
+          39.620609283447266,
+          12.78883409500122,
+          18.519885063171387
         ]
       },
       "note": "PQ-049 liner, forge-v1 rebuild (tools/blender/forge/ships/massline_express_liner.py): framed operations wedge with structural windshield, stepped faceted pressure drum, dorsal spine, two lit passenger decks, boarding dock, keel tether fairlead, three drives.",
@@ -7471,8 +7471,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
-      "tris": 24994,
-      "bytes": 1542784,
+      "tris": 26746,
+      "bytes": 1721488,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7593,8 +7593,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
-      "tris": 25470,
-      "bytes": 1528732,
+      "tris": 27474,
+      "bytes": 1727912,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7631,12 +7631,12 @@
         ],
         "max": [
           7.389999866485596,
-          2.5244998931884766,
+          2.5252907276153564,
           3.1316373348236084
         ],
         "dimensionsM": [
           14.710041522979736,
-          4.634505033493042,
+          4.635295867919922,
           6.263274669647217
         ]
       }
@@ -7706,8 +7706,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 27864,
-      "bytes": 1657508,
+      "tris": 33120,
+      "bytes": 2101644,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7743,12 +7743,12 @@
         "max": [
           9.410038948059082,
           2.7469706535339355,
-          3.770986318588257
+          3.770984172821045
         ],
         "dimensionsM": [
           17.73017692565918,
           3.3969706296920776,
-          7.541900396347046
+          7.541898250579834
         ]
       },
       "note": "PQ-050.03 chase_form_v4a. Cycle 4: remass bow + mid-hull into a broader, shorter continuous explorer shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."
@@ -8532,8 +8532,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_quiessence_freighter_c.glb",
-      "tris": 55952,
-      "bytes": 3560288,
+      "tris": 57444,
+      "bytes": 3638780,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
