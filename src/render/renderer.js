@@ -8967,6 +8967,20 @@ export const render = {
         (error) => console.warn('[render] background pipeline admission failed', error));
       return admission;
     };
+    // Pre-release lanes narrow the caller's options: isActive keeps its stale-subject guard,
+    // joinOutstanding stays usable during loading, unSliced keeps its urgent-residency route;
+    // urgent/explicit ambient demotion while loading is authored intent and stays dropped.
+    const preReleaseLaneOptions = (admissionOptions, debugBy = null) => {
+      const lane = {};
+      if (admissionOptions && admissionOptions.isActive !== undefined) lane.isActive = admissionOptions.isActive;
+      if (admissionOptions && admissionOptions.joinOutstanding === true) lane.joinOutstanding = true;
+      if (admissionOptions && admissionOptions.unSliced === true) lane.unSliced = true;
+      if (admissionOptions && admissionOptions.debugBy != null && debugBy == null) {
+        lane.debugBy = admissionOptions.debugBy;
+      }
+      if (debugBy != null) lane.debugBy = debugBy;
+      return lane;
+    };
     state.render.compileObjectPipelines = (subject, admissionOptions = {}) => {
       // Loading first-picture wait must not join this queue: captureOpeningPipelinePlan still
       // ignores it, and the exact leaf plan compiles opening programs. Queue every other root
@@ -8977,16 +8991,16 @@ export const render = {
       if (this._postOpeningPipelineAdmissionReleased !== true) {
         if (state.mode === 'loading') {
           if (state.render.liveSectorGpuAdmission === true) {
-            return subject ? admitSubjectPipelines(subject) : Promise.resolve({ skipped: true });
+            return subject ? admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions)) : Promise.resolve({ skipped: true });
           }
-          if (subject) void admitSubjectPipelines(subject, { debugBy: 'late-opening-loading' });
+          if (subject) void admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions, 'late-opening-loading'));
           return Promise.resolve({
             skipped: true,
             reason: 'opening-submission-plan-owns-first-picture',
           });
         }
         if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
-          if (subject) void admitSubjectPipelines(subject, { debugBy: 'late-opening-cohort' });
+          if (subject) void admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions, 'late-opening-cohort'));
           return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
         }
       }
@@ -9049,6 +9063,7 @@ export const render = {
           const outstanding = gpuResidencyAdmissions.pendingFor(subject);
           observePipelineAdmission((outstanding || gpuResidencyAdmissions.prepare(subject, {
             isActive: options.isActive,
+            unSliced: options.unSliced === true,
           }))
             .catch(() => null)
             .finally(() => markSubjectPipelinesPending(subject, false)));
