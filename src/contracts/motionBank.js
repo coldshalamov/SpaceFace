@@ -557,16 +557,15 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   function releaseOverlayClaims(overlayRun, overlayClip) {
     const groups = new Set(overlayClip.channels.map((channel) => channel.group));
     for (const group of groups) {
-      let claimedByNewer = false;
+      let claimedByNewerSeq = -1;
       for (const [otherName, otherRun] of state.clips) {
         if (otherRun.seq <= overlayRun.seq) continue;
         const other = clips.get(otherName);
         if (other && other.channels.some((channel) => channel.group === group)) {
-          claimedByNewer = true;
+          claimedByNewerSeq = otherRun.seq;
           break;
         }
       }
-      if (claimedByNewer) continue;
       for (const [otherName, otherRun] of state.clips) {
         if (otherRun.seq >= overlayRun.seq || !otherRun.superseded) continue;
         const other = clips.get(otherName);
@@ -575,7 +574,13 @@ export function bindAuthoredMotion(root, bank, options = {}) {
           if (!list) continue;
           const idx = list.indexOf(overlayRun.seq);
           if (idx >= 0) list.splice(idx, 1);
-          if (!list.length) otherRun.superseded.delete(group);
+          if (!list.length) {
+            // A newer claim owns this group now: the victim stays superseded, but its
+            // mark must be the live claimant's seq — the drained overlay's mark is stale
+            // and would strand the group when that newer claim later releases.
+            if (claimedByNewerSeq >= 0) list.push(claimedByNewerSeq);
+            else otherRun.superseded.delete(group);
+          }
         }
       }
     }

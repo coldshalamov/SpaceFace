@@ -243,6 +243,13 @@ const SEQUENCES = {
     ['ev', 'survivorPod:ejected'], ['wait', 0.9], ['ev', 'survivorPod:rescueSelected'],
     ['wait', 2.0], ['ev', 'survivorPod:delivered'], ['wait', 1.6],
   ],
+  'mining-drone': [
+    // GrindStop mid-cycle parks the drum — the ambient coast loop must revive the
+    // same tick, not stay dead (the v1 finding: an early-return skipped the resume).
+    ['wait', 1.2], ['ev', 'drone:grindStart'], ['wait', 2.0],
+    ['ev', 'drone:grindStop'], ['wait', 1.4], ['expectDrives', 'drum_coast_idle'],
+    ['ev', 'drone:vaneDeploy'], ['wait', 1.2], ['ev', 'drone:vaneStow'], ['wait', 1.0],
+  ],
   kestrel: [
     ['ev', 'dock:range'], ['wait', 1.8], ['ev', 'dock:docked'], ['wait', 2.2],
     ['ev', 'dock:undocked'], ['wait', 1.6],
