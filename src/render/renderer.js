@@ -111,7 +111,7 @@ import {
   REGULAR_HULL_FILES,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { ACE_MEMORY_META_KEYS, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
+import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
@@ -3308,6 +3308,34 @@ function warmLawIncidentDispatchDecode(owner) {
   }
   if (roster.length) {
     warmEnemyRosterDecode(owner, roster, 'law-incident-decode-runway',
+      state.world && state.world.currentSectorId);
+  }
+}
+
+/**
+ * A capital score's wing members mint their spawn specs inside enterAct — wingRequested
+ * runs spawnCapitalBossWing synchronously in the same tick, so a hull-fraction act
+ * transition gives the screen zero decode lead. Poll the live fight ledger once per
+ * residency pass and warm every unrequested wing's archetypes up front: the roster is
+ * score-static, so no later signal arrives ahead of the spawn. Bound wings skip (their
+ * members are entities already) and terminal fights and repeats dedupe on the record —
+ * file-level dedupe caps decodes the rest of the way.
+ */
+function warmCapitalBossWingDecode(owner) {
+  const state = owner && owner.state;
+  const fights = state && state.capitalBossEncounters && state.capitalBossEncounters.fights;
+  if (!fights || typeof fights !== 'object') return;
+  const warmed = owner._capitalWingWarmFights || (owner._capitalWingWarmFights = new WeakMap());
+  const roster = [];
+  for (const id in fights) {
+    const record = fights[id];
+    if (!record || record.terminal === true || !record.encounterId) continue;
+    if (warmed.has(record)) continue;
+    warmed.set(record, true);
+    roster.push(...capitalBossWingRosterRows(record.encounterId, record));
+  }
+  if (roster.length) {
+    warmEnemyRosterDecode(owner, roster, 'capital-wing-decode-runway',
       state.world && state.world.currentSectorId);
   }
 }
@@ -15741,6 +15769,7 @@ export const render = {
     warmEcologyScavengerDecode(this);
     warmPursuitInterventionDecode(this);
     warmLawIncidentDispatchDecode(this);
+    warmCapitalBossWingDecode(this);
     warmWantedTierDecode(this);
     warmGateWingDecode(this);
     warmStationPatrolDecode(this);

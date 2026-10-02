@@ -30,7 +30,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { authoredSetPieceById, megaHeistById } from '../data/missions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
-import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { CAPITAL_BOSS_ENCOUNTERS, capitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import {
   aceById,
@@ -65,6 +65,33 @@ export function scriptedOnboardingRosterRows() {
     archetype,
     factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null),
   }));
+}
+
+// A capital score's wing members mint their own spawn specs inside enterAct
+// (wingRequested → spawnCapitalBossWing runs synchronously in the same tick), so their
+// archetypes never appear in actor or entity records until the screen lands. Enumerate
+// the score's static roster with the same faction pick every other warm row uses. An
+// unknown encounter id yields no rows — capitalBossEncounter's IRON_MAW fallback would
+// warm a different score's hulls. `record` (a live fight row) optionally skips wings
+// already requested: their members are real entities the spawn kick owns.
+export function capitalBossWingRosterRows(encounterId, record = null) {
+  const encounter = Object.hasOwn(CAPITAL_BOSS_ENCOUNTERS, encounterId)
+    ? CAPITAL_BOSS_ENCOUNTERS[encounterId] : null;
+  const wings = encounter && encounter.score && encounter.score.wings;
+  if (!Array.isArray(wings)) return [];
+  const bound = record && record.wings;
+  const rows = [];
+  for (const wing of wings) {
+    if (!wing || !Array.isArray(wing.members)) continue;
+    if (bound && bound[wing.id]) continue;
+    for (const member of wing.members) {
+      const archetype = member && member.archetype;
+      if (archetype) {
+        rows.push({ archetype, factionId: enemyFactionIdFor(ENEMY_BY_ID.get(archetype), null) });
+      }
+    }
+  }
+  return rows;
 }
 
 // Promoted-pilot records carry every ace-shaped field returnCrewForAce reads — rebuild the
@@ -612,6 +639,12 @@ export function saveEnvelopeSectorStubs(data) {
         } else if (actor.kind !== 'asteroid') {
           coverBareMissionWrecks(); // wreck-kind set pieces (towers, pods, hulks)
         }
+      }
+      // The score's wing roster mints its own spawn specs mid-fight (wingRequested →
+      // spawnCapitalBossWing): hull-fraction act transitions fire it with zero lead, so the
+      // members' archetypes ride the same restore warm as the actors or each screen lands cold.
+      if (m.type === 'capital_boss') {
+        out.roster.push(...capitalBossWingRosterRows(params.encounterId));
       }
       continue;
     }
