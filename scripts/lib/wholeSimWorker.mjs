@@ -50,6 +50,7 @@ import {
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
+import { projectBridgeEvent } from './simEventBridge.mjs';
 
 
 
@@ -152,9 +153,10 @@ function entityInfoBlock(state, entityId) {
   };
 }
 
-// Flat-payload event bridge. Payloads that carry live objects (entities, sector
-// nodes, cargo refs) are dropped and counted — the known ~10-30 sim→main
-// live-object family. Ids ride; resolution is a main-side read-model concern.
+// Deep-flat event bridge (stage 2). Payloads are projected through the shared
+// bridge module: depth-bounded flat projection, live entities collapse to
+// { entityRef } tokens, per-type adapters cover the non-entity live-object
+// families. Unflattenable payloads are intentional drops, counted separately.
 const BRIDGE_EVENTS = [
   'entity:spawned', 'entity:killed', 'combat:fire', 'combat:damage', 'projectile:hit',
   'economy:tick', 'tether:attached', 'tether:reel', 'tether:broken',
@@ -166,34 +168,6 @@ const BRIDGE_EVENTS = [
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
 ];
 
-function flatPayload(value, depth = 0) {
-  if (value == null) return value;
-  const t = typeof value;
-  if (t === 'number') return Number.isFinite(value) ? value : 0;
-  if (t === 'string' || t === 'boolean') return value;
-  if (depth >= 2) return undefined;
-  if (Array.isArray(value)) {
-    const out = [];
-    for (const item of value) {
-      const flat = flatPayload(item, depth + 1);
-      if (flat === undefined) return undefined;
-      out.push(flat);
-    }
-    return out;
-  }
-  if (t === 'object') {
-    // Live-sim-object shape: an entity/row carries id+pos/alive — never cloneable-safe.
-    if ('pos' in value || 'vel' in value || 'alive' in value) return undefined;
-    const out = {};
-    for (const key of Object.keys(value)) {
-      const flat = flatPayload(value[key], depth + 1);
-      if (flat === undefined) return undefined;
-      out[key] = flat;
-    }
-    return out;
-  }
-  return undefined;
-}
 
 // ---------------------------------------------------------------------------
 // Host assembly — mirrors run47a exactly (same order, same mutations).
@@ -210,10 +184,15 @@ const host = {
   committedJournalSequence: 0,
   completedSequence: 0,
   tickCount: 0,
-  // per-tick event drain
+  // per-tick event drain (stage 2 deep-flat bridge)
   pendingEvents: [],
   droppedEventCount: 0,
   droppedEventTypes: {},
+  unintentionalDrops: 0,
+  unintentionalDropTypes: {},
+  dropSamples: [],
+  emittedEventCounts: {},
+  unbridgeable: { depth: 0, typed: 0 },
   scratch: null,
   journalRebuildCount: 0,
   rebuildReasons: {},
@@ -351,13 +330,29 @@ async function handleInit(msg) {
 
   for (const type of BRIDGE_EVENTS) {
     bus.on(type, (payload) => {
-      const flat = flatPayload(payload);
-      if (flat === undefined || flat === null && payload !== null && payload !== undefined) {
+      const projected = projectBridgeEvent(type, payload);
+      host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
+      if (projected.dropped) {
         host.droppedEventCount++;
         host.droppedEventTypes[type] = (host.droppedEventTypes[type] || 0) + 1;
+        if (host.dropSamples.length < 20) {
+          host.dropSamples.push({
+            t: type, reason: projected.reason,
+            path: projected.hits && projected.hits.path,
+            ctor: projected.hits && projected.hits.ctor,
+          });
+        }
+        if (projected.unintentional) {
+          host.unintentionalDrops++;
+          host.unintentionalDropTypes[type] = (host.unintentionalDropTypes[type] || 0) + 1;
+        }
+        if (projected.hits) {
+          host.unbridgeable.depth += projected.hits.depth;
+          host.unbridgeable.typed += projected.hits.typed;
+        }
         return;
       }
-      host.pendingEvents.push({ t: type, p: flat === undefined ? null : flat });
+      host.pendingEvents.push({ t: type, p: projected.flat, lane: projected.lane });
     });
   }
 
@@ -572,6 +567,11 @@ async function handleFinalize() {
     identityOffenders: host.identityOffenders,
     droppedEventCount: host.droppedEventCount,
     droppedEventTypes: host.droppedEventTypes,
+    unintentionalDrops: host.unintentionalDrops,
+    unintentionalDropTypes: host.unintentionalDropTypes,
+    dropSamples: host.dropSamples,
+    emittedEventCounts: host.emittedEventCounts,
+    unbridgeable: host.unbridgeable,
     commandDropped: host.commandDropped,
     inputTape: host.inputHistory ? host.inputHistory.toTape() : null,
     tickCount: host.tickCount,

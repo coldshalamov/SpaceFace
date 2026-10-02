@@ -312,6 +312,12 @@ async function runBody(client, frames) {
     workMs: [], directiveWireMs: [], rttMs: [], transportTicks: [],
   };
   let eventsReceived = 0;
+  // Stage-2 bridge parity: per-type receipts vs the worker's emitted counts.
+  const receivedByType = {};
+  // Presentation lane: lane:'presentation' events re-enqueue into the main-side
+  // presentationQueue model instead of dispatching at tick receipt.
+  const presentationQueue = [];
+  let presentationDrained = 0;
   let pauseProbed = false;
 
   const init = await client.send({
@@ -386,6 +392,21 @@ async function runBody(client, frames) {
     // consume-batch >1 models present-side lag (frames slower than ticks).
     while (completedTickRing.length >= threshold) {
       const item = completedTickRing.shift();
+      for (const evt of item.events || []) {
+        eventsReceived++;
+        if (evt && typeof evt === 'object' && evt.t) {
+          receivedByType[evt.t] = (receivedByType[evt.t] || 0) + 1;
+          if (evt.lane === 'presentation') {
+            // Re-enqueue into the presentationQueue model; drain one slot per
+            // consumed tick (the 8/frame drain budget lives on the main side).
+            presentationQueue.push(evt);
+            for (let n = 0; n < 8 && presentationQueue.length; n++) {
+              presentationQueue.shift();
+              presentationDrained++;
+            }
+          }
+        }
+      }
       if (item.completedTick == null) {
         // steps:0 directive — commands delivered, no completedTick published.
         continue;
@@ -425,7 +446,6 @@ async function runBody(client, frames) {
       timing.directiveWireMs.push(Number(directiveWireNs) / 1e6);
       timing.rttMs.push((Number(recvNs) - meta.sendNs) / 1e6);
       timing.transportTicks.push({ tick: meta.tick, ms: Number(transportNs) / 1e6 });
-      eventsReceived += (frame.events || []).length;
     }
   }
 
@@ -495,6 +515,14 @@ async function runBody(client, frames) {
     identityOffenders: fin.identityOffenders,
     droppedEventCount: fin.droppedEventCount,
     droppedEventTypes: fin.droppedEventTypes,
+    unintentionalDrops: fin.unintentionalDrops,
+    unintentionalDropTypes: fin.unintentionalDropTypes,
+    dropSamples: fin.dropSamples,
+    emittedEventCounts: fin.emittedEventCounts,
+    unbridgeable: fin.unbridgeable,
+    receivedByType,
+    presentationDrained,
+    presentationQueueDepth: presentationQueue.length,
     avgWorkMs: fin.avgWorkMs,
     avgPackMs: fin.avgPackMs,
     workerHeapUsedBytes: fin.workerHeapUsedBytes,
@@ -608,22 +636,46 @@ async function main() {
     commandDropped: run.commandDropped,
   };
 
+  // GATE E — stage-2 deep-flat bridge: every emitted event must arrive
+  // (per-type parity emitted vs received) and unintentional drops must be zero
+  // (intentional drops = unbridgeable typed/depth counters only).
+  const emittedCounts = run.emittedEventCounts || {};
+  const parityMismatch = {};
+  for (const [type, count] of Object.entries(emittedCounts)) {
+    const received = (run.receivedByType || {})[type] || 0;
+    const dropped = (run.droppedEventTypes || {})[type] || 0;
+    if (received + dropped !== count) parityMismatch[type] = { emitted: count, received, dropped };
+  }
+  const gateE = {
+    pass: run.unintentionalDrops === 0 && Object.keys(parityMismatch).length === 0,
+    unintentionalDrops: run.unintentionalDrops,
+    unintentionalDropTypes: run.unintentionalDropTypes,
+    intentionalDrops: run.droppedEventCount,
+    unbridgeable: run.unbridgeable,
+    parityMismatch,
+    presentationDrained: run.presentationDrained,
+    presentationQueueDepth: run.presentationQueueDepth,
+  };
+
   const summary = {
     schema: 'spaceface.s1WorkerSpike.v1',
     mode: 'whole-sim-in-worker',
     options: OPT,
-    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD },
+    gates: { a_hash: gateA, b_transport: gateB, c_rings: gateC, d_commandChannel: gateD, e_eventBridge: gateE },
     run: {
       entityCount: run.entityCount,
       droppedEventCount: run.droppedEventCount,
       droppedEventTypes: run.droppedEventTypes,
+      emittedEventCounts: run.emittedEventCounts,
+      unbridgeable: run.unbridgeable,
       eventsReceived: run.eventsReceived,
+      presentationDrained: run.presentationDrained,
       avgWorkMs: round(run.avgWorkMs),
       avgPackMs: round(run.avgPackMs),
       workerHeapMb: round((run.workerHeapUsedBytes || 0) / 1e6, 1),
       journalRebuildCount: run.journalRebuildCount,
     },
-    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass ? 'ALL PASS' : 'GATE FAILURE',
+    verdict: gateA.pass && gateB.pass && gateC.pass && gateD.pass && gateE.pass ? 'ALL PASS' : 'GATE FAILURE',
   };
 
   if (OPT.json) {
@@ -640,12 +692,14 @@ async function main() {
     console.log(`                     journalDiag.pending=${gateC.journalDiag && gateC.journalDiag.pending} capacity=${gateC.journalDiag && gateC.journalDiag.capacity} published=${gateC.journalDiag && gateC.journalDiag.publishedCount} coalesced=${gateC.journalDiag && gateC.journalDiag.transformCoalesceCount} suppressed=${gateC.journalDiag && gateC.journalDiag.suppressedCount} rebuildReqs=${gateC.journalDiag && gateC.journalDiag.rebuildRequestCount} failures=${gateC.journalDiag && gateC.journalDiag.rebuildFailureCount} discarded=${gateC.journalDiag && gateC.journalDiag.discardCount}`);
     console.log(`GATE D cmd channel : ${gateD.pass ? 'PASS' : 'FAIL'}  tapeParity=${gateD.tapeParity} frames=${gateD.workerTapeFrames}/${gateD.refTapeFrames} dropped=${gateD.commandDropped}`);
     console.log(`                     rpcAcks=${JSON.stringify(gateD.rpcAcks)} settingsAcks=${JSON.stringify(gateD.settingsAcks)}`);
+    console.log(`GATE E event bridge: ${gateE.pass ? 'PASS' : 'FAIL'}  unintentionalDrops=${gateE.unintentionalDrops} intentionalDrops=${gateE.intentionalDrops} unbridgeable=${JSON.stringify(gateE.unbridgeable)} parityMismatch=${JSON.stringify(gateE.parityMismatch)}`);
+    console.log(`                     presentation drained=${gateE.presentationDrained} residualQueue=${gateE.presentationQueueDepth}`);
     console.log(`run: entities=${run.entityCount} events=${run.eventsReceived} dropped=${run.droppedEventCount} avgWorkMs=${round(run.avgWorkMs)} workerHeap=${round((run.workerHeapUsedBytes || 0) / 1e6, 1)}MB`);
     console.log(`rebuild reasons: ${JSON.stringify(run.rebuildReasons)}`);
     console.log(`identity offenders: ${JSON.stringify((run.identityOffenders || []).slice(0, 12))}`);
     console.log(`suppressed spawns : ${JSON.stringify((run.suppressedSpawns || []).slice(0, 12))}`);
     if (Object.keys(run.droppedEventTypes).length) {
-      console.log(`dropped event types (live-payload): ${JSON.stringify(run.droppedEventTypes)}`);
+      console.log(`dropped event types: ${JSON.stringify(run.droppedEventTypes)} samples=${JSON.stringify((run.dropSamples || []).slice(0, 10))}`);
     }
     console.log(`verdict: ${summary.verdict}`);
   }
