@@ -203,10 +203,19 @@ export function createRenderPackageLoader(options = {}) {
       // joiner's wrap holds through settle — so joined tasks classify at the joiner's class too.
       .then((decoded) => scheduleGltfCompile(() => {
         // Same owner-activity re-check the source-GLB tail runs at drain time: an owner that
-        // departed while the tail queued skips the compile — the settled-null path cancels
-        // the request below instead of blueprint work spent on a dead boundary.
+        // departed while the tail queued skips the compile — but the pending residency
+        // request and the decoded payload must be released by hand, mirroring the GLB lane's
+        // 'owner-departed-during-decode' cancel (a commit or a promise rejection would do the
+        // teardown; a plain null settle does neither).
         if (typeof loadOptions.isResidencyOwnerActive === 'function'
-          && !loadOptions.isResidencyOwnerActive()) return null;
+          && !loadOptions.isResidencyOwnerActive()) {
+          disposeDecodedResources(decoded);
+          if (entry.request) {
+            entry.request.cancel('owner-departed-during-compile');
+            entry.request = null;
+          }
+          return null;
+        }
         return preparePackageTail(decoded);
       }, activeDecodeClass(), entry.promise));
 

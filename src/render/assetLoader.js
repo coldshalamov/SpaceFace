@@ -1233,6 +1233,9 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
           if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
         });
       }
+      // Owner departed mid-load (the tail's inactive-owner settle): a null is classified by
+      // the caller's isResidencyOwnerActive predicate — it must not stamp a load failure.
+      if (!renderPackage) return null;
       return assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
         flightStaticV3: pilot.flightStaticV3 === true,
       });
