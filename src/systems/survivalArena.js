@@ -1165,10 +1165,16 @@ export const survivalArena = {
     // The director calms first: a surge mid-window restores authored strengths onto fields that
     // still exist, and its own pulse field unregisters before the room's ledger clears.
     if (this._swarmEvents) this._swarmEvents.teardown(reason);
+    // NXB-019 — a swarm wave clear is a preparation interval: the cover the player displaced
+    // and the wrecks/supplies it left are the next round's terrain, not trash. Fields, mines
+    // and room solids are per-wave law and still release; anchor rocks retain their bodies
+    // (ownership releases so the next install re-adopts or tops up honestly).
+    const retainAnchors = reason === 'wave_cleared'
+      && liveSurvivalRun(this.state)?.ruleset === 'swarm';
     const released = {
       fields: this._releaseFields(),
       mines: this._releaseMines(),
-      cover: this._releaseCover(),
+      cover: this._releaseCover(retainAnchors),
       solids: this._releaseRoom(),
     };
     const had = released.fields > 0 || released.mines > 0 || released.cover || released.solids > 0;
@@ -1220,18 +1226,24 @@ export const survivalArena = {
     return n;
   },
 
-  _releaseCover() {
+  _releaseCover(retainAnchors = false) {
     const encounterId = this._encounterId;
     this._encounterId = null;
     if (!encounterId) return false;
     if (!this.bus || typeof this.bus.emit !== 'function') return false;
     // MANDATORY pair: terrainAnchors only releases rock ownership on this event (terrainAnchors.js
     // :112). Without it the cover rocks keep their 900s TTL and accumulate across waves.
+    // NXB-019 — under the swarm ruleset a wave clear is a preparation interval, not the end of
+    // the room: ownership still releases (the next wave's telegraph re-adopts what survives in
+    // the bubble and tops up what was destroyed), but the bodies keep their authored TTL
+    // instead of taking the 45 s aftermath sweep. Run end, newGame and destroy resolve without
+    // the flag — those genuinely sweep the room.
     this.bus.emit('encounter:resolved', {
       encounterId,
       kind: 'survival_arena',
       shape: 'survival_arena',
       outcome: 'cleared',
+      retainAnchors: retainAnchors === true,
       sectorId: (this.state && this.state.world && this.state.world.currentSectorId) || null,
     });
     return true;
