@@ -30,7 +30,7 @@ parentPort.on('message', (msg) => {
         // SAB itself must never hit the transfer list (it isn't transferable
         // and transferring it would detach the arena).
         for (const col of [reply.pack.scalars, reply.pack.kinds, reply.pack.typeIndex]) {
-          if (col.byteLength && !(col.buffer instanceof SharedArrayBuffer)) transfers.push(col.buffer);
+          if (col.byteLength && !(typeof SharedArrayBuffer === 'function' && col.buffer instanceof SharedArrayBuffer)) transfers.push(col.buffer);
         }
         parentPort.postMessage(reply, transfers);
       } else if (msg.kind === 'finalize') {

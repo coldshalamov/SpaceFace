@@ -1114,7 +1114,7 @@ async function runBody(client, frames, options = {}) {
       recordCap: sabArena ? sabArena.recordCap : 0,
       packsShared: journalDiagTransport.sabPacks,
       bytesShared: journalDiagTransport.sabBytesShared,
-      fallbacks: (journalDiagTransport.sabFallbacks || 0) + (fin.sabFallbacks || 0),
+      fallbacks: journalDiagTransport.sabFallbacks || 0,
     },
     receivedByType,
     presentationDrained,

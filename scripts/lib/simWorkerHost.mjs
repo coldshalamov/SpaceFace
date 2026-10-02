@@ -151,6 +151,7 @@ export const SAB_SLOT_BUSY_BASE = 4;         // Int32 header slots [4..4+slotCou
 const SAB_HEADER_BYTES = 64;
 // Per slot: scalars f64x18/record, kinds u8/record, typeIndex u16/record.
 const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
+const SAB_LAYOUT_VERSION = 1;
 
 // SAB needs crossOriginIsolated in browsers (COOP/COEP — the dev server does
 // not send them today, so a renderer flip detects 'unavailable' and stays on
@@ -166,7 +167,7 @@ export function createSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) 
   const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes);
   const header = new Int32Array(sab, 0, 16);
   header[0] = SAB_JOURNAL_MAGIC;
-  header[1] = 1;                       // layout version
+  header[1] = SAB_LAYOUT_VERSION;
   header[2] = slotCount;
   header[3] = recordCap;
   return { sab, header, slotCount, recordCap, slotBytes };
@@ -175,11 +176,12 @@ export function createSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) 
 // Re-wrap an arena descriptor received over postMessage into per-slot column
 // views. Returns null on any shape mismatch — caller falls back to fresh arrays.
 export function bindSabJournalArena(desc) {
-  if (!desc || !(desc.sab instanceof SharedArrayBuffer)) return null;
+  if (!desc || !(typeof SharedArrayBuffer === 'function' && desc.sab instanceof SharedArrayBuffer)) return null;
   const { sab, slotCount, recordCap } = desc;
   if (!(slotCount > 0) || !(recordCap > 0)) return null;
   const header = new Int32Array(sab, 0, 16);
-  if (header[0] !== SAB_JOURNAL_MAGIC || header[2] !== slotCount || header[3] !== recordCap) return null;
+  if (header[0] !== SAB_JOURNAL_MAGIC || header[1] !== SAB_LAYOUT_VERSION
+      || header[2] !== slotCount || header[3] !== recordCap) return null;
   const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
   const slots = [];
   for (let s = 0; s < slotCount; s++) {
@@ -608,7 +610,6 @@ export function createSimHost() {
     // Stage-7 item C: SAB journal arena shared by the main lane on init.
     // null when the flag is off, SAB unavailable, or the descriptor mismatched.
     host.sabArena = bindSabJournalArena(msg.sabArena);
-    host.sabFallbacks = 0;
 
     const scenarioContract = loadScenarioContract(msg.scenarioContractPath || 'src/data/scenarios/47a.scenario.json');
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
@@ -1073,7 +1074,6 @@ export function createSimHost() {
       pack = journalStart < journalEnd
         ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena)
         : { count: 0, scalars: new Float64Array(0), kinds: new Uint8Array(0), typeIndex: new Uint16Array(0), typeTable: [], spawnEntityIds: [], start: journalStart, end: journalEnd, sab: false, sabSlot: null };
-      if (host.sabArena && !pack.sab && pack.count > 0) host.sabFallbacks++;
     } catch (error) {
       const diag = journal.getDiagnostics ? journal.getDiagnostics() : {};
       throw new Error(`journal pack failed for (${journalStart}, ${journalEnd}] tick=${msg.tick}: ${error.message} ` +
@@ -1162,7 +1162,6 @@ export function createSimHost() {
       emittedEventCounts: host.emittedEventCounts,
       unbridgeable: host.unbridgeable,
       commandDropped: host.commandDropped,
-      sabFallbacks: host.sabFallbacks || 0,
       inputTape: host.inputHistory ? host.inputHistory.toTape() : null,
       tickCount: host.tickCount,
       auxRowsShipped: host.auxShipped.size,
