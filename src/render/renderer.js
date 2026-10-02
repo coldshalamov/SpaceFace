@@ -3353,14 +3353,16 @@ function warmWantedTierDecode(owner) {
  * post, a staged bounty pair) can decode the whole bounded set so whichever parts the seed
  * selects arrive resident. The slot argument rides with each file: the authored cache keys
  * url::slot, so a mismatched slot decodes a second blueprint the production attach never
- * reuses. Deduped once per sector across arms. 'place' is not a ship-kit slot — the prop
- * set stays out of this pool.
+ * reuses. Deduped per (sector, arm-role): each family gets its own once-per-sector warm — an
+ * earlier arm's latch must not starve a later one, and callers can pass armKey for a
+ * per-countdown dedupe so a re-armed countdown in the same sector re-warms.
+ * 'place' is not a ship-kit slot — the prop set stays out of this pool.
  */
-function warmSeededModularPool(owner, sectorId, residencyRole) {
+function warmSeededModularPool(owner, sectorId, residencyRole, armKey = null) {
   const renderer = owner && owner.renderer;
   if (!renderer || !renderer.domElement) return;
   const warmed = owner._modularPoolWarmSectors || (owner._modularPoolWarmSectors = new Set());
-  const key = sectorId || '';
+  const key = `${sectorId || ''}\0${residencyRole || ''}\0${armKey == null ? '' : armKey}`;
   if (warmed.has(key)) return;
   warmed.add(key);
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
@@ -3578,8 +3580,9 @@ function warmCultureIntroDecode(owner) {
  * state.bountyHunt, but `bountyHunt:staged` emits only after the spawn, so both kits decode at
  * fire time inside the reveal. Neither spec carries data.defId → seeded-modular plan. Poll the
  * published countdown and warm the closed kit pool inside the runway; a gate re-defer just
- * leaves a lease to expire. Dedupe rides the modular pool's per-sector latch — a re-armed
- * countdown re-warms only on a new sector.
+ * leaves a lease to expire. Dedupe keys on the published countdown stamp (nextStageAt): a
+ * re-armed countdown in the same sector gets a fresh warm — its first arm's decoded parts
+ * may have been served-and-released since.
  */
 function warmBountyStagedDecode(owner) {
   const state = owner && owner.state;
@@ -3589,7 +3592,7 @@ function warmBountyStagedDecode(owner) {
   const currentSectorId = state.world && state.world.currentSectorId;
   if (!currentSectorId || !Number.isFinite(own.nextStageAt)) return;
   if (own.nextStageAt - now > TABLE_DECODE_RUNWAY_SECONDS) return;
-  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway');
+  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway', own.nextStageAt);
 }
 
 function warmPlanetChallengeDecode(owner) {

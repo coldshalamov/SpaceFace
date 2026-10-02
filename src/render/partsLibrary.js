@@ -8941,6 +8941,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
 
   const { materials, built: builtFallbackMaterials } = fallbackMaterials(palette, visualSeed);
   const bindings = createBindings();
+  if (composeTrace) composeTrace.bindings = bindings;
   const mutableMaterials = new Map();
   const staticBatches = createStaticBatchCollector(hull, bindings);
   const ownerLocalFallbackRoots = [];
@@ -9325,7 +9326,12 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
 // a few frames instead of one hitch. The yield point is rAF-paced (never a bare timer — see
 // scheduleUpgradeFrame) and the root is not published until commit, so a mid-compose frame
 // can never present a partially assembled ship.
-const COMPOSE_SLICE_MS = 4;
+// Yield thresholds for the async driver (per rAF frame, not per step): ambient warms pace at
+// half a 60 fps frame; admissions already on the readable glass pace at ~3/4 of one. The
+// earlier 4 ms threshold burned a whole frame per slice — ~24% utilization, ~5-10× longer
+// pending-visible windows — so the budget is per-frame, not per-4 ms.
+const COMPOSE_FRAME_MS = 8;
+const COMPOSE_FRAME_MS_URGENT = 12;
 
 function composeYield() {
   if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -9345,10 +9351,19 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
       ? performance.now() : Date.now()
   );
   let sliceStarted = now();
+  // Per-frame budget: one rAF yield costs a whole frame, so each yield should pack as much
+  // compose work as the frame can absorb. 4 ms/yield ran at ~24% frame utilization and
+  // stretched the serial admission window ~5-10× (pending ships stay hidden by policy — the
+  // window IS the pop-in). 8 ms keeps a single compose from bricking a frame while halving
+  // admission wall-time; ships whose admission is on the readable glass get 12 ms — their
+  // pending window is directly user-visible. Ambient warms keep the conservative floor. Read
+  // live per slice so a mid-compose admission join boosts the remaining tail immediately.
+  const frameBudgetMs = () => (options.admissionVisible === true || options.admissionDeadline === true)
+    ? COMPOSE_FRAME_MS_URGENT : COMPOSE_FRAME_MS;
   let step = steps.next();
   while (!step.done) {
     const sliceMs = now() - sliceStarted;
-    if (sliceMs >= COMPOSE_SLICE_MS) {
+    if (sliceMs >= frameBudgetMs()) {
       // Report the slice's cost before yielding: other frame-paced slicers (the compile drain)
       // read the ledger later this frame and stand down instead of stacking their own budget.
       notePacedFrameSpend(sliceMs);
@@ -9363,7 +9378,27 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
         || (ownerBoundary && !ownerBoundary.parent)) {
         try { steps.return(undefined); } catch { /* generator teardown is best-effort */ }
         if (composeTrace.root) {
-          try { disposeDetachedObject(composeTrace.root); } catch { /* partial-root disposal is best-effort */ }
+          // Cancel pool admissions the aborted run claimed — slot release stays owner-bound, but a
+          // cancelled admission stops prepare/activate from doing GPU work for a dead run and lets
+          // the retirement path reclaim the slots early instead of at boundary teardown.
+          const poolAdmissions = composeTrace.bindings && composeTrace.bindings.packagePoolAdmissions;
+          if (poolAdmissions instanceof Set) {
+            for (const admission of poolAdmissions) {
+              if (admission) admission.cancelled = true;
+            }
+          }
+          const partial = composeTrace.root;
+          partial.traverse((object) => {
+            const instance = object && object.userData ? object.userData.renderPackageInstance : null;
+            if (instance && typeof instance.dispose === 'function') {
+              try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
+            }
+            if (object && object.userData && object.userData.spacefaceStaticBatch === true
+              && object.geometry && typeof object.geometry.dispose === 'function') {
+              try { object.geometry.dispose(); } catch { /* best-effort */ }
+            }
+          });
+          try { disposeDetachedObject(partial); } catch { /* partial-root disposal is best-effort */ }
           composeTrace.root = null;
         }
         return null;

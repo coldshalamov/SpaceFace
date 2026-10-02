@@ -95,6 +95,9 @@ const warned = new Set();
 // join raises. The map carries the class (not just membership) so a visible joiner's tail
 // claims 'visible' rather than capping at 'deadline'.
 const joinedAssetTaskClasses = new WeakMap();
+// Keyed by package metadataUrl (string): the pilot path's compile entries are looked up by url,
+// not by task token, so its max-class ledger needs a plain Map.
+const joinedPackageTaskClasses = new Map();
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
 // Warm-purpose decode roles (sector prewarm, decode runway, roster warm, predicts): decodes
 // that speculate on a spawn that has not arrived yet. Shared by the decode-cache retain below
@@ -598,7 +601,12 @@ export async function loadAuthoredPart(url, options = {}) {
       }
       // The package tail may already sit queued in a lower lane — same re-grade the GLB
       // lane runs on a join, resolved through the loader's content-hash cache by url.
-      if (runtime.renderPackages && typeof runtime.renderPackages.regradeCompileFor === 'function') {
+      // Retain the strongest join class, not the last: a deadline-only joiner landing after
+      // a visible joiner must not splice the shared tail back into the deadline lane.
+      const prevJoinClass = joinedPackageTaskClasses.get(renderPackagePilot.metadataUrl);
+      if (!(prevJoinClass && (DECODE_CLASS_RANK[prevJoinClass] || 0) >= (DECODE_CLASS_RANK[joinClass] || 0))
+        && runtime.renderPackages && typeof runtime.renderPackages.regradeCompileFor === 'function') {
+        joinedPackageTaskClasses.set(renderPackagePilot.metadataUrl, joinClass);
         runtime.renderPackages.regradeCompileFor(renderPackagePilot.metadataUrl, joinClass);
       }
     }
