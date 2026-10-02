@@ -333,7 +333,7 @@ def build():
     # --- lights --------------------------------------------------------------------------------------
     F.light(s, 'NavPort', (-5.0, PY + 0.62, 0.05), 'glow_red', size=0.16)
     F.light(s, 'NavStarboard', (-5.0, -PY - 0.62, 0.05), 'glow_green', size=0.16)
-    F.light(s, 'Beacon', (-6.1, 0.0, 0.7), 'glow_amber', size=0.14)
+    F.light(s, 'Beacon', (-6.1, 0.0, 0.7), 'glow_amber.beacon', size=0.14)
     s.socket('SOCKET_Weapon_Front', (5.4, 0.0, -0.05))
     s.socket('SOCKET_Mining_Front', (5.3, 0.0, -0.2))
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
