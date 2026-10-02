@@ -39,6 +39,7 @@ import {
   SWARM_MASS_GAP_WALL_DISTANCE,
   SWARM_MASS_GAP_WALL_ROCKS,
   SWARM_FODDER_ROLES,
+  isSwarmBossWave,
   isSwarmMassGapWave,
   swarmArenaPhase,
   swarmFodderRoster,
@@ -416,7 +417,13 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   // its late heavies turn one side of the room into a corridor the player navigates or breaks.
   // The mutator owns the room outright, so heavies_only suppresses the shape entirely.
   const massGap = !heaviesOnly && isSwarmMassGapWave(w);
-  const fodderRoster = massGap && swarmFodderRoster(w).length > 0 ? swarmFodderRoster(w) : null;
+  // SF-068 — a boss round's reduced swarm is ammunition, not chores: the champion is the work,
+  // so its opening chaff draws from the same light bodies the mass-gap wall feeds — the shapes
+  // the room's berm, mines and pull can actually turn on the boss. heavies_only owns outright.
+  const bossWave = !heaviesOnly && isSwarmBossWave(w);
+  const fodderRoster = (massGap || bossWave) && swarmFodderRoster(w).length > 0
+    ? swarmFodderRoster(w)
+    : null;
   // SF-064 — a specialist's first wave stages one readable arrival: its tell lands alone on its
   // own bearing a beat after the opening burst, before the stream mixes it with other bodies.
   // The debut is a function of the wave number alone — no tutorial state, and later waves field
@@ -525,17 +532,19 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   if (massGapBlock) {
     swarm.massGap = massGapBlock;
     swarm.wallLine = 'A wall is closing on the room — mind the gaps.';
-    // The stream keeps feeding ammunition: fodder share bends up, no role leaves the room.
-    if (!biasedRoster) {
-      swarm.roster = swarmRosterFor(w).map((entry) => ({
-        enemyId: entry.enemyId,
-        role: entry.role,
-        weight: SWARM_FODDER_ROLES.includes(entry.role)
-          ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
-          : entry.weight,
-        fromWave: entry.fromWave,
-      }));
-    }
+  }
+  // The ammunition bend is not only the wall's: a boss round's stream keeps feeding light
+  // bodies too (SF-068), so the champion's room never reads as a heavy-escort checklist.
+  // Build pressure still wins when it is live — the read on the run's build outranks either.
+  if ((massGapBlock || bossWave) && !biasedRoster) {
+    swarm.roster = swarmRosterFor(w).map((entry) => ({
+      enemyId: entry.enemyId,
+      role: entry.role,
+      weight: SWARM_FODDER_ROLES.includes(entry.role)
+        ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
+        : entry.weight,
+      fromWave: entry.fromWave,
+    }));
   }
   if (heaviesOnly) {
     swarm.roster = HEAVIES_ONLY_ROSTER.map((entry) => ({
