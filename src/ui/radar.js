@@ -63,6 +63,208 @@ const MAX_SEMANTIC_INFRASTRUCTURE = 20;
 const ASTEROID_FIELD_CELLS = 9;
 const ASTEROID_DOT_LIMIT = 14;
 
+/** Bench A/B: production default ON. Quantized-player + contact-pose still-layer skips contact census. */
+let RADAR_CONTACTS_STILL_LAYER = true;
+export function setRadarContactsStillLayerForBench(enabled) {
+  RADAR_CONTACTS_STILL_LAYER = enabled !== false;
+}
+export function getRadarContactsStillLayerForBench() {
+  return RADAR_CONTACTS_STILL_LAYER !== false;
+}
+
+/** Rescan while contacts still-latched (~0.5 s at 10 Hz radar). */
+const RADAR_CONTACTS_STILL_RESCAN_DRAWS = 5;
+
+export function createRadarContactsStillCache() {
+  return {
+    armed: false,
+    qx: 0,
+    qz: 0,
+    range: 0,
+    targetId: null,
+    sig: 0,
+    hostileCount: 0,
+    infraCount: 0,
+    neutralCount: 0,
+    nearestOffRangeHostile: null,
+    salients: 0,
+    rescanDraws: 0,
+    skipped: false,
+  };
+}
+
+/**
+ * Contact census for radar.draw. When the still-layer latch is armed and the
+ * quantized player pose / range / target / contact-pose signature match, skips
+ * projection + hostility and reuses retained mark lists (picture-identical at
+ * ≤1 wu / ≤1 radar px). `cache` is owned by createRadar (or the microbench).
+ */
+export function censusRadarContactsStillLayer({
+  contacts,
+  player,
+  playerTeam,
+  state,
+  range,
+  rangeSq,
+  metrics,
+  targetId,
+  projectScratch,
+  pushHostileMark,
+  pushInfrastructureMark,
+  pushNeutralMark,
+  hostileMarks,
+  infrastructureMarks,
+  neutralMarks,
+  cache,
+  updateTrailFn = null,
+  maxTrailUpdates = MAX_TRAIL_UPDATES,
+}) {
+  const playerX = player.pos.x;
+  const playerZ = player.pos.z;
+  const radarScale = metrics.radius / range;
+  const stillQx = Math.round(playerX * radarScale);
+  const stillQz = Math.round(playerZ * radarScale);
+  const stillLayerOn = RADAR_CONTACTS_STILL_LAYER !== false;
+
+  // Cheap player/range/target gate before contact signature walk.
+  const playerStill = stillLayerOn
+    && cache.armed
+    && stillQx === cache.qx
+    && stillQz === cache.qz
+    && range === cache.range
+    && targetId === cache.targetId
+    && cache.rescanDraws > 0;
+
+  let sig = contacts.length * 1315423911;
+  if (playerStill || !cache.armed) {
+    for (let i = 0; i < contacts.length; i += 1) {
+      const e = contacts[i];
+      if (!e || !e.pos || !e.alive || e === player) continue;
+      const qx = Math.round(e.pos.x);
+      const qz = Math.round(e.pos.z);
+      const qh = Math.round((Number(e.rot) || 0) * 32);
+      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0)) >>> 0;
+    }
+  }
+
+  const stillHit = playerStill && sig === cache.sig;
+  if (stillHit) {
+    cache.rescanDraws -= 1;
+    cache.skipped = true;
+    hostileMarks.length = cache.hostileCount;
+    infrastructureMarks.length = cache.infraCount;
+    neutralMarks.length = cache.neutralCount;
+    return {
+      skipped: true,
+      hostileCount: cache.hostileCount,
+      salients: cache.salients,
+      nearestOffRangeHostile: cache.nearestOffRangeHostile,
+      trailUpdates: 0,
+    };
+  }
+
+  hostileMarks.length = 0;
+  infrastructureMarks.length = 0;
+  neutralMarks.length = 0;
+  let hostileCount = 0;
+  let salientContactCount = 0;
+  let nearestOffRangeHostile = null;
+  let nearestOffRangeHostileDistanceSq = Infinity;
+  let trailUpdates = 0;
+
+  for (let i = 0; i < contacts.length; i += 1) {
+    const entity = contacts[i];
+    if (!entity || !entity.pos || !entity.alive || entity === player) continue;
+    const dx = entity.pos.x - playerX;
+    const dz = entity.pos.z - playerZ;
+    const distanceSq = dx * dx + dz * dz;
+    const hostile = isHostileToPlayer(entity, playerTeam, state);
+    const station = entity.type === 'station';
+    const gate = station && !!(entity.data && entity.data.isGate);
+    if (hostile || station || entity.id === targetId) salientContactCount += 1;
+
+    if (distanceSq > rangeSq) {
+      if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
+        nearestOffRangeHostileDistanceSq = distanceSq;
+        nearestOffRangeHostile = entity;
+      }
+      if (station) {
+        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+        if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq);
+      }
+      continue;
+    }
+
+    const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+    if (!projected) continue;
+    const type = entity.type;
+    const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < maxTrailUpdates;
+
+    if (hostile) {
+      if (wantsTrail && updateTrailFn) {
+        updateTrailFn(entity);
+        trailUpdates += 1;
+      }
+      hostileCount += 1;
+      pushHostileMark(entity, projected, distanceSq);
+      continue;
+    }
+    if (station) {
+      pushInfrastructureMark(entity, projected, gate, distanceSq);
+      continue;
+    }
+
+    if (wantsTrail && updateTrailFn) {
+      updateTrailFn(entity);
+      trailUpdates += 1;
+    }
+    pushNeutralMark(entity, projected, distanceSq, {
+      heading: entityHeading(entity),
+      type,
+      selected: entity.id === targetId,
+      named: !!(entity.data && entity.data.namedLaneContactId),
+      wantsTrail,
+    });
+  }
+
+  // Recompute sig after walk when player moved (playerStill was false).
+  if (!playerStill) {
+    sig = contacts.length * 1315423911;
+    for (let i = 0; i < contacts.length; i += 1) {
+      const e = contacts[i];
+      if (!e || !e.pos || !e.alive || e === player) continue;
+      const qx = Math.round(e.pos.x);
+      const qz = Math.round(e.pos.z);
+      const qh = Math.round((Number(e.rot) || 0) * 32);
+      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0)) >>> 0;
+    }
+  }
+
+  cache.armed = true;
+  cache.qx = stillQx;
+  cache.qz = stillQz;
+  cache.range = range;
+  cache.targetId = targetId;
+  cache.sig = sig;
+  cache.hostileCount = hostileMarks.length;
+  cache.infraCount = infrastructureMarks.length;
+  cache.neutralCount = neutralMarks.length;
+  cache.salients = salientContactCount;
+  cache.nearestOffRangeHostile = nearestOffRangeHostile;
+  cache.rescanDraws = RADAR_CONTACTS_STILL_RESCAN_DRAWS;
+  cache.skipped = false;
+
+  return {
+    skipped: false,
+    hostileCount,
+    salients: salientContactCount,
+    nearestOffRangeHostile,
+    trailUpdates,
+  };
+}
+
+
+
 /** Bench A/B: production default ON. Quantized-player still-layer skips asteroid field walk. */
 let RADAR_ASTEROID_STILL_LAYER = true;
 export function setRadarAsteroidStillLayerForBench(enabled) {
@@ -946,6 +1148,9 @@ export function createRadar(ctx) {
   };
   const hostileMarkPool = [];
   const infrastructureMarkPool = [];
+  const neutralMarkPool = [];
+  const neutralMarks = [];
+  const contactsStillCache = createRadarContactsStillCache();
   function pushHostileMark(entity, projected, distanceSq) {
     let mark = hostileMarkPool[hostileMarks.length];
     if (!mark) {
@@ -972,6 +1177,26 @@ export function createRadar(ctx) {
     mark.angle = projected.angle;
     mark.distanceSq = distanceSq;
     infrastructureMarks.push(mark);
+  }
+  function pushNeutralMark(entity, projected, distanceSq, meta) {
+    let mark = neutralMarkPool[neutralMarks.length];
+    if (!mark) {
+      mark = {
+        entity: null, x: 0, y: 0, distanceSq: 0,
+        heading: null, type: '', selected: false, named: false, wantsTrail: false,
+      };
+      neutralMarkPool[neutralMarks.length] = mark;
+    }
+    mark.entity = entity;
+    mark.x = projected.x;
+    mark.y = projected.y;
+    mark.distanceSq = distanceSq;
+    mark.heading = meta.heading;
+    mark.type = meta.type;
+    mark.selected = meta.selected;
+    mark.named = meta.named;
+    mark.wantsTrail = meta.wantsTrail;
+    neutralMarks.push(mark);
   }
   // Reused option records for the glyph draw calls. The draw functions destructure and read
   // only; nothing retains these between contacts.
@@ -1271,72 +1496,55 @@ export function createRadar(ctx) {
     g.restore();
     if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 
-    let hostileCount = 0;
-    let salientContactCount = 0;
-    let nearestOffRangeHostile = null;
-    let nearestOffRangeHostileDistanceSq = Infinity;
-    let trailUpdates = 0;
-    hostileMarks.length = 0;
-    infrastructureMarks.length = 0;
+    // Contact still-layer census: when quantized player + contact-pose signature hold,
+    // reuse retained marks (skip projection/hostility). Glyph paint always runs so pickup
+    // pulses and threat rings keep live `now` (picture contract).
+    const contactCensus = censusRadarContactsStillLayer({
+      contacts,
+      player,
+      playerTeam,
+      state,
+      range,
+      rangeSq,
+      metrics,
+      targetId,
+      projectScratch,
+      pushHostileMark,
+      pushInfrastructureMark,
+      pushNeutralMark,
+      hostileMarks,
+      infrastructureMarks,
+      neutralMarks,
+      cache: contactsStillCache,
+      updateTrailFn: updateTrail,
+      maxTrailUpdates: MAX_TRAIL_UPDATES,
+    });
+    const hostileCount = contactCensus.hostileCount;
+    const salientContactCount = contactCensus.salients;
+    const nearestOffRangeHostile = contactCensus.nearestOffRangeHostile;
 
-    // One contact pass: classification, projection, trails, and neutral glyphs. The old second
-    // pass recomputed dx/dz/distance, isHostileToPlayer, and the radar projection for every
-    // in-range contact; mark collection drew nothing, so fusing preserves paint order exactly.
-    for (let i = 0; i < contacts.length; i += 1) {
-      const entity = contacts[i];
-      if (!entity || !entity.pos || !entity.alive || entity === player) continue;
-      const dx = entity.pos.x - playerX;
-      const dz = entity.pos.z - playerZ;
-      const distanceSq = dx * dx + dz * dz;
-      const hostile = isHostileToPlayer(entity, playerTeam, state);
-      const station = entity.type === 'station';
-      const gate = station && !!(entity.data && entity.data.isGate);
-      if (hostile || station || entity.id === targetId) salientContactCount += 1;
-
-      if (distanceSq > rangeSq) {
-        if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
-          nearestOffRangeHostileDistanceSq = distanceSq;
-          nearestOffRangeHostile = entity;
-        }
-        if (station) {
-          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
-          if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq);
-        }
-        continue;
-      }
-
-      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
-      if (!projected) continue;
-      const x = projected.x;
-      const y = projected.y;
+    // Paint trails + neutral glyphs from retained marks (live colour / pulse).
+    for (let i = 0; i < hostileMarks.length; i += 1) {
+      const mark = hostileMarks[i];
+      const entity = mark.entity;
+      if (!entity) continue;
       const type = entity.type;
-      const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES;
-
-      if (hostile) {
-        // Trails still paint on the contact pass (priority pass only draws chevrons).
-        // Skip contactColor when this hostile is past the trail budget.
-        if (wantsTrail) {
-          const colour = contactColor(entity, playerTeam, colorblindMode, state);
-          updateTrail(entity);
-          drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
-          trailUpdates += 1;
-        }
-        hostileCount += 1;
-        pushHostileMark(entity, projected, distanceSq);
-        continue; // drawn in the crisp priority pass below
-      }
-      if (station) {
-        pushInfrastructureMark(entity, projected, gate, distanceSq);
-        continue; // drawn in the glyph pass below
-      }
-
-      const colour = contactColor(entity, playerTeam, colorblindMode, state);
-      if (wantsTrail) {
-        updateTrail(entity);
+      if ((type === 'ship' || type === 'drone') && trailMap.has(entity.id)) {
+        const colour = contactColor(entity, playerTeam, colorblindMode, state);
         drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
-        trailUpdates += 1;
       }
-
+    }
+    for (let i = 0; i < neutralMarks.length; i += 1) {
+      const mark = neutralMarks[i];
+      const entity = mark.entity;
+      if (!entity) continue;
+      const x = mark.x;
+      const y = mark.y;
+      const type = mark.type;
+      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+      if (mark.wantsTrail || trailMap.has(entity.id)) {
+        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+      }
       if (type === 'pickup') {
         const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.005);
         g.save();
@@ -1364,14 +1572,13 @@ export function createRadar(ctx) {
         g.stroke();
         g.restore();
       } else {
-        neutralOpts.selected = entity.id === targetId;
-        neutralOpts.named = !!(entity.data && entity.data.namedLaneContactId);
+        neutralOpts.selected = mark.selected;
+        neutralOpts.named = mark.named;
         neutralOpts.playerTeam = playerTeam;
         neutralOpts.state = state;
-        drawNeutralContact(g, entity, x, y, entityHeading(entity), colour, neutralOpts);
+        drawNeutralContact(g, entity, x, y, mark.heading, colour, neutralOpts);
       }
-
-      if (entity.id === targetId) drawTargetRing(g, x, y, center);
+      if (mark.selected) drawTargetRing(g, x, y, center);
     }
 
     const swarmQuiet = hostileCount >= SWARM_DENSITY_THRESHOLD;
