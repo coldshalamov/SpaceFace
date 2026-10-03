@@ -82,8 +82,13 @@ test('production init + update order lengths match the live browser baseline', (
   // 169 -> 171 init / 128 -> 130 update: SWARM-02 juice pack — the arcade detector (swarmJuice,
   // one slot after swarmChain so it reads the kills this tick settled) and its DOM-guarded
   // presenter (swarmJuiceHud, after survivalHud); one in both orders each.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 171);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 130);
+  // 171 -> 172 init / 130 -> 131 update: RAVEL is a fixed-step character owner
+  // after BRACKET and before physics, shared by browser and Node production paths.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 172);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 131);
+  assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');

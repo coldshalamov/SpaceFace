@@ -11,11 +11,13 @@
 import { MORROW_AUDIO_RECIPES } from './morrow.js';
 import { VESPER_AUDIO_RECIPES } from './vesper.js';
 import { BRACKET_AUDIO_RECIPES } from './bracket.js';
+import { RAVEL_AUDIO_RECIPES } from './ravel.js';
 
 export const RECIPES = [
   ...MORROW_AUDIO_RECIPES,
   ...VESPER_AUDIO_RECIPES,
   ...BRACKET_AUDIO_RECIPES,
+  ...RAVEL_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',

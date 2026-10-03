@@ -137,6 +137,7 @@ import { bountyHunt } from '../systems/bountyHunt.js';               // BP-13/B1
 import { morrow } from '../systems/morrow.js';
 import { vesper } from '../systems/vesper.js';
 import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -510,6 +511,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['morrow', morrow],
     ['vesper', vesper],
     ['bracket', bracket],
+    ['ravel', ravel],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
