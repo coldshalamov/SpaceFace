@@ -35,6 +35,13 @@ function normalizedCursor(cursor) {
     branchId: cursor && cursor.branchId != null ? String(cursor.branchId) : null,
     attempt: Math.max(0, Math.trunc(Number(cursor && cursor.attempt) || 0)),
     wreckId: cursor && cursor.wreckId != null ? String(cursor.wreckId) : null,
+    // FB-041: a loss-bound chain carries the investigated loss through every stage so the
+    // terminal verdict receipt names the case it adjudicated. Both stay null on every
+    // ambient chain — the cause/receipt shapes below stay byte-identical when absent.
+    lossId: cursor && cursor.lossId != null ? String(cursor.lossId) : null,
+    lossLabel: cursor && cursor.lossLabel != null
+      ? String(cursor.lossLabel).replace(/\s+/g, ' ').trim().slice(0, 140) || null
+      : null,
   };
 }
 
@@ -46,8 +53,13 @@ function saveSeed(state) {
 }
 
 function chainIdFor(state, cursor) {
-  const suffix = hash32(
-    saveSeed(state), cursor.archetypeId, cursor.startEpoch, 'sp1-set-piece',
+  // FB-041: a loss-bound run keeps the sp1_<arch>_<epoch>_<hash> chainId shape
+  // (setPieceEpochFrom still parses its startEpoch) but mixes the loss id into the hash so a
+  // promoted-loss hearing is a distinct deterministic chain from the epoch's ambient row —
+  // never a silent fingerprint collision, and two losses never share one chain.
+  const suffix = (cursor.lossId
+    ? hash32(saveSeed(state), cursor.archetypeId, cursor.startEpoch, 'sp1-set-piece', String(cursor.lossId))
+    : hash32(saveSeed(state), cursor.archetypeId, cursor.startEpoch, 'sp1-set-piece')
   ).toString(36);
   return `sp1_${cursor.archetypeId}_${cursor.startEpoch}_${suffix}`;
 }
@@ -254,6 +266,12 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     sourceRef: wreck && wreck.bearingSourceRef || null,
     channelId: source && source.channelId || null,
   };
+  if (cursor.lossId) {
+    // FB-041: the adjudicated loss rides the whole run — boards, the active mission, retries,
+    // and every follow-on stage copy this same provenance.
+    cause.lossId = cursor.lossId;
+    cause.lossLabel = cursor.lossLabel || null;
+  }
   // A wreck-bound stage runs where its hull lies: long_read's first two stages and every stage
   // carrying a wreck-bound setPieceObjective resolve to the wreck's home sector.
   const stageBoundToWreck = !!(wreck && (
@@ -324,7 +342,12 @@ function receiptFor(definition, stage, cause, settlement, offers) {
   const fallback = completed
     ? `${definition.title} records ${stage.title || stage.id} complete and closes this part of the file.`
     : `${definition.title} records ${stage.title || stage.id} unresolved under ${settlement.reason || settlement.outcome}.`;
-  const houseText = textFor(completed ? stage.successRef : stage.failureRef, fallback);
+  let houseText = textFor(completed ? stage.successRef : stage.failureRef, fallback);
+  if (cause.lossLabel) {
+    // FB-041: the verdict names the real loss — the clause rides comms:popup, the
+    // mission:setPieceTransition event fields, and the durable receipts row unchanged.
+    houseText = `${houseText} The file names ${cause.lossLabel}.`;
+  }
   const recoveryText = completed || offers.length === 0 ? null : textFor(
     stage.recoveryRef,
     `${definition.title} leaves one reduced-stake recovery posting open for the same obligation.`,
@@ -345,6 +368,7 @@ function receiptFor(definition, stage, cause, settlement, offers) {
     nextStationId: nextStationIds.length === 1 ? nextStationIds[0] : null,
     nextStationIds,
     wreckId: cause.wreckId || null,
+    ...(cause.lossId ? { lossId: cause.lossId, lossLabel: cause.lossLabel || null } : {}),
   };
 }
 
@@ -380,6 +404,8 @@ export function advanceSetPieceMission(state, settledMission, rawSettlement) {
       branchId: cause.branchId || null,
       attempt: 0,
       wreckId: cause.wreckId || null,
+      lossId: cause.lossId || null,
+      lossLabel: cause.lossLabel || null,
     };
     offers = buildSetPieceMissionOffers(state, nextCursor);
     if (offers.length === 2) status = 'branch_available';
@@ -392,6 +418,8 @@ export function advanceSetPieceMission(state, settledMission, rawSettlement) {
       branchId: cause.branchId || null,
       attempt: 1,
       wreckId: cause.wreckId || null,
+      lossId: cause.lossId || null,
+      lossLabel: cause.lossLabel || null,
     });
     status = offers.length ? 'retry' : 'completed';
   }
