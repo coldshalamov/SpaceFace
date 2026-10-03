@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { planInstall, applyInstall, rollbackInstall, wireManifest } from '../../../tools/install.mjs';
+import { planInstall, applyInstall, rollbackInstall, wireManifest } from './tools/install.mjs';
 
 // Minimal manifest is a signature fixture, NOT represented as a full production manifest.
 const MANIFEST = `export const PRODUCTION_INIT_ORDER = Object.freeze(['core', 'world', 'encounterDirector', 'save']);
@@ -12,7 +12,7 @@ export const CALENDAR_CLOCK_IDS = Object.freeze(['world', 'encounterDirector', '
 async function checkout(t, crlf = false) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'spaceface-tension-install-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  await fs.cp(new URL('../../../fixture/baseline/', import.meta.url), dir, { recursive: true });
+  await fs.cp(new URL('./fixture/baseline/', import.meta.url), dir, { recursive: true });
   await fs.mkdir(path.join(dir, 'src/runtime'), { recursive: true });
   await fs.writeFile(path.join(dir, 'src/runtime/authoritativeSystemManifest.js'), MANIFEST);
   if (crlf) for (const name of ['src/core/registry.js', 'src/systems/encounterDirector.js']) {

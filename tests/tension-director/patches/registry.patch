@@ -1,0 +1,22 @@
+--- a/src/core/registry.js
++++ b/src/core/registry.js
+@@ -114,8 +114,9 @@
+ import { onboarding } from '../systems/onboarding.js';
+ // WORLD OVERHAUL / REVAMP 2.1 — Wave 1 systems (see design/revamp/REVAMP_MASTER.md).
+ import { spawnBudget } from '../systems/spawnBudget.js';            // single ship-cap arbiter (ctx.helpers.spawnBudget)
+ import { regionalEcology } from '../systems/regionalEcology.js';     // M4 persistent regional simulation inputs
++import { tensionDirector } from '../systems/tensionDirector.js'; // session-scale pacing owner
+ import { encounterDirector } from '../systems/encounterDirector.js'; // zone-anchored living-universe encounters
+ import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js'; // M4 six causal POI behavior families
+ import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B12 zone pirate rumors from real events
+ import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
+@@ -421,8 +422,9 @@
+     ['spawnBudget', spawnBudget],
+     ['world', world],
+     ['heistFacilities', heistFacilities],
+     ['regionalEcology', regionalEcology],
++    ['tensionDirector', tensionDirector],
+     ['encounterDirector', encounterDirector],
+     ['routeFollower', routeFollower],
+     ['travelLanes', travelLanes],
+     ['livingPoiBehaviors', livingPoiBehaviors],
