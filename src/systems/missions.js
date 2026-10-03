@@ -190,6 +190,9 @@ import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity }
 // NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
 // the posting used (pure exported read; economy stays the sole stock/market writer).
 import { starvedIndustryNeedFor } from './economy.js';
+// NXI-171 — the shared starvation-row prose builder, so a board refresh re-quotes a live
+// deficit in the exact voice the emit-only producer posted it (no second wording authority).
+import { starvedOfferProse } from '../data/economyContractTemplates.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -1011,6 +1014,16 @@ function isFingerprintBoardSource(source) {
     || source === SET_PIECE_FOLLOW_ON_SOURCE;
 }
 
+/**
+ * NXB-043 — a competing feedstock bid is TWO rows for ONE shortage: a rival-tagged starvation
+ * row may board beside the other member of its pair (a different starving yard), while the
+ * same yard can never double-post. Anything else keeps the one-row-per-source guard.
+ */
+function isCompetingStarvedRow(offer) {
+  return !!(offer && offer.source === 'economyContract' && offer.type === 'cargo_delivery'
+    && offer.cause && offer.cause.tag === 'industry_starved' && offer.cause.rivalStationId);
+}
+
 function isZeroPayLandmarkMission(mission, rewardCr) {
   return !!(mission
     && mission.source === LANDMARK_QUEST_SOURCE
@@ -1288,6 +1301,22 @@ export const missions = {
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
+    // NXB-043/NXI-171 — a real stock write (mission freight, a market sale, or a relieved
+    // starvation threshold) changes the hopper the board's shortage rows quote. Re-derive
+    // those rows from the same read that planned them so no board replays a resolved
+    // emergency; a competing bid admits when its rival's line was fed.
+    const refreshShortageBoards = () => {
+      const boards = this.state.missions && this.state.missions.boards;
+      if (!boards) return;
+      for (const [stId, b] of Object.entries(boards)) {
+        if (this._syncShortageOffers(b)) {
+          this.bus.emit('mission:updated', { missionId: null, stationId: stId });
+        }
+      }
+    };
+    bus.on('economy:freightAccepted', refreshShortageBoards);
+    bus.on('economy:shortageRelieved', refreshShortageBoards);
+    bus.on('economy:tradeCompleted', refreshShortageBoards);
     // A sold cargo-ship salvage becomes one board opportunity. Not a fine, a lock, or a failed job.
     bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
     // mining_quota: aggregate mined units of the target commodity.
@@ -1710,8 +1739,9 @@ export const missions = {
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
+      const shortageChanged = this._syncShortageOffers(board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || authoredChanged || megaHeistChanged || capitalChanged) {
+        || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2444,9 +2474,17 @@ export const missions = {
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
     // One row per source for ambient sources. Fingerprinted sources (salvage's stable
     // point-derived ids, set-piece chain causes, …) dedupe per identity above/below instead,
-    // so a second communicator in one sector still boards.
+    // so a second communicator in one sector still boards. NXB-043's exception: the two
+    // members of one competing feedstock bid are rival-tagged rows for DISTINCT starving
+    // yards — the board carries both so the player can read the tradeoff.
     if (!isFingerprintBoardSource(rawOffer.source)
-      && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
+      && board.slots.some((offer) => {
+        if (!offer || offer.source !== rawOffer.source) return false;
+        if (isCompetingStarvedRow(rawOffer) && isCompetingStarvedRow(offer)) {
+          return offer.destStationId === rawOffer.destStationId;
+        }
+        return true;
+      })) return false;
     if (isFingerprintBoardSource(rawOffer.source) && board.slots.some((offer) => (
       offer && offer.source === rawOffer.source && offer.cause && rawOffer.cause
       && offer.cause.fingerprint === rawOffer.cause.fingerprint
@@ -3316,6 +3354,85 @@ export const missions = {
     if (!sector) return false;
     const need = starvedIndustryNeedFor(info.type, sector.tier || 0, market);
     return !need || need.inputId !== cmdtyId;
+  },
+
+  /**
+   * NXB-043/NXI-171 — shortage-backed board rows track the live hopper that posted them.
+   * A delivery (or any real stock write) that feeds the destination yard retires its row;
+   * a partially fed yard re-quotes its quantity, payout and prose from the same read that
+   * planned the posting — the board reflects the new actual requirement instead of replaying
+   * the original emergency. Runs only on board reads and freight facts, never per frame.
+   * Returns true when any row changed so the caller can emit one mission:updated.
+   */
+  _syncShortageOffers(board) {
+    if (!board || !Array.isArray(board.slots)) return false;
+    const markets = this.state.economy && this.state.economy.markets;
+    if (!markets) return false;
+    let changed = false;
+    const kept = [];
+    for (const offer of board.slots) {
+      if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery'
+        || !offer.cause || offer.cause.tag !== 'industry_starved'
+        || !offer.params || !offer.params.cmdtyId || !offer.destStationId) {
+        kept.push(offer);
+        continue;
+      }
+      const market = markets[offer.destStationId];
+      const destInfo = stationInfoFor(this.state, offer.destStationId);
+      const destSector = destInfo && SECTOR_BY_ID.get(offer.destSectorId || destInfo.sectorId);
+      const need = destInfo && market && destSector
+        ? starvedIndustryNeedFor(destInfo.type, destSector.tier || 0, market)
+        : null;
+      if (!need || need.inputId !== offer.params.cmdtyId) {
+        changed = true; // the hopper is fed — the post comes down; it is not re-rolled
+        continue;
+      }
+      // Re-quote the live deficit under the same 20u posting bound. Reward and cargo value
+      // scale with the new quantity — the berth pays for what it still needs, not the memory.
+      const liveQty = Math.max(1, Math.min(20, need.deficitUnits));
+      const qtyBefore = offer.params.qty;
+      if (Number.isFinite(qtyBefore) && liveQty !== qtyBefore) {
+        const ratio = liveQty / Math.max(1, qtyBefore);
+        offer.params.qty = liveQty;
+        offer.params.cargoValue = Math.max(1, Math.round((offer.params.cargoValue || 0) * ratio));
+        offer.params.fValue = 1 + offer.params.cargoValue / 8000;
+        offer.reward_cr = Math.max(1, Math.round((offer.reward_cr || 0) * ratio));
+      }
+      // Prose rebuild is deterministic — for a competing bid it also admits when the rival
+      // yard's hopper filled and the duel collapsed to one berth.
+      const summaryBefore = offer.summary;
+      this._rewriteStarvedOfferText(offer, destInfo, markets);
+      if (offer.summary !== summaryBefore || offer.params.qty !== qtyBefore) changed = true;
+      kept.push(offer);
+    }
+    if (changed) board.slots = kept;
+    return changed;
+  },
+
+  /** Re-derive a starvation row's title/summary/cause line from live names + need. */
+  _rewriteStarvedOfferText(offer, destInfo, markets) {
+    if (!offer || !offer.params) return;
+    const destName = (destInfo && destInfo.name) || offer.destStationId;
+    const commodity = this._cmdtyName(offer.params.cmdtyId);
+    const rivalId = offer.cause && offer.cause.rivalStationId;
+    let rivalName = null;
+    let rivalStillHungry = true;
+    if (rivalId) {
+      const rivalInfo = stationInfoFor(this.state, rivalId);
+      rivalName = (rivalInfo && rivalInfo.name) || rivalId;
+      const rivalSector = rivalInfo && SECTOR_BY_ID.get(rivalInfo.sectorId);
+      const rivalMarket = markets && markets[rivalId];
+      const rivalNeed = rivalInfo && rivalSector && rivalMarket
+        ? starvedIndustryNeedFor(rivalInfo.type, rivalSector.tier || 0, rivalMarket)
+        : null;
+      rivalStillHungry = !!(rivalNeed && rivalNeed.inputId === offer.params.cmdtyId);
+    }
+    const prose = starvedOfferProse({
+      qty: offer.params.qty, commodity, destName, rivalName, rivalStillHungry,
+    });
+    offer.title = prose.title;
+    offer.summary = prose.line;
+    if (offer.cause) offer.cause.line = prose.line;
   },
 
   _withdrawSetPieceChoiceOffers(selectedOffer) {
