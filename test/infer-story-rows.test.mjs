@@ -113,6 +113,32 @@ test('trader, fighter, and salvager reach one Helios opening and a lull does not
   assert.equal(salvager.state.story.beatIndex, 0);
 });
 
+test('NXB-046: a torn-down tutorial rail cannot permanently strand the cold start', () => {
+  // In-run: the rail is abandoned mid-tutorial (teardown leaves {active:false, finished:false}).
+  // The deferred entry must release on its own clock — tutorial:finished can never fire again.
+  const h = harness(4245);
+  h.bus.emit('game:started', {});
+  assert.equal(ids(h.comms, 'cold_friend').length, 0, 'a running tutorial still holds the opening');
+  assert.equal(h.state.story.storyEntry.deferred, true);
+  h.state.onboarding = { active: false, finished: false };
+  h.story.update(0, h.state);
+  assert.equal(ids(h.comms, 'cold_friend').length, 1, 'the stranded deferral releases');
+  h.story.update(0, h.state);
+  assert.equal(ids(h.comms, 'cold_friend').length, 1, 'released once, not repeated');
+
+  // Loaded: the same torn-down record arrives through a save — reconcile releases the
+  // persisted deferred flag instead of waiting for a finish that cannot come.
+  const loaded = harness(4246);
+  loaded.bus.emit('game:started', {});
+  assert.equal(loaded.state.story.storyEntry.deferred, true);
+  loaded.state.onboarding = { active: false, finished: false };
+  loaded.bus.emit('save:loaded');
+  assert.equal(ids(loaded.comms, 'cold_friend').length, 1, 'Continue releases the deferred opening');
+  loaded.bus.emit('save:loaded');
+  loaded.story.update(0, loaded.state);
+  assert.equal(ids(loaded.comms, 'cold_friend').length, 1, 'no replay on a second Continue');
+});
+
 test('a filed ending changes the dock, the job, and the return without paying twice', () => {
   const h = harness(4701);
   h.state.simTime = 1000;
