@@ -53,12 +53,33 @@ skin, an atlas, a portrait — wherever it beats code-drawn 2D. Concept art that
 | Alien tissue + machine nacre | `assets/ships/release/surfaces/creature-skins/manifest.json` | same folder | `src/render/creatureSkinLibrary.js` |
 | Bar-patron faces (7 roles) | `tools/art/local_portrait_briefs.py` | `assets/portraits/locals/` | `src/data/localPortraits.js` |
 | Achievement medals | `assets/ui/generated/achievements/manifest.json` | same folder | `src/ui/screens/achievements.js` |
+| Planet-body terrain detail (6 tiles) | `assets/ships/release/surfaces/planet-detail/manifest.json` | same folder | `src/render/planetDetailLibrary.js` (read by `planetSiteVisual.js`) |
+| App icon | `assets/brand/*.svg` (hand-authored) | `assets/brand/exports/` | `electron/main.cjs` + `package.json` build config |
 
-## Not done yet (needs its own sitting)
+## Every plan item, closed (2026-10-03)
 
-- **Hull wear + livery.** The fleet's six shared panel textures are embedded (KTX2) in every hull GLB, so a better
-  panel/wear set means re-publishing every hull through Blender (`tools/blender/forge/publish.mjs`, ~2.5 min each).
-  The runtime `illustratedSurface` hook deliberately adds no textures.
-- **Planet-site bodies** (`planetSiteVisual.bakePlanetTexture`): the camera skims the limb and sees the pole of an
-  equirectangular bake; a generated equirect map is too blurry at that scale.
-- **VFX sprite sheets**: the effects run through an engineered shard/quarks pipeline with its own standard.
+**Done and live:** medals, sky planets (8 looks + 2 ringed giants), metal / crystal / exotic asteroid surfaces, alien
+tissue and machine nacre, 64 bar-patron faces, planet-body terrain detail, the app icon (from the hand-authored emblem
+via `assets/brand/export-icons.py`; CairoSVG needs a system Cairo library on Windows, so the exports were rendered
+through Chromium and the repo's own exporter ran unchanged), and the Steam capsule / library / achievement art (already
+built on demand by `node scripts/build-store-assets.mjs`; it is gitignored output, and `--check` passes).
+
+**Decided against, with the reason:**
+
+- **Fleet-wide hull wear / grime / new panel textures.** Evidence: all 117 Forge bodies were rendered through the live
+  renderer on the real GPU (`fleet-look --fleet --views=close`) and two stations opened at full size. The ships read as
+  clean lacquer, which is the owner's chosen look (FORGE rules 6-7), and no tile grid shows at the gameplay camera, only
+  at extreme station zoom. The cost is a Blender rebuild and publish of every hull, which regenerates `pilots.json`,
+  every render package and the model-truth census that other lanes are editing at the same time. The FORGE.md carve-out
+  stays in place for a future targeted pass (one hull family at a time), but nothing in the picture asks for it now.
+- **Livery / stencil decals on hulls.** The existing Living Hull marks sit at fixed normalised coordinates tuned to the
+  Kestrel; 15 plan shapes (arrowhead, catamaran, saucer, liner) would need a per-hull surface raycast at build time, a
+  Shipworks control and a preview that draws it, and the Kestrel's `borrowed_time` default already has a modelled
+  stencil (a second quad would double it). At the chase camera a mark is about 20 px. Not worth a full-stack feature and
+  a second pass through the frontend lane. `decalId` stays a stored, unrendered field, as `shipPaints.js` says.
+- **VFX sprite sheets.** The effects are shader-driven sprites (`SPR_FLASH`, `SPR_RING`, `SPR_PUFF`, ...) and an engineered
+  shard / quarks pipeline with its own standard; there is no flat texture slot to swap, and `makeStarTexture` is used
+  only by the graphics lab and one legacy factory path. The authored fragment atlas is deliberately low-frequency for
+  6 px per world unit. A generated sprite would add cost without a visible change.
+- **Per-commodity item pictures.** The market rows already speak through 14 hand-authored vector family pictograms
+  (the interface plan assigns icons to vector); a separate picture set would fight that system.
