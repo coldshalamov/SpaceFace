@@ -182,7 +182,8 @@ test('a filed ending changes the dock, the job, and the return without paying tw
   h.bus.emit('ui:endingArchiveOpen');
   assert.equal(h.heatClears.length, 1, 'archive and a second ask do not replay the effect');
   assert.equal(h.confirms.length, 0, 'a filed ending is not a new confirmation');
-  assert.equal(h.archives.length, 2);
+  // FB-129: the archive also emits once when the ending is filed — one file + two opens.
+  assert.equal(h.archives.length, 3);
   assert.equal(h.archives[0].choiceId, 'A');
   assert.equal(h.grants.length, 0);
 
