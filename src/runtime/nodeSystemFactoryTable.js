@@ -137,6 +137,7 @@ import { bountyHunt } from '../systems/bountyHunt.js';
 import { morrow } from '../systems/morrow.js';
 import { vesper } from '../systems/vesper.js';
 import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -310,6 +311,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['morrow', morrow],
     ['vesper', vesper],
     ['bracket', bracket],
+    ['ravel', ravel],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
