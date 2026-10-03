@@ -4504,7 +4504,14 @@ export function seedEscalationFromAct(dir, state, cause, payload) {
   const beat = beatForCause(cause, act);
   if (!beat) return null;
   const causeId = escalationCauseId(cause, act);
-  if (host.escalationSeeds.some((row) => row && row.causeId === causeId)) return null;
+  const openNeed = host.escalationSeeds.find((row) => (
+    row && row.causeId === causeId && row.arrived !== true && row.resolved !== true
+  ));
+  if (openNeed) return openNeed;
+  const priorNeedCount = host.escalationSeeds.reduce(
+    (count, row) => count + (row && row.causeId === causeId ? 1 : 0),
+    0,
+  );
 
   const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
   const sectorId = escalationText(act.sectorId)
@@ -4523,7 +4530,7 @@ export function seedEscalationFromAct(dir, state, cause, payload) {
   }
 
   const seed = sanitizeEscalationSeed({
-    id: `esc:${cause}:${causeId}`,
+    id: priorNeedCount === 0 ? `esc:${cause}:${causeId}` : `esc:${cause}:${causeId}:g${priorNeedCount}`,
     cause,
     beat,
     causeId,

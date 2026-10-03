@@ -62,7 +62,7 @@ export const COLD_START = [
   // Same next berth for a hauler, a fighter, or a salvager. station_helios is the live dock.
   {
     id: 'cold_next_berth', sender: 'HELIOS DOCKMASTER', delayS: 20,
-    text: 'Next berth: Helios Station. Contract 47-A is the same job if you hauled, fought, or pulled salvage.',
+    text: 'Next berth: Helios Station. Kessler at the cargo desk has Contract 47-A if you hauled, fought, or pulled salvage.',
     category: 'personal', ttl: 12,
     note: 'Reachable dock is station_helios in sector_helios_prime. One opportunity, three first-hour routes.',
   },
@@ -71,7 +71,7 @@ export const COLD_START = [
 /** The one authored opening every first-hour route is allowed to reach. */
 export const STORY_ENTRY_CONTACT = Object.freeze({
   id: 'story_entry_helios',
-  contactId: 'helios_dockmaster',
+  contactId: 'kessler',
   stationId: 'station_helios',
   sectorId: 'sector_helios_prime',
   commsId: 'cold_next_berth',
