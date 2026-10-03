@@ -392,6 +392,26 @@ const RAIL_ROWS = Object.freeze([
     instruction: 'Latch the wasp, burn away to store the stretch, and let the return yank it through the gate.',
     durationSeconds: ELASTIC_WHIP_DRILL_SECONDS,
   }),
+  // SF-015 proving-ground rungs: appended (never reordered — existing rung indices are
+  // recorded in funnels and pinned by range-door-funnel tests).
+  Object.freeze({
+    id: 'slip_a_gap',
+    group: 'FLIGHT',
+    rule: 'SLIP THE GAP',
+    instruction: 'Thread the slot between the two hulls. Touch nothing.',
+  }),
+  Object.freeze({
+    id: 'brake_beside_load',
+    group: 'MASS',
+    rule: 'HOLD BESIDE THE LOAD',
+    instruction: 'Come alongside the drifting load. Hold station two seconds.',
+  }),
+  Object.freeze({
+    id: 'orbit_before_release',
+    group: 'MASSLINE',
+    rule: 'ORBIT BEFORE RELEASE',
+    instruction: 'Hook the anchor, take the long way around, then release through the exit.',
+  }),
 ]);
 const RAIL_INDEX_BY_ID = new Map(RAIL_ROWS.map((row, index) => [row.id, index]));
 export const RANGE_RAIL_ROWS = RAIL_ROWS;
@@ -1239,6 +1259,373 @@ export function tickElasticWhipDrill(sim, stepS, { input = {}, toggleTether = fa
     if (sim.hostile) inBoundsBounce(sim.hostile, sim.bounds);
     const verdict = evaluateElasticWhip(sim);
     if (verdict) return { cleared: verdict.kind === 'clear', verdict, cue: cueName };
+  }
+  return { cleared: false, verdict: null, cue: cueName };
+}
+
+// ── SF-015 proving-ground rungs ─────────────────────────────────────────────────
+// Three physical exercises on the same rail, in the same shared flight model
+// (drivePlayerStep / getDerivedStats — SF-015's "no separate practice model" gate).
+// Exported factory+tick pairs like the tractor/whip rungs so headless contracts can
+// drive the rung itself, not just the screen. Completion is judged on trajectory and
+// contact, never on which keys were held; reselecting the rung re-stages everything
+// the exercise owns.
+
+export const SLIP_GAP_DRILL_ID = 'slip_a_gap';
+export const BRAKE_BESIDE_LOAD_DRILL_ID = 'brake_beside_load';
+export const ORBIT_RELEASE_DRILL_ID = 'orbit_before_release';
+
+function parkedRungDrone(x = -360, z = 260) {
+  return {
+    id: 'training_drone',
+    name: 'Training Drone',
+    shortName: 'DRONE',
+    shipClass: 'gunship',
+    behavior: 'Holds the far corner.',
+    preferredRange: '—',
+    maxSpeed: 0,
+    turnRate: 0,
+    mass: 18,
+    radius: 10,
+    x,
+    z,
+    vx: 0,
+    vz: 0,
+    rot: 0,
+    baseX: x,
+    baseZ: z,
+    orbitRadius: 0,
+    orbitSpeed: 0,
+    orbitT: 0,
+  };
+}
+
+function rungShell(row, options, extra = {}) {
+  const shipId = options.shipId || 'ship_kestrel';
+  const fittings = Array.isArray(options.fittings) ? options.fittings.slice() : [];
+  const derived = options.derived || getDerivedStats(shipId, fittings, options.player || null);
+  const model = options.model || derived.flightModel;
+  return {
+    id: row.id,
+    rule: row.rule,
+    instruction: row.instruction,
+    variant: options.variant || null,
+    shipId,
+    shipName: shipName(shipId),
+    fittings,
+    derived,
+    model,
+    cruise: tractorCruiseForShip(shipId),
+    ghostTrail: cloneTrail(options.ghostTrail || []),
+    trail: [],
+    timeS: 0,
+    verdict: null,
+    because: '',
+    progress: '',
+    headingHint: '',
+    drone: options.drone || parkedRungDrone(),
+    weakPoint: null,
+    anchor: null,
+    ...extra,
+  };
+}
+
+/** SLIP A GAP — thread the slot between two hulls at speed. The gap gate scores the
+ *  crossing line; a blocker contact (one tick of overlap) is the clip. The gap is the
+ *  only authored wall — the course leaves the whole west half open so any approach,
+ *  entry speed, and angle that fits is a valid path. */
+export function createSlipGapRung(options = {}) {
+  const row = RAIL_ROWS.find((entry) => entry.id === SLIP_GAP_DRILL_ID);
+  const sim = rungShell(row, options);
+  const shipR = Math.max(10, finite(sim.derived && sim.derived.radius, 14));
+  const gapHalf = Math.max(shipR + 16, 34);
+  const gateX = 200;
+  const blockerR = 52;
+  return {
+    ...sim,
+    player: makePlayerFromModel(sim.model, {
+      x: -380,
+      z: 170,
+      vx: 0,
+      vz: 0,
+      rot: 0,
+      radius: sim.derived.radius,
+      mass: sim.derived.mass,
+    }),
+    gapHalf,
+    blockers: [
+      { x: gateX, z: gapHalf + blockerR, radius: blockerR, mass: 1400, vx: 0, vz: 0 },
+      { x: gateX, z: -(gapHalf + blockerR), radius: blockerR, mass: 1400, vx: 0, vz: 0 },
+    ],
+    gates: [{ x: gateX, centerZ: 0, tol: gapHalf, state: 'pending' }],
+    bounds: { minX: -460, maxX: 480, minZ: -300, maxZ: 300 },
+    because: `The slot is ${Math.round(gapHalf * 2)} wu across and the hulls do not forgive paint.`,
+  };
+}
+
+export function tickSlipGapDrill(sim, stepS, { input = {}, advanceTime = true } = {}) {
+  if (advanceTime) sim.timeS += stepS;
+  if (sim.verdict) return { cleared: false, verdict: null, cue: null };
+  drivePlayerStep(sim.player, sim.model, input, stepS);
+  updateDroneMotion(sim, stepS);
+  // The clip check runs before the collision push-apart: one tick of hull-on-hull overlap
+  // is the contact the exercise judges, whatever the bounce would have done next.
+  for (const blocker of sim.blockers || []) {
+    const dx = sim.player.x - blocker.x;
+    const dz = sim.player.z - blocker.z;
+    if (Math.hypot(dx, dz) < sim.player.radius + blocker.radius - 0.5) {
+      return {
+        cleared: false,
+        verdict: { kind: 'fail', text: 'YOU CLIPPED THE WALL', because: sim.because },
+        cue: 'deny',
+      };
+    }
+  }
+  for (const blocker of sim.blockers || []) resolveCircleCollision(sim.player, blocker);
+  resolveCircleCollision(sim.player, sim.drone);
+  inBoundsBounce(sim.player, sim.bounds);
+  const gate = sim.gates && sim.gates[0];
+  const prevX = sim.prevX != null ? sim.prevX : sim.player.x;
+  sim.prevX = sim.player.x;
+  if (gate && gate.state === 'pending' && prevX < gate.x && sim.player.x >= gate.x) {
+    if (Math.abs(sim.player.z - gate.centerZ) <= gate.tol) {
+      gate.state = 'passed';
+      return {
+        cleared: true,
+        verdict: { kind: 'clear', text: 'RULE CLEARED', because: sim.because },
+        cue: 'confirm',
+      };
+    }
+    gate.state = 'failed';
+    return {
+      cleared: false,
+      verdict: { kind: 'fail', text: 'MISSED THE SLOT', because: 'The gate reads the line through the hulls, not the space around them.' },
+      cue: 'deny',
+    };
+  }
+  if (sim.timeS > 24) {
+    return {
+      cleared: false,
+      verdict: { kind: 'fail', text: 'YOU NEVER COMMITTED', because: sim.because },
+      cue: 'deny',
+    };
+  }
+  return { cleared: false, verdict: null, cue: null };
+}
+
+/** BRAKE BESIDE A MOVING LOAD — a drifting hauler crosses the lane; come alongside and
+ *  hold station (inside the window, relative speed under the bar) for the hold count.
+ *  Teaches the same brake judgment a salvage pickup or a boarding run needs. */
+export function createBrakeBesideLoadRung(options = {}) {
+  const row = RAIL_ROWS.find((entry) => entry.id === BRAKE_BESIDE_LOAD_DRILL_ID);
+  const sim = rungShell(row, options, { drone: parkedRungDrone(-340, 250) });
+  const loadSpeed = 64;
+  return {
+    ...sim,
+    player: makePlayerFromModel(sim.model, {
+      x: -560,
+      z: 90,
+      vx: Math.max(80, loadSpeed + 30),
+      vz: 0,
+      rot: 0,
+      radius: sim.derived.radius,
+      mass: sim.derived.mass,
+    }),
+    load: { x: -460, z: -60, vx: loadSpeed, vz: 0, radius: 26, mass: 320 },
+    window: 120,
+    relSpeedMax: 14,
+    holdS: 2.5,
+    hold: 0,
+    holdArmed: false,
+    bounds: { minX: -620, maxX: 560, minZ: -300, maxZ: 300 },
+    because: `The load drifts at ${loadSpeed} m/s. Match it, don't chase it.`,
+  };
+}
+
+export function tickBrakeBesideLoadDrill(sim, stepS, { input = {}, advanceTime = true } = {}) {
+  if (advanceTime) sim.timeS += stepS;
+  if (sim.verdict) return { cleared: false, verdict: null, cue: null };
+  drivePlayerStep(sim.player, sim.model, input, stepS);
+  updateDroneMotion(sim, stepS);
+  if (sim.load) {
+    sim.load.x += sim.load.vx * stepS;
+    sim.load.z += sim.load.vz * stepS;
+    const dx = sim.player.x - sim.load.x;
+    const dz = sim.player.z - sim.load.z;
+    if (Math.hypot(dx, dz) < sim.player.radius + sim.load.radius - 0.5) {
+      return {
+        cleared: false,
+        verdict: { kind: 'fail', text: 'YOU TAGGED THE LOAD', because: 'A moving hull is a wall you can stand next to — never on.' },
+        cue: 'deny',
+      };
+    }
+    resolveCircleCollision(sim.player, sim.load);
+  }
+  resolveCircleCollision(sim.player, sim.drone);
+  inBoundsBounce(sim.player, sim.bounds);
+  if (sim.load) {
+    const dx = sim.load.x - sim.player.x;
+    const dz = sim.load.z - sim.player.z;
+    const relV = Math.hypot(sim.player.vx - sim.load.vx, sim.player.vz - sim.load.vz);
+    const inWindow = Math.abs(dx) <= sim.window && Math.abs(dz) <= sim.window;
+    if (inWindow && relV <= sim.relSpeedMax) {
+      if (!sim.holdArmed) {
+        sim.holdArmed = true;
+        sim.hold = 0;
+      } else {
+        sim.hold += stepS;
+      }
+    } else {
+      sim.hold = 0;
+    }
+    if (sim.hold >= sim.holdS) {
+      return {
+        cleared: true,
+        verdict: {
+          kind: 'clear',
+          text: 'RULE CLEARED',
+          because: `You held station ${sim.holdS}s beside a load doing ${Math.round(Math.hypot(sim.load.vx, sim.load.vz))} m/s.`,
+        },
+        cue: 'confirm',
+      };
+    }
+    if (sim.load.x - sim.load.radius > sim.bounds.maxX) {
+      return {
+        cleared: false,
+        verdict: { kind: 'fail', text: 'THE LOAD GOT AWAY', because: 'Brake earlier. Station-keeping is about arriving slow, not arriving first.' },
+        cue: 'deny',
+      };
+    }
+  }
+  if (sim.timeS > 30) {
+    return {
+      cleared: false,
+      verdict: { kind: 'fail', text: 'IT PASSED YOU', because: sim.because },
+      cue: 'deny',
+    };
+  }
+  return { cleared: false, verdict: null, cue: null };
+}
+
+/** ORBIT BEFORE RELEASE — hook the anchor, sweep at least a half-orbit, then release
+ *  through the exit gate. swing_do_not_pull teaches the corner; this teaches holding the
+ *  line through the long arc before letting go — the slingshot timing a thrown mass needs. */
+export function createOrbitReleaseRung(options = {}) {
+  const row = RAIL_ROWS.find((entry) => entry.id === ORBIT_RELEASE_DRILL_ID);
+  const sim = rungShell(row, options);
+  const lineLength = Math.max(120, BASE_TETHER_LEN * finite(sim.derived && sim.derived.tetherSpoolMult, 1));
+  const startSpeed = finite(sim.model && sim.model.maxSpeed, 0) * 0.85;
+  // The exit line sits beyond the rope's reach (orbit radius = lineLength): the gate can
+  // only be crossed after release, which is the lesson. It spans the lane, not a slot —
+  // the rung grades the swing, not the exit's precision.
+  const exitGateZ = Math.round(lineLength * 1.15);
+  return {
+    ...sim,
+    player: makePlayerFromModel(sim.model, {
+      x: -(lineLength + 160),
+      z: -Math.round(lineLength * 0.85),
+      vx: startSpeed,
+      vz: 0,
+      rot: 0,
+      radius: sim.derived.radius,
+      mass: sim.derived.mass,
+    }),
+    anchor: { x: 0, z: 0, radius: 78, mass: 1800, vx: 0, vz: 0 },
+    tether: {
+      allowed: true,
+      active: false,
+      length: lineLength,
+      attachedOnce: false,
+      releasedAfterAttach: false,
+    },
+    orbit: { swept: 0, prevAngle: null, needed: Math.PI },
+    exitGate: { z: exitGateZ, centerX: 0, half: Math.max(200, lineLength), crossed: false },
+    bounds: {
+      minX: -(lineLength + 280),
+      maxX: lineLength + 400,
+      minZ: -(lineLength + 260),
+      maxZ: exitGateZ + 260,
+    },
+    because: 'Half the circle stores the corner. The exit sits past the rope — let go to reach it.',
+  };
+}
+
+export function tickOrbitReleaseDrill(sim, stepS, { input = {}, toggleTether = false, advanceTime = true } = {}) {
+  if (advanceTime) sim.timeS += stepS;
+  let cueName = null;
+  if (sim.verdict) return { cleared: false, verdict: null, cue: cueName };
+  drivePlayerStep(sim.player, sim.model, input, stepS);
+  updateDroneMotion(sim, stepS);
+  if (toggleTether) {
+    const tether = sim.tether;
+    if (tether && tether.active) {
+      tether.active = false;
+      if (tether.attachedOnce) tether.releasedAfterAttach = true;
+      cueName = 'cut';
+    } else if (tether && tether.allowed) {
+      const dist = Math.hypot(sim.player.x - sim.anchor.x, sim.player.z - sim.anchor.z);
+      if (dist <= tether.length + 130) {
+        tether.active = true;
+        tether.attachedOnce = true;
+        sim.orbit.prevAngle = Math.atan2(sim.player.z - sim.anchor.z, sim.player.x - sim.anchor.x);
+        cueName = 'latch';
+      } else {
+        cueName = 'deny';
+      }
+    } else {
+      cueName = 'deny';
+    }
+  }
+  if (sim.tether && sim.tether.active && sim.anchor) {
+    applyTetherConstraint(sim.player, sim.anchor, sim.tether.length);
+    const angle = Math.atan2(sim.player.z - sim.anchor.z, sim.player.x - sim.anchor.x);
+    if (sim.orbit.prevAngle != null) {
+      let dA = angle - sim.orbit.prevAngle;
+      while (dA > Math.PI) dA -= Math.PI * 2;
+      while (dA < -Math.PI) dA += Math.PI * 2;
+      sim.orbit.swept += Math.abs(dA);
+    }
+    sim.orbit.prevAngle = angle;
+  }
+  resolveCircleCollision(sim.player, sim.anchor);
+  resolveCircleCollision(sim.player, sim.drone);
+  inBoundsBounce(sim.player, sim.bounds);
+  const gate = sim.exitGate;
+  const prevZ = sim.prevZ != null ? sim.prevZ : sim.player.z;
+  sim.prevZ = sim.player.z;
+  if (gate && !gate.crossed && prevZ < gate.z && sim.player.z >= gate.z
+    && Math.abs(sim.player.x - gate.centerX) <= gate.half) {
+    gate.crossed = true;
+    if (sim.tether.releasedAfterAttach && sim.orbit.swept >= sim.orbit.needed) {
+      const deg = Math.round(sim.orbit.swept * 180 / Math.PI);
+      return {
+        cleared: true,
+        verdict: {
+          kind: 'clear',
+          text: 'RULE CLEARED',
+          because: `You swept ${deg}° before release. The rock turned the whole corner.`,
+        },
+        cue: cueName,
+      };
+    }
+    return {
+      cleared: false,
+      verdict: {
+        kind: 'fail',
+        text: sim.tether.releasedAfterAttach ? 'HALF AN ORBIT' : 'IT NEVER TURNED',
+        because: sim.tether.releasedAfterAttach
+          ? `You let go at ${Math.round(sim.orbit.swept * 180 / Math.PI)}°. The gate wants the arc.`
+          : 'Attach, take the long way around, then release into the exit.',
+      },
+      cue: 'deny',
+    };
+  }
+  if (sim.timeS > 30) {
+    return {
+      cleared: false,
+      verdict: { kind: 'fail', text: 'YOU HELD THE LINE', because: sim.because },
+      cue: 'deny',
+    };
   }
   return { cleared: false, verdict: null, cue: cueName };
 }
@@ -2607,6 +2994,20 @@ export const rangeScreen = {
       });
     }
 
+    if (row.id === SLIP_GAP_DRILL_ID || row.id === BRAKE_BESIDE_LOAD_DRILL_ID || row.id === ORBIT_RELEASE_DRILL_ID) {
+      const options = {
+        variant: variantOverride,
+        shipId,
+        fittings,
+        player: state.player,
+        derived: getDerivedStats(shipId, fittings, state.player),
+        ghostTrail,
+      };
+      if (row.id === SLIP_GAP_DRILL_ID) return createSlipGapRung(options);
+      if (row.id === BRAKE_BESIDE_LOAD_DRILL_ID) return createBrakeBesideLoadRung(options);
+      return createOrbitReleaseRung(options);
+    }
+
     if (row.id === 'well_pulls_light') {
       const selected = variantOverride === 'heavy' ? 'heavy' : 'light';
       const activeDerived = getDerivedStats(shipId, fittings, state.player);
@@ -2737,6 +3138,16 @@ export const rangeScreen = {
     if (sim.id === 'boost_keep_speed') return `Gate ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
     if (sim.id === 'draw_the_stroke') return `Gate ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
     if (sim.id === 'well_pulls_light') return sim.well ? 'Well live' : 'No well';
+    if (sim.id === SLIP_GAP_DRILL_ID) return `Gap ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
+    if (sim.id === BRAKE_BESIDE_LOAD_DRILL_ID) {
+      const held = Math.min(sim.holdS, finite(sim.hold, 0));
+      return `Station ${held.toFixed(1)} / ${sim.holdS}s`;
+    }
+    if (sim.id === ORBIT_RELEASE_DRILL_ID) {
+      const deg = Math.round(finite(sim.orbit && sim.orbit.swept, 0) * 180 / Math.PI);
+      const need = Math.round(finite(sim.orbit && sim.orbit.needed, Math.PI) * 180 / Math.PI);
+      return `Arc ${deg}° / ${need}°`;
+    }
     if (sim.id === TRACTOR_THROW_DRILL_ID) {
       if (!sim.tether || !sim.tether.attachedOnce) return 'Latch 0 / 1';
       if (!sim.tether.releasedAfterAttach) return 'Swing';
@@ -2765,9 +3176,27 @@ export const rangeScreen = {
       const passed = sim.gates && sim.gates[0] && sim.gates[0].crossed ? 1 : 0;
       return { passed, total: 1, fraction: passed };
     }
-    if (sim.id === 'swing_do_not_pull') {
+    if (sim.id === 'swing_do_not_pull' || sim.id === SLIP_GAP_DRILL_ID) {
+      if (sim.id === SLIP_GAP_DRILL_ID) {
+        const passed = sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0;
+        const done = sim.verdict ? 1 : 0;
+        return { passed, total: 1, fraction: sim.verdict ? passed : done * 0.5 };
+      }
       const passed = sim.exitGate && sim.exitGate.crossed ? 1 : 0;
       return { passed, total: 1, fraction: passed };
+    }
+    if (sim.id === ORBIT_RELEASE_DRILL_ID) {
+      const arc = clamp(finite(sim.orbit && sim.orbit.swept, 0) / Math.max(0.0001, finite(sim.orbit && sim.orbit.needed, Math.PI)), 0, 1);
+      const crossed = sim.exitGate && sim.exitGate.crossed ? 1 : 0;
+      const passed = sim.verdict && sim.verdict.kind === 'clear' ? 1 : 0;
+      return { passed, total: 1, fraction: Math.max(crossed * 0.5, passed) || arc * 0.5 };
+    }
+    if (sim.id === BRAKE_BESIDE_LOAD_DRILL_ID) {
+      const passed = sim.verdict && sim.verdict.kind === 'clear' ? 1 : 0;
+      const fraction = sim.verdict
+        ? passed
+        : clamp(finite(sim.hold, 0) / Math.max(0.001, finite(sim.holdS, 2.5)), 0, 1);
+      return { passed, total: 1, fraction };
     }
     if (sim.id === 'you_can_run_dry' && sim.energy) {
       const done = clamp(1 - finite(sim.energy.holdRemaining, 20) / 20, 0, 1);
@@ -3032,6 +3461,26 @@ export const rangeScreen = {
         this._toggleTetherQueued = false;
         this._deployWellQueued = false;
         const result = tickElasticWhipDrill(sim, stepS, { input, toggleTether, advanceTime: false });
+        if (result.cue === 'latch' || result.cue === 'cut') cue('confirm');
+        else if (result.cue === 'deny') cue('deny');
+        sim.trail.push({ x: sim.player.x, z: sim.player.z });
+        if (sim.trail.length > TRAIL_MAX) sim.trail.splice(0, sim.trail.length - TRAIL_MAX);
+        if (result.verdict) {
+          if (result.cleared) this._markCleared(sim.id);
+          this._setVerdict(sim, result.verdict.kind, result.verdict.text, result.verdict.because);
+        }
+      } else if (sim.id === SLIP_GAP_DRILL_ID || sim.id === BRAKE_BESIDE_LOAD_DRILL_ID || sim.id === ORBIT_RELEASE_DRILL_ID) {
+        // SF-015 proving-ground rungs — same factory+tick contract as the throw/whip
+        // drills; the orbit rung is the only one of the three that listens for the rope.
+        const toggleTether = this._toggleTetherQueued;
+        this._toggleTetherQueued = false;
+        this._deployWellQueued = false;
+        const tick = sim.id === SLIP_GAP_DRILL_ID
+          ? tickSlipGapDrill
+          : sim.id === BRAKE_BESIDE_LOAD_DRILL_ID
+            ? tickBrakeBesideLoadDrill
+            : tickOrbitReleaseDrill;
+        const result = tick(sim, stepS, { input, toggleTether, advanceTime: false });
         if (result.cue === 'latch' || result.cue === 'cut') cue('confirm');
         else if (result.cue === 'deny') cue('deny');
         sim.trail.push({ x: sim.player.x, z: sim.player.z });
@@ -3376,6 +3825,12 @@ export const rangeScreen = {
       sim.payload.vx = 0;
       sim.payload.vz = 0;
     }
+    // SF-015: the drifting load is scripted — freeze it with the verdict so the idle
+    // check can let the loop sleep instead of animating a settled frame forever.
+    if (sim.load) {
+      sim.load.vx = 0;
+      sim.load.vz = 0;
+    }
     if (kind === 'clear') cue('confirm');
     else cue('deny');
   },
@@ -3414,9 +3869,9 @@ export const rangeScreen = {
     }
     drawTrail(ctx2d, sim.trail, sim.bounds, width, height, forced ? 'CanvasText' : roles.you, reduced);
 
-    if (sim.id === 'heavy_turns_wide') this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'heavy_turns_wide' || sim.id === SLIP_GAP_DRILL_ID) this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'stopping_takes_room') this._drawStopLine(ctx2d, sim, width, height, forced, roles);
-    if (sim.id === 'swing_do_not_pull') this._drawSwingGate(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'swing_do_not_pull' || sim.id === ORBIT_RELEASE_DRILL_ID) this._drawSwingGate(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'boost_keep_speed' || sim.id === 'draw_the_stroke' || sim.id === TRACTOR_THROW_DRILL_ID || sim.id === ELASTIC_WHIP_DRILL_ID) {
       this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
     }
@@ -3427,6 +3882,11 @@ export const rangeScreen = {
       drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced, roles);
     }
     if (sim.scrap) drawAsteroid(ctx2d, sim.scrap, sim.bounds, width, height, forced, roles);
+    // SF-015: the gap's blocking hulls and the drifting load draw with the same rock grammar.
+    if (Array.isArray(sim.blockers)) {
+      for (const blocker of sim.blockers) drawAsteroid(ctx2d, blocker, sim.bounds, width, height, forced, roles);
+    }
+    if (sim.load) drawAsteroid(ctx2d, sim.load, sim.bounds, width, height, forced, roles);
 
     if (sim.stroke && sim.stroke.points && sim.stroke.points.length > 1) {
       drawTrail(ctx2d, sim.stroke.points, sim.bounds, width, height, forced ? 'CanvasText' : roles.you, reduced);
@@ -3444,7 +3904,8 @@ export const rangeScreen = {
       ctx2d.restore();
     }
 
-    if (sim.id === 'swing_do_not_pull' && sim.tether && sim.tether.active) {
+    if ((sim.id === 'swing_do_not_pull' || sim.id === ORBIT_RELEASE_DRILL_ID)
+      && sim.tether && sim.tether.active && sim.anchor) {
       const a = mapPoint(sim.bounds, width, height, sim.anchor.x, sim.anchor.z);
       const p = mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z);
       ctx2d.save();
@@ -3615,6 +4076,8 @@ export const rangeScreen = {
       return gate ? { x: gate.x, z: gate.centerZ } : null;
     }
     if (sim.exitGate) return { x: sim.exitGate.centerX, z: sim.exitGate.z };
+    // SF-015: the drifting load is the brake rung's target — the beam aims the station window.
+    if (sim.load) return { x: sim.load.x, z: sim.load.z };
     if (Number.isFinite(sim.stopLine) && sim.player) return { x: sim.stopLine, z: sim.player.z };
     return null;
   },
