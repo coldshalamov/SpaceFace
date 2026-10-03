@@ -2328,6 +2328,18 @@ export const HAULER_REGISTER = Object.freeze([
   'No load on the pad. I am not waiting on a rumour.',
 ]);
 
+// 363 — THE GRANDEE. The lanes' one celebrity: old, huge, and aware of both. Her pass-by
+// hail is a famous ship sounding famous, not a freighter chirp with a bigger hull.
+export const GRANDEE_REGISTER = Object.freeze([
+  'Easy on the burn, pilot. I was crossing lanes before your keel was laid.',
+  'GRANDEE-1. Yes, the Grandee. Wave if you like — I see everything this big.',
+  'Mind the wake, small fry. She takes a while to argue with.',
+]);
+
+export function grandeeHailFor(rng) {
+  return GRANDEE_REGISTER[pickIndex(rng, GRANDEE_REGISTER.length)];
+}
+
 export function touristHailFor(rng) {
   return TOURIST_HAIL_REGISTER[pickIndex(rng, TOURIST_HAIL_REGISTER.length)];
 }
@@ -2336,11 +2348,12 @@ export function haulerRegisterBarkFor(rng) {
   return HAULER_REGISTER[pickIndex(rng, HAULER_REGISTER.length)];
 }
 
-/** Tourist and hauler lines. Freighter and every other role stay on the faction hail. */
+/** Tourist, hauler, and Grandee lines. Freighter and every other role stay on the faction hail. */
 export function trafficRoleHail(role, rng) {
   const key = String(role || '').toLowerCase();
   if (key === 'tourist') return { register: 'tourist', text: touristHailFor(rng) };
   if (key === 'hauler') return { register: 'hauler', text: haulerRegisterBarkFor(rng) };
+  if (key === 'grandee') return { register: 'grandee', text: grandeeHailFor(rng) };
   return null;
 }
 

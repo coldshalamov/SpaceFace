@@ -1344,17 +1344,19 @@ export const barkDirector = {
 
   // A neutral hauler/mining barge drifting inside pass range earns one friendly transponder
   // chirp plus its deep foghorn. A tourist liner uses its own register, not that freighter hail.
-  // Once per contact — the shared bark record is the gate.
+  // The Grandee (363) gets her own voice too — a famous ship sounds famous. Once per contact.
   _hailPassingTraffic(entity, state, player) {
     if (!entity || !player || !player.pos || !entity.pos || entity === player) return false;
     if (!eligibleShip(entity, state)) return false;
     const trafficRole = String(entity.data && entity.data.trafficRole || '').toLowerCase();
     const tourist = trafficRole === 'tourist';
-    if (!tourist && !PASS_HAIL_ROLES.has(occupationalRoleOf(entity))) return false;
+    const grandee = !!(entity.data && entity.data.laneGrandee === true);
+    if (!tourist && !grandee && !PASS_HAIL_ROLES.has(occupationalRoleOf(entity))) return false;
     if (isHostileToPlayer(entity, PLAYER_TEAM, state)) return false;
     const dx = entity.pos.x - player.pos.x;
     const dz = entity.pos.z - player.pos.z;
     if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
+    if (grandee) return this._speakGrandeeHail(entity);
     if (tourist) return this._speakTouristHail(entity);
     const accepted = this._speak(entity, 'patrol-greeting', 'pass-by');
     if (accepted && this.bus && typeof this.bus.emit === 'function') {
@@ -1370,17 +1372,26 @@ export const barkDirector = {
   },
 
   _speakTouristHail(entity) {
+    return this._speakRegisterHail(entity, 'tourist', 'tourist-hail', 'touristHail');
+  },
+
+  // 363 — the Grandee hails a passing pilot in her own register, once per contact.
+  _speakGrandeeHail(entity) {
+    return this._speakRegisterHail(entity, 'grandee', 'grandee-hail', 'grandeeHail');
+  },
+
+  _speakRegisterHail(entity, register, situation, salt) {
     const state = this.state;
     if (!state || !entity) return false;
     const own = ensureState(state);
     const entityId = String(entity.id);
     const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
-    if (rec.said['tourist-hail']) return false;
+    if (rec.said[situation]) return false;
     if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
     const seed = state.meta && state.meta.seed;
-    const index = hash32(seed == null ? 0 : seed, 'touristHail', entityId);
-    const picked = trafficRoleHail('tourist', index);
-    if (!picked || picked.register !== 'tourist') return false;
+    const index = hash32(seed == null ? 0 : seed, salt, entityId);
+    const picked = trafficRoleHail(register, index);
+    if (!picked || picked.register !== register) return false;
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
     const factionId = factionFor(entity);
@@ -1389,23 +1400,23 @@ export const barkDirector = {
       text: picked.text,
       kind: 'barkDirector',
       ttl: VOICE_TTL_S,
-      id: `barkDirector:${entityId}:tourist-hail`,
+      id: `barkDirector:${entityId}:${situation}`,
       factionId,
       register: picked.register,
     });
     if (!accepted) return false;
     const now = state.simTime || 0;
-    rec.said['tourist-hail'] = true;
-    rec.lastSituation = 'tourist-hail';
+    rec.said[situation] = true;
+    rec.lastSituation = situation;
     rec.lastSpokenAt = now;
-    rec.history.push({ situation: 'tourist-hail', reason: 'pass-by', t: now, text: picked.text, register: 'tourist' });
+    rec.history.push({ situation, reason: 'pass-by', t: now, text: picked.text, register });
     if (rec.history.length > 8) rec.history.shift();
     this._emit('barkDirector:voice', {
-      entityId: entity.id, situation: 'tourist-hail', reason: 'pass-by',
-      text: picked.text, factionId, register: 'tourist', t: now,
+      entityId: entity.id, situation, reason: 'pass-by',
+      text: picked.text, factionId, register, t: now,
     });
     if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: now, register: 'tourist' });
+      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: now, register });
     }
     return true;
   },
