@@ -480,14 +480,11 @@ function budgetGauge(wallet, price) {
     root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y} L ${at(p).toFixed(1)} ${y}`, class: 'orr-armory-budget__short' }));
   }
   root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y - 9} L ${at(w).toFixed(1)} ${y + 9}`, class: 'orr-armory-budget__end' }));
-  // Center-anchored at the wallet marker, clamped inside the viewBox by the label's own
-  // half-width — at wallet ≈ 0 an unclamped center anchors the first character off the
-  // left edge ("ALLET 0 CR").
-  const label = `WALLET ${w} CR`;
-  const half = Math.ceil(label.length * 4.5) + 4;
-  const tx = Math.max(half, Math.min(at(w), 356 - half));
-  const top = svgNode('text', { x: tx.toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
-  top.textContent = label;
+  // Center-anchored at the wallet marker; the caller clamps x inside the viewBox using
+  // the label's measured width once it is in the document (an off-DOM text length reads
+  // as zero, so the estimate that used to stand in for it stays out).
+  const top = svgNode('text', { x: at(w).toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
+  top.textContent = `WALLET ${w} CR`;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
   under.textContent = left >= 0 ? `costs ${p} \u00b7 leaves ${left}` : `short ${-left} cr`;
@@ -697,8 +694,14 @@ export const crucibleDraftScreen = {
       const words = el('div', 'orr-armory-reading__words');
       // "When it pays" is the decision line — it sits above the longer detail paragraph
       // so the highest-value copy is reachable at short viewports.
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.tip, parts.detail, parts.stats, parts.compare, parts.budget, parts.buy, parts.demo);
-      reading.append(parts.jig, words);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.tip, parts.detail, parts.stats, parts.compare, parts.demo);
+      const main = el('div', 'orr-armory-reading__main');
+      main.append(parts.jig, words);
+      // Wallet and Install dock as a footer under the scrolling dossier — the buy key
+      // stays reachable no matter how far the words column scrolls.
+      const foot = el('div', 'orr-armory-reading__foot');
+      foot.append(parts.budget, parts.buy);
+      reading.append(main, foot);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
       cards.addEventListener('focusin', (event) => this._readFrom(event));
@@ -1156,7 +1159,17 @@ export const crucibleDraftScreen = {
     parts.budget.textContent = '';
     if (Number.isFinite(offer.price) && !offer.purchased && offer.price > 0) {
       const gauge = budgetGauge(context.state?.run?.credits, offer.price);
-      if (gauge) parts.budget.appendChild(gauge);
+      if (gauge) {
+        parts.budget.appendChild(gauge);
+        const word = gauge.querySelector('.orr-armory-budget__word');
+        if (word && typeof word.getComputedTextLength === 'function') {
+          const wpx = word.getComputedTextLength();
+          const x = parseFloat(word.getAttribute('x')) || 0;
+          const half = wpx / 2 + 4;
+          const nx = Math.max(half, Math.min(x, 356 - half));
+          if (wpx > 0 && nx !== x) word.setAttribute('x', nx.toFixed(1));
+        }
+      }
     }
     r.el.classList.toggle('is-unavailable', !offer.available);
     if (this._visualArmory) this._visualArmory.show(offer, lines, { credits: Number(context.state?.run?.credits) || 0, hullId, rows });

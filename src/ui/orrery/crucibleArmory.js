@@ -23,7 +23,10 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const build = make('details', 'orr-armory-build');
   const buildSummary = make('summary', '', 'Current build');
   const buildList = make('ul', ''); build.append(buildSummary, buildList);
-  visual.append(item, label, parts.jig, build); reading.prepend(visual);
+  visual.append(item, label, parts.jig, build);
+  // The visual column leads the scrolling region; the docked footer (wallet, Install)
+  // lives on the reading pane itself, below __main.
+  (reading.querySelector('.orr-armory-reading__main') || reading).prepend(visual);
   const fitline = make('p', 'orr-armory-fitline', '');
   parts.act.after(fitline);
   // The words remain accessible even when the catalog is empty or no illustration is available.
@@ -70,6 +73,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       const artId = `${offer.kind || ''}:${offer.defId || offer.id}`;
       if (lastArt !== artId) {
         lastArt = artId; item.replaceChildren();
+        reading.querySelector('.orr-armory-reading__main')?.scrollTo?.(0, 0);
         const url = offer.kind === 'hull' ? hullPosterUrl(offer.defId || offer.hullId) : null;
         const media = offer.kind === 'hull' || offer.kind === 'service' ? null : fittingMedia(offer.defId);
         const schematicWord = offer.kind === 'hull' ? 'Hull schematic'

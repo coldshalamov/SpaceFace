@@ -114,10 +114,14 @@ ${A} .sf-cru-card .sf-cru-key, ${A} .orr-rail-scale, ${A} .orr-rail-wallet { dis
 ${A} .sf-cru-card.is-lit { background:linear-gradient(90deg,rgb(242 185 80 / .09),transparent) !important; }
 ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !important; position:absolute !important; left:0 !important; top:14px !important; bottom:14px !important; width:2px !important; background:var(--dp-hand) !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
-${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
+${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
+${A} .orr-armory-reading__main { display:grid; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr); grid-template-rows:minmax(0,1fr); gap:24px; flex:1 1 auto; min-height:0; overflow:auto; }
+${A} .orr-armory-reading__foot { flex:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--dp-line-faint); }
+${A} .orr-armory-reading__foot .orr-armory-reading__buy { margin:0; }
+${A} .orr-armory-reading__foot .orr-armory-reading__budget { margin:0 0 12px; }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 /* bottom fade on the scrollable pane — the cue that dossier words continue below the fold */
-${A} .orr-armory-reading { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); }
+${A} .orr-armory-reading__main { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); }
 ${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:16px; }
 ${A} .orr-armory-item { position:relative; display:grid; place-items:center; min-height:210px; height:250px; flex:none; }
 ${A} .orr-armory-item::before { content:''; position:absolute; inset:16px; border-radius:50%; border:1px solid var(--dp-line); pointer-events:none; }
@@ -137,7 +141,7 @@ ${A} .orr-armory-reading__act { font:400 13px/1.5 var(--dp-face-body,'Instrument
 ${A} .orr-armory-reading__compare { margin:14px 0 !important; }
 ${A} .orr-armory-reading__budget { margin:20px 0 !important; }
 ${A} .orr-armory-reading__buy { margin:18px 0 12px !important; }
-${A} .orr-armory-purchase { display:block; width:100%; min-height:50px; padding:12px 16px; position:sticky; bottom:6px; z-index:2; background:var(--dp-hand); color:var(--dp-void); border:0; border-radius:0; font:650 16px/1.25 var(--dp-face-label); cursor:pointer; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%); }
+${A} .orr-armory-purchase { display:block; width:100%; min-height:50px; padding:12px 16px; background:var(--dp-hand); color:var(--dp-void); border:0; border-radius:0; font:650 16px/1.25 var(--dp-face-label); cursor:pointer; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%); }
 ${A} .orr-armory-purchase:disabled { background:var(--dp-line); color:var(--dp-ink-dim); cursor:default; }
 ${A} .orr-armory-refusal { margin:8px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
 ${A} .orr-armory-reading__demo-word { font:500 13px var(--dp-face-label) !important; min-height:40px; padding:8px 0; color:var(--dp-ink-dim) !important; border:0; border-bottom:1px solid var(--dp-line); background:none; cursor:pointer; }
@@ -290,7 +294,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} { grid-template-columns:minmax(300px,.9fr) minmax(0,1.2fr) !important; }
  /* one column: the visual band, then the words — the base fr row collapses to 0px and
     overlays them, so the explicit row template goes too */
- ${A} .orr-armory-reading.orr-armory-reading { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important; overflow:auto !important; }
+ ${A} .orr-armory-reading__main { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important; }
  ${A} .orr-armory-visual { flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px; }
  ${A} .orr-armory-item { width:45%; min-width:0; height:165px; min-height:150px; }
  ${A} .orr-armory-item > .orr-equipment-glyph { width:130px; height:130px; }
@@ -335,6 +339,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-wallet strong { font-size:30px; }
  ${A} > .sf-cru-stage { height:420px !important; flex:none !important; }
  ${A} .orr-armory-reading.orr-armory-reading { display:flex !important; flex-direction:column !important; height:auto !important; flex:none !important; padding:16px 0 !important; border-left:0; border-top:1px solid var(--dp-line); overflow:visible !important; }
+ ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; flex:none !important; overflow:visible !important; }
  ${A} .orr-armory-reading[hidden] { display:none !important; }
  ${A} .orr-armory-visual { flex-direction:row; flex:none; width:100%; }
  ${A} .orr-armory-reading__words { width:100%; }

@@ -12,6 +12,7 @@
 import { WEAPONS } from './weapons.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
+import { SURVIVAL_EVOLUTIONS } from './survivalEvolutions.js';
 import { FITTING_MEDIA_IDS } from './fittingMediaManifest.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
@@ -623,6 +624,10 @@ function moduleStats(def) {
   const out = [];
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   const m = def.mods || {};
+  const evo = SURVIVAL_EVOLUTIONS.find((e) => e.defId === def.id);
+  push('Synthesis', evo
+    ? evo.consumes.map((id) => MODULE_BY_ID.get(id)?.name || id).join(' + ')
+    : null);
   push('Shield', m.shieldFlat != null ? `+${num(m.shieldFlat)}` : null);
   push('Shield regen', m.shieldRegenFlat != null ? `+${num(m.shieldRegenFlat)}/s` : null);
   push('Top speed', m.topSpeed != null ? num(m.topSpeed) : null);
