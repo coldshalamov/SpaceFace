@@ -1458,20 +1458,6 @@ export const UNIQUE_LOOT_CUES = Object.freeze({
 // INST-32. A revealed build is the scan-resolve voice, once per target.
 export const BUILD_IDENTITY_REVEAL_CUE = 'sfx_scan_pulse';
 
-// ECON-03: Failed trade audible refusal with captioned reason.
-export const TRADE_REFUSAL_CAPTIONS = Object.freeze({
-  credits: 'Insufficient Credits',
-  cargo_full: 'Hold Full',
-  no_cargo: 'No Cargo',
-  mission_cargo_locked: 'Contract Cargo Locked',
-  black_market_locked: 'Den Locked',
-  no_stock: 'Out of Stock',
-  tier_unavailable: 'Tier Unavailable',
-  contamination_refusal: 'Quarantine Refusal',
-  price_changed: 'Price Changed',
-  not_docked: 'Not Docked',
-});
-
 // FIGHT-07: Mine cap refusal voice (combat refusal, distinct from UI error blip)
 export const MINE_CAP_REFUSAL_RECIPE = 'sfx_massline_deny';
 
@@ -5499,14 +5485,6 @@ export const audio = {
     if (heard.has(key)) return;
     heard.add(key);
     this.play(BUILD_IDENTITY_REVEAL_CUE, { gain: 0.45 });
-  },
-
-  _onTradeFailed(payload) {
-    this.play('sfx_ui_error', { gain: 0.65 });
-    const reason = payload && payload.reason;
-    const caption = TRADE_REFUSAL_CAPTIONS[reason]
-      || (typeof reason === 'string' ? reason.replace(/_/g, ' ').toUpperCase() : 'Trade Refused');
-    this._emitPresentationCaption(caption, { assertive: true, shape: 'arc' });
   },
 
   _onMineCapReached(payload) {
