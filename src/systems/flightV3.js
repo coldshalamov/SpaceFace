@@ -554,7 +554,17 @@ export const flightV3 = {
   },
 
   _triggerDash(e, boost, state) {
-    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashCost) return false;
+    if (!(boost.dashImpulse > 0)) return false;
+    if (boost.dashCdT > 0 || boost.energy < boost.dashCost) {
+      // The press already happened. Don't play the success kick; say which gate held.
+      if (e && state && e.id === state.playerId && this.bus && typeof this.bus.emit === 'function') {
+        const text = boost.dashCdT > 0
+          ? `Boost recharging — ${Math.max(1, Math.ceil(boost.dashCdT))}s`
+          : 'Boost empty';
+        this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+      }
+      return false;
+    }
     const cf = Math.cos(finite(e.rot)), sf = Math.sin(finite(e.rot));
     let imp = boost.dashImpulse;
     let dirX = cf, dirZ = sf;

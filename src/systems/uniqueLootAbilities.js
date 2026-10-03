@@ -223,7 +223,10 @@ export const uniqueLootAbilities = {
       'paleCoilUsed',
       blink.usesPerEncounter,
     );
-    if (!selected) return;
+    if (!selected) {
+      this._notePaleCoilSpent(blink);
+      return;
+    }
 
     noteEncounterUse(selected.record, 'paleCoilUsed');
     const from = { x: finite(player.pos?.x), z: finite(player.pos?.z) };
@@ -240,6 +243,20 @@ export const uniqueLootAbilities = {
       to: { x: player.pos.x, z: player.pos.z },
       distance: PALE_COIL_BLINK_DISTANCE,
     });
+  },
+
+  _notePaleCoilSpent(blink) {
+    const abilityState = ensureAbilityState(this.state);
+    const limit = Math.max(1, Math.floor(Number(blink.usesPerEncounter) || 1));
+    for (const record of Object.values(abilityState.encounters)) {
+      if (!record || !record.active || encounterUses(record, 'paleCoilUsed') < limit) continue;
+      if (record.paleCoilSpentTold) return;
+      record.paleCoilSpentTold = true;
+      if (this.bus) {
+        this.bus.emit('toast', { text: 'Pale Coil spent this fight', kind: 'info', ttl: 1.6 });
+      }
+      return;
+    }
   },
 
   _onEntitySpawned(payload) {
@@ -313,7 +330,19 @@ export const uniqueLootAbilities = {
     const knockback = fittedVerbSpec(this.state, 'reactiveMissileKnockback');
     if (!knockback) return false;
     const record = encounterId && ensureAbilityState(this.state).encounters[encounterId];
-    if (!record?.active || encounterUses(record, 'choirBellUsed') >= knockback.usesPerEncounter) return false;
+    if (!record?.active) return false;
+    if (encounterUses(record, 'choirBellUsed') >= knockback.usesPerEncounter) {
+      const toPlayerX = finite(player.pos?.x) - finite(projectile.pos?.x);
+      const toPlayerZ = finite(player.pos?.z) - finite(projectile.pos?.z);
+      const closing = finite(projectile.vel?.x) * toPlayerX + finite(projectile.vel?.z) * toPlayerZ;
+      if (closing > 0 && !record.choirBellSpentTold) {
+        record.choirBellSpentTold = true;
+        if (this.bus) {
+          this.bus.emit('toast', { text: 'Choir Bell spent this fight', kind: 'info', ttl: 1.6 });
+        }
+      }
+      return false;
+    }
 
     const toPlayerX = finite(player.pos?.x) - finite(projectile.pos?.x);
     const toPlayerZ = finite(player.pos?.z) - finite(projectile.pos?.z);
@@ -385,8 +414,17 @@ export const uniqueLootAbilities = {
     if (typeof repairRate !== 'number' || !Number.isFinite(repairRate) || repairRate <= 0) return;
     if (!(Number.isFinite(player.hull) && Number.isFinite(player.hullMax) && player.hull < player.hullMax)) return;
     const sinceDamage = finite(state.simTime) - finite(player.lastDamageT, -1e9);
-    if (sinceDamage < KNITBOTS_OOC_DELAY_S) return;
+    const ability = ensureAbilityState(state);
+    if (sinceDamage < KNITBOTS_OOC_DELAY_S) {
+      ability.knitbotsTold = false;
+      return;
+    }
+    if (!ability.knitbotsTold && this.bus) {
+      ability.knitbotsTold = true;
+      this.bus.emit('toast', { text: 'Knitbots patching the hull', kind: 'info', ttl: 1.6 });
+    }
     player.hull = Math.min(player.hullMax, player.hull + repairRate * dt);
+    if (player.hull >= player.hullMax) ability.knitbotsTold = false;
     // Docked-drone repair (FB-054) lives in automation._parkDroneEntities — the group's
     // durability record is the repairable thing, owned by that system, not by this hull path.
   },

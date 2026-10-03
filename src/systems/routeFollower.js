@@ -391,6 +391,7 @@ export const routeFollower = {
     const route = nav.route;
     if (!route || !Array.isArray(route.legs) || !route.legs.length) {
       this._emit('nav:routeExecutorDenied', { reason: 'no-route' });
+      this._emit('toast', { text: 'Plot a route first', kind: 'warn', ttl: 1.6 });
       return null;
     }
 
@@ -414,6 +415,7 @@ export const routeFollower = {
     const legs = decomposeRoute(route, this._atlas);
     if (!legs.length) {
       this._emit('nav:routeExecutorDenied', { reason: 'undecomposable-route' });
+      this._emit('toast', { text: 'That route has no flyable leg', kind: 'warn', ttl: 1.6 });
       return null;
     }
     const destination = legs[legs.length - 1].toSectorId;
