@@ -46,7 +46,8 @@ jobs:
           git config user.email 'spaceface-agent@users.noreply.github.com'
           git add -- src/data/bracket.js src/characters/bracketRules.js src/systems/bracket.js src/render/characters/bracketModel.js test/bracket.test.mjs test/bracket-model.test.mjs tools/bracket/index.html tools/bracket/bench.js design/characters/BRACKET.md
           git add -- src/core/registry.js src/runtime/authoritativeSystemManifest.js src/runtime/nodeSystemFactoryTable.js src/render/visualFactory.js src/save/saveSystem.js src/data/audioRecipes.js test/authoritative-manifest.test.mjs
-          git rm -- .github/workflows/bracket-publish.yml tools/bracket/publish-packet.py tools/bracket/packet.json tools/bracket/integration.patch tools/bracket/publish-ready.txt
+          rm -- tools/bracket/integration.patch
+          git rm -- .github/workflows/bracket-publish.yml tools/bracket/publish-packet.py tools/bracket/packet.json tools/bracket/publish-ready.txt
           git commit -m 'feat(bracket): ship authored scrapball keeper, physics court, persistence and tests'
           git show --stat --oneline HEAD
           git push origin HEAD:feature/bracket-scrapball-keeper
