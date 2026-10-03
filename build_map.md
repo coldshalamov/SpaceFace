@@ -393,7 +393,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | devin-sweep-oct2 | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | free | vfx, profiles, cues | 230, 255 |
-| swarm | grok-build5 | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
+| swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | done | fields | 162 |
 | law | devin-oct2-batch | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
@@ -403,7 +403,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | ship | devin-oct2-batch | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
 | hand | zai-board20 | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
 | missions | devin-sweep-oct2 | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
-| world | grok-build5 | sectors, traffic, factions, news | 243, 244, 245, 248 |
+| world | done | sectors, traffic, factions, news | 243, 244, 245, 248 |
 | story | devin-oct2-batch | story | 192, 215, 216, 253 |
 | input | devin-oct2-batch | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | zai-board20 | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
@@ -795,12 +795,12 @@ named in the status for the frontend lane to take alone):
 | 239 | FB-006+FB-007+FB-012+FB-014 | Hitchhiking, drawn strokes and adventure stunts are named; salvage rights are heard and kept | PB | OPEN — seam masslineHud.js |
 | 240 | FB-015+FB-114+FB-093+FB-094+FB-109 | Deployables and the first-hour rail survive a save; writes are bounded and gzipped by one long-lived worker; quota keeps a recovery | PB | **SHIPPED devin-oct2-batch** — snare/charge/web save rows with durable-id remap; onboarding rail + pad bindings restore; worker-pooled bounded gzip writes; quota keeps newest recovery |
 | 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | Export carries medals; a fuzzer and a migration ladder guard the envelope; the save screen says what it repaired | PB | OPEN — seam saveSystem.js (second sitting) (ORRERY lane: FB-110, FB-130) |
-| 243 | FB-030 | Pallas Drift closes the miner→hauler→refinery→ambush→escort loop | PB | OPEN — composes after PB-LANE-WORLD (row 158) |
-| 244 | FB-033+FB-125+FB-038 | Six lanes, no singleton POI types, and a Ceres unique wreck | PB | OPEN — seam sectors.js (second sitting) |
-| 245 | FB-034+FB-036+FB-042+FB-045+FB-051+FB-052+FB-140 | The ticker hears the day, the chronicler, wars, price causes, claims, worksites and wreck ecology | PB | OPEN — seam marketNews.js |
+| 243 | FB-030 | Pallas Drift closes the miner→hauler→refinery→ambush→escort loop | PB | SHIPPED — four handoffs in order inside twenty minutes, seed 4242 |
+| 244 | FB-033+FB-125+FB-038 | Six lanes, no singleton POI types, and a Ceres unique wreck | PB | SHIPPED — six lanes, the singleton place types have company, and the Ceres tender pays one branch |
+| 245 | FB-034+FB-036+FB-042+FB-045+FB-051+FB-052+FB-140 | The ticker hears the day, the chronicler, wars, price causes, claims, worksites and wreck ecology | PB | SHIPPED — the ticker cites a real change and stays quiet when nothing moved |
 | 246 | FB-035+FB-037+FB-131 | POI plans reach the map, the codex gets a world tab, the scanner speaks | PB | OPEN — seam localmap.js / codex.js (ORRERY lane: FB-037) |
 | 247 | FB-039+FB-040+FB-119+FB-041 | The fine is a choice, the law says what it did, a player can surrender, the hearing is reachable | PB | SHIPPED 2026-10-02 devin-oct2-batch (12e9c418f, e36759843, 349c7ee21, b226a9049) — fine-on-dock choice, law receipts voiced, surrender verb, loss-bound hearing offer |
-| 248 | FB-043+FB-044 | Three placeless factions get a door; standing has named ranks with perks | PB | OPEN — seam factions.js |
+| 248 | FB-043+FB-044 | Three placeless factions get a door; standing has named ranks with perks | PB | SHIPPED — Archive, Understory, and Helix each have a dock; ranks discount the yard from the second step |
 | 249 | FB-046+FB-047+FB-048+FB-050 | Where the money went, lifetime margins, honest cost basis, price alerts | PB | DONE — sink roll-up on footprint (entries were already projected); `player.tradeMargins` lifetime per-commodity buckets + `lifetimeMarginFor` on the intel view; cargo deck reads real FIFO cost basis; price pins arm target/direction alerts that announce once per crossing on dock/sector entry (visited-gated); 4 new test files 13/13 + watchlist/story-so-far stay green |
 | 250 | FB-049+FB-124+FB-101+FB-111 | Debt is an instrument, cargo insurance exists, a dry tank and a wedged hull have doors | PB | DONE — loan/settle verbs bounded by net worth+standing with cited escalation headline; cargo policy priced on legal manifest × danger tier, one trip, claim honored in the recovery plan; broke+dry gets a minimum fill filed as debt, no-pump sectors grant one reserve/day; 8s wedge offers a priced tow that re-validates and docks at the lawful berth; 4 new test files 14/14 |
 | 251 | FB-053+FB-054+FB-056+FB-055+FB-132 | Research reads as a verb, four module numbers work, the time-limit clause ticks, industry has one readout, defense is a choice | PB | SHIPPED partial devin-oct2-batch — FB-053/132 (ffd4e2fc9, 697f27cd3), FB-054 incl. flightV3 burner cap (83461978d), FB-056 clause deadline (044db074c); FB-055 remains ORRERY lane |
@@ -832,7 +832,7 @@ wait for the phase named on them, not for permission.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 263 | SWARM-01 | The bank and the Hangar: run earnings persist between runs (death banks half, a chosen cash-out banks all), one permanent currency buys Workshop upgrades, owned hulls and perks — SWARM_ARCADE §4, §10 step 1 | BUILD | OPEN — phase A; this alone makes Swarm additive |
+| 263 | SWARM-01 | The bank and the Hangar: run earnings persist between runs (death banks half, a chosen cash-out banks all), one permanent currency buys Workshop upgrades, owned hulls and perks — SWARM_ARCADE §4, §10 step 1 | BUILD | SHIPPED — death banks half, a boss cash-out banks all, and the adventure purse is untouched |
 | 264 | SWARM-02 | Juice pack 1: chain hero, kill popups with cause tags, multi-kill announcer, round slam and clear tally, boss bar and intro, the Full/Reduced/Off effects setting — SWARM_ARCADE §5, §10 step 2 | BUILD | OPEN — phase A |
 | 265 | SWARM-03 | Physics UX: power-rail slots pulse when tactically live, kill causes reach the stunt line, wave packages arrive in throw-shaped clumps, the rope becomes a first-hand verb — SWARM_EXPANSION §10 | BUILD | OPEN — phase A; the opening-lesson early release landed 2026-10-02; rope default is a pending owner call |
 | 266 | SWARM-04 | The curated ladder: a fixed arcade seed per arena, named Zones of ten with stars, checkpoint starts, next-round preview in the armory — SWARM_ARCADE §6, §10 step 3 | BUILD | OPEN — phase A |
