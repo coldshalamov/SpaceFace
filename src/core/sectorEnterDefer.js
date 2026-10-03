@@ -117,8 +117,11 @@ export function drainDeferredEnterMaterializers(state, sector) {
 // beat drives the FIFO at most budgetMs per call, holding each provider's
 // iterator on its entry so chunked cook providers resume mid-stream across
 // beats. Always drains at least one step so a long queue still retires inside
-// the hold; the hold-end tail drains whatever remains inline.
-export function drainDeferredEnterSlice(state, sector, budgetMs) {
+// the hold; the hold-end tail drains whatever remains inline. `holdEpoch`
+// bounds the owner: a hold minted under one enter must never step the live
+// entries of a newer enter against its departed sector — those wait queued for
+// the census splice, which drives them against the right sector.
+export function drainDeferredEnterSlice(state, sector, budgetMs, holdEpoch) {
   const render = state && state.render;
   const queue = render && Array.isArray(render.deferredEnterMaterializers)
     ? render.deferredEnterMaterializers : null;
@@ -140,6 +143,7 @@ export function drainDeferredEnterSlice(state, sector, budgetMs) {
   let steps = 0;
   while (queue.length && (steps === 0 || now() < deadline)) {
     const entry = queue[0];
+    if (entry && entry.epoch != null && holdEpoch != null && entry.epoch !== holdEpoch) break;
     if (!entry.iterator) {
       try {
         // Enter-clock pinning (see the inline drain): schedulers inside a provider

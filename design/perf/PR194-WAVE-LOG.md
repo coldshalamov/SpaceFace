@@ -816,3 +816,11 @@ The wave converged on the two W54 machinery classes' unfinished edges: **clock/t
 - **boot F4 bounded laneDrain tail**: `settleOpeningCompositionTail` mints its lane drain with a bounded timeoutMs and races the tail await vs remaining budget — a wedge can no longer leave the first-flight hold un-rearmed.
 
 Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic). Focused suites 28/29 green — the one red is the documented `Math.min(6000, remainingMs())` flush-lane pin (canon, red identical on clean HEAD). One pin re-pin: `opening-cook-ledger`'s cohort-shape regex now accepts the raced settle tail.
+
+W55 hitches lane (`saturated: false`, 3 findings) — landed in the same batch:
+
+- **hitches F1 hold-epoch gate**: `_sectorHandoffSector`/`_sectorHandoffStreamHoldS` arm inside render's own `sector:enter` listener — ~5–7 presented frames after the emit (sliced tail, ~55 listeners over `SECTOR_ENTER_LISTENER_BUDGET`). In that window the hold beats and the post-hold flag drained live new-epoch FIFO entries against the DEPARTED seam sector (world.currentSectorId already the destination). `owner._sectorHandoffEpoch` now stamps `world.enterSerial` at the arm site, clears everywhere `_sectorHandoffSector` clears (empty-queue clear, flag-complete, teardowns, hard-enter), and threads into `drainDeferredEnterSlice` as `holdEpoch` — the step loop `break`s (leaves queued, never drops) on a foreign epoch's head entry so only its owner drives a cohort against its own sector.
+- **hitches F2 pin-map liveness filter**: `deferredProviderClock`/`deferredProviderTick` were built over ALL spliced entries (last-wins on shared provider keys) while `deferredProviders` filtered dead epochs — an emit-queue overflow could pin a live provider to a dead emit's clock/tick. Both maps now apply the same liveness predicate.
+- **hitches F3**: `waitForPending` documented test-only at both tracker copies (whole-queue `flushQueued()` per iteration; production waits are watermark-bounded via `waitForCaptured`).
+
+Verify: golden `47a` bit-identical (`8d4492dc…`); focused suites 60/62 green — residuals are the documented `render-target-pipeline-warmup` post-route-degrade + AO-bloom canon pair (red identical on clean HEAD).

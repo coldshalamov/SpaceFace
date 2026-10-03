@@ -469,6 +469,8 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     return result();
   }
 
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
   async function waitForPending(options = {}) {
     const stale = typeof options.stale === 'function' ? options.stale : null;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
@@ -697,6 +699,8 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     return result();
   }
 
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
   async function waitForPending(options = {}) {
     const stale = typeof options.stale === 'function' ? options.stale : null;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;

@@ -1777,7 +1777,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       if (owner.state && owner.state.render
           && Array.isArray(owner.state.render.deferredEnterMaterializers)
           && owner.state.render.deferredEnterMaterializers.length) {
-        drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4);
+        drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4,
+          owner._sectorHandoffEpoch);
       }
     }
     if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
@@ -1838,6 +1839,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       } else {
         owner._sectorHandoffSectorId = null;
         owner._sectorHandoffSector = null;
+        owner._sectorHandoffEpoch = null;
       }
       owner._holdExemptPersistentSkips = null;
     }
@@ -1848,13 +1850,15 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   // frame. A newer enter's own drain/splice empties the queue first — this block
   // just clears the flag; a dead queue can't strand.
   if (owner._seamDeferredDrain === true) {
-    drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4);
+    drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4,
+      owner._sectorHandoffEpoch);
     const rest = owner.state && owner.state.render
       && owner.state.render.deferredEnterMaterializers;
     if (!rest || !rest.length) {
       owner._seamDeferredDrain = false;
       owner._sectorHandoffSectorId = null;
       owner._sectorHandoffSector = null;
+      owner._sectorHandoffEpoch = null;
     }
     return 'deferred';
   }
@@ -7270,6 +7274,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._sectorHandoffStreamHoldS = 0;
   owner._sectorHandoffSectorId = null;
   owner._sectorHandoffSector = null;
+  owner._sectorHandoffEpoch = null;
   owner._openingGraphPublicationGate = null;
   owner._presentationWorld = null;
   owner._presentationPublisher = null;
@@ -8714,6 +8719,7 @@ export const render = {
     this._sectorHandoffStreamHoldS = 0;
     this._sectorHandoffSectorId = null;
     this._sectorHandoffSector = null;
+    this._sectorHandoffEpoch = null;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
       this.diag = installDiagnostics(renderer, {
@@ -12158,12 +12164,14 @@ export const render = {
         // durable schedulers stamp the same dueAt the emit path would have.
         const deferredProviderClock = Array.isArray(deferredEnterWork)
           ? new Map(deferredEnterWork
-              .filter((entry) => entry && typeof entry.provider === 'function')
+              .filter((entry) => entry && typeof entry.provider === 'function'
+                && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch))
               .map((entry) => [entry.provider, entry.clock != null ? entry.clock : null]))
           : null;
         const deferredProviderTick = Array.isArray(deferredEnterWork)
           ? new Map(deferredEnterWork
-              .filter((entry) => entry && typeof entry.provider === 'function')
+              .filter((entry) => entry && typeof entry.provider === 'function'
+                && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch))
               .map((entry) => [entry.provider, entry.tick != null ? entry.tick : null]))
           : null;
         // A deferred system drains EXACTLY ONCE via its FIFO entry — its registered
@@ -13856,6 +13864,8 @@ export const render = {
         this._seamDeferredExtendS = null;
         this._sectorHandoffSectorId = null;
         this._sectorHandoffSector = null;
+        this._sectorHandoffEpoch = null;
+        // (already null above — see the arm site)
       }
       this._meshReconcileDirty = true;
       if (cam.snapToPlayer) cam.snapToPlayer();
@@ -13985,6 +13995,10 @@ export const render = {
           || (state.world && state.world.sectors && exactSectorId
             ? state.world.sectors[exactSectorId] : null)
           || null;
+        // The hold owns only its own enter's deferred cohort — a newer emit's live
+        // entries must wait for the census splice, not this drain's stale sector.
+        this._sectorHandoffEpoch = state.world && state.world.enterSerial != null
+          ? state.world.enterSerial : null;
         this._sectorHandoffStreamHoldS = exactSectorId
           ? SECTOR_VISUAL_TRANSITION_SECONDS
           : 0;
