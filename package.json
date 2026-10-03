@@ -677,15 +677,19 @@
       "electron/main.cjs",
       "electron/preload.cjs",
       "electron/autoUpdate.cjs",
+      "assets/brand/exports/spaceface-launcher-256.png",
       "electron/releaseIdentity.cjs",
       "electron/steamworks.cjs",
       "electron/steamAchievements.json",
       "scripts/lib/gameServer.cjs",
+      "electron/workshopMods.cjs",
+      "electron/windowState.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
       "scripts/lib/playerSaveStore.cjs",
       "scripts/lib/staticCachePolicy.cjs",
       "package.json",
       "NOTICE"
+      "scripts/lib/userContentStore.cjs",
     ],
     "publish": {
       "provider": "github",
@@ -696,16 +700,19 @@
       "target": "nsis",
       "artifactName": "SpaceFace-Setup-${version}.${ext}"
     },
+      "icon": "assets/brand/exports/spaceface.ico",
     "mac": {
       "target": [
         "dmg",
         "zip"
+      "icon": "assets/brand/exports/spaceface.icns",
       ]
     },
     "linux": {
       "target": "AppImage"
     }
   },
+      "icon": "assets/brand/exports/spaceface-launcher-512.png",
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
     "@elemaudio/web-renderer": "^4.0.3",

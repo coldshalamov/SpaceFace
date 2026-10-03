@@ -52,6 +52,9 @@ const workshopMods = require('./workshopMods.cjs');
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
 // when a stale build/web directory exists from an earlier package build.
 const PROJECT_ROOT = path.join(__dirname, '..');
+// The SpaceFace emblem (assets/brand): taskbar / window icon. Packaged builds embed the exe icon from the electron-builder
+// config; this covers the live window on Linux and the unpackaged run. A missing file leaves Electron's default.
+const APP_ICON = path.join(PROJECT_ROOT, 'assets', 'brand', 'exports', 'spaceface-launcher-256.png');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 
 // SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
@@ -745,7 +748,7 @@ async function createWindow() {
     x: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
     y: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
     minWidth: 1024, minHeight: 640,
-    backgroundColor: '#05070d', title: 'SpaceFace', show: false,
+    backgroundColor: '#05070d', title: 'SpaceFace', show: false, icon: APP_ICON,
     fullscreen: rememberedWindow
       ? rememberedWindow.mode === 'fullscreen'
       : !launchConfig.isolatedEvidence,
