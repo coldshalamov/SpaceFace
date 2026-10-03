@@ -9,6 +9,7 @@ orient without ingesting the repository's history.
 
 | Need | Read |
 |---|---|
+| Owner-directed production-quality planning and physics-playground first wave | [`PRODUCTION_QUALITY_COMPOUNDING.md`](./PRODUCTION_QUALITY_COMPOUNDING.md) — six finite bundles preserving NXB-001–060, resolved first-wave designs, bounded architecture; supporting plan, not a queue |
 | Design the mature world and commission genuinely missing 3D/content families | [World-depth target and production slices](world-depth-2026-10-02/README.md); routed through existing FINISH_LANES and INFERENCE §0.2, not another queue |
 | Make the game better with INFERENCE (look, infer, rotate — detect is a hint) | [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) (prompt [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt)). Thin rows do not count |
 | INFERENCE overlay when the sim is busy but undesigned | [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md) (prompt [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./INFERENCE_INTENTIONAL_FUN_GOAL.txt)). Fun Loop still owns guts |

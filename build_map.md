@@ -5,6 +5,11 @@ This is the repository's implementation front door. It routes an agent to the sm
 
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
+For the owner-directed production-quality and physics-playground planning pass, use
+[`PRODUCTION_QUALITY_COMPOUNDING.md`](./design/program/PRODUCTION_QUALITY_COMPOUNDING.md).
+It groups existing obligations into finite deliveries and resolves a first wave; it does not replace
+this board, change task statuses, or launch implementation automatically.
+
 ## 1. Start here — the one procedure (no scope words needed)
 
 **The goal, in the owner's words (2026-09-03):** *a super-fun space adventure game with fast-paced, physics-centric, arcade-style combat that plays optimally in swarm mode, and is super interesting and
