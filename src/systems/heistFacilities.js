@@ -1843,6 +1843,9 @@ export const heistFacilities = {
   _maybeEjectShipmentUnit(capsule, impact) {
     const units = Number(capsule.data?.shipmentUnits) || 0;
     if (units <= 0) return;
+    // A load authored as ONE unit is indivisible — there is no partial-load version of a
+    // flywheel, so knocks on it never mint a pod inside the fork bay.
+    if ((Number(capsule.data?.shipmentUnitsTotal) || units) <= 1) return;
     if (!(Number(impact.dp) >= 30)) return;
     const tick = Math.max(0, Math.trunc(finite(impact.tick, this.state.tick)));
     if (capsule.data.lastUnitEjectTick === tick) return; // one unit per hard hit
