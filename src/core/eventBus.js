@@ -15,6 +15,11 @@ export const SECTOR_ENTER_DRAIN_BUDGET = 4;
 // per frame; the sim tail still executes in-tick exactly as before. Without a claim (headless
 // sims, tests) presentation listeners dispatch inline at emit — identical to a plain listener.
 export const PRESENTATION_LISTENER_DRAIN_BUDGET = 8;
+// Sliced emits that stack up behind a drain that couldn't finish inside its wall-clock cap
+// queue here rather than being lost. The queue is bounded — past the cap the oldest entry is
+// delivered fully inline at push. That preserves the one contract the queue exists to keep
+// (no listener is ever skipped); it does not promise that delivery stays sliced.
+export const MAX_QUEUED_SLICED_EMITS = 8;
 
 function dispatchRange(fns, payload, event, start, end) {
   const last = Math.min(fns.length, end);
@@ -222,19 +227,37 @@ export function createBus() {
     // A bounded caller threads its remaining deadline in maxMs — both the forced flush and
     // the fresh slice must fit inside it, or a ≤4ms pump call pays a whole first slice inline.
     const flushCap = Number.isFinite(maxMs) && maxMs > 0 ? Math.min(4, maxMs) : 4;
+    // One deadline shared by the forced flush, the fresh slice, and any listenerless queued
+    // restart — forwarding the original maxMs down the chain would re-mint a full window per
+    // hop and overspend the caller's bound by up to a window each hop.
+    const windowEnd = Number.isFinite(maxMs) && maxMs > 0
+      ? performance.now() + maxMs
+      : Infinity;
+    const remainingMs = () => Number.isFinite(windowEnd)
+      ? Math.max(0.001, windowEnd - performance.now())
+      : Infinity;
     if (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER, flushCap);
-    if (emitSlice) { pendingSlicedEmits.push({ event, payload, budget }); return; }
+    if (emitSlice) {
+      if (pendingSlicedEmits.length >= MAX_QUEUED_SLICED_EMITS) {
+        // Backlog bounded: the oldest queued emit is delivered fully inline so a pathological
+        // stack of enters can't grow the queue without bound (see MAX_QUEUED_SLICED_EMITS).
+        const oldest = pendingSlicedEmits.shift();
+        emitAll(oldest.event, oldest.payload);
+      }
+      pendingSlicedEmits.push({ event, payload, budget });
+      return;
+    }
     const fns = snapshotListeners(listeners, listenerSnapshots, event);
     if (!fns) {
       dispatchPresentation(event, payload);
       if (pendingSlicedEmits.length) {
         const next = pendingSlicedEmits.shift();
-        startEmitSlice(next.event, next.payload, next.budget, maxMs);
+        startEmitSlice(next.event, next.payload, next.budget, remainingMs());
       }
       return;
     }
     emitSlice = { event, payload, fns, index: 0 };
-    drainEmitSlice(budget, maxMs);
+    drainEmitSlice(budget, remainingMs());
     dispatchPresentation(event, payload);
   }
 
