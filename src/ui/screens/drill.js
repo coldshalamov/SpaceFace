@@ -391,14 +391,36 @@ export function paint(hex, a) {
   return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
 }
 
-const MATERIAL_MARK = {
-  you: '▣',
-  matrix: '·',
-  basalt: '/',
-  gas: '✕',
-  ice: '◆',
-  exotic: '⬡',
-  metal: '▭',
+// Legend marks — drawn inline SVG quoting the shapes the drill view itself paints for each
+// material (buildSvgTemplates / the strata tiles): the rover hull silhouette, specked matrix,
+// faceted basalt, the gas pocket's X-in-triangle, nested ice diamonds, the exotic hexagon and
+// metal's twin ingot bars. Replaces the old ascii stand-ins ('▣ · / ✕ ◆ ⬡ ▭'), which leaned on
+// font coverage and read as a second visual language. Stroke = currentColor, 1.6, round — the
+// shared glyph grammar — so forced-colors mode (where the mark is the legend's visible fallback)
+// still reads in CanvasText. Normally hidden: the tile icons carry the legend at rest.
+const LEGEND_MARK_ATTRS = 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+const LEGEND_MARK = {
+  you: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<path d="M2.2 8.8 3.4 4.6h5.2l1.2 4.2Z"/><path d="M4.6 4.6 6 2.4l1.4 2.2"/><path d="M2.8 10.6h6.4"/>'
+    + '</svg>',
+  matrix: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<rect x="1" y="1" width="10" height="10" rx="1"/><path d="M4.2 4.2h.01M7.6 5.6h.01M5.4 7.8h.01"/>'
+    + '</svg>',
+  basalt: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<rect x="1" y="1" width="10" height="10" rx="1"/><path d="M3 9 5.8 3.6M6.6 9.8 9 5.4"/>'
+    + '</svg>',
+  gas: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<path d="M6 1.6 10.6 9.8H1.4Z"/><path d="M4.3 4.9l3.4 3.4M7.7 4.9 4.3 8.3"/>'
+    + '</svg>',
+  ice: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<path d="M6 1.4 10.6 6 6 10.6 1.4 6Z"/><path d="M6 3.8 8.2 6 6 8.2 3.8 6Z"/>'
+    + '</svg>',
+  exotic: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<path d="M6 1.5 9.9 3.8v4.4L6 10.5 2.1 8.2V3.8Z"/>'
+    + '</svg>',
+  metal: `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" ${LEGEND_MARK_ATTRS}>`
+    + '<rect x="1.8" y="2.7" width="5.4" height="3" rx="0.6"/><rect x="4.8" y="6.3" width="5.4" height="3" rx="0.6"/>'
+    + '</svg>',
 };
 
 export function materialKind(key) {
@@ -663,7 +685,7 @@ function makeLegendItem(label, iconKey, opts = {}) {
   const mark = document.createElement('span');
   mark.className = 'drill-legend-mark';
   mark.setAttribute('aria-hidden', 'true');
-  mark.textContent = MATERIAL_MARK[kind] || '';
+  mark.innerHTML = LEGEND_MARK[kind] || '';
   item.appendChild(mark);
 
   if (opts.icons) {

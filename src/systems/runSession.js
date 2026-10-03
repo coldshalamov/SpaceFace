@@ -12,7 +12,9 @@ import {
 } from '../core/runState.js';
 import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
-import { loadCrucibleMeta } from './survivalRecords.js';
+import { normalizePerkLoadout } from '../data/swarmPerks.js';
+import { normalizeThreatIds } from '../data/swarmThreats.js';
+import { crucibleEarnedPerkIds, loadCrucibleMeta } from './survivalRecords.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
@@ -115,6 +117,20 @@ export const runSession = {
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
       const profile = loadCrucibleMeta();
       next.telemetry.hangar = migrateHangar(profile && profile.hangar);
+      // SWARM-06: the Threat wager and the perk loadout ride telemetry the same way the stake
+      // does — schema-free, run-lifelong, never serialized. Threats normalize against the
+      // catalog so a door or a hand-rolled request can never name a wager that does not exist.
+      // Perks come off the profile's stored pick (a request may override it — sandbox drives
+      // and tests slot honestly), earned-checked against the same derived earns the door read.
+      if (isSwarmRuleset(ruleset)) {
+        const threats = normalizeThreatIds(request && request.threats);
+        if (threats.length) next.telemetry.threats = threats;
+        const earned = crucibleEarnedPerkIds(profile);
+        const pick = request && Array.isArray(request.perks) ? request.perks
+          : (profile && profile.perks && profile.perks.loadout);
+        const perks = normalizePerkLoadout(pick, earned);
+        if (perks.length) next.telemetry.perks = perks;
+      }
     }
     const committed = this._commitRun(next, 'run:started', {
       schemaVersion: next.schemaVersion,

@@ -285,13 +285,72 @@ function statusColor(status) {
   return STATUS_COLORS[(status && status.state) || 'idle'] || STATUS_COLORS.idle;
 }
 
+// Drawn status marks — they replace the fillText'd '⚡'/'▣'/'!' stand-ins ('⚡' is
+// Emoji_Presentation on most platforms; the text glyphs also leaned on font coverage). Same hand
+// as the inspector lens icons: tiny stroke paths, round caps, ~11px at tile scale. Each status
+// keeps its own silhouette so state survives colorblind viewing (shape + LED color + the pulsing
+// fault ring): bolt=no-power, stacked queue=backlogged, exclamation=other faults, hollow
+// dot=idle. Path2Ds are built lazily and cached — Node test runs have no Path2D, and nothing
+// should construct one until a canvas actually paints.
+const STATUS_MARK_SIZE = 12;
+const STATUS_MARKS = new Map();
+function statusMarkPath(name) {
+  let p = STATUS_MARKS.get(name);
+  if (p) return p;
+  if (typeof Path2D === 'undefined') return null;
+  p = new Path2D();
+  if (name === 'bolt') {
+    p.moveTo(6.6, 0.8);
+    p.lineTo(2.4, 6.4);
+    p.lineTo(5.4, 6.4);
+    p.lineTo(5.2, 11.2);
+    p.lineTo(9.6, 5.2);
+    p.lineTo(6.5, 5.2);
+    p.closePath();
+  } else if (name === 'queue') {
+    // Stacked queue: two full rows + a short tail row still waiting on the lane.
+    p.moveTo(1.6, 2.4); p.lineTo(10.4, 2.4);
+    p.moveTo(1.6, 6.0); p.lineTo(10.4, 6.0);
+    p.moveTo(1.6, 9.6); p.lineTo(7.2, 9.6);
+  } else if (name === 'alert') {
+    // Vector exclamation: stem + nub (round caps turn the nub into the dot).
+    p.moveTo(6, 1.4); p.lineTo(6, 6.8);
+    p.moveTo(6, 9.9); p.lineTo(6.01, 9.9);
+  } else { // 'idle' — hollow dot
+    p.arc(6, 6, 2.6, 0, Math.PI * 2);
+  }
+  STATUS_MARKS.set(name, p);
+  return p;
+}
+
+function statusMarkName(state) {
+  if (state === 'no-power') return 'bolt';
+  if (state === 'backlogged') return 'queue';
+  if (state === 'idle') return 'idle';
+  return 'alert';
+}
+
+/** Stroke one status mark centred on (cx, cy), ~11px, in the context's current stroke style. */
+function drawStatusMark(g, name, cx, cy) {
+  const p = statusMarkPath(name);
+  if (!p) return;
+  const s = 11 / STATUS_MARK_SIZE;
+  g.save();
+  g.translate(cx - (STATUS_MARK_SIZE / 2) * s, cy - (STATUS_MARK_SIZE / 2) * s);
+  g.scale(s, s);
+  g.lineWidth = 1.6;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.stroke(p);
+  g.restore();
+}
+
 /** Draw one machine housing at tile-space (x,y). Distinct silhouette per verb. */
 export function paintMachine(g, defId, x, y, opts = {}) {
   const status = opts.status || null;
   const led = statusColor(status);
   const cx = x + TILE / 2;
   const cy = y + TILE / 2;
-  const mono = opts.monoFamily || 'monospace';
   g.save();
 
   // Contact arms FIRST (under the housing): the §1 ring made visible — one clamp per worked face.
@@ -427,17 +486,20 @@ export function paintMachine(g, defId, x, y, opts = {}) {
   // Status LED — corner dot, doubled by an under-glow so state reads at map scale.
   g.fillStyle = led;
   g.fillRect(x + TILE - 8, y + 4, 4, 4);
-  if (status && (status.state === 'no-power' || status.state === 'starved' || status.state === 'backlogged' || status.state === 'no-network' || status.state === 'no-geology' || status.state === 'no-pods')) {
+  const faulty = status && (status.state === 'no-power' || status.state === 'starved' || status.state === 'backlogged' || status.state === 'no-network' || status.state === 'no-geology' || status.state === 'no-pods');
+  const idle = status && status.state === 'idle';
+  if (faulty || idle) {
+    if (faulty) {
+      g.strokeStyle = led;
+      g.globalAlpha = opts.reducedMotion ? 0.5 : 0.35 + 0.3 * Math.sin((opts.timeS || 0) * 3);
+      g.lineWidth = 2;
+      g.strokeRect(x + 2.5, y + 2.5, TILE - 5, TILE - 5);
+      g.globalAlpha = 1;
+    }
+    // Drawn fault/idle mark — bolt, stacked queue, exclamation or hollow dot per state
+    // (statusMarkName); never a text glyph, so the shape cannot fall back to an emoji font.
     g.strokeStyle = led;
-    g.globalAlpha = opts.reducedMotion ? 0.5 : 0.35 + 0.3 * Math.sin((opts.timeS || 0) * 3);
-    g.lineWidth = 2;
-    g.strokeRect(x + 2.5, y + 2.5, TILE - 5, TILE - 5);
-    g.globalAlpha = 1;
-    g.fillStyle = led;
-    g.font = `bold 9px ${mono}`;
-    g.textAlign = 'center';
-    const glyph = status.state === 'no-power' ? '⚡' : (status.state === 'backlogged' ? '▣' : '!');
-    g.fillText(glyph, x + 8, y + 12);
+    drawStatusMark(g, statusMarkName(status.state), x + 8, y + 12);
   }
   g.restore();
 }

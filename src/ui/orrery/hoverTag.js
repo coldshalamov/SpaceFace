@@ -1,6 +1,27 @@
+// The world-object hover tag (nameplate over hovered ships/rocks/stations), mounted by
+// src/ui/worldObjectInteraction.js. ORRERY register: the vitals are compact Arc Gauges (§3.2 a
+// quantity is an arc; the Cluster's shield/armor/hull tone convention — phos, hi, phos), every
+// colour is a Deckplate token (warm bone at rest, threat red only for hostiles, the Hand for the
+// selected), and the tag carries a kit tag-leader: a light drop from the tag's foot to the point
+// it names (assets/ui/kit/assets/svg/tapes/tag-leader.svg, read pointing down — the tag tracks
+// its object through the cursor, so the geometry is static).
+//
+// DOM contract (pinned by test/world-object-gesture.test.mjs): root class is exactly `sf-woi`,
+// children[1] is the meta line, a `.sf-woi__hint` child exists, and paintHoverTagVitals /
+// placeHoverTag keep their shapes. The old `.sf-woi__bar` slots stay mounted as the gauge slots
+// (the hud.js mountVitalArc idiom); the `i` scalar inside each stays as the fallback painter for
+// environments without SVG construction (headless harnesses).
+import { arcGauge } from './instruments.js';
+import { injectOrrery } from './tokens.js';
+
 const STYLE_ID = 'sf-orrery-hover-tag';
+const SVGNS = 'http://www.w3.org/2000/svg';
 
 const HALO = 'text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 4px rgb(3 4 7 / .85), 0 0 10px rgb(3 4 7 / .6);';
+
+// The Cluster's own tone mapping (orrery/flightCluster.js): shield and hull read in phosphor,
+// armour is the thin hi bone line between them.
+const VITAL_TONE = { shield: 'phos', armor: 'hi', hull: 'phos' };
 
 const CSS = `
 .sf-woi{position:fixed;left:0;top:0;z-index:12;pointer-events:none;transform:translate(-50%,calc(-100% - 14px));
@@ -16,21 +37,49 @@ const CSS = `
 .sf-woi[data-beam="1"] .sf-woi__hint{color:var(--dp-phos, #dfeeff)}
 .sf-woi[data-sling="1"] .sf-woi__hint{color:var(--dp-hand, #f2b950)}
 .sf-woi[data-selected="1"] .sf-woi__meta{color:var(--dp-hand, #f2b950)}
-.sf-woi[data-relation="hostile"] .sf-woi__name{color:#ff8a90}
-.sf-woi[data-relation="hostile"] .sf-woi__meta{color:#ffb0b4}
-.sf-woi[data-relation="ally"] .sf-woi__name,.sf-woi[data-relation="friendly"] .sf-woi__name{color:#a8e6ff}
-.sf-woi__bars{width:132px;margin:6px auto 0;display:grid;gap:2px}
+/* relations: threat red is the only alarm; allies read in the rest light — the meta line names them */
+.sf-woi[data-relation="hostile"] .sf-woi__name{color:var(--dp-danger-hot, #ff8a70)}
+.sf-woi[data-relation="hostile"] .sf-woi__meta{color:var(--dp-danger-hot, #ff8a70)}
+/* vitals: a row of compact Arc Gauges (the mining-HUD / Cluster convention), one per layer the
+   body carries. No bordered bars, no raw hexes — the gauge strokes carry the orrery tones. */
+.sf-woi__bars{display:flex;justify-content:center;gap:5px;margin:7px auto 0}
 .sf-woi__bars[hidden]{display:none}
-.sf-woi__bar{height:4px;background:rgb(3 4 7 / .72);box-shadow:0 0 0 1px rgb(255 255 255 / .16);overflow:hidden}
-.sf-woi__bar>i{display:block;height:100%;width:100%;transform-origin:left center}
-.sf-woi__bar--shield>i{background:#62d2ff}
-.sf-woi__bar--armor>i{background:#ffc24d}
-.sf-woi__bar--hull>i{background:#ff5a5c}
-.sf-woi[data-relation="ally"] .sf-woi__bar--hull>i,.sf-woi[data-relation="friendly"] .sf-woi__bar--hull>i{background:#7dffb0}
+.sf-woi__bar{position:relative;width:24px;height:24px}
+.sf-woi__bar[hidden]{display:none}
+.sf-woi__dial{display:block;width:100%;height:100%;overflow:visible}
+.sf-woi__bar>i{display:none}
+/* the tag leader: a static light drop from the tag's foot to the named point — core + bloom
+   strokes, geometry only (no filters in flight). Rest is bone; the selection hands it amber;
+   a hostile marks the drop in threat red. */
+.sf-woi__leader{position:absolute;top:100%;left:50%;width:12px;height:14px;margin-left:-6px;
+  overflow:visible;color:var(--dp-line-hi, rgb(232 226 212 / .62));pointer-events:none}
+.sf-woi__leader .sf-woi__leader-bloom{stroke:currentColor;stroke-width:4;stroke-opacity:.18;fill:none;
+  vector-effect:non-scaling-stroke;stroke-linecap:round}
+.sf-woi__leader .sf-woi__leader-core{stroke:currentColor;stroke-width:1.25;fill:none;
+  vector-effect:non-scaling-stroke;stroke-linecap:round}
+.sf-woi__leader .sf-woi__leader-anchor{fill:currentColor}
+.sf-woi[data-selected="1"] .sf-woi__leader{color:var(--dp-hand, #f2b950)}
+.sf-woi[data-relation="hostile"] .sf-woi__leader{color:var(--dp-danger, #ff5038)}
 `;
+
+/** A small SVG element honouring the doc, or null where SVG construction is unavailable
+ *  (headless harness stubs) — callers degrade to the text/scalar presentation. */
+function svgEl(doc, tag, className) {
+  try {
+    const node = doc.createElementNS
+      ? doc.createElementNS(SVGNS, tag)
+      : doc.createElement(tag);
+    if (className) node.setAttribute('class', className);
+    return node;
+  } catch (_) {
+    return null;
+  }
+}
 
 export function createHoverTag(doc = globalThis.document) {
   if (!doc || !doc.head || typeof doc.createElement !== 'function') return null;
+  // The dials and leader draw with the orrery library's stroke classes; injection is idempotent.
+  try { injectOrrery(doc); } catch (_) { /* tag still names and places without them */ }
   if (!doc.getElementById(STYLE_ID)) {
     const style = doc.createElement('style');
     style.id = STYLE_ID;
@@ -54,16 +103,57 @@ export function createHoverTag(doc = globalThis.document) {
   for (const layer of ['shield', 'armor', 'hull']) {
     const bar = doc.createElement('div');
     bar.className = 'sf-woi__bar sf-woi__bar--' + layer;
+    // Compact Arc Gauge mounted INTO the bar slot (the hud.js mountVitalArc idiom); the `i`
+    // fill stays as the hidden scalar of the old scaleX contract and the stub-environment painter.
+    const dial = svgEl(doc, 'svg', 'orr-svg sf-woi__dial');
+    let gauge = null;
+    if (dial) {
+      dial.setAttribute('viewBox', '0 0 30 30');
+      dial.setAttribute('aria-hidden', 'true');
+      try {
+        gauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: VITAL_TONE[layer], ghost: false, head: true });
+        dial.appendChild(gauge.el);
+        bar.appendChild(dial);
+      } catch (_) { gauge = null; }
+    }
     const fill = doc.createElement('i');
     bar.appendChild(fill);
     barsEl.appendChild(bar);
-    fills[layer] = { bar, fill };
+    fills[layer] = { bar, fill, gauge };
   }
+  // The tag leader (kit geometry, read pointing down): a static drop from the tag's foot to the
+  // point it names — the tag floats exactly 14px above its anchor, so the drop fills that gap.
+  // It is built here but appended LAST, after the hint, so the pinned child order
+  // (children[0] name, children[1] meta) never moves.
+  let leaderEl = null;
+  try {
+    leaderEl = svgEl(doc, 'svg', 'sf-woi__leader');
+    if (leaderEl) {
+      leaderEl.setAttribute('viewBox', '0 0 12 14');
+      leaderEl.setAttribute('aria-hidden', 'true');
+      const bloom = svgEl(doc, 'path', 'sf-woi__leader-bloom');
+      const core = svgEl(doc, 'path', 'sf-woi__leader-core');
+      const anchor = svgEl(doc, 'circle', 'sf-woi__leader-anchor');
+      if (bloom && core && anchor) {
+        bloom.setAttribute('d', 'M6 0 L6 9.6');
+        core.setAttribute('d', 'M6 0 L6 9.6');
+        anchor.setAttribute('cx', '6');
+        anchor.setAttribute('cy', '12');
+        anchor.setAttribute('r', '1.8');
+        leaderEl.appendChild(bloom);
+        leaderEl.appendChild(core);
+        leaderEl.appendChild(anchor);
+      } else {
+        leaderEl = null;
+      }
+    }
+  } catch (_) { leaderEl = null; }
   el.appendChild(nameEl);
   el.appendChild(metaEl);
   el.appendChild(barsEl);
   el.appendChild(hintEl);
-  return { el, nameEl, metaEl, hintEl, barsEl, fills };
+  if (leaderEl) el.appendChild(leaderEl);
+  return { el, nameEl, metaEl, hintEl, barsEl, leaderEl, fills };
 }
 
 /**
@@ -80,7 +170,7 @@ export function hoverTagVitals(entity) {
   };
 }
 
-/** Paint vitals into a tag made by createHoverTag. Returns true when the bars are shown. */
+/** Paint vitals into a tag made by createHoverTag. Returns true when the gauges are shown. */
 export function paintHoverTagVitals(tag, entity) {
   if (!tag || !tag.barsEl) return false;
   const v = hoverTagVitals(entity);
@@ -92,7 +182,9 @@ export function paintHoverTagVitals(tag, entity) {
     const f = v[layer];
     const none = f == null;
     if (slot.bar.hidden !== none) slot.bar.hidden = none;
-    if (!none) slot.fill.style.transform = 'scaleX(' + f.toFixed(3) + ')';
+    if (none) continue;
+    if (slot.gauge) slot.gauge.set(f, { instant: true });
+    else slot.fill.style.transform = 'scaleX(' + f.toFixed(3) + ')';
   }
   return true;
 }

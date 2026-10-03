@@ -43,6 +43,9 @@ import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js'
 // job kernel, and every consequence outside the records stays with its canonical owner.
 import { createRescuedWorkerReturn, normalizeRescuedWorkers } from './rescuedWorkerReturn.js';
 import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './scavengerOccupationSwitch.js';
+// SF-141: warm-site freight rides the same physical pod contract as every other spilled lot —
+// persistent, colliding, salvage-scoopable, and theft-priced by law through its owner stamp.
+import { spawnJettisonedCargoPod } from './lootShards.js';
 
 // The materialize phase set lives beside the registry so the sector decode warms grade
 // the same gate without importing this module (data/uniqueWrecks.js owns the constants).
@@ -180,6 +183,10 @@ export function createUniqueWreckState(metaSeed) {
     // validation-failure rebuild re-seeds them instead of silently dropping durable people.
     rescuedWorkers: normalizeRescuedWorkers(),
     occupationSwitch: normalizeOccupationSwitch(),
+    // SF-141: per-wreck warm-site ledger. `podsSpawnedAtS` makes the loose relief freight a
+    // one-shot physical fact — a validation rebuild re-seeds the bag rather than resurrecting
+    // pods the world already scooped or cooked off.
+    warm: {},
   };
 }
 
@@ -203,6 +210,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     memorialThief: normalizeMemorialThief(input.memorialThief),
     rescuedWorkers: normalizeRescuedWorkers(input.rescuedWorkers),
     occupationSwitch: normalizeOccupationSwitch(input.occupationSwitch),
+    warm: {},
   };
   const bearings = input.bearings && typeof input.bearings === 'object' ? input.bearings : {};
   for (const def of UNIQUE_WRECKS) {
@@ -303,6 +311,16 @@ export function normalizeUniqueWreckState(value, metaSeed) {
   for (const [key, value] of Object.entries(offers)) if (value) out.offers[key] = true;
   const published = input.published && typeof input.published === 'object' ? input.published : {};
   for (const def of UNIQUE_WRECKS) if (published[def.id]) out.published[def.id] = true;
+  // SF-141: keep only authored-wreck warm ledgers; an unknown key or malformed record drops
+  // rather than letting a stale save pin a spawn that never happened.
+  const warm = input.warm && typeof input.warm === 'object' ? input.warm : {};
+  for (const def of UNIQUE_WRECKS) {
+    const rec = warm[def.id];
+    if (!rec || typeof rec !== 'object' || !def.warm) continue;
+    out.warm[def.id] = {
+      podsSpawnedAtS: rec.podsSpawnedAtS == null ? null : Math.max(0, finite(rec.podsSpawnedAtS, 0)),
+    };
+  }
   const receipts = Array.isArray(input.receipts) ? input.receipts : [];
   out.receipts = receipts.slice(-UNIQUE_WRECK_RECEIPT_LIMIT).map((receipt) => ({
     type: String(receipt && receipt.type || 'receipt'),
@@ -680,6 +698,10 @@ export const uniqueWrecks = {
     if (!payload.sourceRef) return null;
     return this._recordRumor({
       ...payload,
+      // The subscription channel is the transport; the payload's own channelId is what the
+      // carrier DECLARED. A mission:accepted transport delivers any channel the accepting
+      // contract carried — the declared channel decides which source row it may mint through.
+      declaredChannelId: typeof payload.channelId === 'string' ? payload.channelId : null,
       channelId,
     });
   },
@@ -706,8 +728,17 @@ export const uniqueWrecks = {
     if (!def || sourceRef !== def.bearingSourceRef) return null;
     const own = this._ensureState();
     if (own.bearings[def.id]) return own.bearings[def.id];
-    const source = def.rumorSources.find((entry) => entry.sourceRef === sourceRef);
-    if (!source || source.channelId !== payload.channelId) return null;
+    // Match the carrier channel AND the ref: a wreck may declare the same public report
+    // through several channels (SF-149 — the vigil chain's mission:accepted reprints the
+    // Helios loss news). A mission:accepted transport additionally requires the ACCEPTED
+    // CONTRACT to have declared the mission channel: a long_read accept carrying the wreck's
+    // public 'news' channel must not mint through the mission row — its native carrier is the
+    // rumor-purchase reprint that follows on the news wire.
+    const declared = payload.declaredChannelId;
+    const source = def.rumorSources.find((entry) => entry.sourceRef === sourceRef
+      && entry.channelId === payload.channelId
+      && (payload.channelId !== 'mission' || declared == null || declared === 'mission'));
+    if (!source) return null;
     const placement = placementForUniqueWreck(own.programSeed, def.id, def.sectorId);
     const record = {
       wreckId: def.id,
@@ -1336,7 +1367,69 @@ export const uniqueWrecks = {
     }
     this._bindEntity(def, record, entity);
     this._publishWreckFieldSource(def, record, entity);
+    this._syncWarmSite(def, record, entity);
     return entity;
+  },
+
+  /**
+   * SF-141 — one physical freight spill per warm wreck site. The authored `warm.cargoPods`
+   * rows materialize as ordinary persistent jettisoned pods beside the hull: colliding bodies
+   * that tether, scoop, cook off, and answer to the law. Ownership is stamped to the relief
+   * crew's durable world-record id (not a recycling entity id), so taking the lot stays theft
+   * even if the owner dies mid-transfer. The durable `warm` ledger never re-spills the site:
+   * pods the world already took or destroyed stay gone.
+   */
+  _syncWarmSite(def, record, wreckEntity) {
+    const authored = def && def.warm && Array.isArray(def.warm.cargoPods)
+      ? def.warm.cargoPods : null;
+    if (!def || !record || !authored || !authored.length) return null;
+    if (!wreckEntity || !wreckEntity.pos) return null;
+    if (isSurvivalRunLive(this.state && this.state.run)) return null;
+    if (typeof spawnJettisonedCargoPod !== 'function'
+      || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const own = this._ensureState();
+    const site = own.warm[def.id] || (own.warm[def.id] = { podsSpawnedAtS: null });
+    if (site.podsSpawnedAtS != null) return site;
+    const ownerRecordId = def.id === 'wreck_choir_tender'
+      ? `choir-relief:${own.programSeed}:attendant` : null;
+    let spawned = 0;
+    for (const pod of authored) {
+      const pos = {
+        x: wreckEntity.pos.x + finite(pod && pod.offset && pod.offset.x, 0),
+        z: wreckEntity.pos.z + finite(pod && pod.offset && pod.offset.z, 0),
+      };
+      const entity = spawnJettisonedCargoPod(this.state, {
+        commodityId: pod.commodityId,
+        amount: pod.amount,
+        unitMass: pod.unitMass,
+        radius: pod.radius,
+        pos,
+        ownerId: ownerRecordId,
+        ownerName: 'CHOIR RELIEF — LAST LIGHT',
+        factionId: def.factionId,
+        originId: def.id,
+        destinationId: 'station_helios',
+        cargoIdentity: {
+          originId: def.id,
+          destinationId: 'station_helios',
+          ownerId: ownerRecordId,
+          ownerName: 'CHOIR RELIEF — LAST LIGHT',
+        },
+      }, this.helpers);
+      if (!entity) continue;
+      const data = entity.data || (entity.data = {});
+      // `warmWreckId`, not `uniqueWreckId`: the pod is freight AT the site, not the hull — the
+      // wreck identity stamp stays exclusive to the materialized hull/husk so lookups by
+      // uniqueWreckId keep returning the site itself.
+      data.warmWreckId = def.id;
+      data.warmPodId = String(pod.id || `warm_pod_${spawned}`);
+      data.scanLabel = `${def.name} relief pod — attended freight`;
+      spawned++;
+    }
+    // The stamp is durable even when the spawn budget refused a pod: the spill is a site fact,
+    // not a per-visit respawn. A pod that never appeared is the same dead pod in every save.
+    site.podsSpawnedAtS = Math.max(0, finite(this.state.simTime, 0));
+    return site;
   },
 
   _publishWreckFieldSource(def, record, entity) {

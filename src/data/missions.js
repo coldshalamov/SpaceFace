@@ -330,6 +330,21 @@ export const MISSION_TYPES = [
     constraints: { authoredOnly: true },
   },
   {
+    // SF-143 — The Counterweight: a yard watch over the physical gate/cradle/tug scene beside the
+    // Tethys launcher. AUTHORED-ONLY, structural zero weight exactly like the heist, placed BEFORE
+    // heist_intercept so "heist stays last" holds and `_pickType` reads `weights[i] || 0` = 0.
+    // `missions._syncCounterweightOffer` is the only poster. `chainable: false` so completing the
+    // watch cannot mint a procedural sequel; no `duration_s` — the window is the runtime's armed
+    // clock, not a mission deadline.
+    type: 'counterweight_watch', riskTierRange: [2, 2], chainable: false, proceduralWeight: 0,
+    completionEvent: 'counterweight manifest resolved (every crate delivered or lost) with legsDone >= legsRequired',
+    rewardFormula: 'delivered legs × COUNTERWEIGHT_WATCH_TUNING.rewardPerLegCr (+ completionBonusCr on a full manifest)',
+    timeFormula: 'none — the watch window is the runtime armedTick clock, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'window expiry under the required legs, or the whole manifest lost',
+    constraints: { authoredOnly: true, physicalVerb: 'hold' },
+  },
+  {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
     //
     // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is
@@ -380,16 +395,19 @@ export const WRECK_BOUND_SET_PIECE_OBJECTIVES = new Set([
   'blockade_map_cordon',
   'witness_compare_aliases',
   'hearing_open_hearing',
+  'choir_first_light',
 ]);
 
-// G1: home sector of each chain-dedicated authored wreck (D13-D16 in uniqueWrecks.js). Kept as
-// pure data here so the catalog validator can require the opening stage to run in the wreck's
-// home sector; the focused G1 test cross-checks this table against the wreck registry itself.
+// G1: home sector of each chain-dedicated authored wreck (D13-D16 in uniqueWrecks.js, plus the
+// SF-149 Choir-Tender vigil). Kept as pure data here so the catalog validator can require the
+// opening stage to run in the wreck's home sector; the focused G1 test cross-checks this table
+// against the wreck registry itself.
 export const SET_PIECE_WRECK_SECTORS = Object.freeze({
   wreck_mts_quadrille: 'sector_io_reach',
   wreck_isc_double_entry: 'sector_tethys_junction',
   wreck_dmc_first_notch: 'sector_vesta_forge',
   wreck_mts_regular: 'sector_pallas_drift',
+  wreck_choir_tender: 'sector_helios_prime',
 });
 
 export const SET_PIECE_MISSIONS = [
@@ -1097,6 +1115,121 @@ export const SET_PIECE_MISSIONS = [
       },
     ],
   },
+
+  // SF-149 — the Choir vigil: three physically different visits to the same small place.
+  // First light is the survey visit (scan the bearing ring into a fixed site). The long night
+  // is the disruption visit — the warm wreck's own reactor verdict, driven through the same
+  // live-salvage objective as long_read's recovery stage. The third visit is a return to the
+  // changed site: accepting it files the named outcome into the durable bearing, and the
+  // stage only completes when the player physically stands inside the recovered site again.
+  // Late arrivals reconcile: a bearing already fixed, a wreck already decided, or a site
+  // already salvaged settles at accept instead of demanding the world be undone.
+  {
+    id: 'choir_vigil',
+    title: 'The Choir Vigil',
+    startStationId: 'station_helios',
+    repeatable: true,
+    wreckId: 'wreck_choir_tender',
+    commonStages: [
+      {
+        id: 'first_light',
+        title: 'First Light at the Wreck',
+        type: 'recon_scan',
+        boardStationId: 'station_helios',
+        destSectorId: 'sector_helios_prime',
+        factionId: 'faction_choir',
+        riskTier: 1,
+        rewardCr: 720,
+        collateralCr: 0,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          scanTargets: 1,
+          setPieceObjective: 'choir_first_light',
+          bearingFixed: false,
+          rumorPurchased: false,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('choir_vigil', 'first_light'),
+      },
+      {
+        id: 'the_long_night',
+        title: 'The Long Night Beside Mercy',
+        type: 'salvage_retrieval',
+        boardStationId: 'station_helios',
+        destSectorId: 'sector_helios_prime',
+        factionId: 'faction_choir',
+        riskTier: 2,
+        rewardCr: 1380,
+        collateralCr: 300,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          setPieceObjective: 'choir_long_night',
+          complicationObserved: false,
+          salvageDecisionReady: false,
+        },
+        clauseIds: ['no_kills'],
+        ...setPieceCopyRefs('choir_vigil', 'the_long_night'),
+      },
+    ],
+    branches: [
+      {
+        id: 'return_the_claim',
+        label: 'Return the Relief Claim',
+        tradeoff: 'Hand the surviving systems back to the Choir attendant. The berth gets its crew home, and the site files a recovery.',
+        stages: [
+          {
+            id: 'walk_the_recovery',
+            title: 'Walk the Recovery',
+            type: 'salvage_retrieval',
+            boardStationId: 'station_helios',
+            destSectorId: 'sector_helios_prime',
+            factionId: 'faction_choir',
+            riskTier: 2,
+            rewardCr: 1640,
+            collateralCr: 420,
+            durationS: 900,
+            distance: 900,
+            params: {
+              setPieceObjective: 'choir_what_remains',
+              wreckChoiceId: 'authority_handover',
+              outcomeFiled: false,
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('choir_vigil', 'walk_the_recovery'),
+          },
+        ],
+      },
+      {
+        id: 'keep_the_claim',
+        label: 'Keep the Recovery Claim',
+        tradeoff: 'File the surviving systems under your own name and go back to read what the site became.',
+        stages: [
+          {
+            id: 'read_the_placard',
+            title: 'Read the Placard',
+            type: 'salvage_retrieval',
+            boardStationId: 'station_helios',
+            destSectorId: 'sector_helios_prime',
+            factionId: 'faction_choir',
+            riskTier: 3,
+            rewardCr: 1980,
+            collateralCr: 520,
+            durationS: 900,
+            distance: 900,
+            params: {
+              setPieceObjective: 'choir_what_remains',
+              wreckChoiceId: 'claim_hardware',
+              outcomeFiled: false,
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('choir_vigil', 'read_the_placard'),
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const SET_PIECE_ARCHETYPE_IDS = [
@@ -1106,6 +1239,7 @@ const SET_PIECE_ARCHETYPE_IDS = [
   'blockade_run',
   'investigation_chain',
   'lung_run',
+  'choir_vigil',
 ];
 const SET_PIECE_CLAUSE_IDS = new Set(['no_kills', 'cargo_intact', 'no_scan']);
 const SET_PIECE_COMMODITY_IDS = new Set(['cmdty_classified_salvage']);

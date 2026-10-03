@@ -48,6 +48,7 @@ import {
 } from './elementaryVoices.js';
 import {
   resolveThemeMatrix,
+  swarmChainLift,
   wantedMotifRate,
   TRAVEL_MOTIF,
   COMBAT_MOTIF,
@@ -328,6 +329,15 @@ export function resolveFirstHourAudioSignature(cueId) {
 
 function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+/**
+ * SWARM-06 — kill-confirm pitch ladder. Each chain step raises the confirm ~1.2%, saturating at
+ * +36% around chain 30: the run's climb reads in the reward voice without touching timing or gain.
+ * Non-swarm runs never emit swarm:chain, so this reads exactly 1 outside the arcade.
+ */
+function swarmKillPitch(chain) {
+  const c = Math.max(0, Number(chain) || 0);
+  return Math.round((1 + Math.min(0.36, c * 0.012)) * 1000) / 1000;
+}
 function isPhysicalAudioBus(name) { return name === 'engine' || name === 'ambient' || name === 'combat'; }
 
 /**
@@ -2394,6 +2404,15 @@ export const audio = {
     // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
     bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
     bus.on('stunt:styleBanked', (p) => this._onStuntStyleBanked(p));
+    // SWARM-06 — the run's kill chain is the music's third hand. swarmChain.js owns the count;
+    // the audio side only keeps the latest figure so the next theme resolve can lift the stems
+    // and the next kill confirm can climb the pitch. A break or any run boundary floors it.
+    bus.on('swarm:chain', (p) => {
+      if (this.rt && Number.isFinite(p && p.chain)) this.rt._swarmChain = p.chain;
+    });
+    bus.on('swarm:chainBroken', () => { if (this.rt) this.rt._swarmChain = 0; });
+    bus.on('run:started', () => { if (this.rt) this.rt._swarmChain = 0; });
+    bus.on('run:ended', () => { if (this.rt) this.rt._swarmChain = 0; });
     // Salvage plate unlock: hydraulic release hiss + the freed panel's clunk. The spark shower is
     // vfx-owned (salvage:cutComplete subscription there); this is its sound.
     bus.on('salvage:cutComplete', (p) => {
@@ -4173,6 +4192,9 @@ export const audio = {
       if (killedByPlayer) {
         this.play('sfx_kill_confirm', {
           position: p.pos, startTime: ctx.currentTime + 0.42, gain: 0.72, critical: true,
+          // SWARM-06: the kill chain lifts the confirm's pitch a step at a time — the run's
+          // climb is audible in the reward voice itself. Zero chain reads exactly 1.
+          rate: swarmKillPitch(rt && rt._swarmChain),
         });
       }
     } else {
@@ -4199,6 +4221,7 @@ export const audio = {
           gain: 0.72,
           critical: true,
           primary: true,
+          rate: swarmKillPitch(rt && rt._swarmChain),
         });
       }
     }
@@ -6051,6 +6074,7 @@ export const audio = {
       wanted,
       sectorId: rt._themeSectorId,
       factionId: rt._themeFactionId,
+      swarmLift: swarmChainLift(rt._swarmChain),
     });
     rt._themeMatrix = theme;
     this._applySectorBed(theme);
@@ -6682,6 +6706,8 @@ export const audio = {
       threat,
       sectorId: rt._themeSectorId,
       factionId: rt._themeFactionId,
+      // SWARM-06: the kill chain's lift — the same theme row, mixed hotter as the run climbs.
+      swarmLift: swarmChainLift(rt._swarmChain),
     });
     rt._themeMatrix = theme;
     this._applySectorBed(theme);

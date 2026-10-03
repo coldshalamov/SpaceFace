@@ -76,8 +76,12 @@ function ensureRuntime(state) {
 }
 
 function newShipRecord() {
-  return { region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0 };
+  return { region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0, bandFirsts: null };
 }
+
+// Bands that speak the first time a body reaches them (U5): the sling law, the working
+// band, the danger band, and reentry each get exactly one first-contact receipt per body.
+const BAND_FIRST_BANDS = Object.freeze(['sling', 'skim', 'danger', 'reentry']);
 
 export const planetRuntime = {
   name: 'planetRuntime',
@@ -326,6 +330,18 @@ export const planetRuntime = {
     }
     const region = rec.region;
     if (rec.regionRank >= PLANET_REGION_RANK.skim) rt.telemetry.inBands++;
+
+    // The band speaks once per body: the first crossing of each authored band emits one
+    // receipt so the dive is answered — what the band is, and what its law is.
+    if (BAND_FIRST_BANDS.includes(region)) {
+      if (!rec.bandFirsts) rec.bandFirsts = {};
+      if (!rec.bandFirsts[region]) {
+        rec.bandFirsts[region] = true;
+        this.bus.emit('planet:bandFirst', {
+          entityId: e.id, siteId: rt.siteId, band: region, isPlayer, t: now,
+        });
+      }
+    }
 
     // Heat: ONE scalar 0..1 (the sheath, the HUD arc and the stage machine all read this number).
     const h = site.heat;

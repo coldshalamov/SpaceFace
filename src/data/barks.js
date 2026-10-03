@@ -2328,6 +2328,45 @@ export const HAULER_REGISTER = Object.freeze([
   'No load on the pad. I am not waiting on a rumour.',
 ]);
 
+// 363 — THE GRANDEE. The lanes' one celebrity: old, huge, and aware of both. Her pass-by
+// hail is a famous ship sounding famous, not a freighter chirp with a bigger hull.
+export const GRANDEE_REGISTER = Object.freeze([
+  'Easy on the burn, pilot. I was crossing lanes before your keel was laid.',
+  'GRANDEE-1. Yes, the Grandee. Wave if you like — I see everything this big.',
+  'Mind the wake, small fry. She takes a while to argue with.',
+]);
+
+export function grandeeHailFor(rng) {
+  return GRANDEE_REGISTER[pickIndex(rng, GRANDEE_REGISTER.length)];
+}
+
+// The wreck-field rival cutter (aftermathWrecks ecology). The contest over a fresh wreck is
+// a spoken scene now: the claim when it starts cutting, the yield when its hull is pressed,
+// and the departure that names what it took.
+export const RIVAL_SCAVENGER_REGISTER = Object.freeze({
+  claim: [
+    'Claiming a cut of this field. First come is first served, friend — nothing personal.',
+    'This wreck has my name in the ledger already. Find your own rock.',
+    'Rival cutter on the hull. The pool is big enough for both of us — barely.',
+  ],
+  pressured: [
+    'Take it! Take it, it is yours — I am not dying for a hold of scrap!',
+    'DROPPING THE CUT — hull is coming apart. Tell the pool I quit!',
+    'Fine! Half is yours! The other half keeps me breathing!',
+  ],
+  departed: [
+    'Hold is full. Your rock, my cut — nothing personal.',
+    'That is my take banked. Next time, work faster.',
+    'Full hold, running the lane. The scavenger tax is real.',
+  ],
+});
+
+export function rivalScavengerLineFor(kind, rng) {
+  const table = RIVAL_SCAVENGER_REGISTER[kind];
+  if (!table || !table.length) return '';
+  return table[pickIndex(rng, table.length)];
+}
+
 export function touristHailFor(rng) {
   return TOURIST_HAIL_REGISTER[pickIndex(rng, TOURIST_HAIL_REGISTER.length)];
 }
@@ -2336,11 +2375,12 @@ export function haulerRegisterBarkFor(rng) {
   return HAULER_REGISTER[pickIndex(rng, HAULER_REGISTER.length)];
 }
 
-/** Tourist and hauler lines. Freighter and every other role stay on the faction hail. */
+/** Tourist, hauler, and Grandee lines. Freighter and every other role stay on the faction hail. */
 export function trafficRoleHail(role, rng) {
   const key = String(role || '').toLowerCase();
   if (key === 'tourist') return { register: 'tourist', text: touristHailFor(rng) };
   if (key === 'hauler') return { register: 'hauler', text: haulerRegisterBarkFor(rng) };
+  if (key === 'grandee') return { register: 'grandee', text: grandeeHailFor(rng) };
   return null;
 }
 

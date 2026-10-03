@@ -43,6 +43,16 @@ export function swarmPurchasePrice(defId) {
   return prices[tier];
 }
 
+/**
+ * SWARM-05 §7.3 — sell-back is half the shelf price, rounded down. The armory's label and the
+ * refit's refund both read this so the number on the word is always the number the wallet gets.
+ * A fitting the shop never prices (no def) sells for null — nothing the owner will pay out.
+ */
+export function swarmSellPrice(defId) {
+  const price = swarmPurchasePrice(defId);
+  return price == null ? null : Math.floor(price / 2);
+}
+
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
 // Weapons AND modules, because the swarm pool offers attack traits — a Piercing Core is a fitting
 // like any other. The arc's pool is weapons only and reads the same map; a module id it never

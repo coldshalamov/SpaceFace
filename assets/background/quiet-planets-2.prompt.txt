@@ -1,0 +1,22 @@
+quiet-planets-2.png — second painted planet atlas (2026-10-03)
+
+Generator: OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account); tools/art/imagegen_variants.py,
+3 variants per planet (each taken from its own Codex session folder), best chosen by review, then
+tools/art/finish_generated.py atlas (refit to a clean circular alpha, 86% of a 627 px cell, 2x2 layout).
+License: generated for SpaceFace by the project; assets/background/quiet-planets.png was given as a style reference only.
+
+Layout (same cells as quiet-planets.png; src/render/paintedPlanets.js extraViews 0..3):
+  top-left     ember world        (rocky)  planet_ember v3
+  top-right    cyan ice giant     (gas)    planet_icegiant v2
+  bottom-left  frozen rift world  (ice)    planet_frozen v1
+  bottom-right dune world         (rocky)  planet_dune v3
+
+Shared prompt frame (planet clause varied per cell):
+  A single photoreal rendered planet, centred, its disc filling about 86 percent of a square 1024 by 1024 canvas, on a
+  FULLY TRANSPARENT background (true alpha, nothing outside the planet disc, no stars, no moons, no outer glow). Lit by one
+  hard sun from the upper left with a soft terminator falling to near-black shadow on the lower right, exactly matching the
+  lighting direction, rendering style, scale of surface detail and finish of the attached reference planet atlas. No text.
+Planet clauses: volcanic ember world with glowing lava fissures; pale cyan-teal ice giant with soft banding and one storm oval;
+frozen violet-white ice world with dark rift valleys and craters; desert world with ochre dune seas, dark highlands and salt flats.
+
+Rejected: planet_frozen v2/v3 and planet_icegiant v3 returned on a solid green key background instead of alpha.

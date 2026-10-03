@@ -1,0 +1,51 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "station-local portraits",
+  "use": "src/data/localPortraits.js via src/ui/portraitArt.js: the face of a procedural station-bar contact (not authored cast). One pool per role; a local gets one face from its station and bar slot.",
+  "date": "2026-10-03",
+  "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account); tools/art/imagegen_variants.py (3 variants per two-person sheet, each taken from its own session folder), best chosen per person by review, cut by tools/art/cut_portraits.py (768 px square JPEG, quality 90)",
+  "license": "Generated for SpaceFace by the project. Two existing portraits (portrait_kessler, portrait_rook) were given as look references only. Every face is an invented person; no real person or third-party photograph was supplied.",
+  "briefs": "tools/art/local_portrait_briefs.py holds the shared style frame and each person's brief (a specific life, a justified detail, the capture device)",
+  "files": {
+    "barkeep_01.jpg": {
+      "subject": "a woman of about 58, broad-shouldered, a silver-streaked braid, an old pale steam-tap burn scar across her left forearm from decades behind the taps, a worn canvas apron over a thermal shirt, one hand polishing a steel cup; captured by the bar's own cheap overhead security camera, slightly wide-angle, warm tungsten.",
+      "sheet": "portrait_barkeep_01 (left frame)",
+      "chosen": "v1 of 3"
+    },
+    "barkeep_02.jpg": {
+      "subject": "a man of about 44, South Asian, round face, close beard with early grey, rolled sleeves, a bar towel on his shoulder and a bent stylus behind his ear; captured on the cracked glass of a tip-jar payment terminal camera, low angle, cool screen light.",
+      "sheet": "portrait_barkeep_01 (right frame)",
+      "chosen": "v3 of 3"
+    },
+    "barkeep_03.jpg": {
+      "subject": "a man of about 66, very dark skin, white close-cropped hair, thick-framed old reading lenses on a cord, a patched cardigan over a work shirt, kind tired eyes; captured by a dusty ceiling dome camera above the back shelf, flat greenish fluorescent light.",
+      "sheet": "portrait_barkeep_02 (left frame)",
+      "chosen": "v2 of 3"
+    },
+    "barkeep_04.jpg": {
+      "subject": "a woman of about 36, East Asian, a sharp bob with one dyed-orange streak, a rubber glove on one hand, a laminated drinks list pinned to her apron, wary amused expression; captured by the bar's tablet-menu front camera, slightly oversharpened.",
+      "sheet": "portrait_barkeep_02 (right frame)",
+      "chosen": "v2 of 3"
+    },
+    "barkeep_05.jpg": {
+      "subject": "a man of about 52, white, bald with a heavy brow, a prosthetic left hand of dull steel holding a glass, a faded work-crew jacket, deliberate calm; captured by the till's receipt-printer camera, grainy and warm.",
+      "sheet": "portrait_barkeep_03 (left frame)",
+      "chosen": "v2 of 3"
+    },
+    "barkeep_06.jpg": {
+      "subject": "a nonbinary person of about 30, brown skin, short curly hair, small silver nose stud, a stained apron with a faded embroidered cooperative badge, dry unimpressed look; captured through the smeared glass of a cold-room window, blue-white light.",
+      "sheet": "portrait_barkeep_03 (right frame)",
+      "chosen": "v3 of 3"
+    },
+    "barkeep_07.jpg": {
+      "subject": "a woman of about 71, Latina, deep laugh lines, long white hair under a faded headscarf, flour-dusted forearms from baking, a ladle in hand, shrewd eyes; captured by a steamed-up galley hatch camera, soft orange glow.",
+      "sheet": "portrait_barkeep_04 (left frame)",
+      "chosen": "v2 of 3"
+    },
+    "barkeep_08.jpg": {
+      "subject": "a man of about 39, Black, tight fade, a neat moustache, a clean pressed bar shirt with the sleeves cuffed, a bar rag over one shoulder, professional guarded smile; captured by a mirrored back-bar reflection, low warm light and amber bottles behind.",
+      "sheet": "portrait_barkeep_04 (right frame)",
+      "chosen": "v2 of 3"
+    }
+  }
+}

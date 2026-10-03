@@ -22,7 +22,7 @@ import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
-import { glyphSvg } from './glyphs.js';
+import { glyphSvg, hasGlyph } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
@@ -1012,6 +1012,23 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
 });
+// The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
+// `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
+// the shared glyphs.js vocabulary instead of printing a font character. Names are resolved into
+// glyphs.js via this alias; a name with no drawn path in the table falls back to the text icon.
+const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
+  warning: 'warn',       // the drawn triangle-and-bang
+  danger: 'err',         // drawn stop mark — the palette's ⊘ prohibition mark has no path yet
+  target: 'iff_target',
+  info: 'info',
+  chevron: 'iff_ally',
+});
+function tellGlyphName(tellId) {
+  const paletteState = tellId === 'TETHER' ? 'warning' : 'danger';
+  const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
+  const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
+  return name && hasGlyph(name) ? name : null;
+}
 const TELL_POOL_SIZE = 3;
 const DEFAULT_TELEGRAPH_TICKS = 30;
 const TELL_VISUAL_WIDTH = 240;
@@ -1433,7 +1450,8 @@ function injectTravelTapeStyle() {
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
     padding:2px 0; font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
-  .sf-vtape__brakeglyph { font-size:var(--k-fs-data); }
+  .sf-vtape__brakeglyph { font-size:var(--k-fs-data); display:inline-flex; align-items:center; }
+  .sf-vtape__brakeglyph svg { display:block; }
   @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
   /* With ORRERY on, the chassis the tape is built into is visibility:hidden — and --on's
      visibility:visible re-shows the tape through it, drawing it across the cluster's ordnance
@@ -1844,7 +1862,8 @@ export function createHud(ctx, alerts) {
       '<div class="sf-vtape__arclabel mono" data-k="tarclabel"></div>' +
     '</div>' +
     '<div class="sf-vtape__brake" data-k="tbrake" role="alert" aria-live="assertive">' +
-      '<span class="sf-vtape__brakeglyph" aria-hidden="true">▲</span>' +
+      // The drawn warn mark (glyphs.js), not the ▲ font character — same channel as the doctrine tells.
+      '<span class="sf-vtape__brakeglyph" aria-hidden="true">' + glyphSvg('warn', 12) + '</span>' +
       '<span class="mono">BRAKE NOW</span></div>';
   commandDeck.prepend(vtape);
 
@@ -2038,7 +2057,9 @@ export function createHud(ctx, alerts) {
     const keys = Object.keys(items);
     // Slice D: kill loot lives in its own salvage bay, cashed in at the dock (systems/cargo.js).
     const bay = salvageBayReading(state);
-    const bayLine = bay && bay.units > 0 ? `\nSalvage bay: ${bay.used} / ${bay.cap} u (cashed in when you dock)` : '';
+    const bayLine = bay && bay.units > 0
+      ? `\nSalvage bay: ${bay.used} / ${bay.cap} u (cashed in when you dock)${bay.summary ? ` — ${bay.summary}` : ''}`
+      : '';
     if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}${bayLine}`;
     const lines = [`Cargo: ${used} / ${cap} u`];
     if (massLine) lines.push(massLine);
@@ -2291,22 +2312,33 @@ export function createHud(ctx, alerts) {
 
   // ---- combat HUD: lock-on ring, weapon heat bars, target lock diamond ----
 
-  // Lock-on progress ring (SVG arc near reticle). Shows when a homing weapon is acquiring a lock.
+  // Lock-on instrument (SVG near reticle). Shows when a homing weapon is acquiring a lock.
+  // ORRERY rebuild: the kit's own lock reticle construction (assets/ui/kit/assets/svg/reticle/
+  // reticle-lock.svg — corner brackets that close on a target round a centre pip) carrying the
+  // kit cooldown-ring progress contract (socket-cooldown-ring.svg: full-circumference dasharray,
+  // dashoffset = C·(1−progress), rotate −90) on a graduated scale ring. All strokes, no boxes;
+  // states ride warm bone → paper readings → the Hand amber (hudStyles owns the state tones).
   const lockRing = document.createElement('div');
   lockRing.className = 'sf-lockring';
   const LOCK_R = 30, LOCK_C = Math.PI * 2 * LOCK_R;
+  // Brackets quote the kit reticle-lock arms, rescaled from its 56 grid to this 72 grid
+  // (inset 10→13, arm 8→11): four L-strokes on one path family, never border divs.
   lockRing.innerHTML =
     `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<circle cx="36" cy="36" r="34" class="sf-lockring__scale"/>` +
     `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__track"/>` +
     `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
     `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
     `transform="rotate(-90 36 36)"/>` +
+    `<circle cx="36" cy="36" r="5" class="sf-lockring__pip"/>` +
     `</svg>` +
     `<div class="sf-lockring__brackets" aria-hidden="true">` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--tl"></div>` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--tr"></div>` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--br"></div>` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--bl"></div>` +
+    `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--tl" d="M13 24 V13 H24"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--tr" d="M48 13 H59 V24"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--br" d="M59 48 V59 H48"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--bl" d="M24 59 H13 V48"/>` +
+    `</svg>` +
     `</div>` +
     `<div class="sf-lockring__label"></div>`;
   root.appendChild(lockRing);
@@ -2466,10 +2498,34 @@ export function createHud(ctx, alerts) {
     setStyle(wpnHeatsWrap, 'display', 'flex');
   }
 
-  // Target lock diamond — follows the locked target's screen position.
+  // Target lock sigil — follows the locked target's screen position. ORRERY rebuild: the three
+  // shape variants quote the world-space selection sigil's own class emblems
+  // (src/render/selectionSigil.js — hostile hexagram / friendly hexagon rosette / cargo
+  // eight-point star), simplified to DOM scale, so the screen bracket and the world sigil speak
+  // the same geometry. Shape carries the class; colour stays a reinforcement, never the channel.
   const lockDiamond = document.createElement('div');
   lockDiamond.className = 'sf-lockdiamond';
-  lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
+  lockDiamond.innerHTML =
+    '<div class="sf-lockdiamond__inner">' +
+    '<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    // hostile: two interlocking triangles (the hexagram) inside a twelve-point tick burst
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--hostile">' +
+    '<path d="M14 4 5.34 19 22.66 19Z M14 24 22.66 9 5.34 9Z"/>' +
+    '<circle cx="14" cy="14" r="11.5" stroke-dasharray="1.5 1.51"/>' +
+    '</g>' +
+    // friendly: the hexagon rosette — outer hexagon, six spokes, closed counter-phase hub
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--friendly">' +
+    '<path d="M14 4 22.66 9 22.66 19 14 24 5.34 19 5.34 9Z"/>' +
+    '<path d="M14 10.2V5.4 M17.29 12.1 21.45 9.7 M17.29 15.9 21.45 18.3 M14 17.8V22.6 M10.71 15.9 6.55 18.3 M10.71 12.1 6.55 9.7"/>' +
+    '<path d="M19.4 14 16.7 18.68 11.3 18.68 8.6 14 11.3 9.32 16.7 9.32Z"/>' +
+    '</g>' +
+    // cargo: two squares at 45 degrees — the eight-point star — around a smaller square hub
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--cargo">' +
+    '<path d="M14 4 24 14 14 24 4 14Z"/>' +
+    '<path d="M6.93 6.93H21.07V21.07H6.93Z"/>' +
+    '<path d="M14 8.5 19.5 14 14 19.5 8.5 14Z"/>' +
+    '</g>' +
+    '</svg></div>';
   root.appendChild(lockDiamond);
   // A selected target is projected five times per visible frame: once for the lock diamond, once
   // for the arc center, and once for each of the three arc radii. Keep one center pair and one edge
@@ -2748,7 +2804,8 @@ export function createHud(ctx, alerts) {
       will-change:transform, opacity; opacity:0;
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
-    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; }
+    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
+    .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
     .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
@@ -2826,6 +2883,8 @@ export function createHud(ctx, alerts) {
     slot.announced = '';
     slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
     slot.el.hidden = true;
+    slot.iconGlyph = null;
+    slot.iconEl.innerHTML = '';
     setText(slot.iconEl, '');
     setText(slot.kindEl, '');
     setText(slot.hintEl, '');
@@ -2865,7 +2924,18 @@ export function createHud(ctx, alerts) {
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
     slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
     slot.el.classList.add(`sf-tell--${tellId}`);
-    setText(slot.iconEl, icon);
+    // The drawn mark renders as an element (innerHTML with internally-authored markup from
+    // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
+    const glyphName = tellGlyphName(tellId);
+    if (glyphName) {
+      if (slot.iconGlyph !== glyphName) {
+        slot.iconGlyph = glyphName;
+        slot.iconEl.innerHTML = glyphSvg(glyphName, 12, 'sf-tell__glyph');
+      }
+    } else {
+      slot.iconGlyph = null;
+      setText(slot.iconEl, icon);
+    }
     setText(slot.kindEl, kindLabel);
     setText(slot.hintEl, hint);
     slot.el.hidden = false;

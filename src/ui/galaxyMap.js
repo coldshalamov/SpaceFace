@@ -1428,6 +1428,64 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       });
     }
   }
+  // One emission path for a constructed travel corridor: ring + relay markers and the charted
+  // route line. Claim Throughlines and NXB-036 grown-station approach corridors share it — the
+  // chart must not invent a second presentation for the same consumed record.
+  const pushInfrastructureMarkers = ({ infrastructure, ownerId, ownerName, kind, idPrefix, verb, consequence, risk }) => {
+    if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) return;
+    const operational = infrastructure.operational === true;
+    const status = operational
+      ? 'ONLINE'
+      : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
+    const travelRoute = {
+      id: infrastructure.id,
+      claimId: ownerId,
+      stage: infrastructure.stage,
+      operational,
+      lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
+      color: operational ? INK.ink0 : INK.ink2,
+      from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
+      support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
+      to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
+    };
+    travelRoute.drawFrom = globalToSectorLocalForSector(travelRoute.from, sid);
+    travelRoute.drawSupport = globalToSectorLocalForSector(travelRoute.support, sid);
+    travelRoute.drawTo = globalToSectorLocalForSector(travelRoute.to, sid);
+    for (const partDef of [
+      { id: 'ring', role: 'SLING', glyph: '◎', pos: infrastructure.from, name: 'Acceleration Ring' },
+      { id: 'relay', role: 'RELAY', glyph: '◇', pos: infrastructure.support, name: 'Nav Relay' },
+    ]) {
+      const live = liveByInfrastructurePart.get(`${infrastructure.id}:${partDef.id}`) || null;
+      const point = live && live.pos || partDef.pos;
+      const partMarker = {
+        id: `${idPrefix}:${infrastructure.id}:${partDef.id}`,
+        claimId: ownerId,
+        targetEntityId: live && live.id || null,
+        kind,
+        role: partDef.role,
+        glyph: partDef.glyph,
+        color: operational ? INK.ink0 : INK.ink2,
+        name: `${partDef.role} · ${ownerName} ${partDef.name}`,
+        status,
+        statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
+        playerVerb: verb,
+        consequence,
+        riskLine: risk,
+        x: Number(point.x) || 0,
+        z: Number(point.z) || 0,
+        infrastructure: {
+          id: infrastructure.id,
+          part: partDef.id,
+          stage: infrastructure.stage,
+          operational,
+          stationId: infrastructure.stationId,
+        },
+        travelRoute: partDef.id === 'ring' ? travelRoute : null,
+      };
+      partMarker.drawPos = globalToSectorLocalForSector(partMarker, sid);
+      markers.push(partMarker);
+    }
+  };
   for (const body of bodies) {
     if (!body || body.owned !== true || body.sectorId !== sid) continue;
     const ledger = claimsSystem && typeof claimsSystem.ledger === 'function'
@@ -1461,59 +1519,36 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       raidMarker.drawPos = globalToSectorLocalForSector(raidMarker, sid);
       markers.push(raidMarker);
     }
-    const infrastructure = body.infrastructure;
-    if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) continue;
-    const operational = infrastructure.operational === true;
-    const status = operational
-      ? 'ONLINE'
-      : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
-    const travelRoute = {
-      id: infrastructure.id,
-      claimId: body.id,
-      stage: infrastructure.stage,
-      operational,
-      lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
-      color: operational ? INK.ink0 : INK.ink2,
-      from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
-      support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
-      to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
-    };
-    travelRoute.drawFrom = globalToSectorLocalForSector(travelRoute.from, sid);
-    travelRoute.drawSupport = globalToSectorLocalForSector(travelRoute.support, sid);
-    travelRoute.drawTo = globalToSectorLocalForSector(travelRoute.to, sid);
-    for (const partDef of [
-      { id: 'ring', role: 'SLING', glyph: '◎', pos: infrastructure.from, name: 'Acceleration Ring' },
-      { id: 'relay', role: 'RELAY', glyph: '◇', pos: infrastructure.support, name: 'Nav Relay' },
-    ]) {
-      const live = liveByInfrastructurePart.get(`${infrastructure.id}:${partDef.id}`) || null;
-      const point = live && live.pos || partDef.pos;
-      const partMarker = {
-        id: `player-infrastructure:${infrastructure.id}:${partDef.id}`,
-        claimId: body.id,
-        targetEntityId: live && live.id || null,
+    pushInfrastructureMarkers({
+      infrastructure: body.infrastructure,
+      ownerId: body.id,
+      ownerName: body.name,
+      kind: 'claim-throughline',
+      idPrefix: 'player-infrastructure',
+      verb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
+      consequence: 'Multiplies the pilot’s own drive ceiling and ramp only inside the constructed route.',
+      risk: 'If the industrial claim goes cold or is raided, ordinary unassisted flight remains available.',
+    });
+  }
+  // NXB-036: a station grown to the top of its ladder by player freight publishes the same
+  // constructed corridor the claim Throughline does — chart it with the same markers and route
+  // line, sourced from the durable growth record, not a second renderer guess.
+  const stationGrowth = state && state.claims && state.claims.stationGrowth;
+  if (stationGrowth) {
+    for (const growthStationId in stationGrowth) {
+      const rec = stationGrowth[growthStationId];
+      const route = rec && rec.growthRoute;
+      if (!route || rec.sectorId !== sid) continue;
+      pushInfrastructureMarkers({
+        infrastructure: route,
+        ownerId: `station-growth:${growthStationId}`,
+        ownerName: rec.name || growthStationId,
         kind: 'claim-throughline',
-        role: partDef.role,
-        glyph: partDef.glyph,
-        color: operational ? INK.ink0 : INK.ink2,
-        name: `${partDef.role} · ${body.name} ${partDef.name}`,
-        status,
-        statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
-        playerVerb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
+        idPrefix: 'station-growth-infrastructure',
+        verb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
         consequence: 'Multiplies the pilot’s own drive ceiling and ramp only inside the constructed route.',
-        riskLine: 'If the industrial claim goes cold or is raided, ordinary unassisted flight remains available.',
-        x: Number(point.x) || 0,
-        z: Number(point.z) || 0,
-        infrastructure: {
-          id: infrastructure.id,
-          part: partDef.id,
-          stage: infrastructure.stage,
-          operational,
-          stationId: infrastructure.stationId,
-        },
-        travelRoute: partDef.id === 'ring' ? travelRoute : null,
-      };
-      partMarker.drawPos = globalToSectorLocalForSector(partMarker, sid);
-      markers.push(partMarker);
+        risk: 'A charted station approach stays open — ordinary unassisted flight always remains available beside it.',
+      });
     }
   }
   for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);

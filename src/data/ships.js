@@ -395,7 +395,10 @@ export const SHIPS = [
     // The saucer (design/FLYING_SAUCER_DESIGN.md): a 520-mass exotic hull on the inertialess
     // field drive — right-angle turns, stops on a dime, and enough mass to drag what it bumps
     // or tows like a ragdoll. No heavyMotion: the field never wallows, whatever the load.
-    id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, requiresTech: 'tech_graviton_drives',
+    // SWARM-06: the Adventure research route is retired — the disc is EARNED, at the Zone 3
+    // boss, and the crossover ledger is the only thing a shipyard checks. `swarmEarned` names
+    // the ledger row; the research tree never lists it again.
+    id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, swarmEarned: 'hull:ship_saucer',
     hull: 2200, shield: 2600, baseShieldRegen: 30, cargo: 120, mass: 520, handling: 2.2,
     outfitSpace: 240, weaponCapacity: 96, engineCapacity: 18, designMass: 760,
     bankFactor: 0.10,

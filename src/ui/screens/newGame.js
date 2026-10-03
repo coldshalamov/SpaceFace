@@ -25,7 +25,7 @@ import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { dpMark, injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
   from '../kit/computedMaterial.js';
 
@@ -492,6 +492,23 @@ export const newGameScreen = {
     diffWords.setAttribute('aria-labelledby', diffField.label.id);
     diffWords.classList.add('of-pause');
     for (const b of diffWords.querySelectorAll('.k-word')) railWord(b);
+    // The produced tier insignia (deckplate markPaths `insignia-difficulty-1..4`): one chevron
+    // stack seated beside each word at badge scale — the chevron count carries the tier, the
+    // word carries the name, so the mark stays aria-hidden and the button's name is unchanged.
+    // Beside, not above: the stop-arc is the row's spine and the arc's inner words already hang
+    // over its crest — a taller button would push them into it. The live word's mark lights
+    // (its accent chevron is the lamp) in _setDifficulty, alongside aria-pressed.
+    DIFFICULTIES.forEach(([val], i) => {
+      const b = diffWords.querySelector(`.k-word[data-action="difficulty:${val}"]`);
+      if (!b) return;
+      b.insertAdjacentHTML('afterbegin', dpMark(`insignia-difficulty-${i + 1}`, {
+        size: '18px',
+        lit: val === DEFAULT_DIFFICULTY,
+        className: 'sf-ng-diff-mark',
+      }));
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) { mark.style.verticalAlign = '-3px'; mark.style.marginRight = '6px'; }
+    });
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);
@@ -911,6 +928,9 @@ export const newGameScreen = {
       b.setAttribute('aria-pressed', String(live));
       // The row's single Tab stop is the live word; the kit's roving focus takes over inside the row.
       b.tabIndex = live ? 0 : -1;
+      // The tier insignia lights with its word: the accent chevron is the mark's lamp.
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) mark.classList.toggle('dp-mark--lit', live);
     }
     if (!silent) refs.diff.dispatchEvent(new Event('change', { bubbles: true }));
     syncKeys(refs.diffWords);

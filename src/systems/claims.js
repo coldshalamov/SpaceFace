@@ -64,6 +64,7 @@ import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { collidesFlipEpoch } from '../world/livingWorldViews.js';
 import { physicsPartitionEpoch } from '../world/activityRuntime.js';
+import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -102,6 +103,20 @@ const SLING_STATION_CLEARANCE_WU = 180;
 const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 const CLAIM_DAY_SECONDS = 600;
+
+// NXB-036 — station growth ends in a route, not a counter. When player-supplied throughput
+// earns a station the FINAL rung of its ladder, the authority it charters surveys one permanent
+// approach corridor inbound from the sector's freight door (the nearest live gate, else the
+// nearest neighbor sector's bearing) down to the berth the deliveries built. The result is the
+// SAME durable claim_travel_sling_v1 record a claim Throughline writes — one consumed fact for
+// travelLanes, traffic and the chart — except it lives on the station's growth record and no
+// claim status can take it cold: a charted public approach stays live once aligned.
+const GROWTH_ROUTE_ALIGN_S = 20;
+const GROWTH_ROUTE_REACH_WU = 1600;     // ring stands this far out along the approach bearing
+const GROWTH_ROUTE_ANCHOR_CLEARANCE_WU = 300; // never aim a corridor through the anchor door itself
+const GROWTH_ROUTE_CORRIDOR_WU = 240;
+const GROWTH_ROUTE_CEILING_MULT = 1.6;  // charted-lane gain — real, below the claim Throughline's 2×
+const GROWTH_ROUTE_RAMP_MULT = 1.6;
 
 // PQ-170.01 — station growth and depot dependency.
 // A station gains an authored module because of PLAYER-supplied throughput: the sell side of the
@@ -1027,12 +1042,26 @@ export const claims = {
   visitTravelInfrastructure(sectorId, visitor) {
     if (typeof visitor !== 'function') return 0;
     let count = 0;
-    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+    const claims = this.state.claims;
+    for (const body of (claims && claims.bodies) || []) {
       const infrastructure = body && body.infrastructure;
       if (!infrastructure || infrastructure.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
       if (sectorId && body.sectorId !== sectorId) continue;
       visitor(infrastructure, body);
       count += 1;
+    }
+    // NXB-036: grown-station approach corridors are the same consumed record, hosted by the
+    // station's growth record rather than a claim body — one seam for every consumer.
+    const growth = claims && claims.stationGrowth;
+    if (growth) {
+      for (const stationId in growth) {
+        const rec = growth[stationId];
+        const route = rec && rec.growthRoute;
+        if (!route || route.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
+        if (sectorId && rec.sectorId !== sectorId) continue;
+        visitor(route, this._growthRouteHost(rec));
+        count += 1;
+      }
     }
     return count;
   },
@@ -1094,6 +1123,8 @@ export const claims = {
   // keep the original module behavior (refinery module refines from the player hold); a
   // commissioned body runs its operating identity instead (store-based, physical logistics).
   update(dt, state) {
+    // Grown-station approach corridors tick even when the player owns no claim bodies.
+    this._tickStationGrowthRoutes(state);
     const bodies = state.claims && state.claims.bodies;
     if (!bodies || !bodies.length) return;
     let anySpec = false;
@@ -1144,7 +1175,15 @@ export const claims = {
       this._receipt(body, 'site_recovered', 'Crews back to work after the raid');
     }
     // Upkeep accrues while staffed; a cold (unpaid) site stops accruing until it's paid off.
-    if (spec.status === 'active') spec.upkeepDebt = (spec.upkeepDebt || 0) + (def.upkeepPerMin / 60) * dt;
+    if (spec.status === 'active') {
+      spec.upkeepDebt = (spec.upkeepDebt || 0) + (def.upkeepPerMin / 60) * dt;
+      // A spec can arrive at the tick minimal ({id,status} — a restored stub or a planted
+      // body): heal the store shape once rather than letting every consumer deref a missing
+      // shelf. Mirrors _normalizeSpec's healing contract.
+      const store = spec.store && typeof spec.store === 'object' ? spec.store : (spec.store = {});
+      if (!store.input || typeof store.input !== 'object') store.input = {};
+      if (!store.output || typeof store.output !== 'object') store.output = {};
+    }
     if (def.id === 'spec_refinery') this._tickSpecRefinery(body, def, dt);
     else if (def.id === 'spec_relay') this._tickSpecRelay(body, def, state);
     // spec_bastion has no per-tick production — its work happens in _rollRaids + the ledger.
@@ -1155,19 +1194,23 @@ export const claims = {
   // much output room is left, and whether the site is stalled on material or work
   // it already holds.
   _refineryReadiness(spec, def) {
+    // Pure readout — tolerate a spec whose store has not been materialized yet and report
+    // "nothing held" instead of crashing the tick.
+    const input = (spec.store && spec.store.input) || {};
+    const output = (spec.store && spec.store.output) || {};
     let nextOre = null, nextQty = 0;
     for (const ore of REFINABLE_ORE_IDS) {
-      const have = spec.store.input[ore] || 0;
+      const have = input[ore] || 0;
       if (have >= REFINE_RATIO && have > nextQty) { nextQty = have; nextOre = ore; }
     }
-    const outputRoomU = Math.max(0, def.outputCapU - sumStore(spec.store.output));
+    const outputRoomU = Math.max(0, def.outputCapU - sumStore(output));
     return {
       nextOre,
       outputRoomU,
       working: !!nextOre && outputRoomU > 0,
       // Parked freight or an in-flight partial batch with no whole conversion
       // available is a stall; a never-stocked site simply idles.
-      starved: !nextOre && (sumStore(spec.store.input) > 0 || (spec.acc || 0) > 0),
+      starved: !nextOre && (sumStore(input) > 0 || (spec.acc || 0) > 0),
     };
   },
 
@@ -2186,6 +2229,10 @@ export const claims = {
       appliedSupplyReceipts: Object.create(null),
       firstSupplyAt: t,
       lastSupplyAt: t,
+      // NXB-036: a route the last survey could not seat stays requested and is retried at every
+      // sector entry; the fabricated corridor itself is the durable travelLanes fact.
+      routeRequested: false,
+      growthRoute: null,
     };
     return rec;
   },
@@ -2271,6 +2318,14 @@ export const claims = {
       source: 'claims',
     });
     this.bus.emit('audio:cue', { id: 'confirm' });
+    // NXB-036: topping out the ladder is the accepted growth event that changes a reachable
+    // route — the station surveys its permanent approach corridor now (or flags it for the
+    // next entry survey when no live endpoint is materialized this tick).
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    if (rec.rung >= ladder.length && !rec.growthRoute) {
+      rec.routeRequested = true;
+      this._fabricateStationGrowthRoute(rec);
+    }
     return module;
   },
 
@@ -2300,9 +2355,228 @@ export const claims = {
     if (!growth) return 0;
     let stamped = 0;
     for (const stationId in growth) {
-      if (this._stampStationGrowth(growth[stationId])) stamped += 1;
+      const rec = growth[stationId];
+      if (this._stampStationGrowth(rec)) stamped += 1;
+      // NXB-036: every sector entry is a fresh survey — a route the last materialization could
+      // not seat (no live station, obstructed corridor) is tried again, never re-fabricated.
+      if (rec && rec.routeRequested === true && !rec.growthRoute) {
+        this._fabricateStationGrowthRoute(rec);
+      }
     }
     return stamped;
+  },
+
+  /**
+   * NXB-036: where the grown station's corridor begins — the real freight door. Prefer the
+   * nearest non-wormhole gate in the live sector; when the gate table is not materialized
+   * (fabrication fired off a restored save or a test without live gates), the nearest neighbor
+   * sector's global origin gives the same deterministic bearing the gate was laid on.
+   */
+  _growthRouteAnchor(rec, station) {
+    const active = this.state.world && this.state.world.activeSector;
+    if (active && active.id === rec.sectorId && Array.isArray(active.gates)) {
+      let best = null;
+      let bestD = Infinity;
+      for (const gate of active.gates) {
+        if (!gate || gate.wormhole === true || !gate.pos) continue;
+        const gx = Number(gate.pos.x);
+        const gz = Number(gate.pos.z);
+        if (!Number.isFinite(gx) || !Number.isFinite(gz)) continue;
+        const d = (gx - station.pos.x) ** 2 + (gz - station.pos.z) ** 2;
+        if (d < bestD || (d === bestD && best && String(gate.to || '') < String(best.to || ''))) {
+          best = gate;
+          bestD = d;
+        }
+      }
+      if (best) return { x: Number(best.pos.x), z: Number(best.pos.z), kind: 'gate', anchorId: best.to || null };
+    }
+    const sector = SECTOR_BY_ID.get(rec.sectorId);
+    const neighbors = sector && Array.isArray(sector.neighbors) ? sector.neighbors : [];
+    let best = null;
+    let bestD = Infinity;
+    for (const neighborId of neighbors) {
+      const origin = sectorGlobalOrigin(neighborId);
+      const d = (origin.x - station.pos.x) ** 2 + (origin.z - station.pos.z) ** 2;
+      if (d < bestD || (d === bestD && best && String(neighborId) < String(best.id))) {
+        best = { id: neighborId, x: origin.x, z: origin.z };
+        bestD = d;
+      }
+    }
+    return best ? { x: best.x, z: best.z, kind: 'neighbor-bearing', anchorId: best.id } : null;
+  },
+
+  /**
+   * NXB-036: survey + fabricate the station's permanent approach corridor. Idempotent — the
+   * durable record is written once per growth record; a failed survey leaves routeRequested
+   * set so the next entry retries instead of burning the outcome. Emits the same constructed
+   * fact a claim Throughline does so travelLanes/traffic/chart consumers need no second seam.
+   */
+  _fabricateStationGrowthRoute(rec) {
+    if (!rec || rec.growthRoute || rec.routeRequested !== true) return null;
+    const station = this._stationEntity(rec.stationId);
+    if (!station || !station.pos) return null;
+    const anchor = this._growthRouteAnchor(rec, station);
+    if (!anchor) return null;
+    const sx = Number(station.pos.x);
+    const sz = Number(station.pos.z);
+    const dx = anchor.x - sx;
+    const dz = anchor.z - sz;
+    const span = Math.hypot(dx, dz);
+    if (!(span > 0)) return null;
+    const axis = { x: dx / span, z: dz / span };
+    const normal = { x: -axis.z, z: axis.x };
+    // The ring stands on the approach bearing, short of the anchor door but always far enough
+    // out to be a real route rather than a station-radius decoration.
+    const reachWU = Math.min(
+      GROWTH_ROUTE_REACH_WU,
+      Math.max(SLING_MIN_ROUTE_WU + SLING_STATION_CLEARANCE_WU, span - GROWTH_ROUTE_ANCHOR_CLEARANCE_WU),
+    );
+    let route = null;
+    for (const lateral of SLING_LATERAL_OFFSETS_WU) {
+      const from = {
+        x: sx + axis.x * reachWU + normal.x * lateral,
+        z: sz + axis.z * reachWU + normal.z * lateral,
+      };
+      const to = {
+        x: sx + axis.x * SLING_STATION_CLEARANCE_WU + normal.x * lateral,
+        z: sz + axis.z * SLING_STATION_CLEARANCE_WU + normal.z * lateral,
+      };
+      if (!this._travelInfrastructurePointClear(from, null, station)
+        || !this._travelInfrastructurePointClear(to, null, station)
+        || !this._travelInfrastructureCorridorClear(from, to, GROWTH_ROUTE_CORRIDOR_WU, null, station)) {
+        continue;
+      }
+      const routeDx = to.x - from.x;
+      const routeDz = to.z - from.z;
+      const distanceWU = Math.hypot(routeDx, routeDz);
+      if (distanceWU >= SLING_MIN_ROUTE_WU) route = { from, to, distanceWU };
+      if (route) break;
+    }
+    if (!route) return null;
+    let support = null;
+    for (const fraction of [0.55, 0.42, 0.68, 0.3, 0.8]) {
+      const candidate = {
+        x: route.from.x + (route.to.x - route.from.x) * fraction,
+        z: route.from.z + (route.to.z - route.from.z) * fraction,
+      };
+      if (this._travelInfrastructurePointClear(candidate, null, station)) {
+        support = candidate;
+        break;
+      }
+    }
+    if (!support) return null;
+    const builtAt = Number(this.state.simTime) || 0;
+    rec.growthRoute = {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: `growth-throughline:${rec.stationId}`,
+      bodyId: null,
+      sectorId: rec.sectorId,
+      name: `${rec.name} Approach Throughline`,
+      stationId: rec.stationId,
+      stage: 'aligning',
+      operational: false,
+      builtAt,
+      alignUntil: builtAt + GROWTH_ROUTE_ALIGN_S,
+      from: { x: route.from.x, z: route.from.z },
+      to: { x: route.to.x, z: route.to.z },
+      support: { x: support.x, z: support.z },
+      distanceWU: route.distanceWU,
+      corridorRadiusWU: GROWTH_ROUTE_CORRIDOR_WU,
+      ceilingMult: GROWTH_ROUTE_CEILING_MULT,
+      rampMult: GROWTH_ROUTE_RAMP_MULT,
+      damagePolicy: 'station_growth',
+      routeKind: 'station_growth',
+      routeRung: rec.rung,
+      anchorKind: anchor.kind,
+      anchorId: anchor.anchorId || null,
+      fabricationReceipt: {
+        receiptId: `station-growth-route:${rec.stationId}`,
+        builtAt,
+        stationId: rec.stationId,
+        costCr: 0,
+        materials: {},
+        rung: rec.rung,
+        throughputU: rec.throughputU,
+      },
+    };
+    rec.routeRequested = false;
+    this.bus.emit('claim:infrastructureConstructed', {
+      bodyId: null,
+      stationId: rec.stationId,
+      infrastructureId: rec.growthRoute.id,
+      stage: 'aligning',
+      routeKind: 'station_growth',
+      distanceWU: rec.growthRoute.distanceWU,
+    });
+    this.bus.emit('news:publish', {
+      text: `${rec.name} charts a permanent approach — the freight corridor your deliveries built now has a ring on it.`,
+      kind: 'station_growth',
+      stationId: rec.stationId,
+      stationName: rec.name,
+      sectorId: rec.sectorId,
+      factionId: rec.factionId,
+      receiptId: rec.growthRoute.fabricationReceipt.receiptId,
+      sourceRef: rec.growthRoute.fabricationReceipt.receiptId,
+      eventId: rec.growthRoute.fabricationReceipt.receiptId,
+      source: 'claims',
+    });
+    if (rec.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+      this.bus.emit('toast', {
+        text: `${rec.name} approach corridor aligning — your freight route is on the charts`,
+        kind: 'good',
+        ttl: 5,
+      });
+    }
+    return rec.growthRoute;
+  },
+
+  /** Growth-route host passed to travel infrastructure consumers (not serialized). */
+  _growthRouteHost(rec) {
+    const hosts = this._growthRouteHosts || (this._growthRouteHosts = new Map());
+    let host = hosts.get(rec.stationId);
+    if (!host || host.sectorId !== rec.sectorId) {
+      host = {
+        id: `station-growth:${rec.stationId}`,
+        sectorId: rec.sectorId,
+        name: rec.name,
+        stationGrowthHost: true,
+      };
+      hosts.set(rec.stationId, host);
+    }
+    return host;
+  },
+
+  /**
+   * NXB-036: a grown station's approach aligns on its own clock — there is no claim
+   * specialization to gate it on. Once active it stays operational (a charted public route
+   * does not go cold); serialize/restore carry stage + operational forward unchanged.
+   */
+  _tickStationGrowthRoutes(state) {
+    const growth = state.claims && state.claims.stationGrowth;
+    if (!growth) return;
+    const now = Number(state.simTime) || 0;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    for (const stationId in growth) {
+      const rec = growth[stationId];
+      const route = rec && rec.growthRoute;
+      if (!route || route.stage !== 'aligning') continue;
+      if (now < (Number(route.alignUntil) || 0)) continue;
+      route.stage = 'active';
+      route.operational = true;
+      this.bus.emit('claim:infrastructureActive', {
+        bodyId: null,
+        stationId: route.stationId,
+        infrastructureId: route.id,
+        routeKind: 'station_growth',
+      });
+      if (route.sectorId === currentSectorId) {
+        this.bus.emit('toast', {
+          text: `Approach Throughline online · ${rec.name || 'station'}`,
+          kind: 'good',
+          ttl: 5,
+        });
+      }
+    }
   },
 
   /** Relay sale fee at a station, less the cut a grown station gives the player's convoys. */
@@ -2374,9 +2648,73 @@ export const claims = {
         firstSupplyAt: Number.isFinite(Number(rec.firstSupplyAt)) ? Number(rec.firstSupplyAt) : 0,
         lastSupplyAt: Number.isFinite(Number(rec.lastSupplyAt)) ? Number(rec.lastSupplyAt) : 0,
       };
+      // NXB-036: the durable route survives restore exactly; a requested-but-unseated survey
+      // stays requested so the next sector entry retries it — including legacy saves that
+      // topped the ladder before the route outcome existed.
+      const growthRoute = this._normalizeGrowthRoute(rec.growthRoute, out[stationId]);
+      out[stationId].growthRoute = growthRoute;
+      out[stationId].routeRequested = growthRoute ? false
+        : (rec.routeRequested === true || rung >= ladder.length);
       any = true;
     }
     return any ? out : null;
+  },
+
+  /** Heal a persisted station-growth approach corridor (same record family as body slings). */
+  _normalizeGrowthRoute(raw, rec) {
+    if (!raw || typeof raw !== 'object' || raw.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) return null;
+    const point = (value) => value && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.z))
+      ? { x: Number(value.x), z: Number(value.z) }
+      : null;
+    const from = point(raw.from);
+    const to = point(raw.to);
+    const support = point(raw.support);
+    if (!from || !to || !support) return null;
+    const distanceWU = Math.hypot(to.x - from.x, to.z - from.z);
+    if (!(distanceWU > 0)) return null;
+    const stage = raw.stage === 'active' ? 'active' : 'aligning';
+    const builtAt = Number.isFinite(Number(raw.builtAt)) ? Number(raw.builtAt) : 0;
+    const savedReceipt = raw.fabricationReceipt && typeof raw.fabricationReceipt === 'object'
+      ? raw.fabricationReceipt
+      : {};
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: typeof raw.id === 'string' && raw.id ? raw.id : `growth-throughline:${rec.stationId}`,
+      bodyId: null,
+      sectorId: rec.sectorId,
+      name: typeof raw.name === 'string' && raw.name ? raw.name : `${rec.name} Approach Throughline`,
+      stationId: rec.stationId,
+      stage,
+      // A charted station approach has no claim status to fail — aligned means operational.
+      operational: stage === 'active',
+      builtAt,
+      alignUntil: Number.isFinite(Number(raw.alignUntil)) ? Number(raw.alignUntil) : 0,
+      from,
+      to,
+      support,
+      distanceWU,
+      corridorRadiusWU: Math.max(1, Number(raw.corridorRadiusWU) || GROWTH_ROUTE_CORRIDOR_WU),
+      ceilingMult: Math.max(1, Number(raw.ceilingMult) || GROWTH_ROUTE_CEILING_MULT),
+      rampMult: Math.max(1, Number(raw.rampMult) || GROWTH_ROUTE_RAMP_MULT),
+      damagePolicy: 'station_growth',
+      routeKind: 'station_growth',
+      routeRung: Math.max(0, Math.floor(Number(raw.routeRung) || 0)),
+      anchorKind: raw.anchorKind === 'gate' ? 'gate' : 'neighbor-bearing',
+      anchorId: typeof raw.anchorId === 'string' && raw.anchorId ? raw.anchorId : null,
+      fabricationReceipt: {
+        receiptId: typeof savedReceipt.receiptId === 'string' && savedReceipt.receiptId
+          ? savedReceipt.receiptId
+          : `station-growth-route:${rec.stationId}`,
+        builtAt: Number.isFinite(Number(savedReceipt.builtAt)) ? Number(savedReceipt.builtAt) : builtAt,
+        stationId: rec.stationId,
+        costCr: Math.max(0, Number(savedReceipt.costCr) || 0),
+        materials: savedReceipt.materials && typeof savedReceipt.materials === 'object'
+          ? { ...savedReceipt.materials }
+          : {},
+        rung: Math.max(0, Math.floor(Number(savedReceipt.rung) || 0)),
+        throughputU: Math.max(0, Math.floor(Number(savedReceipt.throughputU) || 0)),
+      },
+    };
   },
 
   // ------------------------------------------------------------------------------------------
