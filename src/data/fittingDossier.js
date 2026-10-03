@@ -14,6 +14,7 @@ import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
 import { SURVIVAL_EVOLUTIONS } from './survivalEvolutions.js';
 import { ATTACK_TRAIT_BY_ID } from './attackTraits.js';
+import { FACTION_META } from './factions.js';
 import { FITTING_MEDIA_IDS } from './fittingMediaManifest.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
@@ -85,7 +86,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   wpn_plasma_cannon_m: {
     detail: 'Heavy luminous slugs with splash. A hit leaves the hull cooking — burning damage lingers after impact.',
-    tip: 'The highest dps on the shelf per shot; splash means near-misses still count.',
+    tip: 'The highest per-shot dps an M mount can field; splash means near-misses still count.',
   },
   wpn_missile_rack_m: {
     detail: 'Lock on and release a homing missile that steers itself into the target — works even after you stop pointing at it.',
@@ -336,8 +337,8 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'On a big hull it turns the tether into a long-range tool, not a close one.',
   },
   mod_sanction_spool: {
-    detail: 'The Navy\'s own tow line — four times the stock tether on the drum, the longest spool the shelf carries.',
-    tip: 'For the massline build at full stretch: the longest line means the widest arc and the deepest run.',
+    detail: 'The Navy\'s own tow line — four times the stock tether on the drum, a step past the Industrial Spool.',
+    tip: 'For the M-frame massline build: the deepest reach an M utility bay carries.',
   },
   mod_winch_hd: {
     detail: 'Nearly double the reel speed and half-again the line on the drum — the catch lands sooner and the swing starts farther out.',
@@ -668,11 +669,23 @@ const TRAIT_STACK_CHIPS = {
   'costs.tetherAnchorPayloadScale':        ['Tethered dmg'],
 };
 
+// Stack targets whose value is a multiplier scale — a set entry at ×1.5 buffs and
+// at ×0.55 penalizes, while a bare rounded integer renders both as "1"/"2" and
+// lies about which direction the change runs.
+const SCALE_STACK_TARGETS = new Set([
+  'emitter.rofMult',
+  'emitter.projSpeedMult',
+  'propagation.split.payloadScale',
+  'costs.payloadScale',
+  'costs.heatScale',
+  'costs.tetherAnchorPayloadScale',
+]);
+
 function traitStackValue(entry) {
   const v = entry.perRank;
   if (entry.mode === 'add') return `+${num(v)}`;
-  if (entry.mode === 'mul') return `×${num(v, 2)}`;
-  return num(v);
+  if (entry.mode === 'mul' || SCALE_STACK_TARGETS.has(entry.target)) return `×${num(v, 2)}`;
+  return num(v, 2);
 }
 
 // A chip that only restates zero is noise on the card ("Heat 0/shot" tells the
@@ -734,6 +747,12 @@ function moduleStats(def) {
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   const m = def.mods || {};
   const evo = SURVIVAL_EVOLUTIONS.find((e) => e.defId === def.id);
+  // Rep-exclusive hardware reads as purchasable until the click refuses it — name
+  // the standing requirement up front, same convention as the service counter's Gate.
+  if (def.exclusivity && typeof def.exclusivity === 'object') {
+    const exMeta = FACTION_META.find((f) => f && f.id === def.exclusivity.factionId);
+    push('Gate', `Requires Allied — ${(exMeta && (exMeta.name || exMeta.short)) || 'its faction'}`);
+  }
   push('Synthesis', evo
     ? evo.consumes.map((id) => MODULE_BY_ID.get(id)?.name || id).join(' + ')
     : null);
