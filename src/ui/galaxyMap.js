@@ -33,6 +33,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
 import { drawGlyph } from './glyphs.js';
@@ -1515,6 +1516,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       markers.push(partMarker);
     }
   }
+  for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);
   return markers;
 }
 

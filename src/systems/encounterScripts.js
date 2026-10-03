@@ -26,6 +26,7 @@ import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   uniqueWreckCassandraHardliners,
+  uniqueWreckCeresRefineryTender,
   uniqueWreckChoirTenderInvestigator,
   uniqueWreckHeldMass,
   uniqueWreckLongChordWarden,
@@ -2677,8 +2678,28 @@ const salvageSignal = {
     if (name === 'cacheGone' && live.data.cacheId && p && p.id === live.data.cacheId) {
       d.resolve(live, 'stripped');
     }
+    if (name === 'deliverCargo') {
+      const entity = p && p.receiverId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(p.receiverId)
+        : null;
+      live.data.lastHandover = handoverCargoToReceiver(entity, p || {});
+    }
   },
 };
+
+/** A destroyed or departed receiver cannot take cargo. No replacement is spawned. */
+export function receiverCanAccept(entity) {
+  if (!entity || entity.alive === false || (entity.data && entity.data.departed === true)) {
+    return { ok: false, reason: 'receiver-gone', consumed: 0, spawned: false };
+  }
+  return { ok: true, reason: null, consumed: 0, spawned: false };
+}
+
+export function handoverCargoToReceiver(entity, _delivery = {}) {
+  const gate = receiverCanAccept(entity);
+  if (!gate.ok) return { ...gate, ledgerUnchanged: true };
+  return { ok: true, reason: null, consumed: 0, spawned: false, entityId: entity.id };
+}
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // H. ANOMALY WHISPER — a discovery chain. The line is the clue; a physical source is placed
@@ -3269,4 +3290,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckCassandraHardliners: withShapeMeter(uniqueWreckCassandraHardliners),
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
   uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),
+  uniqueWreckCeresRefineryTender: withShapeMeter(uniqueWreckCeresRefineryTender),
 });

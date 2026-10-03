@@ -15,6 +15,7 @@
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
 import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
+import { magnetMultiplier } from '../data/swarmHangar.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -3032,8 +3033,13 @@ export function playerPickupMagnetRange(state, playerEntity = null) {
   if (!(Number.isFinite(fromDerived) && fromDerived > 0)) {
     fromDerived = maxFittedMagnetRange(player);
   }
-  if (Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE) return fromDerived;
-  return MAGNET_RANGE;
+  let range = Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE ? fromDerived : MAGNET_RANGE;
+  if (state && state.run && state.run.kind === 'survival') {
+    const hangar = state.run.telemetry && state.run.telemetry.hangar;
+    const mul = magnetMultiplier(hangar);
+    if (mul > 1) range *= mul;
+  }
+  return range;
 }
 
 function maxFittedMagnetRange(player) {

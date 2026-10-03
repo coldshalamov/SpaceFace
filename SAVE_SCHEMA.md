@@ -10,6 +10,7 @@ Current save version: `14`
 - `player`
 - `cargo`
 - `morrow`
+- `vesper`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -19,6 +20,8 @@ Current save version: `14`
 - `entities`
 - `combat`
 - `bombs`
+- `snares`
+- `charges`
 - `stunts`
 - `fields`
 - `missions`
@@ -53,6 +56,7 @@ Current save version: `14`
 - `tensionDirector`
 - `regionalEcology`
 - `stationServices`
+- `onboarding`
 - `encounterDirector`
 - `flight`
 - `nav`
@@ -131,6 +135,7 @@ Current save version: `14`
 | `$.cargo.capMass` | number | 60 |
 | `$.cargo.capVolume` | number | 40 |
 | `$.cargo.items` | object | {} |
+| `$.charges` | null | null |
 | `$.chronicler` | object | {} |
 | `$.claims` | object | {} |
 | `$.claims.bodies` | array | length 0 |
@@ -146,6 +151,7 @@ Current save version: `14`
 | `$.combat.attachments.nextId` | number | 1 |
 | `$.combat.combatSchemaVersion` | number | 1 |
 | `$.combat.entities` | array | length 0 |
+| `$.combat.lastPlayerDefeat` | null | null |
 | `$.combat.schemaVersion` | number | 1 |
 | `$.combat.statusNextPendingSeq` | number | 1 |
 | `$.crafting` | object | {} |
@@ -251,6 +257,7 @@ Current save version: `14`
 | `$.nemesis` | null | null |
 | `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
+| `$.onboarding` | null | null |
 | `$.player` | object | {} |
 | `$.player.activeShipIndex` | number | 0 |
 | `$.player.boostActive` | boolean | false |
@@ -338,7 +345,9 @@ Current save version: `14`
 | `$.settings.accessibility.colorblindMode` | string | none |
 | `$.settings.accessibility.dyslexiaFont` | boolean | false |
 | `$.settings.accessibility.flashReduce` | boolean | false |
+| `$.settings.accessibility.haptics` | string | full |
 | `$.settings.accessibility.highContrast` | boolean | false |
+| `$.settings.accessibility.holdToToggle` | object | {} |
 | `$.settings.accessibility.motionAsked` | boolean | false |
 | `$.settings.accessibility.motionDefaultVersion` | number | 1 |
 | `$.settings.accessibility.motionPreference` | string | full |
@@ -360,12 +369,19 @@ Current save version: `14`
 | `$.settings.controls.bindings` | null | null |
 | `$.settings.controls.flightMode` | string | assisted |
 | `$.settings.controls.gamepad` | object | {} |
+| `$.settings.controls.gamepad.curve` | string | linear |
 | `$.settings.controls.gamepad.deadzone` | number | 0.12 |
+| `$.settings.controls.gamepad.deadzoneRight` | number | 0.12 |
 | `$.settings.controls.gamepad.enabled` | boolean | true |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
 | `$.settings.controls.gamepad.scheme` | string | drive |
 | `$.settings.controls.gamepad.schemeSuggested` | boolean | false |
+| `$.settings.controls.gamepad.sensitivityAim` | number | 1 |
+| `$.settings.controls.gamepad.sensitivityFly` | number | 1 |
 | `$.settings.controls.masslineBindingProfile` | string | space-v1 |
+| `$.settings.controls.mouse` | object | {} |
+| `$.settings.controls.mouse.invertY` | boolean | false |
+| `$.settings.controls.mouse.sensitivity` | number | 1 |
 | `$.settings.gameplay` | object | {} |
 | `$.settings.gameplay.aiBackend` | string | sg06-tactical |
 | `$.settings.gameplay.autosaveIntervalS` | number | 120 |
@@ -378,6 +394,7 @@ Current save version: `14`
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.pauseOnFocusLoss` | boolean | true |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
+| `$.settings.gameplay.pursuitSlotAssist` | boolean | false |
 | `$.settings.gameplay.stuntMoments` | string | cinematic |
 | `$.settings.gameplay.targetAssistStrength` | string | full |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
@@ -410,6 +427,7 @@ Current save version: `14`
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
+| `$.snares` | null | null |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
@@ -420,4 +438,5 @@ Current save version: `14`
 | `$.uiScreenMemory.v` | number | 1 |
 | `$.uiWatchlist` | array | length 0 |
 | `$.v2Flavor` | object | {} |
+| `$.vesper` | object | {} |
 | `$.world` | object | {} |

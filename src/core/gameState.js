@@ -240,6 +240,17 @@ export function createGameState(seed) {
 
     // --- transient runtime (NEVER serialized) ---
     render: {}, vfx: {}, audioRuntime: {}, perfRuntime: null,
-    save: { lastAutosaveAt: 0, dirty: false, currentSlot: null },
+    save: {
+      lastAutosaveAt: 0, dirty: false, currentSlot: null,
+      // SF-281 — durable receipt of the last slot-write attempt. Toasts fade; this record
+      // lets any surface tell pending / durable / failed persistence apart without
+      // re-deriving it from transient events. Only real write outcomes land here — a
+      // superseded autosave is a cancellation, never a failure, and load errors belong
+      // to the save:error receipt instead.
+      pendingWrite: null,
+      lastWriteOk: null,
+      lastWriteFailure: null,
+      consecutiveWriteFailures: 0,
+    },
   };
 }

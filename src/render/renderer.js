@@ -7,6 +7,16 @@ import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
+import {
+  clearPooledTransientMarks,
+  noteSharedTextureConsumer,
+  releaseSharedTextureConsumer,
+} from './pooledPresentationMarks.js';
+export {
+  clearPooledTransientMarks,
+  noteSharedTextureConsumer,
+  releaseSharedTextureConsumer,
+};
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import {
@@ -7216,6 +7226,93 @@ function warmHullFilesForSpecs(specs) {
     }
   }
   return files;
+}
+
+const PRESENTATION_TEXTURE_KEYS = Object.freeze([
+  'map', 'normalMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap',
+  'alphaMap', 'lightMap', 'envMap',
+]);
+
+function pushMaterialTextures(material, out) {
+  if (!material || typeof material !== 'object') return;
+  for (let k = 0; k < PRESENTATION_TEXTURE_KEYS.length; k++) {
+    const texture = material[PRESENTATION_TEXTURE_KEYS[k]];
+    if (texture && typeof texture === 'object') out.push(texture);
+  }
+}
+
+function collectPresentationTextures(mesh, out) {
+  if (!mesh || typeof mesh !== 'object') return out;
+  const pushNode = (node) => {
+    if (!node || node.material == null) return;
+    if (Array.isArray(node.material)) {
+      for (let i = 0; i < node.material.length; i++) pushMaterialTextures(node.material[i], out);
+    } else {
+      pushMaterialTextures(node.material, out);
+    }
+  };
+  if (typeof mesh.traverse === 'function') {
+    mesh.traverse(pushNode);
+    return out;
+  }
+  const visit = (node) => {
+    pushNode(node);
+    const children = node && node.children;
+    if (!Array.isArray(children)) return;
+    for (let i = 0; i < children.length; i++) visit(children[i]);
+  };
+  visit(mesh);
+  return out;
+}
+
+function isFoundryIblTexture(texture, owner) {
+  if (!texture || typeof texture !== 'object') return false;
+  if (owner && (texture === owner._foundryEnvTexture || texture === owner._envMap)) return true;
+  const data = texture.userData;
+  if (!data) return false;
+  return data.foundryIblBaked != null || data.sfFoundryIbl === true;
+}
+
+function releaseNotedSharedTextures(notes, entityId, owner) {
+  if (!Array.isArray(notes) || entityId == null) return;
+  for (let i = 0; i < notes.length; i++) {
+    const texture = notes[i];
+    if (isFoundryIblTexture(texture, owner)) continue;
+    releaseSharedTextureConsumer(texture, entityId);
+  }
+}
+
+function syncPooledPresentationIdentity(mesh, nextEntityId, owner) {
+  if (!mesh || nextEntityId == null) return;
+  const userData = mesh.userData || (mesh.userData = {});
+  const previousId = userData.sfBoundEntityId;
+  const alreadyNoted = previousId === nextEntityId && userData.sfSharedTexturesNoted === true;
+  if (previousId != null && previousId !== nextEntityId) {
+    releaseNotedSharedTextures(userData.sfSharedTextureNotes, previousId, owner);
+    userData.sfSharedTexturesNoted = false;
+  }
+  clearPooledTransientMarks(mesh, nextEntityId);
+  if (alreadyNoted) return;
+  const found = [];
+  collectPresentationTextures(mesh, found);
+  const kept = [];
+  const seen = new Set();
+  for (let i = 0; i < found.length; i++) {
+    const texture = found[i];
+    if (!texture || seen.has(texture) || isFoundryIblTexture(texture, owner)) continue;
+    seen.add(texture);
+    noteSharedTextureConsumer(texture, nextEntityId);
+    kept.push(texture);
+  }
+  userData.sfSharedTextureNotes = kept;
+  userData.sfSharedTexturesNoted = true;
+}
+
+function releasePooledPresentationTextures(mesh, entityId, owner) {
+  if (!mesh || entityId == null || !mesh.userData) return;
+  releaseNotedSharedTextures(mesh.userData.sfSharedTextureNotes, entityId, owner);
+  mesh.userData.sfSharedTextureNotes = null;
+  mesh.userData.sfSharedTexturesNoted = false;
 }
 
 export const render = {
@@ -15667,6 +15764,7 @@ export const render = {
     lanes.reserve(entity.id, lane);
     const bound = world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
     if (!bound) return false;
+    syncPooledPresentationIdentity(mesh, entity.id, this);
     entity.mesh = mesh;
     if (entity.view) entity.view.root = mesh;
     else entity.view = { root: mesh };
@@ -15674,6 +15772,7 @@ export const render = {
   },
 
   _unbindPresentationMesh(entityId, mesh = null) {
+    if (mesh) releasePooledPresentationTextures(mesh, entityId, this);
     if (this._livingHullPresentation) {
       if (mesh) this._livingHullPresentation.detach(mesh);
       else if (entityId === this.state.playerId) this._livingHullPresentation.detach();

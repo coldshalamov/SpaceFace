@@ -300,6 +300,13 @@ export const EAST_SECTORS = Object.freeze([
           body: 'Monolithic megalith shaped into an aperture oriented toward empty dark space. Spectrometry dates the carving eighty million years back, aligned with a vanished stellar cradle. Close sensor passes confirm persistent localized dampening fields along its focal axis.',
         }),
       }),
+      Object.freeze({
+        id: 'poi_triton_field_lab',
+        type: 'anomaly',
+        name: 'Triton Field Lab',
+        pos: { x: 1600, z: -700 },
+        factionId: 'faction_archive',
+      }),
     ]),
   }),
 ]);

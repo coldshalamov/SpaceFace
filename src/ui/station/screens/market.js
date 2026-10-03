@@ -25,6 +25,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
+import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation, formatRouteCard } from '../../market/tradeLogic.js';
@@ -664,11 +665,14 @@ export function createMarketScreen(ctx) {
       def: row.def,
       route,
     });
-    return presentInspectorRows(view).filter((intelRow) => {
+    const rows = presentInspectorRows(view).filter((intelRow) => {
       if (intelRow.id === 'age' || intelRow.id === 'conf' || intelRow.id === 'kvl') return true;
       if (intelRow.id === 'cargo') return mode === 'buy' && qty >= 1;
       return (intelRow.id === 'margin' || intelRow.id === 'route') && !!route;
     });
+    const starved = starvedNeedLine(state, sid, row.id);
+    if (starved) rows.push({ id: 'starved', text: starved });
+    return rows;
   }
 
   function selectedTradeQuote(state, row, quantity = qty) {

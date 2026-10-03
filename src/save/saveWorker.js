@@ -76,6 +76,9 @@ export async function gzipEnvelopeJson(json) {
 }
 
 // Decode a stored string to the inner envelope JSON text (identity for legacy plain saves).
+// FB-104 — an export bundle may carry the profile side bags as a `profile` sibling on the outer
+// wrapper (the compressed payload stays the plain envelope); the field passes through untouched
+// so the import lane can merge it after the envelope validates.
 export async function decodeSaveEnvelopeText(raw) {
   if (!isGzippedSaveText(raw)) return { ok: true, text: raw };
   let outer;
@@ -85,7 +88,8 @@ export async function decodeSaveEnvelopeText(raw) {
   }
   if (!saveGzipAvailable()) return { ok: false, reason: 'gz_unsupported' };
   try {
-    return { ok: true, text: await gunzipText(outer.payload) };
+    const text = await gunzipText(outer.payload);
+    return outer.profile != null ? { ok: true, text, profile: outer.profile } : { ok: true, text };
   } catch (error) {
     return { ok: false, reason: 'gz_decode_failed' };
   }
@@ -180,7 +184,14 @@ export function restorePrepareSaveJson(raw, currentVersion) {
 export async function restorePrepareSaveJsonAsync(raw, currentVersion) {
   const decoded = await decodeSaveEnvelopeText(raw);
   if (!decoded.ok) return { ok: false, reason: decoded.reason };
-  return restorePrepareSaveJson(decoded.text, currentVersion);
+  const prepared = restorePrepareSaveJson(decoded.text, currentVersion);
+  // FB-104 — a compressed export bundle carries its profile side bags on the outer wrapper;
+  // attach them to the prepared envelope so the main-thread merge runs the same way a plain
+  // import does (the field crosses postMessage inside the env clone).
+  if (prepared.ok && decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+    prepared.env.profile = decoded.profile;
+  }
+  return prepared;
 }
 
 // Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
@@ -441,7 +452,8 @@ function decodeSaveEnvelopeText(raw) {
   }
   if (!saveGzipAvailable()) return Promise.resolve({ ok: false, reason: 'gz_unsupported' });
   return gunzipText(outer.payload).then(function (text) {
-    return { ok: true, text: text };
+    // FB-104 — profile side bags ride on the outer wrapper of a compressed export bundle.
+    return outer.profile != null ? { ok: true, text: text, profile: outer.profile } : { ok: true, text: text };
   }, function () {
     return { ok: false, reason: 'gz_decode_failed' };
   });
@@ -522,7 +534,13 @@ function validateSaveJsonAsync(raw, currentVersion) {
 function restorePrepareSaveJsonAsync(raw, currentVersion) {
   return decodeSaveEnvelopeText(raw).then(function (decoded) {
     if (!decoded.ok) return { ok: false, reason: decoded.reason };
-    return restorePrepareSaveJson(decoded.text, currentVersion);
+    var prepared = restorePrepareSaveJson(decoded.text, currentVersion);
+    // FB-104 — surface the bundle's profile side bags on the prepared envelope so the main
+    // thread merges them after validation, the same as a plain-text import.
+    if (prepared.ok && decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+      prepared.env.profile = decoded.profile;
+    }
+    return prepared;
   });
 }
 var PREFLIGHT_MAX_DEPTH = 64;

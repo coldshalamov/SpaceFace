@@ -553,6 +553,7 @@ function copyPoint(point) {
 function receiverSentence({ reason, successCredit, acceptedQty, remainderQty, commodityId }) {
   const name = commodityId || 'load';
   if (reason === 'closed') return 'Intake is closed.';
+  if (reason === 'blocked-geometry') return 'The way in is blocked. The load stays put.';
   if (reason === 'jam-occupied') return 'Intake is jammed. Sort the blocking load or pull it clear.';
   if (reason === 'lip-contact') return 'The load kissed the lip. It did not enter.';
   if (reason === 'speed-window') return 'Too fast for the intake window. The load is still free.';
@@ -590,12 +591,13 @@ export function evaluateReceiverAcceptance(input = {}) {
   const cargoClass = typeof input.cargoClass === 'string' ? input.cargoClass : null;
   const wrongClass = !!(cargoClass && accepts && !accepts.includes(cargoClass));
   let reason = null;
-  if (phase === 'locked' || phase === 'closing' || input.open === false) reason = 'closed';
+  if (phase === 'locked' || phase === 'closing' || phase === 'closed' || phase === 'shut' || input.open === false) reason = 'closed';
   else if (phase === 'jam' || (occupied && input.jamCleared !== true)) reason = 'jam-occupied';
   else if (!entered) reason = lip ? 'lip-contact' : 'not-entered';
   else if (speed > maxSpeed) reason = 'speed-window';
   else if (!fits) reason = 'envelope';
   else if (wrongClass) reason = 'wrong-class';
+  else if (input.blockedGeometry === true) reason = 'blocked-geometry';
   else if (offered <= 0) reason = 'zero-unit';
   else if (remaining <= 0) reason = 'capacity-full';
   const acceptedQty = reason ? 0 : Math.min(offered, remaining);

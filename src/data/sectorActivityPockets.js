@@ -970,6 +970,163 @@ if (new Set(HELIOS_POCKET_ACTOR_SLOT_ORDER).size !== HELIOS_POCKET_ACTOR_SLOT_OR
 assertDistinctRouteTopology(HELIOS_ACTIVITY_POCKETS, HELIOS_ROUTE_TOPOLOGY, 'Helios');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// FB-030 — Pallas Drift works a seam, a hub, an ambush, and a grave. Same band and topology
+// laws as Ceres. No Ceres pocket id is copied.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const PALLAS_ACTIVITY_SECTOR_ID = 'sector_pallas_drift';
+export const PALLAS_AUTHORED_ACTIVITY_CAPACITY = 8;
+
+const pallasZones = requireArray(SECTOR_ZONES[PALLAS_ACTIVITY_SECTOR_ID], 'Pallas sector zones');
+const pallasAnchors = requireRecord(SECTOR_ANCHORS[PALLAS_ACTIVITY_SECTOR_ID], 'Pallas sector anchors');
+const pallasBelt = findById(pallasZones, 'zone_pallas_belt', 'Pallas belt zone');
+const pallasDrift = findById(pallasZones, 'zone_pallas_drift', 'Pallas drift zone');
+const pallasAmbushZone = findById(pallasZones, 'zone_pallas_ambush', 'Pallas ambush zone');
+const pallasGraveField = findById(pallasAnchors.fields, 'f_pallas_3', 'Pallas grave field');
+
+const pallasSeamId = 'pallas_working_seam';
+const pallasHubId = 'pallas_hub_pocket';
+const pallasAmbushId = 'pallas_ambush_run';
+const pallasGraveId = 'pallas_nebula_grave';
+
+function pallasActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, lawful = false) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'pallas',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, marks }),
+  });
+}
+
+export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: pallasSeamId,
+    label: 'Independent Seam',
+    identity: Object.freeze({ zoneId: pallasBelt.id, fieldId: 'f_pallas_1' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: pallasBelt.id, zoneId: pallasBelt.id, localPos: pallasBelt.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_seam_miner', pallasSeamId, 'miner', 'miner', point(30, -20),
+        'pallas_seam_extraction', 24, [
+          mark('pallas_miner_a', 103.4, 37.6),
+          mark('pallas_miner_b', -9.2, 104.6),
+        ]),
+      pallasActor('pallas_seam_surveyor', pallasSeamId, 'miner', 'miner', point(-24, 18),
+        'pallas_seam_survey', 28, [
+          mark('pallas_survey_a', -91.9, 77.1),
+          mark('pallas_survey_b', -34.2, -94),
+        ]),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_seam_ore_face', pocketId: pallasSeamId, kind: 'world_owned_asteroid_slot',
+        offset: point(-40, 20), runtimeOwner: 'world', targetRef: 'field:f_pallas_1',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasHubId,
+    label: 'Hollow Hub',
+    identity: Object.freeze({ zoneId: pallasDrift.id, placeId: 'station_smuggler' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: pallasDrift.id, zoneId: pallasDrift.id, localPos: pallasDrift.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_hub_hauler', pallasHubId, 'hauler', 'hauler', point(40, 10),
+        'pallas_hub_haul', 26, [
+          mark('pallas_haul_a', 115, 0),
+          mark('pallas_haul_b', -115, 0),
+        ]),
+      pallasActor('pallas_hub_tender', pallasHubId, 'tender', 'tender', point(-20, 28),
+        'pallas_hub_tender_loop', 22, [
+          mark('pallas_tender_a', 86.6, 50),
+          mark('pallas_tender_b', -60, 103.9),
+        ]),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_hub_pod', pocketId: pallasHubId, kind: 'cargo_staging_pod',
+        offset: point(50, -16), runtimeOwner: 'world',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasAmbushId,
+    label: 'Sker-Run Ambush',
+    identity: Object.freeze({ zoneId: pallasAmbushZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: pallasAmbushZone.id, zoneId: pallasAmbushZone.id, localPos: pallasAmbushZone.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_ambush_hauler', pallasAmbushId, 'hauler', 'hauler', point(22, -30),
+        'pallas_ambush_run_loop', 24, [
+          mark('pallas_ambush_a', 98.5, 17.4),
+          mark('pallas_ambush_b', -90.6, 42.3),
+        ]),
+      pallasActor('pallas_ambush_escort', pallasAmbushId, 'patrol', 'patrol', point(-36, 12),
+        'pallas_ambush_escort_loop', 26, [
+          mark('pallas_escort_a', 85.8, 72),
+          mark('pallas_escort_b', -92.1, 33.5),
+        ], true),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_ambush_bait', pocketId: pallasAmbushId, kind: 'bait_wreck_visual',
+        offset: point(60, 12), runtimeOwner: 'world',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasGraveId,
+    label: 'Grave Drift',
+    identity: Object.freeze({ fieldId: pallasGraveField.id }),
+    anchor: canonicalAnchor({
+      kind: 'field', id: pallasGraveField.id, localPos: pallasGraveField.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_grave_salvor', pallasGraveId, 'salvor', 'salvor', point(18, 24),
+        'pallas_grave_salvor_loop', 30, [
+          mark('pallas_salvor_a', 42.4, 116.5),
+          mark('pallas_salvor_b', -88.3, -51),
+        ]),
+      pallasActor('pallas_grave_patrol', pallasGraveId, 'patrol', 'patrol', point(-16, -22),
+        'pallas_grave_patrol_loop', 28, [
+          mark('pallas_patrol_a', 98.5, 17.4),
+          mark('pallas_patrol_b', 28.5, 106.3),
+        ], true),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_grave_shard', pocketId: pallasGraveId, kind: 'grave_shard',
+        offset: point(-28, 40), runtimeOwner: 'world',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const PALLAS_ROUTE_TOPOLOGY = Object.freeze(PALLAS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+export const PALLAS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(PALLAS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+
+if (PALLAS_POCKET_ACTOR_SLOT_ORDER.length !== PALLAS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Pallas authored capacity mismatch: ${PALLAS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+assertDistinctRouteTopology(PALLAS_ACTIVITY_POCKETS, PALLAS_ROUTE_TOPOLOGY, 'Pallas');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -979,6 +1136,7 @@ const EMPTY_POCKETS = Object.freeze([]);
 export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [CERES_ACTIVITY_SECTOR_ID]: CERES_ACTIVITY_POCKETS,
   [HELIOS_ACTIVITY_SECTOR_ID]: HELIOS_ACTIVITY_POCKETS,
+  [PALLAS_ACTIVITY_SECTOR_ID]: PALLAS_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

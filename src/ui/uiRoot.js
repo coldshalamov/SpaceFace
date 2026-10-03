@@ -330,7 +330,18 @@ function saveErrorText(payload = {}) {
 
 function saveErrorReasonText(payload = {}) {
   const slot = saveSlotLabel(payload.slot);
-  switch (payload.reason) {
+  // Write-path receipts pack the verify sub-reason after a colon
+  // ('write_verify_failed:save_size_limit(…)'); match the outer reason first, then let a
+  // known inner reason carry its own actionable message.
+  const rawReason = String(payload.reason || '');
+  const reason = rawReason.split(':', 1)[0];
+  const innerReason = rawReason.indexOf(':') >= 0
+    ? rawReason.slice(rawReason.indexOf(':') + 1).split('(', 1)[0]
+    : '';
+  // _saveTiming receipts carry `trigger` — it separates "the write failed" from
+  // "the file on disk failed to load" for the shared reason names below.
+  const writeAttempt = payload.trigger != null;
+  switch (reason) {
     case 'no_player': return 'Start or load a game before saving';
     case 'no_save': return 'No save found for ' + slot;
     case 'read_failed': return 'Could not read ' + slot;
@@ -350,11 +361,43 @@ function saveErrorReasonText(payload = {}) {
     case 'backup_quota':
     case 'write_failed':
     case 'backup_write_failed':
+      return 'Save storage is full; export a backup';
     case 'write_verify_parse':
     case 'write_verify_failed':
-      return 'Save storage is full; export a backup';
+      if (innerReason === 'save_size_limit' || innerReason === 'import_too_large') {
+        return slot + ' is too large to store — previous save kept';
+      }
+      if (innerReason === 'quota' || innerReason === 'backup_quota') {
+        return 'Save storage is full; export a backup';
+      }
+      return 'Could not verify the ' + slot + ' write — previous save kept';
+    // SF-281 — the write bound refuses rather than truncates, and the refused write leaves
+    // the previous slot generation intact; name both facts so the receipt is actionable.
+    case 'save_size_limit':
+    case 'import_too_large':
+      return writeAttempt
+        ? slot + ' is too large to store — previous save kept'
+        : slot + ' is too large to load';
+    case 'import_depth_limit':
+    case 'import_node_limit':
+    case 'import_collection_limit':
+    case 'import_cycle':
+    case 'import_persistent_entity_limit':
+      return writeAttempt
+        ? 'Save data exceeds storage bounds — previous save kept'
+        : slot + ' is too complex to load';
+    case 'restoring': return 'Could not save ' + slot + ' — a load is in progress';
+    case 'schedule_failed':
+    case 'save_worker_failed':
+    case 'save_worker_timeout':
+    case 'player_capture_churn':
+    case 'save_failed':
+    case 'rollback_failed':
+      return 'Could not finish saving ' + slot + ' — previous save kept';
+    case 'settings_write_failed': return 'Could not save settings';
     case 'export_failed': return 'Export failed for ' + slot;
     case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
+    case 'deferred_transition_failed': return 'Could not finish the sector switch';
     case 'load_failed':
     default:
       return 'Save/load failed for ' + slot;
@@ -394,6 +437,10 @@ function wireSaveFeedback(bus) {
     });
   });
   bus.on('save:error', (payload = {}) => {
+    // A superseded autosave is a cancellation receipt, not a lost save: the slot keeps its
+    // previous generation and a newer route owns the next write. Warning the player here
+    // would cry failure over a deliberate replacement (New Game / Continue boundaries).
+    if (payload && payload.reason === 'superseded') return;
     bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: 3200 });
   });
 }

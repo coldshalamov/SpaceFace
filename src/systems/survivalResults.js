@@ -1050,6 +1050,15 @@ export const survivalResults = {
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();
+      const row = settled && settled.result;
+      if (row) {
+        result.bankedBounty = row.bankedBounty;
+        result.hangarBounty = row.hangarBounty;
+        result.cashOut = row.cashOut;
+        const banked = Number.isFinite(row.bankedBounty) ? row.bankedBounty : 0;
+        const chest = Number.isFinite(row.hangarBounty) ? row.hangarBounty : 0;
+        result.bankLine = `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
+      }
     } catch {
       // A local-record failure must not swallow the results the player is owed.
     }

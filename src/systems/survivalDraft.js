@@ -51,6 +51,12 @@ import { runModifierRecord, validateRunModifier } from '../data/runModifiers.js'
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
+import {
+  brokerMultiplier,
+  consumeHangarReroll,
+  hangarRank,
+  hangarRerollState,
+} from '../data/swarmHangar.js';
 import { addCargo } from './cargo.js';
 
 export const CRUCIBLE_DRAFT_SCREEN_ID = 'crucibleDraft';
@@ -406,7 +412,13 @@ export const survivalDraft = {
   rerollState() {
     const run = liveSurvivalRun(this.state);
     if (run && isSwarmRuleset(run.ruleset)) {
-      return { open: false, credits: run.credits, available: false, reason: 'armory' };
+      const hangarInfo = hangarRerollState(run);
+      const drafting = run.phase === 'draft' && !this._resolved;
+      return {
+        open: hangarInfo.available === true && drafting,
+        credits: run.credits,
+        ...hangarInfo,
+      };
     }
     const offers = this._offers || [];
     const rerolls = this._rerolls || 0;
@@ -450,6 +462,10 @@ export const survivalDraft = {
    */
   requestReroll() {
     const info = this.rerollState();
+    if (info && info.reason === 'hangar_reroll' && info.available) {
+      if (!info.open) return false;
+      return this._applyHangarReroll();
+    }
     if (!info.open) return false;
     if (!info.available) {
       this._notice = this._rerollRefusalText(info);
@@ -701,6 +717,38 @@ export const survivalDraft = {
     return this._purchased.has(offer.id);
   },
 
+  _applyHangarReroll() {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return false;
+    const nextCount = (this._rerolls || 0) + 1;
+    let offers = this._peekOffers(nextCount);
+    if (isSwarmRuleset(run.ruleset)) {
+      const loadout = this._activeLoadout();
+      offers = offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
+    }
+    if (offers.length === 0) return false;
+    const consumed = consumeHangarReroll(run.telemetry && run.telemetry.hangar);
+    if (!consumed.ok) return false;
+    if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
+    run.telemetry.hangar = consumed.hangar;
+    this._rerolls = nextCount;
+    this._offers = offers;
+    this._notice = null;
+    this._emit('run:draftRerolled', {
+      wave: this._wave,
+      rerolls: nextCount,
+      price: 0,
+      credits: Number.isFinite(run.credits) ? run.credits : null,
+      reason: 'hangar_reroll',
+    });
+    this._emit('run:draftOffered', {
+      wave: this._wave,
+      offers: offers.map((entry) => ({ ...entry })),
+      rerolls: nextCount,
+    });
+    return true;
+  },
+
   /**
    * The hull and service rows of the armory — every player ship on the shelf plus the counter
    * work no fitting slot can hold. They are offers like any other card: priced in the short-round
@@ -709,6 +757,12 @@ export const survivalDraft = {
    */
   _armoryExtras(loadout, run) {
     if (!isSwarmRuleset(run.ruleset)) return [];
+    const hangar = this.state && this.state.run && this.state.run.telemetry
+      ? this.state.run.telemetry.hangar
+      : null;
+    const brokerOn = hangarRank(hangar, 'broker') > 0;
+    const mul = brokerOn ? brokerMultiplier(hangar) : 1;
+    const ask = (price) => (brokerOn ? Math.max(0, Math.round(price * mul)) : price);
     const extras = [];
     const player = this.state && this.state.player;
     const entity = this._playerEntity();
@@ -720,7 +774,7 @@ export const survivalDraft = {
       id: 'svc_weld', kind: SWARM_SERVICE_OFFER_KIND, service: 'weld',
       verb: 'Weld', name: 'Hull weld',
       blurb: 'Plate, weld and rinse the scars. Back to full before the next pack.',
-      price: SWARM_WELD_PRICE, category: 'Service', slotLabel: 'Hull & armor',
+      price: ask(SWARM_WELD_PRICE), category: 'Service', slotLabel: 'Hull & armor',
       _serviceHurt: hurt,
     });
     const held = player && player.cargo && player.cargo.items
@@ -729,7 +783,7 @@ export const survivalDraft = {
       id: 'svc_ordnance', kind: SWARM_SERVICE_OFFER_KIND, service: 'ordnance',
       verb: 'Rack', name: 'Ordnance top-up',
       blurb: 'Impulse charges racked to full for the charge-rack builds.',
-      price: SWARM_ORDNANCE_PRICE, category: 'Service', slotLabel: 'Cargo',
+      price: ask(SWARM_ORDNANCE_PRICE), category: 'Service', slotLabel: 'Cargo',
       _serviceCharges: held,
     });
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
@@ -750,7 +804,7 @@ export const survivalDraft = {
         blurb: owned
           ? `On your manifest · ${ship.role} · ${buildSlotList(ship).length} hardpoints`
           : `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
-        price: owned ? 0 : swarmHullPrice(ship), category: 'Hulls', slotLabel: 'Ship cradle',
+        price: owned ? 0 : ask(swarmHullPrice(ship)), category: 'Hulls', slotLabel: 'Ship cradle',
         _flying: ship.id === (loadout && loadout.hullId),
         _cargoBlocked: cargoUsed > cargoCap,
         _ownedIndex: ownedIndex >= 0 ? ownedIndex : null,

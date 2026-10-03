@@ -9,7 +9,7 @@ import { hash32 } from '../core/rng.js';
 import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
-import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS } from '../data/poiBehaviorFamilies.js';
+import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
@@ -221,6 +221,10 @@ export const livingPoiBehaviors = {
       this._emit('poi:behaviorPlanned', readoutOf(row));
     }
     if (priorZoneId && own.activeByZone[priorZoneId]) own.currentZoneId = priorZoneId;
+    own.authoredPlacePlans = authoredPlacePlansForSector(
+      sector,
+      this.state.meta && this.state.meta.seed,
+    );
     return rows;
   },
 

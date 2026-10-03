@@ -36,8 +36,10 @@ import {
 import {
   armGhostPlayback,
   beginGhostRecording,
+  loadCrucibleMeta,
   sampleGhostPoseFromState,
 } from './survivalRecords.js';
+import { applyHangarToPlayer } from './swarmHangar.js';
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
@@ -316,6 +318,14 @@ export const survivalRun = {
     // on draft entry, and the tick machine carries draft→wave_intro once flight resumes —
     // so a run can only reach wave one through the shop the way every later wave does.
     if (isSwarmRuleset(run.ruleset)) {
+      const entities = this.state && this.state.entities;
+      const player = entities && this.state.playerId != null && typeof entities.get === 'function'
+        ? entities.get(this.state.playerId)
+        : null;
+      if (player) {
+        const stamped = run.telemetry && run.telemetry.hangar;
+        applyHangarToPlayer(this.state, stamped || loadCrucibleMeta().hangar);
+      }
       this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
       return;
     }
