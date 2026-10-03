@@ -7928,10 +7928,23 @@ export const audio = {
     // F2: pitch and loudness follow the published tether.load (phase floors included) through one
     // voice. The sidechain duck factor rides along so the tone ducks under weapons with the world;
     // reduced motion quiets the tone, never silences it — it is information, not ornament.
+    // FB-079: the tow's own mass feeds resolveTetherTone's towMass channel — a heavy tow
+    // creaks even before its strain climbs; the lift only applies while the line is taut,
+    // so a slack line stays silent. The mirror carries no mass, so the body is read
+    // read-only through tether.targetId, the same lookup flightV3 uses for its anchor.
     const strain = clamp(Number(tether && tether.strain) || 0, 0, 1.25);
     const motionReduce = !!(this.state.settings && this.state.settings.video
       && this.state.settings.video.motionReduce);
-    const tone = resolveTetherTone({ tether, motionReduce, duck: rt.sidechainDuck });
+    const entities = this.state.entities;
+    const towed = tether && tether.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(tether.targetId)
+      : null;
+    const tone = resolveTetherTone({
+      tether,
+      towMass: towed && Number.isFinite(towed.mass) ? towed.mass : undefined,
+      motionReduce,
+      duck: rt.sidechainDuck,
+    });
     const targetFreq = tone.hz;
     const priorityDuck = rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon;
     const targetGain = tone.gain * priorityDuck;
