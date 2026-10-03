@@ -830,7 +830,11 @@ async function finishShot(shot) {
         const button = [...screensEl.querySelectorAll('button')].find((el) => (el.textContent || '').toUpperCase().includes(want));
         button?.click();
       }
-      if (shot.overlay) await openOverlay(shot.overlay);
+      if (shot.overlay) {
+        await openOverlay(shot.overlay);
+        // The live loop keeps ticking the HUD under an open radial (the travel tape yields to it).
+        for (let i = 0; i < 24; i += 1) { try { window.__benchHud?.frame?.(1 / 30); } catch { /* still only */ } }
+      }
     }
   } catch (error) {
     showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);

@@ -226,6 +226,8 @@
     "2026-10-03 deliberate re-record for the save-canonicalization fix (dimforge/rapier#910). A restored Rapier world is canonical w.r.t. snapshot bytes but the organic layout is not serializable: reload-at-240+ diverged inside world.step.",
     "(cont.) Every save now re-adopts its own world snapshot so save-and-continue is bit-identical to save-quit-reload; the entity-id allocator (freeIds, nextEntityId, nextOccupantGeneration) is serialized so post-load spawn ids replay exactly.",
     "(cont.) Reload-vs-baseline bitwise equality now holds at 60/120/240/360/480/600 (was red at 240, 258 via recycled-id order). Repeat-20 deterministic. Trajectory delta vs prior pin is post-save-tick only, by design.",
-    "Prior authoritativeHash was 0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4."
+    "Prior authoritativeHash was 0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4.",
+    "2026-10-03 polish pass: authoritativeHash is the CANONICAL reload-run hash (save canonicalizes the Rapier world once), not the organic never-saved hash — organic layouts are not reproducible (rapier#910); do not re-pin from a plain --hash run.",
+    "2026-10-03 correction: canonical reload hash on the landed tree is f4a62175 (check:sim:v3 repeat-20 + repeat-2 rerun) — 0d85fa3f was the pre-fix value. Convention note above stands."
   ]
 }
