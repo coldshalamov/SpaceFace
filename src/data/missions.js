@@ -345,6 +345,37 @@ export const MISSION_TYPES = [
     constraints: { authoredOnly: true, physicalVerb: 'hold' },
   },
   {
+    // SF-139 — The Split Manifest: a broken freighter's two real cargo nets, caught and
+    // landed at the Forge yard. AUTHORED-ONLY, structural zero weight exactly like the
+    // heist, placed BEFORE heist_intercept so "heist stays last" holds and `_pickType`
+    // reads `weights[i] || 0` = 0. `missions._syncYardContractOffers` is the only poster.
+    // `chainable: false` keeps a settled split from minting a procedural sequel. Lots are
+    // counted by physical possession at the yard sink, never by a flag — see
+    // src/data/yardContracts.js.
+    type: 'split_manifest', riskTierRange: [1, 1], chainable: false, proceduralWeight: 0,
+    completionEvent: 'each net physically inside the yard dock ring; settled on what actually landed',
+    rewardFormula: 'authored flat payout (YARD_CONTRACTS SPLIT_MANIFEST_TUNING) by delivered lot count',
+    timeFormula: 'none — the urgent net\'s fast clock is a scene bonus, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'all lots lost OR mission expiry',
+    constraints: { authoredOnly: true, physicalVerb: 'deliver' },
+  },
+  {
+    // SF-142 — The Quiet Berth: a dead yard lighter parked off the west berth, best
+    // solved by observation + tow/assist, costly to solve with guns. AUTHORED-ONLY,
+    // structural zero weight exactly like the heist, placed BEFORE heist_intercept so
+    // "heist stays last" holds and `_pickType` reads `weights[i] || 0` = 0.
+    // `missions._syncYardContractOffers` is the only poster. `chainable: false` so the
+    // cleared berth cannot mint a procedural sequel.
+    type: 'quiet_berth', riskTierRange: [1, 1], chainable: false, proceduralWeight: 0,
+    completionEvent: 'the lighter hull physically inside the berth ring with its load pool intact',
+    rewardFormula: 'authored flat payout (YARD_CONTRACTS QUIET_BERTH_TUNING.rewardCr) — zero on a dead hull',
+    timeFormula: 'none — the scene is a watch, not a race',
+    taskTime: 0,
+    failureCondition: 'the hull destroyed (berth clears but the contract pays nothing), or expiry',
+    constraints: { authoredOnly: true, physicalVerb: 'berth' },
+  },
+  {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
     //
     // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is

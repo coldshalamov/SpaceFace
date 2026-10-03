@@ -48,11 +48,14 @@ import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
+  CONTACT_HAIL_ACTION_TOW_ASSIST,
   contactHailAvailability,
   createContactHailOffer,
   createContactHailResponse,
   pirateParleyDemandForHandoff,
+  towAssistBodyFor,
 } from '../data/contactHail.js';
+import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
 
@@ -950,7 +953,11 @@ export const scanner = {
     actions.scanPulse = false;
 
     const now = state.simTime || 0;
-    if (now < this._cooldownUntil) return;
+    if (now < this._cooldownUntil) {
+      const left = Math.max(1, Math.ceil(this._cooldownUntil - now));
+      this.bus.emit('toast', { text: `Scanner recharging — ${left}s`, kind: 'warn', ttl: 1.6 });
+      return;
+    }
 
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive) return;
@@ -1515,11 +1522,15 @@ export const scanner = {
     const heaveTo = choice === CONTACT_HAIL_ACTION_HEAVE_TO
       ? this._requestContactHeaveTo(target, availability, { wanted, ai })
       : null;
+    const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
+      ? this._requestContactTowAssist(target)
+      : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
       heaveTo,
+      towAssist,
     });
     if (!response) return false;
     this._contactHail = null;
@@ -1568,6 +1579,58 @@ export const scanner = {
       };
     }
     return result;
+  },
+
+  // SF-138 — hire the hailed worker to tow the nearest loose body to a sink. The data layer
+  // answers which body; a live mission may claim a specific destination for it (yard berth,
+  // dock ring), otherwise the nearest station is the honest default. The hire fee is billed
+  // by the runtime; whatever the load is worth is settled by whoever owns the destination.
+  _requestContactTowAssist(worker) {
+    const state = this.state;
+    const body = worker ? towAssistBodyFor(state, worker) : null;
+    if (!body) return { granted: false, reason: 'no_load' };
+    const jobApi = this.helpers && this.helpers.npcJobs
+      ? this.helpers.npcJobs
+      : this.registry && this.registry.get && this.registry.get('npcJobsRuntime');
+    if (!jobApi || typeof jobApi.requestTowAssist !== 'function') {
+      return { granted: false, reason: 'no_owner' };
+    }
+    let dest = null;
+    let missionId = null;
+    let deliverW = null;
+    const missionsApi = this.registry && this.registry.get && this.registry.get('missions');
+    if (missionsApi && typeof missionsApi.towAssistDestFor === 'function') {
+      const hint = missionsApi.towAssistDestFor(body.id);
+      if (hint && hint.pos) {
+        dest = hint.pos;
+        missionId = hint.missionId || null;
+        deliverW = Number.isFinite(hint.deliverW) ? hint.deliverW : null;
+      }
+    }
+    if (!dest) dest = this._nearestStationPosTo(body) || { x: body.pos.x, z: body.pos.z };
+    const out = jobApi.requestTowAssist(worker.id, body.id, dest, {
+      holder: 'contactHail',
+      missionId,
+      deliverW,
+      feeCr: TOW_ASSIST_FEE_CR,
+    });
+    if (out && out.granted === true) return { granted: true, feeCr: TOW_ASSIST_FEE_CR };
+    return { granted: false, reason: out && out.reason || 'claim_refused' };
+  },
+
+  _nearestStationPosTo(entity) {
+    const entities = this.state && this.state.entities;
+    if (!entities || !entity || !entity.pos) return null;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const dx = e.pos.x - entity.pos.x;
+      const dz = e.pos.z - entity.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best ? { x: best.pos.x, z: best.pos.z } : null;
   },
 
   _updateContactHail(state) {

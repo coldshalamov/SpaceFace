@@ -262,6 +262,14 @@ const NPC_PATROL_LINE_PHASES = new Set([
 ]);
 const NPC_CERES_SCAVENGER_ADOPT_LIMIT = 1;
 
+// SF-138 — the hired tug. A working hauler/tender/salvor can be leased off its route to drag a
+// marked body to a sink: same control lease as the yard call-out, same npc_tow attachment, same
+// cleanup. The hire only moves the body — whoever owns the destination decides what it pays for.
+const TOW_ASSIST_KINDS = new Set([NPC_JOB_KIND.HAULER, NPC_JOB_KIND.TENDER, NPC_JOB_KIND.SALVOR]);
+const TOW_ASSIST_APPROACH_WU = 140;
+const TOW_ASSIST_DELIVER_WU = 110;
+const TOW_ASSIST_TIMEOUT_S = 240;
+
 // R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
 // movement language. Stable record/job ids remain the authority across rematerialization; live
 // numeric ids are looked up through the current job entries and are never retained or serialized.
@@ -993,6 +1001,10 @@ export const npcJobsRuntime = {
         controlClaim: (jobId) => this.controlClaim(jobId),
         activeControlClaimCount: () => this.activeControlClaimCount(),
         heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+        // SF-138 hired tow: lease a working mover to drag a towable body to a destination.
+        requestTowAssist: (workerEntityId, targetEntityId, destPos, opts) =>
+          this.requestTowAssist(workerEntityId, targetEntityId, destPos, opts),
+        towAssistState: (jobId) => this.towAssistState(jobId),
         // PQ-138.02: traffic notices nearby violence, then this owner suspends/resumes the job.
         // Traffic must not write intent for a job hull.
         interrupt: (jobId, threat) => this.interruptJob(jobId, threat),
@@ -2794,6 +2806,16 @@ export const npcJobsRuntime = {
       releaseJobOwnedPersistence(ent);
     }
     this._clearTugAttachment(entry, 'npc_tow_job_released');
+    // A released job drops any live tow hire: report the lost helper rather than vanishing quietly.
+    if (entry.towAssist && this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('npcJobs:towAssistLost', {
+          jobId, targetId: entry.towAssist.targetId, missionId: entry.towAssist.missionId,
+          reason: 'job_released',
+        });
+      } catch { /* advisory */ }
+      entry.towAssist = null;
+    }
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
     if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
     if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
@@ -3036,6 +3058,215 @@ export const npcJobsRuntime = {
       this._heaveToLease = null;
     }
     return true;
+  },
+
+  // ── SF-138 — hired tow ───────────────────────────────────────────────────────────────────────
+  // A hail (or any caller) can lease a working tug/tender/salvor to haul a real body to a real
+  // destination. The lease claims the hull like the yard call-out does; the tug then approaches,
+  // binds an ordinary npc_tow attachment, and drags the body to `destPos`. Payment is NEVER a
+  // flag: the hire itself may bill a fee, but whatever the body is worth is settled by the
+  // destination owner only when the body physically arrives (missions count the pool at the sink).
+
+  requestTowAssist(workerEntityId, targetEntityId, destPos, {
+    claimId = null,
+    holder = 'towAssist',
+    missionId = null,
+    feeCr = 0,
+    rangeW = null,
+    deliverW = null,
+    timeoutS = TOW_ASSIST_TIMEOUT_S,
+  } = {}) {
+    const state = this.state;
+    const entities = state && state.entities;
+    const worker = workerEntityId != null && entities ? entities.get(workerEntityId) : null;
+    if (!worker || worker.alive === false || !worker.pos) return { granted: false, reason: 'no_worker' };
+    const entry = this._entryForEntity(workerEntityId);
+    const jobId = entry && entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    if (!entry || !jobId) return { granted: false, reason: 'no_job' };
+    if (!entry.job || !TOW_ASSIST_KINDS.has(entry.job.kind)) return { granted: false, reason: 'not_a_mover' };
+    if (entry.towAssist) return { granted: false, reason: 'already_hired' };
+    const target = targetEntityId != null && entities ? entities.get(targetEntityId) : null;
+    // Same towability gate the tug's own job uses: a real loose cargo body, never scenery.
+    if (!isTowableCargoTarget(target)) return { granted: false, reason: 'not_towable' };
+    if (!destPos || !Number.isFinite(destPos.x) || !Number.isFinite(destPos.z)) {
+      return { granted: false, reason: 'no_destination' };
+    }
+    const reach = Number.isFinite(rangeW) && rangeW > 0 ? rangeW : Infinity;
+    if (Math.hypot(target.pos.x - worker.pos.x, target.pos.z - worker.pos.z) > reach) {
+      return { granted: false, reason: 'out_of_reach' };
+    }
+    const cleanClaim = cleanClaimId(claimId) || `tow-assist:${String(workerEntityId)}:${String(targetEntityId)}`;
+    const out = this.claimControl(jobId, { claimId: cleanClaim, holder });
+    if (!out || out.granted !== true) {
+      return { granted: false, reason: out && out.reason || 'claim_refused' };
+    }
+    entry.towAssist = {
+      claimId: cleanClaim,
+      targetId: targetEntityId,
+      destPos: { x: Number(destPos.x), z: Number(destPos.z) },
+      missionId: missionId != null ? String(missionId) : null,
+      phase: 'approach',
+      // The destination owner may name a wider settle ring than the default drop — a mission
+      // berth counts at ITS radius, so the assist and the contract cross the same boundary.
+      deliverW: Number.isFinite(deliverW) && deliverW > 0 ? deliverW : TOW_ASSIST_DELIVER_WU,
+      startedAtSimT: finite(state.simTime, 0),
+      timeoutS: Math.max(5, finite(timeoutS, TOW_ASSIST_TIMEOUT_S)),
+    };
+    if (feeCr > 0 && this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('economy:chargeCredits', {
+          amount: Math.round(feeCr),
+          reason: 'tow_assist',
+          label: 'TOW ASSIST',
+        });
+      } catch { /* the hire stands; a failed charge event retries nowhere by design */ }
+    }
+    return { granted: true, jobId, claimId: cleanClaim, targetId: targetEntityId };
+  },
+
+  towAssistState(jobId) {
+    const entry = this._byId()[jobId];
+    const a = entry && entry.towAssist;
+    return a ? { phase: a.phase, targetId: a.targetId, missionId: a.missionId } : null;
+  },
+
+  _stepTowAssists() {
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (entry && entry.towAssist) this._stepTowAssist(entry, jobId);
+    }
+  },
+
+  _stepTowAssist(entry, jobId) {
+    const assist = entry.towAssist;
+    const state = this.state;
+    const hull = entry.entityId != null && state.entities ? state.entities.get(entry.entityId) : null;
+    const target = assist.targetId != null && state.entities ? state.entities.get(assist.targetId) : null;
+    const simT = finite(state.simTime, 0);
+    const leaseGone = !entry.control || entry.control.claimId !== assist.claimId;
+    const timedOut = simT - assist.startedAtSimT > assist.timeoutS;
+    if (!hull || hull.alive === false || !hull.pos || !target || target.alive === false || !target.pos
+      || leaseGone || timedOut) {
+      const reason = !hull || hull.alive === false ? 'hull_lost'
+        : !target || target.alive === false ? 'target_lost'
+        : timedOut ? 'timeout' : 'lease_released';
+      this._finishTowAssist(entry, jobId, reason);
+      return;
+    }
+    if (assist.phase === 'tow') {
+      const attachments = this._combatAttachments();
+      const attachment = entry.towAttachmentId != null && attachments && typeof attachments.get === 'function'
+        ? attachments.get(entry.towAttachmentId) : null;
+      if (!attachment || attachment.state !== 'active') {
+        // The line snapped under the load — go back and re-latch rather than abandoning the hire.
+        this._clearTugAttachment(entry, 'npc_tow_assist_snapped');
+        assist.phase = 'approach';
+      }
+    }
+    if (assist.phase === 'approach') {
+      const dx = target.pos.x - hull.pos.x;
+      const dz = target.pos.z - hull.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const aim = Math.atan2(dz, dx);
+      // Same local-space intent contract every other writer in this file uses: moveZ is the
+      // forward throttle, aimAngle is the desired heading — a world vector in (x, z) reads as
+      // strafe + throttle and flies the hull sideways off the pad.
+      if (Math.abs(shortestAngleDelta(aim, hull.rot || 0)) > CERES_ESCORT_TURN_ONLY_RAD) {
+        this._writeIntent(hull, 0, 0, false, aim, true);
+        return;
+      }
+      if (dist > TOW_ASSIST_APPROACH_WU) {
+        this._writeIntent(hull, 0, clamp(dist / 220, 0.2, CERES_ESCORT_MAX_THROTTLE), dist > 1200, aim, false);
+        return;
+      }
+      this._writeIntent(hull, 0, 0, false, aim, true);
+      if (!this._attachTowAssist(entry, hull, target)) return; // stays in approach, retries next tick
+      assist.phase = 'tow';
+      return;
+    }
+    // phase 'tow': drag the body to the sink; whoever owns the pad scores the delivery.
+    const dx = assist.destPos.x - hull.pos.x;
+    const dz = assist.destPos.z - hull.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const targetDist = Math.hypot(assist.destPos.x - target.pos.x, assist.destPos.z - target.pos.z);
+    if (targetDist <= (assist.deliverW || TOW_ASSIST_DELIVER_WU)) {
+      this._writeIntent(hull, 0, 0, false, hull.rot || 0, true);
+      const done = { jobId, workerId: hull.id, targetId: target.id, missionId: assist.missionId };
+      this._finishTowAssist(entry, jobId, 'delivered');
+      if (this.bus && typeof this.bus.emit === 'function') {
+        try {
+          this.bus.emit('npcJobs:towAssistComplete', done);
+        } catch { /* advisory */ }
+      }
+      return;
+    }
+    const aim = Math.atan2(dz, dx);
+    if (Math.abs(shortestAngleDelta(aim, hull.rot || 0)) > CERES_ESCORT_TURN_ONLY_RAD) {
+      this._writeIntent(hull, 0, 0, false, aim, true);
+      return;
+    }
+    this._writeIntent(hull, 0, clamp(dist / 260, 0.15, CERES_ESCORT_MAX_THROTTLE), false, aim, false);
+  },
+
+  _attachTowAssist(entry, hull, target) {
+    const attachments = this._combatAttachments();
+    if (!attachments) return false;
+    pinOccupationalLatch(target);
+    stampNpcMasslineHead(hull, 'frame_coupler');
+    const created = attachments.create({
+      defId: NPC_TOW_ATTACHMENT_DEF_ID,
+      ownerId: hull.id,
+      targetId: target.id,
+      controlMode: NPC_LINE_CONTROL_MODE,
+      sourceWorld: { x: hull.pos.x, y: 0, z: hull.pos.z },
+      targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
+    });
+    if (!created || created.ok !== true || !created.attachment) {
+      unpinOccupationalLatch(target);
+      return false;
+    }
+    const attachment = created.attachment;
+    const jobId = entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    entry.towAttachmentId = attachment.id;
+    entry.towTargetId = target.id;
+    this._goneIndexDirty = true;
+    entry.towOwnerRef = hull;
+    entry.towTargetRef = target;
+    if (hull.data) {
+      hull.data.npcTowAttachmentId = attachment.id;
+      hull.data.npcTowJobId = jobId;
+    }
+    target.data = target.data || {};
+    target.data.npcTowAttachmentId = attachment.id;
+    target.data.npcTowedByJobId = jobId;
+    return true;
+  },
+
+  _finishTowAssist(entry, jobId, reason) {
+    const assist = entry.towAssist;
+    if (!assist) return;
+    entry.towAssist = null;
+    this._clearTugAttachment(entry, `npc_tow_assist_${reason}`);
+    // A mission-owned hire that ends because the destination already settled (contract swept
+    // its target, or a competitor delivered first) is a CLOSED outcome, not a loss — the owning
+    // system's receipt is the only verdict that event could ever repeat.
+    const missionStillActive = assist.missionId != null
+      && ((this.state.missions && this.state.missions.active) || []).some((m) => (
+        m && m.status === 'active' && String(m.id) === String(assist.missionId)
+      ));
+    const suppressLost = assist.missionId != null && !missionStillActive;
+    if (reason !== 'delivered' && !suppressLost
+      && this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('npcJobs:towAssistLost', {
+          jobId, targetId: assist.targetId, missionId: assist.missionId, reason,
+        });
+      } catch { /* advisory */ }
+    }
+    if (entry.control && entry.control.claimId === assist.claimId) {
+      this.releaseControl(jobId, assist.claimId);
+    }
   },
 
   /** Owner-facing scalar evidence for PERF-05; generic owner timing remains in perfRuntime. */
@@ -3442,6 +3673,7 @@ export const npcJobsRuntime = {
     }
     this._stepPlayerTenderDispatch(dt);
     this._stepCrewResponse(dt);
+    this._stepTowAssists();
     // The Ceres discovery sweeps poll the whole living-actor set. Latency-sensitive arrivals already
     // trigger adoption through wreckEcology:spawned directly, and entity spawn/kill events dirty the
     // sweep, so between events a 60 Hz poll only re-confirms an unchanged answer. Poll on the
