@@ -1,6 +1,8 @@
+import { collectLodTriangleCounts } from './partsManifestMetrics.mjs';
+
 // "all" means every source mesh primitive, including the authored LODs. This is
 // source catalog metadata, not a runtime draw-count or performance measurement.
-export function measureSourceGlbMetadata(bytes) {
+export function measureSourceGlbMetadata(bytes, { triangleMetric = 'all' } = {}) {
   if (bytes.length < 20 || bytes.readUInt32LE(0) !== 0x46546c67 || bytes.readUInt32LE(4) !== 2
     || bytes.readUInt32LE(8) !== bytes.length || bytes.readUInt32LE(16) !== 0x4e4f534a) {
     throw new Error('Invalid source GLB header');
@@ -18,11 +20,16 @@ export function measureSourceGlbMetadata(bytes) {
     tris += accessor.count / 3;
   }
   if (!tris) throw new Error('Empty source triangle geometry');
+  if (!['all', 'lod0'].includes(triangleMetric)) throw new Error('Unsupported source triangle metric');
+  if (triangleMetric === 'lod0') {
+    tris = collectLodTriangleCounts(gltf).lod0;
+    if (!tris) throw new Error('Empty source LOD0 geometry');
+  }
   return { bytes: bytes.length, tris, partId: gltf.asset?.extras?.spacefaceAsset?.partId };
 }
 export function assertSourceManifestMetadata(row, bytes) {
-  const measured = measureSourceGlbMetadata(bytes);
-  if (row.id !== measured.partId || row.triangleMetric !== 'all' || row.bytes !== measured.bytes || row.tris !== measured.tris) {
+  const measured = measureSourceGlbMetadata(bytes, { triangleMetric: row.triangleMetric });
+  if (row.id !== measured.partId || row.bytes !== measured.bytes || row.tris !== measured.tris) {
     throw new Error(`${row.id}: stale source manifest bytes/triangles or wrong asset identity`);
   }
   return measured;

@@ -9235,8 +9235,8 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/ceres_breaker.glb",
-      "tris": 44698,
-      "bytes": 4587536,
+      "tris": 44846,
+      "bytes": 4606960,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

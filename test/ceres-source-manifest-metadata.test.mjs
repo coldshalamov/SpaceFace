@@ -23,3 +23,19 @@ test('source metadata counter refuses malformed or truncated GLBs',()=>{
   const bytes=fs.readFileSync(new URL(`../assets/ships/parts/${row.file}`,import.meta.url));
   assert.throws(()=>measureSourceGlbMetadata(bytes.subarray(0,bytes.length-1)),/Invalid source GLB/);
 });
+
+test('all three workfleet source rows use their declared LOD0 count and actual byte length',()=>{
+  for(const id of ['wholeship_ceres_breaker','place_ceres_section_cradle','place_ceres_breaker_cutter_head']){
+    const row=manifest.parts.find(p=>p.id===id);assert.ok(row,id);
+    assert.equal(row.triangleMetric,'lod0');
+    const bytes=fs.readFileSync(new URL(`../assets/ships/parts/${row.file}`,import.meta.url));
+    const measured=assertSourceManifestMetadata(row,bytes);
+    assert.equal(measured.bytes,bytes.length);assert.ok(measured.tris>0);
+    assert.throws(()=>assertSourceManifestMetadata({...row,bytes:row.bytes-1},bytes),/stale source manifest/);
+    assert.throws(()=>assertSourceManifestMetadata({...row,tris:row.tris+1},bytes),/stale source manifest/);
+    assert.throws(()=>assertSourceManifestMetadata({...row,triangleMetric:'all'},bytes),/stale source manifest/);
+    assert.throws(()=>assertSourceManifestMetadata({...row,triangleMetric:'bogus'},bytes),/Unsupported source triangle metric/);
+    if(id==='wholeship_ceres_breaker')assert.throws(
+      ()=>assertSourceManifestMetadata({...row,bytes:4587536,tris:44698},bytes),/stale source manifest/);
+  }
+});
