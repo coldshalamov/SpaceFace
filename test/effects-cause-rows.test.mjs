@@ -354,7 +354,10 @@ test('release, machinery, undock, jettison and planet cues keep a shape', () => 
   const releaseAt = vfx.indexOf('_onTetherRelease(p) {');
   const releaseBody = vfx.slice(releaseAt, vfx.indexOf('_onTetherReleaseRated(p) {', releaseAt));
   assert.match(releaseBody, /releaseCutMark\(/);
-  assert.equal(releaseBody.includes('SPR_FLASH'), false);
+  // c11f89f8e restored the release's paired endpoint flashes: exactly two anisotropic SPR_FLASH
+  // spawns rolled along the line (structure at the severed ends, never a radial blast card). The
+  // drawn cut mark above stays non-sprite.
+  assert.equal((releaseBody.match(/SPR_FLASH/g) || []).length, 2);
   assert.equal(machineryPicture({ kind: 'sensor_sweep' }, false, false).advance, true);
   assert.equal(machineryPicture({ powered: false }, false, false).advance, false);
   assert.equal(machineryPicture({ powered: false }, false, false).vanish, false);
