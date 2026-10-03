@@ -150,8 +150,9 @@ ok('lower-is-better stats tone worse when they rise');
 
 // ---- NXI-222: a signed delta never wraps its sign or unit ----
 const neg = formatPreviewDelta({ delta: -3.2, label: 'Max speed' });
-assert.equal(neg.replace(/\u00A0/g, ' '), '-3.2 max speed');
+assert.equal(neg.replace(/\u00A0/g, ' '), '−3.2 max speed');
 assert.ok(!neg.includes(' '), 'signed delta must carry no breakable space');
+assert.ok(!neg.includes('-'), 'signed delta must carry no breakable hyphen-minus');
 const pos = formatPreviewDelta({ delta: 12, label: 'Shield' });
 assert.equal(pos.replace(/\u00A0/g, ' '), '+12 shield');
 ok('signed deltas glue amount and unit (NBSP, unbreakable)');

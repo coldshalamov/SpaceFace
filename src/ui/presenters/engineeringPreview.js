@@ -510,12 +510,14 @@ export function formatPreviewDelta(row) {
   if (!row || !Number.isFinite(row.delta)) return '';
   const d = row.delta;
   if (Math.abs(d) < 0.05) return '';
-  const sign = d > 0 ? '+' : '';
+  // U+2212 MINUS, not HYPHEN-MINUS: a plain '-' is a line-break opportunity, so in the narrow
+  // callout the sign could orphan on one line and the bare number on the next (NXI-222).
+  const sign = d > 0 ? '+' : '−';
   const shown = Math.abs(d) >= 100
-    ? sign + Math.round(d)
+    ? sign + Math.round(Math.abs(d))
     : (Number.isInteger(d)
-      ? sign + d
-      : sign + (Math.round(d * 10) / 10));
+      ? sign + Math.abs(d)
+      : sign + (Math.round(Math.abs(d) * 10) / 10));
   // NBSP, not a breakable space: in the narrow callout a signed amount must never
   // wrap away from its unit and read as a separate item (NXI-222).
   return (shown + ' ' + String(row.label || row.key).toLowerCase()).replace(/ /g, '\u00A0');

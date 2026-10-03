@@ -468,6 +468,11 @@ export const localmapScreen = {
       if (!btn) return;
       applyTradeNavigation(this._ctx, btn.getAttribute('data-destination'), btn.getAttribute('data-commodity'));
     });
+    // NXI-223: keyboard/pad focus on a wrapped route reveals it once the list's bounds settle.
+    this._routesPanel.addEventListener('focusin', (ev) => {
+      const btn = ev.target && ev.target.closest && ev.target.closest('[data-act="route-nav"]');
+      if (btn) this._scheduleSettledReveal(btn);
+    });
     // Auto-fit the canvas to its container (DPI-scaled).
     this._ro = new ResizeObserver(() => this._resize());
     this._ro.observe(this._body);
@@ -724,7 +729,53 @@ export const localmapScreen = {
     }
     if (html === this._routesSig) return;
     this._routesSig = html;
+    // NXI-223: a repaint rebuilds every route node, so a focused route loses focus and, once its
+    // long name wraps taller, can sit outside the scrolled viewport. Carry the player's focus
+    // across by route identity and reveal it only after the new markup has laid out — bounds read
+    // before the wrap settles are stale.
+    const focusKey = this._focusedRouteKey();
     panel.innerHTML = html;
+    this._restoreRouteFocus(focusKey);
+  },
+
+  _focusedRouteKey() {
+    try {
+      const panel = this._routesPanel;
+      const doc = panel && panel.ownerDocument;
+      const active = doc && doc.activeElement;
+      if (!active || !active.closest || !panel.contains(active)) return null;
+      const btn = active.closest('[data-act="route-nav"]');
+      if (!btn) return null;
+      return `${btn.getAttribute('data-destination') || ''}|${btn.getAttribute('data-commodity') || ''}`;
+    } catch (_) { return null; }
+  },
+
+  _restoreRouteFocus(key) {
+    if (!key || !this._routesPanel) return;
+    const [dest, comm] = String(key).split('|');
+    let btn = null;
+    for (const cand of this._routesPanel.querySelectorAll('[data-act="route-nav"]')) {
+      if ((cand.getAttribute('data-destination') || '') === dest
+        && (cand.getAttribute('data-commodity') || '') === comm) { btn = cand; break; }
+    }
+    if (!btn) return;
+    try { btn.focus(); } catch (_) { /* a headless host has no focus */ }
+    this._scheduleSettledReveal(btn);
+  },
+
+  // Reveal once the repainted list has actually laid out: two frames — the first lands the new
+  // geometry, the second measures it. scrollIntoView with block:'nearest' is a no-op when the
+  // result is already fully visible.
+  _scheduleSettledReveal(el) {
+    const reveal = () => {
+      try {
+        if (el && el.isConnected !== false && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      } catch (_) { /* cosmetic */ }
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(reveal));
+    else reveal();
   },
 
   _close() {

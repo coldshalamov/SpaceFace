@@ -190,9 +190,12 @@ function withCargoMass(player, usedMass) {
 function plusMinus(value, digits = 1) {
   const scale = Math.pow(10, digits);
   const rounded = Math.round(finite(value, 0) * scale) / scale;
-  if (!Number.isFinite(rounded) || Object.is(rounded, -0)) return '0';
-  const text = Number.isInteger(rounded) ? String(rounded) : String(rounded.toFixed(digits));
-  return rounded > 0 ? `+${text}` : text;
+  if (!Number.isFinite(rounded) || Object.is(rounded, -0) || rounded === 0) return '0';
+  // U+2212, not HYPHEN-MINUS: a narrow comparison must never wrap the sign away from the
+  // amount and read it as a separate item (NXI-222).
+  const abs = Math.abs(rounded);
+  const text = Number.isInteger(abs) ? String(abs) : String(abs.toFixed(digits));
+  return rounded > 0 ? `+${text}` : `−${text}`;
 }
 
 function whyAttr(text) {
