@@ -9871,6 +9871,13 @@ export const render = {
         return { skipped: true, reason: 'not-loading' };
       }
       const recookSectorId = state.world && state.world.currentSectorId;
+      // Same-sector evidence must stay valid across the whole keep-GPU path: a
+      // sector:enter landing inside the 4s drain or just before the rehearsal makes
+      // the resident set (and the sector this veil belongs to) stale mid-flight.
+      const recookEnterSerial = state.world && state.world.enterSerial;
+      const recookStale = () => !state.world
+        || state.world.enterSerial !== recookEnterSerial
+        || state.world.currentSectorId !== recookSectorId;
       if (this._sessionLiveSectorCookedId === recookSectorId && this._contextLost !== true) {
         // Same-sector F9: GPU programs and opening meshes are already resident.
         // Dumping them and rebuilding made the next flight present compile 37
@@ -9891,6 +9898,7 @@ export const render = {
           ? performance.now() : Date.now());
         const buildDeadline = recookNow() + 4000;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length && recookNow() < buildDeadline) {
+          if (recookStale()) break;
           this._drainPendingMeshBuilds();
           await yieldToBrowser();
         }
@@ -9899,7 +9907,9 @@ export const render = {
         const rehearsalStarted = recookNow();
         let rehearsalOutcome = 'resolved';
         try {
-          if (recookRoute === POST_PROCESS_ROUTE.BLOOM && recookCamera
+          if (recookStale()) {
+            rehearsalOutcome = 'skipped';
+          } else if (recookRoute === POST_PROCESS_ROUTE.BLOOM && recookCamera
               && this.bloom && typeof this.bloom.rehearseScenePass === 'function') {
             this.bloom.rehearseScenePass(this.scene, recookCamera);
           } else if (recookCamera && typeof renderer.render === 'function') {
@@ -10266,7 +10276,7 @@ export const render = {
         collectMeshPresentationEntities(state, presentation);
         for (const entity of presentation) {
           if (!entity || entity.id == null || cookSeen.has(entity.id)) continue;
-          // Field-rock records keep their own deliberate coverage (8-key variant
+          // Field-rock records keep their own deliberate coverage (per-variant key
           // cap + proximity promote + the prewarmed instanced pool); widening them
           // here would build standalone meshes the pool contract never expects.
           if (entity.type === 'asteroid') continue;
@@ -12027,6 +12037,37 @@ export const render = {
           if (superseded) return superseded;
         }
         const firstFlightEntities = collectFirstFlightCookEntities(state);
+        // Same widening the opening census applies (PQ-210.02): the ledger mount paths —
+        // dressing-resident rows and far-resident actors — produce visible bodies on arrival
+        // that have no member in the entityList collect. Under the shell latch they aren't
+        // render-relevant, so without this union they can't enqueue, drain, or build until
+        // the latch releases + a residency poll + a sliced drain (~1.75 s of late mount
+        // behind the veil). The collected presentation set through the ordinary relevance
+        // policy with the shell gates bypassed answers the same question the post-release
+        // reconcile does — the spatial-key-memoized grid walk the poll already pays.
+        {
+          const cookSeen = new Set();
+          for (const entity of firstFlightEntities) {
+            if (entity && entity.id != null) cookSeen.add(entity.id);
+          }
+          const presentation = this._presentationMeshScratch
+            || (this._presentationMeshScratch = []);
+          presentation.length = 0;
+          collectMeshPresentationEntities(state, presentation);
+          for (const entity of presentation) {
+            if (!entity || entity.id == null || cookSeen.has(entity.id)) continue;
+            // Field-rock records keep their own deliberate coverage (variant-key cook cap
+            // + proximity promote + the prewarmed instanced pool); widening them here
+            // would build standalone meshes the pool contract never expects.
+            if (entity.type === 'asteroid') continue;
+            if (!isEntityRenderRelevant(entity, state, null, { bypassShellGates: true })
+                && !entityWithinPlayerRadius(entity, state,
+                  renderResidencyRadius(state, 'prefetch', entity))) continue;
+            cookSeen.add(entity.id);
+            firstFlightEntities.push(entity);
+          }
+          presentation.length = 0;
+        }
         state.render.liveSectorFirstFlightIds = new Set(
           firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
         );
@@ -12059,22 +12100,16 @@ export const render = {
         // The whole destination cohort's procedural builds used to drain unbounded inside this
         // same task — the last un-sliced brick on the enter path, visible as a hard freeze of the
         // jump-transition visuals. Bounded slices + a frame yield between them keep the transition
-        // presenting; same builds, same order. The late-present gate can refuse a bounded drain
-        // with zero head progress — after two consecutive refusals fall back to one unbounded
-        // pass so completion stays certain (the veil still lifts on pipelinePrecompile, so the
-        // first live frame is identical either way).
+        // presenting; same builds, same order. A refused late-present start is the only
+        // zero-progress outcome (every call the gate admits consumes ≥1 head), and the gate's
+        // own skip counter force-starts after HEAVY_ADMISSION_EVENTUAL_SKIP refusals — so the
+        // loop terminates on bounded slices alone and an unbounded tail drain never runs inside
+        // the veil (the veil still lifts on pipelinePrecompile, so the first live frame is
+        // identical either way).
         let jumpBuilt = 0;
-        let censusStallSlices = 0;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
-          const headBeforeSlice = this._meshBuildQueueHead;
           jumpBuilt += this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET) || 0;
           if (this._meshBuildQueueHead >= this._meshBuildQueue.length) break;
-          if (this._meshBuildQueueHead === headBeforeSlice) {
-            if (++censusStallSlices >= 2) {
-              jumpBuilt += this._drainMeshBuildQueue(Number.POSITIVE_INFINITY) || 0;
-              break;
-            }
-          } else censusStallSlices = 0;
           await yieldLiveSectorGpu();
           if (cookStale()) return cookSuperseded;
         }
@@ -13820,6 +13855,17 @@ export const render = {
         if (recook) {
           // Keep the cooked GPU set and opening receipt. Clearing them made F9's
           // next present an opening first-draw that compiled 37 extra programs.
+          // Latches keyed to the pre-restore sim clock must still reset: a stale
+          // firstFlightResidencyHoldUntil can sit ABOVE the rewound simTime (a save
+          // written ~33 min in restores sim<<until and freezes streaming for the
+          // difference) or below it (the finite stamp then masks the <20 s fallback
+          // and the restored set gets no hold at all). The shell latch armed by an
+          // enter whose listener tail this restore swallowed would otherwise pin
+          // residencyEvict shut for the whole session. The restored sector:enter
+          // re-arms and re-stamps each of these through its proper owners.
+          state.render.firstPlayableFrameAt = null;
+          state.render.firstFlightResidencyHoldUntil = null;
+          state.render.sectorShellAdmission = false;
           reattachResidentGpuMeshes(this);
           resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
           if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
@@ -16440,13 +16486,28 @@ export const render = {
         this._unbindPresentationMesh(id, mesh);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(mesh);
-        disposeObject(mesh);
+        // Dead-class evicts are deliberately not gated by the shell latch — ghost meshes
+        // must leave the picture — but only bookkeeping needs to land inline. The
+        // traverse + GL-free tail rides the bounded despawn-dispose drain like the
+        // kill-burst path, so a mass-depart sweep stops paying its dispose storm inside
+        // the presented transition frame.
+        if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+        this._despawnDisposeQueue.push(mesh);
         this._meshes.delete(id);
         this._meshesVersion += 1;
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
         stats.evicted++;
         continue;
+      }
+      // While the shell latch is set, rows whose home sector already departed are the
+      // cook's teardown sweep's business — running authored-upgrade classification on
+      // them every latched poll pays camera trig + retry scans on entities that cannot
+      // admit anyway. Skip by the cheap home-sector compare; the first unlatched poll
+      // classifies them normally.
+      if (residencyShellLatched) {
+        const homeSectorId = entity.homeSectorId || (entity.data && entity.data.homeSectorId);
+        if (homeSectorId && homeSectorId !== (state.world && state.world.currentSectorId)) continue;
       }
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
     }

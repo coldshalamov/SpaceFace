@@ -885,9 +885,7 @@ export function authoredBootstrapPreloadPlan() {
 }
 
 function entityOnOpeningTable(entity, state) {
-  const player = state && state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(state.playerId)
-    : (state && state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+  const player = resolvePlanarPlayer(state);
   if (!player || !player.pos || !entity || !entity.pos) return false;
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
@@ -993,7 +991,12 @@ function isExplicitFirstFlightCookEntity(entity) {
 }
 
 const FIRST_FLIGHT_ROCK_TRAVEL_SECONDS = 3;
-export const FIRST_FLIGHT_ROCK_COOK_CAP = 8;
+// Bounds distinct cook keys (typeId|tint|variant), not raw promotes: the shipped field
+// key space tops out at 5 typeIds × 5 hash variants = 25, so a cap of 25 is
+// coverage-until-exhausted for every field while still bounding total promotes. The
+// previous 8 covered only the nearest third of a tier-1 field — the other ~17 variant
+// keys mounted cold on the live frame (pop + first-variant upload hitch).
+export const FIRST_FLIGHT_ROCK_COOK_CAP = 25;
 // Must match visualFactory.hashId(id) % ASTEROID_INSTANCE_VARIANT_COUNT.
 const FIRST_FLIGHT_ASTEROID_VARIANT_COUNT = 5;
 
@@ -1017,15 +1020,22 @@ export function asteroidFirstFlightCookKey(entity) {
   return `${asteroidFirstFlightTypeKey(entity)}|${variant}`;
 }
 
-function playerPlanarDistanceSq(entity, state) {
-  const player = state && state.entities && typeof state.entities.get === 'function'
+function resolvePlanarPlayer(state) {
+  return state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : (state && state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+}
+
+function planarDistanceSqToPlayer(entity, player) {
   if (!player || !player.pos || !entity || !entity.pos) return Infinity;
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return Infinity;
   return dx * dx + dz * dz;
+}
+
+function playerPlanarDistanceSq(entity, state) {
+  return planarDistanceSqToPlayer(entity, resolvePlanarPlayer(state));
 }
 
 export function firstFlightRockCookRadiusWu(state) {
@@ -1039,6 +1049,9 @@ export function collectFirstFlightCookEntities(state) {
   const asteroids = [];
   const rockRadius = firstFlightRockCookRadiusWu(state);
   const rockRadiusSq = rockRadius * rockRadius;
+  // The player resolve hoists out of the entity walk — resolving per asteroid paid a
+  // Map.get (or an entityList scan) per row inside the cook's unyielded collect window.
+  const cookPlayer = resolvePlanarPlayer(state);
   for (const entity of list) {
     if (!entity || entity.alive === false) continue;
     if (isFirstFlightCookEntity(entity, state)) {
@@ -1046,7 +1059,7 @@ export function collectFirstFlightCookEntities(state) {
       continue;
     }
     if (entity.type !== 'asteroid') continue;
-    const distanceSq = playerPlanarDistanceSq(entity, state);
+    const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
     // Sort reads the distance the filter just paid for — a per-comparison
     // playerPlanarDistanceSq call re-does entities.get(playerId) O(A·logA) times
     // inside the cook's unyielded collect window.

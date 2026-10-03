@@ -1049,7 +1049,29 @@ export const world = {
     // pre-reset payload mismatched forever.
     state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
     state.world.enterSerial = state.enterSerialSeq;
-    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport, enterEpoch: state.world.enterSerial });
+    const enterPayload = {
+      sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
+      enterEpoch: state.world.enterSerial,
+      // Tail-drain listeners run ~1-5 presented frames late (32-listener slice at
+      // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
+      // stamps that want the enter's own clock don't wobble by the window length.
+      enterSimTime: state.simTime,
+    };
+    // The shell latch must cover the frames between this emit and the renderer's own
+    // tail-position sector:enter listener — the 32-listener slice drains 4/frame after
+    // the present, so the listener's own arm lands ~5 presented frames late while
+    // _meshReconcileDirty is already armed in-step by the residency mint. The first
+    // presented post-enter frame would otherwise run the departing-cohort dispose
+    // storm unlatched inside the magic frame. Arm at emit time, gated on the cook's
+    // own predicate: a latch the cook can't own (software GPU, recook-keep, continuous,
+    // non-flight) would pin the reconcile evict path shut — those enters keep arming
+    // and releasing through the listener's own path.
+    if (state.render
+      && typeof state.render.sectorEnterCookWillRun === 'function'
+      && state.render.sectorEnterCookWillRun(enterPayload) === true) {
+      state.render.sectorShellAdmission = true;
+    }
+    this.bus.emit('sector:enter', enterPayload);
     return active;
   },
 
