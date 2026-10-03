@@ -1,3 +1,5 @@
+import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 // SG-02 dynamic body owner.
 //
 // The same authority powers the focused laboratory checks and the explicit production
@@ -34,7 +36,7 @@ export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_WORLD_SNAPSHOT_SCHEMA_VERSION = 3;
 // Independent of envelope schema: NEXT schema 2 also carried shallow geometry.
 // Missing/mismatched revisions require authoritative entity-state reconstruction.
-export const SG02_NATIVE_GEOMETRY_REVISION = 'xz-support-prism-v2';
+export const SG02_NATIVE_GEOMETRY_REVISION = 'xz-support-prism-obb-v3';
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // Contact-force receipts are gameplay signals, not solver inputs. A zero threshold makes every
@@ -4042,7 +4044,13 @@ function samePlanarGeometryParameters(a, b) {
 function matchesPlanarPrismGeometry(world, R, parameters) {
   let matches = true;
   world.forEachCollider((collider) => {
-    if (!matches || collider.shapeType() !== R.ShapeType.ConvexPolyhedron) return;
+    if (!matches) return;
+    if (collider.shapeType() === R.ShapeType.Cuboid) {
+      const half=collider.halfExtents();
+      matches=!!half && half.y === Math.fround(planarProxyObbHalfHeight(half.x,half.z));
+      return;
+    }
+    if (collider.shapeType() !== R.ShapeType.ConvexPolyhedron) return;
     const vertices = collider.shape.vertices;
     if (!vertices || vertices.length < 18 || vertices.length % 3 !== 0) { matches = false; return; }
     const planar = [];
@@ -4062,32 +4070,6 @@ function matchesPlanarPrismGeometry(world, R, parameters) {
   return matches;
 }
 
-// The solver is constrained to XZ, but Rapier computes contacts in 3D. A shallow
-// prism permits a roof normal along locked Y. Give each projected convex piece a
-// roof farther away than its enclosing planar radius, plus the contact envelope.
-// XZ coordinates/decomposition and zero-density authored mass stay unchanged.
-export function planarProxyPrismHalfHeight(verts, scale) {
-  let minX = Infinity; let maxX = -Infinity;
-  let minZ = Infinity; let maxZ = -Infinity;
-  let coordinateScale = 0;
-  for (const v of verts) {
-    const x = Math.fround(v.x * scale); const z = Math.fround(v.z * scale);
-    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-    minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
-    coordinateScale = Math.max(coordinateScale, Math.abs(x), Math.abs(z));
-  }
-  const cx = (minX + maxX) * 0.5; const cz = (minZ + maxZ) * 0.5;
-  let reach = 0;
-  for (const v of verts) {
-    reach = Math.max(reach, Math.hypot(Math.fround(v.x * scale) - cx, Math.fround(v.z * scale) - cz));
-  }
-  // Predictive-contact distance and allowed penetration do not inflate shapes.
-  // Adding those absolute world distances here destroys similarity at tiny scales.
-  // Keep only a relative f32 margin for vertex conversion/support arithmetic and
-  // local offsets. The roof lies strictly beyond the projected enclosing radius.
-  const roundoff = 32 * (2 ** -23) * Math.max(coordinateScale, reach);
-  return reach + roundoff;
-}
 
 function convexPrismDesc(R, verts, scale, parameters) {
   const halfY = planarProxyPrismHalfHeight(verts, scale, parameters);
@@ -4172,7 +4154,7 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
     } else if (primitive.kind === 'obb') {
       desc = R.ColliderDesc.cuboid(
         Math.max(0.01, primitive.hx * scale),
-        Math.max(0.01, primitive.hx * scale),
+        planarProxyObbHalfHeight(Math.max(0.01, primitive.hx * scale), Math.max(0.01, primitive.hz * scale)),
         Math.max(0.01, primitive.hz * scale),
       )
         .setTranslation(primitive.x * scale, 0, primitive.z * scale)
