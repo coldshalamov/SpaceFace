@@ -1,0 +1,133 @@
+{
+  "glbSha256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+  "bytes": 426068,
+  "lods": [
+    {
+      "lod": 0,
+      "groups": [
+        {
+          "node": "LOD0_Fixed",
+          "triangles": 2868,
+          "draws": 3
+        },
+        {
+          "node": "LOD0_ABDOMEN",
+          "triangles": 468,
+          "draws": 1
+        },
+        {
+          "node": "LOD0_PADDLE_STARBOARD",
+          "triangles": 188,
+          "draws": 1
+        },
+        {
+          "node": "LOD0_PADDLE_PORT",
+          "triangles": 188,
+          "draws": 1
+        }
+      ],
+      "triangles": 3712,
+      "draws": 6
+    },
+    {
+      "lod": 1,
+      "groups": [
+        {
+          "node": "LOD1_Fixed",
+          "triangles": 1788,
+          "draws": 3
+        },
+        {
+          "node": "LOD1_PADDLE_STARBOARD",
+          "triangles": 116,
+          "draws": 1
+        },
+        {
+          "node": "LOD1_ABDOMEN",
+          "triangles": 288,
+          "draws": 1
+        },
+        {
+          "node": "LOD1_PADDLE_PORT",
+          "triangles": 116,
+          "draws": 1
+        }
+      ],
+      "triangles": 2308,
+      "draws": 6
+    },
+    {
+      "lod": 2,
+      "groups": [
+        {
+          "node": "LOD2_Fixed",
+          "triangles": 1124,
+          "draws": 3
+        },
+        {
+          "node": "LOD2_ABDOMEN",
+          "triangles": 168,
+          "draws": 1
+        },
+        {
+          "node": "LOD2_PADDLE_STARBOARD",
+          "triangles": 68,
+          "draws": 1
+        },
+        {
+          "node": "LOD2_PADDLE_PORT",
+          "triangles": 68,
+          "draws": 1
+        }
+      ],
+      "triangles": 1428,
+      "draws": 6
+    }
+  ],
+  "materials": [
+    "Material_Ceramic_BroodMembrane",
+    "Material_Ceramic_BroodChitin",
+    "Material_Hull_BroodCarapace"
+  ],
+  "images": 2,
+  "runtimeAccepted": false,
+  "socketPositions": {
+    "SOCKET_BROOD_SIGNAL": [
+      3.1500000953674316,
+      0.21004676818847656,
+      -0.0
+    ],
+    "SOCKET_BROOD_CONTACT_PORT": [
+      11.0,
+      0.0,
+      -3.799999952316284
+    ],
+    "SOCKET_BROOD_CONTACT_STARBOARD": [
+      11.0,
+      0.0,
+      3.799999952316284
+    ],
+    "SOCKET_BROOD_TETHER_DORSAL": [
+      1.2999999523162842,
+      1.9518966674804688,
+      -0.0
+    ]
+  },
+  "motionPivots": {
+    "MOTION_CHARGER_PADDLE_STARBOARD": [
+      -5.300000190734863,
+      0.25,
+      4.25
+    ],
+    "MOTION_CHARGER_PADDLE_PORT": [
+      -5.300000190734863,
+      0.25,
+      -4.25
+    ],
+    "MOTION_CHARGER_ABDOMEN": [
+      -2.0,
+      0.4000000059604645,
+      -0.0
+    ]
+  }
+}

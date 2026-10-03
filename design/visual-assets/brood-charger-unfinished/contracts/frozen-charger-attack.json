@@ -1,0 +1,8 @@
+{
+  "range": 160,
+  "windupTicks": 45,
+  "commitTicks": 144,
+  "recoveryTicks": 84,
+  "speed": 96,
+  "damage": 30
+}
