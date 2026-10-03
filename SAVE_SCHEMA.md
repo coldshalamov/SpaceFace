@@ -11,6 +11,7 @@ Current save version: `14`
 - `cargo`
 - `morrow`
 - `vesper`
+- `bracket`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -19,6 +20,7 @@ Current save version: `14`
 - `world`
 - `entities`
 - `combat`
+- `physics`
 - `bombs`
 - `snares`
 - `charges`
@@ -128,6 +130,7 @@ Current save version: `14`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.bracket` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
 | `$.careerOrigins` | object | {} |
@@ -258,6 +261,7 @@ Current save version: `14`
 | `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
 | `$.onboarding` | null | null |
+| `$.physics` | null | null |
 | `$.player` | object | {} |
 | `$.player.activeShipIndex` | number | 0 |
 | `$.player.boostActive` | boolean | false |

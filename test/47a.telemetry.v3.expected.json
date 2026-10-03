@@ -69,7 +69,7 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "d4ed719b2f6c7dca8adf579cd21e37f6750cfa9a8f110a05e911804e91ce696a",
+    "authoritativeHash": "136268366d4b1ad7ec86ec70b1a24069e63af64e5e67962fc52f4622bd9c09bc",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -213,6 +213,14 @@
     "Contamination check: an uncommitted foreign edit to src/core/flight/propulsionKernel.js (vectoring rework) produced 21d8be77 on the dirty tree — this pin is recorded against the CLEAN HEAD archive (22fa4f8a), the committed truth the gate should guard.",
     "Verified by archive exports: ref (d0dd52e11) reproduces 3dfdeea2 exactly; clean HEAD produces 22fa4f8a.",
     "2026-10-02 merge re-record on af79f0ddb: golden-diff vs origin/master CONTENT_ONLY (zero motion fields merge-attributable); the motion delta vs the prior pin lives inside origin's ANI phase-2 line.",
-    "Trace deltas: +ship:thrust (flight verb), +alert (no colon, unpinnable), hits/damage up on merged combat line, audio:cue down one (dedup fix), presentation cue consolidation."
+    "Trace deltas: +ship:thrust (flight verb), +alert (no colon, unpinnable), hits/damage up on merged combat line, audio:cue down one (dedup fix), presentation cue consolidation.",
+    "2026-10-02 deliberate re-record over 9fac82f34..1c295030a, the same window and the same causes as the legacy envelope. The prior authoritativeHash was d4ed719b2f6c7dca8adf579cd21e37f6750cfa9a8f110a05e911804e91ce696a.",
+    "sim-golden-diff --flight-system v3 --ref 9fac82f34 reproduces the prior hash exactly; VERDICT CONTENT_ONLY — same 15,133-field breakdown",
+    "(cont.) (15,114 $.economy, additive data.derived.boost.* on entities, player.tradeMargins). ZERO motion fields changed.",
+    "Companion physics change in the same commit: SG-02 now round-trips the complete Rapier world snapshot through saves",
+    "(cont.) (warm-start manifolds, pending forces, sleep verdicts, attachment state) and v3 restores serialized boost state on load instead of cancelling it.",
+    "reload@60 now reproduces the uninterrupted hash exactly; previously the reload killed held boost, dropped the first-step impulse",
+    "(cont.) (mass recompute ordering), and lost contact warm-start — every reload inside ticks 4-129 diverged.",
+    "Repeat-20 deterministic; reload baselineSha256 equals run sha256 at 60/90/110/120/140/300/600."
   ]
 }

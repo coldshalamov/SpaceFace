@@ -186,6 +186,9 @@ import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
+// NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
+// the posting used (pure exported read; economy stays the sole stock/market writer).
+import { starvedIndustryNeedFor } from './economy.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -3160,6 +3163,24 @@ export const missions = {
       }
     }
     if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) return false;
+    // NXI-169 — a shortage-backed offer is only as live as the starvation that posted it. A row
+    // planned while the yard's hopper ran empty must not pay the scarcity premium for a delivery
+    // the station no longer requested: re-read the posted need at accept and retire the stale row.
+    // Only the unaccepted board offer retires here — an already-accepted contract keeps its
+    // recorded terms (the NXI-109 guarantee); nothing is cancelled retroactively.
+    if (this._shortageOfferStale(offer)) {
+      if (board && Array.isArray(board.slots)) {
+        board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+      }
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      const yard = stationInfoFor(this.state, offer.destStationId);
+      this.bus.emit('toast', {
+        text: `That relief run is stale — ${(yard && yard.name) || offer.destStationId} no longer needs the feedstock`,
+        kind: 'warn',
+        ttl: 4,
+      });
+      return false;
+    }
     if (offer.storyDisposition) {
       const choice = offer.storyDisposition;
       // Stage irreversible confirmation (story resolves only on ui:endgameConfirm / confirm:true).
@@ -3270,6 +3291,28 @@ export const missions = {
     this._startLongReadObjective(inst);
     this._startWreckBoundStageObjective(inst);
     return true;
+  },
+
+  /**
+   * NXI-169 — true when a shortage-backed economyContract offer's posted need is already
+   * satisfied: the destination yard's hungriest industry input leg is no longer the offered
+   * commodity (the same pure read, starvedIndustryNeedFor, that planned the posting). A blind
+   * read — no market row, unknown station/sector — keeps the offer rather than retiring it.
+   */
+  _shortageOfferStale(offer) {
+    if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery') return false;
+    if (!offer.cause || offer.cause.tag !== 'industry_starved') return false;
+    const cmdtyId = offer.params && offer.params.cmdtyId;
+    const stationId = offer.destStationId;
+    if (!cmdtyId || !stationId) return false;
+    const markets = this.state.economy && this.state.economy.markets;
+    const market = markets ? markets[stationId] : null;
+    const info = stationInfoFor(this.state, stationId);
+    if (!market || !info) return false;
+    const sector = SECTOR_BY_ID.get(offer.destSectorId || info.sectorId);
+    if (!sector) return false;
+    const need = starvedIndustryNeedFor(info.type, sector.tier || 0, market);
+    return !need || need.inputId !== cmdtyId;
   },
 
   _withdrawSetPieceChoiceOffers(selectedOffer) {
