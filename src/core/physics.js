@@ -88,6 +88,9 @@ function opticSplinterHitsOwner(proj) {
 
 export const physics = {
   name: 'physics',
+  // The snapshot payload is a freshly allocated plain object (base64 string + handle map);
+  // nothing in it aliases live WASM state, so the defensive save clone is unnecessary.
+  saveSnapshotOwned: true,
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
@@ -130,6 +133,7 @@ export const physics = {
     this._sg02 = null;
     this._sg02Init = null;
     this._sg02Token = 0;
+    this._pendingSg02Snapshot = null;
     this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
     this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
@@ -304,6 +308,32 @@ export const physics = {
     return this._sg02 != null;
   },
 
+  /**
+   * Save-envelope physics payload. Entity scalars round-trip position and velocity, but a
+   * rebuilt Rapier world loses contact-manifold warm starts, so its first post-load step can
+   * differ by an f32 ulp that then grows downstream. The owner's world snapshot preserves the
+   * solver's private state bit-for-bit; serialize() returns null whenever SG-02 is not the
+   * live authority so non-rapier saves stay untouched.
+   */
+  serialize() {
+    const owner = this._sg02;
+    if (!owner || typeof owner.exportWorldSnapshot !== 'function') return null;
+    try {
+      return owner.exportWorldSnapshot();
+    } catch (err) {
+      console.error('[physics] SG-02 world snapshot export failed', err);
+      return null;
+    }
+  },
+
+  deserialize(payload) {
+    // Stashed until the next SG-02 owner comes up: adoption replaces a fresh owner's empty
+    // world, while an owner that survives the restore keeps its own state (see
+    // _resetSg02AfterLoad). A malformed payload is ignored — the entity-level restore still
+    // rebuilds every body the way older saves always did.
+    this._pendingSg02Snapshot = payload && typeof payload === 'object' ? payload : null;
+  },
+
   async prepareBackend(state, options = {}) {
     const reset = options.reset === true;
     if (!usesSg02DynamicAuthority(state)) {
@@ -311,6 +341,12 @@ export const physics = {
       return true;
     }
 
+    if (options.sg02Snapshot && typeof options.sg02Snapshot === 'object') {
+      // An explicit payload wins over a deserialized stash — the deterministic reload lane
+      // passes the envelope it just wrote so the post-reset owner adopts its own saved world
+      // even though a live owner absorbed the load boundary first.
+      this._pendingSg02Snapshot = options.sg02Snapshot;
+    }
     if (reset) this._disableSg02DynamicAuthority();
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
@@ -475,6 +511,19 @@ export const physics = {
           }
           this._sg02 = owner;
           this._syncSg02FrameOrigin(state);
+          if (this._pendingSg02Snapshot) {
+            const pending = this._pendingSg02Snapshot;
+            this._pendingSg02Snapshot = null;
+            try {
+              const adopted = typeof owner.adoptWorldSnapshot === 'function'
+                && owner.adoptWorldSnapshot(pending, state.entityList);
+              if (!adopted) {
+                console.warn('[physics] SG-02 world snapshot was not adopted; rebuilding bodies from entity state');
+              }
+            } catch (err) {
+              console.warn('[physics] SG-02 world snapshot restore failed; rebuilding bodies from entity state', err);
+            }
+          }
           return owner;
         })
         .catch((err) => {
@@ -572,15 +621,32 @@ export const physics = {
     if (!usesSg02DynamicAuthority(state)) {
       this._disableSg02DynamicAuthority();
     } else if (this._sg02) {
+      // A saved world snapshot outranks the live world: adopting it restores solver state a
+      // scalar rebind can never express — contact-manifold warm starts, island sleep verdicts,
+      // pending force accumulators. When the payload is absent or unusable the ordinary
+      // rebind path below rebuilds exactly the way older saves always did.
+      const pending = this._pendingSg02Snapshot;
+      this._pendingSg02Snapshot = null;
+      let adopted = false;
+      if (pending && typeof this._sg02.adoptWorldSnapshot === 'function') {
+        try {
+          adopted = this._sg02.adoptWorldSnapshot(pending, state.entityList) === true;
+        } catch (err) {
+          adopted = false;
+          console.warn('[physics] SG-02 world snapshot restore failed; rebuilding bodies from entity state', err);
+        }
+      }
       // The player-route restore replaces entity objects but serializes the same authoritative
       // pose. Rebind that fresh player object to the existing Rapier record before prepareBackend
       // syncs it; rebuilding the body from scalars introduces a tiny solver/quaternion drift.
       this._syncSg02FrameOrigin(state);
-      const player = state.entities && state.entities.get
-        ? state.entities.get(state.playerId)
-        : null;
-      if (player && typeof this._sg02.rebindEntity === 'function') {
-        this._sg02.rebindEntity(player);
+      if (!adopted) {
+        const player = state.entities && state.entities.get
+          ? state.entities.get(state.playerId)
+          : null;
+        if (player && typeof this._sg02.rebindEntity === 'function') {
+          this._sg02.rebindEntity(player);
+        }
       }
     }
     // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the

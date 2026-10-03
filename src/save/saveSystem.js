@@ -162,7 +162,11 @@ const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'bankVel',
   'activity',
 ]);
-const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp', 'docked']);
+// `boosting` is NOT transient: it is sim state (thrust engaged), and dropping it made a
+// mid-boost save silently kill the burn on restore — the held input could neither continue
+// nor re-edge, which is exactly the desync the 47a reload check reproduces. `noInterp`/`docked`
+// stay transient (presentation latch / re-derived at dock arbitration).
+const TRANSIENT_ENTITY_FLAGS = new Set(['noInterp', 'docked']);
 const TRANSIENT_PLAYER_FLAGS = new Set(['invuln']);
 
 // Save-key → serialize/deserialize plan (§4.5 map). Order is the load/restore order (deps first).
@@ -506,6 +510,9 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      // SG-02 world snapshot (solver warm-start, islands, contacts) — entity scalars alone
+      // cannot rebuild a bit-identical world, and reload determinism hinges on it.
+      ['physics', () => this._callSerialize('physics')],
       // PQ-205.03: the bomb rack (fitted cells, socket count, hangar stock, cooldowns,
       // selection) is owned and serialized by the bombs system. Absent owner → {} →
       // deserialize applies the starter kit (additive default for pre-rack saves).
@@ -590,6 +597,9 @@ export const save = {
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
+    // SG-02 world snapshot: the Rapier solver's private state (contact warm starts, island
+    // sleep) is what entity scalars cannot rebuild — restore adopts it when the backend resets.
+    data.physics = this._callSerialize('physics');
     data.bombs = this._callSerialize('bombs') || {};
     // FB-015: deployed massline snares, impulse-charge networks, and live tether webs are a
     // player investment — bounded system-owned rows, never persistent entity flags.
@@ -3866,6 +3876,9 @@ export const save = {
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
       this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
+      // Stash the SG-02 world snapshot: a fresh backend owner adopts it (boot-load, harness
+      // reset); a live owner keeps its own world and the stash is dropped.
+      this._callDeserialize('physics', data.physics);
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
@@ -5316,11 +5329,17 @@ function sanitizeEntityFlagsForSave(flags, isPlayer = false) {
   return out;
 }
 
+// Burn-window fields are sim state despite the underscore convention (they decide whether
+// boost thrust exists — a save mid-window must resume inside the same window or the replay
+// diverges). Gesture fields (_boostHoldT, _dashCandidate, _burnActive) stay transient:
+// a double-tap may not span a save, and _burnActive is re-derived every tick anyway.
+const BOOST_SIM_STATE_KEYS = new Set(['_burnT', '_burnCdT', '_boostArmed']);
+
 function sanitizeBoostForSave(boost) {
   if (!boost || typeof boost !== 'object' || Array.isArray(boost)) return clonePlain(boost);
   const out = {};
   for (const k in boost) {
-    if (isUnsafePlainKey(k) || k.charAt(0) === '_') continue;
+    if (isUnsafePlainKey(k) || (k.charAt(0) === '_' && !BOOST_SIM_STATE_KEYS.has(k))) continue;
     const cv = clonePlain(boost[k]);
     if (cv !== undefined) out[k] = cv;
   }

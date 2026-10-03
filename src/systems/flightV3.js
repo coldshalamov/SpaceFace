@@ -631,11 +631,28 @@ export const flightV3 = {
     }
   },
 
+  // Save/load fidelity: the serialized boost state is the truth. A burn saved mid-window
+  // continues rather than dying silently on continue, a still-held key is not a new press edge
+  // (which would re-fire the dash impulse), and a fresh hold after load presses cleanly. Only
+  // the double-tap dash gesture resets — a tap pair may not span a save. The menu/docked
+  // cancel path (_cancelPlayerBoost) is unchanged; its stale-key suppression still applies
+  // where input was interrupted rather than re-seated.
   _cancelPlayerBoostOnRestore() {
     const state = this.state;
     const player = state && state.entities && state.playerId
       ? state.entities.get(state.playerId) : null;
-    this._cancelPlayerBoost(player);
+    this._restorePlayerBoost(player);
+  },
+
+  _restorePlayerBoost(e) {
+    if (!e || !e.boost) { this._prevBoost = false; return; }
+    const boost = e.boost;
+    boost._boostHoldT = 0;
+    boost._dashCandidate = false;
+    const boosting = !!(e.flags && e.flags.boosting);
+    e._wasBoosting = boosting;
+    this._prevBoost = boosting;
+    this._suppressBoostUntilRelease = false;
   },
 
   _resetSweptHullLatch() {
@@ -715,7 +732,10 @@ export const flightV3 = {
       entity.data.propulsionRuntime = {
         ...createPropulsionRuntime(profile),
         ...(entity.data.propulsionRuntime || {}),
-        previousBoost: false,
+        // previousBoost rides the serialized packet on purpose: a craft saved mid-boost keeps
+        // its edge state through save:loaded instead of re-firing a phantom press (and the dash
+        // impulse that rides it) on the first tick after restore.
+        previousBoost: !!(entity.data.propulsionRuntime && entity.data.propulsionRuntime.previousBoost),
       };
     }
   },
