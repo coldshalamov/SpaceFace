@@ -326,7 +326,9 @@ export const MACHINE_SITES = Object.freeze({
   veil_null_corridor: Object.freeze({
     siteId: 'veil_null_corridor',
     sectorId: 'sector_veil_nebula',
-    poiId: 'poi_veil_null_corridor',
+    // SFQ-B003: no chart marker — the corridor reads sterile deliberately (site.beat says so).
+    // poiId:null is the explicit absence; the authored zone carries its map identity.
+    poiId: null,
     name: 'Null Corridor',
     kind: 'corridor',
     // AE-102: a safe lane through the nebula's contamination — a line of spine props.
