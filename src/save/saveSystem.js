@@ -432,8 +432,9 @@ export const save = {
     // Warm the save worker once at init: Continue and autosave each pay a Blob-URL spawn +
     // worker boot on the load path when a cold worker is created per request. One idle worker
     // kept hot removes the spawn from every later request; run-epoch sweeps retire it and the
-    // checkout lazily rewarms.
-    this._warmSaveWorker = this._createSaveWorker();
+    // checkout lazily rewarms. Guarded like the listener above: a convenience/test context that
+    // mounts init without the system's methods must still boot (its saves spawn lazily instead).
+    this._warmSaveWorker = typeof this._createSaveWorker === 'function' ? this._createSaveWorker() : null;
     this._syncSharedPlayerStore();
   }, 
 
