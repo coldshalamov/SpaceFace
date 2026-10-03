@@ -824,7 +824,7 @@ named in the status for the frontend lane to take alone):
 | 244 | FB-033+FB-125+FB-038 | Six lanes, no singleton POI types, and a Ceres unique wreck | PB | OPEN — seam sectors.js (second sitting) |
 | 245 | FB-034+FB-036+FB-042+FB-045+FB-051+FB-052+FB-140 | The ticker hears the day, the chronicler, wars, price causes, claims, worksites and wreck ecology | PB | OPEN — seam marketNews.js |
 | 246 | FB-035+FB-037+FB-131 | POI plans reach the map, the codex gets a world tab, the scanner speaks | PB | OPEN — seam localmap.js / codex.js (ORRERY lane: FB-037) |
-| 247 | FB-039+FB-040+FB-119+FB-041 | The fine is a choice, the law says what it did, a player can surrender, the hearing is reachable | PB | OPEN — seam lawSecurity.js |
+| 247 | FB-039+FB-040+FB-119+FB-041 | The fine is a choice, the law says what it did, a player can surrender, the hearing is reachable | PB | SHIPPED 2026-10-02 devin-oct2-batch (12e9c418f, e36759843, 349c7ee21, b226a9049) — fine-on-dock choice, law receipts voiced, surrender verb, loss-bound hearing offer |
 | 248 | FB-043+FB-044 | Three placeless factions get a door; standing has named ranks with perks | PB | OPEN — seam factions.js |
 | 249 | FB-046+FB-047+FB-048+FB-050 | Where the money went, lifetime margins, honest cost basis, price alerts | PB | OPEN — seam economy.js |
 | 250 | FB-049+FB-124+FB-101+FB-111 | Debt is an instrument, cargo insurance exists, a dry tank and a wedged hull have doors | PB | OPEN — seam economy.js / stationServices.js (second sitting) |
