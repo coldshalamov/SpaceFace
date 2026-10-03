@@ -153,7 +153,7 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
 /* Wave 2 R7: the run instrument rides the tabs row — arc gauge + gate count + clock + best. */
 #sf-range .sf-range__tabs { flex: 1 1 100%; }
 #sf-range .sf-range__run { display: inline-flex; align-items: center; gap: 14px; margin-left: auto; padding: 2px 0 2px 18px;
-  font-size: 17px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
+  font-size: 15px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
 #sf-range .sf-range__run svg { display: block; overflow: visible; }
 /* Wave 2 r2 RG1: the best-time Counter — tabular figures at full voice, not a murmur. */
 #sf-range .sf-range__run .sf-range__run-best { color: rgb(252 249 240); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -162,7 +162,7 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
 #sf-range .sf-range__dossier { display: flex; flex: 0 0 auto; width: 100%; box-sizing: border-box;
   align-items: baseline; gap: 26px; padding: 10px 2px;
   border-top: 1px solid rgb(236 230 216 / .4); border-bottom: 1px solid rgb(236 230 216 / .32);
-  font-size: 17px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .8); }
+  font-size: 15px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .8); }
 #sf-range .sf-range__dossier-group { color: rgb(236 230 216 / .6); }
 #sf-range .sf-range__dossier-state { margin-left: auto; color: rgb(236 230 216 / .6); }
 #sf-range .sf-range__dossier-state.is-cleared { color: rgb(252 249 240); }
