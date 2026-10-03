@@ -75,6 +75,7 @@ import {
   isRigidOpaqueBatchableSurface,
 } from './rigidOpaqueBatchPolicy.js';
 import {
+  AUTHORED_UPGRADE_OPENING_LIMIT,
   authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency,
   combatantAdmissionPriority,
   openingFrameAdmissionPriority,
@@ -1173,6 +1174,7 @@ export function authoredCompositionFingerprintForEntity(entity, options = {}) {
       }))
     : [];
   const fittings = Array.isArray(data.fittings) ? data.fittings.map(String) : [];
+  const declaredTargetRadius = declaredPlaceTargetRadius(entity);
   return JSON.stringify({
     id: entity.id == null ? null : String(entity.id),
     type: entity.type || null,
@@ -1193,9 +1195,7 @@ export function authoredCompositionFingerprintForEntity(entity, options = {}) {
       claimSpecId: data.claimSpecId || null,
       claimOwned: data.claimOwned === true,
       placeScale: Number.isFinite(Number(data.placeScale)) ? Number(data.placeScale) : null,
-      placeTargetRadius: Number.isFinite(Number(data.placeTargetRadius))
-        ? Number(data.placeTargetRadius)
-        : null,
+      placeTargetRadius: Number.isFinite(declaredTargetRadius) ? declaredTargetRadius : null,
       visualRadius: Number.isFinite(Number(data.visualRadius)) ? Number(data.visualRadius) : null,
       dockRadius: Number.isFinite(Number(data.dockRadius)) ? Number(data.dockRadius) : null,
       stationRadius: Number.isFinite(Number(data.stationRadius)) ? Number(data.stationRadius) : null,
@@ -5771,6 +5771,30 @@ function firstFlightShipCanPassBusyPlace(state) {
 // on-glass body — so an on-glass or inbound station/place earns the pass the same way a
 // ship does, while the in-flight guard keeps the serial ship invariant intact.
 const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
+// The request side admits broad (any glassR+visual crossing inside the runway posts a job);
+// a transient graze that never reaches the authored window leaves a queued job consuming a
+// serial slot for a dead compose+residency cycle. Re-grade runway-class jobs once more at
+// admit: unless the job carries glass law (admissionVisible, urgent grade, or already on
+// readable glass), evict it when the tight grade-side predicate says the entity is no longer
+// inbound — graded at a widened horizon so a rim-skimming borderline keeps its slot instead
+// of oscillating out and re-arming the whole request a poll later.
+const ADMIT_REGRADE_HORIZON_GRACE = 1.5;
+function jobRunwayRegradeStillWanted(state, job) {
+  const entity = job && job.entity;
+  if (!entityRidesAuthoredRunway(entity)) return true;
+  if (job.options && job.options.admissionVisible === true) return true;
+  if (authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
+  const live = authoredRuntimeState();
+  if (!live || live.mode !== 'flight') return true;
+  if (entityIsOnReadableGlass(entity, live)) return true;
+  // Unmeasurable geometry is not evidence of departure — keep the slot rather than
+  // evict a job the predicate simply cannot grade (no pos on either end).
+  const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : live.player;
+  if (!entity.pos || !(player && player.pos)) return true;
+  return willEntityEnterAuthoredUpgradeRunway(entity, live, {
+    horizonSeconds: authoredRunwayHorizonSeconds(entity) * ADMIT_REGRADE_HORIZON_GRACE,
+  });
+}
 function queuedGlassLawJobStillNeeded(state, job) {
   return !!(job && job.entity && jobStillNeeded(state, job)
     && (authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY
@@ -6673,6 +6697,19 @@ function scheduleNextUpgradeFrame(state) {
       return;
     }
     admitNextUpgradeJob(state);
+    // Covered on-glass rows otherwise serialize one admission per frame through the whole
+    // handoff window: with N stacked rows the last shows its pending substrate for ~(N−1)×
+    // lane latency. When the next pick is itself a readable-glass job whose prefetch already
+    // resolved (the decode is paid; only compose remains), grant it one bounded extra slot —
+    // inFlight stays under the opening limit, steady concurrency untouched.
+    const extra = state.jobs[0];
+    if (state.firstFlightHandoffHold === true
+        && state.inFlight > 0 && state.inFlight < AUTHORED_UPGRADE_OPENING_LIMIT
+        && extra && firstFlightReadableGlassJob(extra)
+        && extra.prefetchResolved === true
+        && jobStillNeeded(state, extra)) {
+      admitNextUpgradeJob(state);
+    }
   });
 }
 
@@ -6779,6 +6816,11 @@ function admitNextUpgradeJob(state) {
     return null;
   }
   if (!jobStillNeeded(state, job)) {
+    cancelQueuedJob(state, job);
+    scheduleNextUpgradeFrame(state);
+    return null;
+  }
+  if (!jobRunwayRegradeStillWanted(state, job)) {
     cancelQueuedJob(state, job);
     scheduleNextUpgradeFrame(state);
     return null;
@@ -6972,7 +7014,10 @@ function primeNextAuthoredAssetPlan(state) {
     if (!job) return;
     state.firstFlightPrefetchJob = job;
     job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
-    job.prefetchPromise.then(() => scheduleNextUpgradeFrame(state), (error) => {
+    job.prefetchPromise.then(() => {
+      job.prefetchResolved = true;
+      scheduleNextUpgradeFrame(state);
+    }, (error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
       scheduleNextUpgradeFrame(state);
     });
@@ -7011,7 +7056,9 @@ function primeNextAuthoredAssetPlan(state) {
     const prefetch = startAuthoredJobAssetPrefetch(job);
     if (!prefetch) continue;
     job.prefetchPromise = prefetch;
-    job.prefetchPromise.catch((error) => {
+    job.prefetchPromise.then(() => {
+      job.prefetchResolved = true;
+    }).catch((error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
     });
     if (isShip) shipLaneWarmed += 1; else otherLaneWarmed += 1;
@@ -7618,7 +7665,14 @@ export function authoredCriticalVisualReadiness(state) {
     const role = entity && (entity.flightReadyRole || data.flightReadyRole
       || data.renderFlightReadyRole || data.render && data.render.flightReadyRole
       || (state && state.mode === 'loading'
-          && (entity.type === 'wreck' || entity.type === 'drone')
+          && (entity.type === 'wreck' || entity.type === 'drone'
+            // A generic payload the packaged-prop lane can mount (packagedPropSpec is the
+            // mount hook's own predicate — attachPackagedScenarioProp no-ops without it)
+            // settles through the same authoredPackageUrl admission the wreck/drone pins
+            // ride; an on-runway tow body (survivor pod at +6/-4) holds the veil for its
+            // warm commit instead of swapping a beat after it lifts. Explicit-authored
+            // payloads already pin via entityRequiresAuthoredPresentation above.
+            || (entity.type === 'payload' && !!packagedPropSpec(entity)))
           && entity.alive !== false
           && !authoredOpeningFailedClosed(authoredAssetState(entity))
           && startupAuthoredContactOnRunway(entity, state)

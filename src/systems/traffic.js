@@ -1760,8 +1760,12 @@ export const traffic = {
             : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))))) {
       return;
     }
+    const sector = p && p.sector;
+    // Gate the wipe on sector resolution: a payload that passes dedupe but carries no
+    // resolvable sector must not destroy active freighters unstamped.
+    if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
     const continuous = !!(p && (p.continuous || p.noTeleport));
-    const requestedSectorId = (p && p.sector && p.sector.id)
+    const requestedSectorId = sector.id
       || (p && p.sectorId)
       || (this.state.world && this.state.world.currentSectorId)
       || 'unknown';
@@ -1776,8 +1780,6 @@ export const traffic = {
     } else {
       this._cleanup(); // hard enter: wipe previous sector's freighters (view-gated)
     }
-    const sector = p && p.sector;
-    if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
     if (p._viaCook) {
       this._cookedSector = sector;
       this._cookedSimTime = this.state.simTime;
