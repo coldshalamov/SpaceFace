@@ -525,3 +525,11 @@ Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic 
 Merged `ebaeb9bcc → 5c697667d` (rows 152/154/241 + board sweep: PB-CONT-C/D save-receipts/bounds, FB-015 deployables-survive-save, FB-104/108/115 export/fuzz/migration, Pallas loop + Ceres tender wreck, shipyard rank discounts, tether-cut naming, swarm-bank purse, ticker-cite). One conflict hunk in `saveSystem.js` — my `yield 'serialize:bombs'` seam vs upstream's FB-015 rows in the same slot; unioned (yield kept + `snares`/`charges` rows + new `serialize:deployables` paint seam). Upstream's `[name, fn]` row-list table already carried the deployable rows — no second-site divergence.
 
 Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic — upstream's save rows don't move the 47a trajectory); `node --check` clean on the resolved file; save/deployable/fuzz/parity/roundtrip suites 14/14; traffic + job-law + rescue 41/41 (the ceres-activity namedLaneContact red is canon (ac)).
+
+## Post-merge CI triage + modulepreload repair (commit 177e869bf)
+
+CI on merge push `14d201fa6`: all reds classified —
+- `draw-flight` `check-autopursuit` = canon (x) verbatim (auto-target no-orbit invariant trips on upstream's `stepPursuitSlotAssist`).
+- static(1): `arcade-structural-fx-mount` stagger = canon (d); `check-progression-verb-audit` `tractorWholeWrecks` = canon (y).
+- static(2): `check-bundle` `place_conveyor_barge` provenance/manifest = canon (b); **`station-archetype-wiring` `missing archetypeGlb: sector_vesta_forge/station_vesta_outlying_yard` = NEW canon (af)** — upstream's Vesta Forge station landed without its authored-archetype manifest entry; throws identically on clean `5c697667d` (`buildAuthoredStationArchetype` — procedural fallback retired).
+- static(3): `check-type-floor` damageIndicators.js:141 9px = canon (c); **`sync-modulepreload` flagged 6 upstream files** (`data/swarmHangar`, `render/pooledPresentationMarks`, `systems/pallasWorkLoop`, `systems/swarmHangar`, `ui/worldNewsBeats`, `ui/wreckEcologyMarkers`) — upstream merged new modules without regenerating the preload registry (the generator is branch-side machinery; the check can't run on clean master). **Repair landed `177e869bf`**: `node scripts/sync-modulepreload.mjs` → 35 main + 1393 registry imports, `--check` green.
