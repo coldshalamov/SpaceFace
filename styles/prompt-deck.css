@@ -1,9 +1,10 @@
 /* Prompt deck — the single flight decision surface (src/ui/promptDeck.js).
    Authority: HUD_FLIGHT_ATTENTION.md (decisions are the one legitimate flight card; receipts are
-   NOT cards), the glass register (hudStyles.js :root tokens, owner directive 2026-09-14) and the
-   approved resting frame (right column below the BAND row, clear of sector-law / contacts /
-   radar). No backdrop-filter — flight perf floor, FIELD_HARDWARE_PROGRAM §7. Layering: z 20,
-   documented in ARCHITECTURE §1.2 (above the HUD, below the modal backdrop and screens). */
+   NOT cards), the Deckplate token root (--dp-*: game faces, warm bone at rest, lamp for act-on,
+   phosphor for readings) and the approved resting frame (right column below the BAND row, clear
+   of sector-law / contacts / radar). A timed decision's countdown is a compact arc, not a bar
+   (ORRERY §3.2/§6). No backdrop-filter — flight perf floor, FIELD_HARDWARE_PROGRAM §7. Layering:
+   z 20, documented in ARCHITECTURE §1.2 (above the HUD, below the modal backdrop and screens). */
 
 #sf-prompt-deck {
   position: absolute;
@@ -17,8 +18,8 @@
   gap: 8px;
   pointer-events: none;
   box-sizing: border-box;
-  font-family: var(--hud-data, var(--mono, Consolas, monospace));
-  color: rgb(236 244 253 / 0.97);
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  color: var(--dp-ink, #e8e2d4);
 }
 #sf-prompt-deck[hidden] { display: none !important; }
 
@@ -56,10 +57,10 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   font-size: 12px;
   line-height: 1.3;
   letter-spacing: 0.06em;
-  color: var(--glass-neon, rgb(141 217 255));
+  color: var(--dp-ink-mute, #b0aea6);
 }
-.sf-prompt--warn .sf-prompt__head { color: var(--k-gold, #d8aa33); }
-.sf-prompt--danger .sf-prompt__head { color: var(--k-red, #e0665f); }
+.sf-prompt--warn .sf-prompt__head { color: var(--dp-lamp, #f2b950); }
+.sf-prompt--danger .sf-prompt__head { color: var(--dp-danger-hot, #ff8a70); }
 .sf-prompt__sender {
   min-width: 0;
   overflow: hidden;
@@ -82,19 +83,31 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   font-size: 12px;
   line-height: 1.4;
   letter-spacing: 0.03em;
-  color: rgb(178 199 222 / 0.8);
+  color: var(--dp-ink-dim, #b7b4a6);
 }
-.sf-prompt__detail--urgent { color: var(--k-red, #e0665f); font-weight: 700; }
+.sf-prompt__detail--urgent { color: var(--dp-danger-hot, #ff8a70); font-weight: 700; }
 
-.sf-prompt__content { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: rgb(178 199 222 / 0.8); }
+.sf-prompt__content { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--dp-ink-dim, #b7b4a6); }
 .sf-prompt__content:empty { display: none; }
 
-/* Stabilization meter (recovery adapter) — a value bar, updated in place via one custom property. */
+/* The countdown arc (fed by promptDeck.js renderCountdown; a quantity is an arc, ORRERY §3.2).
+   Rides the head's right shoulder; the numeric seconds stay in the detail line. The arc's stroke
+   tones are the orrery library's (.orr-phos at rest, .orr-threat in the urgent window). */
+#sf-prompt-deck .sf-prompt__clock {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  align-self: center;
+  overflow: visible;
+}
+#sf-prompt-deck .sf-prompt__clock[hidden] { display: none !important; }
+
+/* Stabilization meter (recovery adapter) — a value channel, updated in place via one custom property. */
 .sf-prompt-meter {
   height: 3px;
   margin-top: 6px;
   overflow: hidden;
-  background: rgb(255 255 255 / 0.1);
+  background: var(--dp-metal-0, rgb(255 255 255 / 0.08));
   border-radius: 2px;
 }
 .sf-prompt-meter i {
@@ -103,7 +116,7 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   height: 100%;
   transform: scaleX(var(--v, 0));
   transform-origin: left center;
-  background: var(--glass-neon, rgb(141 217 255));
+  background: var(--dp-phos, #dfeeff);
 }
 
 /* Choices: real buttons with printed keycaps. Digit order is the visual order; routeDigit()
@@ -122,7 +135,7 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   min-height: 34px;
   padding: 5px 9px;
   color: inherit;
-  font: 700 12px/1.25 var(--hud-data, var(--mono, Consolas, monospace));
+  font: 700 12px/1.25 var(--dp-face-etch, "Archivo", system-ui, sans-serif);
   letter-spacing: 0.05em;
   text-align: left;
   cursor: pointer;
@@ -135,7 +148,7 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   min-width: 17px;
   min-height: 17px;
   font-weight: 400;
-  color: var(--glass-neon, rgb(141 217 255));
+  color: var(--dp-ink-mute, #b0aea6);
 }
 /* Disabled choices claim no digit — the empty keycap box stays out of the way. */
 .sf-prompt__choice b:empty { visibility: hidden; }
@@ -143,8 +156,8 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
 .sf-prompt__choice:hover,
 .sf-prompt__choice:focus-visible,
 .sf-prompt__choice.is-highlight {
-  border-color: var(--glass-neon-2, rgb(92 178 255));
-  outline: 2px solid var(--glass-neon, rgb(141 217 255));
+  border-color: var(--dp-lamp-hot, #ffd98c);
+  outline: 2px solid var(--dp-lamp, #f2b950);
   outline-offset: 2px;
 }
 .sf-prompt__choice:active { translate: 0 1px; }
@@ -152,10 +165,10 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   opacity: 0.38;
   cursor: not-allowed;
   outline: none;
-  border-color: var(--k-gold, #d8aa33);
+  border-color: var(--dp-lamp-dim, #8a6b3a);
 }
-.sf-prompt__choice--danger:not(:disabled) { border-color: color-mix(in srgb, var(--k-red, #e0665f) 55%, transparent); }
-.sf-prompt__choice--danger:not(:disabled) b { color: var(--k-red, #e0665f); }
+.sf-prompt__choice--danger:not(:disabled) { border-color: color-mix(in srgb, var(--dp-danger, #ff5038) 55%, transparent); }
+.sf-prompt__choice--danger:not(:disabled) b { color: var(--dp-danger-hot, #ff8a70); }
 
 /* Collapsed decisions: one honest row — name + countdown, click to raise. No digit is printed
    because chips intentionally claim no keys (routeDigit gives chips only digits left over after
@@ -169,8 +182,8 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   min-height: 28px;
   padding: 4px 10px;
   pointer-events: auto;
-  color: rgb(236 244 253 / 0.97);
-  font: 12px/1.3 var(--hud-data, var(--mono, Consolas, monospace));
+  color: var(--dp-ink, #e8e2d4);
+  font: 12px/1.3 var(--dp-face-etch, "Archivo", system-ui, sans-serif);
   letter-spacing: 0.05em;
   cursor: pointer;
   text-align: left;
@@ -182,13 +195,13 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   min-width: 16px;
   min-height: 16px;
   font-weight: 400;
-  color: var(--glass-neon, rgb(141 217 255));
+  color: var(--dp-ink-mute, #b0aea6);
 }
 .sf-prompt-chip__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sf-prompt-chip__time { flex: none; font-style: normal; color: var(--glass-neon, rgb(141 217 255)); }
+.sf-prompt-chip__time { flex: none; font-style: normal; color: var(--dp-phos, #dfeeff); }
 .sf-prompt-chip:hover, .sf-prompt-chip:focus-visible {
-  border-color: var(--glass-neon-2, rgb(92 178 255));
-  outline: 2px solid var(--glass-neon, rgb(141 217 255));
+  border-color: var(--dp-lamp-hot, #ffd98c);
+  outline: 2px solid var(--dp-lamp, #f2b950);
   outline-offset: 2px;
 }
 
@@ -261,7 +274,9 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
 #sf-prompt-deck .sf-prompt-meter i {
   background:var(--dp-phos); box-shadow:var(--dp-phos-emit-soft);
 }
-/* verbs are glass keys; selection is the lamp — lit edge, lit legend, printed keycap */
+/* verbs are glass keys; selection is the lamp — lit edge, lit legend, printed keycap.
+   Keycaps are the deckplate key glyph (dp-kbd language): a hairline box from the manual, never a
+   little plastic cap; the lamp lights the rule with the legend. */
 #sf-prompt-deck .sf-prompt__choice {
   border:0; border-radius:2px; background:var(--dp-glass-solid);
   box-shadow:var(--dp-glass-depth);
@@ -271,7 +286,7 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   transition:color var(--dp-d-cut, .1s) var(--dp-ease-lamp, ease), box-shadow var(--dp-d-cut, .1s) var(--dp-ease-lamp, ease);
 }
 #sf-prompt-deck .sf-prompt__choice b {
-  border:0; border-radius:0; min-width:22px; min-height:20px; padding:0 3px;
+  border:1px solid var(--dp-rule-hi, rgb(232 226 212 / .22)); border-radius:0; min-width:22px; min-height:20px; padding:0 3px;
   border-image:none;
   color:var(--dp-ink-mute); background:transparent;
 }
@@ -286,6 +301,7 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
 #sf-prompt-deck .sf-prompt__choice:focus-visible b,
 #sf-prompt-deck .sf-prompt__choice.is-highlight b {
   border-image-source:none;
+  border-color:var(--dp-lamp);
   color:var(--dp-lamp-hot);
 }
 #sf-prompt-deck .sf-prompt__choice:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4); outline-offset:2px; }
@@ -309,7 +325,7 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
   font-variation-settings:"wght" 650, "wdth" 72; letter-spacing:.1em; text-transform:uppercase;
 }
 #sf-prompt-deck .sf-prompt-chip__key {
-  border:0; border-radius:0;
+  border:1px solid var(--dp-rule-hi, rgb(232 226 212 / .22)); border-radius:0;
   border-image:none;
   color:var(--dp-ink-mute); background:transparent;
 }
@@ -317,6 +333,10 @@ html.sf-reduce-motion .sf-prompt:not(.sf-prompt--leaving) { animation: none; }
 #sf-prompt-deck .sf-prompt-chip:hover, #sf-prompt-deck .sf-prompt-chip:focus-visible {
   color:var(--dp-lamp-hot); outline:2px solid var(--dp-lamp); outline-offset:2px;
   box-shadow:var(--dp-glass-depth);
+}
+#sf-prompt-deck .sf-prompt-chip:hover .sf-prompt-chip__key,
+#sf-prompt-deck .sf-prompt-chip:focus-visible .sf-prompt-chip__key {
+  border-color:var(--dp-lamp); color:var(--dp-lamp-hot);
 }
 
 @media (forced-colors: active) {
