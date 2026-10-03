@@ -2,7 +2,7 @@ name: Import Ravel character
 on:
   push:
     branches: ['character/ravel-unraveller-20261003']
-    paths: ['.ravel-delivery/READY', '.github/workflows/ravel-import.yml']
+    paths: ['.github/workflows/ravel-import.yml']
 permissions:
   contents: write
 jobs:
@@ -27,28 +27,19 @@ jobs:
             /assets/**/*.json
             /index.html
             /package.json
-      - name: Verify and apply the exact reviewed feature patch
+      - name: Apply verified visual corrections
         run: |
           python3 - <<'PY'
-          import base64, gzip, hashlib, json, pathlib, subprocess
-          encoded = ''.join(p.read_text() for p in sorted(pathlib.Path('.ravel-delivery').glob('part*.b64')))
-          encoded = encoded.replace('TKJ6p3Y3', 'TKJ6p0Y3', 1)
-          raw = gzip.decompress(base64.b64decode(encoded, validate=True))
-          assert hashlib.sha256(raw).hexdigest() == '9fc2355ca3dc03d732e9b68346319469b98d93dd349113f9c7429944d8312afe', 'Delivery hash mismatch'
-          payload = json.loads(raw)
-          patch = pathlib.Path('/tmp/ravel.patch')
-          patch.write_text(payload['patch'])
-          # The workflow was already authored through the connected GitHub tool.
-          excluded = '--exclude=.github/workflows/ravel-character.yml'
-          subprocess.run(['git', 'apply', excluded, '--check', str(patch)], check=True)
-          subprocess.run(['git', 'apply', excluded, str(patch)], check=True)
-          subprocess.run(['git', 'apply', '--check', '.ravel-delivery/manifest.patch'], check=True)
-          subprocess.run(['git', 'apply', '.ravel-delivery/manifest.patch'], check=True)
-          subprocess.run(['git', 'add', '--', *payload['paths'], 'test/authoritative-manifest.test.mjs'], check=True)
+          import hashlib, pathlib, subprocess
+          patch = pathlib.Path('.ravel-delivery/final.patch')
+          assert hashlib.sha256(patch.read_bytes()).hexdigest() == '86c15a3b28223e3ac8755b69e41ee58d0048e64cbe0ac908af754b74518765eb'
+          subprocess.run(['git', 'apply', '--check', str(patch)], check=True)
+          subprocess.run(['git', 'apply', str(patch)], check=True)
+          subprocess.run(['git', 'add', '--', 'src/render/characters/ravelModel.js', 'tools/ravel/bench.html', 'tools/ravel/bench.js', 'tools/ravel/review.mjs'], check=True)
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'feat: RAVEL gravity-loom encounter, authored assets, persistence and tests'
+          git commit -m 'fix(ravel): separate guard inlays, frame narrow views and close browser errors'
           git show --stat --oneline HEAD
           git push origin HEAD:character/ravel-unraveller-20261003
       - uses: actions/setup-node@v4
