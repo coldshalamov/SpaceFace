@@ -29,6 +29,8 @@ import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
+import { requestCodexTab } from './codex.js';
+import { writtenEndingArchive } from '../../story/endings/index.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_EXPOSURE_MAX,
@@ -46,6 +48,7 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PHOTO_HINT_MS = 2000;
 export const PHOTO_LABEL = 'Photo';
 export const ACHIEVEMENTS_LABEL = 'Achievements';
+export const ENDING_ARCHIVE_LABEL = 'Ending Archive';
 export const PHOTO_CAPTURE_LABEL = 'Capture';
 export const PHOTO_STORE_KIND = 'store';
 /** Live store-page stills land here so PQ-159.03 captures are used for the store page. */
@@ -946,6 +949,16 @@ export const pauseScreen = {
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
     mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    // Ending Archive (B7): once the story owner has filed the written ending
+    // (state.story.writtenFinale — the same record its ui:endingArchiveOpen handler serves), the
+    // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
+    // re-emits `endgame:archive`, so the just-opened codex refreshes to the filed ending.
+    const endingArchive = writtenEndingArchive(ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null);
+    if (endingArchive) mk(ENDING_ARCHIVE_LABEL, () => {
+      requestCodexTab('Archive');
+      nav(ctx, 'pushScreen', 'codex');
+      if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
+    }, { group: 'Media', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
