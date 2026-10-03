@@ -41,6 +41,7 @@ import { isPdScreenActor } from '../ai/pdScreen.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -189,6 +190,9 @@ function steerToward(e, tx, tz, slow) {
   const stop = (slow || 90);
   const data = e.data || (e.data = {});
   const intent = data.intent || (data.intent = {});
+  // The stamped goal point is observability only: readers of intent see WHERE the passive
+  // hull is being asked to go (a stand-off point reads differently from the route endpoint).
+  intent.tx = tx; intent.tz = tz;
   if (d2 <= stop * stop) { intent.moveZ = 0; intent.moveX = 0; intent.fire = false; return; }
   const len = Math.sqrt(d2) || 1;
   const ux = dx / len, uz = dz / len;
@@ -2319,6 +2323,185 @@ function restoreFreightCargoCustody(d, state, envelope) {
   return live;
 }
 
+// ── NXB-015 ordered passage at a narrow obstruction ────────────────────────────────────────────
+// One moving convoy meets one narrow obstruction: a stable latched order sends the leading
+// freight through the gap while the rest of the freight waits at hull-clearance stand-off
+// points and the escort keeps station on its ward. The blocker is ordinary colliding geometry —
+// a parked tow, a wreck, a station edge — found by ONE bounded spatial probe inside the convoy's
+// lane stripe, never a universe scan. A stalled commitment releases the local order (the convoy
+// steers free for a beat) rather than pinning the convoy on a wait that can never finish.
+const CONVOY_GAP_LOOKAHEAD = 560;   // corridor probe reach ahead of the convoy's front hull
+const CONVOY_GAP_MARGIN = 26;       // open water beside the lane that still reads as "narrow"
+const CONVOY_GAP_ARRIVE_SKIP = 260; // dock approach inside this of the endpoint steers free
+const CONVOY_HOLD_CLEAR = 16;       // air kept between a stand-off point and the body ahead of it
+const CONVOY_STALL_S = 18;          // a committed hull this long without progress drops the order
+const CONVOY_RELEASE_S = 14;        // after a release the convoy steers free before re-queuing
+const CONVOY_PASS_EPS = 4;          // a hull counts as through the gap this far past the disc
+const _gapProbeScratch = [];
+
+/** The nearest foreign solid inside the convoy's lane stripe. Own members are excluded by
+ * identity (live.ids), never by distance; pickups and projectiles are not obstruction-grade. */
+function convoyGapBlocker(state, live, front, rearT, headT, dirX, dirZ) {
+  const probeR = CONVOY_GAP_LOOKAHEAD + Math.max(0, headT - rearT);
+  const near = queryNearbyEntities(state, front.pos, probeR, _gapProbeScratch, null);
+  let blocker = null, blockerT = Infinity;
+  for (const e of near) {
+    if (!e || !e.pos || e === front) continue;
+    if (e.alive === false || e.collides === false) continue;
+    if (e.type === 'pickup' || e.type === 'projectile' || e.type === 'beam') continue;
+    if (live.ids && live.ids.indexOf(e.id) >= 0) continue;
+    const t = e.pos.x * dirX + e.pos.z * dirZ;
+    if (t <= rearT + CONVOY_PASS_EPS || t > headT + CONVOY_GAP_LOOKAHEAD) continue;
+    const lateral = Math.abs((e.pos.x - front.pos.x) * dirZ - (e.pos.z - front.pos.z) * dirX);
+    if (lateral >= (e.radius || 8) + CONVOY_GAP_MARGIN) continue;
+    if (!blocker || t < blockerT || (t === blockerT && compareEntityIds(e, blocker) < 0)) {
+      blocker = e; blockerT = t;
+    }
+  }
+  return blocker;
+}
+
+/** Ordered passage steering for the whole transit group. Returns nothing; only writes intent
+ * on this encounter's own passive hulls — the same sanctioned writer the route already uses. */
+function convoyPassageSteering(d, live, state, haulers, escorts, end, now) {
+  const data = live.data;
+  const movers = haulers.filter((e) => !convoyTargetDisabled(state, e));
+  const steerAll = () => {
+    for (const e of [...movers, ...escorts]) {
+      if (!convoyTargetDisabled(state, e)) steerToward(e, end.x, end.z, 120);
+    }
+  };
+  if (!movers.length) { steerAll(); return; }
+  // A released order steers free for a beat before the corridor probe may re-queue it: this is
+  // the release half of "release/recompute", so a dead wait can never pin the convoy forever.
+  if (data.passageHoldUntil != null && now < data.passageHoldUntil) { steerAll(); return; }
+
+  let cx = 0, cz = 0;
+  for (const m of movers) { cx += m.pos.x; cz += m.pos.z; }
+  cx /= movers.length; cz /= movers.length;
+  let dirX = end.x - cx, dirZ = end.z - cz;
+  const dLen = Math.hypot(dirX, dirZ) || 1;
+  dirX /= dLen; dirZ /= dLen;
+  const projOf = (e) => e.pos.x * dirX + e.pos.z * dirZ;
+  let front = movers[0], rear = movers[0];
+  for (const m of movers) {
+    if (projOf(m) > projOf(front)) front = m;
+    if (projOf(m) < projOf(rear)) rear = m;
+  }
+  if (dist2(front.pos.x, front.pos.z, end.x, end.z) <= CONVOY_GAP_ARRIVE_SKIP * CONVOY_GAP_ARRIVE_SKIP) {
+    delete data.passage;
+    steerAll();
+    return;
+  }
+  const blocker = convoyGapBlocker(state, live, front, projOf(rear), projOf(front), dirX, dirZ);
+  // The gap is a geometric slot, not a timer: while a blocking body is present the slot tracks
+  // it, and once the body clears — the player towing off, a wreck nudged aside — the latched
+  // slot drains the order one committed member at a time instead of a simultaneous surge
+  // (NXI-059). The record dies only when the whole order has passed the slot.
+  let gapT, gapR, gapX, gapZ;
+  if (blocker) {
+    gapT = projOf(blocker);
+    gapR = blocker.radius || 8;
+    gapX = blocker.pos.x;
+    gapZ = blocker.pos.z;
+  } else if (data.passage && Number.isFinite(data.passage.gapT)) {
+    gapT = data.passage.gapT;
+    gapR = data.passage.gapR;
+    gapX = data.passage.gapX;
+    gapZ = data.passage.gapZ;
+  } else {
+    delete data.passage;
+    steerAll();
+    return;
+  }
+
+  // The passage order is latched once from the live formation — frontmost freight first, ties by
+  // stable id — then kept while the gap lasts. Lost or disabled members are filtered out of the
+  // wait condition every tick (NXI-058) so nobody queues behind a hull that can no longer move.
+  let passage = data.passage;
+  if (!passage) {
+    const ordered = movers.slice().sort((a, b) => {
+      const dt = projOf(b) - projOf(a);
+      return dt !== 0 ? dt : compareEntityIds(a, b);
+    });
+    passage = data.passage = {
+      order: ordered.map((m) => m.id),
+      committedId: null,
+      bestT: -Infinity,
+      progressAt: now,
+      gapT, gapR, gapX, gapZ,
+    };
+  } else if (blocker) {
+    passage.gapT = gapT;
+    passage.gapR = gapR;
+    passage.gapX = gapX;
+    passage.gapZ = gapZ;
+  }
+  const passT = gapT + gapR + CONVOY_PASS_EPS;
+  const pending = [];
+  for (const id of passage.order) {
+    const m = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+    if (!m || m.alive === false || convoyTargetDisabled(state, m)) continue;
+    if (projOf(m) > passT + (m.radius || 8)) continue;   // already through the gap — free
+    pending.push(m);
+  }
+  for (const m of movers) {
+    if (passage.order.indexOf(m.id) < 0 && projOf(m) <= passT + (m.radius || 8)) pending.push(m);
+  }
+  if (!pending.length) { delete data.passage; steerAll(); return; }
+
+  const committed = pending[0];
+  const committedT = projOf(committed);
+  if (passage.committedId !== committed.id) {
+    passage.committedId = committed.id;
+    passage.bestT = committedT;
+    passage.progressAt = now;
+  } else if (committedT > passage.bestT + 1) {
+    passage.bestT = committedT;
+    passage.progressAt = now;
+  } else if (now - passage.progressAt > CONVOY_STALL_S) {
+    delete data.passage;
+    data.passageHoldUntil = now + CONVOY_RELEASE_S;
+    steerAll();
+    return;
+  }
+  steerToward(committed, end.x, end.z, 120);   // leading freight commits to the gap
+
+  // Followers wait at physical stand-off points: a single file behind the gap mouth, each point
+  // spaced by the real hull diameters of the pair, never one shared parking point (NXI-057).
+  let chainT = gapT - gapR - CONVOY_HOLD_CLEAR;
+  for (let i = 1; i < pending.length; i++) {
+    const prev = pending[i - 1], m = pending[i];
+    chainT -= (prev.radius || 8) + (m.radius || 8) + CONVOY_HOLD_CLEAR;
+    const trailT = projOf(prev) - (prev.radius || 8) - (m.radius || 8) - CONVOY_HOLD_CLEAR;
+    const holdT = Math.min(chainT, trailT);
+    steerToward(m, gapX + dirX * (holdT - gapT), gapZ + dirZ * (holdT - gapT), 26);
+  }
+  // Freight already through the gap keeps steering for the endpoint.
+  for (const m of movers) {
+    if (pending.indexOf(m) < 0) steerToward(m, end.x, end.z, 120);
+  }
+
+  // The escort keeps its guard target — the rear hauler — while the line waits (NXI-060):
+  // one flank station per escort, trailing the ward so the lane mouth stays clear. A rostered
+  // (weapons-free) escort is left to tacticalAI exactly as before.
+  const ward = rear;
+  for (let i = 0; i < escorts.length; i++) {
+    const e = escorts[i];
+    if (convoyTargetDisabled(state, e)) continue;
+    const ai = e.data && e.data.ai;
+    if (ai && ai.passive === false) continue;
+    const rE = e.radius || 8, rW = ward.radius || 8;
+    const side = (i % 2 === 0) ? 1 : -1;
+    const back = rW + rE + CONVOY_HOLD_CLEAR + Math.floor(i / 2) * (rE * 2 + CONVOY_HOLD_CLEAR);
+    const flank = (rW + rE + 14) * side;
+    steerToward(e,
+      ward.pos.x - dirX * back - dirZ * flank,
+      ward.pos.z - dirZ * back + dirX * flank,
+      30);
+  }
+}
+
 function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
@@ -2364,10 +2547,10 @@ function convoyTick(d, live, state, now, isConvoy) {
   const end = live.data.end;
   if (!end) return;
   // Only route-owned passive hulls receive director intent. The selected raider is rostered and
-  // tacticalAI remains the sole writer of its movement/fire decisions.
-  for (const e of [...haulers, ...d.entsOf(live, 'escort')]) {
-    if (!convoyTargetDisabled(state, e)) steerToward(e, end.x, end.z, 120);
-  }
+  // tacticalAI remains the sole writer of its movement/fire decisions. NXB-015: at a narrow
+  // obstruction the same intents carry a stable passage order — leading freight commits, the
+  // rest of the freight waits at hull-clearance stand-off points, escorts keep their wards.
+  convoyPassageSteering(d, live, state, haulers, d.entsOf(live, 'escort'), end, now);
   if (p && !live.data.noticed) {
     for (const h of haulers) {
       if (dist2(p.pos.x, p.pos.z, h.pos.x, h.pos.z) <= CONVOY_NOTICE_R * CONVOY_NOTICE_R) { live.data.noticed = true; break; }
