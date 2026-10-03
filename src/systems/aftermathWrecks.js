@@ -1453,6 +1453,7 @@ export const aftermathWrecks = {
       + (hash32(seed, marker.markerId, 'shardSpread') % (ARENA_SHARD_MAX_SEPARATION_SPEED - ARENA_SHARD_MIN_SEPARATION_SPEED + 1));
     const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
     const victimMass = boundedVictimMass(marker.victimMass);
+    const shardMass = victimMass != null ? victimMass * 0.35 : 1e6;
     return {
       type: 'wreck',
       pos: {
@@ -1466,10 +1467,13 @@ export const aftermathWrecks = {
       angVel: boundedKillTumble(((hash32(seed, marker.markerId, 'shardSpin') % 200) - 100) / 100),
       // At ≥ the victim's own on-screen size (the §25 Phase 3 bar), never below the floor.
       radius: Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius),
-      mass: victimMass != null ? victimMass * 0.35 : 1e6,
+      mass: shardMass,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the body's physics mass IS the named shard mass — an authored physicsBody.mass
+      // keeps normalization from silently replacing it with the generic wreck-density value
+      // (the same law hullFracture's wreckPhysicsBody already follows).
+      physicsBody: { shape: 'capsule', mass: shardMass },
       // Same ownership hole as the marker wreck: an adventure-sector shard is non-durable kill
       // dressing — sector teardown owns its removal, not the records bag or the far shelf.
       homeSectorId: marker.sectorId,
@@ -1922,7 +1926,11 @@ export const aftermathWrecks = {
       mass: mass != null ? mass : 1e6,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the named operational mass rides the body spec itself — without an authored
+      // physicsBody.mass the normalizer re-derives a wreck-density mass (0.10·R³) that has
+      // nothing to do with the victim's real mass, and every rope/impact consumer that reads
+      // physicsBody.mass first would see the wrong number.
+      physicsBody: { shape: 'capsule', mass: mass != null ? mass : 1e6 },
       // The marker's sector owns this body: without homeSectorId the wreck survived sector
       // teardown live and unbound, and the marker's re-entry spawn doubled it (D89).
       homeSectorId: marker.sectorId,

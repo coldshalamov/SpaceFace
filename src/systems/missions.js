@@ -5721,7 +5721,8 @@ export const missions = {
         hullMax: 160,
         collides: true,
         collisionMask: MISSION_WRECK_COLLISION_MASK,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: the named mass is the body's own mass, not a density re-derive.
+        physicsBody: { shape: 'capsule', mass: 180 },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.TOWER,
@@ -5749,7 +5750,7 @@ export const missions = {
           hullMax: 36,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: 10 },
           data: {
             missionTag: m.id,
             physicalRole: PHYSICAL_ROLE.POD,
@@ -8779,7 +8780,7 @@ export const missions = {
           hullMax: 150,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: 160 },
           data: {
             contractClaimSiteOf: m.id,
             proportions: WRECK_COLLIDER_PROPORTIONS,

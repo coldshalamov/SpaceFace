@@ -1315,7 +1315,8 @@ export const uniqueWrecks = {
         hull: 1,
         hullMax: 1,
         factionId: def.factionId,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: a named unique wreck keeps its authored dead-mass through normalization.
+        physicsBody: { shape: 'capsule', mass: 1e6 },
         data: {
           uniqueWreckId: def.id,
           authoredWreckId: def.id,

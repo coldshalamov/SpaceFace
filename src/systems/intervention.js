@@ -171,7 +171,9 @@ export const intervention = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, radius: 8, mass: 1e6,
       hull: 1, hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the authored 1e6 dead-mass is the body's own mass — normalization must not
+      // substitute the ~51-mass wreck-density value for an intended immovable hulk.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
       data: {
         parentType: job.kind || 'asset',
         proportions: WRECK_COLLIDER_PROPORTIONS,

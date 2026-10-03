@@ -1604,7 +1604,9 @@ export const onboarding = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, vel: { x: 0, z: 0 }, radius: 14, mass: 900,
       hull: 1, hullMax: 1, // derelict — already dead, tether-only
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the authored 900-mass derelict is the rope's real load — the body keeps the
+      // named mass instead of normalizing to the wreck-density value.
+      physicsBody: { shape: 'capsule', mass: 900 },
       data: { parentType: 'ship', proportions: WRECK_COLLIDER_PROPORTIONS, loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
     });
     if (wreck) this._derelictId = wreck.id;
