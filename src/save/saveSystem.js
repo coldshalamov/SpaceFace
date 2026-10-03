@@ -3353,6 +3353,11 @@ export const save = {
   },
 
   async _loadEnvelopeFromStringAsync(raw, slot) {
+    // NXI-234, same stamp the Continue lane applies: the worker decode spans real frames, and a
+    // newer restore may commit inside that window. A candidate stamped before that commit must
+    // not overwrite the newer run — the guard lives at the destructive boundary so the same
+    // check also fires when this request was queued mid-restore and drained later.
+    const acceptSeq = this._restoreSequence;
     const prepared = await this._prepareEnvelopeStringAsync(raw);
     if (!prepared.ok) {
       if (prepared.reason === 'superseded') return false;
@@ -3364,7 +3369,7 @@ export const save = {
       });
       return false;
     }
-    return this._restorePreparedEnvelope(prepared, slot);
+    return this._restorePreparedEnvelope(prepared, slot, { acceptSeq });
   },
 
   /** Validate an already-parsed envelope and restore it (atomic: validate before destructive work). */
