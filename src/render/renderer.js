@@ -1775,8 +1775,11 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // finished, discard that seam-only request and let the ordinary spatial poll self-heal.
       owner._meshReconcileDirty = false;
       // The predicted prewarm pinned the destination cohort while the spatial runway was
-      // frozen; the ordinary lanes are live again, so the pin can drop now.
-      if (owner._incomingSectorPrewarm) {
+      // frozen; the ordinary lanes are live again, so the pin can drop now. Only the held
+      // record may drop: a re-charge minted inside the window owns the slot now and must
+      // not lose its pin to this seam's tail (mirror of the pending-id guard below).
+      if (owner._incomingSectorPrewarm
+          && owner._incomingSectorPrewarm.sectorId === owner._sectorHandoffSectorId) {
         releaseSectorPrewarm(owner._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
         owner._incomingSectorPrewarm = null;
       }
@@ -1785,6 +1788,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         owner._authoredSectorPrewarmPending = null;
       }
       owner._sectorHandoffSectorId = null;
+      owner._holdExemptPersistentSkips = null;
     }
     return 'deferred';
   }
@@ -1819,6 +1823,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   owner._holdExemptCollectS = 0;
   owner._holdExemptRepartition = false;
   owner._holdExemptRemaining = 0;
+  owner._holdExemptPersistentSkips = null;
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
   const pollCamera = owner.state && owner.state.camera || {};
@@ -11865,6 +11870,10 @@ export const render = {
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
       const jumpLedger = beginOpeningCookLedger(state.render, 'jump');
       try {
+        // Minted-stale cooks exist: a second sliced enter force-drains the first emit's
+        // deferred tail after currentSectorId already flipped, so this cook can start
+        // out superseded — check before the prefix pays it (pure boolean, no yield).
+        if (cookStale()) return cookSuperseded;
         if (!scene.environment) this._bakeEnv({ force: true });
         if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
         const player = state.entities && typeof state.entities.get === 'function'
@@ -11907,13 +11916,37 @@ export const render = {
           // the first-flight collect below.
           const providerNow = () => (typeof performance !== 'undefined'
             && typeof performance.now === 'function' ? performance.now() : Date.now());
+          const providerYield = async () => {
+            await yieldLiveSectorGpu();
+            providerSliceStart = providerNow();
+            if (cookStale()) return cookSuperseded;
+            return null;
+          };
           let providerSliceStart = providerNow();
-          for (const provider of cookProviders) {
-            provider(sector);
+          // Iterate a snapshot: a provider whose body synchronously tears a sibling system
+          // down splices the live registry and would skip the sliding element.
+          for (const provider of cookProviders.slice()) {
+            if (cookStale()) return cookSuperseded;
+            const iterator = provider(sector);
+            // Chunked providers return an iterator the census drives serially to completion
+            // before the next provider starts (cross-provider adoption order holds), yielding
+            // between atomic items on the same slice clock.
+            if (iterator && typeof iterator.next === 'function') {
+              for (;;) {
+                const step = iterator.next();
+                if (step.done) break;
+                if (providerNow() - providerSliceStart >= 8) {
+                  const superseded = await providerYield();
+                  if (superseded) {
+                    if (typeof iterator.return === 'function') iterator.return();
+                    return superseded;
+                  }
+                }
+              }
+            }
             if (providerNow() - providerSliceStart >= 8) {
-              await yieldLiveSectorGpu();
-              providerSliceStart = providerNow();
-              if (cookStale()) return cookSuperseded;
+              const superseded = await providerYield();
+              if (superseded) return superseded;
             }
           }
         }
@@ -13519,6 +13552,9 @@ export const render = {
         }
         this._authoredSectorPrewarmPendingId = null;
         this._authoredSectorPrewarmPending = null;
+        // A fresh seam: persistent-skip stamps from a prior hold must not exclude a row
+        // whose relevance moved with the camera between holds.
+        this._holdExemptPersistentSkips = null;
         this._sectorHandoffSectorId = exactSectorId || null;
         this._sectorHandoffStreamHoldS = exactSectorId
           ? SECTOR_VISUAL_TRANSITION_SECONDS
@@ -16484,6 +16520,7 @@ export const render = {
     // against the hoisted prefix via consumed head entries, not built count.
     if (this._holdExemptRepartition === true) {
       this._holdExemptRepartition = false;
+      if (!this._holdExemptPersistentSkips) this._holdExemptPersistentSkips = new Set();
       const frame = this._activityFrame;
       const glassIds = frame && frame.renderGlassIds;
       const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
@@ -16495,7 +16532,9 @@ export const render = {
       const remainder = [];
       for (let i = 0; i < tail.length; i++) {
         const id = tail[i];
-        (exempt(resolveWorldPresentationEntity(this.state, id)) ? hoisted : remainder).push(id);
+        (exempt(resolveWorldPresentationEntity(this.state, id))
+          && !(this._holdExemptPersistentSkips && this._holdExemptPersistentSkips.has(id))
+          ? hoisted : remainder).push(id);
       }
       queue.length = head;
       for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
@@ -16592,9 +16631,19 @@ export const render = {
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = resolveWorldPresentationEntity(this.state, id);
-      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
-          || this._sectorBoundaryPreparations?.has(id)
-          || !isEntityRenderRelevant(e, this.state, null, drainScanOpts)) continue;
+      const alreadyServed = !e || e.alive === false || e._noMesh || this._meshes.has(id);
+      const irrelevant = !alreadyServed && !this._sectorBoundaryPreparations?.has(id)
+        && !isEntityRenderRelevant(e, this.state, null, drainScanOpts);
+      if (alreadyServed || this._sectorBoundaryPreparations?.has(id) || irrelevant) {
+        // Persistent-for-this-drain-epoch classes: a dead/_noMesh/already-built/not-relevant
+        // row re-enqueues and re-hoists on every exempt beat while it cannot build. Stamp
+        // it so the hold's hoisted prefix only counts rows that can still cover — the
+        // uncovered-row kick stops re-firing on a prefix made entirely of skips.
+        if (this._holdExemptPersistentSkips && (alreadyServed || irrelevant)) {
+          this._holdExemptPersistentSkips.add(id);
+        }
+        continue;
+      }
       // Transient-failure backoff: a null or thrown build must not latch _noMesh on the first
       // miss — enqueueMeshBuildCandidate skips _noMesh forever, so a first-frame asset race
       // used to permanently strand the entity. Failed candidates re-enter via the next

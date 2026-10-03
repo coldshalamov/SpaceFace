@@ -2536,6 +2536,9 @@ function restoreBoundaryAfterPreJobRefusal(boundary, status) {
   if (boundary.userData.authoredAssetState === 'loading') {
     boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   }
+  if (status === 'regrade-evict-cooloff') {
+    boundary.userData.regradeRestoreCount = (boundary.userData.regradeRestoreCount | 0) + 1;
+  }
   boundary.userData.authoredReadmissionReason = status === 'cancelled-before-queue'
     ? 'cancelled-before-queue-detached'
     : status;
@@ -5425,6 +5428,14 @@ export function enqueueBoundaryUpgrade(scene, job) {
       })) {
     return Promise.resolve({ status: 'regrade-evict-cooloff', boundary: job.boundary });
   }
+  const regradeRestores = job.boundary.userData && (job.boundary.userData.regradeRestoreCount | 0);
+  if (regradeRestores >= AUTHORED_REGRADE_REPOST_MAX
+      && !runwayWantedBeyondHorizon(job.entity, {
+        admissionVisible: !!(job.options && job.options.admissionVisible === true),
+        priority: authoredUpgradePriority(job),
+      })) {
+    return Promise.resolve({ status: 'regrade-evict-cooloff', boundary: job.boundary });
+  }
   let resolveCompletion;
   const completion = new Promise((resolve) => { resolveCompletion = resolve; });
   const queuedJob = {
@@ -5861,6 +5872,22 @@ function jobRunwayRegradeStillWanted(state, job) {
     admissionVisible: !!(job && job.options && job.options.admissionVisible === true),
     priority: authoredUpgradePriority(job),
   });
+}
+// A rim-grazer oscillating across the runway horizon reposts → primes → evicts → restores at
+// ~1-2/s forever: the request-side cooloff only binds while the keep domain still fails, and
+// an entity inside the horizon always qualifies. `runwayWantedDomain` minus its horizon
+// clause is the hard-evidence floor a capped boundary's repost must clear — real need
+// (admissionVisible, steady priority, actual glass) posts; drift alone does not.
+const AUTHORED_REGRADE_REPOST_MAX = 3;
+function runwayWantedBeyondHorizon(entity, { admissionVisible = false, priority = Infinity } = {}) {
+  if (!entityRidesAuthoredRunway(entity)) return true;
+  if (admissionVisible === true) return true;
+  if (priority <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
+  const live = authoredRuntimeState();
+  if (!live || live.mode !== 'flight') return true;
+  if (entityIsOnReadableGlass(entity, live)) return true;
+  const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : live.player;
+  return !entity.pos || !(player && player.pos);
 }
 // An evicted job cleans up synchronously, but nothing downstream of the request remembers the
 // verdict — the next residency poll would re-post the same boundary immediately. Stamp the
@@ -6620,11 +6647,12 @@ function startAuthoredJobAssetPrefetch(job) {
   // undoing the release cancelQueuedJob just performed.
   const baseOwnerActive = typeof options.isResidencyOwnerActive === 'function'
     ? options.isResidencyOwnerActive : null;
-  const jobScopedOptions = baseOwnerActive
-    ? { ...options,
-        isResidencyOwnerActive: () =>
-          (job.lifecycle === 'queued' || job.lifecycle === 'in-flight') && baseOwnerActive() }
-    : options;
+  // Compose unconditionally: request sites that omit the predicate default to "active" inside
+  // the loader, so without the wrap a cancelled job's late retain still revives its owner.
+  const jobScopedOptions = { ...options,
+      isResidencyOwnerActive: () =>
+        (job.lifecycle === 'queued' || job.lifecycle === 'in-flight')
+        && (baseOwnerActive ? baseOwnerActive() : true) };
   if (entity.type === 'ship') {
     return preloadAuthoredAssetsForEntity(job.renderer, entity, jobScopedOptions);
   }
@@ -7090,7 +7118,10 @@ function primeNextAuthoredAssetPlan(state) {
     const player = liveState.entities?.get?.(liveState.playerId);
     const eligible = state.jobs.filter((job) => (firstFlightReadableGlassJob(job)
         || firstFlightReadableShipJob(job))
-      && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
+      && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise
+      // A requestless non-ship's prefetch resolves null immediately — it would still park
+      // the first-flight slot for a whole serial admit while real warms wait behind it.
+      && ((job.entity && job.entity.type === 'ship') || authoredUpgradeAssetRequests(job).length > 0));
     eligible.sort((a, b) => {
       const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);
       if (priority) return priority;

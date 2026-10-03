@@ -242,7 +242,16 @@ export const heistFacilities = {
     }
     this._wiredBus = this.bus;
 
-    this.bus.on('sector:enter', ({ sectorId } = {}) => this.materializeForSector(sectorId));
+    this.bus.on('sector:enter', ({ sectorId, enterEpoch } = {}) => {
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — do not
+      // materialize its facilities under the live world's id. Synthetic payloads carry
+      // no epoch and always run.
+      if (enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && enterEpoch !== this.state.world.enterSerial) return;
+      this.materializeForSector(sectorId);
+    });
     // Census arm: facility materialization lands inside the sector cook deterministically.
     this._cookProvider = (sector) => this.materializeForSector(sector && sector.id);
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))

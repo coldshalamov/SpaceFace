@@ -284,7 +284,17 @@ export const recoveryEncounter = {
     this._listen('entity:destroyed', (payload) => this._onWreckGone(payload || {}));
     this._listen('salvage:placed', (payload) => this._rebindSector(payload && payload.sectorId));
     this._listen('sector:exit', (payload) => this._onSectorExit(payload || {}));
-    this._listen('sector:enter', (payload) => this._rebindSector(payload && payload.sectorId));
+    this._listen('sector:enter', (payload) => {
+      const sectorId = payload && payload.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — do not
+      // adopt-or-spawn its derelict wrecks under the live world's id. Synthetic payloads
+      // carry no epoch and always run.
+      if (payload && payload.enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && payload.enterEpoch !== this.state.world.enterSerial) return;
+      this._rebindSector(sectorId);
+    });
     this._listen('entity:spawned', (payload) => this._onEntitySpawned(payload && payload.entity));
     // The enter materialization (adopt-or-spawn derelict wrecks) registers for the
     // deterministic cook census instead of depending on listener order.

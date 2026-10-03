@@ -425,7 +425,17 @@ export const survivorPod = {
     this.helpers = ctx && ctx.helpers;
     ensureState(this._state);
     this._onPlaced = (p) => this._promoteSector(p && p.sectorId);
-    this._onSectorEnter = (p) => this._promoteSector(p && p.sectorId);
+    this._onSectorEnter = (p) => {
+      const sectorId = p && p.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — promoting
+      // its pod mints a body keyed to the departed sector. Synthetic payloads carry no
+      // epoch and always run.
+      if (p && p.enterEpoch != null && this._state && this._state.world
+          && this._state.world.enterSerial != null
+          && p.enterEpoch !== this._state.world.enterSerial) return;
+      this._promoteSector(sectorId);
+    };
     this._onMissionOffered = (offer) => this._stampOffer(offer);
     this._onChoice = (p) => this._handleChoice(p);
     this._onNewGame = () => this.newGame();

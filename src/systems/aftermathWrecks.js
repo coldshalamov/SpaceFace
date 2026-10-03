@@ -930,7 +930,17 @@ export const aftermathWrecks = {
     this._onPlayerDeath = (payload) => this._recordPlayerDeath(payload || {});
     this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
     this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
-    this._onSectorEnter = (payload) => this._spawnForSector(payload && payload.sectorId);
+    this._onSectorEnter = (payload) => {
+      const sectorId = payload && payload.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — spawning
+      // its wreck field mints bodies the exit path never removes (_clearLiveRefs only
+      // unbinds tracking). Synthetic payloads carry no epoch and always run.
+      if (payload && payload.enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && payload.enterEpoch !== this.state.world.enterSerial) return;
+      this._spawnForSector(sectorId);
+    };
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
     this._onEncounterResolved = (payload) => rememberCause(this.state, this.bus, payload || {});

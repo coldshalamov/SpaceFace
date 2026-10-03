@@ -491,11 +491,17 @@ export const asteroidSites = {
 
     // Anchored sites re-materialize their rock on every sector visit (self-healing in _repairTick,
     // this listener just makes it prompt). Unanchored sites die with their re-rolled rock.
-    this.bus.on('sector:enter', ({ sectorId } = {}) => {
+    this.bus.on('sector:enter', ({ sectorId, enterEpoch } = {}) => {
       this._repairSweepWanted = true;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — syncing
+      // its sites mints home-keyed bodies nothing removes. Synthetic payloads (tests, the
+      // census cook) carry no epoch and always run.
+      const staleEnter = enterEpoch != null && !!state.world
+        && state.world.enterSerial != null && enterEpoch !== state.world.enterSerial;
       // Save restore clears the old entities, enters the saved sector, and only then calls this
       // owner's deserialize. Never rematerialize the pre-load record in that ordering window.
-      if (!this._worldRestoreActive) this._syncWorldSites(sectorId);
+      if (!this._worldRestoreActive && !staleEnter) this._syncWorldSites(sectorId);
       // The 1s accumulator deferral exists to amortize per-frame cost, but an anchored rock
       // that died since the last visit belongs inside the enter census window — the respawn
       // is idempotent, so the accumulator's later pass is a no-op rescan.
@@ -539,10 +545,9 @@ export const asteroidSites = {
     if (this.ctx && this.ctx.helpers) {
       (this.ctx.helpers.sectorCookProviders
         || (this.ctx.helpers.sectorCookProviders = []))
-        .push((sector) => {
-          if (!this._worldRestoreActive) this._syncWorldSites(sector && sector.id);
-          if (!this._worldRestoreActive) this._repairAnchors();
-        });
+        // Chunked cook provider: the census drives the steps across its slice clock; the
+        // emit listener drains the same steps synchronously.
+        .push((sector) => this._enterCookSteps(sector));
     }
   },
 
@@ -699,6 +704,10 @@ export const asteroidSites = {
   },
 
   _syncWorldSites(sectorId = null) {
+    for (const _ of this._syncWorldSitesSteps(sectorId)) { /* sync lane: inline */ }
+  },
+
+  *_syncWorldSitesSteps(sectorId = null) {
     const currentSectorId = sectorId || (this.state.world && this.state.world.currentSectorId) || null;
     if (!currentSectorId) return;
     this._captureWorldSitePayloads(currentSectorId);
@@ -712,6 +721,7 @@ export const asteroidSites = {
         state: this.state, helpers: this.ctx && this.ctx.helpers, manifest, record,
       });
       this._worldAdmissionBySite.set(siteId, result.admissionState);
+      yield;
     }
   },
 
@@ -1867,6 +1877,10 @@ export const asteroidSites = {
 
   /** Anchored sites in the CURRENT sector re-materialize their rock if it is missing. */
   _repairAnchors() {
+    for (const _ of this._repairAnchorsSteps()) { /* sync lane: inline */ }
+  },
+
+  *_repairAnchorsSteps() {
     if (this._worldRestoreActive) return;
     const state = this.state;
     const sectorId = state.world && state.world.currentSectorId;
@@ -1909,13 +1923,21 @@ export const asteroidSites = {
         this._returnVisitLine(site, sectorId);
         this._snapshotReturnBaseline(site);
       }
+      yield;
     }
     for (const siteId of state.sites.order) {
       const site = state.sites.byId[siteId];
       // Only a PRODUCING site wears the exterior relay (PQ-024): committed claims stay
       // visually unmarked until real output lands; re-entry re-ensures exactly one.
       if (site && site.anchored && site.sectorId === sectorId && this._isProducing(site)) this._ensureBeacon(site);
+      yield;
     }
+  },
+
+  // Cook-provider twin: the sliced census drives one site/anchor per slice boundary.
+  *_enterCookSteps(sector) {
+    if (!this._worldRestoreActive) yield* this._syncWorldSitesSteps(sector && sector.id);
+    if (!this._worldRestoreActive) yield* this._repairAnchorsSteps();
   },
 
   /**

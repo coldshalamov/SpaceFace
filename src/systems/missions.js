@@ -1414,8 +1414,10 @@ export const missions = {
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
-    // Census arm: mission-target spawns land inside the sector cook deterministically.
-    this._cookProvider = (sector) => this._onSectorEnter({
+    // Census arm: mission-target spawns land inside the sector cook deterministically. The
+    // cook drives the chunked twin across its slice clock; the emit listener drains the same
+    // steps synchronously, so both paths mint the identical cohort.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
       sectorId: (sector && sector.id)
         || (this.state && this.state.world && this.state.world.currentSectorId),
     });
@@ -9128,9 +9130,21 @@ export const missions = {
   },
 
   _onSectorEnter(p) {
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
+  },
+
+  *_onSectorEnterSteps(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
-    this.spawnTargetsForSector(sectorId);
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — spawning
+    // its mission targets mints bodies keyed to the departed sector. Synthetic payloads
+    // carry no epoch and always run.
+    if (p && p.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null
+        && p.enterEpoch !== this.state.world.enterSerial) return;
+    yield* this.spawnTargetsForSectorChunked(sectorId);
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
     this._onPassengerSectorEnter(sectorId);

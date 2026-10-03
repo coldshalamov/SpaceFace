@@ -5952,9 +5952,9 @@ function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluder
   const mz = (az + bz) * 0.5;
   const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
   // Flat arrays still serve callers that hand-roll their own occluder list (customs cones).
-  const lanes = Array.isArray(occluders) ? [occluders] : [occluders.dynamic || []];
-  for (const lane of lanes) {
-    for (const rec of lane) {
+  const flat = Array.isArray(occluders) ? occluders : occluders.dynamic;
+  if (flat) {
+    for (const rec of flat) {
       if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
     }
   }
