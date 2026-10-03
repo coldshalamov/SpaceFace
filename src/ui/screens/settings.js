@@ -343,6 +343,47 @@ function mergedBindingsFor(settings) {
 // Pause is Esc/P (UI-owned, not in BINDINGS). Mission Log is BINDINGS.missionLog on keyboard/touch;
 // gamepad has no direct Mission Log button — Start opens Pause, then choose Mission Log.
 /** PRO-05 — one key the localizer can translate. en-US renders the old concatenation. */
+
+// NXI-003 — the Controls surface reports the input owner's ACCEPTED flight source
+// (resolveMovementOwner → host.movementSource), never a hover, a connectivity guess, or a
+// local device tally. The row is a static display retexted in place by refresh(), so one
+// deliberate device switch flips it once while pointer traffic over this screen cannot move
+// the in-flight source at all (UI targets never count as flight pointer activity — see
+// noteFlightPointer in systems/input.js).
+export const CONTROL_FAMILY_LABELS = Object.freeze({
+  keyboard: 'Keyboard & mouse',
+  gamepad: 'Gamepad',
+  touch: 'Touch',
+});
+
+/**
+ * The accepted control family, or null when no deliberate source has claimed the helm yet.
+ * `ctx.registry.get('input')` is the same seam worldObjectInteraction uses to reach the sim
+ * input system; hosts without it (lab, bench) render '—' rather than guessing from which
+ * devices happen to be connected.
+ */
+export function activeControlFamily(ctx) {
+  const registry = ctx && ctx.registry;
+  const sys = registry && typeof registry.get === 'function' ? registry.get('input') : null;
+  const source = sys && typeof sys.movementSource === 'string' ? sys.movementSource : null;
+  return CONTROL_FAMILY_LABELS[source] ? source : null;
+}
+
+/** Display text for an accepted family (or '—' while none has been accepted). */
+export function controlFamilyLabel(family) {
+  return CONTROL_FAMILY_LABELS[family] || '—';
+}
+
+/**
+ * Retext the mounted Active-input value element only when the accepted family changed —
+ * the whole point of the "once" is that a deliberate source switch writes exactly one new
+ * label, and everything else (hover, repeat refreshes, pad noise) writes nothing.
+ */
+export function syncActiveControlFamily(ctx, valueEl) {
+  const label = controlFamilyLabel(activeControlFamily(ctx));
+  if (valueEl && valueEl.textContent !== label) valueEl.textContent = label;
+  return label;
+}
 export function settingsInUseLabel(action) {
   return localizeText('In use: {action}', { action: action == null ? '' : action });
 }
@@ -510,6 +551,7 @@ export const settingsScreen = {
     if (!refs) return;
     const pane = refs.pane;
     pane.innerHTML = '';
+    refs.familyValue = null;
     const s = ctx.state.settings;
     const build = paneBuilder(pane);
     currentCtx = ctx;
@@ -815,6 +857,14 @@ export const settingsScreen = {
           this._set(ctx, 'gameplay', 'controlSchemeV2', true);
           this._render(ctx);
         });
+      // NXI-003: which family actually owns the flight controls right now — the input owner's
+      // accepted source, displayed once per deliberate switch. refresh() retexts this row in
+      // place; it is not a control and carries no write path.
+      const familyRow = build.shortcut('Active input', controlFamilyLabel(activeControlFamily(ctx)),
+        'The device that last took the flight controls deliberately.');
+      refs.familyValue = (familyRow && typeof familyRow.querySelector === 'function'
+        ? familyRow.querySelector('.k-t-emph')
+        : null) || (familyRow && familyRow.lastElementChild) || null;
       build.note('Press a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.');
       // Each section builds its own lists in order; the pane is one column.
       this._renderControlsRebind(ctx, pane);
@@ -1169,11 +1219,14 @@ export const settingsScreen = {
     cue('close');
     if (this._capturing && this._activeCapture) this._activeCapture(false);
   },
-  // IMPORTANT: must be a no-op. uiRoot.frame() calls screenManager.refreshTop() every ~0.3s for
-  // any open screen; if this rebuilt the DOM it would destroy a slider/select mid-drag (the
-  // "can't drag below 3% / have to keep the mouse on the line" bug). The pane is fully
-  // event-driven — its own controls update their own value labels — so there is nothing to refresh.
-  refresh() {},
+  // IMPORTANT: must never rebuild the DOM. uiRoot.frame() calls screenManager.refreshTop() every
+  // ~0.3s for any open screen; a rebuild would destroy a slider/select mid-drag (the "can't drag
+  // below 3% / have to keep the mouse on the line" bug). The pane is event-driven — its own
+  // controls update their own labels — so the only refresh is the Active-input row's one
+  // textContent, which changes exactly once per deliberate source switch (NXI-003).
+  refresh(ctx) {
+    syncActiveControlFamily(ctx, refs && refs.familyValue);
+  },
   dispose() {
     try { if (refs && refs.preview) refs.preview.dispose(); } catch (e) { /* cosmetic */ }
     try { if (refs && refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }
