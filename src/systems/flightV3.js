@@ -14,7 +14,7 @@ import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } fr
 // FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
 import { perfNow } from '../core/perfRuntime.js';
-import { composePlayerDriveAuthority } from '../core/flight/driveAuthority.js';
+import { composePlayerDriveAuthority, DAMAGED_DRIVE_AUTHORITY_FLOOR } from '../core/flight/driveAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
   cryoLockStickLive,
@@ -549,7 +549,9 @@ export const flightV3 = {
       boost._boostArmed = true;
     }
     boost._burnActive = boosting && burnerFitted && boost._burnT > 0;
-    if (!boosting && !opts.suppressRegen) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
+    if (!boosting && !opts.suppressRegen) {
+      boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * boostCapRegenScale(state, e) * dt);
+    }
     return boosting;
   },
 
@@ -614,6 +616,13 @@ export const flightV3 = {
       finite(this._dashEarnedUntil, 0),
       finite(state && state.simTime, 0) + TRAVEL_DASH_TAG_S
     );
+    if (e && state && e.id === state.playerId && driveScale <= DAMAGED_DRIVE_AUTHORITY_FLOOR + 1e-4) {
+      const runtime = state.combat && state.combat.entities && state.combat.entities[String(e.id)];
+      const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+      if (drive && drive.effectiveDisabled === true && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text: 'Drive out — thrust is down to a crawl', kind: 'warn', ttl: 1.6 });
+      }
+    }
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ship:dash', { shipId: e.id, impulse: imp, swung });
       if (swung) this.bus.emit('ship:swingDash', { shipId: e.id, impulse: imp });
@@ -845,6 +854,15 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
 // Idempotent boost-resource normalizer (port of src/systems/flight.js:306-329). Guarantees the
 // player's `e.boost` block is well-formed every tick and after save load. Saves are validated
 // defensively by saveSystem, so this only repairs in-memory drift — it never rejects a save.
+/** Same cap-regen multiplier the gun capacitor uses. A dead reactor is 0.2, not a full dash tank. */
+function boostCapRegenScale(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return 1;
+  const runtime = book[String(entity.id)];
+  const value = runtime && runtime.multipliers && runtime.multipliers.capRegen;
+  return Number.isFinite(value) ? Math.max(0, value) : 1;
+}
+
 function normalizeBoostResource(e) {
   let boost = e.boost;
   if (!boost || typeof boost !== 'object' || Array.isArray(boost)) {
@@ -979,6 +997,7 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     clearAutopilotAvoidance(autopilot, true);
     return null;
   }
+  if (releaseAutopilotIfDriveOut(host, state, entity)) return null;
   if (!playerFlightControlsActive(state, entity)) return null;
   if (hasManualFlightInput(rawInput)) {
     stopAutopilot(host, state, 'manual');
@@ -1204,6 +1223,25 @@ function syncAutopilotInput(state, input, telemetry) {
   actions.brake = !!input.brake;
 }
 
+function autopilotDriveOut(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return false;
+  const runtime = book[String(entity.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!(drive && drive.effectiveDisabled === true);
+}
+
+/** Stop a local autopilot when the drive is dead. An engaged route owns its own drop. */
+export function releaseAutopilotIfDriveOut(host, state, entity) {
+  const nav = state && state.nav;
+  const autopilot = nav && nav.autopilot;
+  if (!autopilot || autopilot.active !== true) return false;
+  if (!autopilotDriveOut(state, entity)) return false;
+  const routeOwnsIt = !!(nav.executor && nav.executor.engaged === true);
+  if (!routeOwnsIt) stopAutopilot(host, state, 'drive-out');
+  return true;
+}
+
 function stopAutopilot(host, state, reason) {
   const nav = state && state.nav;
   const autopilot = nav && nav.autopilot;
@@ -1224,7 +1262,9 @@ function stopAutopilot(host, state, reason) {
   if (bus && typeof bus.emit === 'function') {
     bus.emit('nav:autopilot', autopilot);
     bus.emit('toast', {
-      text: reason === 'arrived' ? 'Autopilot arrived' : 'Autopilot disengaged',
+      text: reason === 'arrived' ? 'Autopilot arrived'
+        : reason === 'drive-out' ? 'Drive out — autopilot can\'t hold'
+        : 'Autopilot disengaged',
       kind: reason === 'arrived' ? 'good' : 'info',
       ttl: 2,
     });

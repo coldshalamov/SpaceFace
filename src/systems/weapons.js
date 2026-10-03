@@ -115,6 +115,15 @@ const CLOAK_SEEKER_RESIDUAL = 0.25;      // fraction of authored turnRate left o
 // Player-facing weapon recharge pacing — cap/heat recover ~15% faster than the baseline authored
 // rates so burst-and-recharge stays tactical without long dead-air waits.
 const WEAPON_RECHARGE_MULT = 1.15;
+
+/** Combat heatDissipation (overheat status is 0.35). A missing multiplier stays full rate. */
+function weaponHeatDissipScale(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return 1;
+  const runtime = book[String(entity.id)];
+  const value = runtime && runtime.multipliers && runtime.multipliers.heatDissipation;
+  return Number.isFinite(value) ? Math.max(0, value) : 1;
+}
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 
@@ -640,7 +649,7 @@ export const weapons = {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, player);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
         this._tickVent(player, dt, state);
@@ -663,7 +672,7 @@ export const weapons = {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
         // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -1039,13 +1048,17 @@ export const weapons = {
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;
     const combatRuntime = combatRuntimeOf(state, e);
+    let disabledMounts = 0;
+    let liveMounts = 0;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const bank = weaponBankReadiness(w, combatRuntime);
       if (bank.disabled) {
+        disabledMounts += 1;
         if (def.emergentPrimitive) clearEmergentRay(state, e.id);
         continue;
       }
+      liveMounts += 1;
       if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
         // A sustained emergent ray opened by this mount would leak into world.ray forever if the
         // role gate simply skips its service — _serviceEmergent's !firing branch is the only
@@ -1071,6 +1084,7 @@ export const weapons = {
     }
     // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
     if (typeof e.cap === 'number') e.cap = capLeft;
+    if (isPlayer && firing && disabledMounts > 0 && liveMounts === 0) this._noteGunsOut();
   },
 
   // Emergent primitives spend no capacitor and no heat, so they cannot vent-lock or starve
@@ -1215,8 +1229,15 @@ export const weapons = {
     if (this.bus) this.bus.emit('toast', { text: 'Capacitor empty', kind: 'warn', ttl: 1.6 });
   },
 
+  _noteGunsOut() {
+    if (this._playerGunsOutTold) return;
+    this._playerGunsOutTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Guns out — the battery is dark', kind: 'warn', ttl: 1.6 });
+  },
+
   _releasePlayerOrdnanceNotices(player) {
     this._playerCapEmptyTold = false;
+    this._playerGunsOutTold = false;
     const ws = player && player.data && player.data.weapons;
     if (!ws) return;
     for (let i = 0; i < ws.length; i++) {

@@ -16,6 +16,7 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { lineSweepContact } from './masslineImpacts.js';
 import { isHostileToPlayer } from './scanner.js';
 import { createTetherWebs } from '../combat/tetherWebs.js';
+import { playerTetherSpoolOut } from './tetherGameplay.js';
 
 export const TRANSVERSE_SNARE_DEF_ID = 'attachment_transverse_snare';
 export const TRANSVERSE_SNARE_HEAD_ID = 'transverse_snare';
@@ -209,6 +210,12 @@ export const masslineSnares = {
       // fixed tick so the existing physics owner can admit both fixed bodies before joint create.
       if (state.tick <= deployment.spawnTick) {
         this._mirror(state, deployment, null, 'deploying');
+        return;
+      }
+      // The press was accepted a tick ago. If the spool died in that wait, do not lay the line.
+      if (playerTetherSpoolOut(state, player)) {
+        this._deny(state, 'spool_out');
+        this._clearDeployment('spool_out', false);
         return;
       }
       const created = attachments.create({

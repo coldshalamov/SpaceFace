@@ -399,27 +399,47 @@ export function combatDenialToastSpec(payload) {
   return { text, kind: 'error', ttl: 3.5, hint };
 }
 
-/** A dead part refuses the verb in words, not as `capability:tether disabled`. */
+/**
+ * A refused verb names the gate that actually fired.
+ * `capability:*` is a dead part (checked before tags). `tag:dash` and `tag:tether` are a tumble.
+ * `tag:weapon` is a dead battery, a tumble, or cooked guns — the token does not say which.
+ */
 function disabledActionLine(rest) {
-  const split = String(rest || '').split(':');
-  const kind = split[0];
-  const name = String(split[1] || '').toLowerCase();
-  if (kind !== 'capability' && kind !== 'tag') return '';
-  if (name === 'tether' || name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
-  if (name === 'transport_clamp' || name === 'clamp') return 'Clamp out — the load is no longer held';
-  if (name === 'drive' || name === 'dash') return 'Drive out — the ship is not pushing';
-  if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
-  if (name === 'weapon' || name === 'burst') return 'Guns out — the battery is dark';
-  if (name === 'sensor' || name === 'lock') return 'Sensors out — the board is blind';
-  if (name === 'power') return 'Reactor out — the ship is starving';
+  const [kind, rawName] = String(rest || '').split(':');
+  const name = String(rawName || '').toLowerCase();
+  if (kind === 'capability') {
+    if (name === 'tether') return 'Massline spool out — the rope will not hold';
+    if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'drive') return 'Drive out — the ship is not pushing';
+    if (name === 'weapon') return 'Guns out — the battery is dark';
+    if (name === 'power') return 'Reactor out — the ship is starving';
+    if (name === 'sensor') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  if (kind === 'tag') {
+    if (name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+    if (name === 'clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+    if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
+    if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
+    if (name === 'weapon') return 'Guns won\'t answer — out, tumbling, or cooked';
+    if (name === 'burst') return 'Guns won\'t answer — cooked or out';
+    if (name === 'sensor' || name === 'lock') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
   return '';
 }
 
 function disabledActionHint(reason) {
   if (!String(reason || '').startsWith('disabled:')) return '';
-  return disabledActionLine(String(reason).slice('disabled:'.length))
-    ? 'Repair it, or wait for the part to come back'
-    : '';
+  const rest = String(reason).slice('disabled:'.length);
+  if (!disabledActionLine(rest)) return '';
+  const [kind, rawName] = rest.split(':');
+  const name = String(rawName || '').toLowerCase();
+  if (kind === 'tag' && (name === 'dash' || name === 'tether')) return 'Wait until the tumble stops';
+  if (kind === 'tag' && (name === 'weapon' || name === 'burst')) return 'Wait it out, or repair the battery';
+  if (name === 'sensor' || name === 'lock') return 'Wait out the jam, or repair the sensors';
+  return 'Repair it, or wait for the part to come back';
 }
 
 /**

@@ -5141,7 +5141,10 @@ export function createHud(ctx, alerts) {
     // A held pilot brake is a third reveal condition: the tape carries the stop vector the brake
     // is buying even with the drive off — ordinary flight braking is exactly when it matters.
     const brakeStop = resolveBrakeStopPreview(p, profile, state.input);
-    const want = active || nearCeiling || !!brakeStop;
+    // A held comms fan or wingman wheel stands exactly where this tape sits; the wheel is the
+    // modal, so the tape yields while it is up instead of poking out from under its edge.
+    const radialHeld = !!(state.ui && (state.ui.commsRadialOpen || state.ui.wingmanRadialOpen));
+    const want = !radialHeld && (active || nearCeiling || !!brakeStop);
 
     // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
     // prefers-reduced-motion); this tracked value only decides when the element is fully retired
