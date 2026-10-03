@@ -11317,6 +11317,14 @@ export const traffic = {
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
     this._active = [];
+    // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
+    // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
+    this._emittedSector = null;
+    this._emittedSimTime = 0;
+    this._emittedEpoch = null;
+    this._cookedSector = null;
+    this._cookedSimTime = 0;
+    this._cookedEnterEpoch = null;
     this._ensureCausalLedgerSets();
     for (const ledger of [
       this._pendingJobActionIds,

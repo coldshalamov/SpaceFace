@@ -3,6 +3,7 @@
 import { resolveCollisionProxyManifest, proxyWorldPrimitives, proxyScaleFor, expandProxyPrimitives } from '../data/collisionProxyManifests.js';
 import { modelTruthProxyRowForEntity } from '../data/modelTruth.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { collidesFlipEpoch, entityIndexVersion } from '../world/livingWorldViews.js';
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 function pointSegmentDistance(p,a,b) {
   const dx=b.x-a.x,dz=b.z-a.z, square=dx*dx+dz*dz;
@@ -147,14 +148,47 @@ function occluderScanDomain(state) {
   return (entities && typeof entities.values === 'function' ? entities.values() : []);
 }
 
+// Prepared occluder rows shared by every witness call under one membership — mirrors the
+// adjudicated LAW_WITNESS_PLAN_MEMO. Rows are pos-free (reach is pose-invariant; eval reads
+// live pos), so the key is membership only: index version (spawns/removals), map size and
+// _indexedIds.size (uncovered-domain and coverage-mode changes), and the collides flip epoch
+// (a mid-tick F→T flip joins the lane without a version bump — post-flip queries must see
+// the new member or the verdict diverges). The type/sensorBlocking filter is stamp-stable
+// (zero post-spawn writers — verified in the W44 audit) and hoists to build time.
+const WITNESS_OCCLUDER_PLAN_MEMO = new WeakMap();
+
+function witnessOccluderPlan(state) {
+  const index = state && state.entityIndex;
+  const entities = state && state.entities;
+  const covered = !!(index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables) && index._indexedIds instanceof Set
+    && entities && entities.size === index._indexedIds.size);
+  const idxV = entityIndexVersion(state);
+  const key = `${idxV == null ? 'nv' : idxV}`
+    + `|${entities && Number.isFinite(entities.size) ? entities.size : -1}`
+    + `|${collidesFlipEpoch()}`
+    + `|${index && index._indexedIds instanceof Set ? index._indexedIds.size : -1}`
+    + `|${covered ? 1 : 0}`;
+  const hit = WITNESS_OCCLUDER_PLAN_MEMO.get(state);
+  if (hit && hit.key === key) return hit.plan;
+  const plan = [];
+  for (const entity of occluderScanDomain(state)) {
+    if (!entity) continue;
+    if (!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type)
+      && entity.data?.sensorBlocking !== true) continue;
+    plan.push({ occ: entity, reach: occluderBodyView(entity).reach });
+  }
+  WITNESS_OCCLUDER_PLAN_MEMO.set(state, { key, plan });
+  return plan;
+}
+
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
 export function witnessLineOfSight(state, observer, destination, ignored = []) {
   if (!point(observer?.pos)||!point(destination))return false;
-  for (const entity of occluderScanDomain(state)) {
+  for (const rec of witnessOccluderPlan(state)) {
+    const entity = rec.occ;
     if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
-    if(!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type) && entity.data?.sensorBlocking!==true)continue;
-    const view = occluderBodyView(entity);
-    if (pointSegmentDistance(entity.pos, observer.pos, destination) > view.reach) continue;
+    if (pointSegmentDistance(entity.pos, observer.pos, destination) > rec.reach) continue;
     if (segmentHitsProxy(entity, observer.pos, destination)) return false;
   }
   return true;

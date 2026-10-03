@@ -586,12 +586,18 @@ export function deserializeRecordsBag(data) {
 /** List records for a sector, deterministic order by recordId. */
 export function recordsForSector(bag, sectorId) {
   const byId = bag && bag.byId ? bag.byId : {};
-  const out = [];
-  for (const id of Object.keys(byId).sort()) {
+  // Filter before sorting: the old order sorted the whole bag's keys — sorting only the
+  // sector's subset is key-for-key identical (byId keys are recordIds) but scales with
+  // the sector (~48 cap) instead of total save records.
+  const ids = [];
+  for (const id of Object.keys(byId)) {
     const rec = byId[id];
     if (!rec) continue;
-    if (rec.sectorId === sectorId || rec.homeSectorId === sectorId) out.push(rec);
+    if (rec.sectorId === sectorId || rec.homeSectorId === sectorId) ids.push(id);
   }
+  ids.sort();
+  const out = new Array(ids.length);
+  for (let i = 0; i < ids.length; i++) out[i] = byId[ids[i]];
   return out;
 }
 

@@ -3759,7 +3759,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       const data = entity && entity.data || {};
       const authoredEnvelope = Math.max(1e-6, ...size.map((value) => Number(value) || 0));
       const pendingScale = resolvePlaceDrawScale(data, {
-        targetRadius: Number(data.placeTargetRadius),
+        targetRadius: declaredPlaceTargetRadius(entity),
         authoredEnvelope,
         censusScale: placeDrawScaleFromRow(modelTruthRow(placeFileStem(record.url)) || modelTruthRowForEntity(entity), entity),
       });
@@ -4131,7 +4131,7 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
   // boundary at a fraction of its drawn size for the whole queue wait. The census envelope only
   // feeds the non-poi targetScale term, which loses to worldSiteScale/censusScale as intended.
   const scale = resolvePlaceDrawScale(data, {
-    targetRadius: Number(data.placeTargetRadius),
+    targetRadius: declaredPlaceTargetRadius(entity),
     authoredEnvelope: Array.isArray(size)
       ? Math.max(1e-6, ...size.map((value) => Number(value) || 0))
       : 1e-6,
@@ -4276,7 +4276,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   // reference is the honest scale basis (a claim landmark rock over-scales ~20%).
   const censusRow = modelTruthRow(placeFileStem(record && record.url)) || modelTruthRowForEntity(entity);
   const censusScale = placeDrawScaleFromRow(censusRow, entity);
-  const targetRadius = Number(data.placeTargetRadius);
+  const targetRadius = declaredPlaceTargetRadius(entity);
   const authoredEnvelope = Math.max(
     1e-6,
     ...(record.bounds && Array.isArray(record.bounds.size)
