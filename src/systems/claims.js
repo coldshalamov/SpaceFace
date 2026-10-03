@@ -100,6 +100,8 @@ const RELAY_LOSS_CAP = 0.35;
 const MAX_RECEIPTS = 8;                    // per-body receipt ring (the ledger's memory)
 const SLING_BODY_CLEARANCE_WU = 160;
 const SLING_STATION_CLEARANCE_WU = 180;
+// Teleporter arrival berth: the same beside-the-station clearance the recovery dock pays.
+const TELEPORT_BERTH_CLEARANCE_WU = 180;
 const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 const CLAIM_DAY_SECONDS = 600;
@@ -766,8 +768,33 @@ export const claims = {
       this.bus.emit('toast', { text: 'No active teleporter on this body', kind: 'error', ttl: 3 });
       return false;
     }
-    // route through the world system's jump-to-station path if available
-    this.bus.emit('claim:teleportRequest', { bodyId, targetStationId: body.linkedStationId });
+    // The jump is the world system's public same-sector relocation seam (the primitive authored
+    // incidents and boarding holds use): it zeroes velocity, keeps heading, snaps prevPos, and
+    // publishes world:playerRelocated so the render pose re-seeds. The entity index only holds
+    // the current sector, so a linked station in another sector resolves to nothing — refuse
+    // honestly instead of toasting a jump that never happens.
+    const station = this._stationEntity(body.linkedStationId);
+    if (!station || !station.pos) {
+      this.bus.emit('toast', { text: 'Linked station is not in this sector — jump refused', kind: 'error', ttl: 4 });
+      return false;
+    }
+    const world = this.ctx && this.ctx.registry && typeof this.ctx.registry.get === 'function'
+      ? this.ctx.registry.get('world')
+      : null;
+    if (!world || typeof world.relocatePlayerInSector !== 'function') {
+      this.bus.emit('toast', { text: 'No jump lane available — teleporter offline', kind: 'error', ttl: 4 });
+      return false;
+    }
+    // Arrive in a clear berth beside the station, not inside its collision origin — the same
+    // courtesy the recovery dock pays (combat.js RECOVERY_BERTH_CLEARANCE_WU).
+    const moved = world.relocatePlayerInSector(
+      { x: station.pos.x + TELEPORT_BERTH_CLEARANCE_WU, z: station.pos.z },
+      { reason: 'claim_teleporter' },
+    );
+    if (!moved) {
+      this.bus.emit('toast', { text: 'No hull in flight — quantum jump failed', kind: 'error', ttl: 4 });
+      return false;
+    }
     this.bus.emit('toast', { text: 'Quantum jump engaged → ' + (this._stationName(body.linkedStationId) || 'station'), kind: 'info', ttl: 3 });
     return true;
   },
