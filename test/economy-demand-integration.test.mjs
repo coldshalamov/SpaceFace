@@ -245,7 +245,7 @@ test('restore reseeds only omitted synthetic histories after authoritative deman
   const originalCycle = original.state.economy.cycles[stationId][commodityId];
   original.econ.seedPriceHistory(originalEntry, def, originalCycle, original.state.simTime);
   const savedWithoutHistory = structuredClone(original.econ.serialize());
-  assert.equal(savedWithoutHistory.markets[stationId][0].length, 6,
+  assert.equal(savedWithoutHistory.markets[stationId][0][6], null,
     'an unobserved market saves no derived chart cache');
 
   const restored = boot({ war: false });
