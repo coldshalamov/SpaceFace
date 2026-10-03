@@ -1223,6 +1223,7 @@ function scrollHold(el) {
   const rect = el.getBoundingClientRect();
   for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
     const style = styleOf(node);
+    if (style.display === 'contents') continue;
     const scrolls = /auto|scroll/.test(`${style.overflowY} ${style.overflowX}`);
     const clips = /hidden|clip/.test(`${style.overflowY} ${style.overflowX} ${style.overflow}`);
     if (!scrolls && !clips) continue;
@@ -1523,6 +1524,8 @@ function severedType(runs) {
     // Text truncated with an ellipsis is deliberately shortened and SAYS so; the reader can see
     // there is more. That is a content decision, not a panel eating its own copy.
     if (/ellipsis/.test(styleOf(run.host).textOverflow || '')) continue;
+    // An animated continuous marquee ticker (e.g. .orr-mkt-tape) deliberately flows outside its bounds
+    if (run.host.closest && run.host.closest('.orr-mkt-tape, [data-marquee], .marquee')) continue;
     const held = scrollHold(run.host);
     if (!held || held.kind !== "clipped") continue;
     found.push(String.fromCharCode(34) + shortText(run.text) + String.fromCharCode(34) + " is cut off by its own panel");
