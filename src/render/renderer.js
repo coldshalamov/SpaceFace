@@ -12143,27 +12143,19 @@ export const render = {
     };
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
-      // rock receives its final PBR maps on its first and only visual publication. The race starts
-      // now but only resolves where the maps are first consumed (residency upload / leaf reskin):
-      // the first-present admission wait and the submission plan build below are independent of the
-      // decode and used to sit serialized behind up to 4 s of dead veil time.
+      // rock receives its final PBR maps on its first and only visual publication. The opening plan
+      // requires bound PBR maps so parallax layers and rock instances capture matching pipeline keys.
       const rockWaitStarted = performance.now();
-      let rockRace = null;
+      let rockTimedOut = false;
       if (this.rockSurfaceLibraryReady) {
-        let rockTimedOut = false;
-        rockRace = Promise.race([
+        await Promise.race([
           this.rockSurfaceLibraryReady,
           new Promise((resolve) => setTimeout(() => { rockTimedOut = true; resolve(); }, 4000)),
-        ]).then(() => (rockTimedOut ? 'timeout' : 'resolved'));
+        ]);
       }
-      const awaitRockSurfaceRace = async () => {
-        if (!rockRace) {
-          recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted, 'skipped');
-          return;
-        }
-        const outcome = await rockRace;
-        recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted, outcome);
-      };
+      recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted,
+        this.rockSurfaceLibraryReady ? (rockTimedOut ? 'timeout' : 'resolved') : 'skipped');
+      parallaxLayers.seatReadyRockSurfaceTextures();
       const openingNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       let openingStepStarted = openingNow();
@@ -12212,7 +12204,6 @@ export const render = {
               || (entry.reason && String(entry.reason).includes('no-currently-instantiated'))
             ))
             : null;
-          await awaitRockSurfaceRace();
           recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
             reason: 'opening-plan-incomplete',
             fail: failRole
@@ -12232,8 +12223,6 @@ export const render = {
         // bounded so this stage yields back to the loading/flight event loop sooner.
         // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
         // bursts that starve the timer until well past the budget.
-        // The rock maps must be bound before the residency upload walks the leaves.
-        await awaitRockSurfaceRace();
         const residencyBudgetMs = softGpuOpening ? 750 : 5000;
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
