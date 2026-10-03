@@ -9,6 +9,7 @@ import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegi
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { KETTLE_LINE_POIS } from './kettleLine.js';
 import { VESPER } from './vesper.js';
+import { SOLSTICE } from './solstice.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 // Per ARCHITECTURE §0.8:
@@ -181,6 +182,18 @@ const CORE_SECTORS = [
       // and the payoff pod live in that module and its owners.
       ...KETTLE_LINE_POIS,
       { id: 'poi_ceres_closed_refinery', type: 'anomaly', name: 'The Closed Refinery', pos: { x: 1600, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      {
+        id: 'poi_solstice_lantern',
+        type: 'anomaly',
+        name: 'The Star Lantern',
+        pos: { ...SOLSTICE.anchor },
+        runtimeOwner: 'solstice',
+        scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'SL-9 / The Star Lantern',
+          body: 'An ancient gyroscopic astronomical lantern turning on the cold rim of Ceres Belt. Three floating focus prisms orbit its captive stellar heart. Scan to hail; ride the beam to recharge, or tether the prisms into alignment to ignite the lantern.',
+        },
+      },
     ],
   },
   {

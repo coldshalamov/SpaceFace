@@ -12,6 +12,8 @@ Current save version: `14`
 - `morrow`
 - `vesper`
 - `bracket`
+- `ravel`
+- `solstice`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -329,6 +331,7 @@ Current save version: `14`
 | `$.player.stats.tradesCount` | number | 0 |
 | `$.player.targetId` | null | null |
 | `$.provenance` | object | {} |
+| `$.ravel` | object | {} |
 | `$.recoveryEncounters` | object | {} |
 | `$.regionalEcology` | object | {} |
 | `$.salvage` | object | {} |
@@ -434,6 +437,7 @@ Current save version: `14`
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
 | `$.snares` | null | null |
+| `$.solstice` | object | {} |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
