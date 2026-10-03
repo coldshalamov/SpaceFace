@@ -126,7 +126,7 @@ export const wingmen = {
     // Census arm: the same re-fire as a sector cook provider so wingmen spawn inside the
     // deterministic composition census, not wherever listener registration order puts them.
     this._cookProvider = () => {
-      if (this._spawnWingmen) { this._wingmenQuiet = null; this._spawnWingmen(); }
+      if (this._spawnWingmenSteps) { this._wingmenQuiet = null; return this._spawnWingmenSteps(); }
     };
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = [])).push(this._cookProvider);
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous free-flight
@@ -217,6 +217,12 @@ export const wingmen = {
   },
 
   _spawnWingmen() {
+    // Sync lane (emit listener): drain the chunked steps inline — the census
+    // drive holds the same generator across its slices.
+    for (const _ of this._spawnWingmenSteps()) { /* inline */ }
+  },
+
+  *_spawnWingmenSteps() {
     const state = this.state;
     const fleet = state.automation && state.automation.fleet;
     if (!fleet || !fleet.length) return;
@@ -226,6 +232,7 @@ export const wingmen = {
     let spawned = 0;
     const ordered = this._orderedFleetFor(fleet);
     for (const fs of fleet) {
+      yield;
       if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
       const spec = this._buildWingmanSpec(fs, player);
       if (!spec) continue;

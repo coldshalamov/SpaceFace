@@ -5651,7 +5651,7 @@ export const missions = {
           x: px + 400, z: pz + 200,
         };
         const spec = makeEnemySpawnSpec('wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
-          startedTick: this.state.tick,
+          startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id;
@@ -5711,7 +5711,7 @@ export const missions = {
         let spec;
         if (actor.kind === 'ship') {
           spec = makeEnemySpawnSpec(actor.archetype || 'wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
-            startedTick: this.state.tick,
+            startedTick: deferredEnterTick(this.state),
           });
           spec.data = spec.data || {};
           if (Number.isFinite(actor.hull)) {
@@ -5799,7 +5799,7 @@ export const missions = {
         let spec;
         if (actor.kind === 'ship') {
           spec = makeEnemySpawnSpec(actor.archetype || 'bruiser_brawler', Math.round((lvLo + lvHi) / 2), pos, {
-            startedTick: state.tick,
+            startedTick: deferredEnterTick(state),
             motive: 'capital_interdiction',
             engagementTrigger: 'capital_boss_contract',
           });
@@ -8722,7 +8722,7 @@ export const missions = {
         z: wreck.pos.z + Math.sin(a) * r,
       };
       const level = Math.round(lvLo + (lvHi - lvLo) * rng());
-      const spec = makeEnemySpawnSpec(archetype, level, pos, { startedTick: this.state.tick });
+      const spec = makeEnemySpawnSpec(archetype, level, pos, { startedTick: deferredEnterTick(this.state) });
       spec.data = spec.data || {};
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.passive = true;

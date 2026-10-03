@@ -932,6 +932,10 @@ export const aftermathWrecks = {
     this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
     this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
     this._onSectorEnter = (payload) => {
+      // Sync lane (emit listener, tests, save:loaded): drain the chunked steps inline.
+      for (const _ of this._enterSteps(payload)) { /* inline */ }
+    };
+    this._enterSteps = function* (payload) {
       const sectorId = payload && payload.sectorId;
       // A tail-drained emit carries the epoch of the enter that minted it: a replayed
       // payload whose enterEpoch no longer matches the world's serial is stale — spawning
@@ -940,7 +944,7 @@ export const aftermathWrecks = {
       if (payload && payload.enterEpoch != null && this.state && this.state.world
           && this.state.world.enterSerial != null
           && payload.enterEpoch !== this.state.world.enterSerial) return;
-      this._spawnForSector(sectorId);
+      yield* this._spawnForSectorSteps(sectorId);
     };
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
@@ -973,12 +977,12 @@ export const aftermathWrecks = {
       });
       this.bus.on('sector:exit', this._onSectorExit);
       // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
-      this._cookProvider = (sector) => {
-        if (this._onSectorEnter) this._onSectorEnter({
-          sectorId: (sector && sector.id)
-            || (this.state && this.state.world && this.state.world.currentSectorId),
-        });
-      };
+      // The cook drives the chunked steps across its slice clock; the emit listener
+      // drains the same steps synchronously, so both paths mint the identical field.
+      this._cookProvider = (sector) => this._enterSteps({
+        sectorId: (sector && sector.id)
+          || (this.state && this.state.world && this.state.world.currentSectorId),
+      });
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
@@ -1829,6 +1833,13 @@ export const aftermathWrecks = {
   },
 
   _spawnForSector(sectorId) {
+    // Sync lane (emit listener, save:loaded, kill/promote callers): drain the chunked
+    // steps inline — the census drive holds the same generator across its slices.
+    const steps = this._spawnForSectorSteps(sectorId);
+    for (;;) { const s = steps.next(); if (s.done) return s.value; }
+  },
+
+  *_spawnForSectorSteps(sectorId) {
     const state = this.state;
     // Save restore re-enters the incoming sector before this system receives/deserializes the
     // incoming aftermath bag. Spawning in that window would materialize the outgoing run's markers
@@ -1850,9 +1861,11 @@ export const aftermathWrecks = {
         list.push(e);
         claimants.set(e.data.markerId, list);
       }
+      yield;
     }
     let count = 0;
     for (const marker of markers) {
+      yield;
       const live = claimants.get(marker.markerId) || null;
       if (live && live.length) {
         const adopted = this.bindImmediateWreck(marker.markerId, live[0]);

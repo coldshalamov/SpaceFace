@@ -77,7 +77,7 @@ export const intervention = {
       this._materializePendings();
     });
     // Census arm: logged sites materialize inside the sector cook deterministically.
-    this._cookProvider = () => this._materializePendings();
+    this._cookProvider = () => this._materializePendingsSteps();
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
   },
@@ -136,11 +136,18 @@ export const intervention = {
   },
 
   _materializePendings() {
+    // Sync lane (emit listener, update sweep): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices.
+    for (const _ of this._materializePendingsSteps()) { /* inline */ }
+  },
+
+  *_materializePendingsSteps() {
     const state = this.state;
     const current = state.world && state.world.currentSectorId;
     if (!current) return;
     const pendings = state.pendingInterventions || [];
     for (let i = pendings.length - 1; i >= 0; i--) {
+      yield;
       const rec = pendings[i];
       if (!rec || rec.sectorId !== current) continue;
       if ((state.interventions || []).length >= MAX_ACTIVE) return;

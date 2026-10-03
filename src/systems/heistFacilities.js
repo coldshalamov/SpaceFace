@@ -258,7 +258,7 @@ export const heistFacilities = {
       this.materializeForSector(sectorId);
     });
     // Census arm: facility materialization lands inside the sector cook deterministically.
-    this._cookProvider = (sector) => this.materializeForSector((sector && sector.id)
+    this._cookProvider = (sector) => this._materializeForSectorSteps((sector && sector.id)
       || (this.state && this.state.world && this.state.world.currentSectorId));
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
@@ -360,9 +360,17 @@ export const heistFacilities = {
   },
 
   materializeForSector(sectorId) {
+    // Sync lane (emit listener, heist mission paths): drain the chunked steps
+    // inline — the census drive holds the same generator across its slices.
+    const steps = this._materializeForSectorSteps(sectorId);
+    for (;;) { const s = steps.next(); if (s.done) return s.value; }
+  },
+
+  *_materializeForSectorSteps(sectorId) {
     if (sectorId !== PQ019_HEIST_SECTOR_ID) return 0;
     let created = 0;
     for (const facility of Object.values(PQ019_FACILITIES)) {
+      yield;
       const record = this._facilityRecord(facility.id);
       let visual = liveOwnedThing(this.state, record.visualEntityId)
         || this._findOwnedEntity(facility.id, `${facility.role}_visual`);
@@ -398,6 +406,7 @@ export const heistFacilities = {
     // PQ-195.04: Berth Three's stalled industrial worker. It is an ordinary hull that lives beside
     // the catcher whether or not the berth is activated (a job-bound one is re-linked by
     // npcJobsRuntime on the same entry), so its presence is materialization, not consequence state.
+    yield;
     created += this._materializeBerthWorker();
     return created;
   },

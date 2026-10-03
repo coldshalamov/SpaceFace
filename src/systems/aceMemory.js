@@ -116,12 +116,10 @@ export const aceMemory = {
       this._schedulePlanetChallenges(p);
     });
     // Census arm: ace challenge scheduling lands inside the sector cook deterministically.
-    this._cookProvider = (sector) => {
-      if (!this._subs || !this._subs.length) return;
-      const p = { sectorId: (sector && sector.id) || sectorOf(this.state) };
-      this._scheduleCultureIntro(p);
-      this._schedulePlanetChallenges(p);
-    };
+    // The chunked steps ride the slice clock; the emit listener drains them inline.
+    this._cookProvider = (sector) => this._sectorEnterSteps({
+      sectorId: (sector && sector.id) || sectorOf(this.state),
+    });
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
     this._listen('save:loaded', () => {
@@ -358,6 +356,13 @@ export const aceMemory = {
     // lean > 0 favors side B: B's captains warm to the player, A's captains mark the debt.
     this._helpedFaction(lean > 0 ? b : a, 1);
     this._crossedFaction(lean > 0 ? a : b, 1);
+  },
+
+  *_sectorEnterSteps(p) {
+    if (!this._subs || !this._subs.length) return;
+    this._scheduleCultureIntro(p);
+    yield;
+    this._schedulePlanetChallenges(p);
   },
 
   _scheduleCultureIntro(payload, options = {}) {

@@ -126,7 +126,7 @@ export const salvage = {
     // relying on this listener's emit position. _planForSector's plannedSectorId guard
     // makes the emit listener's own call a no-op — ordering insurance, not a second plan.
     if (this.helpers) {
-      this._cookProvider = (sector) => this._planForSector((sector && sector.id)
+      this._cookProvider = (sector) => this._planForSectorSteps((sector && sector.id)
         || (this.state && this.state.world && this.state.world.currentSectorId));
       (this.helpers.sectorCookProviders
         || (this.helpers.sectorCookProviders = []))
@@ -356,6 +356,12 @@ export const salvage = {
   // PLACEMENT (deterministic, on sector entry)
   // =====================================================================================
   _planForSector(sectorId) {
+    // Sync lane (emit listener): drain the chunked steps inline — the census drive
+    // holds the same generator across its slices.
+    for (const _ of this._planForSectorSteps(sectorId)) { /* inline */ }
+  },
+
+  *_planForSectorSteps(sectorId) {
     const state = this.state;
     if (!sectorId) return;
     // Idempotent within a visit: re-entering the same sector without leaving keeps the same layout.
@@ -382,6 +388,7 @@ export const salvage = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
 
     for (const zone of zones) {
+      yield;
       if (zone.salvageCutterSource) {
         const rec = this._makeSourceSalvagePoint(sectorId, zone, zone.salvageCutterSource, spawnEntity);
         if (rec) state.salvage.points.push(rec);
@@ -395,6 +402,7 @@ export const salvage = {
       const wantComm = rng() < COMMUNICATOR_CHANCE;
 
       for (let i = 0; i < count; i++) {
+        yield;
         const ang = rng() * Math.PI * 2;
         const r = SCATTER_MIN + Math.sqrt(rng()) * (radius - SCATTER_MIN);
         const pos = { x: zone.center.x + Math.cos(ang) * r, z: zone.center.z + Math.sin(ang) * r };

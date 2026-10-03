@@ -303,7 +303,7 @@ export const recoveryEncounter = {
     // The enter materialization (adopt-or-spawn derelict wrecks) registers for the
     // deterministic cook census instead of depending on listener order.
     if (this.helpers) {
-      this._cookProvider = (sector) => this._rebindSector((sector && sector.id)
+      this._cookProvider = (sector) => this._rebindSectorSteps((sector && sector.id)
         || (this.state && this.state.world && this.state.world.currentSectorId));
       (this.helpers.sectorCookProviders
         || (this.helpers.sectorCookProviders = []))
@@ -651,9 +651,16 @@ export const recoveryEncounter = {
   },
 
   _rebindSector(sectorId) {
+    // Sync lane (emit listener, salvage:placed): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices.
+    for (const _ of this._rebindSectorSteps(sectorId)) { /* inline */ }
+  },
+
+  *_rebindSectorSteps(sectorId) {
     if (!sectorId) return;
     const own = ensureState(this.state);
     for (const record of Object.values(own.records)) {
+      yield;
       if (!record || record.sectorId !== sectorId) continue;
       this._claimSalvagePoint(record);
       const wreck = this._materialize(record);

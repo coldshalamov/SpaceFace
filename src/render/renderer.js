@@ -1774,9 +1774,19 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // continuous enters used to run the whole spawn cohort inside the emit tail —
       // the last un-veiled in-flight brick — so the beat drives the same FIFO the
       // cook drains for hard enters, ~4 ms per beat, iterators held across beats.
-      if (owner.state && owner.state.render
-          && Array.isArray(owner.state.render.deferredEnterMaterializers)
-          && owner.state.render.deferredEnterMaterializers.length) {
+      const seamFifo = owner.state && owner.state.render
+        && owner.state.render.deferredEnterMaterializers;
+      const seamHead = seamFifo && seamFifo.length ? seamFifo[0] : null;
+      const seamLiveEpoch = owner.state && owner.state.world
+        && owner.state.world.enterSerial != null
+        ? owner.state.world.enterSerial : null;
+      // A head minted under a NEWER enter's epoch belongs to that enter's own
+      // drain owner — sweeping it under this hold's epoch pays O(queue) per beat
+      // for zero steps (the epoch gate inside the slice drain can only break).
+      const seamHeadForeign = !!(seamHead && seamHead.epoch != null
+        && owner._sectorHandoffEpoch != null && seamHead.epoch !== owner._sectorHandoffEpoch
+        && seamLiveEpoch != null && seamHead.epoch === seamLiveEpoch);
+      if (Array.isArray(seamFifo) && seamFifo.length && !seamHeadForeign) {
         drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4,
           owner._sectorHandoffEpoch);
       }
@@ -1826,7 +1836,19 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // falls to the post-hold slice drain below.
       const seamQueue = owner.state && owner.state.render
         && owner.state.render.deferredEnterMaterializers;
-      if (seamQueue && seamQueue.length) {
+      const seamHeadEntry = seamQueue && seamQueue.length ? seamQueue[0] : null;
+      const seamLiveEpochNow = owner.state && owner.state.world
+        && owner.state.world.enterSerial != null
+        ? owner.state.world.enterSerial : null;
+      // Same live-foreign-head mirror as the post-hold block below: a queue head
+      // stamped with the live serial (and not this hold's epoch) is claimed by
+      // the newer enter's own drain owner — minting a 2s extension here would
+      // pin the seam sector + defer residency on a queue this hold can't step.
+      const seamQueueForeign = !!(seamHeadEntry && seamHeadEntry.epoch != null
+        && owner._sectorHandoffEpoch != null
+        && seamHeadEntry.epoch !== owner._sectorHandoffEpoch
+        && seamLiveEpochNow != null && seamHeadEntry.epoch === seamLiveEpochNow);
+      if (seamQueue && seamQueue.length && !seamQueueForeign) {
         if (!Number.isFinite(owner._seamDeferredExtendS)) owner._seamDeferredExtendS = 2;
         if (owner._seamDeferredExtendS > 0) {
           const beat = Math.min(0.25, owner._seamDeferredExtendS);

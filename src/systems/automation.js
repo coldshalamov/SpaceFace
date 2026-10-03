@@ -597,7 +597,7 @@ export const automation = {
     // deterministically (continuous-membership adoption stays on the bus payload).
     this._cookProvider = () => {
       if (this._saveRestoring) return;
-      this._syncOutpostPresence(this.state.automation);
+      return this._syncOutpostPresenceSteps(this.state.automation);
     };
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
@@ -1234,10 +1234,17 @@ export const automation = {
   // Outposts remain coarse ledger records everywhere, but materialize one authored place entity
   // while their home sector is the player's current sector.
   _syncOutpostPresence(a, { reconcile = true } = {}) {
+    // Sync lane (emit listener, save paths, tier updates): drain the chunked steps
+    // inline — the census drive holds the same generator across its slices.
+    for (const _ of this._syncOutpostPresenceSteps(a, { reconcile })) { /* inline */ }
+  },
+
+  *_syncOutpostPresenceSteps(a, { reconcile = true } = {}) {
     if (this._saveRestoring) return;
     if (!a || !Array.isArray(a.outposts)) return;
     const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
     for (const o of a.outposts) {
+      yield;
       if (currentSectorId && o.sectorId === currentSectorId) this._spawnOutpostEntity(o, reconcile);
       else if (reconcile || o.entityId != null) this._releaseOutpostEntity(o, reconcile);
     }
