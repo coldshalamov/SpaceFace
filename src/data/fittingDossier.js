@@ -576,14 +576,15 @@ function deadZero(value) {
 function weaponStats(def) {
   const out = [];
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
-  push('Damage', num(def.damage));
+  push('Damage', num(def.dmg));
   push('DPS', num(def.dps));
-  push('Rate', def.fireRate != null ? `${num(def.fireRate, 1)}/s` : null);
+  push('Rate', def.rof != null ? `${num(def.rof, 1)}/s` : null);
   push('Proj. speed', num(def.projSpeed));
   push('Range', num(def.range));
   push('Tracking', def.tracking);
   push('Lock', def.lockTimeS != null ? `${num(def.lockTimeS, 1)} s` : null);
-  push('Splash', num(def.splashRadius));
+  push('Splash', num(def.splashDmg));
+  push('Splash radius', num(def.splashRadius));
   push('Impulse', num(def.impulsePerHit));
   push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec)}/s` : null));
   push('Energy', def.energyCost != null ? `${num(def.energyCost)}/shot` : null);
@@ -643,7 +644,10 @@ function moduleStats(def) {
   push('Tow flail', m.towFlail === true ? 'rigged' : null);
   // Boolean mod keys with no numeric chip of their own (scanner flags, swing drive,
   // tractor specials) — name them so a flag-only card is self-explanatory.
-  const flags = Object.keys(m).filter((k) => m[k] === true && k !== 'towFlail');
+  const flags = Object.keys(m)
+    .filter((k) => m[k] === true && k !== 'towFlail')
+    // camelCase internals -> readable chips: 'repulsionTrap' -> 'Repulsion trap'.
+    .map((k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()));
   push('Flags', flags.length ? flags.join(' · ') : null);
   // A def whose mods are all identity (the stock thruster cluster) has no numeric stat
   // to quote — the truthful chip is that it grants the hull's unmodified handling.
