@@ -176,10 +176,25 @@ export function createRenderPackageLoader(options = {}) {
       if (existing.signature !== signature) {
         throw new Error(`Render package content hash collision for ${contentHash}.`);
       }
+      // Joiner liveness rides the shared entry: the compile tail skips genuinely-dead work
+      // only when no consumer remains — a departed creator must not null-settle the entry
+      // under a live joiner (the null would also poison every later caller of this hash).
+      if (typeof loadOptions.isResidencyOwnerActive === 'function') {
+        (existing.liveConsumers || (existing.liveConsumers = [])).push(loadOptions.isResidencyOwnerActive);
+      }
       const loaded = await existing.promise;
       requestAdmission.assertActive();
       if (existing.evicted) {
         if (cache.get(contentHash) === existing) cache.delete(contentHash);
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
+      }
+      // Same dead-tail window as the GLB lane: the shared entry null-settled before this
+      // joiner's liveness registered — re-admit against a fresh entry under the joiner's
+      // own options rather than inheriting the miss into the caller's retry arm.
+      if (loaded == null) {
+        if (cache.get(contentHash) === existing) cache.delete(contentHash);
+        if (typeof loadOptions.isResidencyOwnerActive === 'function'
+          && !loadOptions.isResidencyOwnerActive()) return null;
         return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
       }
       retainConsumer(existing.key);
@@ -206,6 +221,9 @@ export function createRenderPackageLoader(options = {}) {
       evicted: false,
       admission: newAdmission(`render-package:${metadata.assetId || contentHash}`),
       refCount: 1,
+      liveConsumers: typeof loadOptions.isResidencyOwnerActive === 'function'
+        ? [loadOptions.isResidencyOwnerActive]
+        : [],
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
@@ -228,13 +246,16 @@ export function createRenderPackageLoader(options = {}) {
         // request and the decoded payload must be released by hand, mirroring the GLB lane's
         // 'owner-departed-during-decode' cancel (a commit or a promise rejection would do the
         // teardown; a plain null settle does neither).
-        if (typeof loadOptions.isResidencyOwnerActive === 'function'
-          && !loadOptions.isResidencyOwnerActive()) {
+        const consumers = entry.liveConsumers;
+        if (consumers && consumers.length > 0 && !consumers.some((isLive) => isLive())) {
           disposeDecodedResources(decoded);
           if (entry.request) {
             entry.request.cancel('owner-departed-during-compile');
             entry.request = null;
           }
+          // A null settle resolves, not rejects — evict by hand or every later caller of
+          // this hash inherits the miss forever (the GLB lane's settled-null eviction).
+          if (cache.get(contentHash) === entry) cache.delete(contentHash);
           return null;
         }
         return preparePackageTail(decoded);

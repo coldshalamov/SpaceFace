@@ -11729,6 +11729,13 @@ export const render = {
             seenRockKeys.add(key);
           }
         }
+        // Deterministic population arm: systems that materialize bodies on sector:enter
+        // (the vesper ensemble) register here so their spawn lands inside this census
+        // rather than on listener registration order or the emit slice boundary.
+        const cookProviders = this._simHelpers && this._simHelpers.sectorCookProviders;
+        if (Array.isArray(cookProviders)) {
+          for (const provider of cookProviders) provider(sector);
+        }
         const firstFlightEntities = collectFirstFlightCookEntities(state);
         state.render.liveSectorFirstFlightIds = new Set(
           firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),

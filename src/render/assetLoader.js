@@ -96,6 +96,17 @@ const warned = new Set();
 // join raises. The map carries the class (not just membership) so a visible joiner's tail
 // claims 'visible' rather than capping at 'deadline'.
 const joinedAssetTaskClasses = new WeakMap();
+// Consumers that join a pending shared decode register a liveness predicate here. The
+// compile tail resolves null — skipping genuinely-dead work — only when NO live consumer
+// remains: the creator's owner predicate alone cannot see joiners, and without this an
+// absorbed or superseded creator nulls the task and every live joiner eats 'decode-failed'
+// into the boundary readmission retry arm.
+const taskConsumerPredicates = new WeakMap();
+const consumerPredicatesFor = (task) => {
+  let list = taskConsumerPredicates.get(task);
+  if (!list) { list = []; taskConsumerPredicates.set(task, list); }
+  return list;
+};
 // Keyed by package metadataUrl (string): the pilot path's compile entries are looked up by url,
 // not by task token, so its max-class ledger needs a plain Map.
 const joinedPackageTaskClasses = new Map();
@@ -645,9 +656,11 @@ export async function loadAuthoredPart(url, options = {}) {
   // serial lane already uses, bounded to the joined task's tail.
   // Only an unsettled join re-grades — a cached task that already resolved has no
   // queued posts left to promote.
-  const deadlineJoin = deadlineClass
-    && runtime.pendingAssetTasks
-    && runtime.pendingAssetTasks.has(runtime.assets.get(cacheKey));
+  const joinedPendingTask = runtime.pendingAssetTasks
+    && runtime.pendingAssetTasks.has(runtime.assets.get(cacheKey))
+    ? runtime.assets.get(cacheKey)
+    : null;
+  const deadlineJoin = deadlineClass && !!joinedPendingTask;
 
   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
   if (renderPackagePilot) {
@@ -711,11 +724,16 @@ export async function loadAuthoredPart(url, options = {}) {
         const compileClass = options.admissionVisible === true
           ? 'visible'
           : (joinedAssetTaskClasses.get(task) || (deadlineClass ? 'deadline' : 'ambient'));
+        if (typeof options.isResidencyOwnerActive === 'function') {
+          consumerPredicatesFor(task).push(options.isResidencyOwnerActive);
+        }
         return scheduleGltfCompile(() => {
           // Owner departed while the tail queued: compile is the expensive stage — skip it
-          // and let the settled-null path cancel the request below.
-          if (typeof options.isResidencyOwnerActive === 'function'
-            && !options.isResidencyOwnerActive()) return null;
+          // and let the settled-null path cancel the request below. Joiners deduped onto
+          // this task register their own liveness, so only resolve null when no consumer
+          // remains — a live joiner still wants the record.
+          const consumers = taskConsumerPredicates.get(task);
+          if (consumers && consumers.length > 0 && !consumers.some((isLive) => isLive())) return null;
           return compileBlueprint(url, gltf, slot, {
             cacheKey,
             residency,
@@ -741,6 +759,11 @@ export async function loadAuthoredPart(url, options = {}) {
   if (!task) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
+  }
+  if (joinedPendingTask === task) {
+    // A consumer joining an in-flight task shares its settle — register its liveness so
+    // the compile tail keeps running when the creator's owner departs but a joiner waits.
+    consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
   }
   if (deadlineJoin) {
     // Re-grade waiters still queued at ambient: the joined task's already-posted decodes
@@ -773,6 +796,14 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   });
   if (!blueprint) {
+    // A join that landed inside the dead-tail window (the shared task's compile evaluated
+    // before this consumer's liveness registered) re-admits once through a fresh task —
+    // the evicted cacheKey rebuilds under this consumer's own options instead of failing
+    // the boundary into the readmission retry arm.
+    if (joinedPendingTask === task && authoredConsumerIsActive(options)) {
+      if (request) request.cancel('dead-tail-join');
+      return loadAuthoredPart(url, options);
+    }
     if (request) request.cancel('decode-failed');
     return null;
   }

@@ -54,6 +54,13 @@ export function createVesper() {
       on('combat:damage', p => this._damage(p)); on('entity:killed', p => this._killed(p));
       on('sector:exit', () => { this._capture(); this._clear(); this._reset(); });
       on('sector:enter', () => { this._capture(); this._reset(); this._sync(); });
+      // sector:enter listeners are count-sliced and registration-ordered, so this system's
+      // spawn can land after the jump census walks entityList — the four bodies then miss
+      // firstFlightIds and mount mid-flight. The renderer's live-sector cook invokes these
+      // providers inside its census instead of relying on listener order.
+      const providers = this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []);
+      this._cookProvider = () => { if (this._home()) this._sync(); };
+      providers.push(this._cookProvider);
       on('save:restoring', () => { this._clear(); this._reset(); });
       on('save:loaded', () => { this._reset(); this._sync(); });
       on('game:newGame', () => this.newGame());
@@ -105,7 +112,16 @@ export function createVesper() {
     newGame() { this._clear(); this.state.vesper = freshVesperMemory(); this._reset(); },
     serialize() { this._capture(); return normalizeVesperMemory(this.state.vesper, this.state.simTime || 0); },
     deserialize(raw) { this._clear(); this.state.vesper = normalizeVesperMemory(raw, this.state.simTime || 0); this._reset(); },
-    destroy() { for (const off of this._unsubs || []) off(); this._unsubs = []; this._clear(); this._notes = []; },
+    destroy() {
+      for (const off of this._unsubs || []) off(); this._unsubs = [];
+      const providers = this.helpers && this.helpers.sectorCookProviders;
+      if (Array.isArray(providers) && this._cookProvider) {
+        const index = providers.indexOf(this._cookProvider);
+        if (index >= 0) providers.splice(index, 1);
+      }
+      this._cookProvider = null;
+      this._clear(); this._notes = [];
+    },
     _say(key, force = false) {
       const now = this.state.simTime || 0; if (!force && now - this._lastVoice < 7) return;
       const text = VESPER_LINES[key]; if (!text) return; this._lastVoice = now;
