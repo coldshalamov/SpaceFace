@@ -2827,11 +2827,11 @@ function buildGate(e, pal) {
   // Shared-material clock: every gate of a type writes the same uTime (idempotent — the boltMesh
   // pattern). nowSec() is the presentation sim clock, so the face holds still with the world on
   // pause/hit-stop. infrastructureMotion owns the reduced-motion decision and maintains
-  // userData.timeScale (same 0.25 convention as the lens). Guarded so the canvas fallback
+  // userData.motionScale (same 0.25 convention as the lens). Guarded so the canvas fallback
   // material (no uniforms) is left untouched.
   portal.onBeforeRender = () => {
     const u = portalMat.uniforms;
-    if (u && u.uTime) u.uTime.value = nowSec() * (portalMat.userData.timeScale || 1);
+    if (u && u.uTime) u.uTime.value = nowSec() * (portalMat.userData.motionScale || 1);
   };
   portal.scale.setScalar(R);
   orient.add(portal);

@@ -991,7 +991,7 @@ export const save = {
     if (this._restoring) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
@@ -1000,10 +1000,11 @@ export const save = {
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
     this.bus.emit('save:started', { slot, reason, autosave });
+    this._noteWritePending(slot, reason, autosave);
     // Establish the save boundary before any serializer reads live state. Manual saves are
     // synchronous; autosaves use the same boundary in their chunked capture below. The journal
     // remains pending until the write succeeds, so a failed save can retry the same facts.
@@ -1020,7 +1021,7 @@ export const save = {
       console.error('[save] serialize failed', err);
       const timing = this._saveTiming({ slot, reason, autosave, started, serializeMs, ok: false, failure: 'serialize_failed' });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
     const t = nowMs();
@@ -1305,6 +1306,7 @@ export const save = {
     if (write && write.ok) {
       this.state.save.currentSlot = slot;
       this.state.meta.lastSavedAt = envelope.savedAt;
+      this._noteWriteOutcome(slot, timing);
       if (write.backupCreated) {
         this.bus.emit('save:backup', {
           slot,
@@ -1316,13 +1318,70 @@ export const save = {
       this._queueSharedStoreMirror();
       return true;
     }
-    this.bus.emit('save:error', timing);
+    this._emitSaveTimingError(timing);
     return false;
   },
 
   _recordSaveTiming(timing) {
     const perf = this.state && this.state.perfRuntime;
     if (perf && typeof perf.recordSave === 'function') perf.recordSave(timing);
+  },
+
+  // SF-281 — durable write receipt on state.save. The toast fades; pending/durable/failed must
+  // remain readable on the state record so any surface (pause sheet, save browser, HUD) can
+  // tell "saving now" from "saved" from "save failed" without replaying events. Only real write
+  // outcomes land here: load errors stay on their own save:error payload, and a superseded
+  // autosave is a cancellation — the slot keeps its previous generation, nothing was lost.
+  _noteWritePending(slot, trigger, autosave) {
+    const bag = this.state && this.state.save;
+    if (!bag || typeof bag !== 'object') return;
+    bag.pendingWrite = {
+      slot: slot || 'quick',
+      trigger: trigger || null,
+      autosave: !!autosave,
+      at: nowMs(),
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : null,
+    };
+  },
+
+  _noteWriteOutcome(slot, timing) {
+    const bag = this.state && this.state.save;
+    if (!bag || typeof bag !== 'object' || !timing) return;
+    if (bag.pendingWrite && bag.pendingWrite.slot === slot) bag.pendingWrite = null;
+    const at = nowMs();
+    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : null;
+    if (timing.ok) {
+      bag.lastWriteOk = {
+        slot,
+        trigger: timing.trigger || null,
+        autosave: timing.autosave === true,
+        bytes: Number.isFinite(timing.bytes) ? timing.bytes : 0,
+        at,
+        simTime,
+      };
+      bag.lastWriteFailure = null;
+      bag.consecutiveWriteFailures = 0;
+      return;
+    }
+    if (timing.failure === 'superseded') return;
+    bag.lastWriteFailure = {
+      slot,
+      trigger: timing.trigger || null,
+      reason: timing.failure || 'save_failed',
+      autosave: timing.autosave === true,
+      at,
+      simTime,
+    };
+    bag.consecutiveWriteFailures = (Number.isSafeInteger(bag.consecutiveWriteFailures)
+      ? bag.consecutiveWriteFailures : 0) + 1;
+  },
+
+  // Save-error emissions on the write path carry _saveTiming receipts; record the durable
+  // outcome BEFORE subscribers run so a listener that reads state.save inside its save:error
+  // handler sees the settled result rather than a stale pending row.
+  _emitSaveTimingError(timing) {
+    this._noteWriteOutcome(timing && timing.slot, timing);
+    this.bus.emit('save:error', timing);
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
@@ -1749,7 +1808,7 @@ export const save = {
         failure: 'schedule_failed',
       });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
   },
@@ -1804,6 +1863,7 @@ export const save = {
     job.generation = ++this._autosaveGeneration;
     job.restoreSequence = this._restoreSequence;
     this.bus.emit('save:started', { slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true });
+    this._noteWritePending(AUTOSAVE_SLOT, job.reason, true);
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({
         slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
@@ -2232,7 +2292,7 @@ export const save = {
       blockingSlicesMs: [0],
     });
     this._recordSaveTiming(timing);
-    this.bus.emit('save:error', timing);
+    this._emitSaveTimingError(timing);
     return false;
   },
 
@@ -3898,8 +3958,11 @@ export const save = {
       // web timer ledger claims its restored attachment ids, and a saved snare holds its
       // geometry until save:loaded re-stages the anchor line. Old saves without these keys
       // leave both systems at their natural reset.
-      this._callDeserialize('charges', data.charges);
-      this._callDeserialize('snares', data.snares);
+      // The save rows are named data.charges/data.snares; the OWNERS register as
+      // impulseCharges/masslineSnares. Deserialize resolves registry names — passing the
+      // data key looked up nothing and silently dropped every deployed network on load.
+      this._callDeserialize('impulseCharges', data.charges);
+      this._callDeserialize('masslineSnares', data.snares);
       this._reportRestoreProgress(0.21, 'Restoring combat memory');
       yield 'combat-restored';
 
