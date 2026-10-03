@@ -25,6 +25,7 @@ import {
   commitShipmentSale,
   ensureShipment,
   shipmentQty,
+  shipmentUsed,
   takeFromShipment,
 } from './cargoCustody.js';
 import {
@@ -167,6 +168,238 @@ function drillAccountingStamp(site) {
     stamp.lastDrillT = Number(site.lastDrillT);
   }
   return stamp;
+}
+
+// ---------------------------------------------------------------------------
+// SF-273/SF-274 durable-record repair. `state.sites.byId` arrives verbatim from arbitrary saves:
+// the owner below validates custody + machinery fields to a conserved, explicitly-safe state
+// before any system resumes work on them. Every repair fails CLOSED toward the player —
+// goods return to a current owner (buffer/store), a handoff that cannot prove its identity is
+// never re-sold, and an unrecoverable machine phase resolves to the same safe idle the live
+// "abandoned batch" rule already uses. Nothing here mints units, credits, or progress.
+// ---------------------------------------------------------------------------
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function finiteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Clean a {goodId: qty} map. Fractional stock is legal in buffers/lanes; shipment lots are ints. */
+function normalizeSiteStoreMap(store, { integers = false } = {}) {
+  const out = {};
+  if (!isPlainObject(store)) return out;
+  for (const [goodId, qty] of Object.entries(store)) {
+    if (typeof goodId !== 'string' || !goodId) continue;
+    const n = integers ? Math.floor(Number(qty)) : Number(qty);
+    if (Number.isFinite(n) && n > 0) out[goodId] = n;
+  }
+  return out;
+}
+
+/** Return an unrecoverable pod's goods to the launch buffer — the lot's previous owner. */
+function refundSitePodCargo(site, cargo) {
+  let moved = 0;
+  if (!isPlainObject(site.exportBuffer)) site.exportBuffer = {};
+  for (const [goodId, qty] of Object.entries(isPlainObject(cargo) ? cargo : {})) {
+    const n = Math.floor(Number(qty));
+    if (typeof goodId !== 'string' || !goodId || !(n > 0)) continue;
+    site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + n;
+    moved += n;
+  }
+  return moved;
+}
+
+/**
+ * Machine records are durable authorship: placement, mode, fractional carry and a committed
+ * fabricator batch all survive a save boundary. Repair drops only records that can never run
+ * again (unknown housing, off-grid or duplicated cell, corrupt id) — they are invisible,
+ * untouchable phantoms otherwise. A `job` whose recipe/progress cannot resume resolves to null:
+ * identical to the deliberate mode-swap outcome, inputs stay consumed, the machine idles safe.
+ */
+function normalizeSiteMachines(site) {
+  const machines = Array.isArray(site.machines) ? site.machines : [];
+  const kept = [];
+  const seenIds = new Set();
+  const seenCells = new Set();
+  let dropped = 0;
+  for (const m of machines) {
+    if (!isPlainObject(m)) { dropped += 1; continue; }
+    const def = SITE_MACHINE_BY_ID.get(m.defId);
+    const id = typeof m.id === 'string' && m.id ? m.id : null;
+    const col = Number(m.col);
+    const row = Number(m.row);
+    const cellOk = Number.isInteger(col) && Number.isInteger(row)
+      && col >= 0 && col < COLS && row >= 0 && row < ROWS;
+    if (!def || !id || seenIds.has(id) || !cellOk || seenCells.has(`${col},${row}`)) {
+      dropped += 1;
+      continue;
+    }
+    seenIds.add(id);
+    seenCells.add(`${col},${row}`);
+    m.col = col;
+    m.row = row;
+    // A mode outside the machine's authored list idles it forever; restore the authored default.
+    if (Array.isArray(def.modes) && !def.modes.includes(m.mode)) m.mode = def.defaultMode || null;
+    const carry = isPlainObject(m.carry) ? m.carry : {};
+    m.carry = {};
+    for (const [key, qty] of Object.entries(carry)) {
+      if (typeof key !== 'string' || !key) continue;
+      const n = Number(qty);
+      // Honest carries are strictly sub-unit accruals; a value at/over a whole unit is
+      // corruption that would mint output next tick — drop it rather than clamp to ~1.
+      if (Number.isFinite(n) && n > 0 && n < 1) m.carry[key] = n;
+    }
+    const job = isPlainObject(m.job) ? m.job : null;
+    m.job = null;
+    if (job && typeof job.recipeId === 'string' && job.recipeId
+      && Number.isFinite(Number(job.progressS)) && Number(job.progressS) >= 0) {
+      m.job = { recipeId: job.recipeId, progressS: Number(job.progressS) };
+    }
+    kept.push(m);
+  }
+  if (dropped > 0) {
+    console.warn(`[asteroidSites] save repaired: dropped ${dropped} unrecoverable machine record(s) on ${site.id}`);
+  }
+  site.machines = kept;
+  // A corrupt machine counter must never mint an id a surviving machine already owns.
+  let maxNum = 0;
+  for (const m of kept) {
+    const match = /^m(\d+)$/.exec(m.id);
+    if (match) maxNum = Math.max(maxNum, Number(match[1]));
+  }
+  site.nextMachineNum = Math.max(maxNum + 1, Math.trunc(Number(site.nextMachineNum)) || 1, 1);
+}
+
+/**
+ * Custody + fleet repair (SF-273). An in-flight courier pod IS the interrupted handoff:
+ * goods already left the launch buffer and live in `shipment._pod` until one seal converts them
+ * into exactly one receipt. Honest saves satisfy `_pod === Σ pod cargo` exactly; the seal path
+ * itself only launches whole units. Repair enforces that invariant instead of letting residue
+ * sell later or a deficit stall the pod: kept pods own `_pod`; anything unrecoverable refunds
+ * to the buffer; anything whose intent already settled is dropped WITHOUT a refund (the lot was
+ * already paid once — a refund would clone it).
+ */
+function normalizeSiteCustody(site) {
+  site.exportBuffer = normalizeSiteStoreMap(site.exportBuffer);
+  const exportOff = {};
+  for (const [goodId, off] of Object.entries(isPlainObject(site.exportOff) ? site.exportOff : {})) {
+    if (off) exportOff[goodId] = true;
+  }
+  site.exportOff = exportOff;
+
+  const laneStores = [];
+  for (const entry of Array.isArray(site.laneStores) ? site.laneStores : []) {
+    if (!isPlainObject(entry)) continue;
+    const cells = (Array.isArray(entry.cells) ? entry.cells : [])
+      .filter((c) => Number.isInteger(c) && c >= 0 && c < COLS * ROWS);
+    const store = normalizeSiteStoreMap(entry.store);
+    if (!cells.length) {
+      // No surviving cells means reconcile() would silently spill this stock next rebuild;
+      // move it to the port buffer instead so the lot survives.
+      for (const [goodId, qty] of Object.entries(store)) {
+        site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + qty;
+      }
+      continue;
+    }
+    laneStores.push({ cells, store });
+  }
+  site.laneStores = laneStores;
+
+  const fleet = isPlainObject(site.fleet) ? site.fleet : {};
+  const receipts = isPlainObject(site.saleReceipts) ? site.saleReceipts : {};
+  const inFlight = [];
+  const seenIntents = new Set();
+  let droppedPods = 0;
+  const rawPods = Array.isArray(fleet.inFlight) ? fleet.inFlight : [];
+  for (let i = 0; i < rawPods.length; i += 1) {
+    const pod = rawPods[i];
+    if (!isPlainObject(pod)) { droppedPods += 1; continue; }
+    const cargo = normalizeSiteStoreMap(pod.cargo, { integers: true });
+    const launchT = Number(pod.launchT);
+    const arriveT = Number(pod.arriveT);
+    if (!Number.isFinite(launchT) || !Number.isFinite(arriveT) || !Object.keys(cargo).length) {
+      // The record cannot name when it launched or what it carries — its honest remainder goes
+      // back to the launch buffer, which owns it until a fresh launch commits a new intent.
+      refundSitePodCargo(site, cargo);
+      droppedPods += 1;
+      continue;
+    }
+    const intentId = typeof pod.intentId === 'string' && pod.intentId
+      ? pod.intentId
+      : `site-sale:${site.id}:${launchT}:${i}`;
+    if (seenIntents.has(intentId) || receipts[intentId]) {
+      // This lot already settled (or is a ghost of a kept record). Dropping without refund is
+      // the conservation rule: the same intent must never pay twice.
+      droppedPods += 1;
+      continue;
+    }
+    seenIntents.add(intentId);
+    inFlight.push({
+      launchT,
+      arriveT,
+      cargo,
+      lost: pod.lost === true,
+      stationId: typeof pod.stationId === 'string' && pod.stationId ? pod.stationId : null,
+      stationName: typeof pod.stationName === 'string' && pod.stationName
+        ? pod.stationName
+        : (typeof pod.stationId === 'string' && pod.stationId ? pod.stationId : 'the freight lane'),
+      intentId,
+      worldRecordId: typeof pod.worldRecordId === 'string' && pod.worldRecordId
+        ? pod.worldRecordId
+        : `site:${site.id}:pod:${launchT}:${i}`,
+    });
+  }
+  if (droppedPods > 0) {
+    console.warn(`[asteroidSites] save repaired: retired ${droppedPods} unrecoverable courier record(s) on ${site.id}`);
+  }
+  site.fleet = {
+    podsReady: Math.max(0, Math.trunc(finiteNumber(fleet.podsReady, 0))),
+    podTarget: Number.isFinite(Number(fleet.podTarget))
+      ? Math.max(0, Math.min(SITE_BALANCE.maxPodTarget, Math.trunc(Number(fleet.podTarget))))
+      : SITE_BALANCE.defaultPodTarget,
+    inFlight,
+    launches: Math.max(0, Math.trunc(finiteNumber(fleet.launches, 0))),
+    delivered: Math.max(0, Math.trunc(finiteNumber(fleet.delivered, 0))),
+    lost: Math.max(0, Math.trunc(finiteNumber(fleet.lost, 0))),
+    lastLaunchT: Number.isFinite(Number(fleet.lastLaunchT)) ? Number(fleet.lastLaunchT) : -1e9,
+  };
+
+  // Custody objects are created ONLY when the lot needs a home — stamping empty shipment/
+  // receipt objects onto sites that never launched would break save byte-identity (A10).
+  let podCustody = 0;
+  for (const pod of inFlight) podCustody += storeTotal(pod.cargo);
+  if (isPlainObject(site.shipment) || podCustody > 0) {
+    const shipment = ensureShipment(site);
+    shipment.items = normalizeSiteStoreMap(shipment.items, { integers: true });
+    // The in-flight custody account is exactly the surviving pods' cargo — no more, no less.
+    if (podCustody > 0) shipment.items._pod = podCustody;
+    else delete shipment.items._pod;
+    shipment.deliveryState = shipmentUsed(site) > 0 ? 'loading' : 'delivered';
+  } else if (site.shipment != null) {
+    delete site.shipment;
+  }
+  if (isPlainObject(site.saleReceipts)) {
+    for (const [intentId, entry] of Object.entries(site.saleReceipts)) {
+      if (!isPlainObject(entry)) delete site.saleReceipts[intentId];
+    }
+  } else if (site.saleReceipts != null) {
+    delete site.saleReceipts;
+  }
+  // A persisted half-committed intent is never resumable truth — the receipt ledger is.
+  delete site.pendingSale;
+
+  site.stats = isPlainObject(site.stats) ? site.stats : {};
+  site.stats.grossCr = Math.max(0, finiteNumber(site.stats.grossCr, 0));
+  site.stats.creditedCr = Math.max(0, finiteNumber(site.stats.creditedCr, 0));
+  site.stats.exportedU = Math.max(0, finiteNumber(site.stats.exportedU, 0));
+  site.ledger = (Array.isArray(site.ledger) ? site.ledger : [])
+    .filter((entry) => isPlainObject(entry))
+    .slice(0, SITE_BALANCE.ledgerMax);
+  if (site.returnBaseline != null && !isPlainObject(site.returnBaseline)) delete site.returnBaseline;
 }
 
 export const asteroidSites = {
@@ -378,9 +611,15 @@ export const asteroidSites = {
     if (!sites.meta) sites.meta = { rngSeed: 0 };
     if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
     if (!Array.isArray(sites.worldOrder)) sites.worldOrder = [];
+    let maxSiteNum = 0;
     for (const id of sites.order) {
       const site = sites.byId[id];
       if (!site) continue;
+      // The map key is the durable identity; a record claiming a different id could detach
+      // itself from its own lookups (or worse, shadow a sibling claim).
+      site.id = id;
+      const siteNumMatch = /^site_(\d+)$/.exec(id);
+      if (siteNumMatch) maxSiteNum = Math.max(maxSiteNum, Number(siteNumMatch[1]));
       site.cleared = normalizeClearedTiles(site.cleared);
       if (site.drillVeinRemainders != null && !Array.isArray(site.drillVeinRemainders)) {
         site.drillVeinRemainders = [];
@@ -402,10 +641,17 @@ export const asteroidSites = {
       // so a corrupt save fails closed to a playable path instead of inventing terminal truth.
       if (site.survey != null) site.survey = normalizeSurveyRecord(site.survey, COLS, ROWS);
       for (const m of site.machines) {
+        if (!isPlainObject(m)) continue; // unrecoverable entries are dropped by the deep repair below
         if (!m.carry) m.carry = {};
         if (m.job === undefined) m.job = null;
       }
+      // SF-273/SF-274: deep repair of the durable machinery + custody fields. Runs after the
+      // shape guards above so each pass sees real objects; both are fixed points on honest data.
+      normalizeSiteMachines(site);
+      normalizeSiteCustody(site);
     }
+    // A corrupt site counter must never mint an id a surviving claim already owns.
+    sites.nextSiteNum = Math.max(maxSiteNum + 1, Math.trunc(Number(sites.nextSiteNum)) || 1, 1);
   },
 
   _ensureWorldSiteRecords() {
@@ -1972,6 +2218,16 @@ export const asteroidSites = {
       if (pod.arriveT > state.simTime) { remaining.push(pod); continue; }
       const sealed = this._sealPodOutcome(site, pod);
       if (sealed && sealed.duplicate) continue;
+      // SF-273: a seal that cannot complete must never crash the site tick, erase the lot, or
+      // fabricate a sale. The cargo goes back to the launch buffer (the lot's previous owner)
+      // and custody is debited to match — the pod itself retires so the failure cannot loop.
+      if (!sealed || sealed.ok !== true || !isPlainObject(sealed.receipt)) {
+        const returned = refundSitePodCargo(site, pod.cargo);
+        takeFromShipment(site, '_pod', storeTotal(pod.cargo));
+        this._ledger(site, 'warn',
+          `Courier handoff could not settle — ${returned}u returned to the launch buffer.`);
+        continue;
+      }
       if (pod.lost) {
         fleet.lost += 1;
         const units = storeTotal(pod.cargo);
@@ -1985,8 +2241,10 @@ export const asteroidSites = {
         continue;
       }
       fleet.delivered += 1;
-      const units = sealed ? sealed.receipt.quantity : storeTotal(pod.cargo);
-      const credited = sealed ? sealed.receipt.credited : 0;
+      const units = Number.isFinite(sealed.receipt.quantity)
+        ? sealed.receipt.quantity
+        : storeTotal(pod.cargo);
+      const credited = Number.isFinite(sealed.receipt.credited) ? sealed.receipt.credited : 0;
       this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`);
       this.bus.emit('site:courierDelivered', {
         siteId: site.id,
