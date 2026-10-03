@@ -36,6 +36,27 @@ import { OVERKILL_ORIGIN_KINDS } from '../data/hullFractureSeams.js';
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. Every piece of per-tick work here lives in two
+// collections that are populated ONLY by this system's own event handlers: physics:impact /
+// tether:whipImpact feed _pendingCraftContacts, and fracture consequences feed _tearOffLive.
+// When both are empty the tick is a proven no-op (the stranded-contact sweep iterates an empty
+// map, the tear-off sweep an empty set), so the latch just skips publishing them. Any impact
+// event refills a collection and the next tick runs live again — the handlers themselves are
+// the wake path; no player-distance heuristic, no shared scheduler flag.
+let COLLISION_CONSEQUENCES_QUIET_LATCH = true;
+export function setCollisionConsequencesQuietLatchForBench(enabled) {
+  COLLISION_CONSEQUENCES_QUIET_LATCH = enabled !== false;
+}
+export function getCollisionConsequencesQuietLatchForBench() {
+  return COLLISION_CONSEQUENCES_QUIET_LATCH !== false;
+}
+
+function publishConsequenceQuiet(state, latched) {
+  const rt = state.collisionConsequenceRuntime || (state.collisionConsequenceRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 // MASS FLAIL RIG tuning: the flail needs a real load before it reads as one, then pays out
 // linearly in towed tonnes. At +400 t the strike is doubled; past +560 t it caps at 2.4 —
 // below the ram plate's own clamp, so the two verbs never collapse into one number.
@@ -95,6 +116,13 @@ export const collisionConsequences = {
     }
     this._applicationEnabled = true;
     if (!state || state.mode !== 'flight') return;
+    // FB-090 quiet latch: the two work queues are filled exclusively by this owner's own event
+    // subscriptions (impacts defer craft contacts; fracture paths add live tear-off shards).
+    // Both empty ⇒ the sweeps below can only no-op, so skip them and publish the latch.
+    const hasQueuedWork = (this._pendingCraftContacts && this._pendingCraftContacts.size > 0)
+      || (this._tearOffLive && this._tearOffLive.size > 0);
+    publishConsequenceQuiet(state, !hasQueuedWork);
+    if (COLLISION_CONSEQUENCES_QUIET_LATCH !== false && !hasQueuedWork) return;
     this._resolveStrandedCraftContactsBefore(nonNegativeTick(state.tick));
     if (this._tearOffLive && this._tearOffLive.size) {
       for (const id of this._tearOffLive) {

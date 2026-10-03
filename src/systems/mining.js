@@ -157,6 +157,36 @@ const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. Mining's tick is a chain of self-gated no-ops at rest —
+// parked-ore flush (empty lists), beam edge (not firing), heat cool (heat==0), rich-core watch
+// (resolved), noise decay (noise==0), and the pickup sweep (empty pickup index, no dirty rows).
+// The latch proves that rest state once, then skips the tail until a wake signal lands:
+// fireGroup 2 polled live, spawn/loot/pickup membership bumps the entity-index version, the
+// mining event handlers clear it directly, and a 0.5 s rescan bounds any stray writer.
+let MINING_QUIET_LATCH = true;
+export function setMiningQuietLatchForBench(enabled) {
+  MINING_QUIET_LATCH = enabled !== false;
+}
+export function getMiningQuietLatchForBench() {
+  return MINING_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const MINING_QUIET_RESCAN_TICKS = 30;
+
+function miningEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function publishMiningQuiet(state, latched) {
+  const rt = state.miningRuntime || (state.miningRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export const mining = {
   name: 'mining',
 
@@ -185,6 +215,7 @@ export const mining = {
     this._beaming = false;     // was the player beam active last tick (start/stop edges)
     this._lockTargetId = null; // currently soft-locked asteroid/wreck id
     this._activeBeamLine = null;
+    this._miningQuiet = null;  // FB-090 quiet latch
     // Vent rhythm bookkeeping. `_pulseOre` is the ore (fractional units) this beam-on window has
     // already delivered; venting inside the amber band cashes a fraction of it as a bonus burst.
     this._pulseOre = 0;
@@ -195,20 +226,24 @@ export const mining = {
     this._ventTaught = false;
 
     const bus = this.bus;
+    // FB-090: every subscription that can create tick work also drops the quiet latch; the
+    // entity-index version signal inside update() is the redundant second wake.
+    const wakeQuiet = () => { this._miningQuiet = null; };
     // Combat spawns a wreck on ship death so the player can salvage it.
-    bus.on('entity:killed', (p) => this._onShipDestroyed(p));
+    bus.on('entity:killed', (p) => { wakeQuiet(); this._onShipDestroyed(p); });
     // Combat loot drops → materialize as collectible pickups (shared pickup path).
-    bus.on('loot:drop', (p) => this._onLootDrop(p));
+    bus.on('loot:drop', (p) => { wakeQuiet(); this._onLootDrop(p); });
     // Collect ore/cargo pickups into the hold (physics emits this on contact; we also self-emit).
-    bus.on('pickup:collected', (p) => this._onPickupCollected(p));
-    bus.on('dock:docked', (p) => this._onDocked(p));
+    bus.on('pickup:collected', (p) => { wakeQuiet(); this._onPickupCollected(p); });
+    bus.on('dock:docked', (p) => { wakeQuiet(); this._onDocked(p); });
     // Hull-burst overhaul slice A (combat.arcadeLoot): leaving banks the loot still in flight.
-    bus.on('dock:docked', () => this._bankCombatLoot());
-    bus.on('jump:start', () => this._bankCombatLoot());
-    bus.on('sector:exit', () => this._bankCombatLoot());
+    bus.on('dock:docked', () => { wakeQuiet(); this._bankCombatLoot(); });
+    bus.on('jump:start', () => { wakeQuiet(); this._bankCombatLoot(); });
+    bus.on('sector:exit', () => { wakeQuiet(); this._bankCombatLoot(); });
     // Fresh world context → drop the stale beam lock and vent bookkeeping (a save loaded
     // mid-beam must not carry pulse credit or a lock target into the restored field).
     const resetMiningSession = () => {
+      wakeQuiet();
       this._setLockTargetId(null);
       this._stopBeam();
       this._resetBeamHeat();
@@ -224,14 +259,58 @@ export const mining = {
   // ---- main per-tick update -------------------------------------------------
   update(dt, state) {
     resetMiningDiagnostics(this._diag);
-    this._flushParkedOre();
     const player = state.entities.get(state.playerId);
     const firing = !!player && player.alive && !player.flags.docked
       && state.mode === 'flight' && state.input.fireGroup === 2;
 
     let beam = null;
+    if (player) beam = this._beamRuntime(player);
+
+    // FB-090 quiet latch. Every piece of the tail is provably a no-op at rest when ALL of these
+    // hold; the first unlatched tick is what settles them (creates the miningNoise field, emits
+    // the beam-cold receipt, parks nothing), so they are arm conditions, not skips-with-drift:
+    //   • !firing && !this._beaming        — no beam edge to process
+    //   • beam heat fully cooled AND the cold receipt already emitted (else the emit edge is due)
+    //   • miningNoise field exists at exactly 0 (undefined refuses so the first write lands)
+    //   • richCore absent or resolved; parked ore lists empty; pickup+payload index empty
+    //   • entity-index version stable and inside the 0.5 s rescan window
+    // The gate below keeps all the real writes on the unlatched path; while latched, every
+    // skipped call would only re-derive identical zeros.
+    const membership = miningEntityIndexVersion(state);
+    const tick = state.tick | 0;
+    const heatIdle = beam == null || (!(beam.heat > 0) && this._heatEmitPct === 0);
+    const noiseIdle = !!(state.player && state.player.miningNoise === 0);
+    const richCore = state.player && state.player.mining && state.player.mining.richCore;
+    const coreIdle = !richCore || richCore.resolved === true;
+    const parkedIdle = !(this._parkedAsteroids && this._parkedAsteroids.length)
+      && !(this._unreleasedOre && this._unreleasedOre.length);
+    const pickupsIdle = hasAuthoritativeEmptyPickupIndex(state);
+    const stillQuiet = !firing
+      && !this._beaming
+      && heatIdle
+      && noiseIdle
+      && coreIdle
+      && parkedIdle
+      && pickupsIdle
+      && membership != null;
+    if (MINING_QUIET_LATCH !== false) {
+      const quiet = this._miningQuiet;
+      if (quiet
+          && stillQuiet
+          && quiet.membership === membership
+          && ((tick - (quiet.armedTick | 0)) < MINING_QUIET_RESCAN_TICKS)) {
+        publishMiningQuiet(state, true);
+        return;
+      }
+      this._miningQuiet = stillQuiet ? { membership, armedTick: tick } : null;
+      publishMiningQuiet(state, !!this._miningQuiet);
+    } else if (this._miningQuiet) {
+      this._miningQuiet = null;
+      publishMiningQuiet(state, false);
+    }
+
+    this._flushParkedOre();
     if (player) {
-      beam = this._beamRuntime(player);
       // Heat never gates the beam: a pegged gauge keeps extracting at full rate for as long as the
       // player holds the tool on the rock. The old peg-lockout read heat as a circuit breaker and
       // cut the beam off mid-hold, punishing exactly the sustained mining the tool exists for.

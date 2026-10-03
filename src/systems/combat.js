@@ -15,7 +15,7 @@ import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../comb
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { opticBeamHit, opticMaterialOf } from '../combat/opticField.js';
-import { markDirty, isDirty, DIRTY } from '../core/dirtyJournal.js';
+import { markDirty, isDirty, hasDirty, DIRTY } from '../core/dirtyJournal.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
@@ -51,6 +51,42 @@ const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
 const KILL_PRESENTATION_CAUSES = new Set(Object.values(KillCause));
 const KILL_PRESENTATION_SURFACES = new Set(Object.values(KillSurface));
 const BEAM_QUERY_RADIUS_PAD = 256;
+
+// ── FB-090 owner-local quiet latch ──────────────────────────────────────────────
+// Bench A/B: production default ON. The per-tick ship walk only writes shield/cap regen and
+// invuln expiry, and only for ships already below max or flagged invuln — damage arrives via
+// onHit/onWhipImpact (DIRTY.COMBAT marks) and spawn/despawn bumps the entity-index version, so
+// a scan that found nothing regenerating cannot find work until one of those signals fires.
+// A 0.5 s rescan covers foreign writers that drain cap/shield without marking dirty
+// (countermeasures, unique loot). Beams are checked live: a non-empty list means weapons fired
+// this tick and _applyBeamDamage must run.
+let COMBAT_QUIET_LATCH = true;
+export function setCombatQuietLatchForBench(enabled) {
+  COMBAT_QUIET_LATCH = enabled !== false;
+}
+export function getCombatQuietLatchForBench() {
+  return COMBAT_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const COMBAT_QUIET_RESCAN_TICKS = 30;
+
+function combatEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function combatBeamsIdle(state) {
+  const beams = state && state.combat && state.combat.beams;
+  return !Array.isArray(beams) || beams.length === 0;
+}
+
+function publishCombatQuiet(state, latched) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.quietLatched = !!latched;
+}
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   swarmer: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
   sniper: Object.freeze(['ranged']),
@@ -638,27 +674,54 @@ export const combat = {
     this._recoveryInFlight = false;
     this._beamCandidateScratch = [];
     this._beamQueryCenter = { x: 0, z: 0 };
+    this._combatQuiet = null;
     this._diag = {
       beamSpatialQueries: 0,
       beamCandidates: 0,
     };
-    ctx.bus.on('projectile:hit', (p) => this.onHit(p));
-    ctx.bus.on('tether:whipImpact', (p) => this.onWhipImpact(p || {}));
+    // Every subscription that can create work for the per-tick walk also drops the quiet
+    // latch; the journal/index signals inside update() are the redundant second wake.
+    const wakeQuiet = () => { this._combatQuiet = null; };
+    ctx.bus.on('projectile:hit', (p) => { wakeQuiet(); this.onHit(p); });
+    ctx.bus.on('tether:whipImpact', (p) => { wakeQuiet(); this.onWhipImpact(p || {}); });
     ctx.bus.on('dock:docked', (p) => {
+      wakeQuiet();
       this.rememberRespawnStation(p && p.stationId);
       this.setPlayerDocked(true);
     });
-    ctx.bus.on('dock:undocked', () => this.setPlayerDocked(false));
-    ctx.bus.on('player:recoveryRequested', (payload) => this.recoverPendingPlayer(payload || {}));
+    ctx.bus.on('dock:undocked', () => { wakeQuiet(); this.setPlayerDocked(false); });
+    ctx.bus.on('player:recoveryRequested', (payload) => { wakeQuiet(); this.recoverPendingPlayer(payload || {}); });
     const clearPendingDefeat = () => {
-      this._pendingPlayerRecovery = null;
+      wakeQuiet();
       this._recoveryInFlight = false;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const restoredDefeat = !!player
+        && (player.alive === false || !!(player.flags && player.flags.defeated));
+      if (restoredDefeat) {
+        // SF-285: a save written mid-defeat restores the wreck AND the offer attached to it.
+        // Clearing here would strand the player in a dead hull with no reachable resolution —
+        // latch onto the restored durable receipt (or a receipt-less pending for pre-field
+        // saves, so buildRecoveryPlan still derives a truthful berth from live state).
+        // Ironman stays permadeath: the final screen is owed, a recovery latch is not.
+        const difficulty = this.state.settings && this.state.settings.gameplay
+          && this.state.settings.gameplay.difficulty;
+        this._pendingPlayerRecovery = difficulty === 'ironman'
+          ? null
+          : {
+            playerId: player.id,
+            receipt: (this.state.combat && this.state.combat.lastPlayerDefeat) || null,
+          };
+        return;
+      }
+      this._pendingPlayerRecovery = null;
       if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
-    ctx.bus.on('debug:refillPlayer', () => refillLabPlayer(this.state));
-    ctx.bus.on('debug:invulnerable', (p) => setLabInvulnerable(this.state, p || {}));
+    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state); });
+    ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
@@ -1192,12 +1255,35 @@ export const combat = {
   update(dt, state) {
     ensureCombatRuntime(this);
     resetCombatDiagnostics(this._diag);
+    state.combatRuntime = state.combatRuntime || {};
+    const membership = combatEntityIndexVersion(state);
+    const tick = state.tick | 0;
+    const beamsIdle = combatBeamsIdle(state);
+    const combatDirty = hasDirty(state, DIRTY.COMBAT);
+    // Quiet-latched: the last full scan proved no ship needs regen or invuln service and no
+    // damage is in flight, so the walk + beam sweep can only no-op this tick. The kernel still
+    // runs — it owns attachment telemetry and keeps its own independent quiet path.
+    const quiet = this._combatQuiet;
+    if (COMBAT_QUIET_LATCH !== false
+        && quiet
+        && membership != null
+        && quiet.membership === membership
+        && !combatDirty
+        && beamsIdle
+        && ((tick - (quiet.armedTick | 0)) < COMBAT_QUIET_RESCAN_TICKS)) {
+      publishCombatQuiet(state, true);
+      state.combatRuntime.diagnostics = this._diag;
+      if (this.kernel) this.kernel.postPhysics(dt);
+      return;
+    }
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    let needsService = false;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       const regenerating = (e.shieldMax > 0 && e.shield < e.shieldMax)
         || (e.capMax > 0 && e.cap < e.capMax)
         || !!(e.flags && e.flags.invuln);
+      if (regenerating) needsService = true;
       if (!regenerating && !isDirty(state, e.id, DIRTY.COMBAT | DIRTY.POSE)) continue;
       if (e.flags && e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
@@ -1216,8 +1302,21 @@ export const combat = {
       }
     }
     this._applyBeamDamage(state);
-    state.combatRuntime = state.combatRuntime || {};
     state.combatRuntime.diagnostics = this._diag;
+    // Arm only when the just-run scan proved every live ship is fully serviced. A dirty mark or
+    // live beam this tick keeps the walk live; a missing entity index refuses the latch so the
+    // entityList fallback stays live for harnesses without the typed index.
+    if (COMBAT_QUIET_LATCH !== false
+        && membership != null
+        && !needsService
+        && !combatDirty
+        && beamsIdle) {
+      this._combatQuiet = { membership, armedTick: tick };
+      publishCombatQuiet(state, true);
+    } else {
+      this._combatQuiet = null;
+      publishCombatQuiet(state, false);
+    }
     if (this.kernel) this.kernel.postPhysics(dt);
   },
 

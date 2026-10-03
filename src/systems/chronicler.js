@@ -10,6 +10,21 @@ import { buildStoryView, semanticSignature, rankViews, recallText } from '../chr
 import { restoreMemory } from '../chronicler/persistence.js';
 import { createChroniclerVoiceBridge } from '../chronicler/voiceBridge.js';
 
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. The chronicler's own wake schedule is the authority:
+// `m.pending` non-empty (a fact event landed) or `now >= _nextWake` (a publication came due)
+// are the only things that give update() real work. Otherwise the tick can only write
+// `m.clock = now` and run an empty splice, so we keep the clock write — it is persisted state
+// and must stay byte-identical — and skip the batch/publish/schedule tail. Wakes ride the
+// existing seams: capture() extends pending, _adopt()/deserialize() reset _nextWake to 0.
+let CHRONICLER_QUIET_LATCH = true;
+export function setChroniclerQuietLatchForBench(enabled) {
+  CHRONICLER_QUIET_LATCH = enabled !== false;
+}
+export function getChroniclerQuietLatchForBench() {
+  return CHRONICLER_QUIET_LATCH !== false;
+}
+
 function priority(f) {
   if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
   if (['ace', 'rescue', 'wanted'].includes(f.stage)) return 80;
@@ -147,6 +162,18 @@ export function createChronicler(options = {}) {
       try {
         const m = this._memory;
         m.clock = now;
+        // FB-090 quiet latch: pending empty AND no publication due ⇒ the tail below is a proven
+        // no-op except the (identical) empty splice and `return 0`. The clock write above is kept
+        // so persisted memory advances exactly as the unlatched path would leave it.
+        if (CHRONICLER_QUIET_LATCH !== false
+            && m.pending.length === 0
+            && now < this._nextWake) {
+          const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+          rt.quietLatched = true;
+          return 0;
+        }
+        const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+        rt.quietLatched = false;
         const batch = m.pending.splice(0, m.config.factsPerUpdate);
         if (batch.length) {
           ingestBatch(m, batch);
