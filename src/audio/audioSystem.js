@@ -5680,6 +5680,18 @@ export const audio = {
     if (!verdict.play) return verdict;
     rt._stuntHushMs = nowMs;
     this._triggerHush({ kind: 'stunt' });
+    // FB-082 — the same admission mails the camera its beat through the shared camera record,
+    // so the hush and the room land on the same tick. camera.js consumes it once per stamp;
+    // the hold is the hush's own envelope so the frame stays as long as the silence does.
+    const cameraState = this.state && this.state.camera;
+    if (cameraState && typeof cameraState === 'object') {
+      const spec = HUSH.stunt;
+      cameraState.stuntHushBeat = {
+        kind: 'stunt',
+        tick: Math.max(0, Math.trunc(Number(this.state && this.state.tick) || 0)),
+        holdS: spec.attackS + spec.holdS + spec.releaseS,
+      };
+    }
     return verdict;
   },
 

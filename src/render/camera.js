@@ -560,6 +560,35 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
   return receipt;
 }
 
+// FB-082 — the best moment gets the room. The audio side admits a stunt hush (razor-rated
+// release or slingshot apex, one per STUNT_HUSH_GAP_MS) and stamps the shared camera record
+// with a tick-marked beat the same tick; the chase camera consumes the stamp once — a release
+// push-zoom held for the hush's own envelope. Reduced motion keeps the hush and drops the
+// zoom; the hold is a frozen frame, not vestibular motion, so it rides the killCam precedent
+// and survives reduce. The beat is push-zoom + hold only: no trauma, no particles.
+export const STUNT_HUSH_BEAT_ZOOM = 0.1;
+export const STUNT_HUSH_BEAT_ZOOM_DURATION_S = 0.65;
+// The hush envelope (HUSH.stunt in audioSystem.js): attack 0.35 + hold 0.28 + release 0.45.
+// Audio publishes the total on the beat; this is the fallback when the stamp omits it.
+export const STUNT_HUSH_BEAT_HOLD_S = 1.08;
+// A beat is "the same tick" while the sim clock has not moved more than one tick past it;
+// older stamps are swallowed so a hush can never zoom late.
+export const STUNT_HUSH_BEAT_MAX_AGE_TICKS = 1;
+
+export function resolveStuntHushCameraCue(beat, motionReduced = false) {
+  const admitted = !!(beat && beat.kind === 'stunt' && Number.isFinite(beat.tick));
+  const reduced = motionReduced === true;
+  return {
+    schema: 'spaceface.stuntHushCameraCue.v1',
+    tick: admitted ? Math.trunc(beat.tick) : null,
+    zoom: admitted && !reduced,
+    zoomFactor: admitted && !reduced ? STUNT_HUSH_BEAT_ZOOM : 0,
+    durationS: admitted && !reduced ? STUNT_HUSH_BEAT_ZOOM_DURATION_S : 0,
+    holdS: admitted ? Math.max(0, finiteOr(beat.holdS, STUNT_HUSH_BEAT_HOLD_S)) : 0,
+    reducedMotion: reduced,
+  };
+}
+
 function resolveAimLead(input, player, out = null) {
   const result = out || {};
   if (!input || !input.aimWorld || !player || !player.pos) {
@@ -1282,6 +1311,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _deathCam = false;
   // FB-084 bounded kill-beat trail (probe/test surface; never read by gameplay).
   const _killBeatLog = [];
+  // FB-082 stunt-hush beats: last consumed stamp + bounded trail (same surface as the kill log).
+  let _stuntHushTick = -1;
+  const _stuntHushLog = [];
   let _directorFrame = cameraDirector.output;
   const _directorView = {
     followX: 0,
@@ -1473,6 +1505,21 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // The bounded kill-beat trail the probe and tests read ("the camera log shows three distinct
     // kill beats"). Oldest first, at most KILL_BEAT_LOG_CAP entries.
     killBeatLog() { return _killBeatLog.slice(); },
+    // FB-082 — one admitted stunt hush, one camera beat, the same tick. The audio admission
+    // stamps state.camera.stuntHushBeat; this consumes the stamp once — push-zoom plus a hold
+    // for the hush's own envelope. Same resolve-then-apply seam as killCam: reduced motion
+    // keeps the freeze (not vestibular motion) and drops the zoom. No trauma, no particles.
+    stuntHushBeat(beat) {
+      const cue = resolveStuntHushCameraCue(beat, isMotionReduced(state));
+      if (cue.tick == null || cue.tick === _stuntHushTick) return null;
+      _stuntHushTick = cue.tick;
+      if (cue.holdS > _holdT) _holdT = cue.holdS;
+      if (cue.zoom) this.pushZoom(cue.zoomFactor, cue.durationS);
+      _stuntHushLog.push({ tick: cue.tick, zoom: cue.zoom, holdS: cue.holdS });
+      if (_stuntHushLog.length > KILL_BEAT_LOG_CAP) _stuntHushLog.shift();
+      return cue;
+    },
+    stuntHushLog() { return _stuntHushLog.slice(); },
     // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
     // skips the hold (same vestibular gate as the kick).
     hold(durationS) {
@@ -1514,6 +1561,20 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // state, so every frame it hands the same truth over. Off (the default and the state after
       // photo mode exits) is an idempotent no-op on the graph.
       syncPhotoFilterStage(state);
+      // FB-082: an admitted stunt hush stamps the shared camera record the same tick — consume
+      // the stamp here so the hush and the room land together, once per admission. A stamp
+      // older than the same-tick window is swallowed so a hush can never zoom late.
+      const stuntBeat = c.stuntHushBeat;
+      if (stuntBeat && Number.isFinite(stuntBeat.tick)) {
+        const beatTick = Math.trunc(stuntBeat.tick);
+        const simTick = Number(state.tick);
+        const age = Number.isFinite(simTick) ? Math.abs(simTick - beatTick) : Infinity;
+        if (age <= STUNT_HUSH_BEAT_MAX_AGE_TICKS) {
+          this.stuntHushBeat(stuntBeat);
+        } else if (beatTick > _stuntHushTick) {
+          _stuntHushTick = beatTick;
+        }
+      }
       if (photo && photo.active && photo.freeCamera !== false) {
         stepPhotoFreeCamera(photo, state.input, frameDt);
         c.focus.x = finiteOr(photo.focusX, finiteOr(c.focus.x, 0));
