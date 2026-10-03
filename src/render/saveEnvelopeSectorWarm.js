@@ -118,13 +118,15 @@ export function promotedAceShapeForRecord(id, rec) {
 // Bare mission wreck coverage pushes the same six aftermath-residue classes once per
 // enumeration. One boxed flag lets every cohort collector share that dedupe so the
 // warm emits the same stub multiset whether one ledger or six asked for it.
-function makeBareWreckCover(out) {
-  let covered = false;
-  return () => {
+function makeBareWreckCover(out, initiallyCovered = false) {
+  let covered = initiallyCovered;
+  const cover = () => {
     if (covered) return;
     covered = true;
     pushBareWreckResidues(out.placeStubs);
   };
+  cover.isCovered = () => covered;
+  return cover;
 }
 
 // Mirror of automation.js OUTPOST_VISUAL_BY_DEF — unknown defs mount the base outpost
@@ -1093,18 +1095,23 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   // authored unique wrecks, the morrow companion, the survivor pod).
   const enterSerial = (world && Number.isFinite(world.enterSerial)) ? world.enterSerial : -1;
   const memo = LIVE_ENTER_SPAWNER_STUBS_MEMO.get(state);
-  if (memo && memo.sectorId === sector.id && memo.enterSerial === enterSerial) {
+  const memoHit = memo && memo.sectorId === sector.id && memo.enterSerial === enterSerial;
+  // Shared bare-wreck residue cover — hoisted above the memo so the promote walk below
+  // uses it too (its rematerializing-wreck arm lives outside the enumeration scope).
+  // A memo-hit replays stubs that already contain the residues, so prime the flag.
+  const coverBareMissionWrecks = makeBareWreckCover(out, memoHit ? memo.bareCovered === true : false);
+  if (memoHit) {
     out.placeStubs.push(...memo.placeStubs);
     out.shipStubs.push(...memo.shipStubs);
     out.roster.push(...memo.roster);
   } else {
-    const coverBareMissionWrecks = makeBareWreckCover(out);
     collectEnterSpawnerPropStubs(state, sector, out, coverBareMissionWrecks);
     collectEnterSpawnerRosterStubs(state, sector, state && state.simTime, out, coverBareMissionWrecks);
     liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks);
     LIVE_ENTER_SPAWNER_STUBS_MEMO.set(state, {
       sectorId: sector.id,
       enterSerial,
+      bareCovered: coverBareMissionWrecks.isCovered(),
       placeStubs: out.placeStubs.slice(),
       shipStubs: out.shipStubs.slice(),
       roster: out.roster.slice(),

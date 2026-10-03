@@ -233,6 +233,7 @@ import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
 import { shouldSkipFlightDraw } from '../core/presentationFreeze.js';
+import { drainDeferredEnterMaterializers } from '../core/sectorEnterDefer.js';
 import { LOOP_FIXED_DT } from '../core/simulationRunner.js';
 import { installGlInstrumentation } from './glInstrumentation.js';
 import { installDomInstrumentation } from '../ui/domInstrumentation.js';
@@ -11837,14 +11838,17 @@ export const render = {
     // prepareLiveSectorAfterJump will run its census — a live GPU, a hard enter, flight
     // mode, and no session-recook-keep. Anything else takes the inline emit path.
     state.render.sectorEnterCookWillRun = (payload) => state.mode === 'flight'
+      && !!(payload && (payload.sectorId || (payload.sector && payload.sector.id)))
       && !(payload && (payload.continuous === true || payload.noTeleport === true))
       && this._sessionRecookKeepGpu !== true
       && !(gpu && gpu.software === true);
     state.render.prepareLiveSectorAfterJump = async (sector) => {
       if (state.mode !== 'flight') {
+        drainDeferredEnterMaterializers(state, sector);
         return { skipped: true, reason: 'not-flight' };
       }
       if (state.render.sectorShellAdmission !== true) {
+        drainDeferredEnterMaterializers(state, sector);
         return { skipped: true, reason: 'no-sector-shell' };
       }
       const yieldLiveSectorGpu = async () => {
@@ -11942,23 +11946,30 @@ export const render = {
                 && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch))
               .map((entry) => entry.provider)
           : null;
+        // A deferred system drains EXACTLY ONCE via its FIFO entry — its registered
+        // provider twin must not re-run: the cooked-side dedupe arms on the EMIT stamps
+        // (e.g. traffic's `_emittedSector`), which the deferred path never mints, so a
+        // second `_viaCook` call would wipe and remint the whole cohort mid-census.
+        const deferredProviderSet = deferredProviders ? new Set(deferredProviders) : null;
+        const registeredOnly = (Array.isArray(cookProviders) ? cookProviders.slice() : [])
+          .filter((provider) => !deferredProviderSet || !deferredProviderSet.has(provider));
         const censusProviders = deferredProviders
-          ? deferredProviders.concat(Array.isArray(cookProviders) ? cookProviders.slice() : [])
-          : (Array.isArray(cookProviders) ? cookProviders.slice() : null);
+          ? deferredProviders.concat(registeredOnly)
+          : (registeredOnly.length ? registeredOnly : null);
+        // Bound the synchronous provider/teardown runs: materializing the whole
+        // destination cohort (and sweeping the departed one's meshes) in one task
+        // freezes the transition's own rAF-driven presentation. Hoisted above the
+        // census block — the departing-sector teardown phase rides the same clock.
+        const providerNow = () => (typeof performance !== 'undefined'
+          && typeof performance.now === 'function' ? performance.now() : Date.now());
+        const providerYield = async () => {
+          await yieldLiveSectorGpu();
+          providerSliceStart = providerNow();
+          if (cookStale()) return cookSuperseded;
+          return null;
+        };
+        let providerSliceStart = providerNow();
         if (Array.isArray(censusProviders)) {
-          // Bound the synchronous provider run: materializing the whole destination cohort
-          // in one task freezes the transition's own rAF-driven presentation. Yield once a
-          // slice spends its budget — order preserved: every provider still runs before
-          // the first-flight collect below.
-          const providerNow = () => (typeof performance !== 'undefined'
-            && typeof performance.now === 'function' ? performance.now() : Date.now());
-          const providerYield = async () => {
-            await yieldLiveSectorGpu();
-            providerSliceStart = providerNow();
-            if (cookStale()) return cookSuperseded;
-            return null;
-          };
-          let providerSliceStart = providerNow();
           // Iterate a snapshot: a provider whose body synchronously tears a sibling system
           // down splices the live registry and would skip the sliding element. Each provider is
           // isolated like a bus listener — a throw skips only its own cook pass (its cohort was
@@ -11972,6 +11983,12 @@ export const render = {
               // between atomic items on the same slice clock.
               if (iterator && typeof iterator.next === 'function') {
                 for (;;) {
+                  // Staleness is consulted per atomic item too: a continuous membership
+                  // flip mid-drive must not mint into a sector the cook no longer owns.
+                  if (cookStale()) {
+                    if (typeof iterator.return === 'function') iterator.return();
+                    return cookSuperseded;
+                  }
                   const step = iterator.next();
                   if (step.done) break;
                   if (providerNow() - providerSliceStart >= 8) {
@@ -13540,6 +13557,10 @@ export const render = {
         state.render.sectorShellAdmission = true;
         this._publishArrivalRoster(exactSectorId);
       }
+      // Captured before the async cook starts: prepareLiveSectorAfterJump mints a fresh
+      // generation when a NEWER enter supersedes this one — the .finally below must not
+      // release the shared latch out from under that cook.
+      const cookGenerationAtAttach = this._liveSectorCookGeneration;
       const pipelinePrecompile = state.mode === 'loading'
         ? Promise.resolve({
           skipped: true,
@@ -13551,6 +13572,11 @@ export const render = {
             reason: 'continuous-sector-handoff-defers-pipeline-precompile',
           })
           : compileSectorPipelines(sector).finally(() => {
+            // Generation-scoped latch release: a superseded cook's promise still resolves,
+            // and clearing the latch then would strip it from under the LIVE cook — its
+            // cookLiveSceneGpu call reads `sectorShellAdmission !== true` and skips the
+            // whole arrival cohort's GPU cook (meshes then compile inside presented frames).
+            if (this._liveSectorCookGeneration !== cookGenerationAtAttach) return;
             state.render.sectorShellAdmission = false;
             const sim = Number(state.simTime);
             // The residency hold keeps the reconcile pass off the freshly cooked working set so a

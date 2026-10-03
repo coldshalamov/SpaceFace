@@ -17,6 +17,34 @@
 // Entries stamped with an epoch that no longer matches the world's serial at
 // drain time belong to a superseded enter and are dropped — the new enter's
 // own emit re-enqueues its cohort, matching today's supersession semantics.
+//
+// drainDeferredEnterMaterializers is the safety valve: a cook that returns
+// before reaching the splice (mode left 'flight' between emit and render's
+// listener, no shell armed) would otherwise strand a whole cohort — the
+// epoch guard can never match again. Draining the live-epoch entries inline
+// restores exactly the pre-deferral emit-path behavior for that enter.
+export function drainDeferredEnterMaterializers(state, sector) {
+  const render = state && state.render;
+  const queue = render && Array.isArray(render.deferredEnterMaterializers)
+    ? render.deferredEnterMaterializers : null;
+  if (!queue || !queue.length) return;
+  const liveEpoch = state.world && state.world.enterSerial != null
+    ? state.world.enterSerial : null;
+  const rest = [];
+  for (const entry of queue) {
+    const live = entry && typeof entry.provider === 'function'
+      && (entry.epoch == null || liveEpoch == null || entry.epoch === liveEpoch);
+    if (!live) { rest.push(entry); continue; }
+    try {
+      const iterator = entry.provider(sector);
+      if (iterator && typeof iterator.next === 'function') {
+        for (;;) { const step = iterator.next(); if (step.done) break; }
+      }
+    } catch (_) { /* isolated like a bus listener — one body's throw frees the rest */ }
+  }
+  queue.length = 0;
+  for (const entry of rest) queue.push(entry);
+}
 export function deferSectorEnterMaterialization(state, payload, provider) {
   const render = state && state.render;
   if (!render || typeof render.sectorEnterCookWillRun !== 'function'

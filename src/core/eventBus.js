@@ -55,6 +55,9 @@ export function createBus() {
   const deferredPool = [];
   const sliceBudgets = new Map();
   let emitSlice = null;
+  // Sliced emits that arrived while a predecessor tail still lived past its
+  // wall-clock cap — started in order when that tail finishes.
+  const pendingSlicedEmits = [];
   // Bumped by clear(): a flush mid-stack that captured its batch pre-teardown must not deliver
   // the rest of it into listeners bound on the new bus.
   let generation = 0;
@@ -213,8 +216,11 @@ export function createBus() {
   function startEmitSlice(event, payload, budget) {
     // A second sliced emit while a predecessor still has a deferred tail used to discard that
     // tail outright — every listener past the cut never heard the first sector:enter. Drain the
-    // remainder synchronously so no listener is ever skipped; the newest emit still wins order.
-    while (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER);
+    // remainder synchronously so no listener is ever skipped — but bound the flush to one
+    // thin slice: a tail that outlives the wall-clock cap queues the NEW emit behind the
+    // drain (ordering still holds emit-by-emit) instead of holding this frame hostage.
+    while (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER, 4);
+    if (emitSlice) { pendingSlicedEmits.push({ event, payload, budget }); return; }
     const fns = snapshotListeners(listeners, listenerSnapshots, event);
     if (!fns) { dispatchPresentation(event, payload); return; }
     emitSlice = { event, payload, fns, index: 0 };
@@ -261,12 +267,19 @@ export function createBus() {
       catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
       if (performance.now() >= deadline) break;
     }
-    if (emitSlice === slice && slice.index >= slice.fns.length) emitSlice = null;
+    if (emitSlice === slice && slice.index >= slice.fns.length) {
+      emitSlice = null;
+      if (pendingSlicedEmits.length) {
+        const next = pendingSlicedEmits.shift();
+        startEmitSlice(next.event, next.payload, next.budget);
+      }
+    }
     return ran;
   }
 
   function pendingEmitSliceCount() {
-    return emitSlice ? emitSlice.fns.length - emitSlice.index : 0;
+    return (emitSlice ? emitSlice.fns.length - emitSlice.index : 0)
+      + pendingSlicedEmits.length;
   }
 
   /** The frame-loop owner claims the presentation drain; headsless contexts stay inline. */
