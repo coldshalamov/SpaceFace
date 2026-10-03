@@ -534,6 +534,75 @@ export function buildTranslatedCatalog(locale) {
   return frozen;
 }
 
+// ── FB-107: honest locale readiness ───────────────────────────────────────────────────────────
+// The four non-English shipped catalogs are machine-filled at import time (buildTranslatedCatalog
+// → machineTranslate, a glossary pass over the English inventory). A locale's string counts as
+// REVIEWED only when it resolves from an authored table — an explicit PHRASES row, a reviewed
+// bark, or reviewed store copy — never through the machine pass. While a locale's reviewed
+// coverage stands under LOCALE_REVIEWED_GATE, its picker label honestly reads as a machine
+// preview; the label is data, so a reviewed batch that lifts coverage over the gate drops the
+// label with no code change. No translation is authored or claimed here.
+export const LOCALE_REVIEWED_GATE = 0.95;
+const readinessByLocale = new Map();
+
+function isReviewedString(locale, english, key, barkMap) {
+  if (lookupMap(PHRASES, english, locale) != null) return true;
+  if (barkMap.has(english)) return true;
+  const storeRow = STORE_COPY[locale];
+  return !!(storeRow && storeRow[key] != null);
+}
+
+/** Reviewed coverage for one shipped locale: { locale, reviewed, total, coverage, preview }. */
+export function localeReadiness(locale) {
+  const id = String(locale);
+  if (readinessByLocale.has(id)) return readinessByLocale.get(id);
+  let reviewed = 0;
+  let total = 0;
+  if (id === 'en-US') {
+    // The source locale is reviewed by definition — every string is its own authored copy.
+    total = Object.keys(englishMessages).length;
+    reviewed = total;
+  } else {
+    const barkMap = barkTextMap(id);
+    for (const [key, entry] of Object.entries(englishMessages)) {
+      total += 1;
+      const english = typeof entry === 'string' ? entry : entry && entry.message;
+      if (typeof english === 'string' && isReviewedString(id, english, key, barkMap)) reviewed += 1;
+    }
+  }
+  const coverage = total > 0 ? reviewed / total : 1;
+  const readiness = Object.freeze({
+    locale: id,
+    reviewed,
+    total,
+    coverage: Math.round(coverage * 10000) / 10000,
+    preview: coverage < LOCALE_REVIEWED_GATE,
+  });
+  readinessByLocale.set(id, readiness);
+  return readiness;
+}
+
+/**
+ * The first `limit` unreviewed keys for one locale, in inventory order (the generated catalog's
+ * surface grouping, so the head of the list is the copy a player meets first). This is the
+ * reviewed batch's working list, printed by scripts/check-localization-readiness.mjs; the
+ * source locale is reviewed by definition and has none.
+ */
+export function unreviewedKeys(locale, limit = 50) {
+  const id = String(locale);
+  if (id === 'en-US') return [];
+  const barkMap = barkTextMap(id);
+  const rows = [];
+  for (const [key, entry] of Object.entries(englishMessages)) {
+    if (rows.length >= limit) break;
+    const english = typeof entry === 'string' ? entry : entry && entry.message;
+    if (typeof english !== 'string') continue;
+    if (isReviewedString(id, english, key, barkMap)) continue;
+    rows.push(Object.freeze({ key, english: english.length > 120 ? english.slice(0, 117) + '...' : english }));
+  }
+  return Object.freeze(rows);
+}
+
 export default {
   SHIPPED_LOCALES,
   translateMessage,

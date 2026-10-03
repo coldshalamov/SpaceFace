@@ -4,11 +4,13 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MAIN_PATH = path.join(ROOT, 'electron', 'main.cjs');
 const PRELOAD_PATH = path.join(ROOT, 'electron', 'preload.cjs');
 const CHANNEL = 'spaceface:shell-lifecycle';
+const windowStateModule = createRequire(import.meta.url)('../electron/windowState.cjs');
 
 function emitter(base = {}) {
   const listeners = new Map();
@@ -228,6 +230,11 @@ async function loadMain({
       }
       if (specifier === './autoUpdate.cjs') {
         return { configureAutoUpdate() { return { enabled: false, reason: 'test-disabled' }; } };
+      }
+      if (specifier === './windowState.cjs') {
+        // FB-106: the real pure module. With no state file under the stubbed userData it reads
+        // null, so the sandbox exercises the launch-default path (nothing remembered).
+        return windowStateModule;
       }
       if (specifier === './steamworks.cjs') {
         return {
@@ -742,7 +749,7 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   assert.deepEqual(Object.keys(lifecycle), ['subscribe', 'quit']);
   assert.deepEqual(
     Object.keys(h.exposed.get('spacefaceShell')),
-    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync'],
+    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync', 'perfMetrics'],
   );
   assert.equal(typeof h.exposed.get('spacefaceQuit'), 'function');
 
