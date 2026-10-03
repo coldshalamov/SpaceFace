@@ -9936,7 +9936,23 @@ export const render = {
       }
       return pipelineAdmissions.waitForCaptured(plan);
     };
+    // Capture entry identity before work can synchronously enter another world. Pipeline
+    // callers may supply the generation minted by that work without recapturing its owner.
+    const captureLiveSectorCookStale = () => {
+      const cookWorld = state.world;
+      const cookRender = state.render;
+      const cookEnterSerial = cookWorld && cookWorld.enterSerial;
+      const cookSectorId = cookWorld && cookWorld.currentSectorId;
+      const cookGeneration = this._liveSectorCookGeneration;
+      return (expectedGeneration = cookGeneration) => !rendererGenerationIsActive()
+        || this.state !== state || state.world !== cookWorld || state.render !== cookRender
+        || !cookWorld || cookWorld.enterSerial !== cookEnterSerial
+        || cookWorld.currentSectorId !== cookSectorId
+        || this._liveSectorCookGeneration !== expectedGeneration;
+    };
     state.render.prepareLiveSectorBeforeFlight = async () => {
+      const recookStale = captureLiveSectorCookStale();
+      if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
       if (state.mode !== 'loading') {
         // A late invocation must still leave no bounded warm root mounted into flight —
         // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
@@ -9947,10 +9963,6 @@ export const render = {
       // Same-sector evidence must stay valid across the whole keep-GPU path: a
       // sector:enter landing inside the 4s drain or just before the rehearsal makes
       // the resident set (and the sector this veil belongs to) stale mid-flight.
-      const recookEnterSerial = state.world && state.world.enterSerial;
-      const recookStale = () => !state.world
-        || state.world.enterSerial !== recookEnterSerial
-        || state.world.currentSectorId !== recookSectorId;
       if (this._sessionLiveSectorCookedId === recookSectorId && this._contextLost !== true) {
         // Same-sector F9: GPU programs and opening meshes are already resident.
         // Dumping them and rebuilding made the next flight present compile 37
@@ -9974,7 +9986,9 @@ export const render = {
           if (recookStale()) break;
           this._drainPendingMeshBuilds();
           await yieldToBrowser();
+          if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
         }
+        if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
         const recookCamera = (state.camera && state.camera.obj) || (this.cam && this.cam.obj);
         const recookRoute = typeof this._selectPostRoute === 'function' ? this._selectPostRoute() : null;
         const rehearsalStarted = recookNow();
@@ -10029,9 +10043,14 @@ export const render = {
       // opening ships then sit at `loading` until first flight paint, and their
       // env-mapped hulls compile as 100 ms+ bloom bricks. Release only the
       // publication gate so they can commit here; keep mesh streaming deferred.
-      releaseOpeningGraphPublication(this);
-      state.render.liveSectorGpuAdmission = true;
+      const sectorId = state.world && state.world.currentSectorId;
+      this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
+      const cookStale = captureLiveSectorCookStale();
+      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       try {
+      releaseOpeningGraphPublication(this);
+      if (cookStale()) return cookSuperseded;
+      state.render.liveSectorGpuAdmission = true;
       const yieldLiveSectorGpu = async () => {
         // GLB/KTX2 decode, ANGLE links, and 1x1 buffer uploads do not retire
         // while the loading await owns the thread and no frame is presented.
@@ -10096,6 +10115,7 @@ export const render = {
           passes += 1;
           await buildYield(this._meshBuildQueueHead === headBefore);
         }
+        if (cookStale()) return;
         recordOpeningCookStep(state.render, step, started, capped ? 'timeout' : 'resolved', {
           queued,
           passes,
@@ -10107,18 +10127,6 @@ export const render = {
       };
       if (!scene.environment) this._bakeEnv({ force: true });
       if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
-      const sectorId = state.world && state.world.currentSectorId;
-      // Minted into the same generation counter the after-jump cook uses: a second
-      // restore/new-game mid-cook mints again, so every mutating step below re-checks
-      // staleness before it commits against a world this cook no longer owns — the
-      // preflight path is the longest cook window in the game (~20-120 s of awaits).
-      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
-      const cookEnterSerial = state.world && state.world.enterSerial;
-      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
-        || !state.world
-        || state.world.enterSerial !== cookEnterSerial
-        || state.world.currentSectorId !== sectorId;
-      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       const recook = this._sessionLiveSectorCookedId === sectorId && this._contextLost !== true;
       const resumed = recook
         ? resumeAuthoredUpgradeQueueForLoadingHulls(scene)
@@ -10134,7 +10142,7 @@ export const render = {
       // a cohort links leaves together (issue all, drain once). Same-sector F9 never flushes here.
       let liveSectorPipelineFlush = null;
       const flushPipelinesBehindShell = () => {
-        if (recook || liveSectorPipelineFlush || pipelineAdmissions.pendingCount === 0) {
+        if (cookStale() || recook || liveSectorPipelineFlush || pipelineAdmissions.pendingCount === 0) {
           return liveSectorPipelineFlush;
         }
         let drained;
@@ -10175,6 +10183,7 @@ export const render = {
       );
       if (cookStale()) return cookSuperseded;
       await drainMeshBuildsBehindShell();
+      if (cookStale()) return cookSuperseded;
       // Nearby opening actors stay on onBeforeRender until a real flight draw.
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
@@ -10203,6 +10212,7 @@ export const render = {
         });
       if (cookStale()) return cookSuperseded;
       const opening = await openingPromise;
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'live.openingComposition', liveStepStarted,
         recook ? 'skipped' : (opening && opening.reason === 'timeout' ? 'timeout' : 'resolved'), {
           reason: opening && opening.reason || undefined,
@@ -10213,6 +10223,7 @@ export const render = {
         });
       if (cookStale()) return cookSuperseded;
       const upgrades = await upgradesPromise;
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'live.upgradeQueueIdle', liveStepStarted,
         recook ? 'skipped' : (upgrades && upgrades.idle === true ? 'resolved' : 'timeout'), {
           pending: upgrades ? upgrades.pending : undefined,
@@ -10225,7 +10236,9 @@ export const render = {
         try {
           if (cookStale()) return cookSuperseded;
           pending = await state.render.drainPendingPipelineAdmissions();
+          if (cookStale()) return cookSuperseded;
         } catch (error) {
+            if (cookStale()) return cookSuperseded;
           pending = { skipped: false, error: String(error && error.message || error) };
         }
       }
@@ -10277,7 +10290,10 @@ export const render = {
       if (Array.isArray(openingCookProviders)) {
         const openingSector = state.world && state.world.sectors
           ? state.world.sectors[state.world.currentSectorId] : null;
-        for (const provider of openingCookProviders) provider(openingSector);
+        for (const provider of openingCookProviders) {
+          if (cookStale()) return cookSuperseded;
+          provider(openingSector);
+        }
       }
       const firstFlightEntities = recook
         ? openingEntities
@@ -10421,6 +10437,7 @@ export const render = {
       await drainMeshBuildsBehindShell(survivalRunHoldsArena(state)
         ? Math.max(30000, remainingMs())
         : 8000);
+      if (cookStale()) return cookSuperseded;
       liveStepStarted = prepareNow();
       // Routine telemetry, not a defect: every New Game cooks the first-flight set behind the
       // loading shell. console.warn would fail release evidence's zero-warning contract.
@@ -10449,6 +10466,7 @@ export const render = {
           // 360 s outer gate and every inner step is still individually capped.
           deadlineMs: survivalRunHoldsArena(state) ? 120000 : Math.min(20000, remainingMs()),
         });
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'live.cook', liveStepStarted, recook ? 'skipped' : 'resolved');
       // Leftover FX compiles (entity:fx:77/80/81) must finish behind the shell.
       // The pre-cook idle wait can still leave compiling-pipelines jobs that
@@ -10463,6 +10481,7 @@ export const render = {
           timeoutMs: Math.min(8000, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
         });
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'live.leftoverUpgradeIdle', liveStepStarted,
         recook ? 'skipped' : (leftover && leftover.idle === true ? 'resolved' : 'timeout'), {
           pending: leftover ? leftover.pending : undefined,
@@ -10548,8 +10567,10 @@ export const render = {
                 ? createSlicedYield(yieldAndFlushLiveSectorGpu)
                 : yieldAndFlushLiveSectorGpu,
             });
+            if (cookStale()) return cookSuperseded;
             materialSettle.unbound = staleSubjects.length;
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             materialSettle = {
               skipped: false,
               unbound: staleSubjects.length,
@@ -10602,7 +10623,9 @@ export const render = {
             await this.prepareOpeningFirstPicture(survivalRunHoldsArena(state)
               ? Math.max(30000, remainingMs())
               : remainingMs());
+            if (cookStale()) return cookSuperseded;
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             firstPictureError = String(error && error.message || error);
           }
         }
@@ -10646,6 +10669,7 @@ export const render = {
                 Promise.allSettled(pending),
                 new Promise((resolve) => setTimeout(resolve, Math.min(waitSliceMs, 250))),
               ]);
+              if (cookStale()) return cookSuperseded;
             }
             if (timedOut || (pipelineAdmissions.pendingCount | 0) === 0) break;
             flushPipelinesBehindShell();
@@ -10657,6 +10681,7 @@ export const render = {
               drain,
               new Promise((resolve) => setTimeout(resolve, Math.min(waitSliceMs, 250))),
             ]);
+            if (cookStale()) return cookSuperseded;
           }
           const stillPending = this._rosterPrewarmPending ? [...this._rosterPrewarmPending] : [];
           recordOpeningCookStep(state.render, 'live.rosterPrewarmSettle', prewarmStarted,
@@ -10704,9 +10729,11 @@ export const render = {
                   residencyRole: 'crucible-roster-decode-runway',
                   sectorId,
                 });
-              } catch (_) { /* a refused request leaves the live trigger armed */ }
+              } catch (_) {
+                  if (cookStale()) return cookSuperseded; /* a refused request leaves the live trigger armed */ }
             }
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             console.warn('[render] crucible pre-drain boundary kick failed', error);
           }
           const drainStarted = prepareNow();
@@ -10728,7 +10755,9 @@ export const render = {
                 timeoutMs: Math.min(sliceMs, 4000),
                 yieldToMain: yieldAndFlushLiveSectorGpu,
               });
+              if (cookStale()) return cookSuperseded;
             } catch (error) {
+                if (cookStale()) return cookSuperseded;
               drainOutcome = 'error';
               drainResult = { error: String(error && error.message || error) };
               break;
@@ -10743,7 +10772,9 @@ export const render = {
             try {
               if (cookStale()) return cookSuperseded;
               await state.render.drainPendingPipelineAdmissions();
-            } catch (_) { /* drain errors surface in the ledger above */ }
+              if (cookStale()) return cookSuperseded;
+            } catch (_) {
+                if (cookStale()) return cookSuperseded; /* drain errors surface in the ledger above */ }
           }
           recordOpeningCookStep(state.render, 'live.survivalUpgradeDrain', drainStarted, drainOutcome, {
             pending: drainResult ? drainResult.pending : undefined,
@@ -10803,6 +10834,7 @@ export const render = {
                 touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
                 yieldToMain: yieldToBrowser,
               });
+              if (cookStale()) return cookSuperseded;
               compileShadowDepthPipelines({
                 renderer,
                 light: this._keyLight,
@@ -10819,6 +10851,7 @@ export const render = {
               poolSealOutcome = 'skipped';
             }
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             poolSealOutcome = 'error';
             console.warn('[render] survival pool program seal failed', error);
           }
@@ -10832,7 +10865,9 @@ export const render = {
           try {
             if (cookStale()) return cookSuperseded;
             await state.render.preparePostOpeningPipelines();
+            if (cookStale()) return cookSuperseded;
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             postOutcome = 'error';
             console.warn('[render] post-opening pipeline admission failed', error);
           }
@@ -10863,7 +10898,9 @@ export const render = {
                 yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
                 onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
               });
+              if (cookStale()) return cookSuperseded;
             } catch (error) {
+                if (cookStale()) return cookSuperseded;
               console.warn('[render] bounded warm root residency stamp failed', error);
             }
           }
@@ -10896,7 +10933,9 @@ export const render = {
             includeEmpty: true,
             onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           });
+          if (cookStale()) return cookSuperseded;
         } catch (error) {
+            if (cookStale()) return cookSuperseded;
           firstFrameResidency = { skipped: true, reason: String(error && error.message || error) };
         }
         recordOpeningCookStep(state.render, 'live.firstFramePoolCensus', censusStarted,
@@ -10925,7 +10964,9 @@ export const render = {
               Promise.resolve(state.render.drainPendingPipelineAdmissions()),
               new Promise((resolve) => setTimeout(resolve, Math.min(sliceMs, 250))),
             ]);
+            if (cookStale()) return cookSuperseded;
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             sealOutcome = 'error';
             break;
           }
@@ -11018,7 +11059,9 @@ export const render = {
               timeoutMs: Math.min(sliceMs, 4000),
               yieldToMain: yieldAndFlushLiveSectorGpu,
             });
+            if (cookStale()) return cookSuperseded;
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             settleOutcome = 'error';
             settleResult = { error: String(error && error.message || error) };
             break;
@@ -11043,7 +11086,9 @@ export const render = {
               try {
                 if (cookStale()) return cookSuperseded;
                 await admitSubjectPipelines(subject);
-              } catch (_) { /* admission errors surface through the queue diagnostics */ }
+                if (cookStale()) return cookSuperseded;
+              } catch (_) {
+                  if (cookStale()) return cookSuperseded; /* admission errors surface through the queue diagnostics */ }
             }
             if (settleOutcome === 'timeout') break;
             continue;
@@ -11052,7 +11097,9 @@ export const render = {
           try {
             if (cookStale()) return cookSuperseded;
             await state.render.drainPendingPipelineAdmissions();
-          } catch (_) { /* drain errors surface in the ledger above */ }
+            if (cookStale()) return cookSuperseded;
+          } catch (_) {
+              if (cookStale()) return cookSuperseded; /* drain errors surface in the ledger above */ }
         }
         recordOpeningCookStep(state.render, 'live.survivalBoundarySettle', settleStarted, settleOutcome, {
           queuedPipelines: pipelineAdmissions.pendingCount | 0,
@@ -11087,7 +11134,8 @@ export const render = {
             if (livingHullRoot && typeof this._livingHullPresentation.beginGpuWarmup === 'function') {
               try {
                 restoreLivingHullWarm = this._livingHullPresentation.beginGpuWarmup() || null;
-              } catch (_) { /* warmup is cosmetic — the sweep still runs without it */ }
+              } catch (_) {
+                  if (cookStale()) return cookSuperseded; /* warmup is cosmetic — the sweep still runs without it */ }
             }
             const sweepSubjects = [scene];
             if (livingHullRoot) sweepSubjects.push(livingHullRoot);
@@ -11113,11 +11161,13 @@ export const render = {
               state.render.survivalDepthSweepKeys = sweepResult.stagedKeys;
             }
           } catch (error) {
+              if (cookStale()) return cookSuperseded;
             depthSweepOutcome = 'error';
             console.warn('[render] survival post-settle shadow depth sweep failed', error);
           } finally {
             if (restoreLivingHullWarm) {
-              try { restoreLivingHullWarm(); } catch (_) { /* best effort */ }
+              try { restoreLivingHullWarm(); } catch (_) {
+                                                 if (cookStale()) return cookSuperseded; /* best effort */ }
             }
           }
           recordOpeningCookStep(state.render, 'live.survivalDepthSweep', depthSweepStarted,
@@ -11171,10 +11221,9 @@ export const render = {
       state.render.sessionLiveSectorCookedId = sectorId;
       return { skipped: false, resumed, opening, upgrades, pending, cook, leftover };
       } finally {
-        // A superseded cook skips the shared-flag tail — the newest invocation owns them
-        // and runs this same finally when it finishes (same contract as the after-jump
-        // cook's generation guard).
-        if (cookGeneration === this._liveSectorCookGeneration) {
+        // A restore may replace the entry without starting another cook. Only the
+        // captured entry and renderer owner may finalize these shared flags.
+        if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
@@ -11192,7 +11241,10 @@ export const render = {
       if (state.mode !== 'loading' && state.render.sectorShellAdmission !== true) {
         return { skipped: true, reason: 'not-loading' };
       }
-      if (cookStale()) return { skipped: true, reason: 'sector-superseded' };
+      // This nested stage observes its caller's generation; it must not mint another.
+      const cookStale = captureLiveSectorCookStale();
+      const cookSuperseded = { skipped: true, reason: 'sector-superseded' };
+      if (cookStale()) return cookSuperseded;
       const cookNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       const cookStarted = cookNow();
@@ -11290,6 +11342,7 @@ export const render = {
         restoreShadows();
         restoreReveal();
       }
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'cook.programs', programsStarted,
         programs.skipped === true ? 'skipped' : (programs.error ? 'error' : 'resolved'), {
           method: programs.method || programs.reason || undefined,
@@ -11468,6 +11521,7 @@ export const render = {
               cohort.restoreEntryTarget();
             }
           }
+          if (cookStale()) return cookSuperseded;
           recordOpeningCookStep(state.render, 'cook.touchCompile', touchCompileStarted,
             !cohort ? 'skipped' : (issued.length < units.programSubjects.length ? 'timeout' : 'resolved'), {
               issued: issued.length,
@@ -11510,6 +11564,7 @@ export const render = {
             if (cohort && typeof cohort.paceQueue === 'function') await cohort.paceQueue();
             if (touchYield) await touchYield();
           }
+          if (cookStale()) return cookSuperseded;
           recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
             touched < units.programSubjects.length ? 'timeout' : 'resolved', {
             subjects: units.programSubjects.length,
@@ -11538,6 +11593,7 @@ export const render = {
           budgetMs: cookDeadlineMs,
         };
       }
+      if (cookStale()) return cookSuperseded;
       // skipBuffers means "do not re-upload the whole opening scene". First-flight
       // rocks and the 47-A spindle still need a 1x1 residency pass: compile()
       // does not upload vertex buffers, and first bloom then bricks on Intel.
@@ -11592,6 +11648,7 @@ export const render = {
       // +22 s of seed 4242. One hidden 30-mesh group covers the whole space behind the shell;
       // it joins the cook.rockPools compile below and is removed when the cook ends.
       let asteroidLeafWarmRoot = null;
+      try {
       if (warmFirstFlightFx) {
         try {
           asteroidLeafWarmRoot = buildAsteroidLeafWarmGroup();
@@ -11677,6 +11734,7 @@ export const render = {
       } finally {
         for (const restore of restoreFirstFlight) restore();
       }
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'cook.buffers', buffersStarted,
         buffers && buffers.reason === 'loading-budget' ? 'timeout' : 'resolved', {
           roots: firstFlightBufferRoots.length,
@@ -11705,6 +11763,7 @@ export const render = {
           for (const restore of restoreLayers) restore();
         }
       }
+      if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'cook.layers', layersStarted,
         layerRoots.length === 0 ? 'skipped' : 'resolved', {
           roots: layerRoots.length,
@@ -11808,6 +11867,7 @@ export const render = {
             console.warn('[render] crucible bounded roster warm finish failed', error);
           }
         }
+        if (cookStale()) return cookSuperseded;
         recordOpeningCookStep(state.render, 'cook.crucibleWarm', crucibleWarmStarted,
           crucibleWarm ? 'resolved' : 'skipped', {
             progress: state.render && state.render.crucibleWarmProgress
@@ -11915,6 +11975,7 @@ export const render = {
               touchBatchSize: 24,
               yieldToMain: rockPoolYield,
             });
+            if (cookStale()) return cookSuperseded;
             if (rockPools && typeof rockPools === 'object') {
               rockPools.touchesSkippedHidden = touchesSkippedHidden;
               rockPools.yields = typeof rockPoolYield.yields === 'number' ? rockPoolYield.yields : undefined;
@@ -11963,10 +12024,14 @@ export const render = {
             touchMs: rockPools.timing ? rockPools.timing.touchMs : undefined,
           });
       }
-      if (asteroidLeafWarmRoot && asteroidLeafWarmRoot.parent === scene) {
-        scene.remove(asteroidLeafWarmRoot);
-      }
+      if (cookStale()) return cookSuperseded;
       return { skipped: false, liveScene: true, programs, present, buffers, rockPools };
+      } finally {
+        // This temporary root belongs to this invocation even when the live owner changed.
+        if (asteroidLeafWarmRoot && asteroidLeafWarmRoot.parent === scene) {
+          scene.remove(asteroidLeafWarmRoot);
+        }
+      }
     };
     // Single-source predicate for the emit-side deferral (core/sectorEnterDefer.js):
     // true exactly when this listener's own gating reaches compileSectorPipelines and
@@ -11987,7 +12052,23 @@ export const render = {
       && !!(payload && (payload.sectorId || (payload.sector && payload.sector.id)))
       && payload.continuous === true
       && !(gpu && gpu.software === true);
-    state.render.prepareLiveSectorAfterJump = async (sector, enterEpoch) => {
+    state.render.prepareLiveSectorAfterJump = async (sector, enterEpoch, cookOwner) => {
+      if (!rendererGenerationIsActive() || this.state !== state) {
+        return { skipped: true, reason: 'sector-superseded' };
+      }
+      // A queued emit's evicted tail can deliver this listener's call inside a newer enter's
+      // live window (pendingSlicedEmits cap force-drains the stale emit whole). The stale
+      // sector object fails currentSectorId immediately; a same-sector restore only differs
+      // by enterSerial — the payload's enterEpoch carries the emit's own serial, so a
+      // mismatched one must bail BEFORE minting: minting would supersede the live cook and
+      // this call's finally would strip the latch the live cook owns.
+      const cookSectorId = String(sector && sector.id || '');
+      if ((!!cookSectorId && !!state.world && !!state.world.currentSectorId
+          && state.world.currentSectorId !== cookSectorId)
+        || (enterEpoch != null && !!state.world
+          && state.world.enterSerial !== enterEpoch)) {
+        return { skipped: true, reason: 'stale-enter-superseded' };
+      }
       if (state.mode !== 'flight') {
         drainDeferredEnterMaterializers(state, sector);
         return { skipped: true, reason: 'not-flight' };
@@ -12015,19 +12096,6 @@ export const render = {
           throw new Error('webgl-context-lost-during-live-sector-cook');
         }
       };
-      // A queued emit's evicted tail can deliver this listener's call inside a newer enter's
-      // live window (pendingSlicedEmits cap force-drains the stale emit whole). The stale
-      // sector object fails currentSectorId immediately; a same-sector restore only differs
-      // by enterSerial — the payload's enterEpoch carries the emit's own serial, so a
-      // mismatched one must bail BEFORE minting: minting would supersede the live cook and
-      // this call's finally would strip the latch the live cook owns.
-      const cookSectorId = String(sector && sector.id || '');
-      if ((!!cookSectorId && !!state.world && !!state.world.currentSectorId
-          && state.world.currentSectorId !== cookSectorId)
-        || (enterEpoch != null && !!state.world
-          && state.world.enterSerial !== enterEpoch)) {
-        return { skipped: true, reason: 'stale-enter-superseded' };
-      }
       state.render.liveSectorGpuAdmission = true;
       // A second sector:enter inside a yield gap makes this cook stale: it captured S1 while
       // the world moved to S2 — the stale census's provider calls then run cleanup/mint under
@@ -12035,19 +12103,13 @@ export const render = {
       // _cleanup wipes S2's roster and re-mints S1 hulls into live space stamped with S2's
       // epoch). Generations plus a currentSectorId re-check at every yield bail the stale
       // cook; the newest invocation owns the shared queues, flags, and its own finally tail.
-      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
-      // enterSerial is the world's replacement epoch: a restore into the SAME sector keeps
-      // currentSectorId identical while reissuing every entity — without it a cook minted
-      // before the restore drives teardown/providers against reissued ids on a dead world.
-      const cookEnterSerial = state.world && state.world.enterSerial;
-      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
-        || (!!cookSectorId && !!state.world && !!state.world.currentSectorId
-          && state.world.currentSectorId !== cookSectorId)
-        || (cookEnterSerial != null
-          && (!state.world || state.world.enterSerial !== cookEnterSerial));
+      this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
+      if (cookOwner) cookOwner.generation = this._liveSectorCookGeneration;
+      const cookStale = captureLiveSectorCookStale();
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
-      const jumpLedger = beginOpeningCookLedger(state.render, 'jump');
+      let jumpLedger = null;
       try {
+        jumpLedger = beginOpeningCookLedger(state.render, 'jump');
         // Minted-stale cooks exist: a second sliced enter force-drains the first emit's
         // deferred tail after currentSectorId already flipped, so this cook can start
         // out superseded — check before the prefix pays it (pure boolean, no yield).
@@ -12157,10 +12219,23 @@ export const render = {
               ? deferredProviderClock.get(provider) : null;
             const deferredEnterTick = deferredProviderTick
               ? deferredProviderTick.get(provider) : null;
+            // Pins describe one synchronous provider step, never the frames between steps.
+            // Restoring the captured render object cannot clear a replacement owner's pins.
+            const providerRender = state.render;
+            const runProviderStep = (run) => {
+              const previousClock = providerRender._deferredEnterClock;
+              const previousTick = providerRender._deferredEnterTick;
+              if (deferredEnterClock != null) providerRender._deferredEnterClock = deferredEnterClock;
+              if (deferredEnterTick != null) providerRender._deferredEnterTick = deferredEnterTick;
+              try { return run(); } finally {
+                if (deferredEnterClock != null) providerRender._deferredEnterClock = previousClock;
+                if (deferredEnterTick != null) providerRender._deferredEnterTick = previousTick;
+              }
+            };
+            let iterator = null;
+            let iteratorDone = false;
             try {
-              if (deferredEnterClock != null) state.render._deferredEnterClock = deferredEnterClock;
-              if (deferredEnterTick != null) state.render._deferredEnterTick = deferredEnterTick;
-              const iterator = provider(sector);
+              iterator = runProviderStep(() => provider(sector));
               // Chunked providers return an iterator the census drives serially to completion
               // before the next provider starts (cross-provider adoption order holds), yielding
               // between atomic items on the same slice clock.
@@ -12169,29 +12244,29 @@ export const render = {
                   // Staleness is consulted per atomic item too: a continuous membership
                   // flip mid-drive must not mint into a sector the cook no longer owns.
                   if (cookStale()) {
-                    if (typeof iterator.return === 'function') iterator.return();
                     return cookSuperseded;
                   }
-                  const step = iterator.next();
-                  if (step.done) break;
+                  const step = runProviderStep(() => iterator.next());
+                  if (step.done) { iteratorDone = true; break; }
                   if (providerNow() - providerSliceStart >= 8) {
                     const superseded = await providerYield();
                     if (superseded) {
-                      if (typeof iterator.return === 'function') iterator.return();
-                      return superseded;
+                        return superseded;
                     }
                   }
                 }
               }
             } catch (providerError) {
+              if (cookStale()) return cookSuperseded;
               try {
                 recordOpeningCookStep(state.render, 'jump.sectorCookProvider', providerSliceStart,
                   'failed', { reason: String(providerError && providerError.message || providerError) });
               } catch { /* ledger bookkeeping only */ }
               continue;
             } finally {
-              if (deferredEnterClock != null) state.render._deferredEnterClock = null;
-              if (deferredEnterTick != null) state.render._deferredEnterTick = null;
+              if (iterator && !iteratorDone && typeof iterator.return === 'function') {
+                try { runProviderStep(() => iterator.return()); } catch { /* preserve the original failure */ }
+              }
             }
             if (providerNow() - providerSliceStart >= 8) {
               const superseded = await providerYield();
@@ -12228,19 +12303,24 @@ export const render = {
           const presentation = [];
           {
             const collectIterator = collectMeshPresentationEntitiesChunked(state, presentation);
+            let collectDone = false;
+            try {
             for (;;) {
               if (cookStale()) {
-                if (typeof collectIterator.return === 'function') collectIterator.return();
                 return cookSuperseded;
               }
               const step = collectIterator.next();
-              if (step.done) break;
+              if (step.done) { collectDone = true; break; }
               if (providerNow() - providerSliceStart >= 8) {
                 const superseded = await providerYield();
                 if (superseded) {
-                  if (typeof collectIterator.return === 'function') collectIterator.return();
-                  return superseded;
+                    return superseded;
                 }
+              }
+            }
+            } finally {
+              if (!collectDone && typeof collectIterator.return === 'function') {
+                try { collectIterator.return(); } catch { /* preserve the original failure */ }
               }
             }
           }
@@ -12360,9 +12440,8 @@ export const render = {
           leftover,
         };
       } finally {
-        // A superseded cook skips the shared-flag tail — the newest cook owns it and runs
-        // this same finally when it finishes.
-        if (cookGeneration === this._liveSectorCookGeneration) {
+        // Entry replacement can supersede this cook without minting another generation.
+        if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
@@ -13741,7 +13820,7 @@ export const render = {
       clearWaveHullRunwayKeys(this.state);
       if (this._waveHullDecodePending) this._waveHullDecodePending.clear();
     });
-    const compileSectorPipelines = async (sector, enterEpoch) => {
+    const compileSectorPipelines = async (sector, enterEpoch, cookOwner) => {
       if (gpu.software) {
         return {
           skipped: true,
@@ -13751,7 +13830,7 @@ export const render = {
       // Predicted catalogs stay dead. Cook the live next-sector graph behind
       // the jump shell, then hold that working set.
       if (typeof state.render.prepareLiveSectorAfterJump === 'function') {
-        return state.render.prepareLiveSectorAfterJump(sector, enterEpoch);
+        return state.render.prepareLiveSectorAfterJump(sector, enterEpoch, cookOwner);
       }
       return {
         skipped: true,
@@ -13870,19 +13949,14 @@ export const render = {
             reason: 'continuous-sector-handoff-defers-pipeline-precompile',
           })
           : (() => {
-            const precompile = compileSectorPipelines(sector, enterEpoch);
-            // compileSectorPipelines mints _liveSectorCookGeneration in its synchronous
-            // prefix (or early-outs before it) — capture after the call so the guard
-            // compares the generation THIS cook minted. A newer enter's cook mints
-            // again before this promise settles, and the guard then keeps this
-            // superseded cook from stripping the live cook's latch — its
-            // cookLiveSceneGpu call reads `sectorShellAdmission !== true` and skips
-            // the whole arrival cohort's GPU cook (meshes compile inside presented
-            // frames). Skip paths never mint, so the capture still equals the live
-            // value and the release runs exactly as before.
-            const cookGenerationAtAttach = this._liveSectorCookGeneration;
+            const entryStale = captureLiveSectorCookStale();
+            // Only this invocation may stamp its receipt: a provider can synchronously
+            // start a newer cook before compileSectorPipelines returns. No-mint skips
+            // retain the entry generation and still release their own latch.
+            const cookOwner = { generation: this._liveSectorCookGeneration };
+            const precompile = compileSectorPipelines(sector, enterEpoch, cookOwner);
             return precompile.finally(() => {
-            if (this._liveSectorCookGeneration !== cookGenerationAtAttach) return;
+            if (entryStale(cookOwner.generation)) return;
             state.render.sectorShellAdmission = false;
             state.render.sectorShellAdmissionSerial = null;
             const sim = Number(state.simTime);
