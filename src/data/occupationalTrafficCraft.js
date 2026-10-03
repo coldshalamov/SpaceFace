@@ -90,3 +90,11 @@ export const OCCUPATIONAL_JOB_KIND_BY_ROLE = Object.freeze({
   ...Object.fromEntries(OCCUPATIONAL_TRAFFIC_CRAFT.map((row) => [row.role, row.jobKind])),
   ...Object.fromEntries(FIELD_JOB_SIGNATURE_CRAFT.map((row) => [row.role, row.jobKind])),
 });
+
+// P03's named single worker is commissioned by brace_long_plate, never weighted ambient traffic.
+export const CERES_BREAKER_CRAFT = Object.freeze({
+  craftId:'ceres_breaker',role:'ceres_breaker',file:'wholeships/ceres_breaker.glb',
+  assetId:'SF_WHOLESHIP_CERES_BREAKER',jobKind:'ceres_workfleet',
+  releaseUrl:'assets/ships/release/parts/wholeships/ceres_breaker.glb',
+  worldRecordId:'ceres:second_measure:breaker',
+});

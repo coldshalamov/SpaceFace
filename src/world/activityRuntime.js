@@ -746,10 +746,18 @@ export function skipUnstampedRescan(membershipVersion, lastMembershipVersion) {
  * unmaterialized hulls are invisible to the spatial-hash radius query and only the walk's
  * discovery disc can pick them up on its own.
  */
-export function requestActivityReclassify(state, entity) {
+export function requestActivityReclassify(state, entity, options = null) {
   const runtime = state && RUNTIMES.get(state);
   if (!runtime || !entity || entity.id == null) return;
   runtime.requestedReclassifyIds.add(entity.id);
+  // Same-life physical publication/withdrawal is an immediate authority boundary,
+  // including loading and minimal owners without an entity index. Ordinary owner
+  // wake requests keep their existing next-classify cadence.
+  if (options?.physicsPublication === true) {
+    runtime.ready = false; runtime._staticMembershipDirty = true;
+    clearEarlyQuietClassifyLatch(runtime);
+    if (runtime._rockVisitRetain) { runtime._rockVisitRetain.primed = false; runtime._rockVisitRetain.framePrimed = false; }
+  }
 }
 
 /**

@@ -6,9 +6,13 @@ export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarPr
 // `rapier-dynamic` backend. Flight/combat write membrane commands; this owner consumes them,
 // steps real Rapier dynamic bodies, and mirrors the post-solve state back to entities.
 
+import { stepCeresWorkfleetSlides, syncCeresWorkfleetColliders } from './ceresWorkfleetArticulation.js';
+import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
 import {
   consumePhysicsCommand,
   consumeProjectileContinuation,
+  markPhysicsBodyNativeFailure,
+  clearPhysicsBodyNativeFailure,
   measureThrusterAuthority,
   resolvePhysicsBodySpec,
   writePhysicsTelemetry,
@@ -46,6 +50,16 @@ export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // response itself stays bit-for-bit inside Rapier.
 export const SG02_CONTACT_FORCE_EVENT_THRESHOLD_N = 60;
 const POSE_RESYNC_EPS2 = 1e-4;
+// Read-only contact observations are issued by this owner, never by gameplay proximity tests.
+const ISSUED_SOLID_CONTACTS = new WeakMap();
+export function isNativeSolidContact(value, source = null, target = null) {
+  const issued=value&&ISSUED_SOLID_CONTACTS.get(value);
+  return !!issued && issued.owner.world===issued.world && issued.owner.tick===value.nativeTick
+    && issued.owner.records.get(value.sourceId)===issued.sourceRecord
+    && issued.owner.records.get(value.targetId)===issued.targetRecord
+    && issued.sourceRecord.entity===issued.source && issued.targetRecord.entity===issued.target
+    && (!source || source===issued.source) && (!target || target===issued.target);
+}
 
 export function mayRapierIslandSleep(entity, spec) {
   if (!entity || !spec || spec.dynamic !== true) return false;
@@ -249,6 +263,7 @@ export function createSg02CombatPhysicsPort(owner) {
     setAttachmentReel(input) { return owner.setAttachmentReel(input); },
     cutAttachment(input) { return owner.cutAttachment(input); },
     getAttachmentTelemetry(input) { return owner.getAttachmentTelemetry(input); },
+    sampleSolidContacts(entityId, options) { return owner.sampleSolidContacts(entityId, options); },
   });
 }
 
@@ -268,7 +283,11 @@ export class Sg02DynamicBodyOwner {
     this.quantum = positive(options.quantum, SG02_DYNAMIC_BODY_OWNER_QUANTUM);
     this.records = new Map();
     this.dynamicRecords = new Set();
+    this.ceresWorkfleetRecords = new Set();
     this.attachments = new Map();
+    this._suspendedAttachments = new Map();
+    this._pendingNativeRebuilds = new Map();
+    this._syncSerial = 0;
     this.captureContactImpacts = options.captureContactImpacts !== false;
     this._colliderOwners = new Map();
     this._ghostProjectilePool = new Map();
@@ -352,11 +371,12 @@ export class Sg02DynamicBodyOwner {
   }
 
   syncFromEntities(entities = []) {
+    this._syncSerial++;
     const live = this._liveEntityIds;
     live.clear();
     let count = 0;
     for (const entity of entities) {
-      if (!entity || entity.alive === false) continue;
+      if (!entity || entity.alive === false || entity.physicsBody === false) continue;
       const spec = resolvePhysicsBodySpec(entity);
       if (!spec || !(spec.radius > 0)) continue;
       live.add(entity.id);
@@ -367,6 +387,7 @@ export class Sg02DynamicBodyOwner {
     for (const [id, rec] of this.records) {
       if (!live.has(id)) this._removeRecord(id, rec);
     }
+    this._resumeSuspendedAttachments();
     this._staticLayerVersion = null;
     this._writeSyncDiagnostics('full', count, 0, 0, -1);
   }
@@ -383,6 +404,11 @@ export class Sg02DynamicBodyOwner {
       return false;
     }
     rec.entity = entity;
+    this._syncCeresWorkfleetRecord(rec);
+    for (const attachment of this.attachments.values()) {
+      if (attachment.owner===rec) {attachment.ownerEntity=entity;attachment.ownerLife=entity.occupantGeneration;}
+      if (attachment.target===rec) {attachment.targetEntity=entity;attachment.targetLife=entity.occupantGeneration;}
+    }
     this._reboundEntityIds.add(entity.id);
     if (entity.flags) entity.flags.noInterp = false;
     return true;
@@ -441,6 +467,7 @@ export class Sg02DynamicBodyOwner {
       snapshot: encodeSnapshotBytes(bytes),
       bodies,
       bodyOrder: Array.from(this.records.keys(), String),
+      ceresBodyOrder: Array.from(this.ceresWorkfleetRecords, rec => String(rec.entity.id)),
       dynamicBodyOrder: Array.from(this.dynamicRecords, rec => String(rec.entity.id)),
       attachments,
       attachmentOrder: Array.from(this.attachments.keys()),
@@ -568,8 +595,16 @@ export class Sg02DynamicBodyOwner {
           throw new Error('authored_native_geometry_changed');
         }
         const rec = this._adoptRecord.call(candidate, entity, spec, body, colliders);
+        // Prime articulation mirrors without rewriting/waking the accepted native colliders.
+        for (const key of ['ceresWorkfleetFraction', 'ceresWorkfleetRole']) {
+          if (expected[key] != null) rec[key] = expected[key];
+        }
+        if (ceresWorkfleetSlideRole(entity)) {
+          rec.ceresWorkfleetEntity = entity; rec.ceresWorkfleetLife = entity.occupantGeneration;
+          candidate.ceresWorkfleetRecords.add(rec);
+        }
         validator.world.removeRigidBody(expected.body);
-        validator._colliderOwners.clear();
+        validator._colliderOwners.clear(); validator.ceresWorkfleetRecords.clear();
         rec.effectiveMass = saved.effectiveMass;
         rec.effectiveInertiaY = saved.effectiveInertiaY;
         rec.bodyResponseMassScale = saved.bodyResponseMassScale;
@@ -599,6 +634,7 @@ export class Sg02DynamicBodyOwner {
         return new Set(ordered);
       };
       candidate.dynamicRecords = restoreOrder(payload.dynamicBodyOrder, candidate.dynamicRecords);
+      candidate.ceresWorkfleetRecords = restoreOrder(payload.ceresBodyOrder, candidate.ceresWorkfleetRecords);
       candidate._adoptedJoints = new Map();
       const jointHandles = new Set();
       const semantic = options.attachments;
@@ -673,6 +709,7 @@ export class Sg02DynamicBodyOwner {
         return scratch;
       });
       candidate.syncFromEntities(staged);
+      if (candidate._pendingNativeRebuilds.size) throw new Error('scalar_body_reconstruction_failed');
       const mirrors = [];
       for (const rec of candidate.records.values()) {
         const scratch = rec.entity, entity = originals.get(scratch);
@@ -684,6 +721,7 @@ export class Sg02DynamicBodyOwner {
           }
         }
         rec.entity = entity;
+        if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
       }
       this._commitNativeOwner(candidate, mirrors);
     } catch (error) { candidate.dispose(); throw error; }
@@ -691,6 +729,7 @@ export class Sg02DynamicBodyOwner {
 
   _commitNativeOwner(candidate, mirrors = []) {
     const previousWorld = this.world, previousQueue = this._eventQueue;
+    const previousFailures = this._pendingNativeRebuilds;
     const contactCallback = this._contactManifoldCb;
     // Native staging must not publish a partial set of sleeping mirrors either. Game entities
     // use ordinary data properties; refuse accessor/read-only destinations before writing any.
@@ -828,6 +867,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
+    this._syncSerial++;
     const version = Math.max(0, Math.trunc(finite(staticVersion)));
     const staticChanged = this._staticLayerVersion !== version;
     const dynamicLive = this._liveDynamicEntityIds;
@@ -839,7 +879,7 @@ export class Sg02DynamicBodyOwner {
       staticLive.clear();
       const source = orderedEntities || staticEntities;
       for (const entity of source) {
-        if (!entity || entity.alive === false) continue;
+        if (!entity || entity.alive === false || entity.physicsBody === false) continue;
         const spec = resolvePhysicsBodySpec(entity);
         if (!spec || !(spec.radius > 0)) continue;
         if (spec.dynamic) {
@@ -862,7 +902,7 @@ export class Sg02DynamicBodyOwner {
 
     let dynamicCount = 0;
     for (const entity of dynamicEntities) {
-      if (!entity || entity.alive === false) continue;
+      if (!entity || entity.alive === false || entity.physicsBody === false) continue;
       // `orderedEntities` preserves canonical cross-layer body creation order when a static
       // version changes. An existing dynamic encountered there has already consumed this tick's
       // authoritative entity object, so visiting it again here only repeats pose/WASM reads.
@@ -879,6 +919,7 @@ export class Sg02DynamicBodyOwner {
     for (const [id, rec] of this.records) {
       if (rec.spec.dynamic && !dynamicLive.has(id)) this._removeRecord(id, rec);
     }
+    this._resumeSuspendedAttachments();
 
     this._writeSyncDiagnostics('layered', 0, staticCount, dynamicCount, version);
   }
@@ -897,6 +938,7 @@ export class Sg02DynamicBodyOwner {
     // Keep event/ownership identity current even when a save/rebuild supplied an equivalent
     // replacement object. This mirrors `_syncRecord` without touching Rapier.
     rec.entity = entity;
+    this._syncCeresWorkfleetRecord(rec);
     return true;
   }
 
@@ -953,6 +995,8 @@ export class Sg02DynamicBodyOwner {
     diag.bodies = this.records.size;
     diag.colliders = colliders;
     diag.attachments = this.attachments.size;
+    diag.suspendedAttachments = this._suspendedAttachments.size;
+    diag.pendingNativeRebuilds = this._pendingNativeRebuilds.size;
     diag.dynamicBodies = this.dynamicRecords.size;
     diag.ccdBodies = ccdBodies;
     diag.lockedPlaneBodies = this.records.size;
@@ -962,6 +1006,9 @@ export class Sg02DynamicBodyOwner {
   dispose() {
     for (const attachment of this.attachments.values()) this._removeAttachmentJoints(attachment);
     this.attachments.clear();
+    this._suspendedAttachments.clear();
+    for (const pending of this._pendingNativeRebuilds.values()) clearPhysicsBodyNativeFailure(pending.entity,this,pending.failureReceipt);
+    this._pendingNativeRebuilds.clear();
     for (const [id, rec] of this.records) this._removeRecord(id, rec);
     for (const bucket of this._ghostProjectilePool.values()) {
       for (const entry of bucket) {
@@ -973,6 +1020,7 @@ export class Sg02DynamicBodyOwner {
     if (this.world && typeof this.world.free === 'function') this.world.free();
     if (this._eventQueue && typeof this._eventQueue.free === 'function') this._eventQueue.free();
     this._eventQueue = null;
+    this.ceresWorkfleetRecords.clear();
     this._colliderOwners.clear();
     this._contactImpacts.length = 0;
     this._reboundEntityIds.clear();
@@ -1026,12 +1074,70 @@ export class Sg02DynamicBodyOwner {
     return out;
   }
 
+  /** Current narrow-phase skin contacts for one explicitly observed body. This does not
+   * change collision/event thresholds, wake bodies, or retain state in native snapshots. */
+  sampleSolidContacts(entityId, { targetId = null, out = [], stats = null } = {}) {
+    const source = this.records.get(entityId);
+    if (!source || source.entity.alive === false || !Number.isSafeInteger(source.entity.occupantGeneration)
+      || source.entity.occupantGeneration < 1 || source.entity.type === 'projectile') return [];
+    const rows = out, tick = this._simTick ?? this.tick; rows.length = 0;
+    for (let sourceColliderIndex = 0; sourceColliderIndex < source.colliders.length; sourceColliderIndex++) {
+      const collider = source.colliders[sourceColliderIndex];
+      if (collider.isSensor()) continue;
+      if (stats) stats.queriedColliders++;
+      this.world.contactPairsWith(collider, other => {
+        if (stats) stats.candidatePairs++;
+        const target = this._colliderOwners.get(other.handle)?.rec;
+        if (!target || target === source || (targetId != null && target.entity.id !== targetId) || other.isSensor() || target.entity.alive === false
+          || target.entity.type === 'projectile' || !Number.isSafeInteger(target.entity.occupantGeneration)
+          || target.entity.occupantGeneration < 1) return;
+        const targetColliderIndex = target.colliders.indexOf(other);
+        this.world.contactPair(collider, other, (manifold, flipped) => {
+          if (stats) stats.manifolds++;
+          const rawNormal = manifold.normal(), sign = flipped ? -1 : 1;
+          const normal = normalizePlanarDirection({ x: sign * rawNormal.x, z: sign * rawNormal.z });
+          for (let contactIndex = 0; contactIndex < manifold.numContacts(); contactIndex++) {
+            const p1 = manifold.localContactPoint1(contactIndex), p2 = manifold.localContactPoint2(contactIndex);
+            if (!p1 || !p2 || manifold.contactDist(contactIndex) > .05) continue;
+            const a = colliderPoint(collider, flipped ? p2 : p1);
+            const b = colliderPoint(other, flipped ? p1 : p2);
+            const separation = (b.x-a.x)*normal.x + (b.z-a.z)*normal.z;
+            // Structural give may have moved the body since the manifold was solved.
+            if (separation > .05) continue;
+            const va = velocityAtPointInto(zero3(), source, a), vb = velocityAtPointInto(zero3(), target, b);
+            const relativeVelocity = { x: va.x-vb.x, z: va.z-vb.z };
+            const row = Object.freeze({ schemaVersion: 1, source: 'rapier-solid-contact', tick,
+              nativeTick: this.tick, sourceId: source.entity.id, sourceLife: source.entity.occupantGeneration,
+              targetId: target.entity.id, targetLife: target.entity.occupantGeneration,
+              sourceColliderIndex, targetColliderIndex, contactIndex,
+              sourcePrimitiveId: contactPrimitiveId(source,sourceColliderIndex),
+              targetPrimitiveId: contactPrimitiveId(target,targetColliderIndex),
+              sourceLocal: Object.freeze(localAnchorFromWorld(source,a)),
+              targetLocal: Object.freeze(localAnchorFromWorld(target,b)),
+              sourcePoint: Object.freeze({x:a.x+this._frameOrigin.x,z:a.z+this._frameOrigin.z}),
+              targetPoint: Object.freeze({x:b.x+this._frameOrigin.x,z:b.z+this._frameOrigin.z}),
+              normal: Object.freeze(normal), separation,
+              relativeVelocity: Object.freeze(relativeVelocity),
+              tangentialSpeed: Math.abs(relativeVelocity.x*-normal.z + relativeVelocity.z*normal.x),
+              normalImpulse: Math.max(0,finite(manifold.contactImpulse(contactIndex))),
+            });
+            ISSUED_SOLID_CONTACTS.set(row,{owner:this,world:this.world,sourceRecord:source,targetRecord:target,
+              source:source.entity,target:target.entity}); rows.push(row);
+          }
+        });
+      });
+    }
+    rows.sort((a,b)=>compareIds(a.targetId,b.targetId)||a.sourceColliderIndex-b.sourceColliderIndex
+      ||a.targetColliderIndex-b.targetColliderIndex||a.contactIndex-b.contactIndex);
+    return rows;
+  }
+
   createAttachment(input = {}) {
     const attachmentId = String(input.attachmentId || '');
-    if (!attachmentId || this.attachments.has(attachmentId)) return false;
+    if (!attachmentId || this.attachments.has(attachmentId) || this._suspendedAttachments.has(attachmentId)) return false;
     const owner = this.records.get(input.ownerId);
     const target = this.records.get(input.targetId);
-    if (!owner || !target || owner === target) return false;
+    if (!owner || !target || owner === target || owner.entity.physicsBody === false || target.entity.physicsBody === false) return false;
     const sourceWorld = this._globalPointToFrameLocal(input.sourceWorld, owner.body.translation());
     const targetWorld = this._globalPointToFrameLocal(input.targetWorld, target.body.translation());
     const sourceAnchorLocal = normalizeLocalAnchor(input.sourceAnchorLocal);
@@ -1046,6 +1152,8 @@ export class Sg02DynamicBodyOwner {
       targetSocketId: input.targetSocketId == null ? null : String(input.targetSocketId),
       owner,
       target,
+      ownerEntity:owner.entity, ownerLife:owner.entity.occupantGeneration,
+      targetEntity:target.entity, targetLife:target.entity.occupantGeneration,
       anchorA: sourceAnchorLocal || localAnchorFromWorld(owner, sourceWorld),
       anchorB: targetAnchorLocal || localAnchorFromWorld(target, targetWorld),
       restLength,
@@ -1089,6 +1197,11 @@ export class Sg02DynamicBodyOwner {
   }
 
   cutAttachment(input = {}) {
+    const parkedId = String(input.attachmentId || input.physicsHandle?.id || input.physicsHandle || '');
+    if (this._suspendedAttachments.delete(parkedId)) {
+      observeRelease(parkedId,input.tick??this.tick,input.reason||'cut');
+      return true;
+    }
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
     const reason = typeof input.reason === 'string' && input.reason ? input.reason : 'cut';
@@ -1192,6 +1305,11 @@ export class Sg02DynamicBodyOwner {
   _stepFixed() {
     const tumbleFling = combatFlag('tumbleFling');
     this._refreshSleepPolicy();
+    // Ceres includes a fixed cradle, so its bounded registration set is independent of
+    // dynamicRecords. No additional full records scan merely to discover moving rigs.
+    for (const rec of this.ceresWorkfleetRecords) {
+      stepCeresWorkfleetSlides(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
+    }
     for (const rec of this.dynamicRecords) {
       setZero3(rec.appliedForce);
       setZero3(rec.appliedTorque);
@@ -1935,7 +2053,7 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
-  _createRecord(entity, spec) {
+  _createRecord(entity, spec, replacing = null) {
     const R = this.RAPIER;
     const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
     let posX = local.x;
@@ -1949,7 +2067,7 @@ export class Sg02DynamicBodyOwner {
     // the next sync for dt=0 init, noInterp, sleep-eligible, and static records alike.
     if (!material.ghost && entity.pos
       && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
-      const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, entity, spec);
+      const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, entity, spec, replacing);
       if (slotted !== posX) {
         posX = slotted;
         const g = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
@@ -1997,26 +2115,28 @@ export class Sg02DynamicBodyOwner {
     let body;
     let colliders;
     let proxyManifest = null;
-    if (pooled) {
-      body = pooled.body;
-      colliders = pooled.colliders;
-      body.setTranslation({ x: posX, y: 0, z: posZ }, true);
-      body.setRotation(quatFromYaw(finite(entity.rot)), true);
-      body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
-      body.setAngvel({ x: 0, y: -boundedYawRate(entity.angVel), z: 0 }, true);
-      body.setEnabled(true);
-    } else {
-      body = this.world.createRigidBody(desc);
-      proxyManifest = proxyManifestForBody(entity, spec);
-      let colliderDescs;
-      if (proxyManifest) {
-        colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts, this.world.integrationParameters);
-      } else if (spec.shape === 'capsule' || (!spec.shape && (entity.type === 'ship' || entity.type === 'drone'))) {
-        colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
+    try {
+      if (pooled) {
+        body = pooled.body;
+        colliders = pooled.colliders;
+        body.setTranslation({ x: posX, y: 0, z: posZ }, true);
+        body.setRotation(quatFromYaw(finite(entity.rot)), true);
+        body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
+        body.setAngvel({ x: 0, y: -boundedYawRate(entity.angVel), z: 0 }, true);
+        body.setEnabled(true);
       } else {
-        colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts, entity)];
+        body = this.world.createRigidBody(desc);
+        proxyManifest = proxyManifestForBody(entity, spec);
+        let colliderDescs;
+        if (proxyManifest) {
+          colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts, this.world.integrationParameters);
+        } else if (spec.shape === 'capsule' || (!spec.shape && (entity.type === 'ship' || entity.type === 'drone'))) {
+          colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
+        } else {
+          colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts, entity)];
+        }
+        colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
       }
-      colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
       // Colliders are all density-0: the body's whole mass is the additional properties on the
       // creation desc. rapier-compat defers computing those into effective mass until the first
       // world.step() — a body created mid-run reports mass()=0 and silently drops impulses
@@ -2037,10 +2157,14 @@ export class Sg02DynamicBodyOwner {
           body.recomputeMassPropertiesFromColliders();
         }
       }
-    }
-    if (mayRapierIslandSleep(entity, spec) && entity.physicsSleeping === true
-      && typeof body.sleep === 'function') {
-      body.sleep();
+      if (mayRapierIslandSleep(entity, spec) && entity.physicsSleeping === true
+        && typeof body.sleep === 'function') {
+        body.sleep();
+      }
+    } catch (error) {
+      // Failed authored collider construction must not leave an unmanaged native body.
+      if (body) this.world.removeRigidBody(body);
+      throw error;
     }
     const collider = colliders[0];
     const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
@@ -2053,8 +2177,8 @@ export class Sg02DynamicBodyOwner {
       colliders,
       ccdEnabled,
       // Body-local degenerate windows for the coincident-spawn ladder (spine segments for
-      // capsules, centre points for balls/offset primitives). Captured once at creation —
-      // collider-local offsets and axes never change on a live record.
+      // capsules, centre points for balls/offset primitives). Captured at creation, then
+      // updated in place when an explicitly articulated compound changes its local pose.
       coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
       _postStepSleepSkip: false,
@@ -2098,6 +2222,7 @@ export class Sg02DynamicBodyOwner {
     // contact velocity is the solver's answer now, so a rebuilt body simply keeps solving from
     // its live pose.
     for (const ownedCollider of colliders) this._colliderOwners.set(ownedCollider.handle, { rec: record, collider: ownedCollider });
+    this._syncCeresWorkfleetRecord(record);
     return record;
   }
 
@@ -2139,6 +2264,13 @@ export class Sg02DynamicBodyOwner {
   _removeRecord(id, rec) {
     this._reboundEntityIds.delete(id);
     const live = rec && rec.entity && rec.entity.alive !== false;
+    // Explicit withdrawal is different from distant towing residency: no invisible collider
+    // or line force may survive it. Keep the logical attachment's lease, not its native joint.
+    if (live && rec.entity.physicsBody === false) {
+      consumePhysicsCommand(rec.entity);
+      consumeProjectileContinuation(rec.entity);
+      this._parkRecordAttachments(rec);
+    }
     if (live) {
       for (const attachment of this.attachments.values()) {
         if (attachment.owner === rec || attachment.target === rec) return false;
@@ -2148,6 +2280,7 @@ export class Sg02DynamicBodyOwner {
       if (attachment.owner === rec || attachment.target === rec) this.cutAttachment({ attachmentId: attachment.id });
     }
     this.dynamicRecords.delete(rec);
+    this.ceresWorkfleetRecords.delete(rec);
     const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
     if (rec.ghostPoolKey != null && typeof rec.body.setEnabled === 'function') {
       // Retire, don't free: disabled bodies/colliders leave the broad phase and the solver.
@@ -2171,13 +2304,124 @@ export class Sg02DynamicBodyOwner {
     return true;
   }
 
+  _queueNativeRebuildFailure(entity, error) {
+    consumePhysicsCommand(entity);
+    consumeProjectileContinuation(entity);
+    this._pendingNativeRebuilds.set(entity.id, {
+      entity, life:entity.occupantGeneration, error,
+      body:entity.physicsBody, proxy:entity.physicsBody?.collisionProxyManifest, revision:entity.physicsBody?.revision,
+      attempts:1, lastAttemptSerial:this._syncSerial,
+      failureReceipt:markPhysicsBodyNativeFailure(entity,this),
+    });
+  }
+
+  _parkRecordAttachments(rec, preserveSpring = false) {
+    for (const attachment of this.attachments.values()) {
+      if (attachment.owner !== rec && attachment.target !== rec) continue;
+      this._suspendedAttachments.set(attachment.id, {
+        attachment, withdrawn: new Set([rec.entity]), preserveSpring,
+        owner: attachment.ownerEntity, ownerLife: attachment.ownerLife,
+        target: attachment.targetEntity, targetLife: attachment.targetLife,
+      });
+      this._removeAttachmentJoints(attachment);
+      this.attachments.delete(attachment.id);
+    }
+  }
+
+  _resumeSuspendedAttachments() {
+    // A failed static rebuild will not receive another static-version edge. Retry only these
+    // explicit pending lives, rather than rescanning the world or reusing the obsolete body.
+    for (const [id, pending] of this._pendingNativeRebuilds) {
+      const entity=pending.entity;
+      if (entity.alive===false || entity.occupantGeneration!==pending.life) {
+        clearPhysicsBodyNativeFailure(entity,this,pending.failureReceipt);
+        this._pendingNativeRebuilds.delete(id);continue;
+      }
+      consumePhysicsCommand(entity);
+      consumeProjectileContinuation(entity);
+      if (this.records.has(id)) {
+        clearPhysicsBodyNativeFailure(entity,this,pending.failureReceipt);
+        this._pendingNativeRebuilds.delete(id);continue;
+      }
+      const body=entity.physicsBody,proxy=body?.collisionProxyManifest,revision=body?.revision;
+      if (pending.body!==body || pending.proxy!==proxy || pending.revision!==revision) {
+        Object.assign(pending,{body,proxy,revision,attempts:0, failureReceipt:markPhysicsBodyNativeFailure(entity,this)});
+      }
+      const spec=resolvePhysicsBodySpec(entity);
+      if (!spec || pending.attempts>=4 || pending.lastAttemptSerial===this._syncSerial) continue;
+      pending.lastAttemptSerial=this._syncSerial;pending.attempts++;
+      try {
+        const next=this._createRecord(entity,spec);
+        this.records.set(id,next);
+        if(next.spec.dynamic)this.dynamicRecords.add(next);
+        this._applyCcdGate(next,entity);
+        clearPhysicsBodyNativeFailure(entity,this,pending.failureReceipt);
+        this._pendingNativeRebuilds.delete(id);
+      } catch (error) {pending.error=error;}
+    }
+    for (const [id, parked] of this._suspendedAttachments) {
+      if (parked.owner.alive === false || parked.target.alive === false
+        || parked.owner.occupantGeneration !== parked.ownerLife || parked.target.occupantGeneration !== parked.targetLife) continue;
+      // Commands queued while absent have no physical recipient and must never replay on return.
+      if (parked.owner.physicsBody === false) parked.withdrawn.add(parked.owner);
+      if (parked.target.physicsBody === false) parked.withdrawn.add(parked.target);
+      for (const entity of parked.withdrawn) {
+        consumePhysicsCommand(entity);
+        consumeProjectileContinuation(entity);
+      }
+      const owner = this.records.get(parked.owner.id), target = this.records.get(parked.target.id);
+      if (owner?.entity !== parked.owner || target?.entity !== parked.target
+        || parked.owner.physicsBody === false || parked.target.physicsBody === false) continue;
+      if (parked.resumeOwner!==owner || parked.resumeTarget!==target) {
+        parked.resumeOwner=owner;parked.resumeTarget=target;parked.resumeAttempts=0;
+      }
+      if (parked.resumeAttempts>=4 || parked.resumeSerial===this._syncSerial) continue;
+      parked.resumeAttempts++;parked.resumeSerial=this._syncSerial;
+      const old = parked.attachment;
+      if (parked.preserveSpring) {
+        old.owner=owner;old.target=target;
+        try {this._createAttachmentJoints(old);} catch {continue;}
+        this.attachments.set(id,old);this._suspendedAttachments.delete(id);continue;
+      }
+      this._suspendedAttachments.delete(id);
+      let result;
+      try {result = this.createAttachment({
+        attachmentId: id, defId: old.defId, ownerId: parked.owner.id, targetId: parked.target.id,
+        sourceSocketId: old.sourceSocketId, targetSocketId: old.targetSocketId,
+        sourceAnchorLocal: old.anchorA, targetAnchorLocal: old.anchorB, restLength: old.restLength,
+        break: old.break, spring: old.spring, forceScale: old.forceScale,
+        reelRevision: old.reelRevision, tick: old.createdTick,
+        // Begin a new capture ramp; pre-withdrawal strain/whip energy is not a queued impulse.
+        springState: null,
+      });} catch {result=false;}
+      if (!result) this._suspendedAttachments.set(id, parked);
+    }
+  }
+
   _takePooledGhostBody(key) {
     const bucket = this._ghostProjectilePool.get(key);
     if (!bucket || !bucket.length) return null;
     return bucket.pop();
   }
 
+  _syncCeresWorkfleetRecord(rec) {
+    if (!ceresWorkfleetSlideRole(rec.entity)) {
+      this.ceresWorkfleetRecords.delete(rec);
+      return;
+    }
+    rec.ceresWorkfleetEntity = rec.entity;
+    rec.ceresWorkfleetLife = rec.entity.occupantGeneration;
+    syncCeresWorkfleetColliders(rec, coincidentSpineForCollider, this.RAPIER);
+    this.ceresWorkfleetRecords.add(rec);
+  }
+
   _syncRecord(entity, spec) {
+    const pending=this._pendingNativeRebuilds.get(entity.id);
+    if (pending?.entity === entity) {
+      if (pending.life===entity.occupantGeneration) return null;
+      clearPhysicsBodyNativeFailure(entity,this,pending.failureReceipt);
+      this._pendingNativeRebuilds.delete(entity.id);
+    }
     const rec = this.records.get(entity.id);
     const preserveRebound = !!(rec && rec.spec && rec.spec.dynamic
       && rec.entity === entity && this._reboundEntityIds.has(entity.id));
@@ -2187,25 +2431,75 @@ export class Sg02DynamicBodyOwner {
     if (!recordMatchesSpec(rec, spec) || (rec && rec.proxyId !== proxyId)) {
       if (rec && rec.proxyId === proxyId && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
         rec.entity = entity;
+        this._syncCeresWorkfleetRecord(rec);
         if (preserveRebound) this._reboundEntityIds.delete(entity.id);
         else this._maybeResyncBodyPose(rec, entity);
         this._applyCcdGate(rec, entity);
         return rec;
       }
       this._reboundEntityIds.delete(entity.id);
+      if (rec && rec.entity === entity) {
+        const held = [];
+        for (const attachment of this.attachments.values()) {
+          if (attachment.owner === rec || attachment.target === rec) held.push(attachment);
+        }
+        if (held.length) {
+          // A real shape/body-mode revision is an atomic native handover, not a cut or
+          // suspension. Build first, excluding the old body from coincident admission;
+          // keep the same line objects and earned spring state throughout the swap.
+          let next;
+          try {next = this._createRecord(entity, spec, rec);} catch (error) {
+            this._parkRecordAttachments(rec,true);
+            this._removeRecord(entity.id,rec);
+            this._queueNativeRebuildFailure(entity,error);
+            return null;
+          }
+          for (const attachment of held) {
+            this._removeAttachmentJoints(attachment);
+            this.attachments.delete(attachment.id);
+          }
+          this._removeRecord(entity.id, rec);
+          this.records.set(entity.id, next);
+          if (next.spec.dynamic) this.dynamicRecords.add(next);
+          for (const attachment of held) {
+            if (attachment.owner === rec) attachment.owner = next;
+            if (attachment.target === rec) attachment.target = next;
+            try {
+              if (attachment.owner.entity!==attachment.ownerEntity || attachment.target.entity!==attachment.targetEntity
+                || attachment.ownerEntity.occupantGeneration!==attachment.ownerLife
+                || attachment.targetEntity.occupantGeneration!==attachment.targetLife) throw new Error('attachment life changed');
+              this._createAttachmentJoints(attachment);
+              this.attachments.set(attachment.id, attachment);
+            } catch {
+              this._suspendedAttachments.set(attachment.id, {
+                attachment, withdrawn: new Set([entity]), preserveSpring:true,
+                owner:attachment.ownerEntity, ownerLife:attachment.ownerLife,
+                target:attachment.targetEntity, targetLife:attachment.targetLife,
+              });
+            }
+          }
+          this._applyCcdGate(next, entity);
+          return next;
+        }
+      }
       if (rec && this._removeRecord(entity.id, rec) === false) {
         // A live attachment holds the old body; keep the existing record so its replacement
         // would not orphan a body that stays in the world. The spec change retries each sync.
         rec.entity = entity;
         return rec;
       }
-      const next = this._createRecord(entity, spec);
+      let next;
+      try {next = this._createRecord(entity, spec);} catch (error) {
+        this._queueNativeRebuildFailure(entity,error);
+        return null;
+      }
       this.records.set(entity.id, next);
       if (next.spec.dynamic) this.dynamicRecords.add(next);
       this._applyCcdGate(next, entity);
       return next;
     }
     rec.entity = entity;
+    this._syncCeresWorkfleetRecord(rec);
     if (preserveRebound) this._reboundEntityIds.delete(entity.id);
     else this._maybeResyncBodyPose(rec, entity);
     this._applyCcdGate(rec, entity);
@@ -2475,6 +2769,7 @@ export class Sg02DynamicBodyOwner {
         { x: 0, y: 0, z: 0, w: 1 },
         true,
       );
+      rec.body.recomputeMassPropertiesFromColliders();
       rec.spec = spec;
       rec.revision = spec.revision;
       rec.snapshot.revision = spec.revision;
@@ -2596,6 +2891,7 @@ export class Sg02DynamicBodyOwner {
         { x: 0, y: 0, z: 0, w: 1 },
         true,
       );
+      rec.body.recomputeMassPropertiesFromColliders();
       rec.effectiveMass = mass;
       rec.effectiveInertiaY = inertiaY;
       rec.bodyResponseMassScale = massScale;
@@ -2832,7 +3128,7 @@ export class Sg02DynamicBodyOwner {
     const relativeSpeed = (scratch.velocityB.x - scratch.velocityA.x) * nx + (scratch.velocityB.z - scratch.velocityA.z) * nz;
     const prevRel = finite(state.lastRelativeSpeed, 0);
     const yank = (relativeSpeed - prevRel) / this.fixedDt;
-    const mu = reducedMass(attachment.owner, attachment.target);
+    const mu = transportClampAnchorMass(attachment, source, target, nx, nz, scratch);
     const damping = dampingForSpring(spring, mu);
 
     if (!state.wasTaut && state.slackS >= CAPTURE_SLACK_S) {
@@ -2863,7 +3159,8 @@ export class Sg02DynamicBodyOwner {
     // (MEASURED 2026-09-05: Cinder Sluice with the rope kit blew a body's position out of the
     // spatial hash). The cap keeps omega * dt at STABLE_OMEGA_DT; the authored K is never lowered
     // by it, and the B7 swing (a 100 WU line at 1.5x cruise) sits an order of magnitude under it.
-    const stiffnessCap = mu * (STABLE_OMEGA_DT / this.fixedDt) ** 2;
+    const stabilityMass = scratch.clampStabilityMass;
+    const stiffnessCap = stabilityMass * (STABLE_OMEGA_DT / this.fixedDt) ** 2;
     const tautK = Math.min(Math.max(spring.K, loadStiffness), Math.max(spring.K, stiffnessCap));
     const tautDamping = tautK > spring.K ? dampingForStiffness(tautK, spring, mu) : damping;
     const k = inCapture ? tautK * smooth * smooth : tautK;
@@ -2891,6 +3188,16 @@ export class Sg02DynamicBodyOwner {
     // A specialized Tractor remains a physical rope, not a telekinetic position writer. Its
     // snapshotted finite-force rating caps the complete radial spring/damping/haul result. The
     // ordinary standard line normalizes maxForce to Infinity and is bit-identical here.
+    const forceScale = clamp(finite(attachment.forceScale, 1), 0, 4);
+    // Backward Euler solves v' = v - J/mu, s' = s + dt*v' using the same
+    // authored spring/damping. No velocity rewrite or additional damping factor.
+    if (scratch.clampHasOffset) {
+      force = Math.max(0, (force + k * reelBoost * relativeSpeed * this.fixedDt) * forceScale)
+        / (1 + c * forceScale * this.fixedDt / mu + k * reelBoost * forceScale * this.fixedDt * this.fixedDt / mu);
+    }
+
+    // The scoped implicit result includes forceScale. Cap that final physical force,
+    // not its pre-solve numerator. Centered and other constraint laws keep their order.
     force = Math.min(force, spring.maxForce);
 
     // Crossing the authored stretch edge enters a recoverable overload regime. The previous path
@@ -2912,7 +3219,7 @@ export class Sg02DynamicBodyOwner {
       || (usesElasticWhipSpring(spring) && geometricOverloadRatio >= 1);
 
     const forceImpulse = force * this.fixedDt;
-    const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
+    const impulse = forceImpulse * (scratch.clampHasOffset ? 1 : forceScale);
     if (impulse > 0) {
       scratch.impulseA.x = nx * impulse;
       scratch.impulseA.y = 0;
@@ -3296,6 +3603,32 @@ function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_
   const spanForGuard = distance + openingSpeed * Math.max(0, finite(dt));
   const minByGuard = spanForGuard / (1 + reelSafeStretchRatio);
   return Math.max(requested, minByGuard);
+}
+
+// Radial effective mass for the actual application points. Only the transport clamp
+// and explicit off-centre opt-ins apply this law; centered Massline/whip paths remain unchanged.
+function transportClampAnchorMass(attachment, source, target, nx, nz, out = null) {
+  const linearMass = reducedMass(attachment.owner, attachment.target);
+  let directionalInverse = 0, maximumInverse = 0;
+  if (attachment.defId === 'attachment_transport_clamp' && linearMass > 0) {
+    for (let i = 0; i < 2; i++) {
+      const rec = i === 0 ? attachment.owner : attachment.target;
+      if (!rec.spec.dynamic || !recordTakesOffCentreImpulse(rec)) continue;
+      const at = i === 0 ? source : target, com = rec.body.worldCom();
+      const dx = at.x - com.x, dz = at.z - com.z;
+      const inverseInertia = rec.body.effectiveWorldInvInertia().m22;
+      const lever = dx * nz - dz * nx;
+      directionalInverse += lever * lever * inverseInertia;
+      // The short line can rotate during one step. Bound omega using the maximum
+      // angular Jacobian over planar directions, not only its initial direction.
+      maximumInverse += (dx * dx + dz * dz) * inverseInertia;
+    }
+  }
+  if (out) {
+    out.clampHasOffset = maximumInverse > 0;
+    out.clampStabilityMass = maximumInverse > 0 ? 1 / (1 / linearMass + maximumInverse) : linearMass;
+  }
+  return directionalInverse > 0 ? 1 / (1 / linearMass + directionalInverse) : linearMass;
 }
 
 function reducedMass(a, b) {
@@ -4273,3 +4606,17 @@ function normalizeFrameOriginSeq(seq) {
   const n = Math.trunc(finite(seq));
   return n >= 0 ? n : 0;
 }
+
+// Collider-local manifold points include each compound primitive's local pose.
+function colliderPoint(collider, point) {
+  const p=collider.translation(),q=collider.rotation();
+  const tx=2*(q.y*point.z-q.z*point.y),ty=2*(q.z*point.x-q.x*point.z),tz=2*(q.x*point.y-q.y*point.x);
+  return {x:p.x+point.x+q.w*tx+q.y*tz-q.z*ty,y:p.y+point.y+q.w*ty+q.z*tx-q.x*tz,
+    z:p.z+point.z+q.w*tz+q.x*ty-q.y*tx};
+}
+function contactPrimitiveId(rec,index) {
+  const manifest=proxyManifestForBody(rec.entity,rec.spec);
+  if (!manifest || manifest.compactHull || manifest.planarPolygon) return `native:${index}`;
+  return expandProxyPrimitives(manifest,{entity:rec.entity})[index]?.id ?? `native:${index}`;
+}
+

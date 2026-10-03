@@ -1,3 +1,5 @@
+import { sweepCollisionProxyInto } from './collisionProxySweep.js';
+import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
 // Physics system: integrate positions, rebuild the spatial hash, broad-phase + circle/circle
 // collision with response, swept projectile tests. Runs as steps 5-7 of the sim spine (§2.3).
 // Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
@@ -24,10 +26,11 @@ import {
   resetActivityRuntimeForRestore,
 } from '../world/activityRuntime.js';
 import {
+  proxyScaleFor,
   resolveCollisionProxyManifest,
   resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
-import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
+import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
 import { perfNow } from './perfRuntime.js';
@@ -85,6 +88,20 @@ const SG02_INIT_PREPARE_TIMEOUT_MS = 60000;
 // The parent bolt — generation 0 — stays owner-immune on every contact path.
 function opticSplinterHitsOwner(proj) {
   return opticGenerationOf(proj) > 0;
+}
+
+// Compact physical hulls may extend beyond their nominal gameplay radius. Keep
+// the circle conservative for admission only; the shared exact query owns contact.
+function projectileProxyRadius(entity, manifest) {
+  let radius = Number.isFinite(entity.radius) ? Math.max(0, entity.radius) : 0;
+  if (!Array.isArray(manifest?.compactHull)) return radius;
+  const scale = proxyScaleFor(entity, manifest);
+  for (const p of manifest.compactHull) {
+    if (!Number.isFinite(p?.x) || !Number.isFinite(p?.z)) return radius;
+    const bound = Math.hypot(p.x, p.z) * scale;
+    if (Number.isFinite(bound)) radius = Math.max(radius, bound);
+  }
+  return radius;
 }
 
 export const physics = {
@@ -178,6 +195,7 @@ export const physics = {
   },
 
   update(dt, state) {
+    reconcileMachineryBeforePhysics(state);
     const t0 = perfNow();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
@@ -359,6 +377,7 @@ export const physics = {
     const payload = this._pendingSg02Snapshot;
     const context = this._nativeRestoreContext || {};
     resetActivityRuntimeForRestore(state);
+    reconcileMachineryBeforePhysics(state);
     const activity = ensureActivityClassified(state);
     const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
     let adopted = false;
@@ -684,6 +703,7 @@ export const physics = {
   },
 
   _syncSg02DynamicAuthorityEntities(state) {
+    reconcileMachineryBeforePhysics(state);
     const activity = ensureActivityClassified(state);
     if (activity && this._diag) {
       this._diag.activityS0 = activity.counts.s0;
@@ -926,14 +946,14 @@ export const physics = {
         // Every live collider, not only the glass-pinned physics set. A round that
         // has left the frame still has to hit the hull it was aimed at.
         out.length = 0;
-        this._projectileBroadphase.queryRadius(mx, mz, sweepRadius, out);
+        this._projectileBroadphase.queryRadius(mx, mz, sweepRadius + this._projectileHullPadding, out);
         candidates = out;
       } else if (useHash) {
         out.length = 0;
         if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
-          state.spatialHash.queryRadiusCoherent(proj.id, mx, mz, sweepRadius, out);
+          state.spatialHash.queryRadiusCoherent(proj.id, mx, mz, sweepRadius + this._projectileHullPadding, out);
         } else {
-          state.spatialHash.queryRadius(mx, mz, sweepRadius, out);
+          state.spatialHash.queryRadius(mx, mz, sweepRadius + this._projectileHullPadding, out);
         }
         candidates = out;
       }
@@ -969,6 +989,13 @@ export const physics = {
 
   _syncProjectileBroadphase(state) {
     const index = state && state.entityIndex;
+    this._projectileHullPadding = 0;
+    for (const entity of index?.collidables || state.entityList || []) {
+      if (!entity?.alive || !entity.collides || entity.shield > 0 || entity.type === 'projectile') continue;
+      const manifest = resolveCollisionProxyManifest(entity);
+      this._projectileHullPadding = Math.max(this._projectileHullPadding,
+        projectileProxyRadius(entity, manifest) - (entity.radius || 0));
+    }
     const ready = !!(index && index.__spacefaceEntityIndexV1
       && Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics));
     this._projectileBroadphaseReady = ready;
@@ -988,13 +1015,18 @@ export const physics = {
     const bestHit = this._bestSegmentHitScratch;
     for (let i = 0; i < list.length; i++) {
       const tgt = list[i];
-      if (!tgt || !tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
+      if (!tgt || !tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile' || !physicsBodyNativeReady(tgt)) continue;
       if (proj.ownerId === tgt.id && !opticSplinterHitsOwner(proj)) continue;
       // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
       if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
-      if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
+      const manifest = tgt.shield > 0 ? null : resolveCollisionProxyManifest(tgt);
+      if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + projectileProxyRadius(tgt, manifest))) continue;
+      // The broad circle is not a solid hull: authored/measured compounds can have
+      // open mouths and corridors. Active shields retain their spherical interception
+      // (including player shield protection); damage/attribution still uses the same owner.
+      if (manifest && !sweepCollisionProxyInto(hit, tgt, manifest, start, end, proj.radius || 0)) continue;
       if (!bestTarget || hit.t < bestHit.t) {
         bestTarget = tgt;
         copySegmentHit(bestHit, hit);
@@ -1574,6 +1606,10 @@ function createDeferredSg02CombatPhysicsPort(host) {
     cutAttachment(input) {
       const runtime = owner();
       return runtime ? runtime.cutAttachment(input) : false;
+    },
+    sampleSolidContacts(entityId, options) {
+      const runtime = owner();
+      return runtime ? runtime.sampleSolidContacts(entityId, options) : [];
     },
     getAttachmentTelemetry(input) {
       const runtime = owner();

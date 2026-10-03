@@ -1088,7 +1088,7 @@ export function createAttachmentService(context) {
   }
 
   function physicsPolicy(attachment, def, owner, target, fallbackRestLength) {
-    const requestedRestLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
+    const requestedRestLength = Number.isFinite(attachment.restLength) && attachment.restLength >= 0
       ? attachment.restLength : fallbackRestLength;
     const tetherPolicy = policyForAttachment(def, owner, attachment);
     const minLength = Number.isFinite(def && def.minLength) && def.minLength > 0 ? def.minLength : 0;

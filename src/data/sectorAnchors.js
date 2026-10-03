@@ -7,6 +7,7 @@ import { PQ019_FACILITY_ANCHORS } from './heistFacilities.js';
 
 const GATE_R = 0.82;
 
+export const CERES_SECOND_MEASURE_LOCAL_POS = Object.freeze({ x: -500, z: 1600 });
 export const CERES_WRECK_CATHEDRAL_LOCAL_POS = Object.freeze({ x: 300, z: 2700 });
 export const CERES_THROUGHLINE_BEACON_LOCAL_POS = Object.freeze({ x: 3040, z: -920 });
 
@@ -86,6 +87,8 @@ const CORE_SECTOR_ANCHORS = {
         landmark: true,
       },
       { id: 'world_site_wreck_cathedral', pos: CERES_WRECK_CATHEDRAL_LOCAL_POS, landmark: true },
+      { id: 'world_site_ceres_second_measure', pos: CERES_SECOND_MEASURE_LOCAL_POS, landmark: true,
+        visualRadius: 210, dressingExclusionRadius: 740 },
     ],
   },
   sector_tethys_junction: {

@@ -1,3 +1,4 @@
+import { isPhysicalMachinery, machineryHasEffectivePresentation } from './machineryPresentation.js';
 // Simulation-safe receipt shared with the renderer. The core never imports Three.js: render owners
 // publish only this small state token when an exact authored identity is ready. In headless runs there
 // is no live render scene, so deterministic simulation remains independent of presentation admission.
@@ -52,7 +53,7 @@ export function hasExplicitAuthoredPayloadPresentation(entity) {
 
 export function entityRequiresAuthoredPresentation(entity) {
   if (!entity || entity.alive === false) return false;
-  if (entity.type === 'ship' || entity.type === 'station') return true;
+  if (entity.type === 'ship' || entity.type === 'station' || isPhysicalMachinery(entity)) return true;
   if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
   if (hasExplicitAuthoredPayloadPresentation(entity)) return true;
   const data = entity.data || {};
@@ -85,11 +86,17 @@ export function resolvePresentationAdmissionOwner(entity, state) {
 
 /** Pure stable-world-identity lookup; browser callers fail closed, headless simulation does not. */
 export function presentationOwnerAdmissionForWorldRecord(ownerWorldRecordId, state) {
+  // Exact machinery owners cannot lend a saved/string-only ready state to a tool,
+  // line or child presentation. This also preserves fail-closed browser lifetimes
+  // after their scene disappears, instead of treating those owners as headless.
+  const candidate = ownerWorldRecordId && state?.entities && typeof state.entities.values==='function'
+    ? indexedWorldRecordEntity(state, ownerWorldRecordId) : null;
+  if(isPhysicalMachinery(candidate))return machineryHasEffectivePresentation(candidate,state)
+    ? PRESENTATION_OWNER_ADMISSION.ready : PRESENTATION_OWNER_ADMISSION.pending;
   if (!state || !state.render || !state.render.scene) return PRESENTATION_OWNER_ADMISSION.headless;
   if (!ownerWorldRecordId || !state.entities || typeof state.entities.values !== 'function') {
     return PRESENTATION_OWNER_ADMISSION.missing;
   }
-  const candidate = indexedWorldRecordEntity(state, ownerWorldRecordId);
   if (!candidate) return PRESENTATION_OWNER_ADMISSION.missing;
   const admission = candidate.presentationAdmission;
   return admission === PRESENTATION_ADMISSION.ready
@@ -105,12 +112,13 @@ export function presentationOwnerIsAdmitted(admission) {
 }
 
 export function presentationAllowsPlayerFacingAction(entity, state) {
-  if (!state || !state.render || !state.render.scene) return true;
+  if (isPhysicalMachinery(entity)) return machineryHasEffectivePresentation(entity, state);
   const indirect = entity && entity.data && entity.data.presentationOwnerWorldRecordId;
-  if (!indirect && !entityRequiresAuthoredPresentation(entity)) return true;
   if (indirect) {
     return presentationOwnerIsAdmitted(presentationOwnerAdmissionForWorldRecord(indirect, state));
   }
+  if (!state || !state.render || !state.render.scene) return true;
+  if (!entityRequiresAuthoredPresentation(entity)) return true;
   const owner = resolvePresentationAdmissionOwner(entity, state);
   return !!owner && owner.presentationAdmission === PRESENTATION_ADMISSION.ready;
 }
@@ -122,9 +130,10 @@ export function presentationAllowsPlayerFacingAction(entity, state) {
  */
 export function presentationAllowsTargetLock(entity, state) {
   if (!entity || entity.alive === false) return false;
-  if (!state || !state.render || !state.render.scene) return true;
+  if (isPhysicalMachinery(entity)) return machineryHasEffectivePresentation(entity, state);
   const indirect = entity.data && entity.data.presentationOwnerWorldRecordId;
   if (indirect) return presentationAllowsPlayerFacingAction(entity, state);
+  if (!state || !state.render || !state.render.scene) return true;
   if (entity.type !== 'ship') return true;
   const admission = entity.presentationAdmission;
   if (admission == null) return true;

@@ -1,9 +1,12 @@
+import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
+import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 // Segment-vs-body line-of-sight primitives shared by the PQ-146 observers. Leaf module: reads
 // entity geometry and collision proxy manifests only; no journal, physics or state writes.
 import { resolveCollisionProxyManifest, proxyWorldPrimitives, proxyScaleFor, expandProxyPrimitives } from '../data/collisionProxyManifests.js';
 import { modelTruthProxyRowForEntity } from '../data/modelTruth.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { collidesFlipEpoch, entityIndexVersion } from '../world/livingWorldViews.js';
+import { sweepCompactHullInto } from '../core/collisionProxySweep.js';
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 function pointSegmentDistance(p,a,b) {
   const dx=b.x-a.x,dz=b.z-a.z, square=dx*dx+dz*dz;
@@ -47,8 +50,10 @@ export function primitiveBlocksSegment(a, b, p) {
 
 /** True when the segment crosses the entity's measured skin, or its gameplay ball when it has none. */
 export function segmentHitsProxy(entity, a, b) {
-  if (!entity || !point(entity.pos) || !point(a) || !point(b)) return false;
+  if (!entity || !physicsBodyNativeReady(entity) || !point(entity.pos) || !point(a) || !point(b)) return false;
   const manifest = resolveCollisionProxyManifest(entity);
+  const compact = sweepCompactHullInto({}, entity, manifest, a, b);
+  if (compact !== null) return compact;
   const primitives = manifest
     ? proxyWorldPrimitives(entity, manifest)
     : [{ kind: 'circle', x: entity.pos.x, z: entity.pos.z, r: entity.physicsBody?.radius ?? entity.radius ?? entity.r ?? 0 }];
@@ -69,10 +74,19 @@ function occluderReach(entity, manifest) {
     return Math.max(0, entity.physicsBody?.radius ?? entity.radius ?? entity.r ?? 0);
   }
   const scale = proxyScaleFor(entity, manifest);
+  const data = entity.data;
+  const slide = data?.ceresWorkfleetSlide;
+  const bearing = data?.corridorBearingDeg;
   const hit = _occluderReachMemo.get(entity);
-  if (hit && hit.manifest === manifest && hit.scale === scale) return hit.reach;
+  if (hit && hit.manifest === manifest && hit.scale === scale
+      && hit.slide === slide && hit.bearing === bearing) return hit.reach;
   const local = expandProxyPrimitives(manifest, { entity });
+  // Compact native skins can extend beyond their legacy primitive fallback.
+  // Keep the upstream broadphase conservative for the exact query owner.
   let reach = 0;
+  for (const vertex of manifest.compactHull || []) {
+    if (point(vertex)) reach = Math.max(reach, Math.hypot(vertex.x, vertex.z));
+  }
   for (const p of local) {
     let extent = 0;
     if (p.kind === 'capsule') {
@@ -89,7 +103,7 @@ function occluderReach(entity, manifest) {
     if (extent > reach) reach = extent;
   }
   reach *= scale;
-  _occluderReachMemo.set(entity, { manifest, scale, reach });
+  _occluderReachMemo.set(entity, { manifest, scale, reach, slide, bearing });
   return reach;
 }
 
@@ -113,7 +127,8 @@ function occluderBodyView(entity) {
     && hit.authored === (body && body.collisionProxyManifest)
     && hit.proxyId === (data && data.collisionProxy)
     && hit.dockRadius === (data && data.dockRadius) && hit.radius === entity.radius
-    && hit.bearing === (data && data.corridorBearingDeg)) {
+    && hit.bearing === (data && data.corridorBearingDeg)
+    && hit.slide === data?.ceresWorkfleetSlide) {
     return hit.view;
   }
   const manifest = resolveCollisionProxyManifest(entity);
@@ -127,6 +142,7 @@ function occluderBodyView(entity) {
     proxyId: data && data.collisionProxy,
     dockRadius: data && data.dockRadius, radius: entity.radius,
     bearing: data && data.corridorBearingDeg,
+    slide: data?.ceresWorkfleetSlide,
     view,
   });
   return view;
@@ -171,7 +187,7 @@ function witnessPlanInsert(plan, rec) {
   const entity = rec.occ;
   const px = entity && entity.pos ? Number(entity.pos.x) : NaN;
   const pz = entity && entity.pos ? Number(entity.pos.z) : NaN;
-  if (!isDynamicPhysicsBodyEntity(entity) && Number.isFinite(px) && Number.isFinite(pz)
+  if (!isDynamicPhysicsBodyEntity(entity) && !ceresWorkfleetSlideRole(entity) && Number.isFinite(px) && Number.isFinite(pz)
       && rec.reach <= WITNESS_SPATIAL_CELL) {
     const x0 = Math.floor((px - rec.reach) / WITNESS_SPATIAL_CELL);
     const x1 = Math.floor((px + rec.reach) / WITNESS_SPATIAL_CELL);
@@ -222,6 +238,7 @@ function witnessOccluderPlan(state) {
 function witnessRowBlocks(rec, observer, ignored, observerPos, destination, mx, mz, halfLen) {
   const entity = rec.occ;
   if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))return false;
+  if (ceresWorkfleetSlideRole(entity)) rec.reach = occluderBodyView(entity).reach;
   const dxm = entity.pos.x - mx, dzm = entity.pos.z - mz;
   const bound = halfLen + rec.reach;
   if (dxm * dxm + dzm * dzm > bound * bound) return false;

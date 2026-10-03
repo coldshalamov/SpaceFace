@@ -13,6 +13,24 @@ export const PHYSICS_BODY_RESPONSE_LIMITS = Object.freeze({ minScale: 0.25, maxS
 
 const COMMANDS = new WeakMap();
 const TELEMETRY = new WeakMap();
+// Exceptional native construction failures are process-local, never save authority. Most
+// callers need no native-ready protocol; only a failed live replacement closes this gate.
+const NATIVE_BODY_FAILURES = new WeakMap();
+export function markPhysicsBodyNativeFailure(entity, owner) {
+  if (!entity) return null;
+  const body=entity.physicsBody;
+  const receipt={owner,life:entity.occupantGeneration,body,proxy:body?.collisionProxyManifest,revision:body?.revision};
+  NATIVE_BODY_FAILURES.set(entity,receipt);
+  return receipt;
+}
+export function clearPhysicsBodyNativeFailure(entity, owner, receipt) {
+  if (entity && receipt?.owner===owner && NATIVE_BODY_FAILURES.get(entity)===receipt) NATIVE_BODY_FAILURES.delete(entity);
+}
+export function physicsBodyNativeReady(entity) {
+  const failure=entity && NATIVE_BODY_FAILURES.get(entity);
+  return !failure || failure.life!==entity.occupantGeneration;
+}
+
 const AUTHORITY_CACHE = new WeakMap();
 const NORMALIZED_BODY_CACHE = new WeakMap();
 const RESOLVED_BODY_CACHE = new WeakMap();

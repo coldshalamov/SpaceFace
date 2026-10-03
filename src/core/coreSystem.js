@@ -682,6 +682,40 @@ function clearEntityIndex(index) {
   index._volatileReady = false;
 }
 
+const PHYSICS_INDEX_REFRESH = new WeakMap();
+
+// Rare same-life body publication. Preserve row order in unchanged lanes and invalidate
+// cached static geometry once; the next normal classify pass batches all changed owners.
+export function refreshEntityPhysicsIndex(state, entity, occupantGeneration) {
+  const index=state?.entityIndex;
+  if (!entity || !index?.__spacefaceEntityIndexV1 || state.entities?.get(entity?.id)!==entity
+      || entity?.alive===false || entity.occupantGeneration!==occupantGeneration
+      || !index._indexedIds.has(entity.id)) return false;
+  const body=entity.physicsBody, previous=PHYSICS_INDEX_REFRESH.get(entity);
+  if(previous?.index===index && previous.life===occupantGeneration && previous.body===body
+      && previous.revision===body?.revision && previous.proxy===body?.collisionProxyManifest
+      && previous.collides===entity.collides)return false;
+  PHYSICS_INDEX_REFRESH.set(entity,{index,life:occupantGeneration,body,revision:body?.revision,
+    proxy:body?.collisionProxyManifest,collides:entity.collides});
+  const movable=isMovableEntity(entity), physical=shouldSyncPhysicsBodyEntity(entity);
+  const dynamic=isDynamicPhysicsBodyEntity(entity), collides=entity.collides===true;
+  let membershipChanged=false;
+  const set=(rows,wanted)=>{
+    const at=rows.indexOf(entity);
+    if(wanted && at<0){rows.push(entity);membershipChanged=true;}
+    else if(!wanted && at>=0){removeFromIndexArray(rows,entity);membershipChanged=true;}
+  };
+  set(index.collidables,collides);
+  set(index.spatialStatics,collides&&!movable);set(index.spatialDynamics,collides&&movable);
+  set(index.physicsBodies,physical);
+  set(index.physicsStatics,physical&&!dynamic);set(index.physicsDynamics,physical&&dynamic);
+  set(index.movables,movable);
+  if(membershipChanged)index.version++;
+  index.physicsStaticVersion++;
+  index.spatialStaticVersion++;
+  return true;
+}
+
 function appendEntityIndex(index, e) {
   if (!index || !index.__spacefaceEntityIndexV1 || !e || !e.alive) return;
   if (e.id != null) {

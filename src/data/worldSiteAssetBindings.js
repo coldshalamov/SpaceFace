@@ -92,6 +92,62 @@ const conveyorBargeSockets = Object.freeze({
 });
 
 export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
+  // P03: exact source/release socket snapshots. Source metres ×2; retain authoring origin.
+  place_ceres_second_measure: binding({
+    partId: 'place_ceres_second_measure', assetId: 'SF_PLACE_CERES_SECOND_MEASURE',
+    sourceSha256: '83fd27f3490af1d1f49961fc0276404ff1857959c18593a9d788dc5342312f09',
+    releaseSha256: 'bd4446fa90f389366abf0e54780974c5dd0f9b0c8efe75edbfa6a0281862431d',
+    sourceBytes: 7449728, releaseBytes: 2150124,
+    rootName: 'SF_PLACE_CERES_SECOND_MEASURE_ROOT', visualCenterXZ: { x: 0, z: 0 },
+    socketBindings: Object.freeze({
+      SOCKET_Section_Crossbeam: socket('attachment', [40,0,0]),
+      SOCKET_Section_Keel: socket('attachment', [0,0,35]),
+      SOCKET_Section_LongPlate: socket('attachment', [-40,0,0]),
+      SOCKET_Structure_Core: socket('attachment', [0,0,0]),
+      SOCKET_Support_A: socket('attachment', [-59,0,-27.5]),
+      SOCKET_Support_B: socket('attachment', [59,0,-27.5]),
+      SOCKET_Support_C: socket('attachment', [20.25,0,47.5]),
+    }),
+  }),
+  place_ceres_second_measure_long_plate: binding({
+    partId: 'place_ceres_second_measure_long_plate', assetId: 'SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE',
+    sourceSha256: '03930bb4528739a93aca7ad6f9ecf898a65e5bc8b3541a10df47381e19bd65b1',
+    releaseSha256: 'ff9e6270e3f5bde9ce90d5c1a0772b6700db83a1f0e17469aad5de321c6bac45',
+    sourceBytes: 733412, releaseBytes: 288768,
+    rootName: 'SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE_ROOT', visualCenterXZ: { x: 0, z: 0 },
+    socketBindings: Object.freeze({
+      SOCKET_Cut_A: socket('attachment', [0,0,-27.5]),
+      SOCKET_Cut_B: socket('attachment', [0,0,27.5]),
+      SOCKET_Recovery: socket('attachment', [0,0,0]),
+      SOCKET_Tow: socket('attachment', [0,2.5,0]),
+    }),
+  }),
+  place_ceres_second_measure_crossbeam: binding({
+    partId: 'place_ceres_second_measure_crossbeam', assetId: 'SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM',
+    sourceSha256: 'c5ae144b3a26f4d95235bc1c3ed6ee102d3e296185cca70fc2d77010825ed3b3',
+    releaseSha256: 'c81c7f311d0004000d8538012af83b1dd9054c6384af7b70b5c25b9fa086f31e',
+    sourceBytes: 828444, releaseBytes: 321964,
+    rootName: 'SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM_ROOT', visualCenterXZ: { x: 0, z: 0 },
+    socketBindings: Object.freeze({
+      SOCKET_Cut_A: socket('attachment', [0,0,-27.5]),
+      SOCKET_Cut_B: socket('attachment', [0,0,27.5]),
+      SOCKET_Recovery: socket('attachment', [0,0,0]),
+      SOCKET_Tow: socket('attachment', [0,3,0]),
+    }),
+  }),
+  place_ceres_second_measure_keel: binding({
+    partId: 'place_ceres_second_measure_keel', assetId: 'SF_PLACE_CERES_SECOND_MEASURE_KEEL',
+    sourceSha256: 'b9339124a928d4ace117cc3b515a72abc9e7914763ec9a02ce509a83d7f6b08a',
+    releaseSha256: 'fb03ac7c8f0ad18e12781c58ced6b6e4dbcadab2510f01f4fe3969c1ee1ae65e',
+    sourceBytes: 407228, releaseBytes: 198056,
+    rootName: 'SF_PLACE_CERES_SECOND_MEASURE_KEEL_ROOT', visualCenterXZ: { x: 0, z: 0 },
+    socketBindings: Object.freeze({
+      SOCKET_Cut_A: socket('attachment', [-17.5,0,0]),
+      SOCKET_Cut_B: socket('attachment', [17.5,0,0]),
+      SOCKET_Recovery: socket('attachment', [0,0,0]),
+      SOCKET_Tow: socket('attachment', [0,3,0]),
+    }),
+  }),
   place_conveyor_barge: binding({
     partId: 'place_conveyor_barge', assetId: 'SF_PLACE_CONVEYOR_BARGE',
     sourceSha256: '777b899e007341f0bfb72f11b73d40d07f526c095a37a252b8179faee811b582',
