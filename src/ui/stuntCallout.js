@@ -219,6 +219,14 @@ function mk(doc, tag, className, text) {
   return node;
 }
 
+// SWARM-03 — kill causes reach the stunt line (SWARM_EXPANSION §10): every physics kill
+// already carries its cause word on `swarm:killPopup` (swarmJuice reads the kill-
+// presentation receipt); the line quotes the word so SLAMMED/MINED/BANKED/SLUNG stop
+// being invisible payouts. Gun kills (SHREDDED/DOWN) stay quiet — guns never needed
+// teaching. Repeats inside the TTL roll the count like a pinball display, keyed so the
+// three-line budget is spent on kinds, not on spam.
+const SWARM_CAUSE_WORDS = new Set(['SLAMMED', 'BANKED', 'SLUNG', 'MINED']);
+
 function collectText(node, acc) {
   if (!node) return acc;
   if (typeof node.textContent === 'string' && node.textContent) acc.push(node.textContent);
@@ -495,6 +503,28 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   }
 
   const unsubs = [];
+  // word -> { count, until } — the physics-cause counters that ride the same TTL the
+  // line does, so "SLAMMED ×4" is four kills inside one beat, not a lifetime total.
+  const causeRuns = new Map();
+  function onSwarmKill(p) {
+    if (destroyed) return;
+    const st = getState();
+    const scope = calloutScope(st);
+    // Runs only: the word stream is swarm-authored, and adventure has no swarm bus events.
+    if (!scope || scope.adventure) return;
+    const word = p && p.word;
+    if (!SWARM_CAUSE_WORDS.has(word)) return;
+    const now = calloutNow();
+    let rec = causeRuns.get(word);
+    if (!rec || rec.until <= now) rec = { count: 0 };
+    rec.count += 1;
+    rec.until = now + CALLOUT_TTL_MS;
+    causeRuns.set(word, rec);
+    addLine(`kc:${word}`, word, rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
+    spoken = rec.count > 1 ? `${word.toLowerCase()}, ${rec.count} in a row` : word.toLowerCase();
+    sr.textContent = spoken;
+    wake();
+  }
   if (bus && typeof bus.on === 'function') {
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
@@ -511,6 +541,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:salvageRightsClaimed', (p) => onSalvageRightsClaimed(p)));
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
+    // SWARM-03 — the physics cause tag, on the lane that already names tricks.
+    unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
 
   return {
