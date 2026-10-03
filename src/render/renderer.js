@@ -1246,7 +1246,8 @@ function isInboundDecodeHull(entity, state, radius = null, admissionEnv = null) 
   if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
   const stationBoundary = entity.type === 'station';
   if (!stationBoundary
-      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
+      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone'
+      && entity.type !== 'payload' && entity.type !== 'beacon') return false;
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
@@ -1751,6 +1752,24 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       kickDecodeRunwayAssets(owner, owner._presentationMeshScratch);
     }
     if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
+    // Covered exempt rows still ride the count-budgeted pump — cheap dressing mounts
+    // bind on 8/frame before the slice clock, so a dressing-heavy seam on a loaded
+    // host finishes mounting after the blend ends and pops in over the next frames.
+    // When the uncovered count outruns what the frames left in the hold can cover,
+    // drain the hoisted exempt prefix with a cap sized to the remainder — the
+    // admission-slice clock still bounds each burst.
+    const holdExemptLeft = Math.max(0, Number(owner._holdExemptRemaining) || 0);
+    if (holdExemptLeft > 0 && owner._sectorHandoffStreamHoldS > 0) {
+      const framesLeft = owner._sectorHandoffStreamHoldS / Math.max(dt, 1 / 240);
+      if (holdExemptLeft > framesLeft * RUNTIME_MESH_BUILD_BUDGET) {
+        const headBefore = owner._meshBuildQueueHead;
+        owner._drainMeshBuildQueue(holdExemptLeft);
+        owner._holdExemptRemaining = Math.max(
+          0,
+          holdExemptLeft - (owner._meshBuildQueueHead - headBefore),
+        );
+      }
+    }
     if (owner._sectorHandoffStreamHoldS === 0) {
       // The seam's dirty flag requests a whole-world recovery scan. Once the visual blend has
       // finished, discard that seam-only request and let the ordinary spatial poll self-heal.
@@ -1893,7 +1912,7 @@ function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGlass, adm
   if (entityMatchesWaveHullRunway(entity, state)) return true;
   const env = admissionEnv();
   const hull = entity.type === 'ship' || entity.type === 'wreck'
-    || entity.type === 'drone' || entity.type === 'payload';
+    || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'beacon';
   // Station/hull rows ride the shared authored ladder (station→decode runway,
   // hull→promote horizon); ledger + other rows keep their own horizon names.
   const horizon = entity.type === 'station' || hull
@@ -11832,6 +11851,18 @@ export const render = {
         }
       };
       state.render.liveSectorGpuAdmission = true;
+      // A second sector:enter inside a yield gap makes this cook stale: it captured S1 while
+      // the world moved to S2 — the stale census's provider calls then run cleanup/mint under
+      // the wrong sector (traffic._cookProvider's dedupe fails on the sector OBJECT, so its
+      // _cleanup wipes S2's roster and re-mints S1 hulls into live space stamped with S2's
+      // epoch). Generations plus a currentSectorId re-check at every yield bail the stale
+      // cook; the newest invocation owns the shared queues, flags, and its own finally tail.
+      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
+      const cookSectorId = String(sector && sector.id || '');
+      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
+        || (!!cookSectorId && !!state.world && !!state.world.currentSectorId
+          && state.world.currentSectorId !== cookSectorId);
+      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
       const jumpLedger = beginOpeningCookLedger(state.render, 'jump');
       try {
         if (!scene.environment) this._bakeEnv({ force: true });
@@ -11882,6 +11913,7 @@ export const render = {
             if (providerNow() - providerSliceStart >= 8) {
               await yieldLiveSectorGpu();
               providerSliceStart = providerNow();
+              if (cookStale()) return cookSuperseded;
             }
           }
         }
@@ -11929,6 +11961,7 @@ export const render = {
             }
           } else censusStallSlices = 0;
           await yieldLiveSectorGpu();
+          if (cookStale()) return cookSuperseded;
         }
         recordOpeningCookStep(state.render, 'jump.meshBuilds', jumpBuildsStarted, 'resolved', {
           built: jumpBuilt,
@@ -11944,6 +11977,7 @@ export const render = {
           holdLeftoverFx: true,
           yieldToMain: yieldLiveSectorGpu,
         });
+        if (cookStale()) return cookSuperseded;
         // cook.buffers stays skipped for the run70 TDR, but scene-level instance pools have no
         // per-subject admission owner: chunks published during this window would otherwise first
         // upload inside a presented post-jump bloomScene — the same brick class the opening
@@ -11977,6 +12011,9 @@ export const render = {
           leftover,
         };
       } finally {
+        // A superseded cook skips the shared-flag tail — the newest cook owns it and runs
+        // this same finally when it finishes.
+        if (cookGeneration === this._liveSectorCookGeneration) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
@@ -11988,6 +12025,7 @@ export const render = {
         // re-arm the guards are permanent: every authored body materialized in the arriving sector
         // prepares and then parks, and the destination station stays `pending` for the session.
         armSectorArrivalPublishRelease(this);
+        }
       }
     };
     const runPostOpeningPipelines = async () => {

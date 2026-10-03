@@ -5739,7 +5739,8 @@ const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
 function firstFlightReadableContactKind(entity) {
   const type = entity && entity.type;
   if (type === 'ship' || type === 'station' || type === 'wreck'
-      || type === 'drone' || type === 'payload' || type === 'asteroid') return true;
+      || type === 'drone' || type === 'payload' || type === 'asteroid'
+      || type === 'beacon') return true;
   return type === 'place' && placeFileForEntity(entity) !== null;
 }
 function firstFlightClosingToward(entity, player, live) {
@@ -7099,7 +7100,9 @@ function primeNextAuthoredAssetPlan(state) {
     const job = eligible[0];
     if (!job) return;
     state.firstFlightPrefetchJob = job;
-    job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
+    // Same job-liveness compose as the general prefetch: a dropped first-flight job's late
+    // retain would otherwise revive the owner cancelQueuedJob just released.
+    job.prefetchPromise = startAuthoredJobAssetPrefetch(job) || Promise.resolve();
     job.prefetchPromise.then(() => {
       job.prefetchResolved = true;
       scheduleNextUpgradeFrame(state);

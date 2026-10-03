@@ -496,6 +496,10 @@ export const asteroidSites = {
       // Save restore clears the old entities, enters the saved sector, and only then calls this
       // owner's deserialize. Never rematerialize the pre-load record in that ordering window.
       if (!this._worldRestoreActive) this._syncWorldSites(sectorId);
+      // The 1s accumulator deferral exists to amortize per-frame cost, but an anchored rock
+      // that died since the last visit belongs inside the enter census window — the respawn
+      // is idempotent, so the accumulator's later pass is a no-op rescan.
+      if (!this._worldRestoreActive) this._repairAnchors();
     });
     this.bus.on('sector:exit', ({ sectorId } = {}) => {
       // SF-294: snapshot each anchored claim's consequence counters as the player leaves — the
@@ -537,6 +541,7 @@ export const asteroidSites = {
         || (this.ctx.helpers.sectorCookProviders = []))
         .push((sector) => {
           if (!this._worldRestoreActive) this._syncWorldSites(sector && sector.id);
+          if (!this._worldRestoreActive) this._repairAnchors();
         });
     }
   },

@@ -633,3 +633,19 @@ Audit HEAD `b34bdf5a7`. Two lanes converged on the same top finding (F1).
 Deferred to W47: hitches F3 (chunked-generator sectorCookProvider protocol for the traffic ambient top-up brick — needs the census to drive generators across slices; ordering-sensitive, own wave).
 
 Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic). Focused suites green: law-kill-witness 13/13, runtime-witness 12/12, pb-cons-a-witness-verdict 12/12, authored-upgrade-queue-lifecycle 2/2, authored-admission-recovery 9/9, decode-runway-residency 19/19, authored-upgrade-onscreen 3/3, authored-critical-admission-order 6/6, save-envelope-fidelity 2/2, authored-upgrade-policy 4/4.
+
+## W46 — popin + boot lanes (this commit)
+
+All four W46 lanes independently converged on F1 (landed `9214cd1f6`).
+
+- **popin F2 continuous-seam hold uncovered-row bound**: covered exempt rows still rode the 8/frame count-budgeted pump — cheap dressing mounts bind on count before the slice clock, so a dressing-heavy seam on a loaded host finished mounting after the 1.5s blend and popped in over the next frames. The hold now compares `_holdExemptRemaining` against `framesLeft × RUNTIME_MESH_BUILD_BUDGET` each frame; when the uncovered count outruns the remaining budget it drains the hoisted exempt prefix with a remainder-sized cap — the admission-slice clock (~3ms) still bounds each burst, so no unbounded dump.
+- **popin F3 anchored-rock respawn outside the enter census**: `_repairAnchors` ran only on the 1s accumulator — an anchored rock killed since the last visit respawned up to a second after the census froze, mounting past the enter window. Now called in the `sector:enter` listener and the `sectorCookProviders` callback (both `!_worldRestoreActive`-guarded); idempotent, so the accumulator's later pass is a no-op rescan.
+- **boot F2 sliced census stale-sector hazard**: a second `sector:enter` inside a `yieldLiveSectorGpu` gap left the cook running with the captured S1 — its providers then ran cleanup/mint under S2 (`traffic._cookProvider`'s dedupe fails on the sector OBJECT: `_cleanup()` wipes S2's roster, re-mints S1 hulls into live space, stamps S2's epoch so S2 never re-mints). `prepareLiveSectorAfterJump` now carries a generation counter + `currentSectorId` re-check at every yield (provider loop, mesh drain, post-cook); a superseded cook bails with `{skipped:'sector-superseded'}` and skips the shared-flag finally tail, which the newest cook owns. Covers continuous enters too (they never bump the generation but always move `currentSectorId`).
+- **boot F3 first-flight prefetch skipped the job-liveness compose**: `primeNextAuthoredAssetPlan`'s first-flight branch called `preloadAuthoredAssetsForEntity` directly — a dropped `firstFlightPrefetchJob`'s late retain revived the owner `cancelQueuedJob` released (the exact hole the W45 compose closed on the general path). Now routes through `startAuthoredJobAssetPrefetch` (null → `Promise.resolve()` keeps the `.then` shape).
+- **boot F4 gate-vocabulary gaps**: 'beacon' was absent from `isInboundDecodeHull`, the hold-exempt hull list, and `firstFlightReadableContactKind`; 'payload' was absent from `isInboundDecodeHull`. A packaged beacon/payload inbound during flight missed the approach-radius extension and the readable lanes — mounted as a resolving marker at contact. All four lists now include both types.
+
+Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic). Focused suites 47/49 — residuals reproduce identically on clean HEAD: `first-flight-gpu-hold` sector-shell relevance (new upstream canon) + `asteroid-pool-admission` latch regex (canon). Deferred to W47: hitches F3 (chunked-generator sectorCookProvider protocol).
+
+## W47 plan
+- Implement hitches F3 (generator-driven sectorCookProviders so the census can drive provider generators across slices without a single 8ms brick).
+- Spawn W47 audit lanes on the landed tip.
