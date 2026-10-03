@@ -11,6 +11,7 @@ import {
   hullRecognitionBarkFor,
   lawStepBarkFor,
   pursuitBarkFor,
+  rivalScavengerLineFor,
   surrenderBarkFor,
   trafficRoleHail,
   witnessCrimeBarkFor,
@@ -444,6 +445,28 @@ export const barkDirector = {
     this._onLawWarrantReleased = (payload) => this._speakLawStep('law:wantedWarrantReleased', payload || {});
     this._onLawDistressRaised = (payload) => this._speakLawStep('law:distressRaised', payload || {});
     this._onCounterHintSpawn = (payload) => this._teachCounterHint(payload && payload.entity);
+    // The wreck-field rival cutter speaks its race (aftermathWrecks ecology): the claim when
+    // its first cut lands, the yield when a pressed hull jettisons half its take, and the
+    // departure that names what it got away with. One line each, per cutter.
+    this._onRivalCut = (payload) => {
+      const entity = this._rivalCutterFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'rival-claim', 'wreckEcology:scavenged',
+        (_f, i) => rivalScavengerLineFor('claim', i));
+    };
+    this._onRivalPressured = (payload) => {
+      const entity = this._rivalCutterFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'rival-pressured', 'wreckEcology:rivalPressured',
+        (_f, i) => rivalScavengerLineFor('pressured', i));
+    };
+    this._onRivalDeparted = (payload) => {
+      if (!payload || !(Number(payload.holdQty) > 0)) return;
+      const entity = this._rivalCutterFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'rival-departed', 'wreckEcology:departed',
+        (_f, i) => rivalScavengerLineFor('departed', i));
+    };
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
@@ -465,6 +488,9 @@ export const barkDirector = {
       this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
+      this.bus.on('wreckEcology:scavenged', this._onRivalCut);
+      this.bus.on('wreckEcology:rivalPressured', this._onRivalPressured);
+      this.bus.on('wreckEcology:departed', this._onRivalDeparted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
       this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
@@ -617,6 +643,16 @@ export const barkDirector = {
     const entity = this.state.entities && this.state.entities.get && this.state.entities.get(entityId);
     if (!entity) return false;
     return this._speak(entity, situation, reason, payload);
+  },
+
+  // The wreck-field cutter owns the rivalry voice: resolve the ecology scavenger from any of
+  // its lifecycle events, or this observer has nothing to say.
+  _rivalCutterFrom(payload) {
+    if (!payload || !this.state) return null;
+    const entity = this.state.entities && this.state.entities.get
+      && this.state.entities.get(payload.entityId);
+    if (!entity || !entity.data || entity.data.wreckEcologyRole !== 'scavenger') return null;
+    return entity;
   },
 
   _speak(entity, situation, reason, extra = null) {

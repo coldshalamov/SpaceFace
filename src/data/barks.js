@@ -2340,6 +2340,33 @@ export function grandeeHailFor(rng) {
   return GRANDEE_REGISTER[pickIndex(rng, GRANDEE_REGISTER.length)];
 }
 
+// The wreck-field rival cutter (aftermathWrecks ecology). The contest over a fresh wreck is
+// a spoken scene now: the claim when it starts cutting, the yield when its hull is pressed,
+// and the departure that names what it took.
+export const RIVAL_SCAVENGER_REGISTER = Object.freeze({
+  claim: [
+    'Claiming a cut of this field. First come is first served, friend — nothing personal.',
+    'This wreck has my name in the ledger already. Find your own rock.',
+    'Rival cutter on the hull. The pool is big enough for both of us — barely.',
+  ],
+  pressured: [
+    'Take it! Take it, it is yours — I am not dying for a hold of scrap!',
+    'DROPPING THE CUT — hull is coming apart. Tell the pool I quit!',
+    'Fine! Half is yours! The other half keeps me breathing!',
+  ],
+  departed: [
+    'Hold is full. Your rock, my cut — nothing personal.',
+    'That is my take banked. Next time, work faster.',
+    'Full hold, running the lane. The scavenger tax is real.',
+  ],
+});
+
+export function rivalScavengerLineFor(kind, rng) {
+  const table = RIVAL_SCAVENGER_REGISTER[kind];
+  if (!table || !table.length) return '';
+  return table[pickIndex(rng, table.length)];
+}
+
 export function touristHailFor(rng) {
   return TOURIST_HAIL_REGISTER[pickIndex(rng, TOURIST_HAIL_REGISTER.length)];
 }

@@ -10,7 +10,7 @@
 import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
-import { salvagePoolFromManifest } from './lootShards.js';
+import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
 import { peekPendingSlam } from './hullFracture.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -82,6 +82,11 @@ const SCAV_ARRIVAL_MIN_WU = 520;
 // A drifting wreck can outrun a fighter's thrust; pursuit that never converges must give up
 // rather than chase the hulk across the sector forever.
 const SCAV_APPROACH_GIVE_UP_S = 90;
+// The contest is physical, not polite: press a laden rival cutter's hull hard enough and it
+// jettisons half its cut to run lighter. The pods are ordinary jettisoned cargo — whoever is
+// there picks them up, which is the whole point.
+const SCAV_PRESSURE_HULL_FRAC = 0.6;
+const SCAV_PRESSURE_DROP_FRAC = 0.5;
 // One ambient aftermath publish per this many sim-seconds, however many hulls die in a burst.
 const AMBIENT_NEWS_WINDOW_S = 6;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
@@ -1047,6 +1052,13 @@ export const aftermathWrecks = {
       return;
     }
 
+    // Pressed while laden: the rival drops half its cut and runs. Once per life — a hull the
+    // player keeps leaning on after the drop has nothing left to scare out of it.
+    if (work.holdQty > 0 && !work.pressured
+      && entity.hullMax > 0 && (entity.hull / entity.hullMax) <= SCAV_PRESSURE_HULL_FRAC) {
+      this._scavengerPressureDrop(state, field, entity, work);
+    }
+
     const wreck = this._nearestFieldWreck(field, entity.pos);
     if (!wreck) {
       // Nothing left to take — with the hold or without it, the worker leaves. An empty-hold
@@ -1152,6 +1164,61 @@ export const aftermathWrecks = {
       wreck.alive = false;
     }
     return taken;
+  },
+
+  // The rival's whole cut jettisons half its hold as ordinary pods and breaks for the lane.
+  // Deterministic scatter (hash-driven angle), shipped pod path, no special-case loot.
+  _scavengerPressureDrop(state, field, entity, work) {
+    const items = entity.data && entity.data.cargo && entity.data.cargo.items;
+    if (!items) return;
+    const total = Object.values(items).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+    if (!(total > 0)) return;
+    let toDrop = Math.max(1, Math.ceil(total * SCAV_PRESSURE_DROP_FRAC));
+    const seed = seedOf(state);
+    const dropped = {};
+    const spawnPod = (commodityId, amount) => {
+      const ang = (hash32(seed, field.fieldId, String(entity.id), commodityId, 'pressureDrop') % 360)
+        * (Math.PI / 180);
+      spawnJettisonedCargoPod(state, {
+        commodityId,
+        amount,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+        vel: { x: Math.cos(ang) * 30, z: Math.sin(ang) * 30 },
+        radius: 3,
+        factionId: entity.factionId || 'faction_reach',
+        ownerId: entity.id,
+        ownerName: 'rival cutter',
+      }, this.helpers);
+    };
+    for (const id of Object.keys(items).sort((a, b) => a.localeCompare(b))) {
+      if (toDrop <= 0) break;
+      const qty = Math.floor(Number(items[id]) || 0);
+      if (qty <= 0) continue;
+      const give = Math.min(qty, toDrop);
+      items[id] = qty - give;
+      if (items[id] <= 0) delete items[id];
+      dropped[id] = give;
+      toDrop -= give;
+      spawnPod(id, give);
+    }
+    const droppedQty = Object.values(dropped).reduce((sum, qty) => sum + qty, 0);
+    if (!(droppedQty > 0)) return;
+    work.holdQty = Math.max(0, (work.holdQty || 0) - droppedQty);
+    work.pressured = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('wreckEcology:rivalPressured', {
+        fieldId: field.fieldId,
+        sectorId: field.sectorId,
+        zoneId: field.zoneId,
+        entityId: entity.id,
+        dropped,
+        droppedQty,
+        heldQty: work.holdQty,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+      });
+    }
+    // Lighter now, and done arguing: the rival runs for the lane with what it kept.
+    this._startScavengerDepart(state, field, entity, work);
   },
 
   _startScavengerDepart(state, field, entity, work) {
