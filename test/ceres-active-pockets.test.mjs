@@ -91,7 +91,7 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
   }),
 ]);
 
-const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '49c64a444f37edb99a7fb2648ad4de0a7592a6fd70ce330f9e42d43858830c42';
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = 'c88c14ab17d7890e34a9c739e60b6046c05a2023cb09f4b880fa8e062ed61279';
 const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = 'de55c16a2f9f14594b902ef442f73008a1028e98f7ec53e4e6c3e8deb15f839a';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
@@ -514,11 +514,11 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
     'same-seed rebuild must retain the complete live Ceres entity signature');
   assert.deepEqual(first.census, {
-    total: 24,
-    byType: { asteroid: 6, fx: 10, ship: 2, station: 6 },
+    total: 39,
+    byType: { asteroid: 6, fauna: 12, fx: 13, ship: 2, station: 6 },
     collidable: 14,
-    colliders: 184,
-    opticCells: 42,
+    colliders: 236,
+    opticCells: 0,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
@@ -607,7 +607,7 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.equal(first.entityById[4].data.authoredGeologySkin, true);
   assert.equal(first.entityById[4].data.placeId, 'place_asteroid_rock_a');
 
-  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [102, 103, 104, 105, 106, 107, 108]);
+  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [105, 106, 107, 108, 109, 110, 111]);
   assert.ok(first.dressing.length > 7, 'additive kit/one-off/aftermath dressing stays off the combat list');
   // The i=0 prospecting drone is the ambient prop the tender's disabled client re-points; no prop is
   // added, so the dressing list keeps its length, ids and RNG cadence.
@@ -620,13 +620,13 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'place_ceres_grave_shard',
     'place_conveyor_barge',
   ]);
-  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 102, 103, 105, 107, 108]);
-  assert.equal(first.ceresRngDraws, 495,
+  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 105, 106, 108, 110, 111]);
+  assert.equal(first.ceresRngDraws, 499,
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
   assert.deepEqual(first.unaffectedRngSignature, [
-    [104, -12856.74476, 8731.183742],
-    [106, -11499.07624, 9309.341134],
+    [107, -13072.473297, 8733.618916],
+    [109, -11280.368378, 8699.797738],
   ], 'unaffected tail positions fingerprint the asteroid/dressing layout cadence');
   assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
     'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');
@@ -882,9 +882,9 @@ function captureCeresActivityState(state, formationModel) {
     fields: active.fields.map((field) => ({ id: field.id, asteroidIds: [...field.asteroidIds] })),
     fieldAsteroidIds: active.fields.map((field) => [...field.asteroidIds]),
     dressing: active.dressing.map((row) => ({ id: row.id, placeId: row.placeId })),
-    // 102/103/105/107/108 are the dressing props claimed by an activity slot; 104 and 106 are the
+    // 105/106/108/110/111 are the dressing props claimed by an activity slot; 107 and 109 are the
     // ambient buoys nothing binds, so they are what still fingerprints the untouched RNG cadence.
-    unaffectedRngSignature: [104, 106].map(pointSignature),
+    unaffectedRngSignature: [107, 109].map(pointSignature),
     numericTail: [109, 110, 111].map((id) => {
       const entity = resolveWorldPresentationEntity(state, id);
       return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];
