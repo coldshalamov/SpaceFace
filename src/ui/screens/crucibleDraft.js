@@ -480,7 +480,10 @@ function budgetGauge(wallet, price) {
     root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y} L ${at(p).toFixed(1)} ${y}`, class: 'orr-armory-budget__short' }));
   }
   root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y - 9} L ${at(w).toFixed(1)} ${y + 9}`, class: 'orr-armory-budget__end' }));
-  const top = svgNode('text', { x: at(w).toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
+  // Center-anchored at the wallet marker, but clamped inside the viewBox — at wallet
+  // ≈ 0 the label used to render half off the left edge ("T 0 CR").
+  const tx = Math.max(42, Math.min(at(w), x1 - 42));
+  const top = svgNode('text', { x: tx.toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
   top.textContent = `WALLET ${w} CR`;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });

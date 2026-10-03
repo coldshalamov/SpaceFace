@@ -309,7 +309,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   mod_winch_hd: {
     detail: 'A heavy winch — the line reels in faster and reaches farther before it snaps tight.',
-    tip: 'You are the winch, not the bait — haul them to you.',
+    tip: 'When a heavy hostile is closing and you cannot out-turn it — reel the fight to your range.',
   },
   mod_swing_drive_m: {
     tip: 'Latch a heavy mass, boost, and the whole ship slingshots around it.',
@@ -466,7 +466,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the long-jump run: a bigger step between fights.',
   },
   mod_ram_plate: {
-    tip: 'For the build that treats collision as a weapon; flying through something stops being your problem.',
+    tip: 'When the pack chases tight enough to bump — every collision they start becomes damage they take.',
   },
   mod_loot_magnet_s: {
     tip: 'For the cleanup pass: the field feeds itself.',
@@ -578,6 +578,7 @@ function weaponStats(def) {
   const out = [];
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   push('Damage', num(def.dmg));
+  push('Type', def.damageType ? String(def.damageType).replace(/^\w/, (c) => c.toUpperCase()) : null);
   push('DPS', num(def.dps));
   push('Rate', def.rof != null ? `${num(def.rof, 1)}/s` : null);
   push('Proj. speed', num(def.projSpeed));
@@ -603,7 +604,9 @@ function weaponStats(def) {
   push('Life', def.mineLifeS != null ? `${num(def.mineLifeS)} s` : null);
   push('Max active', num(def.mineMaxActive));
   push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec)}/s` : null));
+  push('Cooling', def.heatDissip != null ? `${num(def.heatDissip)}/s` : null);
   push('Energy', def.energyCost != null ? `${num(def.energyCost)}${def.continuous ? '/s' : '/shot'}` : null);
+  push('Mass', num(def.mass));
   push('Statuses', (def.statuses || []).map((s) => String(s.id || s)
     .replace(/^status_/, '').replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())).join(', ') || null);
@@ -633,7 +636,9 @@ function moduleStats(def) {
   push('Weapon dmg', m.weaponDmgPct != null ? `+${pct(m.weaponDmgPct)}` : null);
   push('Heat sink', m.weaponHeatDissipPct != null ? `+${pct(m.weaponHeatDissipPct)}` : null);
   push('Magnet range', m.magnetRange != null ? num(m.magnetRange) : null);
-  push('Massline head', m.masslineHeadId || null);
+  push('Massline head', m.masslineHeadId
+    ? String(m.masslineHeadId).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : null);
   push('Tether reel', m.tetherReelRateMult != null ? `×${num(m.tetherReelRateMult, 2)}` : null);
   push('Tether spool', m.tetherSpoolMult != null ? `×${num(m.tetherSpoolMult, 2)}` : null);
   push('Damage resist', m.damageReductionPct != null ? `−${pct(m.damageReductionPct)}` : null);
@@ -652,6 +657,8 @@ function moduleStats(def) {
   push('Countermeasure', m.countermeasure ? `${m.countermeasure.kind} · ${num(m.countermeasure.radius)} · ${num(m.countermeasure.cooldownS, 0)}s cd` : null);
   push('Mining DPS', def.dps != null && def.slotType === 'mining' ? num(def.dps) : null);
   push('Mining range', def.range != null && def.slotType === 'mining' ? num(def.range) : null);
+  push('Rare ore', def.rareOreChance != null ? pct(def.rareOreChance) : null);
+  push('Ore flow', def.directToCargo === true ? 'straight to cargo' : null);
   push('Energy draw', def.energyDraw != null ? `${num(def.energyDraw)}/s` : null);
   push('Charge rack', m.impulseChargeCapacity != null ? `${m.impulseChargeCapacity} charges` : null);
   push('Loot range', m.lootMagnetRange != null ? num(m.lootMagnetRange) : null);

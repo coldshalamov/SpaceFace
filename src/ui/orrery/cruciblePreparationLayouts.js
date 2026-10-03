@@ -309,6 +309,8 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act { line-height:1.38 !important; }
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
  ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
+ /* keep the buy CTA pinned at the pane's bottom edge while the column scrolls */
+ ${A} .orr-armory-purchase { position:sticky; bottom:6px; z-index:2; }
 }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }
