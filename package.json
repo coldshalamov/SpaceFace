@@ -688,8 +688,8 @@
       "scripts/lib/playerSaveStore.cjs",
       "scripts/lib/staticCachePolicy.cjs",
       "package.json",
-      "NOTICE"
-      "scripts/lib/userContentStore.cjs",
+      "NOTICE",
+      "scripts/lib/userContentStore.cjs"
     ],
     "publish": {
       "provider": "github",
@@ -698,21 +698,21 @@
     },
     "win": {
       "target": "nsis",
-      "artifactName": "SpaceFace-Setup-${version}.${ext}"
+      "artifactName": "SpaceFace-Setup-${version}.${ext}",
+      "icon": "assets/brand/exports/spaceface.ico"
     },
-      "icon": "assets/brand/exports/spaceface.ico",
     "mac": {
       "target": [
         "dmg",
         "zip"
-      "icon": "assets/brand/exports/spaceface.icns",
-      ]
+      ],
+      "icon": "assets/brand/exports/spaceface.icns"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "assets/brand/exports/spaceface-launcher-512.png"
     }
   },
-      "icon": "assets/brand/exports/spaceface-launcher-512.png",
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
     "@elemaudio/web-renderer": "^4.0.3",
