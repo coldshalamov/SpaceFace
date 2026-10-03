@@ -2265,6 +2265,13 @@ export const ships = {
       labelKey: normalizeLoadoutPresetLabelKey(labelKey),
       createdAt: stampedAt,
     };
+    // NXB-029 — the loadout names the bomb rack layout too (one payload family per socket,
+    // ids only — rounds are consumables, never serialized into the preset).
+    const rack = this.state.bombs && this.state.bombs.rack;
+    if (rack && Array.isArray(rack.cells)) {
+      preset.rackSockets = Number.isSafeInteger(rack.sockets) ? rack.sockets : rack.cells.length;
+      preset.rackPayloadIds = rack.cells.map((cell) => (cell && cell.id) || null);
+    }
     presets.push(preset);
     this.bus.emit('ship:loadoutPresetSaved', {
       presetId: preset.id,
@@ -2343,26 +2350,102 @@ export const ships = {
       });
       return false;
     }
-    const inventory = Array.isArray(p.moduleInventory) ? p.moduleInventory.slice() : [];
-    for (const [defId, takeCount] of dryRun.takeByDefId.entries()) {
-      let remaining = takeCount;
-      for (let i = inventory.length - 1; i >= 0 && remaining > 0; i -= 1) {
-        if (!inventory[i] || inventory[i].defId !== defId) continue;
-        inventory.splice(i, 1);
-        remaining -= 1;
-      }
-      if (remaining > 0) {
-        this.bus.emit('toast', { text: missingModulesText(remaining), kind: 'error', ttl: 3 });
+    // NXB-029 — rack half of the loadout. Preview + commit run through the bombs owner's
+    // existing berth-gated intents, so the same quote engine, credit writer and atomic
+    // commit apply here as at the rack panel. A refused PLAN aborts the whole apply
+    // before anything moves; a credit-limited plan still commits (authored restock
+    // semantics — affordable rounds only, limitingReason reported by the owner).
+    let rackQuote = null;
+    if (Array.isArray(preset.rackPayloadIds)) {
+      const preview = {
+        options: {
+          socketCount: Number.isSafeInteger(preset.rackSockets) ? preset.rackSockets : undefined,
+          payloadIds: preset.rackPayloadIds,
+        },
+        quote: null,
+      };
+      this.bus.emit('ui:previewBombRackPreparation', preview);
+      rackQuote = preview.quote || null;
+      if (!rackQuote || !rackQuote.plan || rackQuote.plan.ok === false) {
+        const reason = (rackQuote && rackQuote.plan && rackQuote.plan.reason) || 'no_rack_owner';
+        this.bus.emit('ship:loadoutPresetApplyRejected', {
+          presetId, hullDefId: shipDef.id, reason: 'rack_' + reason,
+        });
+        this.bus.emit('toast', { text: 'Build cannot prepare the bomb rack', kind: 'error', ttl: 3 });
         return false;
       }
     }
-    for (const [defId, returnCount] of dryRun.returnByDefId.entries()) {
-      for (let i = 0; i < returnCount; i += 1) {
-        inventory.push({ instanceId: this.nextInstanceId(), defId });
+
+    // NXB-029/NXB-032 — the swap keeps instance identity. Displaced modules carry their
+    // records back to the hold; a module moving between slots keeps its own record.
+    const inventory = Array.isArray(p.moduleInventory) ? p.moduleInventory.slice() : [];
+    const takenByDef = new Map();
+    for (const [defId, takeCount] of dryRun.takeByDefId.entries()) {
+      const items = [];
+      for (let i = inventory.length - 1; i >= 0 && items.length < takeCount; i -= 1) {
+        if (!inventory[i] || inventory[i].defId !== defId) continue;
+        items.unshift(inventory.splice(i, 1)[0]);
+      }
+      if (items.length < takeCount) {
+        this.bus.emit('toast', { text: missingModulesText(takeCount - items.length), kind: 'error', ttl: 3 });
+        return false;
+      }
+      takenByDef.set(defId, items);
+    }
+    const afterFittings = dryRun.afterFittings;
+    const displacedByDef = new Map();
+    const nextInstances = {};
+    // Pass 1: slots whose occupant already matches the target keep their record; the rest
+    // lift theirs into the displaced pool.
+    for (let i = 0; i < afterFittings.length; i += 1) {
+      const cur = this._reconcileFittedInstance(owned, i);
+      if (cur && cur.defId === afterFittings[i]) {
+        nextInstances[i] = cur;
+        continue;
+      }
+      if (cur) {
+        const pool = displacedByDef.get(cur.defId) || [];
+        pool.push(cur);
+        displacedByDef.set(cur.defId, pool);
+      }
+    }
+    // Pass 2: fill each unfilled target slot — the displaced module first (it is the same
+    // physical item coming back), then the hold, then a fresh mint only when the dry run
+    // proved none was needed but the record is absent.
+    for (let i = 0; i < afterFittings.length; i += 1) {
+      if (nextInstances[i] || !afterFittings[i]) continue;
+      const defId = afterFittings[i];
+      const displaced = displacedByDef.get(defId);
+      const fromDisplaced = displaced && displaced.length ? displaced.shift() : null;
+      const fromHold = !fromDisplaced && takenByDef.get(defId) && takenByDef.get(defId).length
+        ? takenByDef.get(defId).shift() : null;
+      nextInstances[i] = fromDisplaced || (fromHold && { ...fromHold })
+        || { instanceId: this.nextInstanceId(), defId };
+    }
+    for (const pool of displacedByDef.values()) {
+      for (const inst of pool) inventory.push({ ...inst });
+    }
+    // Any taken item the slot pass did not consume is a dry-run contradiction — put it back.
+    for (const items of takenByDef.values()) {
+      for (const item of items) inventory.push(item);
+    }
+
+    // Commit order: rack first (its commit is the fallible one — the module write below is
+    // a pure assignment the dry run already proved). A rack failure leaves the fit intact.
+    if (rackQuote) {
+      const commit = { quote: rackQuote, result: false };
+      this.bus.emit('ui:prepareBombRack', commit);
+      if (commit.result !== true) {
+        this.bus.emit('ship:loadoutPresetApplyRejected', {
+          presetId, hullDefId: shipDef.id, reason: 'rack_commit_failed',
+        });
+        this.bus.emit('toast', { text: 'Rack preparation failed — build not applied', kind: 'error', ttl: 3 });
+        return false;
       }
     }
     p.moduleInventory = inventory;
-    owned.fittings = dryRun.afterFittings.slice();
+    owned.fittings = afterFittings.slice();
+    owned.fittedInstances = nextInstances;
     this.bus.emit('ship:loadoutPresetApplied', {
       presetId,
       hullDefId: shipDef.id,
