@@ -636,15 +636,24 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
   return out;
 }
 
+// An observed remote quote is only "present" while its sighting is fresh. Past this window
+// (the same 900 s the docked freight comparison and the market-intel hollow band use) the
+// sighting is an estimate, never a fresh observation.
+const REMOTE_QUOTE_STALE_S = 900;
+
 /**
  * One two-leg freight comparison. Leg two cannot spend credits, stock or volume it will not have.
  * A later price that is not a present quote stays an estimate and is never a guaranteed settlement.
+ * `leg2.seenAt` / `leg2.stale` carry the remote quote's observation basis and `now` the caller's
+ * simTime; the basis is retained, never restamped — a load-size change cannot make an old remote
+ * quote read as freshly observed.
  */
 export function evaluateTwoLegItinerary({
   credits = 0,
   cargoFree = 0,
   leg1 = {},
   leg2 = {},
+  now = null,
 } = {}) {
   const unit1 = Math.max(0, Number(leg1.unitCr) || 0);
   const fee1 = Math.max(0, Number(leg1.feeCr) || 0);
@@ -656,7 +665,13 @@ export function evaluateTwoLegItinerary({
   const taken = Math.min(want1, affordable1, room1, stock1);
   const spent = taken > 0 ? taken * unit1 + fee1 : 0;
   const creditsAfter = credits - spent;
-  const estimate = leg2.quoted !== true;
+  const seenAt = Number.isFinite(Number(leg2.seenAt)) ? Math.max(0, Number(leg2.seenAt)) : null;
+  const nowS = Number.isFinite(Number(now)) ? Number(now) : null;
+  // A carried sighting is fresh only while the caller's clock proves it inside the window;
+  // an unverifiable or old sighting stays an estimate instead of reading as a live quote.
+  const stale = leg2.stale === true
+    || (seenAt != null && !(nowS != null && nowS - seenAt < REMOTE_QUOTE_STALE_S));
+  const estimate = leg2.quoted !== true || stale;
   const fee2 = Math.max(0, Number(leg2.feeCr) || 0);
   const sellUnit = estimate ? null : Math.max(0, Number(leg2.unitCr) || 0);
   const sellWant = Math.max(0, Math.floor(Number(leg2.qty) || taken));
@@ -689,6 +704,9 @@ export function evaluateTwoLegItinerary({
     leg2BuyQty: estimate ? 0 : bought,
     limit,
     estimate,
+    quoted: leg2.quoted === true,
+    stale,
+    seenAt,
     guaranteed: false,
     settlement: 'market',
   };
