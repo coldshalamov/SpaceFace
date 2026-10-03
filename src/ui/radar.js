@@ -135,6 +135,11 @@ export function censusRadarContactsStillLayer({
     && targetId === cache.targetId
     && cache.rescanDraws > 0;
 
+  // FB-035 — live POI plans ride the mark: the readout's radarKind is the blip class and its
+  // progress sweeps a small arc. state.world.poiReadouts is the single reader path (keyed by
+  // zoneId; the anchor entity carries the stamped link), so no subscriptions reach the census.
+  const poiReadouts = state && state.world && state.world.poiReadouts || null;
+
   let sig = contacts.length * 1315423911;
   if (playerStill || !cache.armed) {
     for (let i = 0; i < contacts.length; i += 1) {
@@ -143,7 +148,8 @@ export function censusRadarContactsStillLayer({
       const qx = Math.round(e.pos.x);
       const qz = Math.round(e.pos.z);
       const qh = Math.round((Number(e.rot) || 0) * 32);
-      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0)) >>> 0;
+      const poiBit = e.data && e.data.poiBehavior ? 1 : 0;
+      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0) ^ (poiBit << 4)) >>> 0;
     }
   }
 
@@ -181,6 +187,8 @@ export function censusRadarContactsStillLayer({
     const hostile = isHostileToPlayer(entity, playerTeam, state);
     const station = entity.type === 'station';
     const gate = station && !!(entity.data && entity.data.isGate);
+    const poiStamped = entity.data && entity.data.poiBehavior;
+    const poi = poiStamped && poiReadouts ? poiReadouts[poiStamped.zoneId] || null : null;
     if (hostile || station || entity.id === targetId) salientContactCount += 1;
 
     if (distanceSq > rangeSq) {
@@ -190,7 +198,7 @@ export function censusRadarContactsStillLayer({
       }
       if (station) {
         const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
-        if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq);
+        if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq, poi);
       }
       continue;
     }
@@ -210,7 +218,7 @@ export function censusRadarContactsStillLayer({
       continue;
     }
     if (station) {
-      pushInfrastructureMark(entity, projected, gate, distanceSq);
+      pushInfrastructureMark(entity, projected, gate, distanceSq, poi);
       continue;
     }
 
@@ -224,6 +232,7 @@ export function censusRadarContactsStillLayer({
       selected: entity.id === targetId,
       named: !!(entity.data && entity.data.namedLaneContactId),
       wantsTrail,
+      poi,
     });
   }
 
@@ -236,7 +245,8 @@ export function censusRadarContactsStillLayer({
       const qx = Math.round(e.pos.x);
       const qz = Math.round(e.pos.z);
       const qh = Math.round((Number(e.rot) || 0) * 32);
-      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0)) >>> 0;
+      const poiBit = e.data && e.data.poiBehavior ? 1 : 0;
+      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0) ^ (poiBit << 4)) >>> 0;
     }
   }
 
@@ -667,6 +677,38 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
     g.stroke();
     g.restore();
   }
+}
+
+function poiProgressRatio(readout) {
+  if (!readout) return 0;
+  const required = Number(readout.required) || 0;
+  if (required <= 0) return 0;
+  return Math.max(0, Math.min(1, (Number(readout.progress) || 0) / required));
+}
+
+// FB-035 — radarKind rides the mark as the blip class; a planned place gets one shared additive
+// cue (open diamond + small progress arc) in the objective lamp. The glyph underneath keeps its
+// own shape and colour — per-kind restyle belongs to the ORRERY lane.
+function drawPoiClassMark(g, x, y, ratio) {
+  g.save();
+  g.strokeStyle = TACTICAL_MAP_PALETTE.objective;
+  g.globalAlpha = 0.55;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x, y - 8);
+  g.lineTo(x + 8, y);
+  g.lineTo(x, y + 8);
+  g.lineTo(x - 8, y);
+  g.closePath();
+  g.stroke();
+  const sweep = Math.max(0, Math.min(1, Number(ratio) || 0));
+  if (sweep > 0) {
+    g.globalAlpha = 0.9;
+    g.beginPath();
+    g.arc(x, y, 10.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * sweep);
+    g.stroke();
+  }
+  g.restore();
 }
 
 function drawHostileEdgeMarker(g, x, y, angle, selected = false) {
@@ -1163,10 +1205,13 @@ export function createRadar(ctx) {
     mark.distanceSq = distanceSq;
     hostileMarks.push(mark);
   }
-  function pushInfrastructureMark(entity, projected, gate, distanceSq) {
+  function pushInfrastructureMark(entity, projected, gate, distanceSq, poi) {
     let mark = infrastructureMarkPool[infrastructureMarks.length];
     if (!mark) {
-      mark = { entity: null, x: 0, y: 0, gate: false, offRange: false, angle: 0, distanceSq: 0 };
+      mark = {
+        entity: null, x: 0, y: 0, gate: false, offRange: false, angle: 0, distanceSq: 0,
+        poiKind: null, poiProgress: 0,
+      };
       infrastructureMarkPool[infrastructureMarks.length] = mark;
     }
     mark.entity = entity;
@@ -1176,6 +1221,8 @@ export function createRadar(ctx) {
     mark.offRange = projected.offRange;
     mark.angle = projected.angle;
     mark.distanceSq = distanceSq;
+    mark.poiKind = poi && poi.radarKind || null;
+    mark.poiProgress = poiProgressRatio(poi);
     infrastructureMarks.push(mark);
   }
   function pushNeutralMark(entity, projected, distanceSq, meta) {
@@ -1184,6 +1231,7 @@ export function createRadar(ctx) {
       mark = {
         entity: null, x: 0, y: 0, distanceSq: 0,
         heading: null, type: '', selected: false, named: false, wantsTrail: false,
+        poiKind: null, poiProgress: 0,
       };
       neutralMarkPool[neutralMarks.length] = mark;
     }
@@ -1196,6 +1244,8 @@ export function createRadar(ctx) {
     mark.selected = meta.selected;
     mark.named = meta.named;
     mark.wantsTrail = meta.wantsTrail;
+    mark.poiKind = meta.poi && meta.poi.radarKind || null;
+    mark.poiProgress = poiProgressRatio(meta.poi);
     neutralMarks.push(mark);
   }
   // Reused option records for the glyph draw calls. The draw functions destructure and read
@@ -1578,6 +1628,7 @@ export function createRadar(ctx) {
         neutralOpts.state = state;
         drawNeutralContact(g, entity, x, y, mark.heading, colour, neutralOpts);
       }
+      if (mark.poiKind) drawPoiClassMark(g, x, y, mark.poiProgress);
       if (mark.selected) drawTargetRing(g, x, y, center);
     }
 
@@ -1626,6 +1677,7 @@ export function createRadar(ctx) {
       } else {
         drawStationGlyph(g, mark.x, mark.y, glyphOpts);
       }
+      if (mark.poiKind) drawPoiClassMark(g, mark.x, mark.y, mark.poiProgress);
       if (mark.entity.id === targetId && !mark.offRange) {
         drawTargetRing(g, mark.x, mark.y, center);
       }

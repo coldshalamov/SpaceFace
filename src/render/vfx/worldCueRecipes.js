@@ -29,6 +29,12 @@ const variants=Object.freeze({
   'mining.survey.classified':recipe('command','induction',0x94dcd1,.82),
   'mining.survey.tracked':recipe('catch','capture',0x82c5dc,.68),
   'mining.survey.investigated':recipe('cool','deposition',0xbbd3bb,.90),
+  // FB-131 — the scanner speaks: a ghost that slips past range leaves a fading mark at its
+  // last-known position, a counted bearing ticks at the player's own instrument, and a
+  // revealed wreck/cache blooms where the reveal happened. No new layer, no anomaly position.
+  'mining.survey.escaped':recipe('cool','deposition',0x9fb4c4,.85),
+  'mining.survey.bearing':recipe('survey','induction',0x9fd4e8,.55),
+  'mining.survey.revealed':recipe('command','capture',0xaedecf,.95),
   'mining.seam.reward':recipe('harvest','deposition',0xeac081,.88),
   'mining.drill.seismic_pulse':recipe('survey','pressure',0xb5b58f,.74),
   'mining.drill.contact':{...recipe('grind','deposition',0xcfaa78,.40),surfaceWork:true},
@@ -57,9 +63,14 @@ export const WORLD_CUE_ACTION_RECIPE=Object.freeze({
 });
 
 const SOURCE_CUES=new Set(['mining.survey.pulse','mining.survey.resolved',
+  // FB-131: a bearing is an instrument tick at the player's hull — never an anchor on the
+  // (still unrevealed) anomaly the bearing points toward.
+  'mining.survey.bearing',
   'mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
 const HARDWARE_CUES=new Set(['mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
-const DETACHED_CUES=new Set(['mining.survey.pulse','mining.drill.seismic_pulse','mining.drill.break']);
+const DETACHED_CUES=new Set(['mining.survey.pulse','mining.drill.seismic_pulse','mining.drill.break',
+  // The escaped ghost is already gone; its mark is a memory at last-known position, not a track.
+  'mining.survey.escaped']);
 const TRACKED_BODY_CUES=new Set(['salvage.cooker.tracked','salvage.core.tracked']);
 const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z);
 const body=(state,id)=>id==null?null:state.entities?.get?.(id);

@@ -42,6 +42,11 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'mining.survey.classified': 'presentation.mining.scan_classified',
   'mining.survey.tracked': 'presentation.mining.scan_tracked',
   'mining.survey.investigated': 'presentation.mining.scan_investigated',
+  // FB-131 — the scanner speaks. Bearing/revealed reuse the existing scan voices (tracked,
+  // classified); the escape is the one new voice, a falling tone.
+  'mining.survey.escaped': 'presentation.mining.scan_escaped',
+  'mining.survey.bearing': 'presentation.mining.scan_bearing',
+  'mining.survey.revealed': 'presentation.mining.scan_revealed',
   'mining.extraction.locked': 'presentation.mining.cutter_lock',
   'mining.seam.quality': 'presentation.mining.hardness',
   'mining.seam.reward': 'presentation.mining.seam_reward',
@@ -581,8 +586,14 @@ export const presentationAdapters = {
       this._miningAudioSources = new Set();
     }
     const sourceEvent = cue.sourceEvent || cue.id;
-    if (this._miningAudioSources.has(sourceEvent)) return false;
-    this._miningAudioSources.add(sourceEvent);
+    // Each accepted bearing is a counted step toward a fix, not a restatement of one event —
+    // pitch rises with the count, so keying the floor on the raw event would silence the climb.
+    // True duplicates stay suppressed by the same sequence.
+    const floorKey = cue.id === 'mining.survey.bearing'
+      ? `${sourceEvent}:${cue.sequence ?? cue.magnitude ?? 0}`
+      : sourceEvent;
+    if (this._miningAudioSources.has(floorKey)) return false;
+    this._miningAudioSources.add(floorKey);
     return true;
   },
 
@@ -685,6 +696,13 @@ function shapeForCue(id) {
 function miningAudioRate(cue) {
   if (!cue || !String(cue.id || '').startsWith('mining.')) return 1;
   const tags = Array.isArray(cue.tags) ? cue.tags : [];
+  // FB-131 — a bearing counted toward a fix climbs a pitch step per accepted ping; the cue's
+  // magnitude carries the count (1..requiredPings). A lost contact slides down instead.
+  if (cue.id === 'mining.survey.bearing') {
+    const count = Math.max(1, Math.floor(finite(cue.magnitude, 1)));
+    return Math.min(1.4, 1 + 0.07 * (count - 1));
+  }
+  if (cue.id === 'mining.survey.escaped') return 0.9;
   if (cue.id === 'mining.seam.quality') return tags.includes('on_seam') ? 1.16 : 0.84;
   if (cue.id === 'mining.drill.contact') {
     if (tags.includes('hard')) return 0.78;

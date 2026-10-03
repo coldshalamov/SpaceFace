@@ -463,6 +463,15 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 720, filterQ: 0.8,
   },
   {
+    // FB-131 — the ghost that slipped the net: the one scan-family voice that falls instead
+    // of rising, so "contact lost" reads as loss in the ear, not another success ping.
+    id: 'sfx_mining_scan_escaped',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 233, freqSweep: [233, 116.5], sweepTimeS: 0.44,
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 560, filterQ: 1.0,
+  },
+  {
     id: 'sfx_mining_cutter_lock',
     category: 'mining', type: 'noise_burst', noiseColor: 'pink',
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.12 },
@@ -3242,6 +3251,8 @@ export const SAMPLE_BINDINGS = {
   sfx_mining_scan_classified: { id: 'mine_scan', share: 0.5, rate: 0.8 },
   sfx_mining_scan_tracked: { id: 'mine_scan', share: 0.5, rate: 0.62 },
   sfx_mining_scan_investigated: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  // FB-131: the escape tone borrows the same scan recording, pitched low — one family, one loss.
+  sfx_mining_scan_escaped: { id: 'mine_scan', share: 0.5, rate: 0.5 },
   sfx_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.9 },
   sfx_scenario_signal: { id: 'mine_scan', share: 0.5, rate: 1.5 },
 

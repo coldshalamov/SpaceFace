@@ -1519,6 +1519,11 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.scan_classified': 'sfx_mining_scan_classified',
   'presentation.mining.scan_tracked': 'sfx_mining_scan_tracked',
   'presentation.mining.scan_investigated': 'sfx_mining_scan_investigated',
+  // FB-131 — the scanner speaks. Bearing/revealed reuse existing scan voices; the pitch step
+  // per counted bearing arrives via the cue's rate. Escape is the family's one new tone (falling).
+  'presentation.mining.scan_escaped': 'sfx_mining_scan_escaped',
+  'presentation.mining.scan_bearing': 'sfx_mining_scan_tracked',
+  'presentation.mining.scan_revealed': 'sfx_mining_scan_classified',
   'presentation.mining.cutter_lock': 'sfx_mining_cutter_lock',
   'presentation.mining.hardness': 'sfx_mining_hardness',
   'presentation.mining.seam_reward': 'sfx_mining_seam_reward',

@@ -12,8 +12,8 @@ function fixture(){return {simTime:1,playerId:1,entities:new Map([
 ]),settings:{video:{}}};}
 function cue(id,extra={}){return {id,sourceId:1,targetId:2,position:{x:137,y:2,z:28},...extra};}
 
-test('whitelist covers twenty-four work cues and nine composed travel handoffs',()=>{
-  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,33);
+test('whitelist covers twenty-seven work cues and nine composed travel handoffs',()=>{
+  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,36);
   // PIC-26/27/28 cues arrive as complete presentation:cue envelopes — the world-cue variant IS
   // the recipe, so they deliberately carry no PRESENTATION_RECIPES lane row. Every other admitted
   // cue still must have one with a vfx.direct_* lane.
