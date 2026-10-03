@@ -392,7 +392,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
 | picture | free | renderer, admission, residency | 140, 141, 259 |
-| camera | free | camera, tabletop, hull readability | 218 |
+| camera | grok-oct3 | camera, tabletop, hull readability | 218 |
 | boot | free | boot time, hitch leaves, not the renderer seam | 57 |
 | audio | done | audio system, combat verb cues | 143, 194, 228 |
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
@@ -415,7 +415,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | physics | devin-oct2-batch | physics clocks, manifest | 258 |
 | accept | devin-sweep-oct2 | judge work that is already built | 60, 63, 64 |
 | imports | devin-sweep-oct2 | doc imports only, after code seams | 30 |
-| art | free | one visible asset defect; skip if the graphics lane is live | 223 |
+| art | devin-oct3-40 | one visible asset defect; skip if the graphics lane is live | 223 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -553,7 +553,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 60 | PQ-050.01–.22 | Fleet remaster acceptance — 22 leaves `implemented` (chase passes recorded REVISE; judge the current bodies at the shipping camera) — one leaf per unit, lowest first | ACCEPT | OPEN |
 | 61 | PQ-038/041 | Native acceptances: PERF-04 dense PresentationWorld + PERF-07 exact-package Electron pair — `implemented`, never run | ACCEPT | PARKED needs quiet host |
 | 62 | PQ-022.h3 | Corridor-asset perf envelope — harness on master; the ~50-min capture was never executed | ACCEPT | PARKED needs quiet host |
-| 63 | PQ-161.00 | Role silhouettes — `implemented`, awaiting readable-at-zoom review | ACCEPT | OPEN |
+| 63 | PQ-161.00 | Role silhouettes — `implemented`, awaiting readable-at-zoom review | ACCEPT | DONE 2026-10-03 — fleet-look chase+top stills of all nine role hulls opened (`.devshots/accept-roles/`); 9/9 roles nameable from silhouette + hardware protagonist vs the 8-of-9 bar (`design/program/roadmap/receipts/PQ-161.00-REPORT.md`) |
 | 64 | ZH-STRANGER | §25 stranger passes owed on Phases 1, 2, 3, 5, 6 — open frames and judge; metrics alone don't close | ACCEPT | OPEN |
 | 65 | PQ-042 | Branch selection — `ready` but dep-gated on PERF native acceptances (row 61) | BUILD | PARKED gated on row 61 |
 | 66 | PQ-210.08 | Fifteen-minute demo end-to-end — parked per owner pre-release ruling | ACCEPT | PARKED pre-release |
