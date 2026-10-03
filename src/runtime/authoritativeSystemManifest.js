@@ -26,7 +26,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
   'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'killcamRecorder',
-  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'swarmJuice', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
@@ -49,7 +49,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
   'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
@@ -91,7 +91,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
-  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'physics', 'combat',
+  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -120,6 +120,10 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // swarmJuice: the arcade juice detector. It reads the same settled phase and the kill
   // receipts this tick committed, and ticks for the hit-stop lease and the boss bar.
   'swarmJuice',
+  // swarmElites: the Threat/affix/perk runtime (SWARM-06). It stamps a wave's spawn receipts
+  // once per body and reads the same settled phase — after swarmJuice so the cohort stamps
+  // precede the HUDs' readout this tick.
+  'swarmElites',
   'heat', 'traffic', 'drill', 'claims', 'chronicler',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
@@ -163,6 +167,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   crucibleFocus: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   swarmChain: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
   swarmJuice: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
+  swarmElites: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
   swarmJuiceHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   killcamRecorder: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
@@ -332,7 +337,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'fields', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
-  'morrow', 'vesper', 'bracket',
+  'morrow', 'vesper', 'bracket', 'ravel',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
@@ -346,6 +351,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'killReplay', 'killcamRecorder',
   // swarmJuice: hit-stop lease decay and boss-bar polling want the 60 Hz step.
   'swarmJuice',
+  // swarmElites: affix stamps and live perk effects read the wave the same tick it materializes.
+  'swarmElites',
   // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.
   'wingmen', 'world', 'heat',
   // Chronicler: fact events must land on the tick that creates them (its FB-090 quiet

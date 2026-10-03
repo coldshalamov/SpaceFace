@@ -371,7 +371,7 @@ export const aceMemory = {
       delete memory.cultureIntros[route.aceId];
       return;
     }
-    const now = nowOf(this.state);
+    const now = nowOf(this.state, payload);
     const existing = memory.cultureIntros[route.aceId];
     if (existing && existing.sectorId === route.sectorId && Number.isFinite(existing.dueAt)) {
       if (existing.status === 'pending') return;
@@ -459,7 +459,7 @@ export const aceMemory = {
     const assignments = planetStatesForSector(sectorId);
     if (!assignments.length) return;
     const memory = ensureMemory(this.state);
-    const now = nowOf(this.state);
+    const now = nowOf(this.state, payload);
     for (const assignment of assignments) {
       const challenge = assignment && assignment.challenge;
       if (!challenge || challenge.trigger !== 'sector:enter') continue;
@@ -1825,7 +1825,13 @@ function seedOf(state) {
 }
 
 function nowOf(state, payload) {
+  // The emit stamps enterSimTime (its own clock) — prefer it so a deferred-cook
+  // delivery and a direct emit delivery stamp identical dueAts. Provider-driven
+  // calls carry no payload; the drain pins the same clock on render._deferredEnterClock.
+  if (payload && Number.isFinite(payload.enterSimTime)) return Number(payload.enterSimTime);
   if (payload && Number.isFinite(payload.t)) return Number(payload.t);
+  const deferredClock = state && state.render && state.render._deferredEnterClock;
+  if (Number.isFinite(deferredClock)) return deferredClock;
   return state && Number.isFinite(state.simTime) ? state.simTime : 0;
 }
 

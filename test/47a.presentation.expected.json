@@ -126,9 +126,9 @@
       "audioGain": 0.772,
       "uiKey": "presentation:tether:break-overload",
       "shape": "arc",
-      "particles": 96,
+      "particles": 48,
       "lights": 0,
-      "cameraAmount": 0.22
+      "cameraAmount": 0.12
     }
   ]
 }

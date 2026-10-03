@@ -19,9 +19,11 @@ import * as THREE from 'three';
 import { buildMorrowVisual } from './characters/morrowModel.js';
 import { buildVesperVisual } from './characters/vesperModel.js';
 import { buildBracketVisual } from './characters/bracketModel.js';
+import { buildRavelVisual } from './characters/ravelModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
+import { rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -51,6 +53,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -2321,11 +2324,16 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
   // numbers; this key keeps one cached material per variant.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}`;
+  // Metallic / crystalline / exotic rocks wear a generated surface family once its maps have decoded
+  // (rockFamilyLibrary.js); a rock built before then keeps the flat tinted material under its own key.
+  const family = typeId === 'ast_common_rock' ? null : rockFamilyFor(def.variant);
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
-    const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
+    let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
+    // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
+    if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
@@ -2362,8 +2370,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      map: commonSurface && commonSurface.baseColor || null,
-      normalMap: commonSurface && commonSurface.normal || null,
+      map: commonSurface && commonSurface.baseColor || family && family.baseColor || null,
+      normalMap: commonSurface && commonSurface.normal || family && family.normal || null,
+      emissiveMap: family && family.emissive || null,
       normalScale: commonSurface
         ? new THREE.Vector2(variantSpec.normalScale, variantSpec.normalScale)
         : new THREE.Vector2(1, 1),
@@ -2375,7 +2384,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         || (def.variant === 'crystal' ? null : rough),
       metalnessMap: commonSurface && commonSurface.orm || null,
       vertexColors: !!commonSurface,
-      emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
+      emissive: new THREE.Color(def.emissive),
+      // A glow map confines the glow to the crystals / veins, so the intensity is lifted to keep them readable.
+      emissiveIntensity: family && family.emissive ? Math.min(3.2, eiBoost * ROCK_FAMILY_EMISSIVE_LIFT) : eiBoost,
       flatShading: def.flat,
     });
     if (bare) {
@@ -3206,13 +3217,21 @@ function buildCreditChip(e) {
 }
 
 function buildPickup(e) {
+  // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
+  // the warning regardless of which spawn path dropped it.
+  if (e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   if (e.data && e.data.freightCustodyPod) {
     const canister = buildPayload(e);
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
+    canister.userData.pickupRole = PICKUP_ROLE.POD;
     return canister;
   }
-  if (isCreditChipEntity(e)) return buildCreditChip(e);
+  if (isCreditChipEntity(e)) {
+    const chip = buildCreditChip(e);
+    chip.userData.pickupRole = PICKUP_ROLE.CHIP;
+    return chip;
+  }
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
@@ -3232,6 +3251,10 @@ function buildPickup(e) {
   g.add(gem);
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
+  // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
+  // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
+  g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
+    : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
@@ -5528,7 +5551,47 @@ function laneTrafficVisualEntity(e) {
   };
 }
 
+// FB-075 — volatile cargo reads as a hazard bottle, not another canister: sphere under a
+// containment collar (fragmentFamilies' 'volatile' role recipe), with the class's lamp color
+// carried in the collar material so the warning survives the chase camera.
+const VOLATILE_LAMP_COLOR = Object.freeze({
+  // keyed by class id and by the stamped lamp name — the sim writes both
+  explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff,
+  amber: 0xffb340, green: 0x7dd66a, violet: 0xa77dff, red: 0xff5c4a,
+  default: 0xffb340,
+});
+
+function volatileLampColor(e) {
+  const lamp = e && e.data && (e.data.volatileClass || e.data.volatileLamp);
+  return VOLATILE_LAMP_COLOR[lamp] || VOLATILE_LAMP_COLOR.default;
+}
+
+function buildVolatilePod(e) {
+  const R = Math.max(1, (e && e.radius) || 3);
+  const g = new THREE.Group();
+  const lamp = volatileLampColor(e);
+  const bottle = new THREE.Mesh(
+    getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
+    getMaterial(`payload:volatile:${e.data.volatileClass || 'any'}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0x2a2f33, roughness: 0.42, metalness: 0.55,
+      emissive: new THREE.Color(lamp), emissiveIntensity: 0.55,
+    }), SHARED_MATERIAL_ROLE.HULL)),
+  );
+  bottle.name = 'VolatilePod_Bottle';
+  g.add(bottle);
+  g.scale.setScalar(R);
+  g.userData.kind = e && e.type === 'pickup' ? 'pickup' : 'payload';
+  g.userData.interactionKind = g.userData.kind;
+  g.userData.visualLanguage = 'volatile-pressure-bottle';
+  g.userData.pickupRole = PICKUP_ROLE.VOLATILE;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
+  // the silhouette is the hazard warning at chase distance.
+  if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const commodityId = payloadCommodityId(e && e.data);
@@ -5568,6 +5631,7 @@ function buildPayload(e) {
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
   g.userData.animated = true;
   if (presentation) {
     g.userData.commodityPresentationId = presentation.id;
@@ -5608,6 +5672,7 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
         if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));

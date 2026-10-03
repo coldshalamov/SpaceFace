@@ -33,13 +33,28 @@ import { hash32, wrapAngle } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
-import { applyBank, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
+import { applyBank, buyHull, buyTrack, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
 import {
   applySwarmLadderResult,
   emptySwarmLadder,
   isSwarmLadderRun,
   migrateSwarmLadder,
+  swarmLadderStarTotal,
 } from '../data/swarmLadder.js';
+import {
+  applyCrossoverResult,
+  crossoverFactsFor,
+  emptyCrossover,
+  migrateCrossover,
+  registerCrossoverReader,
+} from '../data/swarmCrossover.js';
+import {
+  earnedPerkIds,
+  emptyPerks,
+  migratePerks,
+  normalizePerkLoadout,
+} from '../data/swarmPerks.js';
+import { swarmThreatBountyMult, swarmThreatMutatorIds } from '../data/swarmThreats.js';
 
 export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
 export const CRUCIBLE_META_SCHEMA_VERSION = 1;
@@ -599,6 +614,89 @@ function emptyDaily() {
   return { byDate: {} };
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+/* SWARM-06 §8 — the challenge ledger. One paid row per daily date and per weekly mutator: a run  */
+/* that reaches its bar banks the Bounty once, and the ledger feeds the challenge-gated perk      */
+/* earns (Bounty Hunter). Rewards land on the Hangar bounty — Swarm's own wallet, never           */
+/* Adventure credits.                                                                             */
+/* ---------------------------------------------------------------------------------------------- */
+
+export const SWARM_CHALLENGE_DAILY_WAVES = 5;
+export const SWARM_CHALLENGE_DAILY_BOUNTY = 150;
+export const SWARM_CHALLENGE_WEEKLY_WAVES = 10;
+export const SWARM_CHALLENGE_WEEKLY_BOUNTY = 300;
+
+function emptyChallenges() {
+  return { daily: {}, weekly: {} };
+}
+
+function migrateChallenges(raw) {
+  const out = emptyChallenges();
+  const src = asObject(raw);
+  if (!src) return out;
+  const dailyIn = asObject(src.daily) ? src.daily : {};
+  for (const key of Object.keys(dailyIn)) {
+    const row = asObject(dailyIn[key]);
+    const dateKey = isUtcDateKey(key) ? key : (row && isUtcDateKey(row.dateKey) ? row.dateKey : '');
+    if (!dateKey || !row) continue;
+    out.daily[dateKey] = {
+      dateKey,
+      wavesCleared: Number.isInteger(row.wavesCleared) && row.wavesCleared >= 0 ? row.wavesCleared : 0,
+      bounty: Number.isInteger(row.bounty) && row.bounty >= 0 ? row.bounty : 0,
+      at: typeof row.at === 'string' && row.at ? row.at : null,
+    };
+  }
+  const weeklyIn = asObject(src.weekly) ? src.weekly : {};
+  for (const key of Object.keys(weeklyIn)) {
+    const row = asObject(weeklyIn[key]);
+    const weekKey = isUtcWeekKey(key) ? key : (row && isUtcWeekKey(row.weekKey) ? row.weekKey : '');
+    if (!weekKey || !row) continue;
+    out.weekly[weekKey] = {
+      weekKey,
+      mutatorId: typeof row.mutatorId === 'string' ? row.mutatorId : null,
+      wavesCleared: Number.isInteger(row.wavesCleared) && row.wavesCleared >= 0 ? row.wavesCleared : 0,
+      bounty: Number.isInteger(row.bounty) && row.bounty >= 0 ? row.bounty : 0,
+      at: typeof row.at === 'string' && row.at ? row.at : null,
+    };
+  }
+  return out;
+}
+
+/** Finished challenges, the count the perk earns read. A paid row is a finished challenge. */
+export function crucibleChallengesDone(profile) {
+  const bag = migrateChallenges(profile && profile.challenges);
+  return Object.keys(bag.daily).length + Object.keys(bag.weekly).length;
+}
+
+/**
+ * What this settled run pays into the Hangar bounty, and the ledger rows it claims. Pure on
+ * the inputs — the caller applies the bounty to bank.hangar and the rows to profile.challenges.
+ * Bars: a daily-seeded run banks on its date once it clears five waves; a run under the weekly
+ * mutator banks once for the week at ten. Anything else pays nothing and writes nothing.
+ */
+function challengePayoutFor(compact, challenges, recordedAt) {
+  const bag = migrateChallenges(challenges);
+  const paid = [];
+  const waves = Number.isInteger(compact && compact.wavesCleared) ? compact.wavesCleared : 0;
+  const ruleset = compact && compact.ruleset;
+  const isSwarm = ruleset === 'swarm';
+  const dailyKey = compact && typeof compact.dailyDateKey === 'string' && isUtcDateKey(compact.dailyDateKey)
+    ? compact.dailyDateKey : null;
+  if (isSwarm && dailyKey && !bag.daily[dailyKey] && waves >= SWARM_CHALLENGE_DAILY_WAVES) {
+    bag.daily[dailyKey] = { dateKey: dailyKey, wavesCleared: waves, bounty: SWARM_CHALLENGE_DAILY_BOUNTY, at: recordedAt };
+    paid.push({ kind: 'daily', key: dailyKey, bounty: SWARM_CHALLENGE_DAILY_BOUNTY });
+  }
+  const mutators = compact && Array.isArray(compact.mutators) ? compact.mutators : [];
+  const weekKey = utcWeekKeyFromIso(recordedAt);
+  const weeklyId = weeklyMutatorForWeekKey(weekKey);
+  if (isSwarm && weekKey && weeklyId && mutators.includes(weeklyId) && !bag.weekly[weekKey]
+    && waves >= SWARM_CHALLENGE_WEEKLY_WAVES) {
+    bag.weekly[weekKey] = { weekKey, mutatorId: weeklyId, wavesCleared: waves, bounty: SWARM_CHALLENGE_WEEKLY_BOUNTY, at: recordedAt };
+    paid.push({ kind: 'weekly', key: weekKey, bounty: SWARM_CHALLENGE_WEEKLY_BOUNTY });
+  }
+  return { challenges: bag, paid };
+}
+
 function emptyGhosts() {
   return { byHash: {}, lastHash: null };
 }
@@ -616,6 +714,12 @@ export function emptyCrucibleProfile() {
     // SWARM-04: the curated ladder — per-arena zones (stars + best chain), the deepest wave
     // seen, and the checkpoint a cleared zone boss unlocked. Empty until the first ladder run.
     ladder: emptySwarmLadder(),
+    // SWARM-06: the crossover ledger (what a Swarm run proved, so Adventure can sell it), the
+    // perk loadout (the pick only — earns are derived from the ladder and challenges), and the
+    // challenge ledger (one paid row per daily date / weekly mutator).
+    crossover: emptyCrossover(),
+    perks: emptyPerks(),
+    challenges: emptyChallenges(),
   };
 }
 
@@ -664,6 +768,9 @@ function migrateProfile(raw) {
     // Schema stays at 1. Unknown-key copy runs only above that, so the hangar has to be named here.
     hangar: migrateHangar(src.hangar),
     ladder: migrateSwarmLadder(src.ladder),
+    crossover: migrateCrossover(src.crossover),
+    perks: migratePerks(src.perks),
+    challenges: migrateChallenges(src.challenges),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -677,6 +784,9 @@ function migrateProfile(raw) {
         || key === 'bestLines'
         || key === 'hangar'
         || key === 'ladder'
+        || key === 'crossover'
+        || key === 'perks'
+        || key === 'challenges'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -881,6 +991,103 @@ export function saveCrucibleMeta(profile, storage = liveStorage()) {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
+/* SWARM-05 §7.2 — the door is the hangar. Buys pass through the swarmHangar owner's own verbs    */
+/* against the profile bag this module alone persists: load, buy, save. A refused buy returns the  */
+/* owner's reason verbatim — the surface shows it, never a guessed one.                            */
+/* ---------------------------------------------------------------------------------------------- */
+
+export function buyCrucibleHangarTrack(trackId, storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  const result = buyTrack(profile && profile.hangar, trackId);
+  if (!result || !result.ok) return { ok: false, reason: (result && result.reason) || 'refused', hangar: profile.hangar };
+  profile.hangar = result.hangar;
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'save_failed', hangar: result.hangar };
+  return { ok: true, hangar: result.hangar, rank: result.rank, price: result.price, profile };
+}
+
+export function buyCrucibleHangarHull(hullId, price, storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  const result = buyHull(profile && profile.hangar, hullId, price);
+  if (!result || !result.ok || result.duplicate === true) {
+    return { ok: false, reason: result && result.duplicate ? 'owned' : (result && result.reason) || 'refused', hangar: profile.hangar };
+  }
+  profile.hangar = result.hangar;
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'save_failed', hangar: result.hangar };
+  return { ok: true, hangar: result.hangar, profile };
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* SWARM-06 §4.3/§8 — the perk loadout and the door's read of the depth ledgers. Earns are derived */
+/* here too: the same ladder star total the arena gates read, plus finished challenges, so the    */
+/* door and the run-stamp can never disagree about what a profile earned.                          */
+/* ---------------------------------------------------------------------------------------------- */
+
+/** The perks the profile may slot right now — derived, never stored. */
+export function crucibleEarnedPerkIds(profile = null, storage = liveStorage()) {
+  const bag = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
+  return earnedPerkIds(bag, {
+    starTotal: swarmLadderStarTotal(bag.ladder),
+    challengesDone: crucibleChallengesDone(bag),
+  });
+}
+
+/**
+ * Persist the door's two-slot pick. Unknown and unearned ids drop through normalizePerkLoadout —
+ * a hand-written bag cannot slot a locked perk — and the surviving pick is what runSession will
+ * stamp on the next run.
+ */
+export function setCruciblePerkLoadout(ids, storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  const loadout = normalizePerkLoadout(ids, crucibleEarnedPerkIds(profile, storage));
+  profile.perks = { loadout };
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'save_failed', loadout };
+  return { ok: true, loadout, profile };
+}
+
+/**
+ * What the Hangar door shows for the depth layer: the earned Saucer (and any future crossover
+ * rows), the perk catalog with earn state and the stored pick, and the challenge ledgers' fresh
+ * claim state so the door can say "today's bounty is still on the table" honestly.
+ */
+export function crucibleSwarmDepthView(profile = null, storage = liveStorage()) {
+  const bag = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
+  const challenges = migrateChallenges(bag.challenges);
+  const dateKey = utcDateKeyNow();
+  const weekKey = utcWeekKeyNow();
+  const weeklyId = weeklyMutatorForNow();
+  const earned = crucibleEarnedPerkIds(bag, storage);
+  const loadout = normalizePerkLoadout(
+    bag.perks && bag.perks.loadout,
+    earned,
+  );
+  return {
+    crossover: migrateCrossover(bag.crossover),
+    perks: {
+      earned,
+      loadout,
+      slots: 2,
+    },
+    challenges: {
+      done: crucibleChallengesDone(bag),
+      daily: {
+        dateKey,
+        claimed: !!(dateKey && challenges.daily[dateKey]),
+        waves: SWARM_CHALLENGE_DAILY_WAVES,
+        bounty: SWARM_CHALLENGE_DAILY_BOUNTY,
+      },
+      weekly: {
+        weekKey,
+        mutatorId: weeklyId || null,
+        claimed: !!(weekKey && challenges.weekly[weekKey]),
+        waves: SWARM_CHALLENGE_WEEKLY_WAVES,
+        bounty: SWARM_CHALLENGE_WEEKLY_BOUNTY,
+      },
+    },
+    stars: swarmLadderStarTotal(bag.ladder),
+  };
+}
+
+/* ---------------------------------------------------------------------------------------------- */
 /* additive profile merge (FB-104 — save-file transport carries the bag across machines)           */
 /* ---------------------------------------------------------------------------------------------- */
 
@@ -1062,6 +1269,21 @@ export function mergeCrucibleProfiles(primary, secondary) {
     settledKeys: [...new Set([...(hangarB.settledKeys || []), ...(hangarA.settledKeys || [])])].slice(-80),
     ownedHulls: [...new Set([...(hangarB.ownedHulls || []), ...(hangarA.ownedHulls || [])])],
     rerollsUsed: mergeInt(hangarA.rerollsUsed, hangarB.rerollsUsed),
+  };
+  // SWARM-06: crossover is a union — a hull either side proved stays proved. The perk loadout
+  // is one pick, so the primary's pick wins when it carries one; the secondary's fills an empty
+  // hand. Challenges union by their own keys (a paid date stays paid either way).
+  const crossA = migrateCrossover(a.crossover);
+  const crossB = migrateCrossover(b.crossover);
+  out.crossover = { earned: { ...crossB.earned, ...crossA.earned } };
+  const loadA = Array.isArray(a.perks && a.perks.loadout) ? a.perks.loadout : [];
+  const loadB = Array.isArray(b.perks && b.perks.loadout) ? b.perks.loadout : [];
+  out.perks = migratePerks({ loadout: loadA.length ? loadA : loadB });
+  const chA = migrateChallenges(a.challenges);
+  const chB = migrateChallenges(b.challenges);
+  out.challenges = {
+    daily: { ...chB.daily, ...chA.daily },
+    weekly: { ...chB.weekly, ...chA.weekly },
   };
   // Unknown top-level keys (a newer schema riding inside the bag) pass through; the imported
   // copy wins a conflict, matching migrateProfile's own passthrough rule.
@@ -1248,6 +1470,14 @@ export function overconfidenceStreak(history) {
 export function compactRunResult(result, run, newly) {
   const challenge = challengeFromRun(run);
   const dailyDateKey = resolveDailyDateKey(result, run);
+  // SWARM-06: a Threat's mutator-shaped wager (No Re-rolls, Draftless) rides run.arenaMutators
+  // for its mechanics, but it is the run's OWN difficulty contract — recorded on
+  // compact.threats — never a side-door mutator. Kept out of compact.mutators so an honest
+  // wager cannot kick a ladder run off the climb it paid difficulty to fly.
+  const wagerMutators = new Set(swarmThreatMutatorIds(
+    (result && Array.isArray(result.threats) && result.threats)
+    || (run && run.telemetry && Array.isArray(run.telemetry.threats) && run.telemetry.threats)
+    || []));
   const compact = {
     schemaVersion: 1,
     outcome: result && result.outcome ? result.outcome : null,
@@ -1255,7 +1485,9 @@ export function compactRunResult(result, run, newly) {
     arenaId: (result && result.arenaId) || (run && run.arenaId) || null,
     ruleset: challenge.ruleset,
     trialId: challenge.trialId,
-    mutators: challenge.mutators.slice(),
+    mutators: wagerMutators.size
+      ? challenge.mutators.filter((id) => !wagerMutators.has(id))
+      : challenge.mutators.slice(),
     wave: result && Number.isInteger(result.wave) ? result.wave : 0,
     // SWARM-04: the round the run began at — 1 for a fresh ladder attempt, the checkpoint's
     // first wave for a head start. Without it a 10-round clear from Round 11 would read as
@@ -1396,11 +1628,42 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   if (ladderEval && (ladderEval.delta.newStars > 0 || ladderEval.delta.newCheckpoint)) {
     compact.ladderDelta = ladderEval.delta;
   }
+  // SWARM-06: the crossover ledger — a Swarm run whose cleared span covers an earn wave (the
+  // Zone 3 boss for the Saucer) writes the proof here. Practice runs and non-swarm rulesets
+  // earn nothing; already-earned ids never re-fire (applyCrossoverResult owns both laws).
+  const crossEval = applyCrossoverResult(loaded.crossover, {
+    ...crossoverFactsFor(compact),
+    at: recordedAt,
+  });
+  if (crossEval.earned.length) {
+    compact.crossoverEarned = crossEval.earned.map((entry) => entry.id);
+  }
+  // SWARM-06: challenge purses and the Threat wager's Bounty multiplier ride the Hangar bounty —
+  // Swarm's own wallet. bank.hangar is this module's bag, so the additions are honest writes.
+  const threatIds = Array.isArray(result && result.threats) ? result.threats
+    : (run && run.telemetry && Array.isArray(run.telemetry.threats) ? run.telemetry.threats : []);
+  const threatMult = swarmThreatBountyMult(threatIds);
+  if (threatMult !== 1 && bank.banked > 0) {
+    const bonus = Math.round(bank.banked * (threatMult - 1));
+    bank.hangar = { ...bank.hangar, bounty: (bank.hangar.bounty || 0) + bonus };
+    compact.threatBountyBonus = bonus;
+    compact.hangarBounty = bank.hangar.bounty;
+  }
+  if (threatIds.length) compact.threats = threatIds.slice();
+  const challengeEval = challengePayoutFor(compact, loaded.challenges, recordedAt);
+  if (challengeEval.paid.length) {
+    compact.challengeRewards = challengeEval.paid.map((row) => ({ ...row }));
+    const total = challengeEval.paid.reduce((sum, row) => sum + row.bounty, 0);
+    bank.hangar = { ...bank.hangar, bounty: (bank.hangar.bounty || 0) + total };
+    compact.hangarBounty = bank.hangar.bounty;
+  }
   const next = {
     ...loaded,
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
     unlocks: evaluated.unlocks,
     ladder: ladderEval ? ladderEval.ladder : loaded.ladder,
+    crossover: crossEval.crossover,
+    challenges: challengeEval.challenges,
     records: {
       byKey,
       lifetime: applyLifetime(records.lifetime, compact),
@@ -1516,6 +1779,17 @@ export function kitBalanceBoard(cells, {
     n: list.length,
   };
 }
+
+// SWARM-06: the crossover read port — ships.js sits upstream of this module (survivalMutators
+// imports it), so the shipyard's buy gate cannot import survivalRecords without a cycle. The
+// port hands the gate the bag's own migrated read: no reader, empty ledger, never a guessed earn.
+registerCrossoverReader(() => {
+  try {
+    return loadCrucibleMeta();
+  } catch {
+    return null;
+  }
+});
 
 export function formatKitBalanceBoard(board, { seeds = [] } = {}) {
   const lines = [];

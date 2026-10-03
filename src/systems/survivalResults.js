@@ -1058,6 +1058,14 @@ export const survivalResults = {
     result.swarmStake = run.telemetry && typeof run.telemetry.swarmStake === 'string'
       ? run.telemetry.swarmStake
       : null;
+    // SWARM-06: the Threat wager and the perk loadout the run flew under — flat on the result
+    // like the stake, so the plate and the settlement read the same stamp the run began with.
+    if (challenge.ruleset === SWARM_RULESET) {
+      const threats = run.telemetry && Array.isArray(run.telemetry.threats) ? run.telemetry.threats : [];
+      if (threats.length) result.threats = threats.slice();
+      const perks = run.telemetry && Array.isArray(run.telemetry.perks) ? run.telemetry.perks : [];
+      if (perks.length) result.perks = perks.slice();
+    }
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     result.stuntKills = this._stuntKills.map((s) => ({ ...s }));
     result.killReplay = this._lastKillReplay
@@ -1082,6 +1090,21 @@ export const survivalResults = {
         // SWARM-04: the stars/checkpoint the run just settled onto the ladder — the results
         // surface reads this straight, never re-derives eligibility itself.
         if (row.ladderDelta) result.ladderDelta = row.ladderDelta;
+        // SWARM-05 §7.4: the NEW BEST stamp rides the settlement — the plate never re-judges
+        // whether the line it just flew was a record.
+        if (row.bestLineId) result.bestLineId = row.bestLineId;
+        // SWARM-06 §8: the depth rows the settle wrote — the crossover hull the run proved,
+        // the challenge purses it claimed, and the Threat wager's bounty bonus. The plate
+        // prints what settled, never a re-derived guess.
+        if (Array.isArray(row.crossoverEarned) && row.crossoverEarned.length) {
+          result.crossoverEarned = row.crossoverEarned.slice();
+        }
+        if (Array.isArray(row.challengeRewards) && row.challengeRewards.length) {
+          result.challengeRewards = row.challengeRewards.map((entry) => ({ ...entry }));
+        }
+        if (Number.isFinite(row.threatBountyBonus) && row.threatBountyBonus > 0) {
+          result.threatBountyBonus = row.threatBountyBonus;
+        }
         const banked = Number.isFinite(row.bankedBounty) ? row.bankedBounty : 0;
         const chest = Number.isFinite(row.hangarBounty) ? row.hangarBounty : 0;
         result.bankLine = `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;

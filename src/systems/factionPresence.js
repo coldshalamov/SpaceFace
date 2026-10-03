@@ -4,7 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
@@ -728,7 +728,7 @@ export const factionPresence = {
 
     const canonicalSpec = makePresenceSpec(context.plan, state);
     canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
-    canonicalSpec.data.recordCreatedTick = state.tick | 0;
+    canonicalSpec.data.recordCreatedTick = deferredEnterTick(state) | 0;
     stampCeresTenderIdentity(canonicalSpec, context);
 
     let entity = live;

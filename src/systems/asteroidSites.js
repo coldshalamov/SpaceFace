@@ -494,13 +494,14 @@ export const asteroidSites = {
     // this listener just makes it prompt). Unanchored sites die with their re-rolled rock.
     this.bus.on('sector:enter', (p = {}) => {
       const { sectorId, enterEpoch } = p;
-      this._repairSweepWanted = true;
       // A tail-drained emit carries the epoch of the enter that minted it: a replayed
       // payload whose enterEpoch no longer matches the world's serial is stale — syncing
       // its sites mints home-keyed bodies nothing removes. Synthetic payloads (tests, the
       // census cook) carry no epoch and always run.
       const staleEnter = enterEpoch != null && !!state.world
         && state.world.enterSerial != null && enterEpoch !== state.world.enterSerial;
+      // Arm the sweep after the guard — a stale payload must not mutate live state at all.
+      if (!staleEnter) this._repairSweepWanted = true;
       // Live GPU + flight + hard enter: defer the materialization pair into the cook's
       // FIFO (the provider's steps twin covers both sync + repair) — the census drains
       // them under its slice clock in listener order.
@@ -511,8 +512,10 @@ export const asteroidSites = {
       if (!this._worldRestoreActive && !staleEnter) this._syncWorldSites(sectorId);
       // The 1s accumulator deferral exists to amortize per-frame cost, but an anchored rock
       // that died since the last visit belongs inside the enter census window — the respawn
-      // is idempotent, so the accumulator's later pass is a no-op rescan.
-      if (!this._worldRestoreActive) this._repairAnchors();
+      // is idempotent, so the accumulator's later pass is a no-op rescan. A stale payload
+      // pays nothing: its sweep would only re-scan the live sector and emit inside the
+      // presented frame.
+      if (!this._worldRestoreActive && !staleEnter) this._repairAnchors();
     });
     this.bus.on('sector:exit', ({ sectorId } = {}) => {
       // SF-294: snapshot each anchored claim's consequence counters as the player leaves — the

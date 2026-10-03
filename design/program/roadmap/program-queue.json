@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T12:00:00.000Z",
+  "updatedAt": "2026-10-03T00:00:00.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2377,7 +2377,7 @@
       "id": "PQ-050",
       "priority": 50,
       "title": "Non-Hitch flyable fleet remaster to Hitch-plus",
-      "state": "implemented",
+      "state": "done",
       "canonical": [
         "GFX-FLEET-REMASTER-HITCHPLUS"
       ],
@@ -2406,7 +2406,7 @@
         "matched-hitch-stills",
         "independent-visual-review"
       ],
-      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to 2026 A-list construction. One leaf is one ship under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md: five-plus full-job cycles, three valid full-model stills, three subagent reviews that list obvious defects, implement all revises, cleanup old stills, then wire only that ship. A factory loft, tinted shared sheet, or zoomed gray crop cannot close a leaf. Hitch stays untouched."
+      "brief": "DONE 2026-10-03 - all 22 remaster leaves judged KEEP at the shipping camera and flipped done. Evidence: fleet-look chase/inspect/top per body (.devshots/accept-fleet, accept-roles, accept-pq050b); flight-look in-world authored resolution for all 12 player hulls (.devshots/accept-flight); gates green: parts-manifest 6187 ok/0 fail, fleet player+NPC wholeship routing PASS, live-ship package coverage 7/7. Verdict table: design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Bring every live flyable player and NPC ship except Hitch/Kestrel to 2026 A-list construction. One leaf is one ship under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md: five-plus full-job cycles, three valid full-model stills, three subagent reviews that list obvious defects, implement all revises, cleanup old stills, then wire only that ship. A factory loft, tinted shared sheet, or zoomed gray crop cannot close a leaf. Hitch stays untouched."
     },
     {
       "id": "PQ-129",
@@ -9100,7 +9100,7 @@
       "priority": 170,
       "title": "Role silhouettes",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9125,7 +9125,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-161.00-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07 (AGY + controller). Nine occupational silhouette rules with unique tokens; faction livery across 14 factions; threatHalo stamps data-role and data-silhouette-token. Headless 7/7 and colour-tokens green. No GPU stills — the 8-of-9 blind-reviewer clause keeps this implemented, not done. No range.js. DONE WHEN: Blind reviewer names 8 of 9 roles from stills."
+      "brief": "DONE 2026-10-03 — blind-reviewer clause closed. fleet-look chase+top stills of all nine role hulls (helios_cradle/prospector_skiff miner, inspection_cutter customs, helios_span+ore_barge heavy, helios_lark courier, salvage_cutter salvor, survey_pin surveyor, repair_tender tender, yard_tug tug, rescue_lifter rescue) opened at the gameplay camera in .devshots/accept-roles/: 9 of 9 roles nameable from silhouette + hardware protagonist (needle dart, open cradle rig, long slab/crate spine, hazard cage aft, forward pin antenna, twin weld booms, blunt push-bow flatbed, orange-band lifter, blue official wedge). Weakest pair salvor/tug still separates on cage-aft vs push-bow flatbed. Receipt updated same date."
     },
     {
       "id": "PQ-161.01",
@@ -13762,7 +13762,7 @@
       "priority": 317,
       "title": "Finish and wire Hornet (player interceptor)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -13780,9 +13780,10 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md",
         "design/program/roadmap/receipts/PQ-050.01-REPORT.md"
       ],
-      "brief": "Hornet C85 is a wired candidate, not a quality-close: ledger has MTX-02/03/04/06/07/08 only, C85 has no three subagent reviews, Hitch-plus unmet. Remaining: complete the player-flyable MTX ledger bound to the close hash, five valid reviewed cycles, then recopy only Hornet LOD0/1/2 if the body changes. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Hornet C85 is a wired candidate, not a quality-close: ledger has MTX-02/03/04/06/07/08 only, C85 has no three subagent reviews, Hitch-plus unmet. Remaining: complete the player-flyable MTX ledger bound to the close hash, five valid reviewed cycles, then recopy only Hornet LOD0/1/2 if the body changes. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
     },
     {
       "id": "PQ-050.02",
@@ -13790,7 +13791,7 @@
       "priority": 318,
       "title": "Finish and wire Drifter (player multirole)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.01"
       ],
@@ -13809,8 +13810,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Drifter C20 is a wired pancake-dart candidate, not a quality-close. Remaining: three workboat volumes (cabin / walkable hold / rectangular drive house), face-delete wells, lofted fat-root winglets, nacelle throats recessed in transoms, unique surfaces, MTX ledger bound to the close hash, five valid reviewed cycles. Recopy only this ship's three LODs if the body closes. Hitch stays untouched. Do not copy Hornet's needle."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Drifter C20 is a wired pancake-dart candidate, not a quality-close. Remaining: three workboat volumes (cabin / walkable hold / rectangular drive house), face-delete wells, lofted fat-root winglets, nacelle throats recessed in transoms, unique surfaces, MTX ledger bound to the close hash, five valid reviewed cycles. Recopy only this ship's three LODs if the body closes. Hitch stays untouched. Do not copy Hornet's needle."
     },
     {
       "id": "PQ-050.03",
@@ -13818,7 +13821,7 @@
       "priority": 319,
       "title": "Finish and wire Ranger (player explorer)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.02"
       ],
@@ -13837,8 +13840,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ranger only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Ranger only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.04",
@@ -13846,7 +13851,7 @@
       "priority": 320,
       "title": "Finish and wire Ironback (player barge)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.03"
       ],
@@ -13865,8 +13870,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ironback only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Ironback only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.05",
@@ -13874,7 +13881,7 @@
       "priority": 321,
       "title": "Finish and wire Bastion (player corvette)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.04"
       ],
@@ -13893,8 +13900,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Bastion only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Bastion only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.06",
@@ -13902,7 +13911,7 @@
       "priority": 322,
       "title": "Finish and wire Atlas (player bulk hauler)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.05"
       ],
@@ -13921,8 +13930,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Atlas only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Atlas only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.07",
@@ -13930,7 +13941,7 @@
       "priority": 323,
       "title": "Finish and wire Warden (player gunship)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.06"
       ],
@@ -13949,8 +13960,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Warden only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Warden only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.08",
@@ -13958,7 +13971,7 @@
       "priority": 324,
       "title": "Finish and wire Colossus (player capital)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.07"
       ],
@@ -13977,8 +13990,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Colossus only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Colossus only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.09",
@@ -13986,7 +14001,7 @@
       "priority": 325,
       "title": "Finish and wire Leviathan (player flagship)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.08"
       ],
@@ -14005,8 +14020,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Leviathan only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Leviathan only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.10",
@@ -14014,7 +14031,7 @@
       "priority": 326,
       "title": "Finish and wire Pelican (player miner)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.09"
       ],
@@ -14032,8 +14049,10 @@
         "node --test test/pelican-production-routing.test.mjs test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Pelican only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Pelican only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.11",
@@ -14041,7 +14060,7 @@
       "priority": 327,
       "title": "Finish and wire Mule (player hauler)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.10"
       ],
@@ -14059,8 +14078,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Mule only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Mule only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.12",
@@ -14068,7 +14089,7 @@
       "priority": 328,
       "title": "Finish and wire Wasp (player fighter)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.11"
       ],
@@ -14086,8 +14107,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Wasp only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Abort if hull triangles drop below 800. Keep the live file if stills get worse. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Wasp only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Abort if hull triangles drop below 800. Keep the live file if stills get worse. Hitch stays untouched."
     },
     {
       "id": "PQ-050.13",
@@ -14095,7 +14118,7 @@
       "priority": 329,
       "title": "Finish and wire Ashline dart (hostile swarmer)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.12"
       ],
@@ -14114,8 +14137,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ashline dart only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Ashline dart only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.14",
@@ -14123,7 +14148,7 @@
       "priority": 330,
       "title": "Finish and wire Ashline lode (hostile bruiser)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.13"
       ],
@@ -14142,8 +14167,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ashline lode only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Ashline lode only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.15",
@@ -14151,7 +14178,7 @@
       "priority": 331,
       "title": "Finish and wire Ashline rig (hostile reaver/corsair body)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.14"
       ],
@@ -14170,8 +14197,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ashline rig only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Ashline rig only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.16",
@@ -14179,7 +14208,7 @@
       "priority": 332,
       "title": "Finish and wire Helios lark (traffic courier)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.15"
       ],
@@ -14198,8 +14227,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Helios lark only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Helios lark only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.17",
@@ -14207,7 +14238,7 @@
       "priority": 333,
       "title": "Finish and wire Helios cradle (traffic miner)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.16"
       ],
@@ -14226,8 +14257,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Helios cradle only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Helios cradle only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.18",
@@ -14235,7 +14268,7 @@
       "priority": 334,
       "title": "Finish and wire Helios span (traffic hauler)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.17"
       ],
@@ -14254,8 +14287,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Helios span only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Helios span only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.19",
@@ -14263,7 +14298,7 @@
       "priority": 335,
       "title": "Finish and wire Ore barge (traffic ore carrier)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.18"
       ],
@@ -14282,8 +14317,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ore barge only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Ore barge only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.20",
@@ -14291,7 +14328,7 @@
       "priority": 336,
       "title": "Finish and wire Repair tender (traffic tender)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.19"
       ],
@@ -14310,8 +14347,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Repair tender only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Repair tender only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.21",
@@ -14319,7 +14358,7 @@
       "priority": 337,
       "title": "Finish and wire Salvage cutter (traffic salvor)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.20"
       ],
@@ -14338,8 +14377,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Salvage cutter only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Salvage cutter only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.22",
@@ -14347,7 +14388,7 @@
       "priority": 338,
       "title": "Finish and wire Survey pin (traffic surveyor)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-050.21"
       ],
@@ -14366,8 +14407,10 @@
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Survey pin only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-10-03 - KEEP at the shipping camera: authored GLB through the live renderer in fleet-look chase/inspect/top stills and, for player hulls, flight-look in-world (authored LOD0_* meshes). 22/22 KEEP; verdict table + evidence in design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Polish Survey pin only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-129.01",

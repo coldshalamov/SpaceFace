@@ -11,11 +11,13 @@
 import { MORROW_AUDIO_RECIPES } from './morrow.js';
 import { VESPER_AUDIO_RECIPES } from './vesper.js';
 import { BRACKET_AUDIO_RECIPES } from './bracket.js';
+import { RAVEL_AUDIO_RECIPES } from './ravel.js';
 
 export const RECIPES = [
   ...MORROW_AUDIO_RECIPES,
   ...VESPER_AUDIO_RECIPES,
   ...BRACKET_AUDIO_RECIPES,
+  ...RAVEL_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',
@@ -2278,6 +2280,51 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 420,
     gainMult: 0.75,
   },
+  // FB-073 — cargo jettison: pods leaving the hold. Same blunt rear-quarter thud register as the
+  // massline kick (its dash_punch sample binding is shared at rate 0.8), a touch lower and longer
+  // so the read is "mass leaving" rather than "line kicked".
+  {
+    id: 'sfx_cargo_jettison',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 84,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'lowpass', filterFreq: 400,
+    gainMult: 0.75,
+  },
+  // FB-142 — the planet band verbs. Collector intake: a breath of band-passed air opening on the
+  // skim band — a mouth, not a chime; the off register is the same voice pitched down.
+  {
+    id: 'sfx_planet_collector',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 480,
+    gainEnvelope: { attack: 0.025, sustain: 0.06, release: 0.38 },
+    filterType: 'bandpass', filterFreq: 780, filterQ: 1.7,
+    gainMult: 0.6,
+  },
+  // The plunge ring advancing: a low heat growl — atmosphere pressing in, not combustion. The
+  // audio route steps rate/gain per stage, so commit/breakup/descent climb and 'clear' releases.
+  {
+    id: 'sfx_planet_plunge',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 130,
+    gainEnvelope: { attack: 0.02, sustain: 0.1, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 460,
+    gainMult: 0.75,
+  },
+  // The recovery burn: a sustained outward shove in the jettison-thud register, longer — burning
+  // out of the well, not kicking a pod.
+  {
+    id: 'sfx_planet_recovery_burn',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 105,
+    gainEnvelope: { attack: 0.012, sustain: 0.14, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 440,
+    gainMult: 0.8,
+  },
   // Aft rack ejector: short mechanical clack + filtered breath, distinct from detonation.
   // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
   {
@@ -3341,6 +3388,8 @@ export const SAMPLE_BINDINGS = {
   sfx_massline_cloak_on: { id: 'massline_cloak', share: 0.6 },
   sfx_massline_cloak_off: { id: 'massline_cloak', share: 0.6, rate: 1.4 },
   sfx_massline_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
+  // FB-073: the cargo jettison voice shares the massline kick's punch recording at the same rate.
+  sfx_cargo_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
   // Aft rack ejector: the massline release recording a register down — ordnance
   // hardware letting go, never a menu detent.
   sfx_massline_bomb_drop: { id: 'massline_release', share: 0.55, rate: 0.8 },

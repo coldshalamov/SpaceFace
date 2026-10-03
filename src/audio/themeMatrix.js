@@ -223,6 +223,35 @@ export function resolveThemeState(input = {}) {
 }
 
 /**
+ * SWARM-06 — the chain's music lift, 0..1. A running Swarm chain drags the audible stem mix
+ * toward the combat register without changing the STATE row the rest of the matrix resolves —
+ * same bed, same motif, a hotter mix of it. Pure and bounded: 40 chain saturates.
+ */
+export const SWARM_LIFT_CHAIN_FULL = 40;
+export function swarmChainLift(chain) {
+  const c = Math.max(0, Number(chain) || 0);
+  return Math.min(1, c / SWARM_LIFT_CHAIN_FULL);
+}
+
+/**
+ * The lifted mix: blend each audible stem toward the combat row's sector-registered weight,
+ * never downward — a station mix stays a station mix, it just lets the fight bleed in.
+ */
+export function applySwarmStemLift(audibleWeights, sectorWeights, lift) {
+  const k = clamp01(lift);
+  if (k <= 0) return audibleWeights;
+  const combat = THEME_STEM_WEIGHTS.combat;
+  const out = {};
+  for (const key of ['A', 'B', 'C', 'D']) {
+    const base = Number(audibleWeights && audibleWeights[key]) || 0;
+    const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
+    const toward = (Number(combat[key]) || 0) * sector;
+    out[key] = Math.round((base + Math.max(0, toward - base) * k) * 1000) / 1000;
+  }
+  return Object.freeze(out);
+}
+
+/**
  * Adaptive matrix: game presentation snapshot → authored stem weights, motif, per-sector bed,
  * optional faction sting. Pure.
  */
@@ -232,7 +261,10 @@ export function resolveThemeMatrix(input = {}) {
   const stemWeights = THEME_STEM_WEIGHTS[state];
   const bedRow = resolveSectorBed(input.sectorId);
   const sectorStemWeights = bedRow.stemWeights;
-  const audibleStemWeights = mixAudibleStemWeights(stemWeights, sectorStemWeights);
+  let audibleStemWeights = mixAudibleStemWeights(stemWeights, sectorStemWeights);
+  // SWARM-06: `input.swarmLift` (0..1) is the chain's hand on the faders — the same state row,
+  // driven hotter as the run's kill chain climbs.
+  audibleStemWeights = applySwarmStemLift(audibleStemWeights, sectorStemWeights, input.swarmLift);
   const stingRow = resolveFactionSting(input.factionId);
   const stem = MUSIC_STEMS.find((row) => row && (row.id === `stem_${motif.stem.toLowerCase()}` || row.label))
     || MUSIC_STEMS[0];

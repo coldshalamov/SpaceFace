@@ -377,6 +377,7 @@ Current save version: `14`
 | `$.settings.controls.gamepad.deadzone` | number | 0.12 |
 | `$.settings.controls.gamepad.deadzoneRight` | number | 0.12 |
 | `$.settings.controls.gamepad.enabled` | boolean | true |
+| `$.settings.controls.gamepad.glyphSet` | string | xb |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
 | `$.settings.controls.gamepad.scheme` | string | drive |
 | `$.settings.controls.gamepad.schemeSuggested` | boolean | false |

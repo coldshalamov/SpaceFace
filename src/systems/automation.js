@@ -607,6 +607,10 @@ export const automation = {
 
   /** Soft handoff: live drone groups follow current sector membership without teardown or re-spawn. */
   _onContinuousDroneMembership(p) {
+    // A stale queued tail stamps live groups with the departed sector id — it self-heals
+    // next tick but a mid-window save would persist the wrong sector.
+    if (p && p.enterEpoch != null && this.state.world
+        && this.state.world.enterSerial != null && p.enterEpoch !== this.state.world.enterSerial) return;
     if (!(p && (p.continuous || p.noTeleport))) return;
     const sid = p.sectorId || (this.state.world && this.state.world.currentSectorId) || null;
     if (!sid || !this.state.automation || !this.state.automation.drones) return;

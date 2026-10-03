@@ -120,6 +120,13 @@ ${A} .orr-armory-reading__foot .orr-armory-reading__budget { grid-column:1; marg
 ${A} .orr-armory-reading__foot .orr-armory-reading__buy { grid-column:2; width:100%; margin:0 !important; }
 ${A} .orr-armory-reading__foot .orr-armory-reading__demo { grid-column:2; margin:0 0 6px; }
 ${A} .orr-armory-reading__foot .orr-armory-reading__demo:empty { display:none; }
+/* SWARM-05 hold verb rides the pinned foot under the wallet gauge — same visual
+   weight as the demo link, and the column the gauge already paid for, so the
+   foot grows no rows and the fold keeps its height */
+${A} .orr-armory-reading__foot .orr-armory-reading__hold { grid-column:1; margin:0 !important; align-self:start; }
+${A} .orr-armory-reading__foot .orr-armory-reading__hold:empty { display:none; }
+${A} .orr-armory-reading__hold-word { font:500 13px var(--dp-face-label) !important; min-height:32px; padding:6px 0; color:var(--dp-ink-dim) !important; border:0; border-bottom:1px solid var(--dp-line); background:none; cursor:pointer; }
+${A} .orr-armory-reading__hold-word:hover { color:var(--dp-ink) !important; }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 /* bottom fade on the scrollable pane — the cue that dossier words continue below the fold */
 ${A} .orr-armory-reading__main { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); }
@@ -302,16 +309,23 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__jig { width:calc(55% - 10px) !important; min-width:0; flex:none; height:180px !important; }
  ${A} .orr-armory-object-label { display:none; }
  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
- ${A} .orr-armory-reading__foot { grid-template-columns:minmax(0,1fr) !important; gap:8px !important; }
- ${A} .orr-armory-reading__foot :is(.orr-armory-reading__budget, .orr-armory-reading__buy, .orr-armory-reading__demo) { grid-column:auto !important; }
+ ${A} .orr-armory-reading__foot { grid-template-columns:minmax(0,1fr) auto !important; gap:8px !important; }
+ ${A} .orr-armory-reading__foot :is(.orr-armory-reading__demo, .orr-armory-reading__buy) { grid-column:1 / -1 !important; }
+ ${A} .orr-armory-reading__foot .orr-armory-reading__budget { grid-column:1 !important; }
+ ${A} .orr-armory-reading__foot .orr-armory-reading__hold { grid-column:2 !important; grid-row:1 !important; align-self:center !important; }
+ ${A} .orr-armory-reading__foot .orr-armory-reading__hold:empty { display:none !important; }
 }
 /* narrow AND short: the dossier words lead and the transaction band compresses, so
    the name and the 'when it pays' line are the fold, not the clip. */
 @media (max-width:1150px) and (max-height:720px) {
+ /* upstream's cradle status line costs the pane ~30px at this size — reclaim it
+    from the pane's own padding so the fold still carries name + 'when it pays' */
+ ${A} .orr-armory-reading.orr-armory-reading { padding:6px 2px 6px 16px !important; }
  ${A} .orr-armory-item { height:120px; min-height:104px; }
  ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
  ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
- ${A} .orr-armory-reading__name { font-size:20px !important; margin:4px 0 4px !important; }
+ ${A} .orr-armory-reading__verb { margin:0 0 2px !important; line-height:1.3 !important; }
+ ${A} .orr-armory-reading__name { font-size:20px !important; margin:2px 0 4px !important; }
  /* words before the media band: what it IS reads before what it looks like */
  ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; }
  ${A} .orr-armory-reading__words { order:-1; }
@@ -326,7 +340,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
  ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
  /* compress the docked band so Install still pins above the fold */
- ${A} .orr-armory-reading__foot { margin-top:6px !important; padding-top:6px !important; }
+ ${A} .orr-armory-reading__foot { margin-top:4px !important; padding-top:4px !important; }
  ${A} .orr-armory-reading__budget { margin:0 0 6px !important; }
  ${A} .orr-armory-budget { height:40px !important; width:auto !important; }
  ${A} .orr-armory-reading__foot .orr-armory-reading__demo { margin:0 0 4px !important; }

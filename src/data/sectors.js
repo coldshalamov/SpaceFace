@@ -326,6 +326,9 @@ const CORE_SECTORS = [
     ],
     hazards: [ { type: 'nebula', center: { x: 400, z: 600 }, radius: 800, intensity: 0.4 } ],
     pois: [
+      { id: 'poi_ravel', type: 'anomaly', name: 'RAVEL · The Unraveller',
+        pos: { x: -940, z: 620 }, runtimeOwner: 'ravel', scannerSignalKind: 'anomaly',
+        dressingExclusionRadius: 300, chartNote: 'Three borrowed weights. Scan to hail; scan again to challenge.' },
       {
         id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage',
         requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,

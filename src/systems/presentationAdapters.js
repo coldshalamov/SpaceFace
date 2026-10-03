@@ -519,6 +519,9 @@ export const presentationAdapters = {
       material: cue.material || 'unknown',
       sourceId: admission.sourceId,
       targetId: admission.targetId,
+      // FB-072 — the declared severity shape tier (silhouette/layout/primitive) rides the cue
+      // into the render record, so a higher rung is identifiable by shape, not budget.
+      shape: cue.shape || null,
       tags: Array.isArray(cue.tags) ? [...cue.tags] : [],
     };
     this.bus.emit('presentation:vfxCue', payload);

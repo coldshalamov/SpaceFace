@@ -47,6 +47,7 @@ import {
   shouldAdmitScar,
 } from '../combat/hullScars.js';
 import { cleanShipName } from '../data/hullIdentity.js';
+import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { hash32 } from '../core/rng.js';
 
 /** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
@@ -87,6 +88,20 @@ export function hullExclusiveStationId(def) {
     if (offer && offer.exclusive === true && Number.isFinite(Number(offer.price))) return stationId;
   }
   return null;
+}
+
+/**
+ * The refusal line a locked def earns. A swarmEarned def is not behind research — the ledger
+ * says exactly how it opens, so the toast says that instead of naming a tech that cannot help.
+ */
+export function defLockReasonText(def) {
+  if (def && typeof def.swarmEarned === 'string' && def.swarmEarned) {
+    const row = SWARM_CROSSOVER_CATALOG.find((entry) => entry.id === def.swarmEarned);
+    return row && row.blurb
+      ? `Earned in Swarm — ${row.blurb}`
+      : 'Earned in Swarm';
+  }
+  return 'Research required: ' + techDisplayName(def && def.requiresTech);
 }
 
 /**
@@ -527,15 +542,19 @@ export function dryRunLoadoutPresetApply({
     }
     const unlocked = typeof isUnlockedFn === 'function'
       ? !!isUnlockedFn(def)
+      // No injected resolver: a swarmEarned def fails CLOSED here — a pure caller cannot
+      // see the crossover ledger, so the honest answer is "cannot confirm the earn", not
+      // a guessed unlock. RequiresTech keeps its own read.
       : !(def.requiresTech && !(player && Array.isArray(player.researchedNodes)
-        && player.researchedNodes.includes(def.requiresTech)));
+        && player.researchedNodes.includes(def.requiresTech)))
+        && !def.swarmEarned;
     if (!unlocked) {
       slotBlockers.push({
         reason: 'research_required',
         defId,
         name: def.name,
         slotIndex,
-        text: 'Research required: ' + techDisplayName(def.requiresTech),
+        text: defLockReasonText(def),
       });
       continue;
     }
@@ -2001,9 +2020,15 @@ export const ships = {
   },
 
   /** A ship/module def is buyable iff it has no requiresTech, that tech is researched, or the
-   *  docked station stocks it on the shop rack. */
+   *  docked station stocks it on the shop rack. A `swarmEarned` def answers a different ledger
+   *  entirely (SWARM-06): the crossover row the player's Swarm runs wrote — research never
+   *  opens it, and the station-rack exception is the only other door. */
   isUnlocked(def) {
     if (!def) return false;
+    if (def.swarmEarned) {
+      return swarmCrossoverEarned(def.swarmEarned)
+        || !!stationShopOffer(def, dockedShopStationId(this.state));
+    }
     if (!def.requiresTech) return true;
     if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;
     return !!stationShopOffer(def, dockedShopStationId(this.state));
@@ -2027,7 +2052,7 @@ export const ships = {
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return refuse('unknown_module'); }
     if (!this.isUnlocked(def)) {
-      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
       return refuse('research_required');
     }
     if (hullDefId != null) {
@@ -2127,7 +2152,7 @@ export const ships = {
     // grant=true: crafted ship — materials were the cost, tech already gated by the blueprint.
     if (!grant) {
       if (!this.isUnlocked(def)) {
-        this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
+        this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
         return false;
       }
       if (p.credits < price) {
@@ -2296,7 +2321,7 @@ export const ships = {
       return { reason: 'incompatible_slot', text: fitRefusalText(slot, def) };
     }
     if (!this.isUnlocked(def)) {
-      return { reason: 'research_required', text: 'Research required: ' + techDisplayName(def.requiresTech) };
+      return { reason: 'research_required', text: defLockReasonText(def) };
     }
     const conflictingDef = findMasslineHeadConflict(owned.fittings, slotIndex, def);
     if (conflictingDef) {
@@ -2444,6 +2469,20 @@ export const ships = {
     owned.fittings[slotIndex] = null;
     this.recomputeIfActive(shipIndex, owned.fittings);
     return inst || { instanceId: null, defId };
+  },
+
+  /** SWARM-05 — the hold-side twin of takeFittedModuleInstance: a sale consumes the exact
+   *  spare record the instanceId names (never a same-defId stand-in), so a stack of identical
+   *  parts loses precisely the one the player pointed at. Returns the record; null when the
+   *  hold no longer carries it. Silent like its twin — the caller owns the receipt. */
+  takeInventoryModuleInstance(instanceId) {
+    const p = this.state.player;
+    const inventory = p && Array.isArray(p.moduleInventory) ? p.moduleInventory : null;
+    if (!inventory || instanceId == null) return null;
+    const index = inventory.findIndex((item) => item && item.instanceId === instanceId);
+    if (index < 0) return null;
+    const [record] = inventory.splice(index, 1);
+    return record || null;
   },
 
   loadoutPresets() {

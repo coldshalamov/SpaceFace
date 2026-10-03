@@ -885,9 +885,7 @@ export function authoredBootstrapPreloadPlan() {
 }
 
 function entityOnOpeningTable(entity, state) {
-  const player = state && state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(state.playerId)
-    : (state && state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+  const player = resolvePlanarPlayer(state);
   if (!player || !player.pos || !entity || !entity.pos) return false;
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
@@ -993,7 +991,12 @@ function isExplicitFirstFlightCookEntity(entity) {
 }
 
 const FIRST_FLIGHT_ROCK_TRAVEL_SECONDS = 3;
-export const FIRST_FLIGHT_ROCK_COOK_CAP = 8;
+// Bounds distinct cook keys (typeId|tint|variant), not raw promotes: the shipped field
+// key space tops out at 5 typeIds × 5 hash variants = 25, so a cap of 25 is
+// coverage-until-exhausted for every field while still bounding total promotes. The
+// previous 8 covered only the nearest third of a tier-1 field — the other ~17 variant
+// keys mounted cold on the live frame (pop + first-variant upload hitch).
+export const FIRST_FLIGHT_ROCK_COOK_CAP = 25;
 // Must match visualFactory.hashId(id) % ASTEROID_INSTANCE_VARIANT_COUNT.
 const FIRST_FLIGHT_ASTEROID_VARIANT_COUNT = 5;
 
@@ -1017,15 +1020,22 @@ export function asteroidFirstFlightCookKey(entity) {
   return `${asteroidFirstFlightTypeKey(entity)}|${variant}`;
 }
 
-function playerPlanarDistanceSq(entity, state) {
-  const player = state && state.entities && typeof state.entities.get === 'function'
+function resolvePlanarPlayer(state) {
+  return state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : (state && state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+}
+
+function planarDistanceSqToPlayer(entity, player) {
   if (!player || !player.pos || !entity || !entity.pos) return Infinity;
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return Infinity;
   return dx * dx + dz * dz;
+}
+
+function playerPlanarDistanceSq(entity, state) {
+  return planarDistanceSqToPlayer(entity, resolvePlanarPlayer(state));
 }
 
 export function firstFlightRockCookRadiusWu(state) {
@@ -1039,6 +1049,9 @@ export function collectFirstFlightCookEntities(state) {
   const asteroids = [];
   const rockRadius = firstFlightRockCookRadiusWu(state);
   const rockRadiusSq = rockRadius * rockRadius;
+  // The player resolve hoists out of the entity walk — resolving per asteroid paid a
+  // Map.get (or an entityList scan) per row inside the cook's unyielded collect window.
+  const cookPlayer = resolvePlanarPlayer(state);
   for (const entity of list) {
     if (!entity || entity.alive === false) continue;
     if (isFirstFlightCookEntity(entity, state)) {
@@ -1046,7 +1059,7 @@ export function collectFirstFlightCookEntities(state) {
       continue;
     }
     if (entity.type !== 'asteroid') continue;
-    const distanceSq = playerPlanarDistanceSq(entity, state);
+    const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
     // Sort reads the distance the filter just paid for — a per-comparison
     // playerPlanarDistanceSq call re-does entities.get(playerId) O(A·logA) times
     // inside the cook's unyielded collect window.
@@ -1055,8 +1068,9 @@ export function collectFirstFlightCookEntities(state) {
   asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
   const seenKeys = new Set();
   for (const { entity } of asteroids) {
+    if (seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
     const key = asteroidFirstFlightCookKey(entity);
-    if (seenKeys.has(key) || seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
+    if (seenKeys.has(key)) continue;
     seenKeys.add(key);
     selected.push(entity);
   }
@@ -7602,6 +7616,7 @@ export function collectPreparedAuthoredCompileRoots(scene) {
 /** Loading-shell wait only. Does not change the flight-start readiness gate. */
 export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
   const timeoutMs = Math.max(0, Number(options.timeoutMs) || 6000);
+  const stale = typeof options.stale === 'function' ? options.stale : () => false;
   const yieldToMain = typeof options.yieldToMain === 'function'
     ? options.yieldToMain
     : () => new Promise((resolve) => setTimeout(resolve, 16));
@@ -7625,6 +7640,7 @@ export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
     return pumpAuthoredUpgradeQueue(scene);
   };
   while (now() - started < timeoutMs) {
+    if (stale()) return { idle: false, superseded: true, waitedMs: now() - started, ...snapshot() };
     pump();
     const stats = snapshot();
     if (stats.pending === 0 && stats.inFlight === 0 && stats.running !== true
@@ -7681,6 +7697,7 @@ export function requestOpeningCompositionUpgrades(state, renderer, scene, meshes
 /** Loading-shell wait only. Nearby opening actors settle before the live-scene cook, not the flight gate. */
 export async function waitForOpeningCompositionSettled(state, options = {}) {
   const timeoutMs = Math.max(0, Number(options.timeoutMs) || 8000);
+  const stale = typeof options.stale === 'function' ? options.stale : () => false;
   const yieldToMain = typeof options.yieldToMain === 'function'
     ? options.yieldToMain
     : () => new Promise((resolve) => setTimeout(resolve, 16));
@@ -7703,6 +7720,17 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
   };
   let lastRequest = { requested: 0, ids: [] };
   while (now() - started < timeoutMs) {
+    if (stale()) {
+      return {
+        settled: false,
+        reason: 'superseded',
+        waitedMs: now() - started,
+        pending: -1,
+        ids: [],
+        requested: lastRequest,
+        queue: describeAuthoredUpgradeQueue(options.scene),
+      };
+    }
     lastRequest = request();
     pump();
     const readiness = authoredCriticalVisualReadiness(state);

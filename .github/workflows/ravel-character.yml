@@ -1,0 +1,61 @@
+name: Ravel character
+on:
+  pull_request:
+    paths:
+      - 'src/**/ravel*'
+      - 'src/render/characters/ravelModel.js'
+      - 'test/ravel*.test.mjs'
+      - 'tools/ravel/**'
+      - '.github/workflows/ravel-character.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  encounter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/
+            /vendor/
+            /test/
+            /tools/ravel/
+            /scripts/
+            /assets/*.json
+            /assets/**/*.json
+            /index.html
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Use the vendored production engines without installing the Electron toolchain
+        run: |
+          mkdir -p node_modules/three node_modules/@dimforge/rapier3d-compat
+          printf '%s' '{"name":"three","type":"module","exports":{".":"./three.module.js","./addons/*":"./addons/*"}}' > node_modules/three/package.json
+          ln -s ../../vendor/three.module.js node_modules/three/three.module.js
+          ln -s ../../vendor/three.core.js node_modules/three/three.core.js
+          ln -s ../../vendor/addons node_modules/three/addons
+          printf '%s' '{"name":"@dimforge/rapier3d-compat","type":"module","exports":"./rapier.mjs"}' > node_modules/@dimforge/rapier3d-compat/package.json
+          ln -s ../../../vendor/rapier3d-compat/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
+      - name: Character and asset contracts
+        run: node --test test/ravel.test.mjs test/ravel-model.test.mjs
+      - name: Browser client only
+        run: |
+          mkdir -p "$RUNNER_TEMP/ravel-tools"
+          cd "$RUNNER_TEMP/ravel-tools"
+          printf '{"private":true}' > package.json
+          npm install --no-save --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=60000 playwright@1.56.1
+      - name: Play and capture the production encounter
+        run: RAVEL_PLAYWRIGHT="$RUNNER_TEMP/ravel-tools/node_modules/playwright/index.mjs" node tools/ravel/review.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ravel-character-review
+          path: .ravel-review/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: warn

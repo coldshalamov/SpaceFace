@@ -1618,6 +1618,9 @@ export const presentationOrchestrator = {
     // Reduced-mode intent likewise travels with the cue when the recipe declares it.
     if (recipe.reducedMotionMode) event.reducedMotionMode = recipe.reducedMotionMode;
     if (recipe.reducedFlashMode) event.reducedFlashMode = recipe.reducedFlashMode;
+    // FB-072 — the declared shape tier (silhouette/layout/signaturePrimitive) rides the cue so
+    // the render record shows WHICH shape carried severity, not only how much was spent.
+    if (recipe.shape) event.shape = recipe.shape;
 
     const suppressReason = this._suppressionReason(event, recipe);
     if (suppressReason) return this._suppress(cueId, payload, options, suppressReason, event);

@@ -25,7 +25,7 @@
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
@@ -1067,7 +1067,7 @@ export const survivorPod = {
     if (!point) return null;
 
     const dest = rescueStationForSector(sectorId);
-    const startedAt = state.simTime || 0;
+    const startedAt = deferredEnterNow(state) || 0;
     const rec = {
       salvagePointId: point.id,
       entityId: point.entityId == null ? null : point.entityId,

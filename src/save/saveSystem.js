@@ -617,6 +617,7 @@ export const save = {
       ['morrow', () => this._callSerialize('morrow') || {}],
       ['vesper', () => this._callSerialize('vesper') || {}],
       ['bracket', () => this._callSerialize('bracket') || {}],
+      ['ravel', () => this._callSerialize('ravel') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -718,6 +719,7 @@ export const save = {
     data.morrow = this._callSerialize('morrow') || {};
     data.vesper = this._callSerialize('vesper') || {};
     data.bracket = this._callSerialize('bracket') || {};
+    data.ravel = this._callSerialize('ravel') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -4713,6 +4715,7 @@ export const save = {
       this._callDeserialize('morrow', data.morrow);
       this._callDeserialize('vesper', data.vesper);
       this._callDeserialize('bracket', data.bracket);
+      this._callDeserialize('ravel', data.ravel);
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion

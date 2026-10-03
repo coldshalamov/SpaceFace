@@ -24,6 +24,8 @@ import { dressLampKey } from '../../orrery/lampKey.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { buildDuration } from '../../../systems/crafting.js';
+import { sellableCargoQuantity } from '../../../systems/cargo.js';
+import { techDisplayName } from '../../../data/tech.js';
 
 /** How long FABRICATE is held before the run commits (the process bezel fills over it). */
 export const INDUSTRY_HOLD_MS = 900;
@@ -56,7 +58,10 @@ function outputLink(id, kind, escapedLabel) {
   return type ? entitySpanHtml(type + ':' + id, escapedLabel) : escapedLabel;
 }
 function researched(state) { const r = state && state.player && (state.player.researchedNodes || state.player.researched); return new Set(Array.isArray(r) ? r : []); }
-function items(state) { return (state && state.player && state.player.cargo && state.player.cargo.items) || {}; }
+// P02 — the free, cargo-owned quantity: sealed contract freight and persistent story cargo ride
+// in the same hold but can never feed a fabricator, so every "have" the screen prints and the
+// materials gate below count only the units the player may actually spend.
+function freeQty(state, id) { return sellableCargoQuantity(state, id); }
 function stationType(ctx) {
   if (ctx.station && ctx.station.type) return ctx.station.type;
   const id = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
@@ -91,9 +96,44 @@ export function industryReadiness(bp, state, stnType) {
   if (bp.category === 'augment' && bp.fromModule && !ownsModule(state, bp.fromModule)) {
     return { state: 'source', label: `Needs ${niceName(bp.fromModule, 'module')}` };
   }
-  const it = items(state);
-  for (const id in (bp.inputs || {})) if ((it[id] || 0) < bp.inputs[id]) return { state: 'materials', label: 'Missing materials' };
+  for (const id in (bp.inputs || {})) if (freeQty(state, id) < bp.inputs[id]) return { state: 'materials', label: 'Missing materials' };
   return { state: 'ready', label: 'Ready to build' };
+}
+
+/** P10 — the chain's blocked plate names the ACTUAL reason and its own remedy. A facility
+ *  mismatch is the only reason that sends the player to the chart; missing research goes to the
+ *  tech tree and a missing source module to Shipworks — never "another station" for a recipe
+ *  this fabricator could otherwise run. `verb` is the data-ind-* hook the click route answers. */
+export function industryBlocker(bp, r) {
+  if (!bp || !r || r.state === 'ready' || r.state === 'materials') return null;
+  const reason = shortBlockLabel(bp, r);
+  if (r.state === 'station') {
+    return {
+      reason,
+      note: 'Not at this station',
+      verb: 'chart',
+      verbLabel: 'Find a ' + (bp.stationType === 'fab' ? 'fabricator' : 'refinery') + ' on the chart',
+      controlId: 'find-facility',
+    };
+  }
+  if (r.state === 'tech') {
+    return {
+      reason,
+      note: 'Research: ' + techDisplayName(bp.requiresTech),
+      verb: 'tech',
+      verbLabel: 'Open the tech tree',
+      controlId: 'tech-tree',
+    };
+  }
+  // 'source' (or any later blocker): this station can run the recipe once the named input is
+  // owned — modules live at this station's Shipworks counter, not on the sector chart.
+  return {
+    reason,
+    note: 'This station can run it',
+    verb: 'shipworks',
+    verbLabel: 'Find it in Shipworks',
+    controlId: 'shipworks',
+  };
 }
 
 export function createIndustryScreen(ctx) {
@@ -151,8 +191,7 @@ export function createIndustryScreen(ctx) {
           const headType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0] || '';
           const facility = allStation ? (headType === 'fab' ? 'fabricator' : 'refinery') : '';
           const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
-          const it = items(state);
-          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(it[id] || 0); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
+          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
           // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
           const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && bp.stationType === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
           // what the whole group shares is said once on its header: one tier, and one reason when every rung not ready gives the same one
@@ -188,7 +227,6 @@ export function createIndustryScreen(ctx) {
   function renderStage(state) {
     const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
     if (!bp) { stageEl.innerHTML = ''; return; }
-    const it = items(state);
     const stn = stationType(ctx);
     const r = industryReadiness(bp, state, stn);
     const sid = state && state.ui && state.ui.dockedStationId;
@@ -197,7 +235,7 @@ export function createIndustryScreen(ctx) {
     const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
 
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
-      const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
+      const need = bp.inputs[id]; const have = Math.floor(freeQty(state, id));
       const ok = have >= need;
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
@@ -244,11 +282,11 @@ export function createIndustryScreen(ctx) {
           `</button>` +
         `</li></ul>` +
       `</div>`;
-    composeStage(bp, it, r, canBuild, queue, progress);
+    composeStage(bp, state, r, canBuild, queue, progress);
   }
 
   /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
-  function composeStage(bp, it, r, canBuild, queue = null, progress = 0) {
+  function composeStage(bp, state, r, canBuild, queue = null, progress = 0) {
     if (chain) { chain.dispose(); chain = null; }
     const fab = stageEl.querySelector('.sx-fab');
     if (!fab) return;
@@ -265,9 +303,10 @@ export function createIndustryScreen(ctx) {
       fab.style.setProperty('--fab-foot-x', `${Math.round(hr.left - fr.left + g.xFoot)}px`);
       fab.style.setProperty('--fab-foot-y', `${Math.round(hr.top - fr.top + g.yFoot)}px`);
     } });
+    const blocker = !queue ? industryBlocker(bp, r) : null;
     chain.set({
       inputs: Object.keys(bp.inputs || {}).map((id) => {
-        const have = Math.floor(it[id] || 0);
+        const have = Math.floor(freeQty(state, id));
         const need = bp.inputs[id];
         // a short input carries its own way out: the market, in one word under the count
         const verbHtml = have < need
@@ -280,7 +319,7 @@ export function createIndustryScreen(ctx) {
       output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
-      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span><button type="button" ${stationControlAttrs('find-facility')} class="orr-chain__wayout" data-ind-chart="1">Find a ${bp.stationType === 'fab' ? 'fabricator' : 'refinery'} on the chart</button>` } : null,
+      blocked: blocker ? { reason: escapeHtml(blocker.reason), verbHtml: `<span class="orr-chain__blocknote">${escapeHtml(blocker.note)}</span><button type="button" ${stationControlAttrs(blocker.controlId)} class="orr-chain__wayout" data-ind-${blocker.verb}="1">${escapeHtml(blocker.verbLabel)}</button>` } : null,
       // the bezel is the hold ring: dark at rest, lit by a held FABRICATE
       timeFrac: 0,
       progress: queue ? progress : null,
@@ -442,6 +481,20 @@ export function createIndustryScreen(ctx) {
     if (chart) {
       openGalaxyMap(ctx, { focus: (MAP_FOCUS && (MAP_FOCUS.GALAXY || MAP_FOCUS.SYSTEM)) || undefined, source: 'station-industry:wayout' });
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
+    // P10 — each blocker verb goes to ITS remedy: the tech tree for missing research,
+    // Shipworks for a missing source module. Only the facility way out rides the chart.
+    if (ev.target.closest('[data-ind-tech]')) {
+      if (!ctx.bus) return;
+      ctx.bus.emit('ui:pushScreen', { id: 'techTree', source: 'station-industry:tech' });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
+    if (ev.target.closest('[data-ind-shipworks]')) {
+      if (!ctx.bus) return;
+      ctx.bus.emit('station:navigate', { destination: 'shipworks' });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
       return;
     }
     const source = ev.target.closest('[data-source-cmdty]');

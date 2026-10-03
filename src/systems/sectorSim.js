@@ -671,8 +671,12 @@ export const sectorSim = {
     if (!id) return;
     const continuous = !!(p && (p.continuous || p.noTeleport));
     const rec = this._sectorRec(id);
-    const elapsed = Math.max(0, (this.state.simTime || 0) - (rec.lastEnterSimT || 0));
-    rec.lastEnterSimT = this.state.simTime || 0;
+    // This listener runs inside the drained emit tail — state.simTime has already advanced
+    // past the enter that minted this payload, so stamping/elapsing off the live clock makes
+    // both values wobble by the drain window. enterSimTime is the emit's own clock.
+    const enterSimT = Number.isFinite(p && p.enterSimTime) ? p.enterSimTime : (this.state.simTime || 0);
+    const elapsed = Math.max(0, enterSimT - (rec.lastEnterSimT || 0));
+    rec.lastEnterSimT = enterSimT;
 
     // Project recipes for rematerialize consumers. Never advances the field; idempotent so a
     // continuous Voronoi handoff cannot re-apply the same epoch's economy/embodiment twice.

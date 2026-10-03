@@ -84,9 +84,14 @@ export function createChronicler(options = {}) {
         context: 'dock', stationId: p?.stationId,
         sectorId: p?.sectorId || this._state.world?.currentSectorId,
       }));
-      this._listen('sector:enter', p => this.requestRecall({
-        context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
-      }));
+      this._listen('sector:enter', p => {
+        // A stale queued tail would burn the recall cooldown on the departed sector.
+        if (p?.enterEpoch != null && this._state.world
+            && this._state.world.enterSerial != null && p.enterEpoch !== this._state.world.enterSerial) return;
+        this.requestRecall({
+          context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
+        });
+      });
       // Presentation adapter: old-story radio offers ride the band channel, station/sector
       // recollections ride comms — through the arbiter when one exists. helpers is held by
       // reference, so a voice attaching later still works; the bridge guards per-offer and

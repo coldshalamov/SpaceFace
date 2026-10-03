@@ -13,6 +13,7 @@ import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
+import { swarmElites } from '../systems/swarmElites.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
 import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';             // Swarm arcade juice layer (DOM-guarded)
@@ -137,6 +138,7 @@ import { bountyHunt } from '../systems/bountyHunt.js';               // BP-13/B1
 import { morrow } from '../systems/morrow.js';
 import { vesper } from '../systems/vesper.js';
 import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -411,6 +413,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
     ['swarmJuice', swarmJuice],
+    ['swarmElites', swarmElites],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
@@ -510,6 +513,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['morrow', morrow],
     ['vesper', vesper],
     ['bracket', bracket],
+    ['ravel', ravel],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

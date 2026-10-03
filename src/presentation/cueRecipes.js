@@ -1,6 +1,8 @@
 // SG-08 presentation recipes for semantic slice events.
 // This is headless data: renderer, VFX, UI, audio, and accessibility adapters consume these lanes later.
 
+import { SEVERITY_SHAPE_TIERS } from './causalVfxGrammar.js';
+
 export const PRESENTATION_RECIPE_VERSION = 1;
 
 export const PRESENTATION_LANES = Object.freeze([
@@ -13,13 +15,17 @@ export const PRESENTATION_LANES = Object.freeze([
 
 /**
  * PQ-023 family (d): what a cue's reduced-motion / reduced-flash form actually IS, rather than only
- * how far to scale it down. Optional on a recipe — recipes that declare nothing keep the existing
- * global scaling behaviour in vfxAccessibility / presentationAdapters unchanged.
+ * how far to scale it down.
  *
  *  - `static_dim`   hold the cue still and carry it on brightness/size instead of movement
  *  - `slow`         same shape, reduced rate
  *  - `caption_only` drop the visual entirely; the accessible text is the cue
  *  - `unchanged`    already safe in reduced modes
+ *
+ * FB-077: every recipe declares a reduced-motion form. A leaf that does not name one gets the
+ * honest derived default below — a critical visual cue holds its shape still (`static_dim`),
+ * any other visual cue keeps its shape at a reduced rate (`slow`), and a cue with no visual
+ * lane at all is already safe (`unchanged`). Missing declarations now fail validation.
  */
 export const REDUCED_CUE_MODES = Object.freeze(['static_dim', 'slow', 'caption_only', 'unchanged']);
 
@@ -131,6 +137,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { voices: 1 },
     tags: ['combat', 'doctrine', 'withdraw'],
   }),
+  // FB-072 — the combat ladder hit → kill also escalates by declared shape (cone → ring);
+  // budgets are already flat across the family and stay that way.
   'combat.damage.applied': recipe({
     importance: 0.66,
     // One tick: the same pair struck twice in one tick is one composed response — the same
@@ -141,6 +149,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
     lanes: { ...laneSet('vfx.direct_combat_damage'), audio: 'audio.combat_aftermath' },
     // combat:damage already owns the physical shield/armor/hull voice.
     budgets: { voices: 0 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['combat', 'damage'],
   }),
   'combat.near_miss': recipe({
@@ -149,6 +158,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
     material: 'projectile',
     lanes: { ...laneSet('vfx.combat_near_miss'), audio: 'audio.combat_aftermath' },
     budgets: { particles: 12, voices: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['combat', 'near_miss'],
   }),
   'combat.player.hit': recipe({
@@ -158,6 +168,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
     lanes: { ...laneSet('vfx.direct_player_damage'), audio: 'audio.combat_aftermath' },
     // The raw damage owner also supplies the ship-local directional urgency voice.
     budgets: { voices: 0 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['combat', 'player', 'damage'],
   }),
   'combat.player.kill': recipe({
@@ -167,6 +178,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
     lanes: { ...laneSet('vfx.direct_entity_killed', 'ui.combat_kill', 'accessibility.combat_kill'), audio: 'audio.combat_aftermath' },
     // entity:killed owns the explosion; this receipt owns UI/accessibility confirmation only.
     budgets: { voices: 0, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['combat', 'player', 'kill'],
   }),
   // PQ-133.04 R4 — the compiled ricochet continuation (combat:bounceContinued). Modeled on
@@ -187,6 +199,10 @@ export const PRESENTATION_RECIPES = Object.freeze({
     reducedFlashMode: 'static_dim',
     tags: ['combat', 'bounce'],
   }),
+  // FB-072 — the tether ladder attach → near-break → break is a SHAPE ladder (cone → sheet →
+  // ring from SEVERITY_SHAPE_TIERS). Particle budgets and camera trauma are capped at the
+  // tier-1 values (48 particles / 0.12 trauma): severity reads through the layout swap and the
+  // directed impact kick the cue's `direction` drives, never through more dots or more shake.
   'tether.attach': recipe({
     importance: 0.78,
     dedupeWindowTicks: 6,
@@ -199,6 +215,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.tension_alt',
     },
     budgets: { cameraTrauma: 0.12, particles: 48, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['critical', 'tether', 'slice'],
   }),
   'tether.near_break': recipe({
@@ -213,6 +230,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.tension_alt',
     },
     budgets: { cameraTrauma: 0.08, particles: 24, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
     tags: ['critical', 'tether', 'warning'],
   }),
   // Rung 10 — massline threat feedback (consumes masslineThreats' rung-09 massline:threat emit).
@@ -231,6 +249,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.directional_warning',
     },
     budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['critical', 'tether', 'threat'],
   }),
   // SF-023 (PB-MASS-A) — a committed hostile blade inside the cut span. Same lane family and
@@ -248,7 +267,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.threat_warning',
       accessibility: 'accessibility.directional_warning',
     },
-    budgets: { cameraTrauma: 0.08, particles: 20, voices: 2, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
     tags: ['critical', 'tether', 'threat', 'sweep_commit'],
   }),
   'massline.counter_tether.cut': recipe({
@@ -263,6 +283,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.directional_warning',
     },
     budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'tether', 'counter_tether', 'cut', 'warning'],
   }),
   'massline.counter_tether.overload': recipe({
@@ -277,8 +298,11 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.directional_warning',
     },
     budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'tether', 'counter_tether', 'overload', 'warning'],
   }),
+  // FB-072 — the snap is the tier-3 ring: budgets stay at the tier-1 cap (48 particles /
+  // 0.12 trauma), the ring layout + directed kick carry the escalation.
   'tether.break': recipe({
     importance: 0.92,
     dedupeWindowTicks: 10,
@@ -290,7 +314,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.tether_break',
       accessibility: 'accessibility.break_caption',
     },
-    budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 3, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'tether', 'break'],
   }),
   // INF-018: the break family splits by cause while sharing the authored snap lanes: overload fails under its own load (full snap), a severed line is cut across by an external action (full snap), and a vanished endpoint simply ends the line (lighter touch). No new assets, no new lane handlers.
@@ -305,7 +330,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.tether_break',
       accessibility: 'accessibility.break_caption',
     },
-    budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 3, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'tether', 'break', 'overload'],
   }),
   'tether.break.severed': recipe({
@@ -319,7 +345,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.tether_break',
       accessibility: 'accessibility.break_caption',
     },
-    budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 3, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'tether', 'break', 'severed'],
   }),
   'tether.break.endpoint': recipe({
@@ -334,6 +361,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.break_caption',
     },
     budgets: { cameraTrauma: 0.08, particles: 32, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['critical', 'tether', 'break', 'endpoint'],
   }),
   // Rung 14 — whip-impact feedback (consumes masslineImpacts' rung-13 tether:whipImpact emit).
@@ -352,6 +380,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.impact_caption',
     },
     budgets: { cameraTrauma: 0.14, particles: 64, lights: 1, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'tether', 'impact'],
   }),
   // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
@@ -359,6 +388,9 @@ export const PRESENTATION_RECIPES = Object.freeze({
   // presentation:cue, leaving messy releases with no premium feedback. Camera trauma lives on the
   // reduced-motion-safe presentation:cameraCue path (presentationAdapters dampens it under
   // motionReduce), so these stay accessibility-safe even at the razor tier.
+  // FB-072 — release quality is a shape ladder too: good → clean → razor walks cone → sheet →
+  // ring at the tier-1 budget (12 particles / 0.04 trauma). A razor release is the biggest
+  // SHAPE, not the biggest handful of dots.
   'tether.release.good': recipe({
     importance: 0.5,
     dedupeWindowTicks: 6,
@@ -371,6 +403,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.release_caption',
     },
     budgets: { cameraTrauma: 0.04, particles: 12, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['tether', 'release', 'good'],
   }),
   'tether.release.clean': recipe({
@@ -384,7 +417,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.tether_release',
       accessibility: 'accessibility.release_caption',
     },
-    budgets: { cameraTrauma: 0.09, particles: 28, voices: 1, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.04, particles: 12, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
     tags: ['tether', 'release', 'clean'],
   }),
   'tether.release.razor': recipe({
@@ -398,7 +432,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.tether_release',
       accessibility: 'accessibility.release_caption',
     },
-    budgets: { cameraTrauma: 0.16, particles: 56, voices: 2, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.04, particles: 12, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['tether', 'release', 'razor'],
   }),
   // Post-release validation owns one calm attempted-window fact. The retained-velocity release
@@ -435,6 +470,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.directional_warning',
     },
     budgets: { cameraTrauma: 0.16, particles: 80, voices: 2, lights: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
     tags: ['critical', 'combat', 'shield'],
   }),
   'subsystem.disabled': recipe({
@@ -452,6 +488,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.subsystem_caption',
     },
     budgets: { cameraTrauma: 0.1, particles: 56, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
     tags: ['critical', 'combat', 'subsystem'],
   }),
   // Subsystem reboot completion (combat:subsystemEnabled). Deliberately lighter than the disable
@@ -469,6 +506,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.subsystem_caption',
     },
     budgets: { particles: 24, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['combat', 'subsystem', 'recovery'],
   }),
   // Ordinance reaching its authored lifetime (weapons:mineExpired). Before this leaf the event had
@@ -492,6 +530,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
   // The sim already rates and publishes fields:clusterDetonate; these recipes give the moment the
   // same premium receipt a whip impact earns. Player-authored wells infer participant relevance;
   // NPC clusters keep the world-scoped lanes only.
+  // FB-072 — the cascade is the tier-3 ring of the same well going off: budgets capped at the
+  // detonation's tier-2 values (64 particles / 0.10 trauma), the ring layout carries it.
   'fields.cluster_detonate': recipe({
     importance: 0.82,
     dedupeWindowTicks: 30,
@@ -504,6 +544,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       accessibility: 'accessibility.cluster_caption',
     },
     budgets: { cameraTrauma: 0.1, particles: 64, lights: 1, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
     tags: ['critical', 'field', 'cluster', 'detonation'],
   }),
   'fields.cluster_detonate.cascade': recipe({
@@ -517,7 +558,8 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.cluster_detonate',
       accessibility: 'accessibility.cluster_caption',
     },
-    budgets: { cameraTrauma: 0.18, particles: 96, lights: 2, voices: 1, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.1, particles: 64, lights: 2, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
     tags: ['critical', 'field', 'cluster', 'cascade'],
   }),
   'scenario.signal.pulse': recipe({
@@ -676,10 +718,24 @@ export function validatePresentationRecipes(recipes = PRESENTATION_RECIPES) {
     if (!item.budgets || typeof item.budgets !== 'object' || Array.isArray(item.budgets)) {
       issues.push(`${path}.budgets must be an object`);
     }
-    // Optional, but when declared it must name a mode an adapter can actually honour.
+    // FB-077 — the reduced-motion form is REQUIRED on every recipe; reduced-flash is validated
+    // when present. A missing declaration is a real defect now, not an opted-out leaf.
+    if (item.reducedMotionMode == null) {
+      issues.push(`${path}.reducedMotionMode is required`);
+    }
     for (const field of ['reducedMotionMode', 'reducedFlashMode']) {
       if (item[field] != null && !REDUCED_CUE_MODES.includes(item[field])) {
         issues.push(`${path}.${field} must be one of ${REDUCED_CUE_MODES.join('/')}`);
+      }
+    }
+    // FB-072 — a declared shape tier is { tier, silhouette, layout, signaturePrimitive }.
+    if (item.shape != null) {
+      const s = item.shape;
+      if (typeof s !== 'object' || !Number.isFinite(s.tier)
+        || typeof s.silhouette !== 'string' || !s.silhouette
+        || typeof s.layout !== 'string' || !s.layout
+        || typeof s.signaturePrimitive !== 'string' || !s.signaturePrimitive) {
+        issues.push(`${path}.shape must carry tier + silhouette + layout + signaturePrimitive`);
       }
     }
   }
@@ -688,7 +744,7 @@ export function validatePresentationRecipes(recipes = PRESENTATION_RECIPES) {
 
 function recipe({
   importance, dedupeWindowTicks, material, lanes, budgets, tags,
-  reducedMotionMode, reducedFlashMode,
+  reducedMotionMode, reducedFlashMode, shape,
 }) {
   const built = {
     version: PRESENTATION_RECIPE_VERSION,
@@ -700,11 +756,37 @@ function recipe({
     budgets: Object.freeze({ ...budgets }),
     tags: Object.freeze([...(tags || [])]),
   };
-  // PQ-023 family (d). Optional: only recipes that have a meaningful reduced form declare one, so
-  // the ~80 recipes outside this leaf are untouched and the validator stays backward compatible.
-  if (reducedMotionMode) built.reducedMotionMode = reducedMotionMode;
-  if (reducedFlashMode) built.reducedFlashMode = reducedFlashMode;
+  // FB-072 — optional shape tier from SEVERITY_SHAPE_TIERS: the silhouette/layout/primitive
+  // swap that carries severity when particle and trauma budgets are held flat.
+  if (shape) built.shape = Object.freeze({ ...shape });
+  // PQ-023 family (d) + FB-077. A cue's reduced form is DECLARED on every recipe — a leaf may
+  // still override explicitly, but the factory never emits a cue with no form at all.
+  built.reducedMotionMode = reducedMotionMode || derivedReducedMotionMode(built);
+  built.reducedFlashMode = reducedFlashMode || derivedReducedFlashMode(built);
   return built;
+}
+
+/**
+ * FB-077 defaults. A visual cue under reduced motion is either held still and carried on
+ * brightness/size (critical — it must never vanish) or slowed (the rest). A cue with no visual
+ * lane, no particles, no lights, and no camera budget changes nothing visible and is already
+ * safe. Reduced flash mirrors the same split: brightness events hold their shape while dimming.
+ */
+function cueIsVisual(built) {
+  const lanes = built.lanes || {};
+  const budgets = built.budgets || {};
+  return (typeof lanes.vfx === 'string' && lanes.vfx !== 'vfx.none')
+    || (Number(budgets.particles) || 0) > 0
+    || (Number(budgets.lights) || 0) > 0;
+}
+
+function derivedReducedMotionMode(built) {
+  if (!cueIsVisual(built) && !(Number(built.budgets.cameraTrauma) > 0)) return 'unchanged';
+  return (built.tags || []).includes('critical') ? 'static_dim' : 'slow';
+}
+
+function derivedReducedFlashMode(built) {
+  return cueIsVisual(built) ? 'static_dim' : 'unchanged';
 }
 
 function laneSet(vfx, ui = 'ui.none', accessibility = 'accessibility.none') {

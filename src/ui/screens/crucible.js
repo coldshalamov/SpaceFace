@@ -39,12 +39,30 @@ import {
   swarmArcadeSeedFor,
   swarmArenaIsUnlocked,
   SWARM_ARENA_STAR_GATES,
+  SWARM_LADDER_ARENA_ORDER,
   swarmCheckpointPurseFor,
   swarmCheckpointStartWave,
   swarmLadderStarTotal,
   swarmZoneFor,
   swarmZoneIndexFor,
 } from '../../data/swarmLadder.js';
+import {
+  emptyHangar,
+  HANGAR_TRACKS,
+  hangarRank,
+  trackPrice,
+} from '../../data/swarmHangar.js';
+import {
+  SWARM_THREATS,
+  SWARM_THREAT_BY_ID,
+  normalizeThreatIds,
+  swarmThreatBountyMult,
+} from '../../data/swarmThreats.js';
+import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../../data/swarmCrossover.js';
+import {
+  SWARM_PERKS,
+  SWARM_PERK_SLOTS,
+} from '../../data/swarmPerks.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
@@ -84,6 +102,9 @@ import {
   normalizeBestLine,
   OVERCONFIDENCE_STREAK_AT,
   roundProgress,
+  buyCrucibleHangarTrack,
+  crucibleSwarmDepthView,
+  setCruciblePerkLoadout,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -759,6 +780,13 @@ export const crucibleScreen = {
     // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
     // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
     let stake = normalizeSwarmStake(previous && previous.swarmStake);
+    // SWARM-06 §6.4: the Threat wager — opt-in cards that stack, each paying a Bounty
+    // multiplier for the honestly harder run. A retry restores the wager it flew; a daily
+    // never carries one (shared challenge, shared purse — same law as the stake).
+    const threatPicks = new Set(normalizeThreatIds(previous && previous.swarmThreats));
+    // SWARM-06 §4.3: the perk loadout the profile carries. The pick itself persists through
+    // setCruciblePerkLoadout; the door only toggles and repaints.
+    let depthView = null;
     // SWARM-04: the ladder at the door. `startWave` is the picked checkpoint entry (1 = the
     // ladder's first round); `seedCustom` marks a seed the player typed, rolled, or staged —
     // the arena's authored ladder seed fills the field but never overwrites a deliberate
@@ -1074,6 +1102,9 @@ export const crucibleScreen = {
     function syncMode() {
       // The presentation is refreshed after the mode's own labels have settled below.
       const week = weeklyDoorCard();
+      // SWARM-05 §7.2: the hangar reads the mode before every early return — a Daily or a
+      // mode switch must never leave a stale swarm workshop on the door.
+      syncHangar();
       if (daily) {
         sub.textContent = DAILY_CARD.blurb;
         // INF-038: the current daily challenge names itself — UTC date key and seed — so the
@@ -1092,6 +1123,8 @@ export const crucibleScreen = {
         for (const other of modeButtons) syncChoice(other, false);
         if (dailyButton) syncChoice(dailyButton, true);
         syncStake();
+        syncThreat();
+        syncPerk();
         syncGhost();
         return;
       }
@@ -1122,6 +1155,8 @@ export const crucibleScreen = {
       if (dailyButton) syncChoice(dailyButton, false);
       if (blockButton) syncChoice(blockButton, !daily && ruleset === BLOCK_RULESET);
       syncStake();
+      syncThreat();
+      syncPerk();
       // The arena card's event line is a swarm sentence — it re-renders with the mode.
       syncArena();
       syncGhost();
@@ -1166,6 +1201,137 @@ export const crucibleScreen = {
     }
     stakeBody.appendChild(stakes);
     stakeBody.appendChild(stakeSentence);
+
+    // THE THREAT ROW (SWARM-06 §6.4): the wager layer for a strong account — toggle cards
+    // that stack, each paying its Bounty multiplier because the room it buys is honestly
+    // harder. Same parity law as the stake: a daily is a shared challenge, so the row hides
+    // and no wager rides. The sentence reads the stacked bounty the settle will apply.
+    const threatBody = settingRow('Threat', 'sf-crd-row--threat');
+    const threatLi = threatBody.parentNode;
+    const threats = el('ul', 'k-words k-words--row sf-crd-threats fh-cluster');
+    threats.setAttribute('aria-label', 'Threat wagers');
+    pin(threats, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const threatButtons = [];
+    const threatSentence = el('p', 'k-sentence sf-crd-threat-sub', '');
+    function syncThreat() {
+      const on = !daily && ruleset === SWARM_RULESET;
+      if (threatLi && threatLi.style) { threatLi.hidden = !on; threatLi.style.display = on ? '' : 'none'; }
+      for (const other of threatButtons) syncChoice(other, threatPicks.has(other.dataset.threatId));
+      if (!threatPicks.size) {
+        threatSentence.textContent = 'No wager — the room plays at its honest difficulty.';
+        return;
+      }
+      const names = [...threatPicks].map((id) => SWARM_THREAT_BY_ID[id].name).join(' + ');
+      const mult = swarmThreatBountyMult([...threatPicks]);
+      threatSentence.textContent = `${names} — the bounty lands at ×${mult.toFixed(2)}.`;
+    }
+    for (const threat of SWARM_THREATS) {
+      const card = word(`${threat.name} · +${Math.round(threat.bounty * 100)}%`, 'k-word--fine sf-crd-threat');
+      paintKey(card, 'small');
+      card.dataset.threatId = threat.id;
+      card.title = threat.blurb;
+      card.addEventListener('click', () => {
+        if (threatPicks.has(threat.id)) threatPicks.delete(threat.id);
+        else threatPicks.add(threat.id);
+        cue('confirm');
+        syncThreat();
+      });
+      threatButtons.push(card);
+      addWord(threats, card);
+    }
+    threatBody.appendChild(threats);
+    threatBody.appendChild(threatSentence);
+    threatLi.hidden = true;
+
+    // THE PERK ROW (SWARM-06 §4.3): the two-slot loadout the pilot brings in. Earns are
+    // derived off the same profile the run reads — stars and finished challenges — so the
+    // door's toggle and the begin's stamp can never disagree. Locked perks keep their earn
+    // line as the goal; a toggle writes the profile through its own seam, then repaints.
+    const perkBody = settingRow('Perks', 'sf-crd-row--perks');
+    const perkLi = perkBody.parentNode;
+    const perks = el('ul', 'k-words k-words--row sf-crd-perks fh-cluster');
+    perks.setAttribute('aria-label', 'Swarm perks');
+    pin(perks, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const perkSentence = el('p', 'k-sentence sf-crd-perk-sub', '');
+    const perkChallenge = el('p', 'k-t-fine k-38 sf-crd-perk-challenge', '');
+    function syncPerk() {
+      const on = ruleset === SWARM_RULESET;
+      if (perkLi && perkLi.style) { perkLi.hidden = !on; perkLi.style.display = on ? '' : 'none'; }
+      if (!on) return;
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      depthView = crucibleSwarmDepthView(doorProfile);
+      const earnedSet = new Set(depthView.perks.earned);
+      const loadout = new Set(depthView.perks.loadout);
+      perks.innerHTML = '';
+      for (const perk of SWARM_PERKS) {
+        const earned = earnedSet.has(perk.id);
+        const button = word(perk.name, 'k-word--fine sf-crd-perk');
+        paintKey(button, 'small');
+        const gate = Number.isInteger(perk.stars) ? `${perk.stars} stars`
+          : Number.isInteger(perk.challenges) ? `${perk.challenges} challenge${perk.challenges === 1 ? '' : 's'}`
+            : 'locked';
+        button.title = earned ? perk.blurb : `${perk.blurb} Earned at ${gate}.`;
+        button.setAttribute('aria-label', `${perk.name}. ${perk.blurb}${earned ? '' : ` Earned at ${gate}.`}`);
+        if (!earned) {
+          button.dataset.locked = '1';
+          const badge = el('span', 'sf-crd-lock');
+          const mark = dpIcon('lock', 14, { className: 'sf-crd-lock-glyph' });
+          if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+          badge.setAttribute('aria-hidden', 'true');
+          button.appendChild(badge);
+        }
+        syncChoice(button, loadout.has(perk.id));
+        button.addEventListener('click', () => {
+          if (!earnedSet.has(perk.id)) {
+            perkSentence.dataset.kind = 'earn';
+            perkSentence.textContent = `${perk.name} is still locked — ${gate}.`;
+            cue('deny');
+            return;
+          }
+          const next = new Set(loadout);
+          if (next.has(perk.id)) next.delete(perk.id);
+          else {
+            if (next.size >= SWARM_PERK_SLOTS) {
+              perkSentence.dataset.kind = 'earn';
+              perkSentence.textContent = `The loadout holds ${SWARM_PERK_SLOTS} — drop one first.`;
+              cue('deny');
+              return;
+            }
+            next.add(perk.id);
+          }
+          const res = setCruciblePerkLoadout([...next]);
+          if (res && res.ok) {
+            delete perkSentence.dataset.kind;
+            cue('confirm');
+          } else {
+            perkSentence.dataset.kind = 'earn';
+            perkSentence.textContent = 'The pick did not land.';
+            cue('deny');
+          }
+          syncPerk();
+        });
+        addWord(perks, button);
+      }
+      const count = loadout.size;
+      perkSentence.textContent = count === 0
+        ? 'No perks slotted — the run flies clean.'
+        : `${count} of ${SWARM_PERK_SLOTS} slotted — ${[...loadout].map((id) => (SWARM_PERKS.find((row) => row.id === id) || {}).name || id).join(' + ')}.`;
+      // §8: the challenge purses, honestly stated — claimed reads claimed, never "almost".
+      const ch = depthView.challenges;
+      const dailyLine = ch.daily.claimed
+        ? `Today's bounty is claimed.`
+        : `Today's bounty — clear ${ch.daily.waves} rounds for +${ch.daily.bounty} cr — is on the table.`;
+      const weeklyLine = ch.weekly.mutatorId
+        ? (ch.weekly.claimed
+          ? `This week's bounty is claimed.`
+          : `This week's ${ch.weekly.mutatorId} bounty — clear ${ch.weekly.waves} rounds for +${ch.weekly.bounty} cr — is on the table.`)
+        : '';
+      perkChallenge.textContent = weeklyLine ? `${dailyLine} ${weeklyLine}` : dailyLine;
+    }
+    perkBody.appendChild(perks);
+    perkBody.appendChild(perkSentence);
+    perkBody.appendChild(perkChallenge);
+    perkLi.hidden = true;
 
     // Hull — the starter names as words, the live one bright, its blurb beneath.
     const hullBody = settingRow('Starter build', 'sf-crd-row--hull');
@@ -1300,8 +1466,32 @@ export const crucibleScreen = {
       for (const choice of tierChoices) {
         const button = word(choice.name, 'k-word--fine sf-crd-anyhull-ship');
         button.dataset.starterId = `hull:${choice.hullId}`;
-        button.title = `${choice.name} — bare hull, ${choice.slotCount} hardpoint${choice.slotCount === 1 ? '' : 's'}`;
+        // SWARM-06: a swarmEarned hull the crossover ledger has not proven stays visible as
+        // the goal — name, earn line, lock — but refuses the pick, so a bare-hull launch can
+        // never hand the earn away for free.
+        const hullLocked = choice.swarmEarned && choice.earned === false;
+        if (hullLocked) {
+          button.dataset.locked = '1';
+          button.title = `${choice.name} — ${choice.earnText || 'Earned in Swarm.'}`;
+          button.setAttribute('aria-label', `${choice.name} — locked. ${choice.earnText || 'Earned in Swarm.'}`);
+          const badge = el('span', 'sf-crd-lock');
+          const mark = dpIcon('lock', 14, { className: 'sf-crd-lock-glyph' });
+          if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+          badge.setAttribute('aria-hidden', 'true');
+          button.appendChild(badge);
+        } else {
+          button.title = `${choice.name} — bare hull, ${choice.slotCount} hardpoint${choice.slotCount === 1 ? '' : 's'}`;
+        }
         button.addEventListener('click', () => {
+          if (hullLocked) {
+            hullSentence.dataset.kind = 'earn';
+            hullSentence.textContent = `${choice.name} is earned, not picked — ${choice.earnText || 'a Swarm run proves it first.'}`;
+            button.classList.remove('is-denied');
+            void button.offsetWidth;
+            button.classList.add('is-denied');
+            cue('deny');
+            return;
+          }
           starterId = `hull:${choice.hullId}`;
           delete hullSentence.dataset.kind;
           cue('confirm');
@@ -1436,6 +1626,24 @@ export const crucibleScreen = {
     const zoneSentence = el('p', 'k-sentence sf-crd-zone', '');
     zoneBody.appendChild(zoneSentence);
     zoneLi.hidden = true;
+
+    // SWARM-05 §7.2 — THE HANGAR AT THE DOOR. Swarm's persistent workshop reads where the
+    // run is staged: the bounty balance, the six upgrade tracks at their live rank and next
+    // price, and what the manifest already holds. Buys run through the profile owner
+    // (buyCrucibleHangarTrack loads, buys and saves in one seam) — the door never writes
+    // the bag itself. Swarm-only: the Gauntlet has no hangar and the side doors bank into
+    // the same one anyway.
+    const hangarBody = settingRow('Hangar', 'sf-crd-row--hangar');
+    const hangarLi = hangarBody.parentNode;
+    const hangarNote = el('p', 'k-sentence sf-crd-hangar', '');
+    hangarBody.appendChild(hangarNote);
+    const hangarTracks = el('ul', 'k-words k-words--row sf-crd-tracks fh-cluster');
+    hangarTracks.setAttribute('aria-label', 'Hangar upgrades');
+    pin(hangarTracks, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    hangarBody.appendChild(hangarTracks);
+    const hangarHint = el('p', 'k-t-fine k-38 sf-crd-hangar-note', '');
+    hangarBody.appendChild(hangarHint);
+    hangarLi.hidden = true;
 
     // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
     const seedBody = settingRow('Seed', 'sf-crd-row--seed');
@@ -1591,6 +1799,53 @@ export const crucibleScreen = {
         enterButton.textContent = startWave > 1
           ? `Play ${picked.name} — Round ${startWave}`
           : 'Launch Swarm';
+      }
+    }
+
+    // SWARM-05 §7.2 — the hangar strip. Swarm's persistent workshop: the bounty, each
+    // upgrade track at its live rank and next price, and the manifest's hulls. A buy goes
+    // through the profile owner's seam and repaints; the row hides off the swarm door.
+    function syncHangar() {
+      let els = null;
+      try { els = { hangarLi, hangarNote, hangarTracks, hangarHint }; }
+      catch { return; /* pre-mount */ }
+      const on = ruleset === SWARM_RULESET;
+      els.hangarLi.hidden = !on;
+      if (!on) return;
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      const hangar = (doorProfile && doorProfile.hangar) || emptyHangar();
+      const bounty = Math.max(0, Math.round(Number(hangar.bounty) || 0));
+      const hulls = Array.isArray(hangar.ownedHulls) ? hangar.ownedHulls : [];
+      els.hangarNote.textContent = `Bounty ${bounty} cr`
+        + (hulls.length ? ` · ${hulls.length} hull${hulls.length === 1 ? '' : 's'} in the bay` : '')
+        + '.';
+      els.hangarTracks.innerHTML = '';
+      for (const track of HANGAR_TRACKS) {
+        const rank = hangarRank(hangar, track.id);
+        const price = trackPrice(track.id, rank);
+        const label = price == null
+          ? `${track.name} · maxed`
+          : `${track.name} ${rank}/5 · ${price} cr`;
+        const button = word(label, 'k-word--fine');
+        paintKey(button, 'small');
+        const buyable = price != null && bounty >= price;
+        button.disabled = !buyable;
+        button.setAttribute('aria-disabled', String(!buyable));
+        button.addEventListener('click', () => {
+          const res = buyCrucibleHangarTrack(track.id);
+          if (res && res.ok) {
+            els.hangarHint.textContent = '';
+            try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+            cue('confirm');
+          } else {
+            els.hangarHint.textContent = res && res.reason === 'short'
+              ? 'The bounty cannot stand it yet — bank more in the arena.'
+              : 'That upgrade did not land.';
+            cue('deny');
+          }
+          syncHangar();
+        });
+        addWord(els.hangarTracks, button);
       }
     }
 
@@ -1847,9 +2102,23 @@ export const crucibleScreen = {
         cue('deny');
         return;
       }
+      // SWARM-06: a swarmEarned hull the ledger has not proven refuses at launch the same
+      // way it refused the click — a restored or hand-staged starter can land here without
+      // ever passing the locked word's deny.
+      if (bareHull) {
+        const pickDef = SHIPS.find((row) => row && row.id === starterId.slice(5));
+        if (pickDef && pickDef.swarmEarned && !swarmCrossoverEarned(pickDef.swarmEarned)) {
+          hullSentence.dataset.kind = 'earn';
+          hullSentence.textContent = `${pickDef.name} is earned, not picked — a Swarm run proves it first.`;
+          cue('deny');
+          return;
+        }
+      }
       // The stake lands on the validated setup (requestCrucibleRun reads setup.swarmStake).
-      // Daily rides Contender — a shared challenge does not get a purse choice.
+      // Daily rides Contender — a shared challenge does not get a purse choice; the same
+      // shared-challenge law keeps a daily's Threat list empty.
       const launchStake = daily ? null : stake;
+      const launchThreats = daily ? null : [...threatPicks];
       const setup = bareHull
         ? crucibleHullSetupFor({
           hullId: starterId.slice(5),
@@ -1857,6 +2126,7 @@ export const crucibleScreen = {
           arenaId,
           ruleset,
           swarmStake: launchStake,
+          swarmThreats: launchThreats,
           startWave,
         })
         : crucibleSetupFor({
@@ -1865,6 +2135,7 @@ export const crucibleScreen = {
           arenaId,
           ruleset,
           swarmStake: launchStake,
+          swarmThreats: launchThreats,
           startWave,
         });
       if (!setup.ok || !setup.value) {
@@ -2425,7 +2696,7 @@ export function stuntComboFor(ctx) {
 }
 
 /** The sentence over the combo band. Every figure keeps its word. */
-export function comboLead(summary) {
+export function comboLead(summary, ruleset) {
   if (!summary || typeof summary !== 'object') return '';
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const best = n(summary.bestChain);
@@ -2433,6 +2704,13 @@ export function comboLead(summary) {
   const gun = n(summary.gunKills) + n(summary.pulseKills);
   if (best <= 0 && trickKills <= 0) {
     if (gun <= 0) return '';
+    // SWARM-05 §7.4 — the swarm plate stays positive: a flat kill is honest work, never a
+    // missed multiplier. The gauntlet keeps its forensic read.
+    if (ruleset === SWARM_RULESET) {
+      return gun === 1
+        ? '1 clean kill — chains pay extra, but the gun did its work.'
+        : `${gun} clean kills — chains pay extra, but the gun did its work.`;
+    }
     return gun === 1
       ? 'No chained tricks — 1 flat kill, no multiplier.'
       : `No chained tricks — ${gun} flat kills, no multiplier.`;
@@ -2562,8 +2840,8 @@ function renderStory(band, result) {
   if (confidence) band.appendChild(el('p', 'k-sentence sf-crres__confidence', confidence));
 }
 
-function renderCombo(band, summary) {
-  const lead = comboLead(summary);
+function renderCombo(band, summary, ruleset) {
+  const lead = comboLead(summary, ruleset);
   if (lead) band.appendChild(el('p', 'k-sentence sf-crres__lead', lead));
   // PQ-146 Phase 3: the round's top named tricks with counts, read from the same combo snapshot
   // survivalResults rows from — what the player DID, not only what it scored.
@@ -2917,6 +3195,16 @@ export const crucibleResultsScreen = {
       result && result.headline ? result.headline : 'The run ended.'));
     rootEl.appendChild(title);
 
+    // SWARM-05 §7.4 — celebrate FIRST, post-mortem second. The swarm plate leads with what
+    // the run just paid: the stars it minted, the checkpoint it banked, the bounty into the
+    // hangar total, any unlock it earned, the NEW BEST stamp, and the goal now ahead. Every
+    // figure reads the settled result straight — the plate never re-derives eligibility.
+    // A gauntlet (or recordless) plate reads exactly as before.
+    if (result && result.ruleset === SWARM_RULESET) {
+      const celebrate = resultCelebration(result);
+      if (celebrate) rootEl.appendChild(celebrate);
+    }
+
     // .k-stage — two columns: the story (the sections in their order) and the ledger. The story is
     // first in the DOM so a reader meets "How it ended" before the figures; the ledger column is
     // ordered to the left of it by the kit (`k-order-first`).
@@ -2959,7 +3247,7 @@ export const crucibleResultsScreen = {
         bandTitle.setAttribute('role', 'heading');
         bandTitle.setAttribute('aria-level', '2');
         band.appendChild(bandTitle);
-        renderCombo(band, combo);
+        renderCombo(band, combo, result && result.ruleset);
         ledger.appendChild(band);
       }
     } catch {
@@ -3090,7 +3378,11 @@ export const crucibleResultsScreen = {
       requestCrucibleRun(ctx.bus, setup, retry.ruleset);
     });
 
-    const newSeed = addWord(word('New run', 'k-word--emph'));
+    // §7.4 — the ways out name where they go: Again (same seed above), the Hangar (the
+    // swarm door IS the hangar — bounty, tracks, zones all live there), or the Main menu.
+    const newSeed = addWord(word(
+      result && result.ruleset === SWARM_RULESET ? 'Back to the hangar' : 'New run',
+      'k-word--emph'));
     newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
 
     // ZERO_TO_HERO Phase 5.1/5.5: in the demo the results plate bridges to the belt — same
@@ -3174,6 +3466,110 @@ export const crucibleResultsScreen = {
     try { releaseStuntCallout(); } catch { /* release is best-effort */ }
   },
 };
+
+/**
+ * SWARM-05 §7.4 — the celebration band. Built once per plate from the settled result: the
+ * stars each touched zone now carries (new marks named), the checkpoint the run banked, the
+ * bounty into the hangar chest, every unlock the settlement earned, the NEW BEST stamp, and
+ * the next arena's star gate as the goal ahead. Positive copy only — a quiet run still says
+ * what the chest holds rather than what it missed. Null when the run settled nothing worth
+ * a band; the plate then reads exactly as before.
+ */
+export function resultCelebration(result) {
+  if (!result || result.ruleset !== SWARM_RULESET) return null;
+  const lines = [];
+  const delta = result.ladderDelta && typeof result.ladderDelta === 'object' ? result.ladderDelta : null;
+  const zones = delta && delta.zones && typeof delta.zones === 'object' ? delta.zones : {};
+  for (const key of Object.keys(zones).sort((a, b) => Number(a) - Number(b))) {
+    const row = zones[key];
+    const total = Math.max(0, Math.min(3, Number.isInteger(row && row.stars) ? row.stars : 0));
+    const gained = Math.max(0, Number.isInteger(row && row.gained) ? row.gained : 0);
+    const zone = swarmZoneFor(swarmCheckpointStartWave(Number(key) || 0));
+    const marks = '★'.repeat(total) + '☆'.repeat(3 - total);
+    lines.push(`${zone.name} — ${marks}${gained > 0 ? ` · ${gained} new` : ''}`);
+  }
+  if (delta && delta.newCheckpoint) {
+    const cp = delta.newCheckpoint;
+    lines.push(`Checkpoint banked — the next run can open at Round ${cp.startWave}`
+      + (Number.isFinite(Number(cp.purse)) ? ` with a ${cp.purse} cr purse.` : '.'));
+  }
+  const banked = Number.isFinite(result.bankedBounty) ? result.bankedBounty : null;
+  const chest = Number.isFinite(result.hangarBounty) ? result.hangarBounty : null;
+  if (banked != null && chest != null) {
+    lines.push(banked > 0
+      ? `${banked} cr banked into the hangar — the bounty now stands at ${chest} cr.`
+      : `The hangar bounty stands at ${chest} cr.`);
+  }
+  const unlocks = Array.isArray(result.unlocksEarned) ? result.unlocksEarned : [];
+  for (const row of unlocks) {
+    // The settled list is ids; an older or hand-shaped row may already carry its label —
+    // either way the player reads the name, never a raw shape.
+    const id = typeof row === 'string' ? row : row && (row.id || row.defId);
+    const named = row && typeof row === 'object' ? (row.label || row.name || null) : null;
+    const entry = typeof id === 'string'
+      ? SURVIVAL_UNLOCK_CATALOG.find((row2) => row2 && row2.id === id)
+      : null;
+    const label = (entry && entry.label) || named || (typeof id === 'string' ? id : null);
+    if (label) lines.push(`Unlocked — ${label}.`);
+  }
+  // SWARM-06 §8 — the crossover proof: the run just earned a hull Adventure can sell. It
+  // reads beside the unlocks, in the crossover row's own words.
+  const crossover = Array.isArray(result.crossoverEarned) ? result.crossoverEarned : [];
+  for (const id of crossover) {
+    const entry = SWARM_CROSSOVER_CATALOG.find((row) => row && row.id === id);
+    lines.push(`Proven — ${entry ? entry.name : id}. ${entry ? entry.blurb : 'Adventure shipyards will sell it.'}`);
+  }
+  // SWARM-06 §4.3 — the loadout that rode the run. The door's pick is what the begin stamp
+  // carried, so the plate names the same two slots the wager ran under.
+  const perks = Array.isArray(result.perks) ? result.perks : [];
+  if (perks.length) {
+    const names = perks
+      .map((id) => (SWARM_PERKS.find((row) => row && row.id === id) || {}).name || id)
+      .join(' + ');
+    lines.push(`Loadout — ${names} rode the run.`);
+  }
+  // SWARM-06 §6.4/§8 — the wager's payout and the challenge purses the run claimed, in
+  // bounty the hangar actually banked.
+  if (Number.isFinite(result.threatBountyBonus) && result.threatBountyBonus > 0) {
+    const threatNames = Array.isArray(result.threats)
+      ? result.threats.map((id) => (SWARM_THREAT_BY_ID[id] || {}).name || id).join(' + ')
+      : '';
+    lines.push(`Threat wager paid — ${threatNames ? `${threatNames} added ` : ''}+${result.threatBountyBonus} cr bounty.`);
+  }
+  const challenges = Array.isArray(result.challengeRewards) ? result.challengeRewards : [];
+  for (const row of challenges) {
+    const label = row && row.kind === 'weekly' ? 'Weekly challenge' : 'Daily challenge';
+    const bounty = Number.isFinite(row && row.bounty) ? row.bounty : 0;
+    if (bounty > 0) lines.push(`${label} claimed — +${bounty} cr bounty.`);
+  }
+  // The goal now ahead: the next arena's star gate off the settled profile — a settled
+  // read, never the door's own guess.
+  try {
+    const profile = loadCrucibleMeta();
+    const stars = swarmLadderStarTotal(profile && profile.ladder);
+    for (const arenaId of SWARM_LADDER_ARENA_ORDER) {
+      const gate = SWARM_ARENA_STAR_GATES[arenaId];
+      if (!Number.isInteger(gate) || stars >= gate) continue;
+      const arena = survivalArenaById(arenaId);
+      const name = arena && typeof arena.name === 'string' ? arena.name : arenaId;
+      lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
+      break;
+    }
+  } catch { /* the profile read is optional */ }
+  if (!lines.length && !result.bestLineId) return null;
+  const band = el('div', 'sf-crres__band sf-crres-celebrate');
+  const bandTitle = el('p', 'k-caps sf-crres__band-title', 'The take');
+  bandTitle.setAttribute('role', 'heading');
+  bandTitle.setAttribute('aria-level', '2');
+  band.appendChild(bandTitle);
+  if (result.bestLineId) {
+    band.appendChild(el('p', 'k-caps sf-crres-celebrate-stamp', 'NEW BEST'));
+  }
+  for (const line of lines) {
+    band.appendChild(el('p', 'k-sentence sf-crres-celebrate-line', line));
+  }
+  return band;
+}
 
 /** The run in four figures, for the head of the plate beside the death dial. */
 function resultFigures(result) {

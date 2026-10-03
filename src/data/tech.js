@@ -139,7 +139,9 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 9000, rp: 12 },
-    unlocks: { ships: ['ship_saucer'], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
+    // SWARM-06: the Saucer left the research tree — it is earned in Swarm (Zone 3 boss) and
+    // bought at shipyards off the crossover ledger. Graviton keeps its drives-family unlocks.
+    unlocks: { ships: [], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],

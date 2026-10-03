@@ -1283,6 +1283,7 @@ export const bombs = {
     if (!bomb.alive || bomb.data.phase !== 'field') return;
     const d = bomb.data, def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
     bomb.alive = false; d.phase = 'spent'; d.retired = true;
+    if (def.field?.kind === 'goo') this._shedGooFieldStatus(bomb, state, def);
     if (reason === 'expired' && def.field?.kind === 'singularity') {
       const result = this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger: 'collapse',
         impulseOverride: def.field.collapseImpulse, damageOverride: def.field.collapseDamage });
@@ -1293,6 +1294,39 @@ export const bombs = {
       trigger: reason === 'expired' && def.field?.kind === 'singularity' ? 'collapse' : reason,
     });
     syncBombTargetInteraction(bomb);
+  },
+
+  // NXI-040 — a dying tar field sheds only its own status contribution. The status record is
+  // keyed by status id, never by source, so this scans the same coverage law the live tick
+  // uses: a target still inside another live goo field keeps the record that field is
+  // feeding, while a target this was the last live source for sheds it now rather than
+  // wearing the cloud for seconds after it is gone. Only 'status_goo' is ever cleared —
+  // never the whole status bag, and never a record another live field still covers.
+  _shedGooFieldStatus(bomb, state, def) {
+    const combat = this.registry?.get?.('combat');
+    const kernel = combat && typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null;
+    if (!kernel || !kernel.statuses || typeof kernel.statuses.clear !== 'function') return;
+    const combatEntities = state.combat && state.combat.entities;
+    if (!combatEntities) return;
+    const now = simNow(state), targets = this._targets || EMPTY;
+    for (const ent of targets) {
+      if (!ent || ent.alive === false || !craft(ent)) continue;
+      const dist = Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z);
+      if (!(bombSurfaceFalloff(dist, ent.radius, def.radius) > 0)) continue;
+      let covered = false;
+      for (const other of this._active || EMPTY) {
+        if (other === bomb || !other.alive) continue;
+        const od = other.data;
+        if (!od || od.retired || od.phase !== 'field' || od.fieldStartedAt >= now) continue;
+        const odef = bombDef(od.bombId);
+        if (odef.field?.kind !== 'goo') continue;
+        const odist = Math.hypot(ent.pos.x - other.pos.x, ent.pos.z - other.pos.z);
+        if (bombSurfaceFalloff(odist, ent.radius, odef.radius) > 0) { covered = true; break; }
+      }
+      if (covered) continue;
+      const runtime = combatEntities[String(ent.id)];
+      if (runtime) kernel.statuses.clear(ent, runtime, 'status_goo');
+    }
   },
   _applyImpulse(ent, x, z, state, reason) {
     const physics = this.helpers?.combatPhysics;

@@ -415,6 +415,7 @@ export const planetRuntime = {
         if (rt.aftermath.length >= MAX_AFTERMATH) rt.aftermath.shift();
         rt.aftermath.push({ x: e.pos.x, z: e.pos.z, at: now, until: now + p.aftermathS });
         this.bus.emit('planet:plungeStage', { id: e.id, stage: 'aftermath', siteId: rt.siteId, isPlayer });
+        this._emitPlanetCue('planet.plunge.stage', e, { sourceEvent: 'planet:plungeStage', stage: 'aftermath' });
       }
     }
     if (prev !== rec.stage && rec.stage !== null) rt.telemetry.burnsRouted += 0; // stages logged via events
@@ -427,6 +428,24 @@ export const planetRuntime = {
     rec.outwardS = 0;
     if (stage !== 'breakup' && stage !== 'descent') rec.burnNextAt = 0; // re-schedule on re-entry
     this.bus.emit('planet:plungeStage', { id: e.id, stage: stage || 'clear', siteId: rt.siteId, isPlayer });
+    this._emitPlanetCue('planet.plunge.stage', e, { sourceEvent: 'planet:plungeStage', stage: stage || 'clear' });
+  },
+
+  // FB-142 — every planet verb ships a composed world cue beside its event (worldCueRecipes'
+  // planet.* variants). One cue, anchored on the working ship, aimed along its motion — never
+  // at the planet centre hundreds of WU below, never a second particle budget.
+  _emitPlanetCue(id, e, extra) {
+    if (!this.bus || typeof this.bus.emit !== 'function' || !e || !e.pos) return;
+    const vx = finite(e.vel && e.vel.x), vz = finite(e.vel && e.vel.z);
+    const a = Math.hypot(vx, vz) > 1 ? Math.atan2(vz, vx) : finite(e.rot);
+    this.bus.emit('presentation:cue', {
+      id,
+      sourceId: e.id,
+      targetId: e.id,
+      position: { x: e.pos.x, z: e.pos.z },
+      direction: { x: Math.cos(a), z: Math.sin(a) },
+      ...(extra || null),
+    });
   },
 
   _routeBurn(state, rt, e, damage) {
@@ -493,6 +512,9 @@ export const planetRuntime = {
     if (burning !== rt.player.recoveryBurn) {
       rt.player.recoveryBurn = burning;
       this.bus.emit('planet:recoveryBurn', { on: burning, siteId: rt.siteId });
+      // The world cue marks the burn onset; the throttled release rides the action recipe's
+      // 'off' variant on the same event, so no second cue is emitted here.
+      if (burning) this._emitPlanetCue('planet.recovery.burn', player, { sourceEvent: 'planet:recoveryBurn' });
     }
   },
 
@@ -515,7 +537,12 @@ export const planetRuntime = {
       actions.toggleSkimCollector = false;
       rec.collectorOn = !rec.collectorOn;
       this.bus.emit('planet:collector', { on: rec.collectorOn, siteId: rt.siteId });
-      this.bus.emit('audio:cue', { id: rec.collectorOn ? 'confirm' : 'ui_deny', gain: 0.5 });
+      // FB-142 — the planet:collector audio route is the single voice (on and off registers);
+      // the skim-intake world cue marks the mouth opening. No second generic audio:cue fires
+      // here — that would stack a menu tone under the authored voice.
+      if (rec.collectorOn) {
+        this._emitPlanetCue('planet.skim.intake', player, { sourceEvent: 'planet:collector' });
+      }
     }
     if (!rec.collectorOn) return;
 
@@ -588,10 +615,16 @@ export const planetRuntime = {
       rec.harvestedUnits += accepted;
       rt.telemetry.harvestUnits += accepted;
       this.bus.emit('planet:harvest', { commodityId, qty: accepted, siteId: rt.siteId });
+      const ship = this.state && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(this.state.playerId) : null;
+      this._emitPlanetCue('planet.harvest.deposit', ship, { sourceEvent: 'planet:harvest', commodityId });
       this._emitHarvestMotes(rt, rec, commodityId, accepted);
     }
     if (accepted < whole) {
       this.bus.emit('planet:harvestDenied', { commodityId, reason: 'cargo_full', siteId: rt.siteId });
+      const ship = this.state && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(this.state.playerId) : null;
+      this._emitPlanetCue('planet.harvest.denied', ship, { sourceEvent: 'planet:harvestDenied', commodityId });
     }
   },
 

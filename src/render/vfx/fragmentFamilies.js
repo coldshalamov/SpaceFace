@@ -32,6 +32,7 @@
 // the object into a light source.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
 
 export const FRAGMENT_FAMILY = Object.freeze({
@@ -858,3 +859,149 @@ export const FRAGMENT_POOL_CEILING = Object.freeze({
   [FRAGMENT_FAMILY.ICE]: 80,
   [FRAGMENT_FAMILY.CARGO]: 56,
 });
+
+// ---------------------------------------------------------------------------------------------
+// FB-075 — pickup role silhouettes. At chase distance the pilot must name five world roles by
+// shape alone; each is one deterministic signature construction, fit to the unit sphere so the
+// existing `scale = radius` placement and pickup hit/magnet radii never move.
+//
+//   pod      — capsule with a seam: a canister body under one equatorial clamp ring
+//   ore      — faceted block: a non-uniform icosahedron, rock not gem
+//   chip     — flat disc with a notch: minted plate, bite taken out of the rim
+//   volatile — sphere with a collar: pressure bottle under a containment band
+//   wreck    — opened hull: two shell halves sprung apart on a broken axis
+//
+// These recipes are the silhouette vocabulary. visualFactory selects them where a role has no
+// richer authored build — the volatile pickup being the one that used to arrive as a generic
+// canister — and stamps `userData.pickupRole` so the choice is inspectable. No GLB, no sprite,
+// no new pool.
+// ---------------------------------------------------------------------------------------------
+
+export const PICKUP_ROLE = Object.freeze({
+  POD: 'pod',
+  ORE: 'ore',
+  CHIP: 'chip',
+  VOLATILE: 'volatile',
+  WRECK: 'wreck',
+});
+
+export const PICKUP_ROLE_LIST = Object.freeze(Object.values(PICKUP_ROLE));
+
+export const PICKUP_ROLE_SILHOUETTE = Object.freeze({
+  [PICKUP_ROLE.POD]: 'capsule-with-seam',
+  [PICKUP_ROLE.ORE]: 'faceted-block',
+  [PICKUP_ROLE.CHIP]: 'flat-disc-with-notch',
+  [PICKUP_ROLE.VOLATILE]: 'sphere-with-collar',
+  [PICKUP_ROLE.WRECK]: 'opened-hull',
+});
+
+/** Merge authored primitives into one non-indexed, flat-normal, unit-fit geometry. */
+function mergeRoleParts(parts, unitRadius = 1) {
+  const flatParts = parts.map((part) => (part.index ? part.toNonIndexed() : part));
+  const merged = mergeGeometries(flatParts, false);
+  for (const g of parts) g.dispose();
+  for (const g of flatParts) if (!parts.includes(g)) g.dispose();
+  merged.computeVertexNormals();
+  merged.computeBoundingSphere();
+  // Normalize to the unit sphere so callers keep `scale = radius`.
+  const r = merged.boundingSphere ? merged.boundingSphere.radius : 1;
+  if (Number.isFinite(r) && r > 1e-6 && Math.abs(r - unitRadius) > 1e-6) {
+    merged.scale(unitRadius / r, unitRadius / r, unitRadius / r);
+    merged.computeBoundingSphere();
+  }
+  return merged;
+}
+
+function buildPodCapsule() {
+  // Canister body: long capsule along X with blunt ends.
+  const body = new THREE.CapsuleGeometry(0.5, 0.9, 6, 12).rotateZ(Math.PI / 2);
+  // One equatorial clamp seam — the manufactured "lid" line that reads at chase distance.
+  const seam = new THREE.TorusGeometry(0.5, 0.06, 6, 16).rotateY(Math.PI / 2);
+  return mergeRoleParts([body, seam]);
+}
+
+function buildOreBlock() {
+  // Faceted block: an icosahedron squashed off-axis so no face reads as a gem's order.
+  const rock = new THREE.IcosahedronGeometry(0.95, 0).scale(1.06, 0.72, 0.88);
+  const shard = new THREE.IcosahedronGeometry(0.34, 0).scale(1.4, 0.5, 0.7)
+    .translate(0.34, 0.28, -0.2);
+  return mergeRoleParts([rock, shard]);
+}
+
+function buildChipDisc() {
+  // Minted plate, ~0.16 thick, with a REAL bite: the open theta arc leaves a wedge missing from
+  // the rim so the disc is asymmetric in silhouette, and a mint bar sits proud on the crown.
+  const disc = new THREE.CylinderGeometry(0.82, 0.82, 0.16, 12, 1, false, Math.PI * 0.42, Math.PI * 1.62);
+  const mintBar = new THREE.BoxGeometry(0.3, 0.07, 0.1).translate(-0.42, 0.115, 0);
+  return mergeRoleParts([disc, mintBar]);
+}
+
+function buildVolatileBottle() {
+  // Pressure bottle: sphere under a containment collar ring on the equator.
+  const sphere = new THREE.SphereGeometry(0.68, 12, 9);
+  const collar = new THREE.TorusGeometry(0.68, 0.1, 6, 16).rotateX(Math.PI / 2);
+  return mergeRoleParts([sphere, collar]);
+}
+
+function buildWreckShell() {
+  // Opened hull: two shell halves sprung apart — a broken manufactured axis, never a rock.
+  const halfA = new THREE.SphereGeometry(0.62, 10, 6, 0, Math.PI)
+    .scale(1.5, 0.7, 0.9).translate(-0.34, 0.06, 0);
+  const halfB = new THREE.SphereGeometry(0.62, 10, 6, Math.PI, Math.PI)
+    .scale(1.5, 0.7, 0.9).translate(0.3, -0.08, 0.1);
+  const spar = new THREE.BoxGeometry(1.1, 0.08, 0.08).translate(0, 0, 0);
+  return mergeRoleParts([halfA, halfB, spar]);
+}
+
+const ROLE_BUILDERS = Object.freeze({
+  [PICKUP_ROLE.POD]: buildPodCapsule,
+  [PICKUP_ROLE.ORE]: buildOreBlock,
+  [PICKUP_ROLE.CHIP]: buildChipDisc,
+  [PICKUP_ROLE.VOLATILE]: buildVolatileBottle,
+  [PICKUP_ROLE.WRECK]: buildWreckShell,
+});
+
+/**
+ * Deterministic unit-sphere-fit silhouette for a pickup role, or null for an unknown role.
+ * Callers cache via visualFactory.getGeometry — build once per role.
+ */
+export function buildPickupRoleGeometry(role) {
+  const builder = ROLE_BUILDERS[role];
+  return builder ? builder() : null;
+}
+
+/**
+ * Resolve the world role a pickup-shaped entity plays, or null when it plays none. Pure data —
+ * no scene, no geometry. Commodity-category pickups resolve in visualFactory where the baked
+ * kit shape name is already known (raw_ore -> 'ore'); this resolver owns the body-level roles.
+ */
+export function pickupRoleForEntity(e) {
+  if (!e) return null;
+  const d = e.data || {};
+  if (e.type === 'wreck') return PICKUP_ROLE.WRECK;
+  if (d.volatileClass || d.volatileLamp) return PICKUP_ROLE.VOLATILE;
+  if (d.freightCustodyPod || e.type === 'payload') return PICKUP_ROLE.POD;
+  if (d.kind === 'credit_chip' || d.kind === 'credits') return PICKUP_ROLE.CHIP;
+  return null;
+}
+
+/** Stable identity hash of a role's silhouette — no two roles may share one. */
+export function pickupRoleGeometryHash(role) {
+  const geometry = buildPickupRoleGeometry(role);
+  if (!geometry) return null;
+  try {
+    const pos = geometry.getAttribute('position');
+    let h = 0x811c9dc5;
+    for (let i = 0; i < pos.count; i++) {
+      const qx = Math.round(pos.getX(i) * 4096);
+      const qy = Math.round(pos.getY(i) * 4096);
+      const qz = Math.round(pos.getZ(i) * 4096);
+      h = Math.imul(h ^ qx, 0x01000193) >>> 0;
+      h = Math.imul(h ^ qy, 0x01000193) >>> 0;
+      h = Math.imul(h ^ qz, 0x01000193) >>> 0;
+    }
+    return h >>> 0;
+  } finally {
+    geometry.dispose();
+  }
+}
