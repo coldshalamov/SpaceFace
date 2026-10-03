@@ -1,0 +1,3 @@
+BRACKET source packet: 467ff3879239c86a3ec9750c5a8cc1e1d98c97d5a0831bf477938b056bedcc98
+Base: f10eec26ab34c09ca43314fae3c683ebf48c7a68
+53 focused tests passed locally; Chromium character/court/reduced-motion/responsive evidence and full source backup are preserved in the delivered ZIP.
