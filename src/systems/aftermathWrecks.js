@@ -1927,7 +1927,10 @@ export const aftermathWrecks = {
     // record shell — IS that marker's wreck; spawning beside it was the D89 duplicate. Adopt the
     // first claimant (bindImmediateWreck upgrades it to the full spec) and retire the rest.
     const claimants = new Map();
-    for (const e of indexedTypeScan(state, 'wrecks')) {
+    // Snapshot the claimant bucket: salvage/demotion/lifetime sweeps splice it
+    // between this loop's yields — iterating live lets a row slip past and its
+    // marker mints a second wreck (the D89 duplicate class).
+    for (const e of indexedTypeScan(state, 'wrecks').slice()) {
       if (e && e.alive !== false && e.type === 'wreck' && e.data && e.data.markerId != null) {
         const list = claimants.get(e.data.markerId) || [];
         list.push(e);

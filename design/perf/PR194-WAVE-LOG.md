@@ -853,9 +853,9 @@ W56 hitches lane (`saturated: false`, 4 findings) — landed `1b3bd559f`:
 
 Verify: golden `47a` bit-identical (`8d4492dc…`); focused suites 100/101 green — `f15-wrecks` double-wreck red verified identical on clean HEAD (canon).
 
-## W57 — 2026-10-03 (lod landed; popin/boot/hitches queued on SWE-2 cap)
+## W57 — 2026-10-03 (lod+popin landed; boot/hitches queued on SWE-2 cap)
 
-Audit HEAD `baccc574f` (PR #215 tip). lod lane `saturated: false`. Saturation count: 0/3.
+Audit HEAD `baccc574f` (PR #215 tip). lod lane `saturated: false`; popin lane `saturated: false`. Saturation count: 0/3 (lane reports in a row: 0).
 
 - **lod F1 salvage partial-plan seal**: `plannedSectorId` stamped at body start, so a census-splice kill after ≥1 point push sealed a partial scatter — the re-run early-returned and the tail never ran (no `salvage:placed` → survivorPod `_onPlaced` silenced, no wreckField sources, no aftermath bind). The stamp now lands after the zone loop; the re-run adopts existing rows by deterministic id (`${zone.id}:sal${idx}` / `record.salvagePointId`), rolling identical rng draws so the remaining slots roll the same stream (`null` spawnEntity short-circuits the wreck + sort-pocket mint inside `_makeSalvagePoint`).
 - **lod F2 missions live-array splice-skip**: the `needsTargets` pass iterated live `missions.active` across a yield — a mid-slice `_removeActive` splice skipped the next mission and the `passKey` latch sealed the miss for the whole visit. Now iterates `.slice()` (status check still self-filters).
@@ -866,3 +866,11 @@ Audit HEAD `baccc574f` (PR #215 tip). lod lane `saturated: false`. Saturation co
 - **lod F7 recoveryEncounter snapshot residue**: a record deleted mid-slice still got `_claimSalvagePoint` + `_materialize` → orphan husk for a dead row. Membership re-checked (`own.records[record.id] === record`) before claiming. uniqueWrecks `_materialize` already re-reads `own.bearings[wreckId]` (self-guarding).
 
 Verify: golden `47a` trajectory **bit-identical** (`618d7f16…`, the upstream-drifted baseline merged at `5cf892ee2`); focused suites 143/143 + 111/112 green — `salvage-station-intake` `valueCr` red verified identical on clean HEAD (canon).
+
+**W57-popin** (audit on merge tip `421b25f4d`, landed after upstream merge `a7525e7b8` + modulepreload regen `421b25f4d` — sync-modulepreload green again):
+
+- **popin F1 aftermathWrecks claimant live-scan splice-skip**: the claimant pre-pass iterated live `indexedTypeScan('wrecks')` across a per-row yield — a mid-slice salvage/demotion/lifetime splice slipped the next claimant past the map → `claimants.get` empty → `spawnEntity` minted a second wreck for a marker that already had a live one (the D89 duplicate class, surviving sibling of lod F5's spawn loop). Now iterates `.slice()`.
+- **popin F2 intervention two-driver shared-array race**: `_materializePendings()`'s every-tick inline drain runs a second full pass over live `state.pendingInterventions` while the census FIFO holds `_cookProvider`'s iterator suspended mid-array — two drivers, one mutable array, stale-index trust (degrades benign today via the sector filter + splice-shrink). New `deferredEnterProviderInFlight` query on the queue; the inline path bails while a live entry holds this provider.
+- Hunts verified clean: mount-salience (`liveSectorFirstFlightIds` stamps post-census; `isFirstFlightCookEntity` table+spindle only), ownerless 5-7-frame gap structurally inert, double-materialize epoch-gated correctly. All six W56 checks re-verified (splice pin scoping, opening-cook parity, missions pins, `batch.drain` deadline threading, live-foreign-head early clears).
+
+Verify: golden `47a` bit-identical post-merge (`618d7f16…` — upstream's PB-MIS-C/swarm work did not touch the trajectory); focused suites green — `swarm-deferred-warm` roster red (18≠16) verified identical on clean master `9487e2390` (upstream SWARM-268 grew the roster; test not re-pinned — canon). New CI canon additions this merge: `PQ-050.state: done` (upstream's own queue doc), `check-sector-arrival-admission` station 'unavailable' (upstream stale shipping-manifest class — same canon family as `check-bundle`'s `place_conveyor_barge` provenance failure; the check passed at exactly the 20s budget edge pre-merge), `lab-browser-input-grammar` 30s wait flake (passes ~11s on both trees locally).

@@ -16,7 +16,7 @@
 // story" law. Never writes credits, cargo, or rep (single-writer §0.6); never rolls its own losses.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterProviderInFlight } from '../core/sectorEnterDefer.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
@@ -137,7 +137,10 @@ export const intervention = {
 
   _materializePendings() {
     // Sync lane (emit listener, update sweep): drain the chunked steps inline —
-    // the census drive holds the same generator across its slices.
+    // the census drive holds the same generator across its slices. While the
+    // FIFO holds this provider's live entry, the inline run would be a second
+    // driver on the same mutable pendingInterventions array — defer to it.
+    if (deferredEnterProviderInFlight(this.state, this._cookProvider)) return;
     for (const _ of this._materializePendingsSteps()) { /* inline */ }
   },
 

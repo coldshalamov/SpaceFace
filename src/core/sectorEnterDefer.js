@@ -177,6 +177,26 @@ export function drainDeferredEnterSlice(state, sector, budgetMs, holdEpoch) {
   }
   return steps;
 }
+// True while the deferred-enter queue holds this provider live under the
+// world's current epoch — queued-not-yet-driven or suspended mid-stream on a
+// held iterator. Inline sweeps that share the provider's mutable state must
+// defer to the slice clock: a second driver on the same array would race the
+// held iterator's indexes.
+export function deferredEnterProviderInFlight(state, provider) {
+  const render = state && state.render;
+  const queue = render && Array.isArray(render.deferredEnterMaterializers)
+    ? render.deferredEnterMaterializers : null;
+  if (!queue || !queue.length || typeof provider !== 'function') return false;
+  const liveEpoch = state.world && Number.isFinite(state.world.enterSerial)
+    ? state.world.enterSerial : null;
+  for (const entry of queue) {
+    if (!entry || entry.provider !== provider || entry.done) continue;
+    if (entry.epoch != null && liveEpoch != null && entry.epoch !== liveEpoch) continue;
+    return true;
+  }
+  return false;
+}
+
 export function deferSectorEnterMaterialization(state, payload, provider) {
   const render = state && state.render;
   const willRun = render && ((
