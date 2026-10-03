@@ -102,6 +102,9 @@ const joinedAssetTaskClasses = new WeakMap();
 // absorbed or superseded creator nulls the task and every live joiner eats 'decode-failed'
 // into the boundary readmission retry arm.
 const taskConsumerPredicates = new WeakMap();
+// The package commit needs each shared source-URL consumer's exact residency claim, not
+// merely aggregate liveness: cache-only bytes can be evicted before a late retain runs.
+const packageTaskConsumers = new WeakMap();
 const consumerPredicatesFor = (task) => {
   let list = taskConsumerPredicates.get(task);
   if (!list) { list = []; taskConsumerPredicates.set(task, list); }
@@ -1314,6 +1317,14 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
   const optional = options.optional === true;
   const cacheKey = `${url}::${slot || '*'}`;
   if (!authoredConsumerIsActive(options) && !runtime.assets.has(cacheKey)) return null;
+  const packageConsumer = {
+    residencyOwner: options.residencyOwner || runtime.defaultResidencyOwner,
+    residencyRole: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
+    residencySectorId: options.sectorId || null,
+    residencySoftLease: !options.residencyOwner
+      && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
+    isResidencyOwnerActive: () => authoredConsumerIsActive(options),
+  };
   const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     runtime.renderPackages.load(pilot.metadataUrl, {
       signal: admission.signal,
@@ -1323,16 +1334,15 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       // in the outer continuation leaves a strictly cache-owned window that byte-pressure
       // eviction can reclaim mid-mount (decode→evict→retry livelock). Scopeless callers claim
       // the shared runtime-cache session owner, matching the late-retain fallback below.
-      residencyOwner: options.residencyOwner || runtime.defaultResidencyOwner,
-      residencyRole: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
-      residencySectorId: options.sectorId || null,
       // Same ownerless-warm predicate as the GLB lane: with no boundary lifecycle to release
       // the pin, a non-soft warm role on the session fallback owner would pin the package
       // forever. softLease keeps it inside the soft-eviction tier; decodeWarm makes it lose
       // the byte-pressure race last, mirroring the decode-cache retain.
-      residencySoftLease: !options.residencyOwner
-        && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
-      isResidencyOwnerActive: () => authoredConsumerIsActive(options),
+      ...packageConsumer,
+      // Source-URL dedupe means later consumers never call renderPackages.load themselves.
+      // Keep shared decode liveness separate from this first caller's residency ownership:
+      // a live joiner needs the bytes but must not revive the departed creator's retain.
+      getSharedDecodeConsumers: () => packageTaskConsumers.get(task) || [],
     }).then((renderPackage) => {
       admission.assertActive();
       // This outer cache is keyed by source URL while the loader evicts by content hash, and a
@@ -1363,6 +1373,17 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       })
   ));
   if (!task) return null;
+
+  if (runtime.pendingAssetTasks && runtime.pendingAssetTasks.has(task)) {
+    let consumers = packageTaskConsumers.get(task);
+    if (!consumers) {
+      consumers = [];
+      packageTaskConsumers.set(task, consumers);
+      const settled = () => { packageTaskConsumers.delete(task); };
+      task.then(settled, settled);
+    }
+    consumers.push(packageConsumer);
+  }
 
   const record = await waitForAuthoredConsumer(task, options).catch((error) => {
     if (!optional && !runtime.retiring && authoredConsumerIsActive(options)) {

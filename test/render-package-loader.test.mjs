@@ -1180,3 +1180,201 @@ test('D24: a released package generation drops its task and reacquires without r
   residency.releaseOwner(boundary, 'test-boundary-departed');
   loader.dispose();
 });
+
+test('source-url dedupe preserves a live package consumer after the first owner departs', async () => {
+  const residency = createAssetResidencyRegistry({ maxPackageCacheOnlyBytes: 1 });
+  let resolveDecode, notifyStarted, decodeCount = 0;
+  const started = new Promise((resolve) => { notifyStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => {
+      decodeCount++;
+      if (decodeCount > 1) throw new Error('live joiner lost its committed package to byte pressure');
+      notifyStarted();
+      return new Promise((resolve) => { resolveDecode = resolve; });
+    },
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const creatorOwner = { id: 'departed-prefetch' }, liveOwner = { id: 'live-ship' };
+  let creatorActive = true;
+  try {
+    const creator = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', optional: true, residencyOwner: creatorOwner,
+      residencyRole: 'departed-creator', isResidencyOwnerActive: () => creatorActive,
+    });
+    await started;
+    const live = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', optional: true, residencyOwner: liveOwner,
+      residencyRole: 'live-joiner', isResidencyOwnerActive: () => true,
+    });
+    creatorActive = false;
+    resolveDecode({ scene: decodedFixture().scene });
+    assert.equal(await creator, null, 'the departed consumer cannot receive or retain the result');
+    const record = await live;
+    assert.ok(record, 'the live consumer must receive the actual shared package');
+    assert.equal(decodeCount, 1, 'the live joiner preserves the original decode');
+    const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.ok(row.roles.includes('live-joiner'));
+    assert.equal(row.roles.includes('departed-creator'), false, 'decode liveness must not revive a dead owner');
+  } finally {
+    loader.dispose();
+  }
+});
+
+function gatedPilotConsumers() {
+  const residency = createAssetResidencyRegistry();
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decodes = [];
+  const starts = [];
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => new Promise((resolve, reject) => {
+      decodes.push({ resolve, reject });
+      for (const start of starts.splice(0)) start();
+    }),
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const load = (id, active = () => true, signal = undefined) => loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+    slot: 'hull', optional: true, residencyOwner: { id }, residencyRole: id,
+    isResidencyOwnerActive: active, signal,
+  });
+  const waitForDecode = async (count) => {
+    while (decodes.length < count) await new Promise((resolve) => starts.push(resolve));
+    assert.equal(decodes.length, count, 'the expected production decode starts');
+  };
+  const resolve = (index = 0, trackDisposal = false) => {
+    const decoded = decodedFixture(trackDisposal ? disposals : null);
+    decodes[index].resolve({ scene: decoded.scene });
+  };
+  return { residency, disposals, loader, runtime, load, waitForDecode, resolve, decodes };
+}
+
+test('all shared pilot consumers departing disposes once and a fresh owner gets a fresh decode', async () => {
+  const f = gatedPilotConsumers();
+  let aActive = true, bActive = true;
+  try {
+    const a = f.load('owner-a', () => aActive);
+    await f.waitForDecode(1);
+    const b = f.load('owner-b', () => bActive);
+    aActive = false;
+    // A late departure of B removes the last live consumer, not just the first owner.
+    await Promise.resolve();
+    bActive = false;
+    f.resolve(0, true);
+    assert.deepEqual(await Promise.all([a, b]), [null, null]);
+    assert.deepEqual(f.disposals, { geometry: 1, material: 1, texture: 1 });
+    assert.equal(f.runtime.assets.size, 0, 'null cancellation does not poison the outer cache');
+    assert.equal(f.runtime.pendingAssetTasks.size, 0);
+    assert.equal(f.runtime.failures.size, 0, 'ordinary owner departure is not an asset failure');
+    assert.equal(f.residency.diagnostics().assets.length, 0, 'canceled decode never becomes resident');
+    const c = f.load('owner-c');
+    await f.waitForDecode(2);
+    f.resolve(1);
+    const record = await c;
+    assert.ok(record, 'a fresh live owner is admitted after complete cancellation');
+    const row = f.residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.ok(row.roles.includes('owner-c'));
+    assert.equal(row.roles.includes('owner-a'), false);
+    assert.equal(row.roles.includes('owner-b'), false);
+  } finally {
+    f.loader.dispose();
+  }
+});
+
+test('an aborted creator cannot receive a shared package or overwrite a live joiner cache result', async () => {
+  const f = gatedPilotConsumers();
+  const controller = new AbortController();
+  try {
+    const a = f.load('owner-a', () => true, controller.signal);
+    await f.waitForDecode(1);
+    const b = f.load('owner-b');
+    controller.abort(new Error('owner-a departed'));
+    assert.equal(await a, null);
+    f.resolve();
+    const record = await b;
+    assert.ok(record);
+    assert.equal(f.decodes.length, 1);
+    const c = await f.load('owner-c');
+    assert.strictEqual(c.renderPackage, record.renderPackage, 'late cache hit preserves the live generation');
+    assert.equal(f.decodes.length, 1);
+    const row = f.residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.equal(row.roles.includes('owner-a'), false);
+    assert.ok(row.roles.includes('owner-b'));
+    assert.ok(row.roles.includes('owner-c'));
+    assert.equal(f.runtime.failures.size, 0);
+  } finally {
+    f.loader.dispose();
+  }
+});
+
+test('real shared-package decode errors retain their original diagnostic and a later owner retries', async () => {
+  const f = gatedPilotConsumers();
+  const original = new Error('shared package decode failed');
+  try {
+    const a = f.load('owner-a');
+    await f.waitForDecode(1);
+    const b = f.load('owner-b');
+    f.decodes[0].reject(original);
+    // Null is the public asset-loader failure contract; the diagnostic must not be erased
+    // or reclassified as successful cancellation by the shared-consumer liveness handling.
+    assert.deepEqual(await Promise.all([a, b]), [null, null]);
+    assert.strictEqual(f.runtime.failures.get(`${PILOT_SOURCE_URL}::hull`), original);
+    assert.equal(f.runtime.assets.size, 0);
+    const c = f.load('owner-c');
+    await f.waitForDecode(2);
+    f.resolve(1);
+    assert.ok(await c);
+    assert.equal(f.runtime.failures.size, 0, 'the successful retry replaces the old failure');
+  } finally {
+    f.loader.dispose();
+  }
+});
+
+test('inline metadata cache hits see the complete source-task consumer set before the first loader call', async () => {
+  const residency = createAssetResidencyRegistry({ maxPackageCacheOnlyBytes: 1 });
+  let decodes = 0;
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => { decodes++; return { scene: decodedFixture().scene }; },
+    prepareDecoded: () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const metadata = packageMetadata();
+  const warmOwner = { id: 'cached-package-owner' };
+  let creatorActive = true;
+  const firstClaims = [];
+  try {
+    const cached = await loader.load(metadata, { residencyOwner: warmOwner });
+    const runtime = pilotRuntimeFixture({ load(value, options) {
+      // This read is deliberately synchronous at the factory boundary. It catches a
+      // temporal-dead-zone access or registration that happens only after loader.load.
+      firstClaims.push(options.getSharedDecodeConsumers().map((consumer) => ({
+        id: consumer.residencyOwner.id, active: consumer.isResidencyOwnerActive(),
+      })));
+      return loader.load(value, options);
+    } });
+    const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+    const a = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', residencyOwner: { id: 'owner-a' }, isResidencyOwnerActive: () => creatorActive,
+    });
+    const b = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', residencyOwner: { id: 'owner-b' }, isResidencyOwnerActive: () => true,
+    });
+    creatorActive = false;
+    assert.equal(await a, null);
+    const record = await b;
+    assert.strictEqual(record.renderPackage, cached);
+    assert.equal(decodes, 1, 'the pilot uses the already-fulfilled inner cache entry');
+    assert.deepEqual(firstClaims, [[{ id: 'owner-a', active: false }, { id: 'owner-b', active: true }]]);
+    residency.releaseOwner(warmOwner, 'cache-owner-left');
+    assert.equal(record.renderPackage.evicted, false, 'live B owns the cached result');
+    assert.equal(runtime.failures.size, 0);
+  } finally {
+    loader.dispose();
+  }
+});
