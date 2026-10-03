@@ -8,7 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
 import { peekPendingSlam } from './hullFracture.js';
@@ -937,6 +937,10 @@ export const aftermathWrecks = {
     this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
     this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
     this._onSectorEnter = (payload) => {
+      // Sync lane (emit listener, tests, save:loaded): drain the chunked steps inline.
+      for (const _ of this._enterSteps(payload)) { /* inline */ }
+    };
+    this._enterSteps = function* (payload) {
       const sectorId = payload && payload.sectorId;
       // A tail-drained emit carries the epoch of the enter that minted it: a replayed
       // payload whose enterEpoch no longer matches the world's serial is stale — spawning
@@ -945,7 +949,7 @@ export const aftermathWrecks = {
       if (payload && payload.enterEpoch != null && this.state && this.state.world
           && this.state.world.enterSerial != null
           && payload.enterEpoch !== this.state.world.enterSerial) return;
-      this._spawnForSector(sectorId);
+      yield* this._spawnForSectorSteps(sectorId);
     };
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
@@ -978,12 +982,12 @@ export const aftermathWrecks = {
       });
       this.bus.on('sector:exit', this._onSectorExit);
       // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
-      this._cookProvider = (sector) => {
-        if (this._onSectorEnter) this._onSectorEnter({
-          sectorId: (sector && sector.id)
-            || (this.state && this.state.world && this.state.world.currentSectorId),
-        });
-      };
+      // The cook drives the chunked steps across its slice clock; the emit listener
+      // drains the same steps synchronously, so both paths mint the identical field.
+      this._cookProvider = (sector) => this._enterSteps({
+        sectorId: (sector && sector.id)
+          || (this.state && this.state.world && this.state.world.currentSectorId),
+      });
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
@@ -1900,6 +1904,13 @@ export const aftermathWrecks = {
   },
 
   _spawnForSector(sectorId) {
+    // Sync lane (emit listener, save:loaded, kill/promote callers): drain the chunked
+    // steps inline — the census drive holds the same generator across its slices.
+    const steps = this._spawnForSectorSteps(sectorId);
+    for (;;) { const s = steps.next(); if (s.done) return s.value; }
+  },
+
+  *_spawnForSectorSteps(sectorId) {
     const state = this.state;
     // Save restore re-enters the incoming sector before this system receives/deserializes the
     // incoming aftermath bag. Spawning in that window would materialize the outgoing run's markers
@@ -1907,6 +1918,7 @@ export const aftermathWrecks = {
     if (this._saveRestoring) return 0;
     if (!state || !sectorId || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
     const listed = aftermathForSector(state, sectorId);
+    const own = ensureAftermathState(state);
     const player = listed.filter(isPlayerWreckMarker);
     const rest = listed.filter((marker) => !isPlayerWreckMarker(marker))
       .slice(0, Math.max(0, MAX_SPAWNED_PER_SECTOR - player.length));
@@ -1915,15 +1927,20 @@ export const aftermathWrecks = {
     // record shell — IS that marker's wreck; spawning beside it was the D89 duplicate. Adopt the
     // first claimant (bindImmediateWreck upgrades it to the full spec) and retire the rest.
     const claimants = new Map();
-    for (const e of indexedTypeScan(state, 'wrecks')) {
+    // Snapshot the claimant bucket: salvage/demotion/lifetime sweeps splice it
+    // between this loop's yields — iterating live lets a row slip past and its
+    // marker mints a second wreck (the D89 duplicate class).
+    for (const e of indexedTypeScan(state, 'wrecks').slice()) {
       if (e && e.alive !== false && e.type === 'wreck' && e.data && e.data.markerId != null) {
         const list = claimants.get(e.data.markerId) || [];
         list.push(e);
         claimants.set(e.data.markerId, list);
       }
+      yield;
     }
     let count = 0;
     for (const marker of markers) {
+      yield;
       const live = claimants.get(marker.markerId) || null;
       if (live && live.length) {
         const adopted = this.bindImmediateWreck(marker.markerId, live[0]);
@@ -1939,6 +1956,10 @@ export const aftermathWrecks = {
         }
       }
       if (this._resolveBoundWreck(marker.markerId)) continue;
+      // Markers retire mid-slice (salvage completion, arena cap) while this pass is
+      // suspended — spawning for a dead marker leaves an orphan body that claims nothing.
+      const liveBag = own.bySector[sectorId];
+      if (Array.isArray(liveBag) && liveBag.indexOf(marker) === -1) continue;
       const entity = this.helpers.spawnEntity(this._specForMarker(marker));
       if (!entity) continue;
       this._bindLiveMarker(marker, entity);
@@ -2243,7 +2264,7 @@ export const aftermathWrecks = {
       zoneId: source.zoneId || null,
       kind: source.kind || 'aftermath',
       pos,
-      bornAt: Number.isFinite(source.bornAt) ? source.bornAt : (Number(state && state.simTime) || 0),
+      bornAt: Number.isFinite(source.bornAt) ? source.bornAt : (Number(deferredEnterNow(state)) || 0),
       inhabitedAt: null,
       decayed: false,
       budget: WRECK_ECOLOGY_BUDGET,
@@ -2288,7 +2309,7 @@ export const aftermathWrecks = {
         if (Number.isFinite(t) && t < bornAt) bornAt = t;
         if (!pos && marker.pos) pos = marker.pos;
       }
-      if (!Number.isFinite(bornAt)) bornAt = Number(this.state && this.state.simTime) || 0;
+      if (!Number.isFinite(bornAt)) bornAt = Number(deferredEnterNow(this.state)) || 0;
       this.registerWreckFieldSource({
         fieldId,
         sectorId,
@@ -2302,7 +2323,7 @@ export const aftermathWrecks = {
 
   _populateField(field) {
     if (!field || this._saveRestoring) return 0;
-    const now = Number(this.state && this.state.simTime) || 0;
+    const now = Number(deferredEnterNow(this.state)) || 0;
     const age = now - (Number.isFinite(field.bornAt) ? field.bornAt : 0);
     if (field.decayed || age >= WRECK_ECOLOGY_DECAY_S) {
       this._decayField(field);

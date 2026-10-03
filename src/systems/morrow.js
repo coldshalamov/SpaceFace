@@ -3,7 +3,7 @@
 // the same additive command membrane used by Massline. The player keeps their own controls.
 import { MORROW, MORROW_LINES, freshMorrowMemory, normalizeMorrowMemory } from '../data/morrow.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -84,7 +84,7 @@ export function createMorrow() {
         this._scanSeq = 0; this._syncEntity();
       });
       // Census arm: the morrow entity materializes inside the sector cook deterministically.
-      this._cookProvider = () => { this._scanSeq = 0; this._syncEntity(); };
+      this._cookProvider = () => { this._scanSeq = 0; return this._syncEntitySteps(); };
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
     },
@@ -133,20 +133,29 @@ export function createMorrow() {
       this._id = null;
     },
     _syncEntity() {
+      // Sync lane (emit listener, save:loaded, tick sweep): drain the chunked steps
+      // inline — the census drive holds the same generator across its slices.
+      for (const _ of this._syncEntitySteps()) { /* inline */ }
+    },
+    *_syncEntitySteps() {
       if (!this._adventure() || this.state.morrow.destroyed) {
         this._removeOwned(); this._inside = false; this._cancel(false); return;
       }
       let found = null;
-      for (const e of this.state.entityList || []) {
+      for (const e of (this.state.entityList || []).slice()) {
+        yield;
         if (!e?.alive || e.data?.morrow !== true) continue;
         if (found) this.helpers.removeEntity?.(e.id);
         else found = e;
       }
+      // A live update() sweep can run the sync twin while this pass sleeps between
+      // slices — re-resolve before minting or the suspended snapshot mints a double.
+      if (!found) found = this._entity();
       if (!found && this.helpers.spawnEntity) found = this.helpers.spawnEntity(morrowEntitySpec(this.state.morrow));
       this._id = found?.id ?? null;
     },
     _say(key, important = false) {
-      const now = this.state.simTime || 0;
+      const now = Number(deferredEnterNow(this.state)) || 0;
       if (!important && now - this._lastVoice < 6) return;
       const text = MORROW_LINES[key]; if (!text) return;
       this._lastVoice = now;

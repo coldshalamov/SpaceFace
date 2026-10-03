@@ -101,13 +101,28 @@ function pushAlive(out, row) {
 // its slice clock. Row order (therefore `out` contents) is identical to the sync drain.
 export function* collectJournalPresentationEntitiesChunked(state, out = []) {
   out.length = 0;
-  const list = state && state.entityList;
+  // Snapshot the walked arrays at mint: a suspended walk resumes after providers
+  // splice/swap-pop these same arrays, and a live-index cursor silently skips the
+  // row moved under it (or drops it from the committed set entirely). Dead refs
+  // still filter through pushAlive's alive check at push time.
+  const list = state && state.entityList ? state.entityList.slice() : null;
   if (list) {
     for (let i = 0; i < list.length; i++) { pushAlive(out, list[i]); yield; }
   }
   const dressing = state && state.world && state.world.dressing;
-  if (dressing && Array.isArray(dressing.rows)) {
-    for (let i = 0; i < dressing.rows.length; i++) { pushAlive(out, dressing.rows[i]); yield; }
+  const rows = dressing && Array.isArray(dressing.rows) ? dressing.rows.slice() : null;
+  if (rows) {
+    for (let i = 0; i < rows.length; i++) { pushAlive(out, rows[i]); yield; }
+  }
+  // Rows appended while the walk was suspended sit past the snapshot tail; sweep
+  // them so a mid-walk spawn joins this drive instead of waiting a whole cycle.
+  const liveList = state && state.entityList;
+  if (liveList && liveList.length > (list ? list.length : 0)) {
+    for (let i = list ? list.length : 0; i < liveList.length; i++) {
+      const row = liveList[i];
+      if (!list || !list.includes(row)) pushAlive(out, row);
+      yield;
+    }
   }
   return out;
 }
@@ -352,16 +367,24 @@ function appendNearbyLedgerRows(state, out) {
   for (let i = 0; i < _meshFarScratch.length; i++) _appendLedgerFarRow(_meshFarScratch[i], ctx, out);
 }
 
+// Driver-side warm step for the chunked collect: the memo-miss refill inside
+// _nearbyLedgerRowsContext (queryAsteroidField + queryFarActors over the union
+// walk disc, which spans the whole post-jump corridor) is the collect's largest
+// unbounded single step, and inside the generator it runs in the FIRST next()
+// before any yield — slicing can't bound inside a step. Drivers call this as
+// their own step before minting the chunked iterator so the refill lands
+// between slice boundaries; the generator's ctx call then serves from the memo.
+export function warmNearbyLedgerRows(state) {
+  _nearbyLedgerRowsContext(state);
+}
+
 // Chunked twin: yields per row so the sector cook can drive the ledger walks across its
 // slice clock. Row order (therefore `out` contents) is identical to the sync drain.
 // The module scratches are shared by every collect: a reconcile drain's own collect
 // refills them while this generator is suspended mid-walk, so the row refs are
 // snapshotted at creation — the walk answers the set it was created against.
-export function* appendNearbyLedgerRowsChunked(state, out) {
-  const ctx = _nearbyLedgerRowsContext(state);
+function* _appendLedgerRowsWithCtx(ctx, rocks, fars, out) {
   if (!ctx) return;
-  const rocks = _meshRockScratch.slice();
-  const fars = _meshFarScratch.slice();
   for (let i = 0; i < rocks.length; i++) {
     _appendLedgerRockRow(rocks[i], ctx, out);
     yield;
@@ -370,6 +393,12 @@ export function* appendNearbyLedgerRowsChunked(state, out) {
     _appendLedgerFarRow(fars[i], ctx, out);
     yield;
   }
+}
+
+export function* appendNearbyLedgerRowsChunked(state, out) {
+  const ctx = _nearbyLedgerRowsContext(state);
+  if (!ctx) return;
+  yield* _appendLedgerRowsWithCtx(ctx, _meshRockScratch.slice(), _meshFarScratch.slice(), out);
 }
 
 export function collectMeshPresentationEntities(state, out = []) {
@@ -381,8 +410,15 @@ export function collectMeshPresentationEntities(state, out = []) {
 // Chunked twin of the pair — the sector cook's collect seam drives this under its slice
 // clock instead of paying the whole journal + ledger walk inside one task.
 export function* collectMeshPresentationEntitiesChunked(state, out = []) {
+  // Mint the ledger ctx (and freeze the scratch row set) up front: the journal
+  // walk can span several slices, and a quantized-cell crossing mid-walk would
+  // otherwise land the memo-miss refill — the unbounded grid query the warm
+  // exists to hoist — inside a next() step.
+  const ctx = _nearbyLedgerRowsContext(state);
+  const rocks = ctx ? _meshRockScratch.slice() : null;
+  const fars = ctx ? _meshFarScratch.slice() : null;
   yield* collectJournalPresentationEntitiesChunked(state, out);
-  yield* appendNearbyLedgerRowsChunked(state, out);
+  yield* _appendLedgerRowsWithCtx(ctx, rocks, fars, out);
 }
 
 /**

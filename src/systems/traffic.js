@@ -2028,7 +2028,7 @@ export const traffic = {
         reservedByWorldRecordId: recordId,
         reservedByActivityActorSlotId: CERES_SEAM_MINER_SLOT_ID,
         reservedByJobId: `job:${recordId}`,
-        simTime: this.state.simTime,
+        simTime: deferredEnterNow(this.state),
       });
       if (missed && this.bus && typeof this.bus.emit === 'function') {
         this.bus.emit('field:richSeamMissed', { ...missed, reason: 'owner_invalidated' });
@@ -2389,7 +2389,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.ceresActivityCast = true;
     data.ceresActivityJobOwned = !entry.service;
@@ -2526,7 +2526,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.authoredActivityCast = true;
     data.authoredActivityJobOwned = true;
@@ -3391,7 +3391,7 @@ export const traffic = {
   },
 
   _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
-    const departureAt = (Number.isFinite(this.state.simTime) ? this.state.simTime : 0)
+    const departureAt = (Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0)
       + PRIORITY_COURIER_SERVICE.dwellS;
     const dueAt = this._priorityCourierDueAt(stations, originStationId, destinationStationId, departureAt);
     if (!Number.isFinite(dueAt)) return null;
@@ -3426,7 +3426,7 @@ export const traffic = {
     if (job && (job.phase === NPC_JOB_PHASE.FLEE || jobEntry.control)) return 'INTERRUPTED';
     const escort = itinerary && itinerary.escort || {};
     const creditS = Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     if (now > itinerary.dueAt + creditS) return 'LATE';
     if (!entity.data.jobId && now < itinerary.departureAt) return 'BERTH';
     return 'ON_TIME';
@@ -3690,7 +3690,7 @@ export const traffic = {
   _newPassengerLinerItinerary(entity, originStationId, destinationStationId, legSeq = 0) {
     const worldRecordId = entity && entity.data && entity.data.worldRecordId;
     if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     const departureAt = now + PASSENGER_LINER_SERVICE.dwellS;
     const ids = passengerLinerLegIds(worldRecordId, legSeq);
     return {
@@ -6742,7 +6742,7 @@ export const traffic = {
   },
 
   _listSalvageTargets() {
-    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const tick = Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0;
     if (this._salvageTargetCache
         && this._salvageTargetCacheTick != null
         && tick - this._salvageTargetCacheTick < 4
@@ -6785,7 +6785,7 @@ export const traffic = {
     for (const target of this._listSalvageTargets()) {
       const claim = this._salvorClaimantOf(target);
       if (claim) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -7079,7 +7079,7 @@ export const traffic = {
     let bestId = '';
     for (const target of this._listSalvageTargets()) {
       if (!this._isTowableBody(target)) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -7370,7 +7370,7 @@ export const traffic = {
     for (const target of targets) {
       if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) break;
       if (this._salvorClaimantOf(target)) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       // The authored Vesta cutter must return to Forge, not whichever pocket station happens to
       // be first in the current entity ordering. Missing Forge means no Vesta dispatch, never a
       // fallback trip to another sector's service route.
@@ -9765,7 +9765,7 @@ export const traffic = {
     if (this._ceresCausal && this._ceresCausal.schema === CERES_CAUSAL_CHAIN_SCHEMA) {
       return this._ceresCausal;
     }
-    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const simTime = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     this._ceresCausal = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       cycle: 0,
@@ -9977,7 +9977,7 @@ export const traffic = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       kind: String(kind || 'tick'),
       sectorId: CERES_ACTIVITY_SECTOR_ID,
-      simTime: Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0,
+      simTime: Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0,
       cycle: chain ? chain.cycle | 0 : 0,
       activeCount: chain && Array.isArray(chain.active) ? chain.active.length : 0,
       completed: chain && Array.isArray(chain.completed) ? chain.completed.slice() : [],
@@ -11243,7 +11243,7 @@ export const traffic = {
 
   _resetRngForSector(sectorId) {
     this._ensureState();
-    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, this.state.tick || 0);
+    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, deferredEnterTick(this.state) || 0);
   },
 
   _rng() {

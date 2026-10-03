@@ -427,6 +427,10 @@ export const survivorPod = {
     ensureState(this._state);
     this._onPlaced = (p) => this._promoteSector(p && p.sectorId);
     this._onSectorEnter = (p) => {
+      // Sync lane (emit listener, tests): drain the chunked steps inline.
+      for (const _ of this._enterSteps(p)) { /* inline */ }
+    };
+    this._enterSteps = function* (p) {
       const sectorId = p && p.sectorId;
       // A tail-drained emit carries the epoch of the enter that minted it: a replayed
       // payload whose enterEpoch no longer matches the world's serial is stale — promoting
@@ -435,7 +439,7 @@ export const survivorPod = {
       if (p && p.enterEpoch != null && this._state && this._state.world
           && this._state.world.enterSerial != null
           && p.enterEpoch !== this._state.world.enterSerial) return;
-      this._promoteSector(sectorId);
+      yield* this._promoteSectorSteps(sectorId);
     };
     this._onMissionOffered = (offer) => this._stampOffer(offer);
     this._onChoice = (p) => this._handleChoice(p);
@@ -460,12 +464,10 @@ export const survivorPod = {
       });
       // Census arm: survivor-pod promotion lands inside the sector cook deterministically.
       if (this.helpers) {
-        this._cookProvider = (sector) => {
-          if (this._onSectorEnter) this._onSectorEnter({
-            sectorId: (sector && sector.id)
-              || (this.state && this.state.world && this.state.world.currentSectorId),
-          });
-        };
+        this._cookProvider = (sector) => this._enterSteps({
+          sectorId: (sector && sector.id)
+            || (this.state && this.state.world && this.state.world.currentSectorId),
+        });
         (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
           .push(this._cookProvider);
       }
@@ -1044,6 +1046,13 @@ export const survivorPod = {
   },
 
   _promoteSector(sectorId) {
+    // Sync lane (emit listener, salvage:placed): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices.
+    const steps = this._promoteSectorSteps(sectorId);
+    for (;;) { const s = steps.next(); if (s.done) return s.value; }
+  },
+
+  *_promoteSectorSteps(sectorId) {
     const state = this._state;
     if (!state || !sectorId) return null;
     const own = ensureState(state);
@@ -1058,6 +1067,7 @@ export const survivorPod = {
     }
 
     const points = state.salvage && Array.isArray(state.salvage.points) ? state.salvage.points : [];
+    yield;
     const eligible = points.filter((p) => {
       if (!p || p.sectorId !== sectorId || p.offered || p.survivorPod || p.lossInvestigation) return false;
       return !!entityForPoint(state, p);
@@ -1088,10 +1098,17 @@ export const survivorPod = {
       stripped: false,
     };
 
+    // Commit the promotion record before the point mutation: a suspended-and-killed
+    // pass that stamped the point but not the record would re-plan to a different
+    // point — the `existing` head then repairs the rest on re-run.
+    own.promotedBySector[sectorId] = rec;
+    own.promotedByPoint[point.id] = rec;
+
     point.isCommunicator = true;
     point.wreckMissionId = MISSION_ID;
     point.survivorPod = publicMeta(state, rec);
 
+    yield;
     const ent = entityForPoint(state, point);
     if (ent && ent.data) {
       ent.data.parentType = 'survivor_pod';
@@ -1104,8 +1121,6 @@ export const survivorPod = {
       ent.data.scanLabel = `Survivor Pod - ${countdownLabel(state, rec)}`;
     }
 
-    own.promotedBySector[sectorId] = rec;
-    own.promotedByPoint[point.id] = rec;
     if (this._bus && this._bus.emit) {
       this._bus.emit('survivorPod:promoted', { ...publicMeta(state, rec), zoneId: point.zoneId || null });
     }

@@ -170,7 +170,7 @@ import {
 import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -1800,7 +1800,7 @@ export const missions = {
    *  via the per-station hash, but all advance on the same cadence). */
   _epoch() {
     const cfg = this.state.missions.config || MISSION_TUNING;
-    return Math.floor((this.state.simTime || 0) / (cfg.refreshSec || 600));
+    return Math.floor((deferredEnterNow(this.state) || 0) / (cfg.refreshSec || 600));
   },
 
   /** Build (or refresh) a station's board iff missing or its epoch advanced. Stable within an epoch
@@ -2786,7 +2786,7 @@ export const missions = {
    *  seam. Board generation is a dock-side boundary; per-tick simulation never sees it. Same
    *  'YYYY-MM-DD' UTC key the Crucible daily board uses, so "today" means one thing everywhere. */
   _dayKey() {
-    return `sim-day:${Math.floor(Math.max(0, Number(this.state.simTime) || 0) / 86400)}`;
+    return `sim-day:${Math.floor(Math.max(0, Number(deferredEnterNow(this.state)) || 0) / 86400)}`;
   },
 
   /** One generated offer per station per day bucket pays the featured premium. The pick is a
@@ -4129,7 +4129,7 @@ export const missions = {
     const last = legs[legs.length - 1];
     if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) return;
     const key = `${currentSectorId}->${waypoint.sectorId}`;
-    const now = state.simTime || 0;
+    const now = deferredEnterNow(state) || 0;
     if (this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
     this._lastWaypointRouteKey = key;
     this._lastWaypointRouteAt = now;
@@ -4392,7 +4392,7 @@ export const missions = {
       const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
       const short = (m.objectiveProgress || 0) < target;
       const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
-      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(this.state.simTime) || 0);
+      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(deferredEnterNow(this.state)) || 0);
       if (short && !clockOut && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
         const home = (station && station.name) || 'home';
         return {
@@ -6200,7 +6200,7 @@ export const missions = {
           ? { x: anchor.x + Math.cos(ang) * (120 + rng() * 60), z: anchor.z + Math.sin(ang) * (120 + rng() * 60) }
           : (missionHostileSpawnPos(this.state, anchor, rng) || { x: px + 400, z: pz + 200 });
         const spec = makeEnemySpawnSpec('wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
-          startedTick: this.state.tick,
+          startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id;
@@ -6260,7 +6260,7 @@ export const missions = {
         let spec;
         if (actor.kind === 'ship') {
           spec = makeEnemySpawnSpec(actor.archetype || 'wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
-            startedTick: this.state.tick,
+            startedTick: deferredEnterTick(this.state),
           });
           spec.data = spec.data || {};
           if (Number.isFinite(actor.hull)) {
@@ -6348,7 +6348,7 @@ export const missions = {
         let spec;
         if (actor.kind === 'ship') {
           spec = makeEnemySpawnSpec(actor.archetype || 'bruiser_brawler', Math.round((lvLo + lvHi) / 2), pos, {
-            startedTick: state.tick,
+            startedTick: deferredEnterTick(state),
             motive: 'capital_interdiction',
             engagementTrigger: 'capital_boss_contract',
           });
@@ -8672,7 +8672,7 @@ export const missions = {
     ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.MISSION_TARGET, key);
     ent.data.identityKey = key;
     ent.data.durable = true;
-    ent.data.recordCreatedTick = this.state.tick | 0;
+    ent.data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) (the contender path
     // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
     registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
@@ -8851,7 +8851,7 @@ export const missions = {
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, level, pos, {
           factionId: storyTarget && storyTarget.factionId,
-          startedTick: this.state.tick,
+          startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
@@ -8945,7 +8945,7 @@ export const missions = {
         };
         // Real haulers: friendly (team 0) ships that TRAVEL toward the destination. The lead must
         // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
-        const spec = makeEnemySpawnSpec('mule_trader', level, pos, { startedTick: this.state.tick });
+        const spec = makeEnemySpawnSpec('mule_trader', level, pos, { startedTick: deferredEnterTick(this.state) });
         spec.team = 0; spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
         spec.data = spec.data || {};
         spec.data.missionTag = m.id;
@@ -9012,7 +9012,7 @@ export const missions = {
               };
               const archetype = pool[Math.floor(rng() * pool.length)];
               const raiderLevel = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
-              const spec = makeEnemySpawnSpec(archetype, raiderLevel, pos, { startedTick: this.state.tick });
+              const spec = makeEnemySpawnSpec(archetype, raiderLevel, pos, { startedTick: deferredEnterTick(this.state) });
               spec.data = spec.data || {};
               spec.data.escortAmbushOf = String(m.id);
               let ent;
@@ -9052,7 +9052,7 @@ export const missions = {
         const e = this.state.entities.get(id);
         return e && e.alive !== false;
       });
-      const nowS = Number(this.state.simTime) || 0;
+      const nowS = Number(deferredEnterNow(this.state)) || 0;
       const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
       const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= nowS;
       if (!m.targetEntityIds.length && !clockOut) {
@@ -9491,7 +9491,7 @@ export const missions = {
         z: wreck.pos.z + Math.sin(a) * r,
       };
       const level = Math.round(lvLo + (lvHi - lvLo) * rng());
-      const spec = makeEnemySpawnSpec(archetype, level, pos, { startedTick: this.state.tick });
+      const spec = makeEnemySpawnSpec(archetype, level, pos, { startedTick: deferredEnterTick(this.state) });
       spec.data = spec.data || {};
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.passive = true;
@@ -10067,7 +10067,7 @@ export const missions = {
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     // Continue order: world rematerializes mission_target records first; adopt those live IDs
     // before any fresh spawn so targetEntityIds (cleared on deserialize) do not duplicate.
-    for (const m of this.state.missions.active) {
+    for (const m of (this.state.missions.active || []).slice()) {
       if (m.status !== 'active' || !m.needsTargets) continue;
       if (m.destSectorId !== sectorId) continue;
       m.targetEntityIds = m.targetEntityIds.filter((id) => {
@@ -10173,7 +10173,7 @@ export const missions = {
     // Sidecar step/fail recovery observer (never advances beatIndex itself).
     const signal = STORY_SIGNAL_BY_KIND[kind];
     const stepResult = signal
-      ? recordBeatStep(this.state, signal, data || {}, this.state.simTime || 0)
+      ? recordBeatStep(this.state, signal, data || {}, deferredEnterNow(this.state) || 0)
       : null;
 
     // B0 is ordered AND: mining:yield then dock:docked — gate on isBeatStepsComplete.
@@ -10451,7 +10451,7 @@ export const missions = {
   _syncCampaignSidecarAfterAdvance() {
     const state = this.state;
     this._ensureCampaignSidecar();
-    syncObservedBeat(state, state.simTime || 0);
+    syncObservedBeat(state, deferredEnterNow(state) || 0);
   },
 
   /**

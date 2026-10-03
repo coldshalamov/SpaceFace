@@ -9,7 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
@@ -550,7 +550,7 @@ export const uniqueWrecks = {
 
   _receipt(type, wreckId) {
     const own = this._ensureState();
-    own.receipts.push({ type, wreckId, t: Math.max(0, finite(this.state.simTime, 0)) });
+    own.receipts.push({ type, wreckId, t: Math.max(0, finite(deferredEnterNow(this.state), 0)) });
     if (own.receipts.length > UNIQUE_WRECK_RECEIPT_LIMIT) {
       own.receipts.splice(0, own.receipts.length - UNIQUE_WRECK_RECEIPT_LIMIT);
     }
@@ -747,7 +747,7 @@ export const uniqueWrecks = {
       phase: 'rumored',
       sourceRef,
       channelId: payload.recordedChannelId || payload.channelId || source.channelId,
-      heardAtS: Math.max(0, finite(this.state.simTime, 0)),
+      heardAtS: Math.max(0, finite(deferredEnterNow(this.state), 0)),
       coordSpace: 'global_v1',
       bearingCenter: { ...placement.bearingCenterGlobal },
       radius: placement.radius,
@@ -873,7 +873,7 @@ export const uniqueWrecks = {
   // is inert until a call site passes that trigger through here.
   _scheduleSeededTimers(def, trigger) {
     const own = this._ensureState();
-    const now = Math.max(0, finite(this.state.simTime, 0));
+    const now = Math.max(0, finite(deferredEnterNow(this.state), 0));
     for (const timer of Array.isArray(def && def.seededTimers) ? def.seededTimers : []) {
       if (timer.trigger && timer.trigger !== trigger) continue;
       const key = `${def.id}:timer:${timer.id}`;
@@ -909,7 +909,7 @@ export const uniqueWrecks = {
 
   _pumpComplications() {
     const own = this._ensureState();
-    const now = Math.max(0, finite(this.state.simTime, 0));
+    const now = Math.max(0, finite(deferredEnterNow(this.state), 0));
     for (const record of Object.values(own.complications)) {
       if (!record || record.status !== 'scheduled' || record.dueAt == null || record.dueAt > now) continue;
       record.status = 'triggered';
@@ -1049,7 +1049,7 @@ export const uniqueWrecks = {
     if (existing && !(options.allowCompletedRepeat === true && existing.status === 'completed')) {
       return existing;
     }
-    const now = Math.max(0, finite(this.state.simTime, 0));
+    const now = Math.max(0, finite(deferredEnterNow(this.state), 0));
     const sectorId = typeof options.sectorId === 'string'
       ? options.sectorId
       : typeof bearing.sectorId === 'string' ? bearing.sectorId : def.sectorId;
@@ -1513,7 +1513,7 @@ export const uniqueWrecks = {
       data.scanLabel = data.scanLabel;
       if (arm) {
         data.unstableReactor = {
-          dueAt: finite(this.state.simTime) + def.reactor.timerS,
+          dueAt: finite(deferredEnterNow(this.state)) + def.reactor.timerS,
           damage: def.reactor.damage,
           vented: false,
           burst: false,

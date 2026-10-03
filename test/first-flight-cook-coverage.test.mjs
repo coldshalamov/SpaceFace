@@ -71,8 +71,9 @@ test('the cook widens from the same presentation set the reconcile drains', () =
   const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
   assert.ok(prepareStart > 0 && cookStart > prepareStart);
   const block = RENDERER_SOURCE.slice(prepareStart, cookStart);
-  // The widening must run the reconcile's own collection + policy, not a second list.
-  assert.match(block, /collectMeshPresentationEntities\(state, presentation\)/);
+  // The widening must run the reconcile's own collection + policy, not a second list —
+  // via the chunked twin (identical row order, resumable on the slice clock).
+  assert.match(block, /collectMeshPresentationEntitiesChunked\(state, presentation\)/);
   assert.match(block, /bypassShellGates:\s*true/);
   // Field-rock records stay on their own coverage contract (variant cap + pool).
   assert.match(block, /entity\.type === 'asteroid'\) continue/);

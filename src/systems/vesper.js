@@ -69,7 +69,7 @@ export function createVesper() {
       // firstFlightIds and mount mid-flight. The renderer's live-sector cook invokes these
       // providers inside its census instead of relying on listener order.
       const providers = this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []);
-      this._cookProvider = () => this._sync();
+      this._cookProvider = () => this._syncSteps();
       providers.push(this._cookProvider);
       on('save:restoring', () => { this._clear(); this._reset(); });
       on('save:loaded', () => { this._reset(); this._sync(); });
@@ -103,9 +103,17 @@ export function createVesper() {
       for (let i = 0; i < 3; i++) capture(this._get(this._bellIds[i]), this.state.vesper.bells[i]);
     },
     _sync() {
+      // Sync lane (emit listener, save:loaded, economy tick): drain the chunked steps
+      // inline — the census drive holds the same generator across its slices.
+      for (const _ of this._syncSteps()) { /* inline */ }
+    },
+    *_syncSteps() {
       if (!this._home()) { this._capture(); this._clear(); return; }
       const m = this.state.vesper, found = [null, null, null, null];
-      for (const e of this.state.entityList || []) {
+      // Snapshot the roster: a suspended slice must not see entities another system
+      // pushes mid-scan, and every caller reads the same entity set either way.
+      for (const e of (this.state.entityList || []).slice()) {
+        yield;
         if (!e?.alive || !belongs(e)) continue;
         const slot = e.data.vesperBell + 1;
         if (!Number.isInteger(slot) || slot < 0 || slot > 3 || found[slot] || (slot === 0 ? m.hub.dead : m.bells[slot - 1].dead)) {
@@ -114,7 +122,15 @@ export function createVesper() {
         found[slot] = e;
       }
       for (let slot = 0; slot < 4; slot++) {
+        yield;
         const record = slot === 0 ? m.hub : m.bells[slot - 1];
+        // A live sync sweep can mint this body while the sliced pass sleeps — re-resolve
+        // live per slot before spawning or the suspended snapshot mints a duplicate.
+        if (!found[slot] && !record.dead) {
+          for (const e of this.state.entityList || []) {
+            if (e?.alive && belongs(e) && e.data.vesperBell + 1 === slot) { found[slot] = e; break; }
+          }
+        }
         if (!found[slot] && !record.dead && this.helpers.spawnEntity) found[slot] = this.helpers.spawnEntity(vesperEntitySpec(m, slot - 1));
       }
       this._hubId = found[0]?.id ?? null; this._bellIds = found.slice(1).map(e => e?.id ?? null);
