@@ -1724,16 +1724,30 @@ export const traffic = {
 
   _onSectorEnter(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
-    // The cook provider already ran this exact enter; the bus emit replays it synchronously
-    // and a second hard cleanup would despawn the freighters the census just cooked. Real
-    // continuous/noTeleport payloads are a different enter and must always run. Minted
-    // payloads discriminate by enterEpoch (a frozen simTime can't alias a second real enter);
-    // un-minted payloads (minimal harnesses) fall back to the simTime stamp.
-    if (p && !p._viaCook && p.sector && p.sector === this._cookedSector
-      && (Number.isFinite(p.enterEpoch)
-        ? p.enterEpoch === this._cookedEnterEpoch
-        : this.state.simTime === this._cookedSimTime)
-      && !(p.continuous || p.noTeleport)) {
+    // The emit listener precedes the census cook on the live enter path, so each side can
+    // only skip on the other's stamp: a replayed emit for an enter the cook or the first
+    // emit already handled, and a census cook for an enter the emit just handled (re-running
+    // would cleanup + remint the freighters the emit minted moments earlier). Continuous/
+    // noTeleport payloads are a different enter and must always run. Minted payloads
+    // discriminate by enterEpoch (a frozen simTime can't alias a second real enter). The
+    // simTime fallback applies only where the serial machinery doesn't exist — on a minted
+    // world an un-minted payload is a synthetic enter that must never be suppressed.
+    const _serialNow = this.state.world && this.state.world.enterSerial;
+    if (p && p._viaCook && p.sector && p.sector === this._emittedSector
+      && (Number.isFinite(this._emittedEpoch)
+        ? _serialNow === this._emittedEpoch
+        : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))) {
+      return;
+    }
+    if (p && !p._viaCook && p.sector && !(p.continuous || p.noTeleport)
+      && ((p.sector === this._cookedSector
+          && (Number.isFinite(p.enterEpoch)
+            ? p.enterEpoch === this._cookedEnterEpoch
+            : (!Number.isFinite(_serialNow) && this.state.simTime === this._cookedSimTime)))
+        || (p.sector === this._emittedSector
+          && (Number.isFinite(p.enterEpoch)
+            ? p.enterEpoch === this._emittedEpoch
+            : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))))) {
       return;
     }
     const continuous = !!(p && (p.continuous || p.noTeleport));
@@ -1761,6 +1775,10 @@ export const traffic = {
       // already minted for this enter — stamp it so the emit's replay matches by epoch.
       const serial = this.state.world && this.state.world.enterSerial;
       this._cookedEnterEpoch = Number.isFinite(serial) ? serial : null;
+    } else {
+      this._emittedSector = sector;
+      this._emittedSimTime = this.state.simTime;
+      this._emittedEpoch = Number.isFinite(p.enterEpoch) ? p.enterEpoch : null;
     }
     const sectorId = sector.id || requestedSectorId;
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {

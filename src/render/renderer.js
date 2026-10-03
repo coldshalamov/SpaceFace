@@ -422,6 +422,7 @@ import {
 import {
   AUTHORED_ASSET_PREFETCH_RADIUS,
   authoredRunwayHorizonSeconds,
+  declaredPlaceTargetRadius,
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
 import { predictNextSector } from './sectorPredict.js';
@@ -1192,7 +1193,7 @@ function itineraryTimeToGlassSeconds(entity, env, simTime, radius, horizonS) {
  * admission predicates must not grade late against the circle the renderer draws. */
 function admissionVisualRadiusWu(entity) {
   let visual = entityVisualCullRadius(entity, entity && entity.mesh);
-  const declaredRadius = Number(entity && entity.data && entity.data.placeTargetRadius);
+  const declaredRadius = declaredPlaceTargetRadius(entity);
   if (Number.isFinite(declaredRadius) && declaredRadius > 0) {
     visual = Math.max(visual, declaredRadius * Math.SQRT2);
   }

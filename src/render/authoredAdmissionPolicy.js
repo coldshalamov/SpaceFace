@@ -48,6 +48,17 @@ export function authoredRunwayHorizonSeconds(entity) {
   return entity && entity.type === 'station' ? TABLE_DECODE_RUNWAY_SECONDS : TABLE_PROMOTE_HORIZON_SECONDS;
 }
 
+// Declared drawn footprint — the single read for both stamp slots: live writers go through
+// entity.data.placeTargetRadius while makeEntity spec keys land top-level. Reading only one
+// under-covers whichever carrier carries the other; top-level wins when both stamp.
+export function declaredPlaceTargetRadius(entity) {
+  const top = Number(entity && entity.placeTargetRadius);
+  if (Number.isFinite(top) && top > 0) return top;
+  const bag = Number(entity && entity.data && entity.data.placeTargetRadius);
+  if (Number.isFinite(bag) && bag > 0) return bag;
+  return NaN;
+}
+
 /**
  * True when an entity is already eligible for authored admission, or will become eligible inside
  * a bounded observation horizon. The renderer passes a zero horizon; performance capture passes
@@ -94,7 +105,7 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   // and unstamped entities classify at presence exactly as before. An authored place row
   // declares its drawn footprint up front (placeTargetRadius), matching the renderer's
   // admissionVisualRadiusWu union — a pending prop with no mesh yet must not under-grade.
-  const declaredRadius = Number(entity.placeTargetRadius);
+  const declaredRadius = declaredPlaceTargetRadius(entity);
   const visual = Number.isFinite(declaredRadius) && declaredRadius > 0
     ? Math.max(entityVisualCullRadius(entity, entity.mesh), declaredRadius * Math.SQRT2)
     : entityVisualCullRadius(entity, entity.mesh);

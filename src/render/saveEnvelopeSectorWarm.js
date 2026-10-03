@@ -608,6 +608,53 @@ function collectEnterSpawnerPropStubs(src, sector, out, coverBareMissionWrecks) 
   if ((zonesForSector(sector.id) || []).some((z) => z && z.type === 'derelict_field' && z.center)) {
     coverBareMissionWrecks();
   }
+
+  // Authored unique wrecks whose bearing already minted mount their authored body on entry
+  // (uniqueWrecks.js _materialize gates on bearings + the same phase set). The bearing ledger
+  // serializes under player.uniqueWrecks, so the packet enumerates it identically. A bare
+  // id-less wreck stub would hash 'undefined' onto one residue class (~5/6 wrong); cover the
+  // table — military keeps the explicit stub (index 3 is its deterministic file both sides).
+  const bearings = src.player && src.player.uniqueWrecks
+    && src.player.uniqueWrecks.bearings;
+  if (bearings && typeof bearings === 'object') {
+    for (const def of UNIQUE_WRECKS) {
+      if (!def || def.sectorId !== sector.id) continue;
+      const bearing = bearings[def.id];
+      if (!bearing || !UNIQUE_WRECK_MATERIALIZE_PHASES.has(bearing.phase)) continue;
+      if (def.wreckClass === 'military') {
+        out.placeStubs.push({
+          type: 'wreck',
+          data: {
+            parentType: 'military',
+            wreckClass: def.wreckClass,
+            aftermathMarkerId: `authored:${def.id}`,
+          },
+        });
+      } else {
+        coverBareMissionWrecks();
+      }
+    }
+  }
+  // The morrow companion mounts the packaged drone body on entry into its home sector —
+  // ledger-free, so the packet lane enumerates it identically (Helios' core palette literals
+  // never name place_mining_drone).
+  if (sector.id === MORROW.sectorId) out.placeStubs.push({ type: 'drone' });
+  // A player-wreck marker anywhere rematerializes the survivor pod (generic tow body) on
+  // entry — the persistent-entity warm only covers a pod already spawned at save time; a
+  // marker minted without a pod mount (saved before the next enter) decodes cold on restore.
+  const markerSectors = src.aftermathWrecks && src.aftermathWrecks.bySector;
+  if (markerSectors && typeof markerSectors === 'object') {
+    for (const list of Object.values(markerSectors)) {
+      if (!Array.isArray(list)) continue;
+      if (list.some((m) => m && (m.playerWreck === true || m.kind === 'player_wreck'))) {
+        out.placeStubs.push({
+          type: 'payload',
+          data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod' },
+        });
+        break;
+      }
+    }
+  }
 }
 
 function collectEnterSpawnerRosterStubs(src, sector, simTime, out, coverBareMissionWrecks) {
@@ -763,8 +810,8 @@ function collectEnterSpawnerRosterStubs(src, sector, simTime, out, coverBareMiss
 
 // Live-only enter cohorts — the serialized packet cannot enumerate these, but a live
 // sector:enter mounts them all: ambient/authored traffic hulls, faction-presence plans,
-// intervention sites, authored unique wrecks with minted bearings, the morrow companion,
-// and the survivor pod a player-wreck marker rematerializes.
+// and intervention sites. Unique-wreck bearings, the morrow companion, and the survivor
+// pod mount on entry too but ride collectEnterSpawnerPropStubs — their ledgers serialize.
 function liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks) {
   // Ambient role-mix + pocket/cast/lane-contact hulls — the spawn path's own enumeration
   // (traffic.js) so the warm can't drift from the mount set as roles evolve.
@@ -799,50 +846,16 @@ function liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks) {
     });
   }
   // Pending interventions materialize a wreck + guard/jumper pair on entry
-  // (intervention.js _materializePendings → _spawnSite/_spawnGuard/_spawnJumper).
+  // (intervention.js _materializePendings → _spawnSite/_spawnGuard/_spawnJumper). Every
+  // job.kind is non-military, so the mount's residue file is the spawn's allocated-id hash
+  // — an id-less stub hashes 'undefined' onto one fixed class (~5/6 wrong); cover the table.
+  // The guard/jumper specs carry no defId/lootTableId/silhouette, so both hulls mount the
+  // procedural buildShipMesh path — no authored file to warm, no roster stubs to push.
   const pendings = Array.isArray(state.pendingInterventions) ? state.pendingInterventions : [];
-  for (const job of pendings) {
-    if (!job || job.sectorId !== sector.id) continue;
-    out.placeStubs.push({ type: 'wreck', data: { parentType: job.kind || 'asset' } });
-    // A guard only mounts for 'raided' sites; every site draws the claim-jumper.
-    if (job.cause === 'raided') out.roster.push({ archetype: 'pirate', factionId: 'faction_reach' });
-    out.roster.push({ archetype: 'fleeing_trader', factionId: 'faction_free' });
-  }
-  // Authored unique wrecks whose bearing already minted mount their authored body on
-  // entry (uniqueWrecks.js _materialize gates on bearings + the same phase set).
-  const bearings = state.player && state.player.uniqueWrecks
-    && state.player.uniqueWrecks.bearings;
-  if (bearings && typeof bearings === 'object') {
-    for (const def of UNIQUE_WRECKS) {
-      if (!def || def.sectorId !== sector.id) continue;
-      const bearing = bearings[def.id];
-      if (!bearing || !UNIQUE_WRECK_MATERIALIZE_PHASES.has(bearing.phase)) continue;
-      out.placeStubs.push({
-        type: 'wreck',
-        data: {
-          parentType: def.wreckClass === 'military' ? 'military' : 'ship',
-          wreckClass: def.wreckClass,
-          aftermathMarkerId: `authored:${def.id}`,
-        },
-      });
-    }
-  }
-  // The morrow companion mounts the packaged drone body on entry into its home sector.
-  if (sector.id === MORROW.sectorId) out.placeStubs.push({ type: 'drone' });
-  // A player-wreck marker anywhere rematerializes the survivor pod (generic tow body).
-  const bySector = state.aftermathWrecks && state.aftermathWrecks.bySector;
-  if (bySector && typeof bySector === 'object') {
-    for (const list of Object.values(bySector)) {
-      if (!Array.isArray(list)) continue;
-      if (list.some((m) => m && (m.playerWreck === true || m.kind === 'player_wreck'))) {
-        out.placeStubs.push({
-          type: 'payload',
-          data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod' },
-        });
-        break;
-      }
-    }
-  }
+  if (pendings.some((job) => job && job.sectorId === sector.id)) coverBareMissionWrecks();
+  // Unique-wreck bearings, the morrow companion, and the survivor pod moved into
+  // collectEnterSpawnerPropStubs — their ledgers (player.uniqueWrecks, aftermathWrecks)
+  // serialize identically, so the shared collector serves the envelope lane too.
 }
 
 // ── Live-sector FULL-extras stubs ───────────────────────────────────────────────────────────

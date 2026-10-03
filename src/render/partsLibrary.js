@@ -45,7 +45,7 @@ import {
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
-import { authoredRunwayHorizonSeconds, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
+import { authoredRunwayHorizonSeconds, declaredPlaceTargetRadius, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
@@ -3355,8 +3355,7 @@ export const STATION_ARCHETYPE_PLACE_IDS = Object.freeze(
 );
 
 function stationArchetypeTargetRadius(entity) {
-  const data = entity && entity.data || {};
-  const raw = Number(data.placeTargetRadius);
+  const raw = declaredPlaceTargetRadius(entity);
   if (Number.isFinite(raw) && raw > 0) return raw;
   return stationVisualRadius(entity);
 }
@@ -3438,7 +3437,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.kind = 'station';
   boundary.userData.placeId = placeId;
   boundary.userData.archetypeGlb = entity.data && entity.data.archetypeGlb || placeId;
-  boundary.userData.placeTargetRadius = Number(entity.data && entity.data.placeTargetRadius) || null;
+  boundary.userData.placeTargetRadius = Number.isFinite(declaredPlaceTargetRadius(entity))
+    ? declaredPlaceTargetRadius(entity)
+    : null;
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
@@ -3585,7 +3586,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   // the envelope at ~2x it (resolvePlaceDrawScale's poi targetScale), so it is a tight upper
   // bound for the pending-bounds stamp, never overestimating like a census radius would.
   const poiTargetRadius = entity.data && entity.data.poi === true
-    ? Number(entity.data.placeTargetRadius) : NaN;
+    ? declaredPlaceTargetRadius(entity) : NaN;
   boundary.userData.placeTargetRadius = geologySkin ? entity.radius
     : (Number.isFinite(poiTargetRadius) && poiTargetRadius > 0 ? poiTargetRadius : null);
   boundary.userData.authoredGeologySkin = geologySkin;
