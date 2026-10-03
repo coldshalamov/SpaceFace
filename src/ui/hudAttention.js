@@ -400,7 +400,7 @@ export function flightInstrumentRects(width, height) {
   return {
     speedReadout: { x: left, y: bandY, width: speedW, height: 52 },
     weaponName: { x: left + speedW + gap, y: bandY + 10, width: weaponW, height: 28 },
-    dockPrompt: { x: Math.round(w / 2 - 140), y: 18, width: 280, height: 32 },
+    dockPrompt: { x: Math.round(w / 2 - 140), y: 156, width: 280, height: 32 },
   };
 }
 

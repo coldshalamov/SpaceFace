@@ -342,7 +342,7 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
   g.save();
   g.strokeStyle = 'rgba(232,226,212,0.78)';
   g.lineWidth = 1.25;
-  drawOpenCorners(g, x, y, 15, 4.5);
+  drawOpenCorners(g, x, y, 22, 5.5);
   if (label) {
     g.font = canvasFont(700, 12, 'data');
     g.textAlign = 'center';

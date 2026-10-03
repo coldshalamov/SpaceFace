@@ -590,7 +590,7 @@ const CSS = `
 .sf-sj__bossfill { width:100%; height:100%; transform-origin:left center;
   background:var(--dp-danger, #ff5038); box-shadow:0 0 8px rgb(255 80 56 / .5);
   transition:transform .18s linear; }
-.sf-sj__bosscount { font-weight:650; font-size:11px; letter-spacing:.2em;
+.sf-sj__bosscount { font-weight:650; font-size:12px; letter-spacing:.2em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
 .sf-sj__bossdown { position:absolute; top:30vh; left:0; right:0; text-align:center;
   font-weight:800; font-size:44px; letter-spacing:.3em; text-transform:uppercase;
