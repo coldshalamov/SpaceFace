@@ -386,6 +386,13 @@ export function selectEvictions(entries, options = {}) {
 export const GOVERNOR_RESIDENCY_BYTE_CEILING = 384 * 1024 * 1024;
 export const GOVERNOR_CPU_RESIDENCY_BYTE_CEILING = 512 * 1024 * 1024;
 
+/** A missing caller cap is the named ceiling. It is never "no limit". */
+export function residencyEvictionCeiling(maxBytes) {
+  if (maxBytes == null) return GOVERNOR_RESIDENCY_BYTE_CEILING;
+  const value = Number(maxBytes);
+  return Number.isFinite(value) ? value : GOVERNOR_RESIDENCY_BYTE_CEILING;
+}
+
 export function createResourceGovernor(options = {}) {
   const maxCpuBytes = Number(options.maxCpuBytes) > 0
     ? Number(options.maxCpuBytes)

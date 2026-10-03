@@ -8,10 +8,12 @@ import {
   createResourceGovernor,
   GOVERNOR_PINNED_ROLES,
   GOVERNOR_RESIDENCY_BYTE_CEILING,
+  residencyEvictionCeiling,
   governorEntryBlockReasons,
   isGovernorEntryEvictable,
   isGovernorOwnerEvictable,
 } from './resourceGovernor.js';
+export { residencyEvictionCeiling };
 import * as THREE from 'three';
 
 const PROTECTED_RESOURCE = Symbol('spaceface.protectedGpuResource');
@@ -597,7 +599,7 @@ export function createAssetResidencyRegistry(options = {}) {
   }
 
   function evictOldestSoftEntries(candidates, maxBytes, totalBytes, matches) {
-    const ceiling = maxBytes == null ? GOVERNOR_RESIDENCY_BYTE_CEILING : maxBytes;
+    const ceiling = residencyEvictionCeiling(maxBytes);
     sortSoftEvictionCandidates(candidates);
     let evicted = 0;
     for (const entry of candidates) {

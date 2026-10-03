@@ -1,4 +1,5 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
+import { nameThreatFromVisibleRead, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -91,6 +92,47 @@ const TELEGRAPH_KIND_SET = new Set(LEFTOVER_TELEGRAPH_KINDS);
 const HARVEST_HEARTBEAT_S = 0.2;
 const COMPAT_ATTACK_KINDS = new Set(['attackRun', 'alphaStrike']);
 const SLOT_TELEGRAPH_CLASS = 'sf-threat-halo__slot--telegraph';
+const TETHER_CUT_DOCTRINE = 'tether_control_raider';
+const TETHER_CUT_PHASES = new Set(['spool_cue', 'attach_window']);
+const tetherPlan = specialistPlanById('tether_cutter');
+const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitTicks)
+  ? tetherPlan.commitTicks
+  : 45;
+
+/**
+ * Name the corsair's cut only while the tether raider's window is open and the
+ * visible silhouette / telegraph / verb uniquely match. Anything else stays quiet.
+ */
+export function tetherCutHaloLabel(read) {
+  if (!read || read.doctrineId !== TETHER_CUT_DOCTRINE || read.cutWindow !== true) return null;
+  return nameThreatFromVisibleRead(read);
+}
+
+/**
+ * Latch the live sentence on the slot, then drop it when the window closes so a
+ * later sort cannot keep the previous hull's name. aria-label is touched only
+ * when the slot (or slot.element) is an element.
+ */
+export function stepTetherCutHalo(slot, read) {
+  const label = tetherCutHaloLabel(read);
+  if (!slot || typeof slot !== 'object') return label;
+  if (label) {
+    slot._tetherCutLatch = true;
+    slot._tetherCutLabel = label;
+  } else if (slot._tetherCutLatch) {
+    slot._tetherCutLatch = false;
+    slot._tetherCutLabel = null;
+  }
+  const shown = slot._tetherCutLatch ? slot._tetherCutLabel : null;
+  const element = typeof slot.setAttribute === 'function'
+    ? slot
+    : (slot.element && typeof slot.element.setAttribute === 'function' ? slot.element : null);
+  if (element && typeof element.removeAttribute === 'function') {
+    if (shown) element.setAttribute('aria-label', shown);
+    else element.removeAttribute('aria-label');
+  }
+  return shown || null;
+}
 
 export function leftoverTelegraphKind(payload) {
   if (!payload) return null;
@@ -494,6 +536,12 @@ export function createThreatHalo(root, busOrOpts) {
   let hostileCount = 0;
   const telegraphCues = [];
   let busUnsub = null;
+  let phaseUnsub = null;
+  // Entity id → latch. Parallel hostile arrays are sorted; the label stays with the id.
+  const tetherCutLatches = new Map();
+  const tetherPhaseById = new Map();
+  let tetherPass = 0;
+  let haloTick = 0;
   let lastHarvestIndexVersion = null;
   let lastHarvestAtS = -Infinity;
 
@@ -604,13 +652,78 @@ export function createThreatHalo(root, busOrOpts) {
         cue.mineId = mineId;
         cue.startedTick = startedTick;
         cue.expiresAtTick = expiresAtTick;
+        noteTetherPhase(payload, startedTick);
         return cue;
       }
     }
 
     const next = { kind, entityId, mineId, startedTick, expiresAtTick };
     telegraphCues.push(next);
+    noteTetherPhase(payload, startedTick);
     return next;
+  }
+
+  function noteTetherPhase(payload, tick) {
+    if (!payload || payload.entityId == null) return;
+    if (payload.doctrineId == null && payload.phase == null) return;
+    const open = payload.doctrineId === TETHER_CUT_DOCTRINE && TETHER_CUT_PHASES.has(payload.phase);
+    if (!open) {
+      tetherPhaseById.delete(payload.entityId);
+      return;
+    }
+    const started = Number.isInteger(tick) ? tick
+      : (Number.isInteger(payload.tick) ? payload.tick : 0);
+    tetherPhaseById.set(payload.entityId, { phase: payload.phase, tick: started });
+  }
+
+  function liveTetherPhase(entityId) {
+    const row = tetherPhaseById.get(entityId);
+    if (!row) return null;
+    if (Number.isInteger(haloTick) && haloTick - row.tick > TETHER_CUT_WINDOW_TICKS) {
+      tetherPhaseById.delete(entityId);
+      return null;
+    }
+    return row.phase;
+  }
+
+  // Tokens come from the hull and the live window only — never from a plan id.
+  function tetherCutReadFor(entity, cue) {
+    const data = (entity && entity.data) || {};
+    const ai = data.ai || {};
+    const doctrineId = ai.combatDoctrineId || data.combatDoctrineId || entity.combatDoctrineId || null;
+    const phase = ai.doctrinePhase || data.doctrinePhase || liveTetherPhase(entity && entity.id) || null;
+    const explicit = entity.cutWindow === true || data.cutWindow === true || ai.cutWindow === true;
+    const phaseWindow = TETHER_CUT_PHASES.has(phase);
+    const telegraphLive = !!(cue && cue.kind === 'attach_spool');
+    const commitVisible = !!(data._cutterCommit) && (telegraphLive || phaseWindow);
+    const cutWindow = doctrineId === TETHER_CUT_DOCTRINE && (explicit || phaseWindow || commitVisible);
+    const silhouette = data.silhouette || entity.silhouette || null;
+    let telegraphKind = cue && cue.kind ? cue.kind : null;
+    if (cutWindow && telegraphKind !== 'attach_spool' && data.telegraph && data.telegraph.cue === 'attach_spool'
+        && (phaseWindow || explicit)) {
+      telegraphKind = 'attach_spool';
+    }
+    const verb = cutWindow && telegraphKind === 'attach_spool' && silhouette ? 'cut_line' : null;
+    return { doctrineId, cutWindow, silhouette, telegraphKind, verb };
+  }
+
+  function rememberTetherCut(entity, cue) {
+    const id = entity && entity.id;
+    if (id == null) return;
+    let latch = tetherCutLatches.get(id);
+    if (!latch) {
+      latch = {};
+      tetherCutLatches.set(id, latch);
+    }
+    latch._pass = tetherPass;
+    stepTetherCutHalo(latch, tetherCutReadFor(entity, cue));
+    if (!latch._tetherCutLatch) tetherCutLatches.delete(id);
+  }
+
+  function pruneTetherCutLatches() {
+    for (const [id, latch] of tetherCutLatches) {
+      if (latch._pass !== tetherPass) tetherCutLatches.delete(id);
+    }
   }
 
   function cueForIds(entityId, mineId) {
@@ -680,6 +793,10 @@ export function createThreatHalo(root, busOrOpts) {
     busUnsub = bus.on('ai:telegraph', (payload) => {
       const tick = payload && Number.isInteger(payload.tick) ? payload.tick : 0;
       noteTelegraph(payload || {}, tick);
+    });
+    phaseUnsub = bus.on('ai:doctrinePhase', (payload) => {
+      const tick = payload && Number.isInteger(payload.tick) ? payload.tick : haloTick;
+      noteTetherPhase(payload, tick);
     });
   }
 
@@ -877,6 +994,7 @@ export function createThreatHalo(root, busOrOpts) {
       slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
     }
     setForceHue(slot, slot._sfArc, null, null);
+    setAttr(slot, 'aria-label', null);
   }
 
   // The cue paints itself from the authored force palette (PQ-161.02): channel attribute for the
@@ -1045,6 +1163,7 @@ export function createThreatHalo(root, busOrOpts) {
 
   function collectHostiles(player, state, worldToScreen) {
     hostileCount = 0;
+    tetherPass += 1;
     const index = state.entityIndex;
     const ships = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships)
       ? index.ships
@@ -1067,7 +1186,8 @@ export function createThreatHalo(root, busOrOpts) {
       projectionWorld.y = 0;
       projectionWorld.z = entity.pos.z;
       const projected = worldToScreen(projectionWorld, projectionScreen);
-      const telegraphed = !!cueForIds(entity.id, null);
+      const cue = cueForIds(entity.id, null);
+      const telegraphed = !!cue;
       if (!projected) continue;
       // G4: an in-frame attacker gets no edge mark, even when it is telegraphing.
       // One mark per shooter, never one per projectile.
@@ -1081,6 +1201,7 @@ export function createThreatHalo(root, busOrOpts) {
         frameHeight: viewportH || 720,
       });
       if (!marker) continue;
+      rememberTetherCut(entity, cue);
 
       const dist = Math.sqrt(distSq);
       const tier = contactThreatTier(entity, true);
@@ -1103,6 +1224,7 @@ export function createThreatHalo(root, busOrOpts) {
     }
 
     sortHostileCandidates();
+    pruneTetherCutLatches();
   }
 
   function collectMissiles(player, state, worldToScreen) {
@@ -1217,6 +1339,9 @@ export function createThreatHalo(root, busOrOpts) {
       // An unannounced hostile burning down on the player reads as the same amber edge pulse
       // as an incoming torpedo; announced attack runs keep their telegraph hue instead.
       setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
+      const latch = tetherCutLatches.get(hostileId[i]);
+      const cutLabel = latch && latch._tetherCutLatch ? latch._tetherCutLabel : null;
+      setAttr(slot, 'aria-label', cutLabel);
       shown++;
     }
 
@@ -1247,6 +1372,7 @@ export function createThreatHalo(root, busOrOpts) {
         return;
       }
       const tick = Number.isInteger(state.tick) ? state.tick : 0;
+      haloTick = tick;
       expireTelegraphCues(tick);
       // Hazard harvest is a fallback for silently-stamped telegraph data, so it only needs to
       // run when entity membership changed or on a slow heartbeat (in-place _attackTelegraph
@@ -1285,6 +1411,12 @@ export function createThreatHalo(root, busOrOpts) {
         busUnsub();
         busUnsub = null;
       }
+      if (typeof phaseUnsub === 'function') {
+        phaseUnsub();
+        phaseUnsub = null;
+      }
+      tetherCutLatches.clear();
+      tetherPhaseById.clear();
       telegraphCues.length = 0;
       if (layer && layer.parentNode) layer.parentNode.removeChild(layer);
     },
