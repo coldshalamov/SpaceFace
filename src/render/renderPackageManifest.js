@@ -2864,12 +2864,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-second-measure",
-    "expectedContentHash": "fae71668505180337c4e70120a1e5796dd41d3918e18c3a68b0e5b34d9e8d003",
+    "expectedContentHash": "11b30e7c51c1f79d2b02f7e24bfe3883124396749cb3789f4e8e2f2acff13f1e",
     "key": "ceres-second-measure",
     "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE",
     "slot": "place",
-    "sourceSha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+    "sourceSha256": "009c76381c60544613b95f0deb3276cb9a377eee86507e8e800b4c9e09cd31f9",
     "sourceUrl": "assets/ships/release/parts/places/place_ceres_second_measure.glb"
   },
   {

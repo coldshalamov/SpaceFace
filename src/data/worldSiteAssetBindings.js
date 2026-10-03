@@ -96,8 +96,8 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   place_ceres_second_measure: binding({
     partId: 'place_ceres_second_measure', assetId: 'SF_PLACE_CERES_SECOND_MEASURE',
     sourceSha256: 'b01f8132f1bea8aa58b984a5f3d373b282293aedd91ebadb196fb63e934657f8',
-    releaseSha256: '37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2',
-    sourceBytes: 8031740, releaseBytes: 2314708,
+    releaseSha256: '009c76381c60544613b95f0deb3276cb9a377eee86507e8e800b4c9e09cd31f9',
+    sourceBytes: 8031740, releaseBytes: 2894544,
     rootName: 'SF_PLACE_CERES_SECOND_MEASURE_ROOT', visualCenterXZ: { x: 0, z: 0 },
     socketBindings: Object.freeze({
       SOCKET_Section_Crossbeam: socket('attachment', [40,0,0]),
