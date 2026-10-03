@@ -364,6 +364,46 @@ function callsign(entity) {
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+// ── NXB-042 rescued-worker memory ─────────────────────────────────────────────────────────────
+// A worker who was pulled out of a survivor pod and returned to their real job remembers the
+// player — once, in their own voice. This read is pure: the durable person record lives in the
+// uniqueWrecks owner bag (rescuedWorkerReturn.js) and the live hull carries the person stamp.
+// The line is earned only when the record proves the SAME person (personKey + worldRecordId)
+// actually returned to work and the one-time acknowledgment has not already played. A lost,
+// ransomed, abandoned, or stale-stamped hull never gets the line (NXI-168).
+const RESCUED_WORKER_VOICE = Object.freeze({
+  miner: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SEAM — WHAT DO YOU NEED?',
+  hauler: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE LANE — WHAT DO YOU NEED?',
+  ore_carrier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE ORE RUN — WHAT DO YOU NEED?',
+  salvor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE WRECKS — WHAT DO YOU NEED?',
+  tender: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON TENDER DUTY — WHAT DO YOU NEED?',
+  courier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE MAIL RUN — WHAT DO YOU NEED?',
+  patrol: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON WATCH — WHAT DO YOU NEED?',
+  surveyor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SURVEY — WHAT DO YOU NEED?',
+});
+const RESCUED_WORKER_VOICE_DEFAULT = 'YOU PULLED MY POD OUT OF THE DARK. BACK AT WORK — WHAT DO YOU NEED?';
+
+export function rescuedWorkerMemoryFor(state, entity) {
+  const data = entity && entity.data || {};
+  const personKey = typeof data.rescuedWorkerPerson === 'string' && data.rescuedWorkerPerson
+    ? data.rescuedWorkerPerson : null;
+  if (!personKey) return null;
+  const record = state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.rescuedWorkers
+    && state.player.uniqueWrecks.rescuedWorkers.people
+    && state.player.uniqueWrecks.rescuedWorkers.people[personKey];
+  if (!record || record.personKey !== personKey) return null;
+  if (record.outcome !== 'returned') return null; // dead, ransomed or adrift people never answer
+  if (typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || record.worldRecordId !== data.worldRecordId) return null; // same durable hull only
+  if (record.hailAcknowledgedAtS != null) return null; // the memory is named exactly once
+  return record;
+}
+
+function rescuedWorkerVoiceLine(record) {
+  return RESCUED_WORKER_VOICE[record && record.role] || RESCUED_WORKER_VOICE_DEFAULT;
+}
+
 function priorityCourierItinerary(state, entity) {
   const itinerary = entity && entity.data && entity.data.itinerary;
   if (!isPriorityCourierItinerary(itinerary)) return null;
@@ -479,6 +519,7 @@ export function contactHailAvailability(state) {
       && playerHasFittedCargoScanner(state)
       && !!traderManifestForTarget(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
+    rescuedWorkerMemory: rescuedWorkerMemoryFor(state, target),
   };
 }
 
@@ -793,9 +834,10 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     if (availability.heaveToAvailable && actions.length < 3) {
       actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     }
+    const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: [`${name} · WORKING TRAFFIC`, voice],
+      lines: [`${name} · WORKING TRAFFIC`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
       actions,
     };
   }
@@ -830,9 +872,10 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   const actions = [{ id: 'route', label: 'ROUTE' }];
   if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+  const remembered = availability.rescuedWorkerMemory;
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: [`${name} · CIVILIAN FREIGHT`, voice],
+    lines: [`${name} · CIVILIAN FREIGHT`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
     actions,
   };
 }

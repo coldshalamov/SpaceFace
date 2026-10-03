@@ -4166,6 +4166,9 @@ export const traffic = {
             entity.data.trafficLabel = (TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler).label;
           }
           if (entity.data.ai && entity.data.ai.name === contact.name) delete entity.data.ai.name;
+          if (entity.data.ai && entity.data.ai.namedLaneContactId === contact.id) {
+            delete entity.data.ai.namedLaneContactId;
+          }
         }
       }
       if (miner) this._stampNamedLaneContact(miner, contact);
@@ -4270,13 +4273,16 @@ export const traffic = {
     ent.data.scanLabel = contact.callsign;
     if (contact.hail) ent.data.hail = contact.hail;
     if (contact.memoryHook) ent.data.memoryHook = contact.memoryHook;
-    if (ent.data.ai) {
-      ent.data.ai.name = contact.name;
-      // Named patrol keeps lawful; named freighter stays passive civilian.
-      if (lawPresenceRole(contact.role)) {
-        ent.data.ai.lawful = true;
-        ent.data.ai.spawnContext = 'patrol';
-      }
+    if (!ent.data.ai) ent.data.ai = {};
+    ent.data.ai.name = contact.name;
+    // NXI-165: the contact id also rides the durable ai record (captured by worldRecords and
+    // rebound with the hull), so a rematerialized/re-adopted worker can heal its live stamp —
+    // the name follows the stable worker record instead of being re-picked onto a second hull.
+    ent.data.ai.namedLaneContactId = contact.id;
+    // Named patrol keeps lawful; named freighter stays passive civilian.
+    if (lawPresenceRole(contact.role)) {
+      ent.data.ai.lawful = true;
+      ent.data.ai.spawnContext = 'patrol';
     }
   },
 
@@ -4643,6 +4649,16 @@ export const traffic = {
       if (!d.trafficRole) return;
       const home = e.homeSectorId || d.homeSectorId || d.sectorId;
       if (home && home !== sectorId) return;
+      // NXI-165: a durable rebind restores data.ai (the captured ai record) but never the live
+      // namedLaneContactId stamp — heal it from the record so the SAME worker keeps her name and
+      // the "already have a live named contact" checks see her instead of re-picking the
+      // identity onto a second hull. A stale id with no authored contact is dropped.
+      if (!d.namedLaneContactId && d.ai && typeof d.ai.namedLaneContactId === 'string'
+        && d.ai.namedLaneContactId) {
+        const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === d.ai.namedLaneContactId);
+        if (contact) this._stampNamedLaneContact(e, contact);
+        else delete d.ai.namedLaneContactId;
+      }
       if (tracked.has(e.id)) return;
       if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
         d.activityActorSlotId = 'helios_starter_ore_carrier';

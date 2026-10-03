@@ -474,6 +474,9 @@ export const uniqueWrecks = {
     // obligation both packets require before any switch may fire.
     this._listen('survivorPod:ejected', (payload) => this._rescuedWorkers.podEjected(payload || {}));
     this._listen('survivorPod:resolved', (payload) => this._rescuedWorkers.podResolved(payload || {}));
+    // NXB-042: the rescue is acknowledged in the person's own voice exactly once — the owner
+    // latches the receipt when the hail offer the player actually receives targets that person.
+    this._listen('contactHail:offer', (payload) => this._rescuedWorkers.hailOffered(payload || {}));
     this._listen('wreckEcology:departed', (payload) => this._occupationSwitch.departed(payload || {}));
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));

@@ -56,6 +56,22 @@ const finiteOr = (value, fallback = null) => {
 
 const clonePlain = (value) => (value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value);
 
+/**
+ * The victim's own public identity, carried on the person record so the returned hull is the
+ * SAME person the player scanned before — a named lane contact keeps her callsign and her
+ * contact stamp (no duplicate picked onto a second hull); an unnamed worker stays unnamed.
+ */
+function normalizePersona(value) {
+  if (!value || typeof value !== 'object') return null;
+  const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim() : null;
+  const callsign = typeof value.callsign === 'string' && value.callsign.trim()
+    ? value.callsign.trim() : null;
+  const namedLaneContactId = typeof value.namedLaneContactId === 'string'
+    && value.namedLaneContactId ? value.namedLaneContactId : null;
+  if (!name && !callsign && !namedLaneContactId) return null;
+  return { name, callsign, namedLaneContactId };
+}
+
 /** The captured workplace: the job spec pieces needed to re-enter the SAME job. */
 function normalizeWorkplace(value) {
   if (!value || typeof value !== 'object') return null;
@@ -92,6 +108,7 @@ export function normalizeRescuedWorkers(value) {
       factionId: raw.factionId != null ? String(raw.factionId) : null,
       team: Number.isFinite(Number(raw.team)) ? Number(raw.team) : 2,
       workplace: normalizeWorkplace(raw.workplace),
+      persona: normalizePersona(raw.persona),
       sectorId: raw.sectorId != null ? String(raw.sectorId) : null,
       ejectedAtS: finiteOr(raw.ejectedAtS, 0) ?? 0,
       rescuedAtS: finiteOr(raw.rescuedAtS),
@@ -100,6 +117,9 @@ export function normalizeRescuedWorkers(value) {
       lostAtS: finiteOr(raw.lostAtS),
       closedAtS: finiteOr(raw.closedAtS),
       returnedEntityId: raw.returnedEntityId != null ? Number(raw.returnedEntityId) : null,
+      // The rescue is acknowledged in the person's own voice exactly once, then the latch
+      // closes — durable across save/Continue so replays never re-hear the thank-you.
+      hailAcknowledgedAtS: finiteOr(raw.hailAcknowledgedAtS),
       outcome: raw.outcome != null ? String(raw.outcome) : 'adrift',
     };
   }
@@ -161,6 +181,30 @@ export function createRescuedWorkerReturn(owner) {
   const personKeyFor = (victimId) =>
     `rescued-worker:${state.meta?.seed || 1}:${hash32(state.meta?.seed || 1, String(victimId), 'rescuedWorker').toString(36)}`;
 
+  // One identity stamp for the fresh return hull AND a re-found world-resident hull: the person
+  // key, this owner, and the victim's own name/callsign/contact stamp when they had one. The
+  // contact id also rides in data.ai so a durable-record rebind (record.ai is captured) can heal
+  // the live stamp — the label follows the stable worker record (NXI-165).
+  const stampIdentity = (entity, record) => {
+    if (!entity || !entity.data) return;
+    const d = entity.data;
+    d.rescuedWorkerPerson = record.personKey;
+    d.persistenceOwner = 'uniqueWrecks:rescuedWorkers';
+    const persona = record.persona;
+    if (persona) {
+      if (persona.name) d.name = persona.name;
+      if (persona.callsign) d.callsign = persona.callsign;
+      if (persona.namedLaneContactId) {
+        d.namedLaneContactId = persona.namedLaneContactId;
+        if (d.ai && typeof d.ai === 'object') d.ai.namedLaneContactId = persona.namedLaneContactId;
+      }
+    }
+    const who = persona && (persona.callsign || persona.name);
+    d.scanLabel = who
+      ? `${String(who).toUpperCase()} · BACK AT WORK`
+      : `${ROLE_LABELS[record.role] || 'Crew'} · returned to work`;
+  };
+
   // ── capture: who just died, and what was their actual job? ────────────────────────────────
   // Runs on entity:killed. A dying RETURNED worker routes to the loss path first — their own
   // record closes 'lost', no new capture, no second person wearing the same world record. For
@@ -194,6 +238,11 @@ export function createRescuedWorkerReturn(owner) {
       factionId: victim.factionId || data.factionId || null,
       team: Number.isFinite(Number(victim.team)) ? Number(victim.team) : 2,
       sectorId: entry.sectorId != null ? String(entry.sectorId) : null,
+      persona: normalizePersona({
+        name: data.name,
+        callsign: data.callsign,
+        namedLaneContactId: data.namedLaneContactId,
+      }),
       workplace: normalizeWorkplace({
         kind: job.kind,
         route: job.route,
@@ -225,6 +274,7 @@ export function createRescuedWorkerReturn(owner) {
       factionId: fingerprint.factionId,
       team: fingerprint.team,
       workplace: fingerprint.workplace,
+      persona: fingerprint.persona || null,
       sectorId: fingerprint.sectorId,
       ejectedAtS: now,
       rescuedAtS: null,
@@ -233,6 +283,7 @@ export function createRescuedWorkerReturn(owner) {
       lostAtS: null,
       closedAtS: null,
       returnedEntityId: null,
+      hailAcknowledgedAtS: null,
       outcome: 'adrift',
     };
     pruneRecords();
@@ -320,7 +371,8 @@ export function createRescuedWorkerReturn(owner) {
       const existing = actor(record);
       if (existing && existing.alive !== false) {
         // A world-resident copy is already here (restore rematerialized it first): adopt it,
-        // finish its job link, and charge the transition once.
+        // heal its identity stamp, finish its job link, and charge the transition once.
+        stampIdentity(existing, record);
         if (!existing.data.jobId) assignReturnJob(existing, record);
         if (record.returnedAtS == null) {
           record.returnedAtS = now;
@@ -347,13 +399,9 @@ export function createRescuedWorkerReturn(owner) {
           ai: { archetype: 'passive', passive: true, spawnContext: 'civilian_worker' },
         });
         spec.flags = { persistent: true };
-        Object.assign(spec.data, {
-          worldRecordId: record.worldRecordId,
-          persistenceOwner: 'uniqueWrecks:rescuedWorkers',
-          rescuedWorkerPerson: record.personKey,
-          sectorId: record.workplace.sectorId,
-          scanLabel: `${ROLE_LABELS[record.role] || 'Crew'} · returned to work`,
-        });
+        spec.data.worldRecordId = record.worldRecordId;
+        spec.data.sectorId = record.workplace.sectorId;
+        stampIdentity(spec, record);
         entity = helpers.spawnEntity(spec);
       } catch {
         entity = null; // an unknown defId must not fabricate a wrong body
@@ -392,6 +440,23 @@ export function createRescuedWorkerReturn(owner) {
     record.lostAtS = now;
   }
 
+  // ── later contact: the rescue is acknowledged in the person's own voice once ────────────
+  // Fired on the contactHail:offer the player actually receives. The remembered voice line is
+  // authored in contactHail.js (read-only); this owner only latches the one-time receipt onto
+  // the person record so a second hail is an ordinary working-traffic voice, and so a save
+  // taken between the two hails never replays the thank-you.
+  function hailOffered(payload) {
+    if (!payload || payload.targetId == null) return;
+    const entity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.targetId) : null;
+    const personKey = entity && entity.data && entity.data.rescuedWorkerPerson;
+    if (!personKey) return;
+    const record = recordOf(String(personKey));
+    if (!record || record.outcome !== 'returned') return;
+    if (record.hailAcknowledgedAtS != null) return;
+    record.hailAcknowledgedAtS = simNowOf(state);
+  }
+
   // Detached-scalar projection for tests/debug (choir berthStatus precedent).
   function status() {
     return Object.values(own().people).map((rec) => ({
@@ -407,6 +472,8 @@ export function createRescuedWorkerReturn(owner) {
       returnDueAtS: rec.returnDueAtS,
       returnedAtS: rec.returnedAtS,
       lostAtS: rec.lostAtS,
+      persona: rec.persona || null,
+      hailAcknowledgedAtS: rec.hailAcknowledgedAtS,
     }));
   }
 
@@ -415,6 +482,7 @@ export function createRescuedWorkerReturn(owner) {
     killed,
     podEjected,
     podResolved,
+    hailOffered,
     clear: () => { pending.clear(); actors.clear(); },
     status,
   };
