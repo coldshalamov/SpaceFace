@@ -20,14 +20,17 @@
 //   rescue — tow into lawful station protection, or hand to a traffic rescue hull;
 //   ransom — tow fence-adjacent (blackmarket/pirate_base);
 //   ignore — TTL expires with a moralMemory note.
-// Credits are never minted here (single writer). Rescue reward is moralMemory + faction rep
-// intent; ransom is moralMemory only. Spawn gated out of curated scenarios (salvor pattern).
+// Credits are never written directly (economy stays single writer). A player-answered mayday
+// emits an economy:grantCredits intent (salvage fee) exactly like the authored strip choice;
+// rescue reward is that fee + moralMemory + faction rep intent. Ransom is moralMemory only.
+// Spawn gated out of curated scenarios (salvor pattern).
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { rememberMoralDebt } from './moralMemory.js';
@@ -61,6 +64,8 @@ export const CAUSAL_HANDOFF_RANGE_WU = 90;
 /** Ambient rescue hull auto-claims an unattended pod inside this radius. */
 export const CAUSAL_RESCUE_HULL_CLAIM_WU = 70;
 const CAUSAL_RESCUE_REP_DELTA = 3;
+/** Salvage fee paid to the player who tows a mayday pod to a lawful handoff (grant intent). */
+const CAUSAL_RESCUE_SALVAGE_FEE_CR = 420;
 const CAUSAL_RECEIPT_CAP = 24;
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -415,6 +420,43 @@ function causalPublic(entity, rec) {
     phase: rec && rec.phase,
     source: 'causal_eject',
   };
+}
+
+// ── Causal mayday voice ────────────────────────────────────────────────────────────────────────
+
+const SHIP_NAME_BY_DEF_ID = new Map(SHIPS.map((s) => [s && s.id, s && s.name]));
+
+/** Cheap dying-ship label: hull def name when the traffic ship carries one, else its role. */
+function victimMaydayLabel(victim) {
+  const data = (victim && victim.data) || {};
+  const defName = SHIP_NAME_BY_DEF_ID.get(data.defId);
+  if (defName) return String(defName);
+  const role = data.trafficRole || data.role;
+  return role ? String(role) : null;
+}
+
+function causalMaydayText(victim) {
+  const label = victimMaydayLabel(victim);
+  return label
+    ? `Mayday, mayday — ${label} going down, pod away.`
+    : 'Mayday, mayday — we are going down, pod away.';
+}
+
+function causalSalvageReceiptText(rec) {
+  const who = (rec && rec.victimLabel) || "The pod's survivor";
+  return `SURVIVOR PAID · ${who} is aboard — ${CAUSAL_RESCUE_SALVAGE_FEE_CR} cr salvage fee`;
+}
+
+/**
+ * Player attribution for the causal rescue fee. _tickCausal resolves 'station_delivery' and
+ * 'player_handoff_rescue_hull' only while the live player tether holds the pod (playerLatchedTo —
+ * the handoff block skips every pod the player is not towing), and resolves 'rescue_hull' only
+ * while it does NOT (the explicit unattended-claim path). The resolution reason therefore proves
+ * who answered the mayday; no extra stamping needed.
+ */
+function causalRescuePlayerAttributed(detail) {
+  const reason = detail && detail.reason;
+  return reason === 'station_delivery' || reason === 'player_handoff_rescue_hull';
 }
 
 export const survivorPod = {
@@ -783,6 +825,7 @@ export const survivorPod = {
     const rec = {
       entityId: entity.id,
       victimId: victim.id,
+      victimLabel: victimMaydayLabel(victim),
       sectorId,
       factionId,
       memoryId,
@@ -805,10 +848,51 @@ export const survivorPod = {
       delete own.causal.byEntityId[entity.id];
       return null;
     }
+    // The hail: one mayday per pod, at eject. Pod-scoped voice id keeps it idempotent; the
+    // tick never re-hails (resolution paths in _tickCausal are silent).
+    this._speakMayday(victim, entity, rec);
     if (this._bus && typeof this._bus.emit === 'function') {
       this._bus.emit('survivorPod:ejected', causalPublic(entity, rec));
     }
     return entity;
+  },
+
+  // One mayday hail per ejected pod. When no voice helper is mounted (headless runs, probes)
+  // the same line surfaces as a toast — the pirateDisengage._speak fallback pattern.
+  _speakMayday(victim, entity, rec) {
+    const text = causalMaydayText(victim);
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorMayday',
+        ttl: 1,
+        id: `survivorMayday:${entity && entity.id != null ? entity.id : (rec && rec.entityId)}`,
+        factionId: (rec && rec.factionId) || 'neutral',
+      });
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorMayday', ttl: 1 });
+    }
+  },
+
+  // Player-answered receipt: same voice-or-toast pattern, pod-scoped id, fires once because
+  // _resolveCausal guards on rec.resolved before its caller reaches the payout.
+  _speakSalvageReceipt(rec, entityId, factionId) {
+    const text = causalSalvageReceiptText(rec);
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorMaydayPaid',
+        ttl: 1,
+        id: `survivorMaydayPaid:${entityId}`,
+        factionId: factionId || CONCORD_FACTION_ID,
+      });
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorMaydayPaid', ttl: 1 });
+    }
   },
 
   _tickCausal(state, own) {
@@ -982,6 +1066,18 @@ export const survivorPod = {
         entityId,
         victimId: rec.victimId,
       });
+      // THE ANSWER: only a player-towed rescue pays the mayday salvage fee — the grant is an
+      // intent to economy (single writer), same shape as the authored strip payout above.
+      // Unattended pods claimed by AI rescue hulls resolve for rep alone.
+      if (causalRescuePlayerAttributed(detail)) {
+        this._bus.emit('economy:grantCredits', {
+          amount: CAUSAL_RESCUE_SALVAGE_FEE_CR,
+          reason: `survivor_mayday:${entityId}`,
+          entityId,
+          victimId: rec.victimId,
+        });
+        this._speakSalvageReceipt(rec, entityId, factionId);
+      }
     }
 
     if (this._bus && typeof this._bus.emit === 'function') {
