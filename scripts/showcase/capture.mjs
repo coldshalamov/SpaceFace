@@ -419,13 +419,20 @@ async function runItem(id, spec) {
     rec.evidenceSamples = isDiagram ? {} : ev.samples;
     rec.proof = isDiagram ? 'diagram' : 'behavioral';
     const evList = spec.ev || [];
+    // `ev` lists every signature the demo may produce — one landing satisfies it.
+    // Requiring all of them would fail specs that list optional secondaries (a
+    // weapon that damages AND sometimes tumbles may legitimately land only damage).
+    // The strict 'this exact thing happened' contract lives on `must`/`stat`/`mods`.
     const evOk = evList.length ? evList.some((e) => (ev.counts[e] || 0) > 0) : true;
     // `must` pins the signature event: an item may not pass on ambient damage/toasts alone.
     // Any demo whose whole point is pulling the trigger must show a discharge — a clip
     // that proves `ev` on collision noise alone is a silent clip shipped to the store.
     // Player-attributed discharge only: ambient hostile guns count toward combat:fire too,
     // so the gate checks the shadow counter the harness increments on ownerId === playerId.
-    const must = spec.must || (FIRE_DEMOS.has(spec.demo) ? ['combat:fire:player'] : []);
+    const must = [
+      ...(FIRE_DEMOS.has(spec.demo) && !spec.noFire ? ['combat:fire:player'] : []),
+      ...(spec.must || []),
+    ];
     const mustOk = must.every((e) => (ev.counts[e] || 0) > 0);
     // `stat` pins are strict: the key must diff in the derived() extractor — a mods-bag
     // presence can never satisfy it, so a stat pin can never pass vacuously.

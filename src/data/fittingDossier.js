@@ -863,7 +863,7 @@ export function serviceDossier(offer) {
     stats.push({ label: 'Gate', value: 'only while hurt' });
   } else if (offer.service === 'ordnance') {
     stats.push({ label: 'Hold', value: 'to 6 charges' });
-    stats.push({ label: 'Deployed', value: '4 · 8 racked' });
+    stats.push({ label: 'Deployed', value: '4 flying · 8 racked' });
     stats.push({ label: 'Gate', value: 'only below cap' });
   }
   stats.push({ label: 'Applied', value: 'instant' });

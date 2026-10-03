@@ -8331,12 +8331,9 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/wpn_sticky_detonator.webm",
   "events": {
-   "combat:fire": 32,
-   "projectile:hit": 5,
-   "combat:fire:player": 21,
-   "emergent:applied": 21,
-   "combat:damage": 5,
-   "toast": 2
+   "combat:fire": 18,
+   "combat:fire:player": 18,
+   "emergent:applied": 12
   },
   "statDiff": {
    "topSpeed": {
@@ -8365,19 +8362,19 @@
     {
      "c": 1,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "wpn_sticky_detonator"
      }
     },
     {
      "c": 2,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "wpn_sticky_detonator"
      }
     },
     {
      "c": 3,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "wpn_sticky_detonator"
      }
     },
     {
@@ -8407,49 +8404,7 @@
     {
      "c": 8,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 414,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 414,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
+      "weaponId": "wpn_sticky_detonator"
      }
     }
    ],
@@ -8457,7 +8412,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 414,
+      "targetId": 389,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8465,7 +8420,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 414,
+      "targetId": 389,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8473,7 +8428,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8481,7 +8436,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8489,7 +8444,7 @@
     {
      "c": 5,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8497,7 +8452,7 @@
     {
      "c": 6,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8505,7 +8460,7 @@
     {
      "c": 7,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
      }
@@ -8513,77 +8468,9 @@
     {
      "c": 8,
      "p": {
-      "targetId": 414,
+      "targetId": 389,
       "weaponId": "wpn_sticky_detonator",
       "kind": "sticky"
-     }
-    }
-   ],
-   "combat:damage": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 357,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 8.831099782448891,
-      "damageType": null
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 359,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 8.831099782448891,
-      "damageType": null
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    }
-   ],
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "warn",
-      "text": "TAKING FIRE"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "warn",
-      "text": "TAKING FIRE"
      }
     }
    ]
@@ -8596,14 +8483,13 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/wpn_conductive_primer.webm",
   "events": {
-   "combat:fire": 34,
-   "projectile:hit": 15,
-   "combat:tumbled": 2,
-   "combat:damage": 48,
-   "combat:statusApplied": 2,
-   "combat:fire:player": 15,
-   "emergent:applied": 15,
-   "toast": 3
+   "combat:damage": 5,
+   "combat:fire": 20,
+   "combat:fire:player": 20,
+   "emergent:applied": 16,
+   "toast": 4,
+   "tether:attached": 1,
+   "alert": 2
   },
   "statDiff": {
    "topSpeed": {
@@ -8628,176 +8514,44 @@
   "mods": {},
   "poster": "assets/ui/fitting-media/wpn_conductive_primer.png",
   "evidenceSamples": {
-   "combat:fire": [
-    {
-     "c": 1,
-     "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "weaponId": "wpn_conductive_primer"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "weaponId": "wpn_conductive_primer"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "weaponId": "wpn_conductive_primer"
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 439,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 414,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    }
-   ],
-   "combat:tumbled": [
-    {
-     "c": 1,
-     "p": {
-      "attackerId": 360,
-      "source": "collision"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "attackerId": 360,
-      "source": "collision"
-     }
-    }
-   ],
    "combat:damage": [
     {
      "c": 1,
      "p": {
-      "targetId": 357,
+      "targetId": 362,
       "attackerId": null,
       "weaponId": null,
-      "amount": 54.06719999999999,
+      "amount": 5.349292096981731,
       "damageType": null
      }
     },
     {
      "c": 2,
      "p": {
-      "targetId": 360,
+      "targetId": 363,
       "attackerId": null,
       "weaponId": null,
-      "amount": 27.596799999999998,
+      "amount": 5.349292096981731,
       "damageType": null
      }
     },
     {
      "c": 3,
      "p": {
-      "targetId": 357,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 14.096301415431233,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 4,
      "p": {
-      "targetId": 360,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 5.359564293230196,
+      "amount": 2,
       "damageType": null
      }
     },
@@ -8805,58 +8559,60 @@
      "c": 5,
      "p": {
       "targetId": 1,
-      "attackerId": 439,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "targetId": 1,
-      "attackerId": 439,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "targetId": 1,
-      "attackerId": 439,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 2,
       "damageType": null
      }
     }
    ],
-   "combat:statusApplied": [
+   "combat:fire": [
     {
      "c": 1,
      "p": {
-      "targetId": 357,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
+      "weaponId": "wpn_conductive_primer"
      }
     },
     {
      "c": 2,
      "p": {
-      "targetId": 357,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
+      "weaponId": "wpn_conductive_primer"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "weaponId": "wpn_conductive_primer"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "weaponId": "wpn_conductive_primer"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "weaponId": "wpn_conductive_primer"
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "weaponId": "wpn_conductive_primer"
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "weaponId": "wpn_conductive_primer"
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "weaponId": "wpn_conductive_primer"
      }
     }
    ],
@@ -8864,7 +8620,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8872,7 +8628,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8880,7 +8636,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8888,7 +8644,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 414,
+      "targetId": 388,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8896,7 +8652,7 @@
     {
      "c": 5,
      "p": {
-      "targetId": 414,
+      "targetId": 387,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8904,7 +8660,7 @@
     {
      "c": 6,
      "p": {
-      "targetId": 414,
+      "targetId": 387,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8912,7 +8668,7 @@
     {
      "c": 7,
      "p": {
-      "targetId": 414,
+      "targetId": 387,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8920,7 +8676,7 @@
     {
      "c": 8,
      "p": {
-      "targetId": 414,
+      "targetId": 387,
       "weaponId": "wpn_conductive_primer",
       "kind": "primer"
      }
@@ -8937,8 +8693,8 @@
     {
      "c": 2,
      "p": {
-      "kind": "warn",
-      "text": "TAKING FIRE"
+      "kind": "info",
+      "text": "Miner back to work — thanks for the cover."
      }
     },
     {
@@ -8946,6 +8702,35 @@
      "p": {
       "kind": "info",
       "text": "Salvor back to work — thanks for the cover."
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "kind": "warn",
+      "text": "OFFICIAL DENIAL"
+     }
+    }
+   ],
+   "tether:attached": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 98
+     }
+    }
+   ],
+   "alert": [
+    {
+     "c": 1,
+     "p": {
+      "text": "PRIORITY COMMS"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "text": "OFFICIAL DENIAL"
      }
     }
    ]
@@ -8958,13 +8743,11 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/tool_grav_anchor.webm",
   "events": {
-   "combat:fire": 15,
-   "combat:fire:player": 15,
-   "emergent:applied": 10,
-   "combat:damage": 49,
-   "shieldDown": 2,
-   "entity:killed": 2,
-   "combat:tumbled": 1
+   "combat:fire": 9,
+   "combat:fire:player": 9,
+   "emergent:applied": 9,
+   "combat:damage": 14,
+   "toast": 1
   },
   "statDiff": {
    "topSpeed": {
@@ -9043,7 +8826,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 414,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9051,7 +8834,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 414,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9059,7 +8842,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 414,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9067,7 +8850,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 414,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9075,7 +8858,7 @@
     {
      "c": 5,
      "p": {
-      "targetId": 414,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9083,7 +8866,7 @@
     {
      "c": 6,
      "p": {
-      "targetId": 414,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9091,7 +8874,7 @@
     {
      "c": 7,
      "p": {
-      "targetId": 437,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9099,7 +8882,7 @@
     {
      "c": 8,
      "p": {
-      "targetId": 437,
+      "targetId": 386,
       "weaponId": "tool_grav_anchor",
       "kind": "grav"
      }
@@ -9109,110 +8892,90 @@
     {
      "c": 1,
      "p": {
-      "targetId": 414,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 8.515346069886867,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 2,
      "p": {
-      "targetId": 437,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 8.515346069886867,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 3,
      "p": {
-      "targetId": 414,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 8.885116079338944,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 4,
      "p": {
-      "targetId": 437,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 8.885116079338944,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 5,
      "p": {
-      "targetId": 414,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 9.24096660632607,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 6,
      "p": {
-      "targetId": 437,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 9.24096660632607,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 7,
      "p": {
-      "targetId": 414,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 9.128468785176388,
+      "amount": 2,
       "damageType": null
      }
     },
     {
      "c": 8,
      "p": {
-      "targetId": 437,
+      "targetId": 1,
       "attackerId": null,
       "weaponId": null,
-      "amount": 9.128468785176388,
+      "amount": 2,
       "damageType": null
      }
     }
    ],
-   "shieldDown": [
-    {
-     "c": 1,
-     "p": {}
-    },
-    {
-     "c": 2,
-     "p": {}
-    }
-   ],
-   "entity:killed": [
-    {
-     "c": 1,
-     "p": {}
-    },
-    {
-     "c": 2,
-     "p": {}
-    }
-   ],
-   "combat:tumbled": [
+   "toast": [
     {
      "c": 1,
      "p": {
-      "attackerId": 410,
-      "source": "collision"
+      "kind": "warn",
+      "text": "TAKING FIRE"
      }
     }
    ]
@@ -9225,11 +8988,7 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/wpn_thermal_cooker.webm",
   "events": {
-   "emergent:applied": 2,
-   "combat:tumbled": 2,
-   "shieldDown": 2,
-   "combat:damage": 2,
-   "combat:statusApplied": 2
+   "emergent:applied": 2
   },
   "statDiff": {
    "topSpeed": {
@@ -9258,7 +9017,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 378,
+      "targetId": 386,
       "weaponId": "wpn_thermal_cooker",
       "kind": "thermal"
      }
@@ -9266,75 +9025,9 @@
     {
      "c": 2,
      "p": {
-      "targetId": 378,
+      "targetId": 386,
       "weaponId": "wpn_thermal_cooker",
       "kind": "thermal"
-     }
-    }
-   ],
-   "combat:tumbled": [
-    {
-     "c": 1,
-     "p": {
-      "attackerId": 354,
-      "source": "collision"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "attackerId": 353,
-      "source": "collision"
-     }
-    }
-   ],
-   "shieldDown": [
-    {
-     "c": 1,
-     "p": {}
-    },
-    {
-     "c": 2,
-     "p": {}
-    }
-   ],
-   "combat:damage": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 353,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 91.02314504984425,
-      "damageType": null
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 354,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 91.02314504984425,
-      "damageType": null
-     }
-    }
-   ],
-   "combat:statusApplied": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 353,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 354,
-      "attackerId": 1,
-      "statusId": "status_tumbling"
      }
     }
    ]
@@ -9347,11 +9040,12 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/wpn_mass_driver.webm",
   "events": {
-   "combat:fire": 14,
-   "combat:fire:player": 14,
+   "combat:fire": 13,
+   "combat:fire:player": 13,
    "emergent:applied": 1,
    "emergent:contact": 1,
-   "combat:damage": 1
+   "toast": 2,
+   "fields:ended": 2
   },
   "statDiff": {
    "topSpeed": {
@@ -9430,7 +9124,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 409,
+      "targetId": 607,
       "weaponId": "wpn_mass_driver",
       "kind": "mass"
      }
@@ -9442,15 +9136,35 @@
      "p": {}
     }
    ],
-   "combat:damage": [
+   "toast": [
     {
      "c": 1,
      "p": {
-      "targetId": 357,
-      "attackerId": 357,
-      "weaponId": null,
-      "amount": 7.677852458172197,
-      "damageType": null
+      "kind": "info",
+      "text": "Salvor back to work — thanks for the cover."
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "info",
+      "text": "Salvor back to work — thanks for the cover."
+     }
+    }
+   ],
+   "fields:ended": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone",
+      "reason": "field_toggled_off"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "cone",
+      "reason": "field_toggled_off"
      }
     }
    ]
@@ -9463,12 +9177,14 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/tool_polarity_inverter.webm",
   "events": {
-   "combat:fire": 33,
-   "projectile:hit": 5,
+   "fields:deployed": 1,
+   "combat:fire": 22,
    "combat:fire:player": 22,
-   "emergent:applied": 20,
-   "toast": 2,
-   "combat:damage": 3
+   "emergent:applied": 17,
+   "combat:tumbled": 1,
+   "combat:damage": 1,
+   "combat:statusApplied": 1,
+   "combat:statusExpired": 1
   },
   "statDiff": {
    "topSpeed": {
@@ -9493,17 +9209,25 @@
   "mods": {},
   "poster": "assets/ui/fitting-media/tool_polarity_inverter.png",
   "evidenceSamples": {
+   "fields:deployed": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone"
+     }
+    }
+   ],
    "combat:fire": [
     {
      "c": 1,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_polarity_inverter"
      }
     },
     {
      "c": 2,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_polarity_inverter"
      }
     },
     {
@@ -9540,48 +9264,6 @@
      "c": 8,
      "p": {
       "weaponId": "tool_polarity_inverter"
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 394,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 394,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
      }
     }
    ],
@@ -9589,7 +9271,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 391,
+      "targetId": 667,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9597,7 +9279,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 391,
+      "targetId": 667,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9605,7 +9287,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 391,
+      "targetId": 667,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9613,7 +9295,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 391,
+      "targetId": 668,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9621,7 +9303,7 @@
     {
      "c": 5,
      "p": {
-      "targetId": 391,
+      "targetId": 669,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9629,7 +9311,7 @@
     {
      "c": 6,
      "p": {
-      "targetId": 391,
+      "targetId": 668,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9637,7 +9319,7 @@
     {
      "c": 7,
      "p": {
-      "targetId": 391,
+      "targetId": 668,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
@@ -9645,25 +9327,18 @@
     {
      "c": 8,
      "p": {
-      "targetId": 391,
+      "targetId": 668,
       "weaponId": "tool_polarity_inverter",
       "kind": "polarity"
      }
     }
    ],
-   "toast": [
+   "combat:tumbled": [
     {
      "c": 1,
      "p": {
-      "kind": "warn",
-      "text": "COUNTEREXAMPLE INBOUND — Standard lance fit. No committed countermeasure. Counterplay: The ordinary lance reset is your approach window."
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "warn",
-      "text": "TAKING FIRE"
+      "attackerId": 1,
+      "source": "collision"
      }
     }
    ],
@@ -9671,31 +9346,30 @@
     {
      "c": 1,
      "p": {
-      "targetId": 1,
-      "attackerId": 426,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
+      "targetId": 667,
+      "attackerId": 667,
+      "weaponId": null,
+      "amount": 5.616476049337186,
       "damageType": null
      }
-    },
+    }
+   ],
+   "combat:statusApplied": [
     {
-     "c": 2,
+     "c": 1,
      "p": {
-      "targetId": 1,
-      "attackerId": 426,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
+      "targetId": 667,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
      }
-    },
+    }
+   ],
+   "combat:statusExpired": [
     {
-     "c": 3,
+     "c": 1,
      "p": {
-      "targetId": 1,
-      "attackerId": 426,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
+      "targetId": 667,
+      "statusId": "status_tumbling"
      }
     }
    ]
@@ -9711,8 +9385,7 @@
    "emergent:applied": 10,
    "combat:fire": 10,
    "combat:fire:player": 10,
-   "alert": 1,
-   "toast": 2
+   "fields:ended": 1
   },
   "statDiff": {
    "topSpeed": {
@@ -9845,27 +9518,12 @@
      }
     }
    ],
-   "alert": [
+   "fields:ended": [
     {
      "c": 1,
      "p": {
-      "text": "OFFICIAL DENIAL"
-     }
-    }
-   ],
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "warn",
-      "text": "OFFICIAL DENIAL"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "encounter",
-      "text": "TRAFFIC ALERT: freighter under PD screen. Raiders want the hold; the escort wants the lane."
+      "kind": "cone",
+      "reason": "field_toggled_off"
      }
     }
    ]
@@ -9880,8 +9538,7 @@
   "events": {
    "emergent:applied": 10,
    "combat:fire": 10,
-   "combat:fire:player": 10,
-   "toast": 2
+   "combat:fire:player": 10
   },
   "statDiff": {
    "topSpeed": {
@@ -10013,22 +9670,6 @@
       "weaponId": "tool_hardlight_prism"
      }
     }
-   ],
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "info",
-      "text": "Market event ended"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "warn",
-      "text": "COUNTEREXAMPLE INBOUND — Standard lance fit. No committed countermeasure. Counterplay: The ordinary lance reset is your approach window."
-     }
-    }
    ]
   },
   "proof": "behavioral"
@@ -10041,7 +9682,8 @@
   "events": {
    "combat:fire": 11,
    "combat:fire:player": 11,
-   "emergent:applied": 4
+   "combat:damage": 1,
+   "emergent:applied": 9
   },
   "statDiff": {
    "topSpeed": {
@@ -10116,11 +9758,23 @@
      }
     }
    ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 842,
+      "attackerId": 842,
+      "weaponId": null,
+      "amount": 2.0842628726764802,
+      "damageType": null
+     }
+    }
+   ],
    "emergent:applied": [
     {
      "c": 1,
      "p": {
-      "targetId": 378,
+      "targetId": 844,
       "weaponId": "tool_thruster_hijacker",
       "kind": "hijack"
      }
@@ -10128,7 +9782,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 380,
+      "targetId": 844,
       "weaponId": "tool_thruster_hijacker",
       "kind": "hijack"
      }
@@ -10136,7 +9790,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 379,
+      "targetId": 844,
       "weaponId": "tool_thruster_hijacker",
       "kind": "hijack"
      }
@@ -10144,7 +9798,39 @@
     {
      "c": 4,
      "p": {
-      "targetId": 380,
+      "targetId": 844,
+      "weaponId": "tool_thruster_hijacker",
+      "kind": "hijack"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 844,
+      "weaponId": "tool_thruster_hijacker",
+      "kind": "hijack"
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "targetId": 843,
+      "weaponId": "tool_thruster_hijacker",
+      "kind": "hijack"
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "targetId": 844,
+      "weaponId": "tool_thruster_hijacker",
+      "kind": "hijack"
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "targetId": 842,
       "weaponId": "tool_thruster_hijacker",
       "kind": "hijack"
      }
@@ -10159,12 +9845,11 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/tool_seismic_gong.webm",
   "events": {
-   "combat:fire": 13,
+   "combat:fire": 7,
    "combat:fire:player": 7,
-   "combat:damage": 5,
-   "projectile:hit": 5,
-   "toast": 2,
-   "emergent:applied": 1
+   "emergent:applied": 5,
+   "fields:ended": 1,
+   "toast": 1
   },
   "statDiff": {
    "topSpeed": {
@@ -10199,153 +9884,37 @@
     {
      "c": 2,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_seismic_gong"
      }
     },
     {
      "c": 3,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_seismic_gong"
      }
     },
     {
      "c": 4,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_seismic_gong"
      }
     },
     {
      "c": 5,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_seismic_gong"
      }
     },
     {
      "c": 6,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
+      "weaponId": "tool_seismic_gong"
      }
     },
     {
      "c": 7,
      "p": {
-      "weaponId": "wpn_pulse_laser_s"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
       "weaponId": "tool_seismic_gong"
-     }
-    }
-   ],
-   "combat:damage": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 1,
-      "attackerId": 410,
-      "weaponId": "wpn_pulse_laser_s",
-      "amount": 3,
-      "damageType": null
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 1,
-      "weaponId": "wpn_pulse_laser_s",
-      "damageType": "energy"
-     }
-    }
-   ],
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "warn",
-      "text": "TAKING FIRE"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "warn",
-      "text": "COUNTEREXAMPLE INBOUND — Standard lance fit. No committed countermeasure. Counterplay: The ordinary lance reset is your approach window."
      }
     }
    ],
@@ -10353,9 +9922,59 @@
     {
      "c": 1,
      "p": {
-      "targetId": 409,
+      "targetId": 900,
       "weaponId": "tool_seismic_gong",
       "kind": "gong"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 900,
+      "weaponId": "tool_seismic_gong",
+      "kind": "gong"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 901,
+      "weaponId": "tool_seismic_gong",
+      "kind": "gong"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 901,
+      "weaponId": "tool_seismic_gong",
+      "kind": "gong"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 901,
+      "weaponId": "tool_seismic_gong",
+      "kind": "gong"
+     }
+    }
+   ],
+   "fields:ended": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone",
+      "reason": "field_toggled_off"
+     }
+    }
+   ],
+   "toast": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "info",
+      "text": "MARKET ALERT: Stolen Goods BOOM at Margin Fence"
      }
     }
    ]
@@ -10449,7 +10068,7 @@
     {
      "c": 1,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10457,7 +10076,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10465,7 +10084,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10473,7 +10092,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10481,7 +10100,7 @@
     {
      "c": 5,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10489,7 +10108,7 @@
     {
      "c": 6,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10497,7 +10116,7 @@
     {
      "c": 7,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }
@@ -10505,7 +10124,7 @@
     {
      "c": 8,
      "p": {
-      "targetId": 409,
+      "targetId": 974,
       "weaponId": "tool_quantum_sympathy",
       "kind": "quantum"
      }

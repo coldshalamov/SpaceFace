@@ -311,12 +311,17 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-item { height:120px; min-height:104px; }
  ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
  ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
- ${A} .orr-armory-reading__name { font-size:20px !important; margin:4px 0 8px !important; }
+ ${A} .orr-armory-reading__name { font-size:20px !important; margin:4px 0 4px !important; }
  /* words before the media band: what it IS reads before what it looks like */
  ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; }
  ${A} .orr-armory-reading__words { order:-1; }
  ${A} .orr-armory-visual { order:2; }
- /* squeeze the words column so the 'when it pays' line still starts above the fold */
+ /* at this size the fold is only ~90px of words — hoist 'when it pays' directly
+    under the name, above blurb/act, so the decision line is never below the fold */
+ ${A} .orr-armory-reading__words { display:flex !important; flex-direction:column !important; }
+ ${A} .orr-armory-reading__verb { order:-3 !important; }
+ ${A} .orr-armory-reading__name { order:-2 !important; }
+ ${A} .orr-armory-reading__tip { order:-1 !important; }
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act { line-height:1.38 !important; }
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
  ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
