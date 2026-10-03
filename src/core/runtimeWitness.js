@@ -203,6 +203,7 @@ function copySample(dst, src) {
   dst.admissionMs = src.admissionMs;
   dst.topPhase = src.topPhase;
   dst.topPhaseP95 = src.topPhaseP95;
+  dst.fenceBytesPacked = src.fenceBytesPacked;
   dst.hitch = src.hitch;
   return dst;
 }
@@ -239,6 +240,7 @@ function emptySample() {
     admissionMs: 0,
     topPhase: null,
     topPhaseP95: 0,
+    fenceBytesPacked: 0,
     hitch: false,
   };
 }
@@ -293,6 +295,9 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   sample.admissionMs = finite(frameSample?.admissionMs);
   sample.topPhase = top?.name || null;
   sample.topPhaseP95 = finite(top?.p95);
+  // MACH-09: bytes the presentation fence packed on its last commit. The renderer publishes it on
+  // state.render.snapshotFence; the report reduces it to p50/p95 across the sample window.
+  sample.fenceBytesPacked = finite(state?.render?.snapshotFence?.bytes);
   sample.hitch = callbackMs >= 33.4;
   sample.costs = costs;
   return sample;
@@ -497,6 +502,22 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
   };
 }
 
+/**
+ * One line: bytes the presentation fence packed per commit, reduced to p50/p95 over the
+ * sample window. 0-valued samples (no pack yet) are excluded so a boot window does not
+ * read as a zero-byte frame.
+ */
+function formatFenceBytesLine(samples) {
+  const values = (Array.isArray(samples) ? samples : [])
+    .map((row) => finite(row?.fenceBytesPacked))
+    .filter((bytes) => bytes > 0)
+    .sort((a, b) => a - b);
+  if (values.length === 0) return '- packed snapshot bytes/frame: n/a';
+  const pick = (q) => values[Math.min(values.length - 1, Math.max(0, Math.ceil(q * values.length) - 1))];
+  const lastValue = finite(samples[samples.length - 1]?.fenceBytesPacked);
+  return `- packed snapshot bytes/frame: p50 ${pick(0.5)} / p95 ${pick(0.95)} / last ${lastValue} (n ${values.length})`;
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -529,6 +550,7 @@ export function formatRuntimeWitnessReport({
     `- drawCalls: ${last?.drawCalls ?? 'n/a'}`,
     `- lastFrameError: ${last?.lastFrameError || 'none'}`,
     `- gpu: ${gpu ? `${gpu.renderer || '?'} (tier ${gpu.tier ?? '?'})` : 'n/a'}`,
+    formatFenceBytesLine(samples),
     '',
     '## Where the last frames went (ms)',
   ];

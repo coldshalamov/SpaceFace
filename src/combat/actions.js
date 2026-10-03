@@ -108,7 +108,20 @@ export function createActionService(context, attachments, routeDamage) {
     return start(request, actor, def, key);
   }
 
+  // Advisory authorization happened at request time; this is the commit gate. AI-sourced
+  // requests re-run their engagement authorization on live state after any queue delay —
+  // a compliance change between decision and execution cannot fire a stale shot. The hook
+  // is registered by the AI ports owner; non-AI sources keep their existing gates.
+  function reauthorizeQueuedAction(request, actor, def) {
+    if (!request.source || request.source.kind !== 'ai') return null;
+    const hook = helpers && helpers.reauthorizeAICombatAction;
+    if (typeof hook !== 'function') return null;
+    return hook(request, actor, def);
+  }
+
   function start(request, actor, def, key) {
+    const reauthorization = reauthorizeQueuedAction(request, actor, def);
+    if (reauthorization && !reauthorization.ok) return reject(request, reauthorization.reason);
     const runtime = ensureCombatant(state, actor, catalog);
     const blocked = actionBlockedByCombatant(runtime, def);
     if (blocked) return reject(request, `disabled:${blocked}`);

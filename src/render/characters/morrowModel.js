@@ -271,6 +271,8 @@ export function buildMorrowVisual(entity = { radius: MORROW.radius, data: {} }) 
   root.userData.morrowParts={body,head,arms,lids,chimes,field,pulse,gyro};
   // Explicit final-owner disposal for tools. The live renderer also traverses these resources.
   root.userData.disposeMorrow=()=>disposeMorrowVisual(root);
+  root.userData.authoredAssetState='authored';
+  root.userData.authoredVisualRoot='authored-root';
   return root;
 }
 

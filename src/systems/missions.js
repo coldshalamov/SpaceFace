@@ -8813,6 +8813,21 @@ export const missions = {
         });
       }
     }
+    // NXI-145: a shared subject belongs to every live contract chasing it — settling this one
+    // releases this mission's claim but must not sweep a body the other contract still needs.
+    const sharedIds = new Set();
+    const sharedRecordIds = new Set();
+    for (const other of this.state.missions.active) {
+      if (other === m || other.status !== 'active') continue;
+      for (const id of other.targetEntityIds || []) sharedIds.add(id);
+      const otherFollow = other.params && other.params.poiSignalFollowup;
+      if (otherFollow && otherFollow.targetRecordId != null) sharedRecordIds.add(otherFollow.targetRecordId);
+    }
+    if (sharedRecordIds.size) {
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && sharedRecordIds.has(e.data.worldRecordId)) sharedIds.add(e.id);
+      });
+    }
     // Spring-wing raiders are not objective targets: settlement RELEASES them to ordinary lane
     // life (unpinned, unstamped) rather than sweeping them — the fight the contract started
     // stays in the sky, which is exactly what a stranger remembers about an escort gone loud.
@@ -8849,6 +8864,7 @@ export const missions = {
       }
     });
     for (const id of targetIds) {
+      if (sharedIds.has(id)) continue; // another live contract still owns this subject
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
         e.alive = false; // swept end-of-step

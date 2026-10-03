@@ -2169,9 +2169,39 @@ export const economy = {
       tNow,
     );
     const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
+    // NXI-102: the commit also binds whole-unit hold capacity on a buy. The quote names that
+    // accepted quantity under the same capacity rule and prices it on the same curve, so a
+    // nearly full hold cannot preview a fraction the settlement rejects or reprices. The
+    // market answer (qty/unitAvg/total) stays the pure book side for intel and automation reads.
+    let acceptQty = qty;
+    let acceptUnitAvg = unitAvg;
+    let acceptTotal = total;
+    if (side === 'buy' && state.player && state.player.cargo) {
+      const freeVolume = (Number(state.player.cargo.capVolume) || 0) - (Number(state.player.cargo.usedVolume) || 0);
+      const volPerUnit = def.volPerU > 0 ? def.volPerU : 1;
+      const canFit = Math.max(0, Math.floor(freeVolume / volPerUnit));
+      if (canFit < qty) {
+        acceptQty = canFit;
+        if (acceptQty > 0) {
+          const acceptStockAfter = entry.stock - acceptQty;
+          const acceptMid = averageLivePrice({
+            basePrice: def.basePrice, baseEq: entry.baseEq, elasticity: el,
+            stockLo: Math.min(entry.stock, acceptStockAfter), stockHi: Math.max(entry.stock, acceptStockAfter),
+            demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
+            priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
+          });
+          acceptUnitAvg = acceptMid * (1 + spread / 2) * standingPriceMultiplier;
+          acceptTotal = settleCredits(acceptUnitAvg * acceptQty, side);
+        } else {
+          acceptUnitAvg = 0;
+          acceptTotal = 0;
+        }
+      }
+    }
     return {
       ok: true, stationId, commodityId, side, qty, requestedQty, partial: qty !== requestedQty,
       unitAvg, total,
+      acceptQty, acceptUnitAvg, acceptTotal, holdLimited: acceptQty < qty,
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
       stationSurchargeWaived: side === 'buy' && standing.surchargeWaived,

@@ -116,9 +116,25 @@ function makeState({ seed = 47, sectorId = FRONTIER, credits = 200000, researche
 }
 
 function makeEconomyStub(priceTable = {}) {
+  // The settle path only sells into a market that lists the good (state.economy.markets), so
+  // the stub's price table must be mirrored as listed sell quotes on every station it quotes.
+  const markets = {};
+  for (const sector of SECTORS) {
+    for (const st of sector.stations || []) {
+      const row = {};
+      for (const [key, price] of Object.entries(priceTable)) {
+        const parts = key.split('|');
+        if (parts.length === 3) {
+          if (parts[0] === st.id && parts[2] === 'sell') row[parts[1]] = { lastSell: price };
+        } else row[key] = { lastSell: price };
+      }
+      markets[st.id] = row;
+    }
+  }
   return {
     name: 'economy',
     prices: priceTable,
+    markets,
     priceOf(stationId, goodId, side) {
       const key = stationId + '|' + goodId + '|' + side;
       if (key in this.prices) return this.prices[key];
@@ -144,7 +160,10 @@ function boot({ seed = 47, sectorId = FRONTIER, credits = 200000, researched = t
     state.player.credits = (state.player.credits || 0) + amt;
   });
 
-  if (economy) peers.set('economy', economy);
+  if (economy) {
+    peers.set('economy', economy);
+    if (economy.markets) state.economy = { markets: economy.markets };
+  }
 
   let auto = null;
   if (withAutomation) {
@@ -544,6 +563,20 @@ test('relay dispatches deterministic convoys and only realizes real market price
   assert.equal(ledger.stores.inputCapU, spec.storeCapU);
   assert.ok(ledger.risk && typeof ledger.risk.tripChance === 'number', 'risk is published');
   assert.ok(ledger.throughput && ledger.throughput.convoyLoadU === spec.convoyLoadU);
+});
+
+test('an empty relay store dispatches nothing — no convoy, fee, or income (NXI-134)', () => {
+  const h = boot({ seed: 13, economy: makeEconomyStub({ cmdty_refined_metals: 80 }) });
+  const body = commission(h, claimBody(h), 'spec_relay');
+  const spec = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
+  // Never delivered goods — the schedule runs dry for three windows.
+  runSim(h, spec.dispatchEveryS * 3 + 1, 0.1);
+  assert.equal(body.spec.convoy, null, 'an empty store cannot mint a convoy');
+  assert.equal(grants(h, 'claim_relay_sale').length, 0, 'no income on freight that never existed');
+  assert.ok(!body.spec.receipts.some((r) => r.kind === 'convoy_dispatched' || r.kind === 'convoy_sold'),
+    'no dispatch or sale receipt without an accepted shipment');
+  assert.equal(events(h, 'claim:convoyManifested').length, 0,
+    'no cargo-carrying visual convoy is requested for an empty store');
 });
 
 // ── 5. bastion readiness/coverage; defense only against canonical threats ────────────────────

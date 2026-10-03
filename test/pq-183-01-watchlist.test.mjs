@@ -146,6 +146,22 @@ test('normalizeWatchlist dedupes, drops bad rows, and is a stable round trip', (
   assert.deepEqual(again, clean);
 });
 
+test('NXI-216: a completed contract reads off the board while its sibling pin survives', () => {
+  const state = makeState();
+  toggleWatchPin(state, 'contract:msn_ferry_1', { label: 'Ferry run' });
+  toggleWatchPin(state, 'contract:msn_repair_2', { label: 'Repair service' });
+  // The ferry run completes — its record leaves the active board entirely.
+  state.missions.active = [];
+  const done = resolveWatchPin(state, { ref: 'contract:msn_ferry_1', kind: 'deadline', label: 'Ferry run' });
+  assert.equal(done.detail, 'off the board');
+  // The separately tracked repair job is untouched: pin row and pin list both keep it.
+  assert.equal(watchlistPins(state).length, 2);
+  assert.equal(isWatched(state, 'contract:msn_repair_2'), true);
+  state.missions.active = [{ id: 'msn_repair_2', deadline_s: 1600 }];
+  const alive = resolveWatchPin(state, { ref: 'contract:msn_repair_2', kind: 'deadline', label: 'Repair service' });
+  assert.match(alive.detail, /10m 0s left/);
+});
+
 test('resolveWatchlist renders pins in order and respects the cap', () => {
   const state = makeState();
   toggleWatchPin(state, 'faction:faction_mts', { label: 'MTS Combine' });

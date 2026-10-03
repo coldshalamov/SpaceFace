@@ -16200,8 +16200,10 @@ export const render = {
             && capturedRender.admissionRunGeneration === capturedGeneration
             && capturedRender.compileObjectPipelines === compileFn
             && e.alive !== false && e.mesh === subject && !!subject.parent;
-          void yieldAfterPresent().then(() => {
-            if (!isActive()) return null;
+          // The post-present continuation adopts compileFn's promise into a new child. Observing
+          // the base admission alone cannot handle this ignored child's cancellation or failure.
+          observePipelineAdmission(yieldAfterPresent().then(() => {
+            if (!isActive()) return;
             // A freshly built on-camera body has the same deadline as an authored
             // upgrade. Ambient FIFO priority here left its root hidden for seconds.
             return compileFn(subject, {
@@ -16215,7 +16217,7 @@ export const render = {
               subject.userData.pipelinesPending = false;
               subject.userData.pipelinesPendingBy = null;
             }
-          }).catch(() => null);
+          }));
         } else {
           void compileFn(m);
         }
@@ -17287,6 +17289,7 @@ export const render = {
         state.render.snapshotFence = {
           sequence: this._snapshotFence.sequence,
           packed,
+          bytes: this._snapshotFence.lastBytesPacked,
         };
       }
     }
@@ -17609,6 +17612,7 @@ export const render = {
         this.state.render.snapshotFence = {
           sequence: this._snapshotFence.sequence,
           packed,
+          bytes: this._snapshotFence.lastBytesPacked,
         };
       }
     }
