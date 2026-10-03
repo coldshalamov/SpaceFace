@@ -153,7 +153,7 @@ import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -3591,9 +3591,9 @@ export const missions = {
       params: JSON.parse(JSON.stringify(offer.params)), // own copy (progress mutates)
       objectiveProgress: 0,
       objectiveTarget: this._objectiveTarget(offer.type, offer.params),
-      acceptedAt_s: state.simTime,
+      acceptedAt_s: deferredEnterNow(state),
       deadline_s: Number.isFinite(durationS) && durationS > 0
-        ? Math.max(0, Number(state.simTime) || 0) + durationS : null,
+        ? Math.max(0, Number(deferredEnterNow(state)) || 0) + durationS : null,
       reward_cr: offer.reward_cr, collateral_cr: offer.collateral_cr,
       riskTier: offer.riskTier,
       ...(offer.economyTerms ? { economyTerms: JSON.parse(JSON.stringify(offer.economyTerms)) } : {}),

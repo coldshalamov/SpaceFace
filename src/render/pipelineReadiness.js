@@ -438,26 +438,58 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     return Object.freeze([...new Set(entries.map((entry) => entry.subject))]);
   }
 
-  async function waitForCaptured(plan) {
+  async function waitForCaptured(plan, options = {}) {
     const entries = capturedPlans.get(plan);
     if (!entries) throw new TypeError('pipeline tracker requires a captured admission plan');
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const result = () => ({
+      watermark: plan.watermark,
+      capturedCount: entries.length,
+      remainingCount: pending.size,
+    });
+    if (stale && stale()) return { ...result(), superseded: true };
     flushQueuedThrough(plan.watermark, 'captured');
-    await Promise.all(entries.map((entry) => entry.completion));
+    const completions = Promise.all(entries.map((entry) => entry.completion));
+    if (timeoutMs == null) {
+      await completions;
+    } else {
+      const outcome = await Promise.race([
+        completions.then(() => 'resolved', () => 'rejected'),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
+      ]);
+      if (outcome === 'timeout') return { ...result(), timedOut: true };
+      await completions;
+    }
+    if (stale && stale()) return { ...result(), superseded: true };
     // Exact-root callers advance to residency/publication in their await continuations. Give those
     // already-registered consumers deterministic turns without joining any admission after watermark.
     await Promise.resolve();
     await Promise.resolve();
-    return {
-      watermark: plan.watermark,
-      capturedCount: entries.length,
-      remainingCount: pending.size,
-    };
+    return result();
   }
 
-  async function waitForPending() {
+  async function waitForPending(options = {}) {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const deadline = timeoutMs == null ? null : Date.now() + timeoutMs;
     while (pending.size > 0) {
+      if (stale && stale()) return { skipped: false, pendingCount: pending.size, superseded: true };
+      if (deadline != null && Date.now() >= deadline) {
+        return { skipped: false, pendingCount: pending.size, timedOut: true };
+      }
       flushQueued();
-      await Promise.all([...pending].map((entry) => entry.completion));
+      const completions = Promise.all([...pending].map((entry) => entry.completion));
+      if (deadline == null) {
+        await completions;
+      } else {
+        const outcome = await Promise.race([
+          completions.then(() => 'resolved', () => 'rejected'),
+          new Promise((resolve) => setTimeout(() => resolve('timeout'), Math.max(0, deadline - Date.now()))),
+        ]);
+        if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
+        await completions;
+      }
     }
     // Admission consumers commit their already-built roots in promise continuations. Yield through
     // those continuations before the startup guard is allowed to publish the first flight frame.
@@ -637,22 +669,54 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     });
   }
 
-  async function waitForCaptured(plan) {
+  async function waitForCaptured(plan, options = {}) {
     const entries = capturedPlans.get(plan);
     if (!entries) throw new TypeError('GPU residency tracker requires a captured admission plan');
-    await Promise.all(entries.map((entry) => entry.completion));
-    await Promise.resolve();
-    await Promise.resolve();
-    return {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const result = () => ({
       watermark: plan.watermark,
       capturedCount: entries.length,
       remainingCount: pending.size,
-    };
+    });
+    if (stale && stale()) return { ...result(), superseded: true };
+    const completions = Promise.all(entries.map((entry) => entry.completion));
+    if (timeoutMs == null) {
+      await completions;
+    } else {
+      const outcome = await Promise.race([
+        completions.then(() => 'resolved', () => 'rejected'),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
+      ]);
+      if (outcome === 'timeout') return { ...result(), timedOut: true };
+      await completions;
+    }
+    if (stale && stale()) return { ...result(), superseded: true };
+    await Promise.resolve();
+    await Promise.resolve();
+    return result();
   }
 
-  async function waitForPending() {
+  async function waitForPending(options = {}) {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const deadline = timeoutMs == null ? null : Date.now() + timeoutMs;
     while (pending.size > 0) {
-      await Promise.all([...pending].map((entry) => entry.completion));
+      if (stale && stale()) return { skipped: false, pendingCount: pending.size, superseded: true };
+      if (deadline != null && Date.now() >= deadline) {
+        return { skipped: false, pendingCount: pending.size, timedOut: true };
+      }
+      const completions = Promise.all([...pending].map((entry) => entry.completion));
+      if (deadline == null) {
+        await completions;
+      } else {
+        const outcome = await Promise.race([
+          completions.then(() => 'resolved', () => 'rejected'),
+          new Promise((resolve) => setTimeout(() => resolve('timeout'), Math.max(0, deadline - Date.now()))),
+        ]);
+        if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
+        await completions;
+      }
     }
     // Boundary admission commits in the await continuation registered before this aggregate wait.
     // Give that continuation a deterministic turn before startup checks committed visual readiness.

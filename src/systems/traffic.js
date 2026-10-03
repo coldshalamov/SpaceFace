@@ -22,7 +22,7 @@
 
 import { anvilTrafficMethods } from './anvilWork.js';
 import { isRunSealed } from '../core/runSeal.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
@@ -4619,7 +4619,7 @@ export const traffic = {
     ent.data.worldRecordId = recordId;
     ent.data.identityKey = key;
     ent.data.durable = true;
-    ent.data.recordCreatedTick = this.state.tick | 0;
+    ent.data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     this._indexWorldRecordId(ent);
   },
 
@@ -9792,7 +9792,8 @@ export const traffic = {
   _rebaseCeresCausalPhaseEnds() {
     const chain = this._ceresCausal;
     if (!chain || !Array.isArray(chain.active) || !chain.active.length) return;
-    const simTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    const deferredNow = deferredEnterNow(this.state);
+    const simTime = Number.isFinite(deferredNow) ? deferredNow : 0;
     for (let i = 0; i < chain.active.length; i++) {
       const live = chain.active[i];
       if (!live) continue;
