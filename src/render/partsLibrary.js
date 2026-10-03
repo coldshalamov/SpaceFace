@@ -6770,6 +6770,7 @@ function admitNextUpgradeJob(state) {
   const boundaryToken = job.boundaryToken;
   const isBoundaryCurrent = () => upgradeTokensByBoundary.get(owner.boundary) === boundaryToken;
   const isOwnerActive = () => !state.retired && isBoundaryCurrent()
+    && job.abortedStalled !== true
     && jobStillNeeded(state, owner)
     && (typeof requestedOwnerActive !== 'function' || requestedOwnerActive() === true);
   job.isAdmissionOwnerActive = isOwnerActive;
