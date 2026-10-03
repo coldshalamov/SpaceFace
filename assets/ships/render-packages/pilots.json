@@ -4,6 +4,27 @@
   "runtimeManifest": "src/render/renderPackageManifest.js",
   "pilots": [
     {
+      "key": "stormshift-collector",
+      "assetId": "sf.render.stormshift-collector",
+      "runtimeAssetId": "SF_STORMSHIFT_COLLECTOR_V01",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ship_stormshift_collector_v01",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ship_stormshift_collector_v01.glb",
+      "releaseSha256": "70643df0e55e6f6c3ebb743840ad24097ad156d12ee6f8359d879ebeb2346e9a",
+      "releaseBytes": 1095968,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/stormshift-collector",
+      "metadataUrl": "assets/ships/release/render-packages/stormshift-collector/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "apron-shuttle",
       "assetId": "sf.render.apron-shuttle",
       "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
