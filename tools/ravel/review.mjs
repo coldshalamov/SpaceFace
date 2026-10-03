@@ -21,7 +21,10 @@ try{
  await page.click('#study');await page.screenshot({path:path.join(out,'02-model-study.png')});
  await page.click('#study');
  const before=await page.evaluate(()=>window.__ravelLab.fixture.player.pos.z);
- await page.keyboard.down('KeyW');await sleep(250);await page.keyboard.up('KeyW');
+ // Software-rendered CI may not present a frame within a fixed 250 ms sleep.
+ await page.keyboard.down('KeyW');
+ try{await page.waitForFunction(z=>window.__ravelLab.fixture.player.pos.z<z-.01,before,{timeout:15000});}
+ finally{await page.keyboard.up('KeyW');}
  const after=await page.evaluate(()=>window.__ravelLab.fixture.player.pos.z);
  if(!(after<before))throw Error('W did not move the actual Rapier body');report.checks.push('Keyboard flight moves the real body');
  await page.click('#hail');await page.click('#hail');
