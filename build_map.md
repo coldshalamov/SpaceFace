@@ -635,7 +635,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 148 | PB-UI-B | SF-243+244+245 custody projection, stable-identity selection, discovery-knowledge model — sim halves | PB | OPEN |
 | 149 | PB-UI-C | SF-241+246 trade-confirm truth residue + mission phase→next-action derivation — sim halves | PB | OPEN |
 | 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | SHIPPED 2026-10-02 devin-oct2-batch (d4c6b219d) — fail-closed site restore; seal failure refunds lot, settled intents never double-pay, _pod custody reseats, machines/counters repair conserved |
-| 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | OPEN — seam saveSystem serial |
+| 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | SHIPPED 2026-10-02 devin-oct2-batch — SF-283 restore retires spectacle lights/floats/toasts; SF-285 defeat receipt survives restore → recovery door; SF-278 already-true |
 | 152 | PB-CONT-C | SF-280+281+284 migration template, failed-save visibility, bounds preserve consequences | PB | OPEN — seam saveSystem serial |
 | 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | SHIPPED 2026-10-02 devin-oct2-batch — SF-271/275/276 verified green with new suites; SF-279 built: occupant-generation proofs stop corpse attachments welding to the id's heir |
 | 154 | PB-CONT-E | SF-272+282 validate-then-restore boundary + one real browser/Electron divergence | PB | OPEN — CHECK pair |

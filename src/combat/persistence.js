@@ -16,6 +16,11 @@ export function serializeCombatState(state) {
     entities: serializeCombatants(combat, refs),
     actions: serializeActions(combat, refs, savedAttachmentIds),
     attachments,
+    // A save written mid-defeat is legal (the defeated wreck serializes deliberately), so the
+    // after-action receipt is a durable consequence, not session scratch: without it the restored
+    // wreck loses both its recovery plan and combat's re-arm seam, and the player loads into a
+    // dead hull with no reachable resolution. Plain data — clonePlain strips nothing it needs.
+    lastPlayerDefeat: clonePlain(combat && combat.lastPlayerDefeat) || null,
   };
 }
 
@@ -40,6 +45,10 @@ export function restoreCombatState(state, payload, resolveEntityRef) {
     combat.attachments.byId,
   );
   combat.statusNextPendingSeq = normalizedStatusNextSeq(payload.statusNextPendingSeq, combat.entities);
+  // The durable defeat receipt restores as data; whether the wreck is still owed recovery is
+  // re-derived by combat's save:loaded boundary against the restored entity's defeated flag —
+  // an absent field (older save) leaves null, never a fabricated receipt.
+  combat.lastPlayerDefeat = clonePlain(payload.lastPlayerDefeat) || null;
   return summary;
 }
 
