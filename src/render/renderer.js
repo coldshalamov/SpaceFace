@@ -934,8 +934,6 @@ function clearRendererMeshLatches(state) {
   }
 }
 
-const _enqueuePassShips = [];
-const _enqueuePassOthers = [];
 
 /**
  * Queue authored-readiness-critical ships before bulk world geometry while retaining the same
@@ -945,6 +943,18 @@ const _enqueuePassOthers = [];
  * bounded drain always spends the build budget on the nearest deadline first.
  */
 export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null, urgencyOf = null) {
+  const it = enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, queue, shouldQueue, isUrgent, urgencyOf);
+  while (!it.next().done) { /* inline drain — identical order */ }
+}
+
+/**
+ * Generator twin of enqueueMissingMeshBuilds — yields once per row inside each
+ * walk and once per enqueue, so a cook/poll driver can spread the two list-wide
+ * classify passes + two sorts across the slice clock instead of paying them
+ * inside one task. Pass-local buffers: a suspended instance must not hold the
+ * module scratches where a second sync drain could clobber them.
+ */
+export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null, urgencyOf = null) {
   // When isUrgent is supplied, urgent candidates (about to cross the glass) drain
   // ahead of ordinary ones within the same per-frame budget; ships keep their
   // lead inside each urgency tier.
@@ -952,28 +962,32 @@ export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, s
   const byUrgency = typeof urgencyOf === 'function'
     ? (a, b) => urgencyOf(a) - urgencyOf(b)
     : null;
+  const passShips = [];
+  const passOthers = [];
   for (let pass = 0; pass < passes; pass++) {
     const urgentPass = isUrgent ? pass === 0 : false;
-    _enqueuePassShips.length = 0;
-    _enqueuePassOthers.length = 0;
+    passShips.length = 0;
+    passOthers.length = 0;
     for (const entity of entityList) {
+      yield;
       if (!entity || entity.type !== 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
-      _enqueuePassShips.push(entity);
+      passShips.push(entity);
     }
     for (const entity of entityList) {
+      yield;
       if (!entity || entity.type === 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
-      _enqueuePassOthers.push(entity);
+      passOthers.push(entity);
     }
     if (byUrgency) {
-      _enqueuePassShips.sort(byUrgency);
-      _enqueuePassOthers.sort(byUrgency);
+      passShips.sort(byUrgency);
+      passOthers.sort(byUrgency);
     }
-    for (const entity of _enqueuePassShips) enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
-    for (const entity of _enqueuePassOthers) enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+    for (const entity of passShips) { yield; enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue); }
+    for (const entity of passOthers) { yield; enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue); }
   }
 }
 
@@ -2374,6 +2388,21 @@ function abandonReconcile(owner) {
   owner._reconcileEpoch = null;
 }
 
+// The tracker-record prune + detached-owner release is one atomic multi-ms sweep
+// (7 global registry prunes plus a claimed-set census over meshes/entities/refs).
+// It only reclaims a slow-leak class — amortize to ~1/s shared across both passes;
+// a deferred pass just keeps retired records mounted one beat longer.
+const RESIDENCY_PRUNE_SWEEP_MS = 1000;
+function residencyPruneSweepDue(owner) {
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  const last = owner._residencyPruneSweepAt;
+  if (Number.isFinite(last) && now - last < RESIDENCY_PRUNE_SWEEP_MS) return false;
+  owner._residencyPruneSweepAt = now;
+  return true;
+}
+
 /**
  * Queue the hold-exempt set while the first-flight residency hold owns streaming.
  * Reconcile and poll never run under the hold, so without this the build queue stays
@@ -2467,7 +2496,7 @@ function liveFlyDefersOnGlassAuthoredUpgrade(state) {
     && Number.isFinite(state.render && state.render.firstPlayableFrameAt));
 }
 
-function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state) {
+function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state, scan = null) {
   if (!canRequestAuthoredUpgrade(entity, state, owner && owner._authoredSectorPrewarmPendingId)) return;
   // A terminal verdict that published nothing drawable is retryable while the entity stays
   // relevant — a transient fetch/decode miss must not blank the owner for the session. The
@@ -2475,18 +2504,26 @@ function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state) {
   retryFailedAuthoredAdmission(mesh, typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : Date.now());
-  if (liveFlyDefersOnGlassAuthoredUpgrade(state) && entityIsOnReadableGlass(entity, state)) {
+  // The scan variant is verdict-identical with player/camera/glass resolved once at pass
+  // head instead of per call — mesh walks mint it at their head; other callers pass null
+  // and keep the live per-call derivation.
+  const onReadableGlass = scan
+    ? entityIsOnReadableGlassScan(entity, state, scan)
+    : entityIsOnReadableGlass(entity, state);
+  if (liveFlyDefersOnGlassAuthoredUpgrade(state) && onReadableGlass) {
     const subject = mesh;
     void yieldAfterPresent().then(() => {
       if (!subject || !subject.parent) return;
       if (!subject.userData || typeof subject.userData.requestAuthoredUpgrade !== 'function') return;
+      // The deferred re-check runs across at least one yielded frame — re-derive the live
+      // camera terms rather than grading on the scan minted at pass head.
       requestAuthoredUpgrade(subject, owner.renderer, owner.scene,
         entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
     });
     return;
   }
   requestAuthoredUpgrade(mesh, owner.renderer, owner.scene,
-    entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
+    onReadableGlass ? { admissionVisible: true } : undefined);
 }
 
 function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
@@ -3321,9 +3358,24 @@ function kickDecodeRunwayAssets(owner, entities) {
   // (floor 2) so a busy host can decode several belt-tail GLBs at once without
   // outrunning the present thread. A single linear pass keeps that prefix.
   const resolvedFiles = new Map();
+  const decodeCores = typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency)
+    ? navigator.hardwareConcurrency
+    : 4;
+  const decodeCap = beltTailDecodeConcurrency(decodeCores, resolveDecodeTaskBudgetLimit(decodeCores));
   const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
     if (entityHomeSectorMismatch(entity, state)) return false;
+    // Cheap O(1) guards first — the packaged-file resolver chain below is the
+    // expensive step and only rows that clear these ever pay it.
+    if (!meshNeedsAuthoredDecode(owner, entity)) return false;
+    if (pending.has(entity.id)) return false;
+    // A prep-pinned entity decodes through its own boundary record's lane — a runway
+    // start here just joins the same task while burning one of the two pick slots.
+    if (owner._sectorBoundaryPreparations && owner._sectorBoundaryPreparations.has(entity.id)) return false;
+    // An in-flight boundary job already owns this entity's pipeline tail — re-picking
+    // would burn a start slot on library-deduped no-ops every poll until it settles.
+    const bd0 = owner._meshes && owner._meshes.get(entity.id);
+    if (bd0 && bd0.userData && bd0.userData.authoredUpgradePromise) return false;
     // The runway is not ship-only: wrecks/payloads/beacons carry the same GLB-decode
     // long pole on first contact (packagedPropSpec covers payload/beacon/assetRef-mapped
     // and explicit packagedPropFile props; wrecks decode a 'place'-slot hulk/aftermath
@@ -3334,15 +3386,6 @@ function kickDecodeRunwayAssets(owner, entities) {
     const wholePlan = entity.type === 'ship';
     const resolved = wholePlan ? null : packagedDecodeFileForEntity(entity);
     if (!wholePlan && !resolved) return false;
-    if (!meshNeedsAuthoredDecode(owner, entity)) return false;
-    if (pending.has(entity.id)) return false;
-    // A prep-pinned entity decodes through its own boundary record's lane — a runway
-    // start here just joins the same task while burning one of the two pick slots.
-    if (owner._sectorBoundaryPreparations && owner._sectorBoundaryPreparations.has(entity.id)) return false;
-    // An in-flight boundary job already owns this entity's pipeline tail — re-picking
-    // would burn a start slot on library-deduped no-ops every poll until it settles.
-    const bd0 = owner._meshes && owner._meshes.get(entity.id);
-    if (bd0 && bd0.userData && bd0.userData.authoredUpgradePromise) return false;
     // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
     // once the schedule has named them. Other hulls earn a start either through the
     // ordinary admission policy or through the longer decode runway: the authored
@@ -3369,10 +3412,6 @@ function kickDecodeRunwayAssets(owner, entities) {
   const kickBoundaryUpgrade = (entity, wave) => kickAuthoredBoundaryUpgrade(owner, entity,
     wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare');
   let started = 0;
-  const decodeCores = typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency)
-    ? navigator.hardwareConcurrency
-    : 4;
-  const decodeCap = beltTailDecodeConcurrency(decodeCores, resolveDecodeTaskBudgetLimit(decodeCores));
   for (let i = 0; i < ordered.length && started < decodeCap; i++) {
     const entity = ordered[i];
     if (entity.type === 'ship') {
@@ -10502,15 +10541,23 @@ export const render = {
         // while the loading await owns the thread and no frame is presented.
         await new Promise((resolve) => {
           const raf = globalThis.requestAnimationFrame;
+          let fired = false;
           const finish = () => {
+            if (fired) return;
+            fired = true;
             try {
               const gl = renderer.getContext && renderer.getContext();
               if (gl && typeof gl.flush === 'function') gl.flush();
             } catch { /* context may already be lost */ }
             resolve();
           };
-          if (typeof raf === 'function') raf(finish);
-          else setTimeout(finish, 16);
+          if (typeof raf === 'function') {
+            raf(finish);
+            // A starved rAF — occluded or minimized window — must not park the
+            // cook until the outer budget trips; same unstick the resume lane
+            // uses in armCallbackAfterPresent.
+            setTimeout(finish, 48);
+          } else setTimeout(finish, 16);
         });
         await yieldToBrowser();
         const gl = renderer.getContext && renderer.getContext();
@@ -12672,15 +12719,23 @@ export const render = {
       const yieldLiveSectorGpu = async () => {
         await new Promise((resolve) => {
           const raf = globalThis.requestAnimationFrame;
+          let fired = false;
           const finish = () => {
+            if (fired) return;
+            fired = true;
             try {
               const gl = renderer.getContext && renderer.getContext();
               if (gl && typeof gl.flush === 'function') gl.flush();
             } catch { /* context may already be lost */ }
             resolve();
           };
-          if (typeof raf === 'function') raf(finish);
-          else setTimeout(finish, 16);
+          if (typeof raf === 'function') {
+            raf(finish);
+            // A starved rAF — occluded or minimized window — must not park the
+            // cook until the outer budget trips; same unstick the resume lane
+            // uses in armCallbackAfterPresent.
+            setTimeout(finish, 48);
+          } else setTimeout(finish, 16);
         });
         await yieldToBrowser();
         const gl = renderer.getContext && renderer.getContext();
@@ -12767,7 +12822,12 @@ export const render = {
                 // the provider re-runs fresh. Close any held iterator so a
                 // half-consumed generator can't leak or double-commit progress.
                 try { if (entry && entry.iterator && typeof entry.iterator.return === 'function') entry.iterator.return(); }
-                catch (_) { /* drop proceeds regardless */ }
+                catch (returnError) {
+                  try {
+                    recordOpeningCookStep(state.render, 'jump.deferredEnterSplice', providerNow(),
+                      'return-failed', { reason: String(returnError && returnError.message || returnError) });
+                  } catch { /* ledger bookkeeping only */ }
+                }
                 return live;
               })
               .map((entry) => entry.provider)
@@ -13184,45 +13244,45 @@ export const render = {
       }
       let lateColor = queued;
       const lateCompileRoots = [...lateEntities, ...poolRoots, ...uncompiledScene, ...prewarmRoots];
-      if (lateCompileRoots.length > 0) {
+      // Reveal helpers live at pass scope — the rescan loop below reuses them for delta
+      // cohorts a joiner needed covered but the first sweep had not attached.
+      const whileRevealed = (subject, run) => {
+        const restoreSubject = revealSubjectForCompile(subject);
+        const savedAncestors = [];
+        for (let p = subject && subject.parent; p; p = p.parent) {
+          if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
+        }
+        try { return run(); }
+        finally {
+          for (const p of savedAncestors) p.visible = false;
+          restoreSubject();
+        }
+      };
+      // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
+      // touch group, run once, restore last-in-first-out so shared ancestors and nested
+      // subjects return exactly to where they started.
+      const whileRevealedGroup = (subjects, run) => {
+        const restores = [];
         try {
-          const route = this._selectPostRoute();
-          // Late candidates include hidden LOD buckets and zero-count pools: the exact-target
-          // touch renders the subject, so reveal it plus any hidden ancestors for the draw.
-          const whileRevealed = (subject, run) => {
+          for (const subject of subjects) {
             const restoreSubject = revealSubjectForCompile(subject);
             const savedAncestors = [];
             for (let p = subject && subject.parent; p; p = p.parent) {
               if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
             }
-            try { return run(); }
-            finally {
+            restores.push(() => {
               for (const p of savedAncestors) p.visible = false;
               restoreSubject();
-            }
-          };
-          // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
-          // touch group, run once, restore last-in-first-out so shared ancestors and nested
-          // subjects return exactly to where they started.
-          const whileRevealedGroup = (subjects, run) => {
-            const restores = [];
-            try {
-              for (const subject of subjects) {
-                const restoreSubject = revealSubjectForCompile(subject);
-                const savedAncestors = [];
-                for (let p = subject && subject.parent; p; p = p.parent) {
-                  if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
-                }
-                restores.push(() => {
-                  for (const p of savedAncestors) p.visible = false;
-                  restoreSubject();
-                });
-              }
-              return run();
-            } finally {
-              for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-            }
-          };
+            });
+          }
+          return run();
+        } finally {
+          for (let i = restores.length - 1; i >= 0; i--) restores[i]();
+        }
+      };
+      if (lateCompileRoots.length > 0) {
+        try {
+          const route = this._selectPostRoute();
           lateColor = await admitOpeningUnitsAcrossSlices({
             // The cook's issue pass already linked most of this cohort — ready materials drop
             // at unit construction and the remaining cold ones issue one compile per program
@@ -13272,6 +13332,68 @@ export const render = {
         lightingScene: scene,
         stagingName: 'SF_PostOpeningShadowDepthAdmission',
       });
+      // Unlatch-into-join: a caller that joined this pass in flight needed a cohort
+      // the first collection minted too early (attach jobs, decoded exemplar subtrees,
+      // pool chunks landing mid-pass). Re-collect the delta, compile + depth it once,
+      // then stamp — looping because a join can land during the rescan's own awaits.
+      while (this._postOpeningRescanRequested === true) {
+        this._postOpeningRescanRequested = false;
+        const rescanRoots = [
+          ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
+          ...collectInstancePoolCompileRoots(scene),
+          ...collectUncompiledSceneDrawables(scene, openingSubjects),
+          ...(this._rosterPrewarmRoots || []),
+        ];
+        if (this._rosterPartCatalogRoot) rescanRoots.push(this._rosterPartCatalogRoot);
+        const rescanDelta = [];
+        for (const root of rescanRoots) {
+          if (!root || seenLate.has(root)) continue;
+          seenLate.add(root);
+          rescanDelta.push(root);
+          lateCandidates.push(root);
+        }
+        if (rescanDelta.length === 0) continue;
+        try {
+          const rescanRoute = this._selectPostRoute();
+          await admitOpeningUnitsAcrossSlices({
+            units: uniqueAdmissionUnits(
+              rescanDelta.flatMap((root) => collectCompileSubjects(root)),
+              {
+                skipReadyMaterial: (material) => {
+                  try {
+                    return materialHasCompiledProgram(material,
+                      (entry) => renderer.properties.get(entry));
+                  } catch (_) { return false; }
+                },
+              },
+            ),
+            issueKeyFor: openingCompileIssueKey,
+            renderer,
+            beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
+            compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, rescanRoute)),
+            touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+            touchMany: state.mode === 'loading'
+              ? (subjects) => whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects))
+              : null,
+            touchBatchSize: 24,
+            yieldToMain: yieldToBrowser,
+          });
+        } catch (error) {
+          console.warn('[render] post-opening rescan compile failed', error);
+        }
+        compileShadowDepthPipelines({
+          renderer,
+          light: this._keyLight,
+          camera: cam.obj,
+          subjects: rescanDelta,
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          lightingScene: scene,
+          stagingName: 'SF_PostOpeningRescanShadowDepth',
+        });
+      }
       if (passEpoch === (state.world && state.world.enterSerial != null
         ? state.world.enterSerial : null)) {
         this._postOpeningPipelineAdmissionReleased = true;
@@ -13292,7 +13414,12 @@ export const render = {
       if (this._postOpeningPipelineAdmissionReleased === true) {
         return Promise.resolve({ skipped: true, reason: 'already-released' });
       }
-      if (this._postOpeningPipelinesInFlight) return this._postOpeningPipelinesInFlight;
+      if (this._postOpeningPipelinesInFlight) {
+        // The joined pass minted its collections before this cohort attached — ask it
+        // to re-sweep the delta once before stamping released.
+        this._postOpeningRescanRequested = true;
+        return this._postOpeningPipelinesInFlight;
+      }
       const inFlight = runPostOpeningPipelines();
       this._postOpeningPipelinesInFlight = inFlight;
       const clear = () => {
@@ -16047,6 +16174,13 @@ export const render = {
     // spawnable archetypes, boundary compositions that already ran, plus the packaged bodies
     // just decoded. Instantiating each once links every material family it carries.
     // settledOnly — snapshot what finished decoding, never await the registry's pending tasks.
+    // Park-safety: the flag may drop only once every queued attach/upgrade job has
+    // settled — a bounded wait expiring mid-flight (or a records throw below) must not
+    // make the root parkable while jobs still run: a parked boundary fails
+    // boundaryBelongsToScene and its queued attaches drop silently.
+    Promise.allSettled(warm.pendingAttachments).then(() => {
+      if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
+    });
     let records = [];
     try {
       records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
@@ -16054,9 +16188,6 @@ export const render = {
       // A mid-finish throw must not leave residency leases pointing at a live owner.
       warm.building = false;
     }
-    // The root's own admission chain is done — the bounded-warm park may detach it now
-    // (queued attach/upgrade jobs would have refused a parked boundary).
-    if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
     const { palettes: fallbackPalettes } = poolWitnessPalettesForState(state);
     // Live entities always contribute their real palettes; the static roster half is scoped
     // to current-wave eligibility like the ship cohort above — later archetypes' (file, palette)
@@ -16463,6 +16594,11 @@ export const render = {
     } catch (error) {
       console.warn('[render] deferred swarm warm build failed', error);
       unmark();
+      // A sync-throw skips the settle chain below: drop the build tag and detach so
+      // the half-built root doesn't sit mounted+invisible+unparkable until run end.
+      warm.building = false;
+      root.userData.warmBuilding = false;
+      if (root.parent) root.parent.remove(root);
       return null;
     }
 
@@ -17476,7 +17612,7 @@ export const render = {
       }
       return s;
     };
-    enqueueMissingMeshBuilds(
+    yield* enqueueMissingMeshBuildsSteps(
       presentationList,
       this._meshes,
       this._meshBuildQueuedIds,
@@ -17486,7 +17622,6 @@ export const render = {
       (entity) => tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS,
       (entity) => tGlass(entity),
     );
-    yield;
     const built = this._drainMeshBuildQueue(buildBudget);
     // Existing fallback boundaries may have crossed the authored prefetch radius since the last
     // reconciliation. Requesting is idempotent; resolved bootstrap assets install synchronously.
@@ -17502,12 +17637,13 @@ export const render = {
         if (homeSectorId && homeSectorId !== (state.world && state.world.currentSectorId)) continue;
       }
       this._bindPresentationMesh(entity, mesh);
-      queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
+      queueOrRequestAuthoredUpgrade(this, entity, mesh, state, reconcileScanOpts.scan);
     }
     // Reissued or destroyed ids leave orphaned motion-tracker records holding mesh
     // references — sweep them now that the live set is freshly computed. Guarded for
     // the same lightweight residency fixtures as reconcileMeshResidency.
-    if (typeof this._pruneMotionTrackerRecords === 'function') {
+    if (typeof this._pruneMotionTrackerRecords === 'function'
+        && residencyPruneSweepDue(this)) {
       this._pruneMotionTrackerRecords(presentationList);
     }
     // A remaining queue is a bounded build drain, not a reason to repeat the four
@@ -17600,7 +17736,7 @@ export const render = {
         const homeSectorId = entity.homeSectorId || (entity.data && entity.data.homeSectorId);
         if (homeSectorId && homeSectorId !== (state.world && state.world.currentSectorId)) continue;
       }
-      queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
+      queueOrRequestAuthoredUpgrade(this, entity, mesh, state, residencyScan);
     }
 
     // LOCAL array (same suspended-walk rule as the cook collect sites): the hold
@@ -17613,7 +17749,8 @@ export const render = {
     // whose entity ids vanished entirely (destruction, save-restore reissue) between
     // full reconciles. Optional on minimal contexts: residency-poll fixtures drive this
     // method through lightweight stubs that carry no motion tracker.
-    if (typeof this._pruneMotionTrackerRecords === 'function') {
+    if (typeof this._pruneMotionTrackerRecords === 'function'
+        && residencyPruneSweepDue(this)) {
       this._pruneMotionTrackerRecords(presentationList);
     }
     kickDecodeRunwayAssets(this, presentationList);
@@ -17736,6 +17873,10 @@ export const render = {
     // become relevant in.
     const pendingBuilds = this._meshBuildQueue;
     if (pendingBuilds && this._meshBuildQueueHead < pendingBuilds.length) {
+      // Fresh verdicts, not the classify-time memo: a hull that decayed across the
+      // urgent boundary mid-pass must rehoist on the position it holds NOW. Write
+      // the repartitioned tail back in place — a spread-args splice would throw
+      // RangeError on a pathological tail (>~65k arguments).
       const urgentNow = this._meshResidencyRehoistUrgent
         || (this._meshResidencyRehoistUrgent = []);
       const restNow = this._meshResidencyRehoistRest
@@ -17744,19 +17885,16 @@ export const render = {
       restNow.length = 0;
       for (let index = this._meshBuildQueueHead; index < pendingBuilds.length; index++) {
         const entity = resolveWorldPresentationEntity(state, pendingBuilds[index]);
-        if (entity && tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS) {
+        if (entity && entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS) {
           urgentNow.push(pendingBuilds[index]);
         } else {
           restNow.push(pendingBuilds[index]);
         }
       }
       if (urgentNow.length > 0) {
-        pendingBuilds.splice(
-          this._meshBuildQueueHead,
-          pendingBuilds.length - this._meshBuildQueueHead,
-          ...urgentNow,
-          ...restNow,
-        );
+        let write = this._meshBuildQueueHead;
+        for (let i = 0; i < urgentNow.length; i++) pendingBuilds[write++] = urgentNow[i];
+        for (let i = 0; i < restNow.length; i++) pendingBuilds[write++] = restNow[i];
       }
       urgentNow.length = 0;
       restNow.length = 0;
