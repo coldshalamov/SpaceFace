@@ -250,6 +250,17 @@ export function createUiInput(ctx, screenManager) {
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
         ev.preventDefault();
+        // A screen mid-gesture gets first refusal before the generic back/pop (J6): the chart's
+        // laid line / filling hold cancels here, so the first Escape undoes the player's current
+        // intention instead of losing the whole screen. Locked surfaces keep precedence — a
+        // screen that traps ESC (root title, mid-transaction) never receives the refusal.
+        const lockedNow = !!(
+          (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked)
+        );
+        if (!lockedNow && def && typeof def.onEscape === 'function') {
+          try { if (def.onEscape(ev, ctx) === true) return; }
+          catch (e) { console.error('[uiInput] screen onEscape error:', e); }
+        }
         closeActiveModal(def);
         return;
       }

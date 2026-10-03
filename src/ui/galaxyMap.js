@@ -3932,6 +3932,10 @@ export const galaxyMapScreen = {
   _selectedCommodity: 'cmdty_ore_iron',
   _searchResultsList: [],
   _searchSelectedIdx: 0,
+  // The normalized query that produced `_searchResultsList`. A result is committable only while it
+  // still answers the CURRENT visible query — a blank field, a no-match repaint, or a selection
+  // consumed by Enter/click clears both, so stale hits can never be committed blind (J1).
+  _searchResultsQuery: null,
   _currentLayerFocus: 'route',
   _lastRouteDest: null,
   _routeAnimTime: 0,
@@ -4333,16 +4337,32 @@ export const galaxyMapScreen = {
     const searchInput = rootEl.querySelector('.gm-search-input');
     const resultsContainer = rootEl.querySelector('.gm-search-results');
 
+    const clearSearchResults = () => {
+      this._searchResultsList = [];
+      this._searchSelectedIdx = 0;
+      this._searchResultsQuery = null;
+    };
+    // A result row is eligible to commit only while the list it came from is the live, painted
+    // answer to the text currently in the field (J1). The stamp also catches value writes that
+    // never fired an `input` event — the old list must outlive nothing it no longer answers.
+    const searchResultsCurrent = () => (
+      this._searchResultsList
+      && this._searchResultsList.length > 0
+      && resultsContainer.hidden === false
+      && this._searchResultsQuery === searchInput.value.trim().toLowerCase()
+    );
+
     searchInput.addEventListener('input', () => {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) {
         resultsContainer.hidden = true;
         resultsContainer.innerHTML = '';
+        clearSearchResults();
         return;
       }
 
       const state = this._ctx && this._ctx.state;
-      if (!state) return;
+      if (!state) { clearSearchResults(); return; }
 
       const targets = getSearchTargets(
         state,
@@ -4362,6 +4382,7 @@ export const galaxyMapScreen = {
       if (filtered.length === 0) {
         resultsContainer.innerHTML = '<div class="gm-search-item gm-search-empty k-t-fine k-38">No results found</div>';
         resultsContainer.hidden = false;
+        clearSearchResults();
         return;
       }
 
@@ -4370,11 +4391,14 @@ export const galaxyMapScreen = {
 
       this._searchResultsList = filtered;
       this._searchSelectedIdx = 0;
+      this._searchResultsQuery = q;
     });
 
     searchInput.addEventListener('keydown', (ev) => {
-      const list = this._searchResultsList || [];
-      if (!list.length) return;
+      // Arrows and Enter own the field only while a real result list is answering it; a stale,
+      // hidden or empty list leaves every key to its normal text-entry behavior.
+      if (!searchResultsCurrent()) return;
+      const list = this._searchResultsList;
       if (ev.key === 'ArrowDown') {
         ev.preventDefault();
         this._searchSelectedIdx = (this._searchSelectedIdx + 1) % list.length;
@@ -4390,17 +4414,20 @@ export const galaxyMapScreen = {
           this._selectSearchTarget(selected);
           searchInput.value = '';
           resultsContainer.hidden = true;
+          clearSearchResults();
         }
       }
     });
 
     resultsContainer.addEventListener('click', (ev) => {
+      if (!searchResultsCurrent()) return;
       const itemEl = ev.target.closest('.gm-search-item');
       const idx = itemEl && parseInt(itemEl.getAttribute('data-idx'));
-      if (idx != null && this._searchResultsList && this._searchResultsList[idx]) {
+      if (idx != null && this._searchResultsList[idx]) {
         this._selectSearchTarget(this._searchResultsList[idx]);
         searchInput.value = '';
         resultsContainer.hidden = true;
+        clearSearchResults();
       }
     });
 
@@ -5042,15 +5069,30 @@ _stepAnimation(now) {
     }
 
     // Esc lets a line being laid go before it closes the chart.
-    if (key === 'escape' && (this._line || this._hold)) {
-      this._hold = null;
-      if (this._line) this._endLine({ commit: false });
-      if (event && typeof event.preventDefault === 'function') event.preventDefault();
-      return true;
-    }
+    if (key === 'escape' && this._cancelChartGesture(event)) return true;
 
     if (key === 'escape' || key === 'm' || key === 'n') {
       popCurrentScreen(ctx || this._ctx);
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * First refusal on Escape (J6): the UI router asks the active screen before the generic
+   * back/pop runs. While a line is being laid or a hold ring is filling, one Escape lets the
+   * gesture go — never commits a course, never pops the screen — and the NEXT Escape closes the
+   * chart. Every other moment declines so the router's ordinary close stays untouched.
+   */
+  onEscape(event) {
+    return this._cancelChartGesture(event);
+  },
+
+  _cancelChartGesture(event) {
+    if (this._line || this._hold) {
+      this._hold = null;
+      if (this._line) this._endLine({ commit: false });
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
       return true;
     }
     return false;
@@ -6028,8 +6070,8 @@ _stepAnimation(now) {
     }
     const html = acts.map((a) => {
       // Ignore is a claim-defense verb, not a chart-control id. The place-action button is enough.
-      const control = a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id);
-      return `<button ${control} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
+      // The call stays inline in the tag so the binding-map label check can see it.
+      return `<button ${a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
     }).join('');
     if (this._lastPlaceActionsHtml !== html) {
