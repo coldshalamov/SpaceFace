@@ -14,6 +14,8 @@ import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
+import { swarmJuice } from '../systems/swarmJuice.js';
+import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -206,6 +208,11 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['swarmArena', swarmArena],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
+    // The manifest marks swarmJuice node-safe (sim-phase juice detector) and swarmJuiceHud
+    // domGuarded — without table rows every Node production-fidelity boot throws
+    // "missing system swarmJuice for init order" before the first tick.
+    ['swarmJuice', swarmJuice],
+    ['swarmJuiceHud', swarmJuiceHud],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
