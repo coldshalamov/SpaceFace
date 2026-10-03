@@ -1734,6 +1734,7 @@ export const world = {
     const budgeted = spec.type === 'ship' && budget && typeof budget.request === 'function';
     if (budgeted && budget.request(1, requester) <= 0) {
       if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss) {
+        this._noteSpawnWitness('criticalDeferred');
         this.bus.emit('world:criticalSpawnDeferred', {
           kind: rec.isBoss ? 'boss_record' : 'mission_record',
           recordId: rec.recordId || null,
@@ -3433,6 +3434,7 @@ export const world = {
         ? budget.request(hunters, hunterRequester)
         : hunters;
       if (hunterGrant < hunters) {
+        this._noteSpawnWitness('limited');
         this.bus.emit('world:spawnLimited', {
           kind: 'bounty_hunter', sectorId: sector.id, requested: hunters, granted: hunterGrant,
           reason: 'spawn_cap',
@@ -3457,6 +3459,16 @@ export const world = {
         budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);
       }
     }
+  },
+
+  // MACH-06: cumulative spawn-authority counters the runtime witness samples. Limited clamps
+  // (spawnLimited) and critical deferrals (criticalSpawnDeferred) counted at emit time — a
+  // saturated scene reads non-zero limited / zero critical without a per-event log.
+  _noteSpawnWitness(key) {
+    const w = this.state && this.state.world;
+    if (!w) return;
+    const bag = w.spawnWitness || (w.spawnWitness = { limited: 0, criticalDeferred: 0 });
+    bag[key] = (bag[key] | 0) + 1;
   },
 
   /**
@@ -3497,6 +3509,7 @@ export const world = {
     const requester = `world:boss:${sector.id}:${bossPoi.id}`;
     if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
       if (!rec.bossSpawnDeferred) {
+        this._noteSpawnWitness('criticalDeferred');
         this.bus.emit('world:criticalSpawnDeferred', {
           kind: 'boss', sectorId: sector.id, poiId: bossPoi.id, reason: 'spawn_cap',
         });
