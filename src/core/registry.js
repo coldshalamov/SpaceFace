@@ -153,6 +153,7 @@ import { causeLedger } from '../ui/causeLedger.js';                    // E: "wh
 import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';          // impound clerk counter: pay verb over the shipped _payWantedImpound (choice, not overlap)
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';            // moral-trap fork: deck verbs over the shipped moralTrap:choose intent
+import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';              // FB-111: wedged-hull tow offer as deck verbs over world:stuckTowAccept
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';        // wreck communicator/survivor-pod choices: deck verbs over wreckMission:choose + survivorPod:choose
 import { cargoConscience } from '../ui/cargoConscience.js';            // CARGO_REPUTATION_GLYPH: hold moral-color lean glyph (read-only)
 import { securityReadoutSystem } from '../ui/securityReadout.js';      // SECURITY_RESPONSE_READ: "patrols responding" map line over driver.danger
@@ -548,6 +549,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['customsPrompt', customsPrompt],
     ['impoundPayPrompt', impoundPayPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
+    ['stuckTowPrompt', stuckTowPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],
     ['cargoConscience', cargoConscience],
     ['securityReadoutSystem', securityReadoutSystem],

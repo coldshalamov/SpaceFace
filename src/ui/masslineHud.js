@@ -40,7 +40,7 @@ import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 // only on both sides — the cue never touches release authority.
 import { isLawProtectedBody } from '../systems/lawSecurity.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
-import { resolveThrowCollateral } from '../combat/masslineReleaseGeometry.js';
+import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -1483,10 +1483,23 @@ export const masslineHud = {
     // corridor is NAMED, never vetoed: this only extends the caption, release authority
     // and law adjudication are untouched. Stale/degraded solutions and unknown bodies
     // stay silent via the corridor helper's own suppression.
+    // SF-027: the pilot's own route is the one victim class the protected-body spots cannot
+    // carry; it joins the SAME single advisory and the nearer of the two wins — still one
+    // named victim, still no veto.
     if (!degradedThrow) {
-      const collateral = resolveThrowCollateral(solution,
-        throwPayloadPoint(throwState, state), throwPayloadRadius(throwState, state),
+      const payloadPoint = throwPayloadPoint(throwState, state);
+      let collateral = resolveThrowCollateral(solution,
+        payloadPoint, throwPayloadRadius(throwState, state),
         throwCollateralSpots(state, throwState));
+      const pilot = state && state.entities && state.entities.get
+        ? state.entities.get(state.playerId) : null;
+      const ownRoute = pilot && pilot.pos
+        ? resolveThrowOwnRouteRisk(solution, payloadPoint, throwPayloadRadius(throwState, state),
+          pilot.pos, pilot.vel, pilot.radius)
+        : null;
+      if (ownRoute && (!collateral || ownRoute.clearance < collateral.clearance)) {
+        collateral = ownRoute;
+      }
       if (collateral) {
         const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
         if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {

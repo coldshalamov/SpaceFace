@@ -75,6 +75,7 @@ import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
+import { restoredDefeatIntent } from './screens/gameOver.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -1322,12 +1323,22 @@ export const ui = {
       this.state.ui.docked = false;
       this.state.ui.dockedStationId = null;
       this.screenManager.closeAll();
+      // closeAll does not emit game:over:dismissed, so the one-shot latch must reset here — a stale
+      // 'already shown' would otherwise swallow the next death's after-action surface.
+      this._gameOverShown = false;
       // Same release as game:started — the Load screen's stage hull is the other Launch-path leak.
       this.screenManager.releaseScreen('newGame');
       this.screenManager.releaseScreen('saveLoad');
       this.screenManager.syncVisibility();
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
+      // SF-285: a save written mid-defeat restores the wreck with its durable defeat intact — the
+      // after-action surface is the only recovery affordance for that hull. Re-present it AFTER
+      // closeAll so the same boundary cannot immediately unmount it.
+      if (restoredDefeatIntent(this.state) && !this._survivalRunLive()) {
+        this._gameOverShown = true;
+        this._pushScreenWhenRegistered('gameOver', 60);
+      }
     });
 
     // register all modal screens (dynamic + per-screen guarded). The Main Menu is shown by the

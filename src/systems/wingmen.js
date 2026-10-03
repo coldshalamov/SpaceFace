@@ -76,6 +76,28 @@ export const GUARD_INTERCEPT_WU = 700;
 export const GUARD_INTERCEPT_LEASH_WU = 1000;
 export const GUARD_INTERCEPT_RANGE_WU = 180;
 
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. The per-tick loop only does work for fleet rows carrying a
+// live _liveId — spawn arrives via the sector:enter subscription, orders via ui:fleetOrder /
+// wingOrder:accepted, and ledger membership changes show up as fleet-array identity/length.
+// With zero live rows the loop can only `continue`, so the latch skips the ordered-fleet
+// rebuild and the per-row entity lookups until a wake event or a fleet change lands.
+let WINGMEN_QUIET_LATCH = true;
+export function setWingmenQuietLatchForBench(enabled) {
+  WINGMEN_QUIET_LATCH = enabled !== false;
+}
+export function getWingmenQuietLatchForBench() {
+  return WINGMEN_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const WINGMEN_QUIET_RESCAN_TICKS = 30;
+
+function publishWingmenQuiet(state, latched) {
+  const rt = state.wingmenRuntime || (state.wingmenRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export const wingmen = {
   name: 'wingmen',
 
@@ -91,12 +113,14 @@ export const wingmen = {
     this._orderedFleet = [];
     this._orderRuntime = new Map();
 
+    this._wingmenQuiet = null; // FB-090 quiet latch
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
     // _spawnWingmen skips fleet entries that already have a live _liveId (continuous handoff).
-    this.bus.on('sector:enter', () => this._spawnWingmen());
+    this.bus.on('sector:enter', () => { this._wingmenQuiet = null; this._spawnWingmen(); });
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous free-flight
     // membership preserves live wingmen; hard jump/load boundaries despawn and re-spawn on enter.
     this.bus.on('sector:exit', (p) => {
+      this._wingmenQuiet = null;
       if (p && (p.continuous || p.noTeleport)) return;
       this._despawnWingmen();
     });
@@ -104,11 +128,14 @@ export const wingmen = {
     // The UI emits ui:fleetOrder {shipId, order, kind, targetRef}; automation.handleOrder resolves
     // kind→order. We read the resolved order off the fleet entry after handleOrder runs (automation
     // is earlier in UPDATE_ORDER, so it has already applied the change by the time we tick).
-    this.bus.on('ui:fleetOrder', (p) => { if (p) this._onFleetOrder(p); });
-    this.bus.on('wingOrder:accepted', (p) => { if (p) this._onWingOrderAccepted(p); });
+    this.bus.on('ui:fleetOrder', (p) => { this._wingmenQuiet = null; if (p) this._onFleetOrder(p); });
+    this.bus.on('wingOrder:accepted', (p) => { this._wingmenQuiet = null; if (p) this._onWingOrderAccepted(p); });
+    this.bus.on('save:loaded', () => { this._wingmenQuiet = null; });
+    this.bus.on('game:started', () => { this._wingmenQuiet = null; });
   },
 
   newGame() {
+    this._wingmenQuiet = null;
     this._fleetRef = null;
     this._fleetSourceRows.length = 0;
     this._fleetSourceIds.length = 0;
@@ -120,7 +147,35 @@ export const wingmen = {
   update(dt, state) {
     if (state.mode !== 'flight') return;
     const fleet = state.automation && state.automation.fleet;
-    if (!fleet || !fleet.length) return;
+    if (!fleet || !fleet.length) {
+      if (this._wingmenQuiet) { this._wingmenQuiet = null; }
+      publishWingmenQuiet(state, true);
+      return;
+    }
+
+    // FB-090 quiet latch: while no fleet row carries a live entity, every row below hits the
+    // `!fs._liveId → continue` arm — a proven no-op except the ordered-fleet rebuild itself.
+    // Wake paths: sector:enter/despawn/order subscribers clear the latch; a fleet row gaining a
+    // live id is detected by the live-row count (the latch stores fleet identity+size so ledger
+    // membership edits also disarm), and the 30-tick rescan bounds any silent ledger mutation.
+    const tick = state.tick | 0;
+    let liveRows = 0;
+    for (const fs of fleet) { if (fs._liveId) liveRows++; }
+    if (WINGMEN_QUIET_LATCH !== false) {
+      const quiet = this._wingmenQuiet;
+      if (quiet
+          && liveRows === 0
+          && quiet.fleet === fleet
+          && quiet.size === fleet.length
+          && ((tick - (quiet.armedTick | 0)) < WINGMEN_QUIET_RESCAN_TICKS)) {
+        publishWingmenQuiet(state, true);
+        return;
+      }
+      this._wingmenQuiet = (liveRows === 0)
+        ? { fleet, size: fleet.length, armedTick: tick }
+        : null;
+      publishWingmenQuiet(state, !!this._wingmenQuiet);
+    }
 
     // Sync live wingman hull% back to the fleet ledger, and detect deaths. We track the live entity
     // id on the fleet entry (fs._liveId) at spawn time; here we read it back.

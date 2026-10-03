@@ -225,6 +225,20 @@ export function currentDefeat(ctx = {}) {
   return state.combat && state.combat.lastPlayerDefeat || null;
 }
 
+/**
+ * SF-285 — the save boundary consult for the after-action surface. A save written mid-defeat is
+ * legal and restores the wreck with its durable defeated flag; that hull is owed this screen
+ * again — the recovery offer (or, in Ironman, the final run-over summary) is the only reachable
+ * resolution for a dead ship. Reads the entity flag, not the receipt: an older save may lack a
+ * serialized receipt yet the wreck and its derived recovery berth are still truthful.
+ */
+export function restoredDefeatIntent(state = {}) {
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  return !!player && (player.alive === false || !!(player.flags && player.flags.defeated));
+}
+
 /** One offer line when the receipt names a real Range rung. Empty for every other death. */
 export function deathRangeOfferText(receipt) {
   const offer = receipt && receipt.rangeOffer;

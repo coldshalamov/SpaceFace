@@ -350,6 +350,11 @@ export const claims = {
       // LAW-09: the raid marker's ignore verb — standing a claim down on purpose settles through
       // the same 'ignored' column the deadline lapse pays.
       this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
+      // FB-132: the flight prompt's other two doors. 'Go' re-affirms the alarm waypoint claims
+      // already owns; 'delegate' spends a same-sector supported depot's patrol rotation early —
+      // the depot answers instead of posting its scheduled beat.
+      this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {}));
+      this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {}));
       this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
       this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
@@ -1632,14 +1637,72 @@ export const claims = {
     this._settleDefense(body, payload.outcome || 'timeout');
   },
 
+  /** The body + live warning a defense intent names: claimId (or bodyId) + optional defenseId pin. */
+  _warningDefenseBody(payload) {
+    const body = this._body(payload && (payload.claimId || payload.bodyId));
+    const defense = body && body.spec && body.spec.defense;
+    if (!defense || defense.phase !== 'warning') return null;
+    if (payload && payload.defenseId && payload.defenseId !== defense.id) return null;
+    return { body, defense };
+  },
+
   // LAW-09 — the player may stand a claim down on purpose. Only a live warning may be waived: an
   // engaged defense is already committed, and a stale marker's defenseId no longer matches.
   _onDefenseIgnore(payload) {
-    const body = this._body(payload && payload.claimId);
-    const defense = body && body.spec && body.spec.defense;
-    if (!defense || defense.phase !== 'warning') return false;
-    if (payload && payload.defenseId && payload.defenseId !== defense.id) return false;
-    return this._settleDefense(body, 'ignored');
+    const found = this._warningDefenseBody(payload);
+    if (!found) return false;
+    return this._settleDefense(found.body, 'ignored');
+  },
+
+  // FB-132 — 'go' commits to flying the answer: re-affirm the waypoint the warning set (the
+  // player may have pointed nav elsewhere while the card was up). Claims owns the defense nav.
+  _onDefenseGo(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return false;
+    this._setDefenseWaypoint(found.body, found.defense);
+    return true;
+  },
+
+  // FB-132 — 'delegate': a supported depot in the threatened sector spends its patrol rotation
+  // early to answer the alarm in the player's place. The depot pays with a delayed next relief;
+  // the defense then settles through the same 'defended' column a won fight would pay. Refusals
+  // always carry a machine-readable reason plus the line the player reads.
+  _onDefenseDelegate(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return this._refuseDefenseDelegate(payload, 'not_pending');
+    const { body, defense } = found;
+    const depot = this.supportedDepots(body.sectorId)[0] || null;
+    if (!depot) return this._refuseDefenseDelegate(payload, 'no_supported_depot');
+    const ds = depot.depotSupport;
+    const now = this.state.simTime || 0;
+    // The spend: the depot answers now, so its next relief posts a full rotation later than the
+    // cadence already owed — an early rotation burned on the alarm instead of the lane.
+    ds.patrol.nextAt = Math.max(ds.patrol.nextAt || 0, now + DEPOT_PATROL_ROTATION_GAP_S);
+    this._receipt(depot, 'depot_patrol_spent',
+      `Patrol rotation diverted — ${defense.attackerName} answered at ${body.name}`,
+      { claimId: body.id, defenseId: defense.id });
+    this.bus.emit('claim:depotPatrolSpent', {
+      depotId: depot.id, claimId: body.id, defenseId: defense.id,
+      sectorId: body.sectorId, nextPatrolAt: ds.patrol.nextAt,
+      factionId: DEPOT_PATROL_FACTION_ID,
+    });
+    return this._settleDefense(body, 'defended');
+  },
+
+  _refuseDefenseDelegate(payload, reason) {
+    const line = reason === 'no_supported_depot'
+      ? 'No supported depot on this seam — nothing to delegate to.'
+      : 'That alarm has already moved past the window.';
+    if (this.bus && this.bus.emit) {
+      this.bus.emit('claim:defenseDelegateRefused', {
+        claimId: payload && (payload.claimId || payload.bodyId) || null,
+        defenseId: payload && payload.defenseId || null,
+        reason,
+        text: line,
+      });
+      this.bus.emit('toast', { text: line, kind: 'warn', ttl: 4 });
+    }
+    return false;
   },
 
   _settleDefense(body, rawOutcome) {

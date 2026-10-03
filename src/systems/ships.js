@@ -46,6 +46,7 @@ import {
   scarFromPlayerDamage,
   shouldAdmitScar,
 } from '../combat/hullScars.js';
+import { cleanShipName } from '../data/hullIdentity.js';
 import { hash32 } from '../core/rng.js';
 
 /** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
@@ -67,13 +68,49 @@ for (const sector of SECTORS) {
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
 
-/** A station's shop listing on a fittable def: docked there, the shop stocks it at the listed
- *  price and the catalog research gate does not apply at the counter. Returns null elsewhere. */
+/** A station's shop listing on a fittable def or hull: docked there, the shop stocks it at the
+ *  listed price and the catalog research gate does not apply at the counter. `exclusive` marks
+ *  the hull a single yard builds — it is absent from every other ledger. Returns null elsewhere. */
 export function stationShopOffer(def, stationId) {
   const offers = def && def.shopOffers;
   const offer = offers && stationId ? offers[stationId] : null;
   const price = offer && Number(offer.price);
-  return Number.isFinite(price) ? { price: Math.max(0, price) } : null;
+  return Number.isFinite(price) ? { price: Math.max(0, price), exclusive: offer.exclusive === true } : null;
+}
+
+/** FB-062 — the one yard that builds this hull, when an offer marks itself exclusive; else null. */
+export function hullExclusiveStationId(def) {
+  const offers = def && def.shopOffers;
+  if (!offers) return null;
+  for (const stationId of Object.keys(offers)) {
+    const offer = offers[stationId];
+    if (offer && offer.exclusive === true && Number.isFinite(Number(offer.price))) return stationId;
+  }
+  return null;
+}
+
+/**
+ * FB-062 — what one yard's ship ledger says about a hull: whether it is listed at all, and the
+ * price the yard writes on the chit (a `shopOffers` price overrides the catalog price; an
+ * exclusive hull is absent from every other yard's list). Pure read; no tech-gate change.
+ */
+export function shipyardHullInfo(defId, stationId) {
+  const def = typeof defId === 'string' ? SHIP_BY_ID.get(defId) : defId;
+  if (!def) return { listed: false, price: 0, exclusive: false, exclusiveStationId: null, offer: false };
+  const exclusiveStationId = hullExclusiveStationId(def);
+  const offer = stationShopOffer(def, stationId);
+  return {
+    listed: exclusiveStationId ? exclusiveStationId === stationId : true,
+    price: offer ? offer.price : (Number.isFinite(def.price) ? def.price : 0),
+    exclusive: !!exclusiveStationId,
+    exclusiveStationId,
+    offer: !!offer,
+  };
+}
+
+function shopStationName(stationId) {
+  const station = SHIPWORKS_STATION_BY_ID.get(stationId);
+  return (station && station.name) || 'another yard';
 }
 
 function dockedShopStationId(state) {
@@ -980,6 +1017,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let weaponHeatDissipPct = 0;
   let radarRangePct = 0;
   let hullRepairOOC = 0;
+  // FB-054 — afterburner burn envelope: top-speed gain, burn length, cooldown. Capability
+  // ratings like jumpDriveTier/hullRepairOOC — a valid fitted slot is required, max wins.
+  let boostTopSpeedPct = 0, boostDurS = 0, boostCdS = 0;
   // Every hull has its authored T1 drive. Fitted drive modules can only advance that capability;
   // the world owner resolves the canonical jump_tN key against its supported drive table.
   let jumpDriveTier = 1;
@@ -1051,6 +1091,17 @@ function computeDerivedStats(defId, fittings = [], player = null) {
         && Number.isFinite(mods.hullRepairOOC)
         && mods.hullRepairOOC > 0) {
         hullRepairOOC = Math.max(hullRepairOOC, mods.hullRepairOOC);
+      }
+      // FB-054 — the afterburner's three authored numbers are capability ratings the same way:
+      // strongest compatible fitted burner wins, never summed across slots.
+      if (Number.isFinite(mods.boostTopSpeedPct) && mods.boostTopSpeedPct > 0) {
+        boostTopSpeedPct = Math.max(boostTopSpeedPct, mods.boostTopSpeedPct);
+      }
+      if (Number.isFinite(mods.boostDurS) && mods.boostDurS > 0) {
+        boostDurS = Math.max(boostDurS, mods.boostDurS);
+      }
+      if (Number.isFinite(mods.boostCdS) && mods.boostCdS >= 0) {
+        boostCdS = Math.max(boostCdS, mods.boostCdS);
       }
       const countermeasureKind = mods && mods.countermeasure && mods.countermeasure.kind;
       if (countermeasureKind === 'chaff') chaffCount += 1;
@@ -1254,6 +1305,11 @@ function computeDerivedStats(defId, fittings = [], player = null) {
       regenRate: boostRegen,
       dashImpulse: bdef.dashImpulse || 0,
       dashCooldown: bdef.dashCooldown || 3,
+      // FB-054 afterburner envelope (zero without a fitted burner): topSpeedPct scales the boost
+      // speed cap while a burn runs, burnDurS bounds one burn, burnCdS gates the next light.
+      topSpeedPct: boostTopSpeedPct,
+      burnDurS: boostDurS,
+      burnCdS: boostCdS,
     },
     // informational extras (read by combat/ui; not part of the flat copy)
     continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak, ramDamageDealtMult,
@@ -1408,6 +1464,8 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       energy: derived.boost.max, max: derived.boost.max,
       drainRate: derived.boost.drainRate, regenRate: derived.boost.regenRate,
       dashImpulse: derived.boost.dashImpulse, dashCd: derived.boost.dashCooldown, dashCdT: 0,
+      topSpeedPct: derived.boost.topSpeedPct,
+      burnDurS: derived.boost.burnDurS, burnCdS: derived.boost.burnCdS,
     },
     data: {
       defId: shipDef.id,
@@ -1479,7 +1537,22 @@ export const ships = {
       }
       return action(payload || {});
     };
-    bus.on('ui:buyShip', withShipworksAccess('hull', (p) => this.buyShip(p)));
+    // FB-062 — yard exclusives are enforced at the counter: a hull another yard builds alone is
+    // absent here even when researched. Direct buyShip callers (rewards, crafting, sandbox) keep
+    // their unconditional path, the same way they already bypass the dock gate.
+    bus.on('ui:buyShip', withShipworksAccess('hull', (p) => {
+      const def = SHIP_BY_ID.get(p && p.defId);
+      const exclusiveAt = hullExclusiveStationId(def);
+      if (exclusiveAt && exclusiveAt !== dockedShopStationId(this.state)) {
+        this.bus.emit('toast', {
+          text: `${def.name} is only on the ways at ${shopStationName(exclusiveAt)}.`,
+          kind: 'error',
+          ttl: 4,
+        });
+        return false;
+      }
+      return this.buyShip(p);
+    }));
     bus.on('ui:setActiveShip', withShipworksAccess('hull', (p) => this.setActiveShip(p && p.index)));
     bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
     bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => this.fitModule(p)));
@@ -1492,6 +1565,9 @@ export const ships = {
     bus.on('ui:deleteLoadoutPreset', withShipworksAccess('outfit', (p) => this.deleteLoadoutPreset(p)));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
+    // FB-057 — the owner names a hull. Ungated like appearance/preset writes: the record is
+    // ship metadata, not a yard service; ships owns the write, the UI only emits the intent.
+    bus.on('ui:setShipName', (p) => this.setShipName(p || {}));
     // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a
     // rare in-place update event; none of these events requests a ship rebuild or asset admission.
     bus.on('lossLedger:recorded', (p) => {
@@ -1769,12 +1845,17 @@ export const ships = {
     // refit doesn't silently refill or reset boost.
     const boostFrac = (e.boost && e.boost.max) ? clamp01(e.boost.energy / e.boost.max) : 1;
     const prevDashCdT = (e.boost && e.boost.dashCdT) || 0;
+    const prevBurnCdT = (e.boost && e.boost._burnCdT) || 0;
     e.boost = {
       energy: derived.boost.max * boostFrac,
       max: derived.boost.max,
       drainRate: derived.boost.drainRate, regenRate: derived.boost.regenRate,
       dashImpulse: derived.boost.dashImpulse,
       dashCd: derived.boost.dashCooldown, dashCdT: Math.min(prevDashCdT, derived.boost.dashCooldown),
+      topSpeedPct: derived.boost.topSpeedPct,
+      burnDurS: derived.boost.burnDurS, burnCdS: derived.boost.burnCdS,
+      // a refit may not dodge a lit afterburner's cooldown
+      _burnCdT: Math.min(prevBurnCdT, derived.boost.burnCdS),
     };
 
     // snapshot the appearance signature BEFORE we overwrite weapons/fittings so we can detect a
@@ -1978,13 +2059,15 @@ export const ships = {
     const def = SHIP_BY_ID.get(defId);
     const p = this.state.player;
     if (!def) return false;
+    // FB-062 — a yard's shopOffers price is the price on the chit, the same rule modules follow.
+    const offer = grant ? null : stationShopOffer(def, dockedShopStationId(this.state));
+    const price = offer ? offer.price : (def.price || 0);
     // grant=true: crafted ship — materials were the cost, tech already gated by the blueprint.
     if (!grant) {
       if (!this.isUnlocked(def)) {
         this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
         return false;
       }
-      const price = def.price || 0;
       if (p.credits < price) {
         this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
         return false;
@@ -2000,12 +2083,12 @@ export const ships = {
       livingHull: defaultLivingHull(this.state.simTime || 0),
     });
     const newIndex = p.ownedShips.length - 1;
-    this.bus.emit('ship:purchased', { defId, price: grant ? 0 : (def.price || 0) });
+    this.bus.emit('ship:purchased', { defId, price: grant ? 0 : price });
     if (setActive) this.setActiveShip(newIndex);
     return true;
   },
 
-  sellShip(index) {
+  sellShip(index, { confirmedCargoUnits = null } = {}) {
     const p = this.state.player;
     if (index === p.activeShipIndex) {
       this.bus.emit('toast', { text: 'Cannot sell the active ship', kind: 'error', ttl: 3 });
@@ -2013,6 +2096,20 @@ export const ships = {
     }
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    // FB-061 — the hold is part of the hull. A parked ship still carrying units cannot leave
+    // without an explicit confirmation that names them; the caller passes the unit count it
+    // showed the player, so a stale quote cannot silently take a loaded hold.
+    const parkedUnits = owned.cargo && owned.cargo.items
+      ? Object.values(owned.cargo.items).reduce((sum, qty) => sum + (Number(qty) || 0), 0)
+      : 0;
+    if (parkedUnits > 0 && confirmedCargoUnits !== parkedUnits) {
+      this.bus.emit('toast', {
+        text: `Hold still carries ${parkedUnits} unit${parkedUnits === 1 ? '' : 's'} — empty it or confirm the sale takes them.`,
+        kind: 'error',
+        ttl: 4,
+      });
+      return false;
+    }
     const def = SHIP_BY_ID.get(owned.defId);
     const base = (def && (def.buyback != null ? def.buyback : def.price)) || 0;
     const refund = Math.floor(base * 0.5);
@@ -2037,6 +2134,29 @@ export const ships = {
     const isTransition = index !== p.activeShipIndex;
     const previousOwned = p.ownedShips[p.activeShipIndex] || null;
     const target = getDerivedStats(owned.defId, owned.fittings || [], p);
+    // FB-061 — the hold travels with the hull. Before the berth flips, cargo parks the live
+    // hold on the outgoing record and loads the incoming hull's stored hold into the player,
+    // honouring the new capacity (overflow stays parked). Cargo owns that mutation; ships only
+    // announces the berth swap on the bus. With no cargo owner bound, the legacy overflow
+    // refusal below is the unchanged behaviour.
+    if (isTransition) {
+      const swap = {
+        fromIndex: p.activeShipIndex,
+        toIndex: index,
+        cargoCapVolume: target.cargoCap,
+      };
+      this.bus.emit('ship:parkedHoldSwap', swap);
+      // The cargo owner can refuse the swap outright (sealed freight that cannot park and does
+      // not fit the incoming hold). Its refusal is written back on the packet it was handed.
+      if (swap.refused) {
+        this.bus.emit('toast', {
+          text: 'Sealed freight will not fit the new hold — deliver or transfer it first',
+          kind: 'error',
+          ttl: 4,
+        });
+        return false;
+      }
+    }
     const cargo = p.cargo || {};
     if ((cargo.usedVolume || 0) > target.cargoCap) {
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
@@ -2047,6 +2167,7 @@ export const ships = {
     const e = this.state.entities.get(this.state.playerId);
     if (e) {
       e.data.defId = owned.defId;
+      e.data.shipName = cleanShipName(owned.name) || null;
       e.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
       e.data.livingHull = normalizeLivingHull(owned.livingHull, this.state.simTime || 0);
       this.recomputeEntity(e.id, owned.fittings);
@@ -2075,6 +2196,29 @@ export const ships = {
       if (entity) this.bus.emit('ship:appearanceChanged', { id: entity.id, appearance: normalized });
     }
     this.bus.emit('ship:appearanceSaved', { shipIndex: index, appearance: normalized });
+    return true;
+  },
+
+  /**
+   * FB-057 — write the owner-given name onto one owned hull record. The word is trimmed,
+   * whitespace-collapsed, and capped (cleanShipName); clearing the field deletes the override
+   * so the canon/banked name answers again. The resolved name surfaces through
+   * hullNameForOwnedShip for every reader, so nothing else recomputes it.
+   */
+  setShipName({ shipIndex = null, name = null } = {}) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const index = shipIndex == null ? this.state.player.activeShipIndex : shipIndex;
+    const cleaned = cleanShipName(name);
+    const current = typeof owned.name === 'string' ? cleanShipName(owned.name) : '';
+    if (cleaned === current) return true;
+    if (cleaned) owned.name = cleaned;
+    else delete owned.name;
+    if (index === this.state.player.activeShipIndex) {
+      const entity = this.activeShipEntity();
+      if (entity && entity.data) entity.data.shipName = cleaned || null;
+    }
+    this.bus.emit('ship:nameChanged', { shipIndex: index, name: cleaned || null });
     return true;
   },
 

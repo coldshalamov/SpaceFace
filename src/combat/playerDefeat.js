@@ -6,6 +6,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { FACTION_META } from '../data/factions.js';
 import { MODULES } from '../data/modules.js';
 import { SECTORS } from '../data/sectors.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { formatNumber, resolveNumberLocale } from '../ui/numberFormat.js';
@@ -17,6 +18,7 @@ const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
 const MODULE_BY_ID = new Map(MODULES.map((entry) => [entry.id, entry]));
 const SHIP_BY_ID = new Map(SHIPS.map((entry) => [entry.id, entry]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((entry) => [entry.id, entry]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((entry) => [entry && entry.id, entry]));
 const STATION_BY_ID = new Map();
 
 for (const sector of SECTORS) {
@@ -208,7 +210,9 @@ function liveStationPosition(state, stationId) {
   return entity && entity.pos ? { x: Number(entity.pos.x) || 0, z: Number(entity.pos.z) || 0 } : null;
 }
 
-function chooseLawfulStation(state) {
+// Exported for the stuck-tow offer (FB-111): a wedged hull is towed to the same lawful dock a
+// defeat recovery would choose — the chooser stays one authority.
+export function chooseLawfulStation(state) {
   const remembered = state.player && state.player.insurance && state.player.insurance.lastStationId;
   const rememberedDef = STATION_BY_ID.get(remembered);
   if (rememberedDef && stationIsLawful(rememberedDef)) return rememberedDef;
@@ -284,12 +288,32 @@ export function buildRecoveryPlan(state, playerEntity) {
     if (qty > 0) cargoLosses.push({ commodityId, qty });
   }
 
+  // FB-124 — a live cargo policy pays its covered fraction of the manifest value actually
+  // destroyed, capped by the insured amount. The claim is priced into the plan here so the
+  // recovery berth's grant is one-shot: the policy expires at the dock either way.
+  const policy = state.player && state.player.cargoPolicy;
+  let cargoPayoutCr = 0;
+  let cargoPolicyName = null;
+  if (policy && Number(policy.coverFrac) > 0 && Number(policy.coverCr) > 0) {
+    let lostValueCr = 0;
+    for (const loss of cargoLosses) {
+      const def = COMMODITY_BY_ID.get(loss.commodityId);
+      lostValueCr += loss.qty * (def && Number(def.basePrice) || 0);
+    }
+    cargoPayoutCr = Math.min(
+      Math.round(policy.coverCr),
+      Math.round(lostValueCr * Number(policy.coverFrac)),
+    );
+    if (cargoPayoutCr > 0) cargoPolicyName = 'cargo policy';
+  }
+
   const insuranceStatus = (ship && ship.tier === 0
     ? `STARTER RECOVERY · ${formatCredits(deductible, locale)} CR DEDUCTIBLE`
     : insured
       ? `INSURED · COVERED ${formatCredits(quote.coveredCostCr, locale)} CR`
       : `UNINSURED · ${Math.round((1 - rate) * 100)}% HULL SHARE`)
-    + (hardshipCoveredCr > 0 ? ` · ${formatCredits(hardshipCoveredCr, locale)} CR RECOVERY FUND` : '');
+    + (hardshipCoveredCr > 0 ? ` · ${formatCredits(hardshipCoveredCr, locale)} CR RECOVERY FUND` : '')
+    + (cargoPayoutCr > 0 ? ` · CARGO POLICY +${formatCredits(cargoPayoutCr, locale)} CR` : '');
   const coverageNote = insured
     ? `${formatCredits(deductibleCr, locale)} cr deductible`
     : `${insuranceStatus} · ${HULL_POLICY_NAME} · ${formatCredits(premiumCr, locale)} cr premium`;
@@ -313,6 +337,8 @@ export function buildRecoveryPlan(state, playerEntity) {
     coverageNote,
     cargoLosses,
     cargoLostQty: cargoLosses.reduce((total, loss) => total + loss.qty, 0),
+    cargoPayoutCr,
+    cargoPolicyName,
     persistentCargoProtected,
   };
 }

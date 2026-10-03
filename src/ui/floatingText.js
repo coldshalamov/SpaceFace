@@ -302,6 +302,13 @@ export function createFloatingText(ctx) {
     bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
   });
 
+  // Session boundary (SF-283): pooled floats live when a save loads or a new run starts were
+  // minted by the pre-save session — retire them rather than letting them finish their drift
+  // over the restored scene at stale world anchors.
+  for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
+    bus.on(name, () => { for (const n of nodes) retire(n); });
+  }
+
   // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
   // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
   // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame

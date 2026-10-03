@@ -1,7 +1,7 @@
 // §22 F10 — the three starters say what they are for, in the numbers the sim already derives.
 
 import { fittingsFromDefaultModules, getDerivedStats } from '../systems/ships.js';
-import { lineLoadSpeedFor } from '../systems/shipCapabilities.js';
+import { forwardAccelFor, lineLoadSpeedFor } from '../systems/shipCapabilities.js';
 
 const ROLE = Object.freeze({
   starter_hitch: 'Lives on the line',
@@ -13,7 +13,9 @@ export function starterAirCard(starter) {
   const fittings = fittingsFromDefaultModules(starter.shipId, starter.fittedModules || []);
   const derived = getDerivedStats(starter.shipId, fittings, null);
   const massT = Math.round(Number(derived.operationalMass) || 0);
-  const thrust = Math.round(Number(derived.thrust) || 0);
+  // The card's "thrust" word quotes the same live channel as the Shipworks gauge — forward
+  // accel at the printed mass — never the legacy spec field (NXB-030).
+  const thrust = Math.round(forwardAccelFor(derived));
   const lineWuPerS = Math.round(lineLoadSpeedFor(derived).speedWuPerS || 0);
   const role = ROLE[starter.id] || 'Flies its own job';
   return {

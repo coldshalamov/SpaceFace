@@ -5,17 +5,22 @@
 // semantic events plus a small live-entity presentation stamp for morale/decal/news/Ledger readers.
 
 import {
+  AURA_TITLES,
   authoredTitleId,
+  COUNTER_TITLES,
   isPlayerTitleHolder,
+  QUIET_CLEAR_TITLE_ID,
   THUNDERCHILD,
   THUNDERCHILD_TITLE_ID,
   TITLE_ACTIVE_HOLD_LIMIT,
   TITLE_CANDIDATE_LIMIT,
+  TITLE_DEFS_BY_ID,
   TITLE_HISTORY_LIMIT,
   TITLE_PROCESSED_RECEIPT_LIMIT,
   TITLES_SCHEMA_VERSION,
   TITLES_SEEN_LIMIT,
 } from '../data/titles.js';
+import { activeOwnedShip, hullNameForOwnedShip } from '../data/hullIdentity.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { KNOWN_TRICK_IDS } from '../combat/stuntTaxonomy.js';
 import { journalFor } from '../combat/stuntEvidence.js';
@@ -62,6 +67,125 @@ function freshThunderchildState() {
     candidates: [],
     history: [],
     processedReceiptIds: [],
+  };
+}
+
+// ---- FB-060 counter titles -----------------------------------------------------------------
+// Same world-record law as the thunderchild hold (held/vacant + succession on the holder's
+// death) but earned by a counted verb instead of a threat-ratio hold: `progress` counts each
+// holder's qualifying receipts until `counterTarget`, at which point the holder takes a vacant
+// title or queues as a successor candidate. `window` is the open "wanted period" ledger Quiet-
+// Clear reads — it lives on the record so a save taken mid-window does not fabricate a clear.
+
+function freshCounterTitleState(def) {
+  return {
+    titleId: def.id,
+    title: def.title,
+    status: 'vacant',
+    holderKey: null,
+    holder: null,
+    earnedTick: 0,
+    marks: 0,
+    successionCount: 0,
+    progress: {},
+    window: null,
+    candidates: [],
+    history: [],
+    processedReceiptIds: [],
+  };
+}
+
+function normalizeCounterCandidate(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const holderKey = cleanText(raw.holderKey);
+  const holder = cloneHolder(raw.holder);
+  if (!holderKey || !holder) return null;
+  return {
+    holderKey,
+    holder,
+    count: Math.max(1, finiteInteger(raw.count, 1)),
+    tick: finiteInteger(raw.tick),
+  };
+}
+
+/** Tolerant to the flat NG+ carry shape ({titleId, title, status:'held', holderKey:'player'}). */
+function normalizeCounterTitleState(raw, def) {
+  const own = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const holderKey = cleanText(own.holderKey);
+  const status = own.status === 'held' && holderKey ? 'held' : 'vacant';
+  const progress = {};
+  for (const [key, value] of Object.entries(own.progress && typeof own.progress === 'object' ? own.progress : {})) {
+    const cleanKey = cleanText(key);
+    const count = finiteInteger(value);
+    if (cleanKey && count > 0) progress[cleanKey] = Math.min(count, def.counterTarget);
+  }
+  const candidates = [];
+  const seen = new Set();
+  for (const entry of Array.isArray(own.candidates) ? own.candidates : []) {
+    const candidate = normalizeCounterCandidate(entry);
+    if (!candidate || candidate.holderKey === holderKey || seen.has(candidate.holderKey)) continue;
+    seen.add(candidate.holderKey);
+    candidates.push(candidate);
+  }
+  candidates.sort(compareCounterCandidates);
+  candidates.length = Math.min(candidates.length, TITLE_CANDIDATE_LIMIT);
+  const window = own.window && typeof own.window === 'object'
+    ? { kills: finiteInteger(own.window.kills), openedTick: finiteInteger(own.window.openedTick) }
+    : null;
+  return {
+    titleId: def.id,
+    title: cleanText(own.title, def.title),
+    status,
+    holderKey: status === 'held' ? holderKey : null,
+    holder: status === 'held' ? cloneHolder(own.holder) : null,
+    earnedTick: status === 'held' ? finiteInteger(own.earnedTick) : 0,
+    marks: finiteInteger(own.marks),
+    successionCount: finiteInteger(own.successionCount),
+    progress,
+    window,
+    candidates,
+    history: boundedTail(own.history, TITLE_HISTORY_LIMIT),
+    processedReceiptIds: boundedTail(own.processedReceiptIds, TITLE_PROCESSED_RECEIPT_LIMIT)
+      .map((id) => cleanText(id)).filter(Boolean),
+    ...(cleanText(own.trickId) ? { trickId: cleanText(own.trickId) } : {}),
+  };
+}
+
+/** Successor order for a counter title: deeper qualifying count, then earlier qualification. */
+export function compareCounterCandidates(a, b) {
+  const count = finiteInteger(b.count) - finiteInteger(a.count);
+  if (count) return count;
+  const tick = finiteInteger(a.tick) - finiteInteger(b.tick);
+  if (tick) return tick;
+  const keyA = cleanText(a.holderKey);
+  const keyB = cleanText(b.holderKey);
+  return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
+}
+
+function counterTitleSeenRecord(def, own) {
+  return {
+    id: `${def.id}:${own.successionCount}:${own.holderKey}`,
+    title: def.title,
+    seenAt: own.earnedTick,
+    holderKey: own.holderKey,
+  };
+}
+
+function holderDisplayName(own) {
+  return own && own.holder && own.holder.displayName ? own.holder.displayName : 'you';
+}
+
+/** The player's hull as a title holder snapshot — the persistent ship is what the news names. */
+function playerHolderSnapshot(state) {
+  const player = state && state.player;
+  const owned = activeOwnedShip(state);
+  const index = Math.max(0, finiteInteger(player && player.activeShipIndex));
+  return {
+    shipDefId: cleanText(owned && owned.defId, 'ship_kestrel'),
+    factionId: 'faction_player',
+    displayName: owned
+      ? hullNameForOwnedShip(owned, index, finiteInteger(state && state.meta && state.meta.seed))
+      : 'you',
   };
 }
 
@@ -143,6 +267,17 @@ function ensureState(state) {
   own.processedReceiptIds = boundedTail(own.processedReceiptIds, TITLE_PROCESSED_RECEIPT_LIMIT)
     .map((id) => cleanText(id)).filter(Boolean);
   titles.byId[THUNDERCHILD_TITLE_ID] = own;
+
+  // FB-060 — the counter titles are world records in the same byId map. A held record keyed to
+  // the player that lacks a holder snapshot (an NG+ carry, an old save shape) backfills one from
+  // the active hull rather than fabricating an NPC.
+  for (const def of COUNTER_TITLES) {
+    const rec = normalizeCounterTitleState(titles.byId[def.id], def);
+    if (rec.status === 'held' && rec.holderKey === 'player' && !rec.holder) {
+      rec.holder = playerHolderSnapshot(state);
+    }
+    titles.byId[def.id] = rec;
+  }
 
   story.titlesSeen = boundedTail(story.titlesSeen, TITLES_SEEN_LIMIT)
     .filter((record) => record && typeof record === 'object')
@@ -274,28 +409,66 @@ function isQualifyingThreat(alliedThreat, hostileThreat) {
 
 function clearTitleStamp(entity) {
   const data = entity && entity.data;
-  if (!data || data.titleId !== THUNDERCHILD_TITLE_ID) return;
-  delete data.titleId;
-  delete data.titleName;
-  delete data.titleKillMarks;
+  if (!data) return;
+  // Only the aura-law ids are this stamp's to clear: a flat-record title id (stunt recognition)
+  // written onto the player entity is another lane's ink.
+  if (TITLE_DEFS_BY_ID.has(data.titleId)) {
+    delete data.titleId;
+    delete data.titleName;
+  }
+  if (Array.isArray(data.titleIds)) {
+    data.titleIds = data.titleIds.filter((id) => !TITLE_DEFS_BY_ID.has(id));
+    if (!data.titleIds.length) delete data.titleIds;
+  }
+  if (!TITLE_DEFS_BY_ID.has(data.titleId)) delete data.titleKillMarks;
 }
 
-function stampTitle(entity, own) {
-  if (!entity) return;
-  const data = entity.data || (entity.data = {});
-  data.titleId = THUNDERCHILD_TITLE_ID;
-  data.titleName = THUNDERCHILD.title;
-  data.titleKillMarks = own.killMarks;
-}
-
-function syncTitleStamp(state, own) {
-  for (const entity of liveEntities(state)) {
-    if (own.status === 'held' && holderKeyOf(entity) === own.holderKey && entity.alive !== false) {
-      stampTitle(entity, own);
-    } else {
-      clearTitleStamp(entity);
+/** Aura titles a live entity currently holds, in authored precedence order. */
+function heldAuraTitlesFor(state, entity) {
+  const byId = state && state.story && state.story.titles && state.story.titles.byId;
+  if (!byId || !entity) return [];
+  const key = holderKeyOf(entity);
+  const isPlayerEntity = entity.id === (state && state.playerId) || entity.isPlayer === true;
+  const held = [];
+  for (const def of AURA_TITLES) {
+    const rec = byId[def.id];
+    if (!rec || rec.status !== 'held' || !rec.holderKey) continue;
+    if ((key && rec.holderKey === key) || (isPlayerEntity && rec.holderKey === 'player')) {
+      held.push({ def, rec });
     }
   }
+  return held;
+}
+
+function stampEntityTitle(state, entity) {
+  if (!entity) return null;
+  const held = heldAuraTitlesFor(state, entity);
+  const data = entity.data || (entity.data = {});
+  if (!held.length || entity.alive === false) {
+    clearTitleStamp(entity);
+    return null;
+  }
+  const primary = held[0];
+  data.titleId = primary.def.id;
+  data.titleName = primary.def.title;
+  data.titleIds = held.map((row) => row.def.id);
+  if (primary.def.id === THUNDERCHILD_TITLE_ID) {
+    data.titleKillMarks = finiteInteger(primary.rec.killMarks);
+  } else {
+    delete data.titleKillMarks;
+  }
+  return held;
+}
+
+function syncTitleStamp(state) {
+  const seen = new Set();
+  for (const entity of liveEntities(state)) {
+    if (!entity || entity.id == null) continue;
+    seen.add(entity.id);
+    stampEntityTitle(state, entity);
+  }
+  const player = entityFor(state, state && state.playerId);
+  if (player && !seen.has(player.id)) stampEntityTitle(state, player);
 }
 
 function normalizedReceipt(payload, entity) {
@@ -350,26 +523,35 @@ function emit(bus, event, payload) {
   if (bus && typeof bus.emit === 'function') bus.emit(event, payload);
 }
 
-function titleSeenRecord(own) {
+function titleSeenRecordFor(def, own) {
   return {
-    id: `${THUNDERCHILD_TITLE_ID}:${own.successionCount}:${own.holderKey}`,
-    title: THUNDERCHILD.title,
+    id: `${def.id}:${own.successionCount}:${own.holderKey}`,
+    title: def.title,
     seenAt: own.earnedTick,
     holderKey: own.holderKey,
   };
 }
 
-function earnedEvent(own, receiptId) {
+function titleSeenRecord(own) {
+  return titleSeenRecordFor(THUNDERCHILD, own);
+}
+
+function earnedEventFor(def, own, receiptId) {
   return {
-    titleId: THUNDERCHILD_TITLE_ID,
-    title: THUNDERCHILD.title,
+    titleId: def.id,
+    title: def.title,
     holderKey: own.holderKey,
     holder: cloneHolder(own.holder),
     earnedTick: own.earnedTick,
     killMarks: own.killMarks,
+    marks: own.marks,
     successionCount: own.successionCount,
     receiptId,
   };
+}
+
+function earnedEvent(own, receiptId) {
+  return earnedEventFor(THUNDERCHILD, own, receiptId);
 }
 
 export function createTitlesSystem() {
@@ -391,6 +573,10 @@ export function createTitlesSystem() {
       this._onNewGame = () => this.newGame();
       this._onTrickDetected = (payload) => this._onStuntTrick(payload || {});
       this._onNewGamePlus = (payload) => this.applyNewGamePlusTitles(payload && payload.titles);
+      this._onPodDelivered = (payload) => this._onSurvivorPodDelivered(payload || {});
+      this._onPodResolved = (payload) => this._onSurvivorPodResolved(payload || {});
+      this._onReleaseRatedEvt = (payload) => this._onReleaseRated(payload || {});
+      this._onHeatChangedEvt = (payload) => this._onHeatChanged(payload || {});
       if (this.bus && typeof this.bus.on === 'function') {
         this.bus.on('title:holdResolved', this._onHold);
         this.bus.on('combat:damage', this._onDamage);
@@ -401,6 +587,10 @@ export function createTitlesSystem() {
         this.bus.on('stunt:trickDetected', this._onTrickDetected);
         this.bus.on('stunt:trickAmended', this._onTrickDetected);
         this.bus.on('story:newGamePlusStarted', this._onNewGamePlus);
+        this.bus.on('survivorPod:delivered', this._onPodDelivered);
+        this.bus.on('survivorPod:rescued', this._onPodResolved);
+        this.bus.on('tether:releaseRated', this._onReleaseRatedEvt);
+        this.bus.on('heat:changed', this._onHeatChangedEvt);
       }
       this._rebindSilently();
     },
@@ -408,14 +598,16 @@ export function createTitlesSystem() {
     newGame() {
       if (!this.state) return;
       if (!this.state.story || typeof this.state.story !== 'object') this.state.story = {};
+      const byId = { [THUNDERCHILD_TITLE_ID]: freshThunderchildState() };
+      for (const def of COUNTER_TITLES) byId[def.id] = freshCounterTitleState(def);
       this.state.story.titles = {
         schemaVersion: TITLES_SCHEMA_VERSION,
-        byId: { [THUNDERCHILD_TITLE_ID]: freshThunderchildState() },
+        byId,
       };
       this.state.story.titlesSeen = [];
       this._holderEntityId = null;
       this._activeEntityIds?.clear();
-      syncTitleStamp(this.state, ensureState(this.state));
+      syncTitleStamp(this.state);
     },
 
     applyNewGamePlusTitles(titles) {
@@ -473,7 +665,7 @@ export function createTitlesSystem() {
         }
         applied += 1;
       }
-      syncTitleStamp(this.state, ensureState(this.state));
+      syncTitleStamp(this.state);
       emit(this.bus, 'title:newGamePlusApplied', { count: applied });
       return applied;
     },
@@ -529,13 +721,16 @@ export function createTitlesSystem() {
           this._activeEntityIds.set(holderKey, candidate.id);
         }
       }
-      syncTitleStamp(this.state, own);
+      syncTitleStamp(this.state);
 
       const playerId = this.state && this.state.playerId;
       const playerEntity = entityFor(this.state, playerId) || entityFor(this.state, 'player');
       if (playerEntity && !playerEntity.data?.titleId && this.state.story && this.state.story.titles && this.state.story.titles.byId) {
         for (const [tId, tRec] of Object.entries(this.state.story.titles.byId)) {
-          if (tId !== THUNDERCHILD_TITLE_ID && tRec && tRec.status === 'held') {
+          // FB-060 — counter titles can sit on NPC hulls; a world-record holder is not the
+          // player's stamp to wear. Only player-held records (stunt keys, 'player') stamp here;
+          // aura-title stamping already ran through syncTitleStamp above.
+          if (tId !== THUNDERCHILD_TITLE_ID && tRec && tRec.status === 'held' && isPlayerTitleHolder(tRec)) {
             playerEntity.data = playerEntity.data || {};
             playerEntity.data.titleId = tId;
             playerEntity.data.titleName = tRec.title;
@@ -562,10 +757,9 @@ export function createTitlesSystem() {
       const holderKey = holderKeyOf(entity);
       if (own.status === 'held' && holderKey === own.holderKey && entity.alive !== false) {
         this._holderEntityId = entity.id;
-        stampTitle(entity, own);
-      } else {
-        clearTitleStamp(entity);
       }
+      // The stamp is every aura title's now — the counter titles bind by the same holderKey law.
+      stampEntityTitle(this.state, entity);
       if (holderKey && own.activeHolds[holderKey] && entity.alive !== false) {
         this._activeEntityIds.set(holderKey, entity.id);
       }
@@ -652,7 +846,7 @@ export function createTitlesSystem() {
       }, TITLE_HISTORY_LIMIT);
       appendBounded(this.state.story.titlesSeen, titleSeenRecord(own), TITLES_SEEN_LIMIT);
       this._holderEntityId = transientEntityId;
-      stampTitle(entityFor(this.state, transientEntityId), own);
+      stampEntityTitle(this.state, entityFor(this.state, transientEntityId));
 
       emit(this.bus, 'title:earned', earnedEvent(own, candidate.receiptId));
       emit(this.bus, 'title:auraChanged', {
@@ -692,6 +886,25 @@ export function createTitlesSystem() {
         activeHold.hostileOutcomes += 1;
         activeHold.candidateKills += 1;
       }
+      // FB-060 — a player kill inside an open WANTED window voids the Quiet-Clear count for it.
+      const quiet = this.state && this.state.story && this.state.story.titles
+        && this.state.story.titles.byId && this.state.story.titles.byId[QUIET_CLEAR_TITLE_ID];
+      if (quiet && quiet.window && payload.killerId === this.state.playerId) {
+        quiet.window.kills += 1;
+      }
+      // FB-060 — counter titles follow the same succession law: the holder's death moves the
+      // title to the best queued candidate or leaves it vacant. Player death ends the run but
+      // the record still resolves so a carried save cannot leave a ghost holder.
+      for (const def of COUNTER_TITLES) {
+        const rec = this.state.story.titles.byId[def.id];
+        if (!rec) continue;
+        if (victimKey) rec.candidates = rec.candidates.filter((c) => c.holderKey !== victimKey);
+        if (rec.status !== 'held') continue;
+        const counterHolderDied = (victimKey && victimKey === rec.holderKey)
+          || (victimId != null && victimId === this.state.playerId && isPlayerTitleHolder(rec));
+        if (counterHolderDied) this._succeedCounterTitle(def, rec);
+      }
+
       if (own.status !== 'held') return null;
       const holderDied = victimKey === own.holderKey
         || (victimKey === '' && victimId != null && victimId === this._holderEntityId);
@@ -713,18 +926,25 @@ export function createTitlesSystem() {
         tick,
         receiptId,
       };
-      stampTitle(killer, own);
+      stampEntityTitle(this.state, killer);
       emit(this.bus, 'title:killMarksChanged', event);
       return event;
     },
 
     _succeedOrVacate(own) {
+      return this._succeedOrVacateFor(THUNDERCHILD, own, compareThunderchildCandidates);
+    },
+
+    /** The shared succession law (FB-060): the best queued candidate inherits, else the title
+     *  goes vacant. `def` supplies the id, the display name, and the news lines. */
+    _succeedOrVacateFor(def, own, compareCandidates) {
       const previousHolderKey = own.holderKey;
       const previousHolder = cloneHolder(own.holder);
       const tick = finiteInteger(this.state && this.state.tick);
-      const successor = own.candidates.sort(compareThunderchildCandidates)[0] || null;
+      const successor = own.candidates.sort(compareCandidates)[0] || null;
       own.successionCount += 1;
       own.killMarks = 0;
+      if ('marks' in own) own.marks = successor ? Math.max(1, finiteInteger(successor.count, 1)) : 0;
 
       if (successor) {
         own.status = 'held';
@@ -732,18 +952,24 @@ export function createTitlesSystem() {
         own.holder = cloneHolder(successor.holder);
         own.earnedTick = tick;
         own.candidates = own.candidates.filter((entry) => entry.holderKey !== successor.holderKey);
-        const liveSuccessor = entityForHolder(this.state, own.holderKey);
-        this._holderEntityId = liveSuccessor ? liveSuccessor.id : null;
+        if (def.id === THUNDERCHILD_TITLE_ID) {
+          const liveSuccessor = entityForHolder(this.state, own.holderKey);
+          this._holderEntityId = liveSuccessor ? liveSuccessor.id : null;
+        }
       } else {
         own.status = 'vacant';
         own.holderKey = null;
         own.holder = null;
         own.earnedTick = 0;
-        this._holderEntityId = null;
+        if (def.id === THUNDERCHILD_TITLE_ID) this._holderEntityId = null;
       }
-      syncTitleStamp(this.state, own);
+      syncTitleStamp(this.state);
 
-      const receiptId = `title:succession:${own.successionCount}:${own.holderKey || 'vacant'}`;
+      // Thunderchild keeps its shipped receipt shape (`title:succession:N:holder`); counter
+      // titles are def-qualified since several records now emit successions.
+      const receiptId = def.id === THUNDERCHILD_TITLE_ID
+        ? `title:succession:${own.successionCount}:${own.holderKey || 'vacant'}`
+        : `title:succession:${def.id}:${own.successionCount}:${own.holderKey || 'vacant'}`;
       appendBounded(own.history, {
         kind: successor ? 'succession' : 'vacant',
         tick,
@@ -751,11 +977,11 @@ export function createTitlesSystem() {
         holderKey: own.holderKey,
         receiptId,
       }, TITLE_HISTORY_LIMIT);
-      if (successor) appendBounded(this.state.story.titlesSeen, titleSeenRecord(own), TITLES_SEEN_LIMIT);
+      if (successor) appendBounded(this.state.story.titlesSeen, titleSeenRecordFor(def, own), TITLES_SEEN_LIMIT);
 
       const succession = {
-        titleId: THUNDERCHILD_TITLE_ID,
-        title: THUNDERCHILD.title,
+        titleId: def.id,
+        title: def.title,
         previousHolderKey,
         previousHolder,
         holderKey: own.holderKey,
@@ -767,8 +993,8 @@ export function createTitlesSystem() {
       };
       emit(this.bus, 'title:succession', succession);
       emit(this.bus, 'title:auraChanged', {
-        titleId: THUNDERCHILD_TITLE_ID,
-        title: THUNDERCHILD.title,
+        titleId: def.id,
+        title: def.title,
         previousHolderKey,
         holderKey: own.holderKey,
         holder: cloneHolder(own.holder),
@@ -777,23 +1003,178 @@ export function createTitlesSystem() {
         reason: 'holder_killed',
       });
       emit(this.bus, 'news:publish', successor ? {
-        text: `${THUNDERCHILD.news.successionPrefix}${own.holder.displayName}${THUNDERCHILD.news.successionSuffix}`,
+        text: `${def.news.successionPrefix}${holderDisplayName(own)}${def.news.successionSuffix}`,
         kind: 'title_succession',
-        titleId: THUNDERCHILD_TITLE_ID,
+        titleId: def.id,
         holderKey: own.holderKey,
         previousHolderKey,
         channelId: 'news',
         receiptId,
       } : {
-        text: THUNDERCHILD.news.vacant,
+        text: def.news.vacant,
         kind: 'title_vacant',
-        titleId: THUNDERCHILD_TITLE_ID,
+        titleId: def.id,
         holderKey: null,
         previousHolderKey,
         channelId: 'news',
         receiptId,
       });
       return succession;
+    },
+
+    _succeedCounterTitle(def, own) {
+      return this._succeedOrVacateFor(def, own, compareCounterCandidates);
+    },
+
+    // ---- FB-060: counter-title earn lanes ---------------------------------------------------
+    // Every lane resolves to one holder key ('player' or a durable worldRecordId), one receipt
+    // id, and one count tick. `processedReceiptIds` on the record dedupes across save/reload.
+
+    _counterTitleRecord(def) {
+      const titles = ensureState(this.state) && this.state.story.titles;
+      const rec = titles.byId[def.id];
+      return rec && rec.titleId === def.id ? rec : null;
+    },
+
+    _holderKeyForEntity(entity) {
+      if (!entity) return null;
+      if (entity.id === (this.state && this.state.playerId) || entity.isPlayer === true) return 'player';
+      const key = holderKeyOf(entity);
+      // Only durable world-record hulls hold titles — an ephemeral traffic hull cannot carry one.
+      return key || null;
+    },
+
+    /**
+     * One qualifying receipt for `def` credited to `holderKey`. Under the target it accrues as
+     * progress; at the target the holder takes a vacant title or queues behind the live holder.
+     */
+    _creditCounterTitle(def, holderKey, holder, receiptId) {
+      const own = this._counterTitleRecord(def);
+      if (!own || !holderKey) return null;
+      if (receiptId && !rememberReceipt(own, receiptId)) return null;
+      const tick = finiteInteger(this.state && this.state.tick);
+      if (own.status === 'held' && own.holderKey === holderKey) {
+        own.marks = finiteInteger(own.marks) + 1;
+        return null;
+      }
+      own.progress[holderKey] = finiteInteger(own.progress[holderKey]) + 1;
+      const count = own.progress[holderKey];
+      if (count < def.counterTarget) return { pending: count };
+      delete own.progress[holderKey];
+      const candidate = { holderKey, holder: cloneHolder(holder), count, tick };
+      if (own.status === 'held') {
+        const index = own.candidates.findIndex((entry) => entry.holderKey === holderKey);
+        if (index < 0) own.candidates.push(candidate);
+        else if (count > finiteInteger(own.candidates[index].count)) own.candidates[index] = candidate;
+        own.candidates.sort(compareCounterCandidates);
+        if (own.candidates.length > TITLE_CANDIDATE_LIMIT) own.candidates.length = TITLE_CANDIDATE_LIMIT;
+        return candidate;
+      }
+      return this._awardCounterTitle(def, own, candidate);
+    },
+
+    _awardCounterTitle(def, own, candidate) {
+      own.status = 'held';
+      own.holderKey = candidate.holderKey;
+      own.holder = cloneHolder(candidate.holder);
+      own.earnedTick = candidate.tick;
+      own.marks = candidate.count;
+      own.candidates = own.candidates.filter((entry) => entry.holderKey !== candidate.holderKey);
+      const receiptId = `title:earned:${def.id}:${candidate.holderKey}:${candidate.tick}`;
+      appendBounded(own.history, {
+        kind: 'earned',
+        tick: candidate.tick,
+        holderKey: candidate.holderKey,
+        receiptId,
+      }, TITLE_HISTORY_LIMIT);
+      appendBounded(this.state.story.titlesSeen, counterTitleSeenRecord(def, own), TITLES_SEEN_LIMIT);
+      const holderEntity = candidate.holderKey === 'player'
+        ? entityFor(this.state, this.state.playerId)
+        : entityForHolder(this.state, candidate.holderKey);
+      stampEntityTitle(this.state, holderEntity);
+
+      emit(this.bus, 'title:earned', earnedEventFor(def, own, receiptId));
+      emit(this.bus, 'title:auraChanged', {
+        titleId: def.id,
+        title: def.title,
+        previousHolderKey: null,
+        holderKey: own.holderKey,
+        holder: cloneHolder(own.holder),
+        active: true,
+        tick: candidate.tick,
+        reason: 'earned',
+      });
+      emit(this.bus, 'news:publish', {
+        text: `${holderDisplayName(own)}${def.news.earnedSuffix}`,
+        kind: 'title_earned',
+        titleId: def.id,
+        holderKey: own.holderKey,
+        channelId: 'news',
+        receiptId,
+      });
+      return own;
+    },
+
+    _onSurvivorPodDelivered(payload) {
+      // traffic.js emits this when a rescue hull hands a pod to a station — the rescue hull is
+      // the earner; only durable hulls (or the player) can hold a title.
+      const entity = entityFor(this.state, payload && payload.rescueHullId);
+      const holderKey = this._holderKeyForEntity(entity);
+      if (!holderKey) return null;
+      const def = COUNTER_TITLES.find((row) => row.counter === 'rescues');
+      const podKey = payload && payload.podEntityId != null ? String(payload.podEntityId) : '';
+      return this._creditCounterTitle(def, holderKey,
+        holderKey === 'player' ? playerHolderSnapshot(this.state) : holderSnapshot(entity),
+        `pod:${podKey || `${entity && entity.id}:${finiteInteger(this.state && this.state.tick)}`}`);
+    },
+
+    _onSurvivorPodResolved(payload) {
+      // survivorPod.js emits survivorPod:rescued with a reason: 'station_delivery' and
+      // 'player_handoff_rescue_hull' both required the player latched — those count for the
+      // pilot. 'rescue_hull' claims credit the hull that took it. The receipt key is the pod's
+      // own entity id so this lane and survivorPod:delivered can never count one pod twice.
+      const reason = cleanText(payload && payload.reason);
+      const def = COUNTER_TITLES.find((row) => row.counter === 'rescues');
+      const podKey = payload && payload.entityId != null ? String(payload.entityId) : cleanText(payload && payload.id);
+      const receiptId = `pod:${podKey || finiteInteger(this.state && this.state.tick)}`;
+      if (reason === 'station_delivery' || reason === 'player_handoff_rescue_hull') {
+        return this._creditCounterTitle(def, 'player', playerHolderSnapshot(this.state), receiptId);
+      }
+      if (reason === 'rescue_hull' && payload.rescueHullId != null) {
+        const entity = entityFor(this.state, payload.rescueHullId);
+        const holderKey = this._holderKeyForEntity(entity);
+        if (!holderKey) return null;
+        return this._creditCounterTitle(def, holderKey,
+          holderKey === 'player' ? playerHolderSnapshot(this.state) : holderSnapshot(entity), receiptId);
+      }
+      return null;
+    },
+
+    _onReleaseRated(payload) {
+      // tether:releaseRated is the player's own Massline verdict — the same receipt the
+      // razorReleases achievement counter reads.
+      if (!payload || payload.classification !== 'razor') return null;
+      const def = COUNTER_TITLES.find((row) => row.counter === 'razorReleases');
+      const receiptId = `razor:${finiteInteger(payload.observedTick, finiteInteger(this.state && this.state.tick))}:${String(payload.targetId)}`;
+      return this._creditCounterTitle(def, 'player', playerHolderSnapshot(this.state), receiptId);
+    },
+
+    _onHeatChanged(payload) {
+      // Quiet-Clear counts a WANTED period that closes with no player kill inside it. The window
+      // rides on the title record so a save/continue mid-window keeps the ledger honest.
+      const def = COUNTER_TITLES.find((row) => row.counter === 'quietClears');
+      const own = this._counterTitleRecord(def);
+      if (!own || !payload || payload.wantedCrossed !== true) return null;
+      const tick = finiteInteger(this.state && this.state.tick);
+      if (payload.wanted === true) {
+        own.window = { kills: 0, openedTick: tick };
+        return null;
+      }
+      const window = own.window;
+      own.window = null;
+      if (!window || window.kills > 0) return null;
+      return this._creditCounterTitle(def, 'player', playerHolderSnapshot(this.state),
+        `quiet:${window.openedTick}:${tick}`);
     },
 
     _onStuntTrick(trick) {
@@ -867,8 +1248,13 @@ export function createTitlesSystem() {
         if (this._onTrickDetected) this.bus.off('stunt:trickDetected', this._onTrickDetected);
         if (this._onTrickDetected) this.bus.off('stunt:trickAmended', this._onTrickDetected);
         if (this._onNewGamePlus) this.bus.off('story:newGamePlusStarted', this._onNewGamePlus);
+        if (this._onPodDelivered) this.bus.off('survivorPod:delivered', this._onPodDelivered);
+        if (this._onPodResolved) this.bus.off('survivorPod:rescued', this._onPodResolved);
+        if (this._onReleaseRatedEvt) this.bus.off('tether:releaseRated', this._onReleaseRatedEvt);
+        if (this._onHeatChangedEvt) this.bus.off('heat:changed', this._onHeatChangedEvt);
       }
       this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = this._onTrickDetected = this._onNewGamePlus = null;
+      this._onPodDelivered = this._onPodResolved = this._onReleaseRatedEvt = this._onHeatChangedEvt = null;
       this._activeEntityIds?.clear();
     },
   };

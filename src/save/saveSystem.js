@@ -5597,6 +5597,18 @@ function normalizePlayerSaveRecord(player, savedEntity) {
   if (!Number.isInteger(out.activeShipIndex) || out.activeShipIndex < 0 || out.activeShipIndex >= out.ownedShips.length) {
     out.activeShipIndex = 0;
   }
+  // FB-057/FB-061 — per-hull fields are absent on old saves and stay absent until written. A
+  // malformed one is dropped, never repaired into fabricated content.
+  for (const ship of out.ownedShips) {
+    if (!ship || typeof ship !== 'object') continue;
+    if (ship.name != null && typeof ship.name !== 'string') delete ship.name;
+    else if (typeof ship.name === 'string' && !ship.name.trim()) delete ship.name;
+    if (ship.cargo != null) {
+      const hold = normalizeParkedHoldSaveRecord(ship.cargo);
+      if (hold) ship.cargo = hold;
+      else delete ship.cargo;
+    }
+  }
   const active = out.ownedShips[out.activeShipIndex] || (out.ownedShips[0] = { defId, fittings });
   if (!active.defId) active.defId = defId;
   if (!Array.isArray(active.fittings)) active.fittings = fittings;
@@ -5643,6 +5655,32 @@ function needsPlayerEntityRepair(saved) {
     && Number.isFinite(saved.hullMax) && saved.hullMax > 0
     && Number.isFinite(saved.capMax) && saved.capMax > 0
     && Array.isArray(data.weapons) && data.weapons.length > 0);
+}
+
+/**
+ * FB-061 — the hold parked aboard a hull that is not flying: { items, richLots, usedVolume,
+ * usedMass }. The cargo owner recomputes its caches at runtime; on load we keep only the pieces
+ * a record legitimately carries and drop the field entirely when nothing valid is inside, so an
+ * old or crafted save cannot smuggle negative or phantom units into a parked hold.
+ */
+function normalizeParkedHoldSaveRecord(cargo) {
+  const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
+  const items = {};
+  for (const [id, qty] of Object.entries(out.items && typeof out.items === 'object' && !Array.isArray(out.items) ? out.items : {})) {
+    const n = Math.floor(Number(qty));
+    if (typeof id === 'string' && id && n > 0) items[id] = n;
+  }
+  out.items = items;
+  if (Array.isArray(out.richLots)) {
+    out.richLots = out.richLots.filter((lot) => lot && typeof lot === 'object'
+      && typeof lot.commodityId === 'string' && Number(lot.qty) > 0);
+  } else {
+    out.richLots = [];
+  }
+  out.usedVolume = Math.max(0, Number(out.usedVolume) || 0);
+  out.usedMass = Math.max(0, Number(out.usedMass) || 0);
+  if (!Object.keys(out.items).length) return null;
+  return out;
 }
 
 function normalizeCargoSaveRecord(cargo) {

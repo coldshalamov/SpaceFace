@@ -1810,6 +1810,7 @@ export const missions = {
         ...retainedSetPieceFollowOns,
       ],
     };
+    this._guaranteeRecoveryOffer(info, board, epoch);
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
@@ -1820,6 +1821,48 @@ export const missions = {
     this._syncCapitalBossOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /**
+   * SF-119 — a pilot with no cash and a battered hold still needs one job they can fly tonight.
+   * Every board carries at least one zero-capital offer: no collateral, no upfront fee, no hold
+   * requirement the current cargo cap fails, no standing gate the current rep misses. The row is
+   * ordinary work at ordinary terms — a tow, a sweep, a quota — never a payout for being poor.
+   * When the epoch roll already produced one, nothing is added.
+   */
+  _guaranteeRecoveryOffer(info, board, epoch) {
+    const slots = board && board.slots;
+    if (!Array.isArray(slots)) return;
+    if (slots.some((o) => o && this._zeroCapitalFlyable(o))) return;
+    const seed = hash32(this.state.meta.seed, info.id, epoch, 'recovery');
+    const rng = (this.helpers && this.helpers.mulberry32)
+      ? this.helpers.mulberry32(seed) : mulberryLocal(seed);
+    for (const typeId of ['recon_scan', 'tow_recovery', 'mining_quota']) {
+      const offer = this._rollOffer(typeId, info, rng, epoch, 'recovery', { attachConditions: false });
+      if (offer && this._zeroCapitalFlyable(offer)) {
+        slots.push(offer);
+        return;
+      }
+    }
+    // A guarantee that cannot fire is worth hearing about — e.g. every reachable destination is
+    // rep-gated for this pilot — rather than failing the row silently.
+    console.warn(`[missions] recovery slot rolled nothing flyable at ${info && info.id} epoch ${epoch}`);
+  },
+
+  /** True when the current fit can accept this offer with zero credits and zero hold room. */
+  _zeroCapitalFlyable(offer) {
+    if (!offer) return false;
+    if ((Number(offer.collateral_cr) || 0) > 0) return false;
+    if (setPieceUpfrontCost(offer, this.state) > 0) return false;
+    if (offer.factionId
+      && this._repOf(offer.factionId) < missionOfferMinRep(offer, this.state)) return false;
+    if (ONE_LOAD_CARGO_TYPES.has(offer.type)) {
+      const need = cargoFootprint(offer);
+      const cargo = (this.state.player && this.state.player.cargo) || {};
+      const free = Math.max(0, (Number(cargo.capVolume) || 0) - (Number(cargo.usedVolume) || 0));
+      if (need > 0 && free < need) return false;
+    }
+    return true;
   },
 
   /**

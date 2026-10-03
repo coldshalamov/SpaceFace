@@ -138,6 +138,7 @@ const SESSION_SINK_EVENT = Object.freeze({
   insurance: 'hull insurance',
   restitution: 'restitution',
   impound: 'an impound',
+  toll: 'a toll',
 });
 
 function sessionSinkEventPhrase(kind) {
@@ -965,6 +966,44 @@ export function shipLedgerGraffitiQuotes(state) {
 export function shipLedgerHasFactOutside(state, excludeTypes) {
   const exclude = excludeTypes instanceof Set ? excludeTypes : new Set(excludeTypes || []);
   return collectCandidates(state || {}, { probe: { exclude } }).probeHit;
+}
+
+// FB-046 — the session-sink roll-up. `player.sessionSinks` is the durable 48-entry record of
+// where the money went; the ledger projects each row as a witnessed debit. This is the one-line
+// answer "what did this hull cost me lately" — per-kind totals from the same live records the
+// entries read, never a second ledger. Read-only.
+const SINK_ROLLUP_LABEL = Object.freeze({
+  repair: 'repairs',
+  fine: 'fines',
+  insurance: 'insurance',
+  restitution: 'restitution',
+  impound: 'impounds',
+  toll: 'tolls',
+});
+export function sessionSinkRollup(state) {
+  const sinks = sourceArray(state && state.player && state.player.sessionSinks);
+  if (!sinks.length) return null;
+  const byKind = new Map();
+  let total = 0;
+  let count = 0;
+  for (const record of sinks) {
+    if (!record) continue;
+    const kind = text(record.kind, '');
+    const amount = Math.round(Math.abs(finite(record.amount, 0)));
+    if (!kind || !(amount > 0)) continue;
+    const bucket = byKind.get(kind) || { kind, label: SINK_ROLLUP_LABEL[kind] || sessionSinkEventPhrase(kind), amount: 0, count: 0 };
+    bucket.amount += amount;
+    bucket.count += 1;
+    byKind.set(kind, bucket);
+    total += amount;
+    count += 1;
+  }
+  if (!(count > 0)) return null;
+  return {
+    total,
+    count,
+    byKind: [...byKind.values()].sort((a, b) => b.amount - a.amount || a.kind.localeCompare(b.kind)),
+  };
 }
 
 /**

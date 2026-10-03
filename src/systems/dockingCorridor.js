@@ -19,6 +19,7 @@
 // legacy radius docking is untouched (physics.updateDockRange owns the dock:range gate).
 
 import {
+  berthFitsHull,
   computeCaptureAssist,
   corridorStateFor,
   effectiveCorridorBearingDeg,
@@ -177,7 +178,10 @@ export const dockingCorridor = {
     // additive on the membrane: the pilot's own thrust command is never overwritten, only
     // supplemented.
     let assistApplied = null;
-    if (best && dt > 0) {
+    // SF-130: the assist targets the deck berth. A hull too deep for the pocket moors at the
+    // corridor-axis standoff instead; pulling it toward a berth its envelope cannot clear
+    // would grind it against the station's own proxy, so the tug is withheld entirely.
+    if (best && dt > 0 && berthFitsHull(best.manifest, best.station, player)) {
       const assist = computeCaptureAssist(best.manifest, best.station, player.pos, player.vel, inputMag);
       if (assist && (assist.x !== 0 || assist.z !== 0)) {
         const mass = positive(player.physicsBody && player.physicsBody.mass, positive(player.mass, 1));

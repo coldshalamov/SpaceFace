@@ -1058,8 +1058,12 @@ export const automationScreen = {
           d.operation?.grossUnits, d.operation?.storedUnits, d.operation?.storedCap,
           d.operation?.lastSale?.credited, d.operation?.lastSale?.quantity,
           d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin,
-          d.operation?.cycle?.minedUnits, d.operation?.cycle?.fuelUsed,
-          d.operation?.lastCycle?.credited, d.operation?.lastCycle?.netCr);
+          d.operation?.lastCycle && [
+            d.operation.lastCycle.credited, d.operation.lastCycle.netCr,
+            d.operation.lastCycle.minedUnits, d.operation.lastCycle.quantity,
+            d.operation.lastCycle.heldUnits, d.operation.lastCycle.withdrawnUnits,
+            d.operation.lastCycle.fuelUsed, d.operation.lastCycle.upkeepAccrued,
+          ].join('|'));
       }
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');

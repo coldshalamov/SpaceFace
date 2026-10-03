@@ -27,6 +27,9 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
+// FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
+// perfRuntime (perfNow) rather than touching wall time from a simulation owner.
+import { perfNow } from './perfRuntime.js';
 import { surfaceContactFromBodies } from './surfaceContact.js';
 import {
   corridorPlayableBounds,
@@ -155,6 +158,8 @@ export const physics = {
       pickupCollections: 0,
       pickupPairChecks: 0,
       pickupSpatialQueries: 0,
+      spatialHashSyncs: 0,
+      spatialHashSkips: 0,
       tickMs: 0,
       activityS0: 0,
       activityS1: 0,
@@ -165,7 +170,7 @@ export const physics = {
   },
 
   update(dt, state) {
-    const t0 = nowMs();
+    const t0 = perfNow();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
     this._diag.nearMissReceipts = 0;
@@ -179,23 +184,32 @@ export const physics = {
       this.sweepProjectiles(dt, state);
       this.updateDockRange(state);
       this._countCollisionPairWork(state);
-      this._diag.tickMs = Math.max(0, nowMs() - t0);
+      this._diag.tickMs = Math.max(0, perfNow() - t0);
       this._publishRuntime(state);
       return;
     }
     this._disableSg02DynamicAuthority();
     this.integrate(dt, state);
-    this._rebuildSpatialHash(state);
+    if (shouldMaintainDynamicSpatialHash(state)) {
+      this._rebuildSpatialHash(state);
+      this._settleSpatialHashGate(state, state.spatialHash);
+      this._diag.spatialHashSyncs++;
+    } else {
+      this._noteSpatialHashGateSkip(state);
+    }
     this._spatialHashNeedsRebuild = false;
     this.sweepShipStatics(dt, state);
     this.sweepProjectiles(dt, state);
     this.collectPickups(state);
-    if (this._spatialHashNeedsRebuild) this._rebuildSpatialHash(state);
+    if (this._spatialHashNeedsRebuild) {
+      this._rebuildSpatialHash(state);
+      this._settleSpatialHashGate(state, state.spatialHash);
+    }
     this.collide(dt, state);
     this._syncOptionalBackend(dt, state);
     this.updateDockRange(state);
     this._countCollisionPairWork(state);
-    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
     this._publishRuntime(state);
   },
 
@@ -243,12 +257,32 @@ export const physics = {
     if (!hash) return;
     if (shouldMaintainDynamicSpatialHash(state)) {
       this._rebuildSpatialHash(state);
-    } else if (typeof hash.deactivate === 'function') {
-      hash.deactivate();
-    } else if (typeof hash.clear === 'function') {
-      hash.clear();
-      if (hash.diagnostics) hash.diagnostics.activeBuckets = 0;
+      this._settleSpatialHashGate(state, hash);
+      this._diag.spatialHashSyncs++;
+      return;
     }
+    this._noteSpatialHashGateSkip(state);
+  },
+
+  _noteSpatialHashGateSkip(state) {
+    const hash = state && state.spatialHash;
+    this._diag.spatialHashSkips++;
+    if (hash && typeof hash.noteGateSkip === 'function') hash.noteGateSkip();
+  },
+
+  // Record the exact coverage the committed sync saw so the gate can prove a later tick's
+  // dynamics list is identical without walking buckets or member records.
+  _settleSpatialHashGate(state, hash) {
+    const gate = spatialHashGateFor(state);
+    const layers = spatialHashLayersFromState(state);
+    gate.lastSyncTick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    gate.staticVersion = layers && Number.isFinite(layers.staticVersion) ? layers.staticVersion : 0;
+    const indexVersion = entityIndexGateVersion(state);
+    if (indexVersion != null) gate.indexVersion = indexVersion;
+    gate.members = hash && hash._dynamicMembers ? hash._dynamicMembers.size : 0;
+    gate.mix = layers && Array.isArray(layers.dynamics)
+      ? dynamicMembershipMix(hash && hash.cell, layers.dynamics)
+      : 0;
   },
 
   _publishRuntime(state) {
@@ -1246,8 +1280,86 @@ export function spatialHashLayersFromState(state) {
   return null;
 }
 
-export function shouldMaintainDynamicSpatialHash(_state) {
-  return true;
+// FB-088 — the dynamic-hash rebuild gate. The layered hash already records every dynamic
+// member's cell span, so "did a body change cells" reduces to comparing an integer coverage
+// mix of the authoritative dynamics list against the mix the last committed sync saw. Any
+// cell crossing, spawn/despawn, death, or dynamic-set membership move perturbs the mix;
+// sliding inside the same cells does not. Statics ride `physicsStaticVersion` (the layered
+// rebuild still applies the static diff itself when the gate fires), and a forced rescan
+// every SPATIAL_HASH_FORCE_SYNC_TICKS bounds any silent writer that dodged every signal —
+// including foreign pose writes that skip the dirty journal entirely.
+const SPATIAL_HASH_GATE = new WeakMap();
+// state -> { mix, members, indexVersion, staticVersion, lastSyncTick }
+const SPATIAL_HASH_FORCE_SYNC_TICKS = 60;
+
+function spatialHashGateFor(state) {
+  let gate = SPATIAL_HASH_GATE.get(state);
+  if (!gate) {
+    gate = { mix: 0, members: -1, indexVersion: -1, staticVersion: -1, lastSyncTick: -1 };
+    SPATIAL_HASH_GATE.set(state, gate);
+  }
+  return gate;
+}
+
+function entityIndexGateVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+/**
+ * Rolling integer checksum over each live collider's cell span (id-mixed so a same-cells
+ * member swap still perturbs it). Pure integer math — identical inputs give an identical
+ * flag on every host and every backend.
+ */
+function dynamicMembershipMix(cell, dynamics) {
+  const c = Number.isFinite(cell) && cell > 0 ? cell : 64;
+  let mix = dynamics.length | 0;
+  for (let i = 0; i < dynamics.length; i++) {
+    const e = dynamics[i];
+    if (!e || e.alive === false || !e.collides || !e.pos || e.id == null) {
+      mix = Math.imul(mix ^ 0x5bd1e995, 16777619) | 0;
+      continue;
+    }
+    const r = e.radius || 0;
+    const x0 = Math.floor((e.pos.x - r) / c);
+    const x1 = Math.floor((e.pos.x + r) / c);
+    const z0 = Math.floor((e.pos.z - r) / c);
+    const z1 = Math.floor((e.pos.z + r) / c);
+    mix = Math.imul(mix ^ (
+      Math.imul(x0, 73856093) ^ Math.imul(x1, 19349663)
+      ^ Math.imul(z0, 83492791) ^ Math.imul(z1, -1640531527)
+      ^ Math.imul(e.id, -2128831035) ^ Math.imul((r * 1024) | 0, -1028477387)
+    ), 16777619) | 0;
+  }
+  return mix;
+}
+
+/**
+ * The per-tick dirty flag the packet asks for, evaluated against the coverage the last
+ * committed sync recorded. True while a queued change has not been rebuilt yet — so a query
+ * arriving after a dirty tick still sees the flag up until physics runs the rebuild.
+ * Fail-open everywhere (missing hash, missing index/layer authority) so callers that rely
+ * on the legacy full rebuild keep their eager path.
+ */
+export function shouldMaintainDynamicSpatialHash(state) {
+  const hash = state && state.spatialHash;
+  if (!hash || typeof hash._syncDynamicLayer !== 'function') return true;
+  const layers = spatialHashLayersFromState(state);
+  if (!layers || !Array.isArray(layers.dynamics)) return true;
+  const gate = spatialHashGateFor(state);
+  if (gate.lastSyncTick < 0) return true;
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (tick - gate.lastSyncTick >= SPATIAL_HASH_FORCE_SYNC_TICKS) return true;
+  const staticVersion = Number.isFinite(layers.staticVersion) ? layers.staticVersion : 0;
+  if (staticVersion !== gate.staticVersion) return true;
+  // Spawn/despawn/index rebuild: sanctioned membership moves bump the index version.
+  const indexVersion = entityIndexGateVersion(state);
+  if (indexVersion != null && indexVersion !== gate.indexVersion) return true;
+  const members = hash._dynamicMembers ? hash._dynamicMembers.size : 0;
+  if (members !== gate.members) return true;
+  return dynamicMembershipMix(hash.cell, layers.dynamics) !== gate.mix;
 }
 
 function shouldUsePickupSpatialQuery(state, pickups, collectors) {
@@ -1911,8 +2023,4 @@ function segmentCircleHitInto(out, start, end, center, radius) {
 
 function clamp01(v) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
-}
-
-function nowMs() {
-  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 }

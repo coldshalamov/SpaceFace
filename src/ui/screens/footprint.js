@@ -15,7 +15,7 @@ import { FACTION_META } from '../../data/factions.js';
 import { TITLES } from '../../data/titles.js';
 import { REP_REASON_LABELS } from '../../data/repReasons.js';
 import { bribeCost } from '../../systems/factions.js';
-import { buildShipLedger, formatLedgerCycle, SHIP_LEDGER_PAGE_SIZE } from '../../systems/shipLedger.js';
+import { buildShipLedger, formatLedgerCycle, sessionSinkRollup, SHIP_LEDGER_PAGE_SIZE } from '../../systems/shipLedger.js';
 import { contractLedgerRows } from '../../combat/stuntContracts.js';
 import { latestLossLine } from '../../systems/lossLedger.js';
 import { isPlayerWanted, heatLevelFor } from '../../systems/heat.js';
@@ -1445,6 +1445,12 @@ export const footprintScreen = {
       sl.append(el('p', 'fp-dossier__sub', sentenceCase(String(ledgerRows[0].cycleLabel || '').toLowerCase())));
     } else {
       sl.append(el('p', 'fp-dossier__v', 'Nothing written yet'), el('p', 'fp-dossier__sub', 'The ledger writes as the hull lives'));
+    }
+    // FB-046 — "where the money went": the sink roll-up under the newest line, biggest first.
+    const sinks = sessionSinkRollup(state);
+    if (sinks) {
+      const parts = sinks.byKind.slice(0, 3).map((k) => `${k.label} ${creditsText(k.amount)}`);
+      sl.append(el('p', 'fp-dossier__sub', `Out: ${parts.join(' · ')}`));
     }
     grid.append(sl);
     record.append(grid);
