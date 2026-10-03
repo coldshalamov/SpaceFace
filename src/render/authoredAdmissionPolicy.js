@@ -75,12 +75,16 @@ export function declaredPlaceTargetRadius(entity) {
 export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   radius = null,
   horizonSeconds = 0,
+  // Optional per-walk constants a caller already paid for (decode-runway picks):
+  // {player, travel, prefetch, immediate, lookahead, glass, lookOriginX, lookOriginZ}.
+  // Every term is entity-independent; omitting ctx keeps the per-call derivation.
+  ctx = null,
 } = {}) {
   if (!entity || entity.alive === false) return false;
   if (entity.id === state?.playerId || entity.isPlayer === true) return true;
   if (entity.flags?.forceRender || entity.flags?.neverCull) return true;
 
-  const player = playerEntity(state);
+  const player = ctx ? ctx.player : playerEntity(state);
   const targetId = state?.player?.targetId != null
     ? state.player.targetId
     : player?.targetId;
@@ -88,17 +92,21 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   if (isCriticalStartingHub(entity)) return true;
   if (!player?.pos || !entity.pos) return false;
 
-  const travel = tableTravelSpeed(state);
+  const travel = ctx ? ctx.travel : tableTravelSpeed(state);
   const numericRadius = Number(radius);
   const prefetch = radius == null || !Number.isFinite(numericRadius)
-    ? authoredPrefetchRadius(travel)
+    ? (ctx ? ctx.prefetch : authoredPrefetchRadius(travel))
     : numericRadius;
-  const immediate = authoredImmediateRadius(travel);
-  const lookahead = authoredLookaheadSeconds();
+  const immediate = ctx ? ctx.immediate : authoredImmediateRadius(travel);
+  const lookahead = ctx ? ctx.lookahead : authoredLookaheadSeconds();
 
-  const look = tableLookAtDelta(state, player.pos, entity.pos, _authoredLookDelta);
-  const dx = Number(look.x);
-  const dz = Number(look.z);
+  const look = ctx ? null : tableLookAtDelta(state, player.pos, entity.pos, _authoredLookDelta);
+  const dx = ctx
+    ? (Number.isFinite(entity.pos.x) ? entity.pos.x : 0) - ctx.lookOriginX
+    : Number(look.x);
+  const dz = ctx
+    ? (Number.isFinite(entity.pos.z) ? entity.pos.z : 0) - ctx.lookOriginZ
+    : Number(look.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
   // Grade the stamped drawn envelope, not the collider: a pending boundary whose authored
@@ -112,22 +120,24 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
     : entityVisualCullRadius(entity, entity.mesh);
   const surface = Math.max(0, distance - visual);
   if (surface <= immediate) return true;
-  const camera = state && state.camera || {};
-  const video = state && state.settings && state.settings.video || {};
-  const requested = Number(camera.zoom);
-  const live = Number(camera.liveZoom);
-  const zoom = Math.max(
-    Number.isFinite(live) ? live : 0,
-    Number.isFinite(requested) ? requested : 0,
-  ) || 144;
-  const tilt = Number.isFinite(Number(camera.tilt)) ? Number(camera.tilt) : 60;
-  const fov = Number.isFinite(Number(camera.fov))
-    ? Number(camera.fov)
-    : (Number.isFinite(Number(video.fov)) ? Number(video.fov) : 50);
-  const aspect = Number.isFinite(Number(camera.aspect)) && Number(camera.aspect) > 0
-    ? Number(camera.aspect)
-    : 16 / 9;
-  const glass = glassCornerWu(zoom, fov, aspect, tilt);
+  const glass = ctx ? ctx.glass : (() => {
+    const camera = state && state.camera || {};
+    const video = state && state.settings && state.settings.video || {};
+    const requested = Number(camera.zoom);
+    const live = Number(camera.liveZoom);
+    const zoom = Math.max(
+      Number.isFinite(live) ? live : 0,
+      Number.isFinite(requested) ? requested : 0,
+    ) || 144;
+    const tilt = Number.isFinite(Number(camera.tilt)) ? Number(camera.tilt) : 60;
+    const fov = Number.isFinite(Number(camera.fov))
+      ? Number(camera.fov)
+      : (Number.isFinite(Number(video.fov)) ? Number(video.fov) : 50);
+    const aspect = Number.isFinite(Number(camera.aspect)) && Number(camera.aspect) > 0
+      ? Number(camera.aspect)
+      : 16 / 9;
+    return glassCornerWu(zoom, fov, aspect, tilt);
+  })();
   if (surface <= glass) return true;
   if (distance <= 0) return false;
 
