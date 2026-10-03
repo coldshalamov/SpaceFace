@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { hasUnclassifiedTextures } from './lib/modelTextureRoles.mjs';
 import { authoredCompoundMeasurement, authoredCompoundCoverage, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
+import { authoredWorldSiteMeasurement, measureWorldSiteAssetChain } from './lib/modelTruthWorldSite.mjs';
 // Measure every live solid the loader resolves and write src/data/modelTruthCensus.json.
 // The game does not read this file until a later pass. Re-running with --check fails
 // when the committed census disagrees with a fresh measurement.
@@ -52,6 +53,10 @@ const OUT = resolve(ROOT, 'src/data/modelTruthCensus.json');
 const RELEASE_ROOT = resolve(ROOT, PART_LIBRARY_CONTRACT.releaseRoot);
 const CHECK = process.argv.includes('--check');
 const ONLY = (process.argv.find((arg) => arg.startsWith('--only=')) || '').slice('--only='.length);
+
+const UPDATE_SELECTED = process.argv.includes('--update-selected');
+const ONLY_IDS = new Set(ONLY.split(',').filter(Boolean));
+if (UPDATE_SELECTED && !ONLY_IDS.size) throw new Error('--update-selected requires explicit --only IDs or family');
 
 const AST_DISPLACE = {
   ast_common_rock: { detail: 2, displace: 0.20 },
@@ -552,6 +557,8 @@ async function measureRow(row) {
     };
   }
 
+  const authoredWorldSite = authoredWorldSiteMeasurement(row);
+  const worldSiteEvidence = authoredWorldSite ? await measureWorldSiteAssetChain(ROOT, row, authoredWorldSite) : null;
   const authoredCompound = authoredCompoundMeasurement(row);
   const authoredPlace = row.fit === 'authored-place-origin';
   const measured = await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
@@ -586,9 +593,10 @@ async function measureRow(row) {
     const fit = authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
       : drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec));
     const world = applyFit(measured.points, fit);
-    const collider = authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
+    const collider = authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
     const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
     if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, measured.authoredCompoundCertificate));
+    if (worldSiteEvidence) Object.assign(evaluated, worldSiteEvidence);
     if (!worst || evaluated.gapWu > worst.gapWu || evaluated.throatSealed) {
       worst = {
         gapWu: evaluated.gapWu,
@@ -675,6 +683,10 @@ async function measureRow(row) {
     lod,
   });
 
+  if (worldSiteEvidence) {
+    if (!worldSiteEvidence.authoredClearVolumesPreserved) status.reasons.push('authored-clear-volume-intrusion');
+    status.note = 'Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.';
+  }
   const built = {
     id: row.id,
     family: row.family,
@@ -722,6 +734,7 @@ async function measureRow(row) {
         sourceCompoundParity: worstEval.sourceCompoundParity,
         authoredClearVolumesPreserved: worstEval.authoredClearVolumesPreserved,
       } : {}),
+      ...(worldSiteEvidence ? { worldSiteEvidence } : {}),
       gapWu: worstEval.gapWu,
       toleranceWu: worstEval.toleranceWu,
       coverageWu: worstEval.coverageWu,
@@ -746,7 +759,9 @@ async function measureRow(row) {
 }
 
 async function buildCensus() {
-  const catalog = liveSolidGlbCatalog().filter((row) => !ONLY || row.family === ONLY || row.id === ONLY);
+  const fullCatalog = liveSolidGlbCatalog();
+  if ([...ONLY_IDS].some(id => !fullCatalog.some(row => row.id === id || row.family === id))) throw new Error('Unknown --only selection');
+  const catalog = fullCatalog.filter((row) => !ONLY || ONLY_IDS.has(row.family) || ONLY_IDS.has(row.id));
   const rows = [];
   let index = 0;
   for (const row of catalog) {
@@ -787,7 +802,18 @@ async function buildCensus() {
   };
 }
 
-const census = stable(await buildCensus());
+let census = stable(await buildCensus());
+if (UPDATE_SELECTED) {
+  const previous = JSON.parse(readFileSync(OUT, 'utf8'));
+  const selected = new Map(census.rows.map(row => [row.id, row]));
+  if (!selected.size || [...selected.keys()].some(id => !previous.rows.some(row => row.id === id))) {
+    throw new Error('Selected update refuses empty selection or rows absent from the existing census');
+  }
+  const rows = previous.rows.map(row => selected.get(row.id) || row);
+  const red = rows.filter(row => row.status === 'red').length;
+  census = { ...previous, counts: { ...previous.counts, rows: rows.length, red, green: rows.length - red }, rows };
+  console.log(`[model-truth] refreshed only ${selected.size} rows; preserved ${rows.length - selected.size} prior rows without remeasurement`);
+}
 const text = `${JSON.stringify(census, null, 2)}\n`;
 if (CHECK) {
   if (!existsSync(OUT)) {

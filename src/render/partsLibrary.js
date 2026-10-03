@@ -1,7 +1,7 @@
 import { recordCeresWorkfleetAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
-import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform } from './ceresShipbreakVisuals.js';
+import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform, ceresShipbreakCatalogCollision } from './ceresShipbreakVisuals.js';
 // GLTFKit: authored ship-part composition over the synchronous procedural visual boundary.
 //
 // The renderer must receive an Object3D immediately. We therefore return a stable boundary root,
@@ -2293,6 +2293,7 @@ export function liveSolidGlbCatalog() {
       placeScale: physicalPlace?.scale || 1,
       entityRadius: family === 'drone' ? 2.4 : dressingRadius,
       colliderKind: 'none',
+      ...(ceresShipbreakCatalogCollision(placeId) || {}),
       solid: true,
       nonSolidReason: null,
     });

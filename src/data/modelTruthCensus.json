@@ -1,8 +1,8 @@
 {
   "counts": {
     "rows": 208,
-    "red": 199,
-    "green": 9
+    "red": 196,
+    "green": 12
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -15,7 +15,7 @@
     {
       "bounds": {
         "center": [
-          -1.8e-05,
+          -0.000018,
           0.316118,
           0
         ],
@@ -74,7 +74,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        1.8e-05,
+        0.000018,
         0,
         0
       ],
@@ -181,7 +181,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -1.8e-05,
+        -0.000018,
         0.316118,
         0
       ],
@@ -4938,7 +4938,7 @@
         "center": [
           0.939494,
           0.514771,
-          7e-06
+          0.000007
         ],
         "max": [
           10.599641,
@@ -5160,7 +5160,7 @@
       "pivot": [
         0.939494,
         0.514771,
-        7e-06
+        0.000007
       ],
       "proposedSkin": {
         "adopted": true,
@@ -21298,10 +21298,10 @@
       },
       "bytes": 2314708,
       "collider": {
-        "coverageWu": 200.672497,
-        "gapWu": 200.672497,
+        "coverageWu": 0.012603,
+        "gapWu": 0.012604,
         "id": null,
-        "kind": "none",
+        "kind": "world-site-bodies",
         "outline": [
           178.324857,
           189.578823,
@@ -21329,9 +21329,345 @@
           178.324532
         ],
         "overTolerance": true,
-        "stickWu": 0,
+        "stickWu": null,
         "throatSealed": false,
-        "toleranceWu": 24.0807,
+        "toleranceWu": 0.05,
+        "worldSiteEvidence": {
+          "artifacts": [
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0,
+              "gapWu": 0,
+              "kind": "source",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/parts/places/place_ceres_second_measure.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 35126,
+                  "triangles": 88190,
+                  "uncoveredOutsidePerBodyProjectedHull": 1134,
+                  "uncoveredSamples": 8315,
+                  "uncoveredWithinPerBodyProjectedHull": 7181
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 35126,
+                  "triangles": 35276,
+                  "uncoveredOutsidePerBodyProjectedHull": 1136,
+                  "uncoveredSamples": 8479,
+                  "uncoveredWithinPerBodyProjectedHull": 7343
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 35126,
+                  "triangles": 15162,
+                  "uncoveredOutsidePerBodyProjectedHull": 1136,
+                  "uncoveredSamples": 8650,
+                  "uncoveredWithinPerBodyProjectedHull": 7514
+                }
+              ],
+              "sha256": "b01f8132f1bea8aa58b984a5f3d373b282293aedd91ebadb196fb63e934657f8",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 138628
+            },
+            {
+              "clearVolumeIntersections": 24,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0.012603,
+              "gapWu": 0.012603,
+              "kind": "release",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": true,
+              "path": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 35126,
+                  "triangles": 88190,
+                  "uncoveredOutsidePerBodyProjectedHull": 1138,
+                  "uncoveredSamples": 8437,
+                  "uncoveredWithinPerBodyProjectedHull": 7299
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 35126,
+                  "triangles": 35276,
+                  "uncoveredOutsidePerBodyProjectedHull": 1136,
+                  "uncoveredSamples": 8495,
+                  "uncoveredWithinPerBodyProjectedHull": 7359
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 35126,
+                  "triangles": 15162,
+                  "uncoveredOutsidePerBodyProjectedHull": 1139,
+                  "uncoveredSamples": 8653,
+                  "uncoveredWithinPerBodyProjectedHull": 7514
+                }
+              ],
+              "sha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 138628
+            },
+            {
+              "clearVolumeIntersections": 24,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0.012604,
+              "gapWu": 0.012604,
+              "kind": "package",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": true,
+              "path": "assets/ships/release/render-packages/ceres-second-measure/render.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 35126,
+                  "triangles": 88190,
+                  "uncoveredOutsidePerBodyProjectedHull": 1138,
+                  "uncoveredSamples": 8437,
+                  "uncoveredWithinPerBodyProjectedHull": 7299
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 35126,
+                  "triangles": 35276,
+                  "uncoveredOutsidePerBodyProjectedHull": 1136,
+                  "uncoveredSamples": 8495,
+                  "uncoveredWithinPerBodyProjectedHull": 7359
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 35126,
+                  "triangles": 15162,
+                  "uncoveredOutsidePerBodyProjectedHull": 1139,
+                  "uncoveredSamples": 8653,
+                  "uncoveredWithinPerBodyProjectedHull": 7514
+                }
+              ],
+              "sha256": "eaedbd30a8c0994a0706fabd3a67c7b2ba77785c8fd4b70ed9f7083da4a2c505",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 138628
+            }
+          ],
+          "authoredClearVolumesPreserved": false,
+          "clearVolumeIntersections": 24,
+          "collisionAuthority": {
+            "bodies": [
+              {
+                "colliderId": "world-site-proxy:world_site_ceres_second_measure/collision/aft_island",
+                "dynamic": false,
+                "primitives": [
+                  {
+                    "hx": 33,
+                    "hz": 84.5,
+                    "id": "shell",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": -147,
+                    "z": 14.5
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/collision/aft_island"
+              },
+              {
+                "colliderId": "world-site-proxy:world_site_ceres_second_measure/collision/center_island",
+                "dynamic": false,
+                "primitives": [
+                  {
+                    "hx": 46,
+                    "hz": 65,
+                    "id": "shell",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 0,
+                    "z": -5
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/collision/center_island"
+              },
+              {
+                "colliderId": "world-site-proxy:world_site_ceres_second_measure/collision/fore_island",
+                "dynamic": false,
+                "primitives": [
+                  {
+                    "hx": 33,
+                    "hz": 84.5,
+                    "id": "shell",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 147,
+                    "z": 14.5
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/collision/fore_island"
+              },
+              {
+                "colliderId": "world-site-proxy:world_site_ceres_second_measure/collision/keel_port_shoulder",
+                "dynamic": false,
+                "primitives": [
+                  {
+                    "hx": 5.5,
+                    "hz": 19.5,
+                    "id": "shell",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": -40.5,
+                    "z": 79.5
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/collision/keel_port_shoulder"
+              },
+              {
+                "colliderId": "world-site-proxy:world_site_ceres_second_measure/collision/keel_starboard_shoulder",
+                "dynamic": false,
+                "primitives": [
+                  {
+                    "hx": 5.5,
+                    "hz": 19.5,
+                    "id": "shell",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 40.5,
+                    "z": 79.5
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/collision/keel_starboard_shoulder"
+              }
+            ],
+            "certificatePart": "shell",
+            "geometrySpace": "asset-local-XZ-WU",
+            "manifestId": "world_site_ceres_second_measure",
+            "origin": [
+              0,
+              0,
+              0
+            ],
+            "placeId": "place_ceres_second_measure",
+            "referenceState": "stripped-shell",
+            "scale": 2,
+            "stateScope": "five separate fixed collision bodies; visual root has no collider"
+          },
+          "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+          "coverageWu": 0.012603,
+          "gapWu": 0.012604,
+          "kind": "release",
+          "maxOutsideTriangleAreaWu2": 0,
+          "outsideTriangles": 0,
+          "overTolerance": true,
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+          "provenance": [
+            {
+              "path": "tools/blender/forge/ceres_second_measure_kit.py",
+              "sha256": "f75874253ca0d1fcfb83fd46b3086359c5911a70e33e2cf4a81f70930ace580d"
+            },
+            {
+              "path": "src/data/ceresShipbreak.js",
+              "sha256": "788b23eb0570c159915d8110d81faea5b71e4f9d5f3b6065e34d0c263390f99a"
+            },
+            {
+              "path": "src/data/ceresShipbreakCollision.js",
+              "sha256": "c0e2ca84cc18b64d4b309ae82ef77a342daeae744e96261f309587fe63c9d0c2"
+            },
+            {
+              "path": "src/data/worldSiteAssetBindings.js",
+              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+            },
+            {
+              "path": "src/systems/worldSiteKernel.js",
+              "sha256": "561bccdf8ef5a917007a8f0d1488ecf67533fa5bc51e849490eb66c85ca9d0e3"
+            },
+            {
+              "path": "src/systems/worldSiteRuntime.js",
+              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+            },
+            {
+              "path": "scripts/model-truth-census.mjs",
+              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+            },
+            {
+              "path": "scripts/lib/modelTruthWorldSite.mjs",
+              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+            },
+            {
+              "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+            },
+            {
+              "path": "src/render/ceresShipbreakVisuals.js",
+              "sha256": "db070754d8bd0b48e6d0e9937bcc2631f2d5b99a56bde97852843db6e5325d22"
+            },
+            {
+              "path": "src/render/partsLibrary.js",
+              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+            },
+            {
+              "path": "assets/ships/parts/parts_manifest.json",
+              "sha256": "49ee9b08b08350b19e59c96a4c9a22010f7e5b099f57c24acf48c82615a9d4b3"
+            },
+            {
+              "path": "assets/ships/release/release_manifest.json",
+              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+            },
+            {
+              "path": "assets/ships/render-packages/pilots.json",
+              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+            },
+            {
+              "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
+              "sha256": "ef5b8d5d6d76276e4edddb3a9aeab0a25c64315432c8d1789edfbd8fee351934"
+            }
+          ],
+          "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+          "reverseProjectionSamples": [
+            {
+              "lod": 0,
+              "nativeSamples": 35126,
+              "triangles": 88190,
+              "uncoveredOutsidePerBodyProjectedHull": 1138,
+              "uncoveredSamples": 8437,
+              "uncoveredWithinPerBodyProjectedHull": 7299
+            },
+            {
+              "lod": 1,
+              "nativeSamples": 35126,
+              "triangles": 35276,
+              "uncoveredOutsidePerBodyProjectedHull": 1136,
+              "uncoveredSamples": 8495,
+              "uncoveredWithinPerBodyProjectedHull": 7359
+            },
+            {
+              "lod": 2,
+              "nativeSamples": 35126,
+              "triangles": 15162,
+              "uncoveredOutsidePerBodyProjectedHull": 1139,
+              "uncoveredSamples": 8653,
+              "uncoveredWithinPerBodyProjectedHull": 7514
+            }
+          ],
+          "scope": "Only this source/release/package chain was freshly measured. No full-corpus or GPU acceptance claim.",
+          "sha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+          "sourceCertificateSha256": "885192acd509b47b75a98f315f05cdc9b5fee285f52b7473131e8b3c26989616",
+          "sourceCompoundParity": true,
+          "stickWu": null,
+          "toleranceWu": 0.05,
+          "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+          "triangles": 138628
+        },
         "worstSize": null
       },
       "drawOffset": [
@@ -21346,7 +21682,7 @@
       "gameplay": {
         "ballFactor": null,
         "colliderId": null,
-        "colliderKind": "none",
+        "colliderKind": "world-site-bodies",
         "dockRadius": null,
         "entityRadius": 12,
         "proportions": null,
@@ -21431,7 +21767,7 @@
       "meshHash": null,
       "meshes": 24,
       "nodes": 32,
-      "note": null,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
       "opening": null,
       "pivot": [
         0,
@@ -21440,7 +21776,8 @@
       ],
       "proposedSkin": null,
       "reasons": [
-        "collider-gap"
+        "collider-gap",
+        "authored-clear-volume-intrusion"
       ],
       "shell": {
         "boundaryEdges": 716,
@@ -21544,10 +21881,10 @@
       },
       "bytes": 337436,
       "collider": {
-        "coverageWu": 54.011381,
-        "gapWu": 54.011381,
+        "coverageWu": 0.00342,
+        "gapWu": 0.00342,
         "id": null,
-        "kind": "none",
+        "kind": "world-site-bodies",
         "outline": [
           0,
           0,
@@ -21574,10 +21911,318 @@
           0,
           0
         ],
-        "overTolerance": true,
-        "stickWu": 0,
+        "overTolerance": false,
+        "stickWu": null,
         "throatSealed": false,
-        "toleranceWu": 6.481366,
+        "toleranceWu": 0.05,
+        "worldSiteEvidence": {
+          "artifacts": [
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0,
+              "gapWu": 0,
+              "kind": "source",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/parts/places/place_ceres_second_measure_crossbeam.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 2780,
+                  "triangles": 7400,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 2780,
+                  "triangles": 2960,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 2780,
+                  "triangles": 1332,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 36,
+                  "uncoveredWithinPerBodyProjectedHull": 36
+                }
+              ],
+              "sha256": "7eab2b2e81cfdc023c3d60c3dd31309c88a0d0f1f36f6f1a4d6ff665c0e214c2",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 11692
+            },
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0.00342,
+              "gapWu": 0.00342,
+              "kind": "release",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 2780,
+                  "triangles": 7400,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 2780,
+                  "triangles": 2960,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 2780,
+                  "triangles": 1332,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 36,
+                  "uncoveredWithinPerBodyProjectedHull": 36
+                }
+              ],
+              "sha256": "985bac61950a8ec8c1754ad444627e8aa7ffa8a083cee3dedb4cf0a5fbc24187",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 11692
+            },
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0.003418,
+              "gapWu": 0.003418,
+              "kind": "package",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 2780,
+                  "triangles": 7400,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 2780,
+                  "triangles": 2960,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 2780,
+                  "triangles": 1332,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 36,
+                  "uncoveredWithinPerBodyProjectedHull": 36
+                }
+              ],
+              "sha256": "2f1aecbeced74b1d02e681c2999ae65a162aa9c12069bc1ff413bd9723df638c",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 11692
+            }
+          ],
+          "authoredClearVolumesPreserved": true,
+          "clearVolumeIntersections": 0,
+          "collisionAuthority": {
+            "bodies": [
+              {
+                "colliderId": "world-site-structure:world_site_ceres_second_measure/payload/crossbeam",
+                "dynamic": true,
+                "primitives": [
+                  {
+                    "hx": 9,
+                    "hz": 55,
+                    "id": "matched-section-0",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 0,
+                    "z": 0
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-1",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": -21.5,
+                    "z": -48
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-2",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": -21.5,
+                    "z": 48
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-3",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 21.5,
+                    "z": -48
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-4",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 21.5,
+                    "z": 48
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/payload/crossbeam"
+              }
+            ],
+            "certificatePart": "crossbeam",
+            "geometrySpace": "asset-local-XZ-WU",
+            "manifestId": "world_site_ceres_second_measure",
+            "origin": [
+              0,
+              0,
+              0
+            ],
+            "placeId": "place_ceres_second_measure_crossbeam",
+            "referenceState": "released",
+            "scale": 2,
+            "stateScope": "one independently owned section; mounted/supported is fixed, released unsupported is dynamic; local geometry unchanged"
+          },
+          "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+          "coverageWu": 0.00342,
+          "gapWu": 0.00342,
+          "kind": "release",
+          "maxOutsideTriangleAreaWu2": 0,
+          "outsideTriangles": 0,
+          "overTolerance": false,
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+          "provenance": [
+            {
+              "path": "tools/blender/forge/ceres_second_measure_kit.py",
+              "sha256": "f75874253ca0d1fcfb83fd46b3086359c5911a70e33e2cf4a81f70930ace580d"
+            },
+            {
+              "path": "src/data/ceresShipbreak.js",
+              "sha256": "788b23eb0570c159915d8110d81faea5b71e4f9d5f3b6065e34d0c263390f99a"
+            },
+            {
+              "path": "src/data/ceresShipbreakCollision.js",
+              "sha256": "c0e2ca84cc18b64d4b309ae82ef77a342daeae744e96261f309587fe63c9d0c2"
+            },
+            {
+              "path": "src/data/worldSiteAssetBindings.js",
+              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+            },
+            {
+              "path": "src/systems/worldSiteKernel.js",
+              "sha256": "561bccdf8ef5a917007a8f0d1488ecf67533fa5bc51e849490eb66c85ca9d0e3"
+            },
+            {
+              "path": "src/systems/worldSiteRuntime.js",
+              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+            },
+            {
+              "path": "scripts/model-truth-census.mjs",
+              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+            },
+            {
+              "path": "scripts/lib/modelTruthWorldSite.mjs",
+              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+            },
+            {
+              "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+            },
+            {
+              "path": "src/render/ceresShipbreakVisuals.js",
+              "sha256": "db070754d8bd0b48e6d0e9937bcc2631f2d5b99a56bde97852843db6e5325d22"
+            },
+            {
+              "path": "src/render/partsLibrary.js",
+              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+            },
+            {
+              "path": "assets/ships/parts/parts_manifest.json",
+              "sha256": "49ee9b08b08350b19e59c96a4c9a22010f7e5b099f57c24acf48c82615a9d4b3"
+            },
+            {
+              "path": "assets/ships/release/release_manifest.json",
+              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+            },
+            {
+              "path": "assets/ships/render-packages/pilots.json",
+              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+            },
+            {
+              "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
+              "sha256": "2f40ad84535f8c92a1cbdc3b121b31712cea675647cfe53a9217e636e248b125"
+            }
+          ],
+          "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+          "reverseProjectionSamples": [
+            {
+              "lod": 0,
+              "nativeSamples": 2780,
+              "triangles": 7400,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 0,
+              "uncoveredWithinPerBodyProjectedHull": 0
+            },
+            {
+              "lod": 1,
+              "nativeSamples": 2780,
+              "triangles": 2960,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 0,
+              "uncoveredWithinPerBodyProjectedHull": 0
+            },
+            {
+              "lod": 2,
+              "nativeSamples": 2780,
+              "triangles": 1332,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 36,
+              "uncoveredWithinPerBodyProjectedHull": 36
+            }
+          ],
+          "scope": "Only this source/release/package chain was freshly measured. No full-corpus or GPU acceptance claim.",
+          "sha256": "985bac61950a8ec8c1754ad444627e8aa7ffa8a083cee3dedb4cf0a5fbc24187",
+          "sourceCertificateSha256": "efac4c72c4f2a4651ad953ac63cbfc962d6c584d9a385d86d1416d075c1e12ee",
+          "sourceCompoundParity": true,
+          "stickWu": null,
+          "toleranceWu": 0.05,
+          "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+          "triangles": 11692
+        },
         "worstSize": null
       },
       "drawOffset": [
@@ -21592,7 +22237,7 @@
       "gameplay": {
         "ballFactor": null,
         "colliderId": null,
-        "colliderKind": "none",
+        "colliderKind": "world-site-bodies",
         "dockRadius": null,
         "entityRadius": 12,
         "proportions": null,
@@ -21653,7 +22298,7 @@
       "meshHash": null,
       "meshes": 15,
       "nodes": 20,
-      "note": null,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
       "opening": null,
       "pivot": [
         0,
@@ -21661,9 +22306,7 @@
         0
       ],
       "proposedSkin": null,
-      "reasons": [
-        "collider-gap"
-      ],
+      "reasons": [],
       "shell": {
         "boundaryEdges": 96,
         "inwardFaceFraction": 0.34375,
@@ -21706,7 +22349,7 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 11692,
       "unmeasuredHitVolumes": [],
@@ -21742,10 +22385,10 @@
       },
       "bytes": 229808,
       "collider": {
-        "coverageWu": 36.384089,
-        "gapWu": 36.384089,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": null,
-        "kind": "none",
+        "kind": "world-site-bodies",
         "outline": [
           35.267942,
           36.38387,
@@ -21772,10 +22415,282 @@
           36.384089,
           35.267942
         ],
-        "overTolerance": true,
-        "stickWu": 0,
+        "overTolerance": false,
+        "stickWu": null,
         "throatSealed": false,
-        "toleranceWu": 4.366091,
+        "toleranceWu": 0.05,
+        "worldSiteEvidence": {
+          "artifacts": [
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0,
+              "gapWu": 0,
+              "kind": "source",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/parts/places/place_ceres_second_measure_keel.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 1400,
+                  "triangles": 3008,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 1400,
+                  "triangles": 1202,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 40,
+                  "uncoveredWithinPerBodyProjectedHull": 40
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 1400,
+                  "triangles": 540,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 40,
+                  "uncoveredWithinPerBodyProjectedHull": 40
+                }
+              ],
+              "sha256": "027ca81e41c1f106fcc87fb723090ad968a0a2f12d8ed5d2ba8e9503712aeef2",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 4750
+            },
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0,
+              "gapWu": 0,
+              "kind": "release",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 1400,
+                  "triangles": 3008,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 1400,
+                  "triangles": 1202,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 40,
+                  "uncoveredWithinPerBodyProjectedHull": 40
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 1400,
+                  "triangles": 540,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 40,
+                  "uncoveredWithinPerBodyProjectedHull": 40
+                }
+              ],
+              "sha256": "b8b0cdd789cd4de83f5766554c7ec3f72c03ea31f26d641a2c625411161b2c33",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 4750
+            },
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0,
+              "gapWu": 0,
+              "kind": "package",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 1400,
+                  "triangles": 3008,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 1400,
+                  "triangles": 1202,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 40,
+                  "uncoveredWithinPerBodyProjectedHull": 40
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 1400,
+                  "triangles": 540,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 40,
+                  "uncoveredWithinPerBodyProjectedHull": 40
+                }
+              ],
+              "sha256": "03c0de21940e6545f9f9f2c9f5f53a888a89f778ee810ecf8518cd455a45a529",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 4750
+            }
+          ],
+          "authoredClearVolumesPreserved": true,
+          "clearVolumeIntersections": 0,
+          "collisionAuthority": {
+            "bodies": [
+              {
+                "colliderId": "world-site-structure:world_site_ceres_second_measure/payload/keel",
+                "dynamic": true,
+                "primitives": [
+                  {
+                    "hx": 35,
+                    "hz": 10,
+                    "id": "matched-section-0",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 0,
+                    "z": 0
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/payload/keel"
+              }
+            ],
+            "certificatePart": "keel",
+            "geometrySpace": "asset-local-XZ-WU",
+            "manifestId": "world_site_ceres_second_measure",
+            "origin": [
+              0,
+              0,
+              0
+            ],
+            "placeId": "place_ceres_second_measure_keel",
+            "referenceState": "released",
+            "scale": 2,
+            "stateScope": "one independently owned section; mounted/supported is fixed, released unsupported is dynamic; local geometry unchanged"
+          },
+          "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+          "coverageWu": 0,
+          "gapWu": 0,
+          "kind": "release",
+          "maxOutsideTriangleAreaWu2": 0,
+          "outsideTriangles": 0,
+          "overTolerance": false,
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+          "provenance": [
+            {
+              "path": "tools/blender/forge/ceres_second_measure_kit.py",
+              "sha256": "f75874253ca0d1fcfb83fd46b3086359c5911a70e33e2cf4a81f70930ace580d"
+            },
+            {
+              "path": "src/data/ceresShipbreak.js",
+              "sha256": "788b23eb0570c159915d8110d81faea5b71e4f9d5f3b6065e34d0c263390f99a"
+            },
+            {
+              "path": "src/data/ceresShipbreakCollision.js",
+              "sha256": "c0e2ca84cc18b64d4b309ae82ef77a342daeae744e96261f309587fe63c9d0c2"
+            },
+            {
+              "path": "src/data/worldSiteAssetBindings.js",
+              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+            },
+            {
+              "path": "src/systems/worldSiteKernel.js",
+              "sha256": "561bccdf8ef5a917007a8f0d1488ecf67533fa5bc51e849490eb66c85ca9d0e3"
+            },
+            {
+              "path": "src/systems/worldSiteRuntime.js",
+              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+            },
+            {
+              "path": "scripts/model-truth-census.mjs",
+              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+            },
+            {
+              "path": "scripts/lib/modelTruthWorldSite.mjs",
+              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+            },
+            {
+              "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+            },
+            {
+              "path": "src/render/ceresShipbreakVisuals.js",
+              "sha256": "db070754d8bd0b48e6d0e9937bcc2631f2d5b99a56bde97852843db6e5325d22"
+            },
+            {
+              "path": "src/render/partsLibrary.js",
+              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+            },
+            {
+              "path": "assets/ships/parts/parts_manifest.json",
+              "sha256": "49ee9b08b08350b19e59c96a4c9a22010f7e5b099f57c24acf48c82615a9d4b3"
+            },
+            {
+              "path": "assets/ships/release/release_manifest.json",
+              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+            },
+            {
+              "path": "assets/ships/render-packages/pilots.json",
+              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+            },
+            {
+              "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
+              "sha256": "91b41bbe08f578f90fd9f0faa4dd7ab9c971db2a62f48ff9092cae5dcfd32481"
+            }
+          ],
+          "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+          "reverseProjectionSamples": [
+            {
+              "lod": 0,
+              "nativeSamples": 1400,
+              "triangles": 3008,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 0,
+              "uncoveredWithinPerBodyProjectedHull": 0
+            },
+            {
+              "lod": 1,
+              "nativeSamples": 1400,
+              "triangles": 1202,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 40,
+              "uncoveredWithinPerBodyProjectedHull": 40
+            },
+            {
+              "lod": 2,
+              "nativeSamples": 1400,
+              "triangles": 540,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 40,
+              "uncoveredWithinPerBodyProjectedHull": 40
+            }
+          ],
+          "scope": "Only this source/release/package chain was freshly measured. No full-corpus or GPU acceptance claim.",
+          "sha256": "b8b0cdd789cd4de83f5766554c7ec3f72c03ea31f26d641a2c625411161b2c33",
+          "sourceCertificateSha256": "1517bd9539b25bcd8dabc3ecb1022e8608d4d2de708572b13fc2af8c466c08bf",
+          "sourceCompoundParity": true,
+          "stickWu": null,
+          "toleranceWu": 0.05,
+          "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+          "triangles": 4750
+        },
         "worstSize": null
       },
       "drawOffset": [
@@ -21790,7 +22705,7 @@
       "gameplay": {
         "ballFactor": null,
         "colliderId": null,
-        "colliderKind": "none",
+        "colliderKind": "world-site-bodies",
         "dockRadius": null,
         "entityRadius": 12,
         "proportions": null,
@@ -21851,7 +22766,7 @@
       "meshHash": null,
       "meshes": 15,
       "nodes": 20,
-      "note": null,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
       "opening": null,
       "pivot": [
         0,
@@ -21859,9 +22774,7 @@
         0
       ],
       "proposedSkin": null,
-      "reasons": [
-        "collider-gap"
-      ],
+      "reasons": [],
       "shell": {
         "boundaryEdges": 0,
         "inwardFaceFraction": 0.15675,
@@ -21904,7 +22817,7 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 4750,
       "unmeasuredHitVolumes": [],
@@ -21940,10 +22853,10 @@
       },
       "bytes": 366992,
       "collider": {
-        "coverageWu": 55.716968,
-        "gapWu": 55.716968,
+        "coverageWu": 0.00342,
+        "gapWu": 0.00342,
         "id": null,
-        "kind": "none",
+        "kind": "world-site-bodies",
         "outline": [
           7.261839,
           9.52831,
@@ -21970,10 +22883,318 @@
           9.52831,
           7.261839
         ],
-        "overTolerance": true,
-        "stickWu": 0,
+        "overTolerance": false,
+        "stickWu": null,
         "throatSealed": false,
-        "toleranceWu": 6.686036,
+        "toleranceWu": 0.05,
+        "worldSiteEvidence": {
+          "artifacts": [
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0,
+              "gapWu": 0,
+              "kind": "source",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/parts/places/place_ceres_second_measure_long_plate.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 2780,
+                  "triangles": 8716,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 2780,
+                  "triangles": 3486,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 2780,
+                  "triangles": 1568,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 36,
+                  "uncoveredWithinPerBodyProjectedHull": 36
+                }
+              ],
+              "sha256": "05aebdd9b8d70127a4476d0df32115ec859aa60949b5a7098faf29113529bf66",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 13770
+            },
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0.00342,
+              "gapWu": 0.00342,
+              "kind": "release",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 2780,
+                  "triangles": 8716,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 2780,
+                  "triangles": 3486,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 2780,
+                  "triangles": 1568,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 36,
+                  "uncoveredWithinPerBodyProjectedHull": 36
+                }
+              ],
+              "sha256": "29625dac9588d3d9e44f8b88c46cd2fb679d0e3cb492ddafd4d3199562ebc61b",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 13770
+            },
+            {
+              "clearVolumeIntersections": 0,
+              "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+              "coverageWu": 0.003418,
+              "gapWu": 0.003418,
+              "kind": "package",
+              "maxOutsideTriangleAreaWu2": 0,
+              "outsideTriangles": 0,
+              "overTolerance": false,
+              "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render.glb",
+              "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+              "reverseProjectionSamples": [
+                {
+                  "lod": 0,
+                  "nativeSamples": 2780,
+                  "triangles": 8716,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 1,
+                  "nativeSamples": 2780,
+                  "triangles": 3486,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 0,
+                  "uncoveredWithinPerBodyProjectedHull": 0
+                },
+                {
+                  "lod": 2,
+                  "nativeSamples": 2780,
+                  "triangles": 1568,
+                  "uncoveredOutsidePerBodyProjectedHull": 0,
+                  "uncoveredSamples": 36,
+                  "uncoveredWithinPerBodyProjectedHull": 36
+                }
+              ],
+              "sha256": "cb638c3bd56c335b91ef011abef5802f009d6d51e88431a89e625faff0a70c30",
+              "stickWu": null,
+              "toleranceWu": 0.05,
+              "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+              "triangles": 13770
+            }
+          ],
+          "authoredClearVolumesPreserved": true,
+          "clearVolumeIntersections": 0,
+          "collisionAuthority": {
+            "bodies": [
+              {
+                "colliderId": "world-site-structure:world_site_ceres_second_measure/payload/long_plate",
+                "dynamic": true,
+                "primitives": [
+                  {
+                    "hx": 9,
+                    "hz": 55,
+                    "id": "matched-section-0",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 0,
+                    "z": 0
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-1",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": -21.5,
+                    "z": -48
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-2",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": -21.5,
+                    "z": 48
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-3",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 21.5,
+                    "z": -48
+                  },
+                  {
+                    "hx": 12.5,
+                    "hz": 4,
+                    "id": "matched-section-4",
+                    "kind": "obb",
+                    "rot": 0,
+                    "x": 21.5,
+                    "z": 48
+                  }
+                ],
+                "worldRecordId": "world_site_ceres_second_measure/payload/long_plate"
+              }
+            ],
+            "certificatePart": "long_plate",
+            "geometrySpace": "asset-local-XZ-WU",
+            "manifestId": "world_site_ceres_second_measure",
+            "origin": [
+              0,
+              0,
+              0
+            ],
+            "placeId": "place_ceres_second_measure_long_plate",
+            "referenceState": "released",
+            "scale": 2,
+            "stateScope": "one independently owned section; mounted/supported is fixed, released unsupported is dynamic; local geometry unchanged"
+          },
+          "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
+          "coverageWu": 0.00342,
+          "gapWu": 0.00342,
+          "kind": "release",
+          "maxOutsideTriangleAreaWu2": 0,
+          "outsideTriangles": 0,
+          "overTolerance": false,
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+          "provenance": [
+            {
+              "path": "tools/blender/forge/ceres_second_measure_kit.py",
+              "sha256": "f75874253ca0d1fcfb83fd46b3086359c5911a70e33e2cf4a81f70930ace580d"
+            },
+            {
+              "path": "src/data/ceresShipbreak.js",
+              "sha256": "788b23eb0570c159915d8110d81faea5b71e4f9d5f3b6065e34d0c263390f99a"
+            },
+            {
+              "path": "src/data/ceresShipbreakCollision.js",
+              "sha256": "c0e2ca84cc18b64d4b309ae82ef77a342daeae744e96261f309587fe63c9d0c2"
+            },
+            {
+              "path": "src/data/worldSiteAssetBindings.js",
+              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+            },
+            {
+              "path": "src/systems/worldSiteKernel.js",
+              "sha256": "561bccdf8ef5a917007a8f0d1488ecf67533fa5bc51e849490eb66c85ca9d0e3"
+            },
+            {
+              "path": "src/systems/worldSiteRuntime.js",
+              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+            },
+            {
+              "path": "scripts/model-truth-census.mjs",
+              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+            },
+            {
+              "path": "scripts/lib/modelTruthWorldSite.mjs",
+              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+            },
+            {
+              "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+            },
+            {
+              "path": "src/render/ceresShipbreakVisuals.js",
+              "sha256": "db070754d8bd0b48e6d0e9937bcc2631f2d5b99a56bde97852843db6e5325d22"
+            },
+            {
+              "path": "src/render/partsLibrary.js",
+              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+            },
+            {
+              "path": "assets/ships/parts/parts_manifest.json",
+              "sha256": "49ee9b08b08350b19e59c96a4c9a22010f7e5b099f57c24acf48c82615a9d4b3"
+            },
+            {
+              "path": "assets/ships/release/release_manifest.json",
+              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+            },
+            {
+              "path": "assets/ships/render-packages/pilots.json",
+              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+            },
+            {
+              "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
+              "sha256": "6e91d6bb9407fa4a07ee561fe05e2a41e2a107670354d8132e169d4eccb23d83"
+            }
+          ],
+          "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
+          "reverseProjectionSamples": [
+            {
+              "lod": 0,
+              "nativeSamples": 2780,
+              "triangles": 8716,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 0,
+              "uncoveredWithinPerBodyProjectedHull": 0
+            },
+            {
+              "lod": 1,
+              "nativeSamples": 2780,
+              "triangles": 3486,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 0,
+              "uncoveredWithinPerBodyProjectedHull": 0
+            },
+            {
+              "lod": 2,
+              "nativeSamples": 2780,
+              "triangles": 1568,
+              "uncoveredOutsidePerBodyProjectedHull": 0,
+              "uncoveredSamples": 36,
+              "uncoveredWithinPerBodyProjectedHull": 36
+            }
+          ],
+          "scope": "Only this source/release/package chain was freshly measured. No full-corpus or GPU acceptance claim.",
+          "sha256": "29625dac9588d3d9e44f8b88c46cd2fb679d0e3cb492ddafd4d3199562ebc61b",
+          "sourceCertificateSha256": "d8404a8d37c715612ba65229b4647b5917f572da513ff836c64fc36f014a0c3d",
+          "sourceCompoundParity": true,
+          "stickWu": null,
+          "toleranceWu": 0.05,
+          "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
+          "triangles": 13770
+        },
         "worstSize": null
       },
       "drawOffset": [
@@ -21988,7 +23209,7 @@
       "gameplay": {
         "ballFactor": null,
         "colliderId": null,
-        "colliderKind": "none",
+        "colliderKind": "world-site-bodies",
         "dockRadius": null,
         "entityRadius": 12,
         "proportions": null,
@@ -22049,7 +23270,7 @@
       "meshHash": null,
       "meshes": 15,
       "nodes": 20,
-      "note": null,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
       "opening": null,
       "pivot": [
         0,
@@ -22057,9 +23278,7 @@
         0
       ],
       "proposedSkin": null,
-      "reasons": [
-        "collider-gap"
-      ],
+      "reasons": [],
       "shell": {
         "boundaryEdges": 96,
         "inwardFaceFraction": 0.35,
@@ -22102,7 +23321,7 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 13770,
       "unmeasuredHitVolumes": [],
@@ -22975,7 +24194,7 @@
       "bounds": {
         "center": [
           7.397417,
-          -1.1e-05,
+          -0.000011,
           -3.041215
         ],
         "max": [
@@ -23173,7 +24392,7 @@
       "opening": null,
       "pivot": [
         7.397417,
-        -1.1e-05,
+        -0.000011,
         -3.041215
       ],
       "proposedSkin": {
@@ -25648,7 +26867,7 @@
         ],
         "min": [
           -2.707303,
-          -6.4e-05,
+          -0.000064,
           -3
         ],
         "size": [
@@ -27447,7 +28666,7 @@
         ],
         "min": [
           -1.7,
-          -6.7e-05,
+          -0.000067,
           -1.7
         ],
         "size": [
@@ -33305,7 +34524,7 @@
         ],
         "min": [
           -3.143463,
-          -6.1e-05,
+          -0.000061,
           -3.15
         ],
         "size": [
@@ -38768,7 +39987,7 @@
         "center": [
           1.201832,
           6.63725,
-          3e-06
+          0.000003
         ],
         "max": [
           3.716428,
@@ -38827,7 +40046,7 @@
       "drawOffset": [
         -1.201832,
         0,
-        -3e-06
+        -0.000003
       ],
       "drawScale": 1,
       "family": "place",
@@ -38958,7 +40177,7 @@
       "pivot": [
         1.201832,
         6.63725,
-        3e-06
+        0.000003
       ],
       "proposedSkin": {
         "adopted": true,
@@ -40986,7 +42205,7 @@
         ],
         "min": [
           -1.8,
-          3.7e-05,
+          0.000037,
           -1.2
         ],
         "size": [
@@ -41282,7 +42501,7 @@
         "boundaryEdges": 0,
         "inwardFaceFraction": 0.351563,
         "silhouetteRadius": 2.417248,
-        "sliceY": 3.7e-05
+        "sliceY": 0.000037
       },
       "sockets": [
         {
@@ -44219,7 +45438,7 @@
         "center": [
           -0.367959,
           1.439763,
-          -9.7e-05
+          -0.000097
         ],
         "max": [
           10.184116,
@@ -44436,7 +45655,7 @@
       "pivot": [
         -0.367959,
         1.439763,
-        -9.7e-05
+        -0.000097
       ],
       "proposedSkin": {
         "adopted": true,
@@ -44793,7 +46012,7 @@
         "center": [
           -0.169838,
           3.719527,
-          3.2e-05
+          0.000032
         ],
         "max": [
           26.580511,
@@ -44994,7 +46213,7 @@
       "pivot": [
         -0.169838,
         3.719527,
-        3.2e-05
+        0.000032
       ],
       "proposedSkin": {
         "adopted": true,
@@ -61290,7 +62509,7 @@
         "center": [
           -2.050001,
           -0.491249,
-          4.6e-05
+          0.000046
         ],
         "max": [
           36.001521,
@@ -61520,7 +62739,7 @@
       "pivot": [
         -2.050001,
         -0.491249,
-        4.6e-05
+        0.000046
       ],
       "proposedSkin": {
         "adopted": true,
@@ -63803,7 +65022,7 @@
         "center": [
           0.339666,
           2.465913,
-          1e-06
+          0.000001
         ],
         "max": [
           16.4,
@@ -64025,7 +65244,7 @@
       "pivot": [
         0.339666,
         2.465913,
-        1e-06
+        0.000001
       ],
       "proposedSkin": {
         "adopted": true,
@@ -64881,7 +66100,7 @@
         "center": [
           -0.035243,
           0.800124,
-          -3.4e-05
+          -0.000034
         ],
         "max": [
           11.300076,
@@ -65095,7 +66314,7 @@
       "pivot": [
         -0.035243,
         0.800124,
-        -3.4e-05
+        -0.000034
       ],
       "proposedSkin": {
         "adopted": true,
@@ -74473,8 +75692,8 @@
       "bounds": {
         "center": [
           0,
-          -2e-06,
-          -8e-05
+          -0.000002,
+          -0.00008
         ],
         "max": [
           5.542346,
@@ -74533,7 +75752,7 @@
       "drawOffset": [
         0,
         0,
-        8e-05
+        0.00008
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -74671,8 +75890,8 @@
       "opening": null,
       "pivot": [
         0,
-        -2e-06,
-        -8e-05
+        -0.000002,
+        -0.00008
       ],
       "proposedSkin": {
         "adopted": true,
@@ -74937,7 +76156,7 @@
     {
       "bounds": {
         "center": [
-          1.7e-05,
+          0.000017,
           -0.000183,
           0
         ],
@@ -74996,7 +76215,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -1.7e-05,
+        -0.000017,
         0,
         0
       ],
@@ -75103,7 +76322,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        1.7e-05,
+        0.000017,
         -0.000183,
         0
       ],
@@ -75360,9 +76579,9 @@
     {
       "bounds": {
         "center": [
-          -9e-06,
-          -1.3e-05,
-          3.6e-05
+          -0.000009,
+          -0.000013,
+          0.000036
         ],
         "max": [
           3.460292,
@@ -75419,9 +76638,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        9e-06,
+        0.000009,
         0,
-        -3.6e-05
+        -0.000036
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -75510,9 +76729,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -9e-06,
-        -1.3e-05,
-        3.6e-05
+        -0.000009,
+        -0.000013,
+        0.000036
       ],
       "proposedSkin": {
         "adopted": true,
@@ -75597,8 +76816,8 @@
     {
       "bounds": {
         "center": [
-          -4.2e-05,
-          1.6e-05,
+          -0.000042,
+          0.000016,
           0
         ],
         "max": [
@@ -75656,7 +76875,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        4.2e-05,
+        0.000042,
         0,
         0
       ],
@@ -75787,8 +77006,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -4.2e-05,
-        1.6e-05,
+        -0.000042,
+        0.000016,
         0
       ],
       "proposedSkin": {
@@ -76017,9 +77236,9 @@
     {
       "bounds": {
         "center": [
-          2e-06,
+          0.000002,
           0.000143,
-          -7.2e-05
+          -0.000072
         ],
         "max": [
           8.5,
@@ -76076,9 +77295,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -2e-06,
+        -0.000002,
         0,
-        7.2e-05
+        0.000072
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -76143,9 +77362,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        2e-06,
+        0.000002,
         0.000143,
-        -7.2e-05
+        -0.000072
       ],
       "proposedSkin": {
         "adopted": true,
@@ -76293,8 +77512,8 @@
     {
       "bounds": {
         "center": [
-          3e-06,
-          -8e-06,
+          0.000003,
+          -0.000008,
           0
         ],
         "max": [
@@ -76352,7 +77571,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -3e-06,
+        -0.000003,
         0,
         0
       ],
@@ -76403,8 +77622,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        3e-06,
-        -8e-06,
+        0.000003,
+        -0.000008,
         0
       ],
       "proposedSkin": {
@@ -76563,7 +77782,7 @@
       "bounds": {
         "center": [
           0,
-          -1e-06,
+          -0.000001,
           0
         ],
         "max": [
@@ -76721,7 +77940,7 @@
       "opening": null,
       "pivot": [
         0,
-        -1e-06,
+        -0.000001,
         0
       ],
       "proposedSkin": {
@@ -76862,7 +78081,7 @@
       "bounds": {
         "center": [
           0,
-          -2.3e-05,
+          -0.000023,
           0
         ],
         "max": [
@@ -76988,7 +78207,7 @@
       "opening": null,
       "pivot": [
         0,
-        -2.3e-05,
+        -0.000023,
         0
       ],
       "proposedSkin": {
@@ -77209,8 +78428,8 @@
     {
       "bounds": {
         "center": [
-          1.9e-05,
-          3.9e-05,
+          0.000019,
+          0.000039,
           0
         ],
         "max": [
@@ -77268,7 +78487,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -1.9e-05,
+        -0.000019,
         0,
         0
       ],
@@ -77343,8 +78562,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        1.9e-05,
-        3.9e-05,
+        0.000019,
+        0.000039,
         0
       ],
       "proposedSkin": {
@@ -77601,7 +78820,7 @@
     {
       "bounds": {
         "center": [
-          -5.5e-05,
+          -0.000055,
           0,
           0
         ],
@@ -77660,7 +78879,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        5.5e-05,
+        0.000055,
         0,
         0
       ],
@@ -77759,7 +78978,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -5.5e-05,
+        -0.000055,
         0,
         0
       ],
@@ -78194,9 +79413,9 @@
     {
       "bounds": {
         "center": [
-          -2.7e-05,
-          -4e-06,
-          9e-06
+          -0.000027,
+          -0.000004,
+          0.000009
         ],
         "max": [
           4.093981,
@@ -78253,9 +79472,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        2.7e-05,
+        0.000027,
         0,
-        -9e-06
+        -0.000009
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -78360,9 +79579,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -2.7e-05,
-        -4e-06,
-        9e-06
+        -0.000027,
+        -0.000004,
+        0.000009
       ],
       "proposedSkin": {
         "adopted": true,
@@ -78915,7 +80134,7 @@
     {
       "bounds": {
         "center": [
-          -3.9e-05,
+          -0.000039,
           0.000732,
           0
         ],
@@ -78974,7 +80193,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        3.9e-05,
+        0.000039,
         0,
         0
       ],
@@ -79025,7 +80244,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -3.9e-05,
+        -0.000039,
         0.000732,
         0
       ],
@@ -79103,9 +80322,9 @@
     {
       "bounds": {
         "center": [
-          9e-06,
-          1.5e-05,
-          4.3e-05
+          0.000009,
+          0.000015,
+          0.000043
         ],
         "max": [
           4,
@@ -79162,9 +80381,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -9e-06,
+        -0.000009,
         0,
-        -4.3e-05
+        -0.000043
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -79213,9 +80432,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        9e-06,
-        1.5e-05,
-        4.3e-05
+        0.000009,
+        0.000015,
+        0.000043
       ],
       "proposedSkin": {
         "adopted": true,
@@ -79588,7 +80807,7 @@
       "bounds": {
         "center": [
           0,
-          -3.7e-05,
+          -0.000037,
           0
         ],
         "max": [
@@ -79698,7 +80917,7 @@
       "opening": null,
       "pivot": [
         0,
-        -3.7e-05,
+        -0.000037,
         0
       ],
       "proposedSkin": {
@@ -79910,8 +81129,8 @@
     {
       "bounds": {
         "center": [
-          7.1e-05,
-          -5.2e-05,
+          0.000071,
+          -0.000052,
           0
         ],
         "max": [
@@ -79969,7 +81188,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -7.1e-05,
+        -0.000071,
         0,
         0
       ],
@@ -80020,8 +81239,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        7.1e-05,
-        -5.2e-05,
+        0.000071,
+        -0.000052,
         0
       ],
       "proposedSkin": {
@@ -80162,8 +81381,8 @@
       "bounds": {
         "center": [
           0,
-          -2.9e-05,
-          -2e-06
+          -0.000029,
+          -0.000002
         ],
         "max": [
           2.410237,
@@ -80222,7 +81441,7 @@
       "drawOffset": [
         0,
         0,
-        2e-06
+        0.000002
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -80264,8 +81483,8 @@
       "opening": null,
       "pivot": [
         0,
-        -2.9e-05,
-        -2e-06
+        -0.000029,
+        -0.000002
       ],
       "proposedSkin": {
         "adopted": true,
@@ -80414,8 +81633,8 @@
       "bounds": {
         "center": [
           0,
-          1.4e-05,
-          -1.8e-05
+          0.000014,
+          -0.000018
         ],
         "max": [
           5.5,
@@ -80474,7 +81693,7 @@
       "drawOffset": [
         0,
         0,
-        1.8e-05
+        0.000018
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -80516,8 +81735,8 @@
       "opening": null,
       "pivot": [
         0,
-        1.4e-05,
-        -1.8e-05
+        0.000014,
+        -0.000018
       ],
       "proposedSkin": {
         "adopted": true,
@@ -80611,8 +81830,8 @@
     {
       "bounds": {
         "center": [
-          -2.1e-05,
-          -7.3e-05,
+          -0.000021,
+          -0.000073,
           0
         ],
         "max": [
@@ -80670,7 +81889,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        2.1e-05,
+        0.000021,
         0,
         0
       ],
@@ -80801,8 +82020,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -2.1e-05,
-        -7.3e-05,
+        -0.000021,
+        -0.000073,
         0
       ],
       "proposedSkin": {
@@ -81076,7 +82295,7 @@
     {
       "bounds": {
         "center": [
-          -1e-06,
+          -0.000001,
           -0.000109,
           0
         ],
@@ -81135,7 +82354,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        1e-06,
+        0.000001,
         0,
         0
       ],
@@ -81250,7 +82469,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -1e-06,
+        -0.000001,
         -0.000109,
         0
       ],
@@ -81523,7 +82742,7 @@
     {
       "bounds": {
         "center": [
-          -1e-06,
+          -0.000001,
           -0.000109,
           0
         ],
@@ -81582,7 +82801,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        1e-06,
+        0.000001,
         0,
         0
       ],
@@ -81705,7 +82924,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -1e-06,
+        -0.000001,
         -0.000109,
         0
       ],
@@ -81979,7 +83198,7 @@
       "bounds": {
         "center": [
           0,
-          8e-05,
+          0.00008,
           0
         ],
         "max": [
@@ -82153,7 +83372,7 @@
       "opening": null,
       "pivot": [
         0,
-        8e-05,
+        0.00008,
         0
       ],
       "proposedSkin": {
@@ -82399,8 +83618,8 @@
       "bounds": {
         "center": [
           0,
-          -2.2e-05,
-          7e-06
+          -0.000022,
+          0.000007
         ],
         "max": [
           8,
@@ -82459,7 +83678,7 @@
       "drawOffset": [
         0,
         0,
-        -7e-06
+        -0.000007
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -82541,8 +83760,8 @@
       "opening": null,
       "pivot": [
         0,
-        -2.2e-05,
-        7e-06
+        -0.000022,
+        0.000007
       ],
       "proposedSkin": {
         "adopted": true,
@@ -83402,7 +84621,7 @@
         "center": [
           0,
           0.000294,
-          -2.4e-05
+          -0.000024
         ],
         "max": [
           43.500001,
@@ -83461,7 +84680,7 @@
       "drawOffset": [
         0,
         0,
-        2.4e-05
+        0.000024
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -83568,7 +84787,7 @@
       "pivot": [
         0,
         0.000294,
-        -2.4e-05
+        -0.000024
       ],
       "proposedSkin": {
         "adopted": true,
@@ -83761,7 +84980,7 @@
         "center": [
           0,
           0.000294,
-          -2.4e-05
+          -0.000024
         ],
         "max": [
           43.500001,
@@ -83820,7 +85039,7 @@
       "drawOffset": [
         0,
         0,
-        2.4e-05
+        0.000024
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -83927,7 +85146,7 @@
       "pivot": [
         0,
         0.000294,
-        -2.4e-05
+        -0.000024
       ],
       "proposedSkin": {
         "adopted": true,
@@ -84118,9 +85337,9 @@
     {
       "bounds": {
         "center": [
-          -1e-06,
+          -0.000001,
           0.000276,
-          -2.3e-05
+          -0.000023
         ],
         "max": [
           39.812188,
@@ -84177,9 +85396,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        1e-06,
+        0.000001,
         0,
-        2.3e-05
+        0.000023
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -84292,9 +85511,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -1e-06,
+        -0.000001,
         0.000276,
-        -2.3e-05
+        -0.000023
       ],
       "proposedSkin": {
         "adopted": true,
@@ -84485,7 +85704,7 @@
     {
       "bounds": {
         "center": [
-          -5.2e-05,
+          -0.000052,
           0.000277,
           0
         ],
@@ -84544,7 +85763,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        5.2e-05,
+        0.000052,
         0,
         0
       ],
@@ -84715,7 +85934,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -5.2e-05,
+        -0.000052,
         0.000277,
         0
       ],
@@ -87134,8 +88353,8 @@
       "bounds": {
         "center": [
           -0.000107,
-          6.2e-05,
-          -8.2e-05
+          0.000062,
+          -0.000082
         ],
         "max": [
           72.5,
@@ -87194,7 +88413,7 @@
       "drawOffset": [
         0.000107,
         0,
-        8.2e-05
+        0.000082
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -87380,8 +88599,8 @@
       "opening": null,
       "pivot": [
         -0.000107,
-        6.2e-05,
-        -8.2e-05
+        0.000062,
+        -0.000082
       ],
       "proposedSkin": {
         "adopted": true,
@@ -88417,7 +89636,7 @@
     {
       "bounds": {
         "center": [
-          1.1e-05,
+          0.000011,
           1.224527,
           -0.184304
         ],
@@ -88476,7 +89695,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -1.1e-05,
+        -0.000011,
         0,
         0.184304
       ],
@@ -88607,7 +89826,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        1.1e-05,
+        0.000011,
         1.224527,
         -0.184304
       ],
