@@ -20,9 +20,14 @@
 // Consequences stay with their owners: this module writes only its own record state and emits
 // advisory events/toasts. It never writes credits, reputation, heat or cargo.
 import { makeShipEntitySpec } from './ships.js';
+import { SHIPS } from '../data/ships.js';
 import { hash32 } from '../core/rng.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+
+// makeShipEntitySpec silently falls back to ship_kestrel for an unknown defId — a return must
+// never come back as a kestrel wearing a person's record, so spawnable ids are validated here.
+const SPAWNABLE_SHIP_IDS = new Set(SHIPS.map((ship) => ship.id));
 
 export const RESCUED_WORKERS_SCHEMA = 'spaceface.rescuedWorkers.v1';
 
@@ -130,17 +135,18 @@ export function createRescuedWorkerReturn(owner) {
 
   const pruneRecords = () => {
     const people = own().people;
-    const keys = Object.keys(people);
-    if (keys.length <= RESCUED_WORKER_MAX_RECORDS) return;
-    const open = (key) => {
+    const byOldest = (keys) => keys.sort((a, b) => (people[a].ejectedAtS || 0) - (people[b].ejectedAtS || 0));
+    const isOpen = (key) => {
       const rec = people[key];
       return rec.outcome === 'adrift' || rec.outcome === 'rescued';
     };
-    const closed = keys.filter((key) => !open(key));
-    const pool = closed.length ? closed : keys;
-    pool.sort((a, b) => (people[a].ejectedAtS || 0) - (people[b].ejectedAtS || 0));
-    while (Object.keys(people).length > RESCUED_WORKER_MAX_RECORDS && pool.length) {
-      delete people[pool.shift()];
+    // Trim TO the cap: closed records recycle first; if none are closed, the oldest open
+    // record yields (bounded residency outranks a pending return that has not landed).
+    while (Object.keys(people).length > RESCUED_WORKER_MAX_RECORDS) {
+      const closed = byOldest(Object.keys(people).filter((key) => !isOpen(key)));
+      const oldest = closed[0] || byOldest(Object.keys(people))[0];
+      if (oldest == null) break;
+      delete people[oldest];
     }
   };
 
@@ -156,11 +162,25 @@ export function createRescuedWorkerReturn(owner) {
     `rescued-worker:${state.meta?.seed || 1}:${hash32(state.meta?.seed || 1, String(victimId), 'rescuedWorker').toString(36)}`;
 
   // ── capture: who just died, and what was their actual job? ────────────────────────────────
-  // Runs on entity:killed. The uniqueWrecks host registers before npcJobsRuntime, so the
-  // victim's job entry is still readable here; the kernel ends the job later in the same emit.
+  // Runs on entity:killed. A dying RETURNED worker routes to the loss path first — their own
+  // record closes 'lost', no new capture, no second person wearing the same world record. For
+  // everyone else, the uniqueWrecks host registers before npcJobsRuntime, so the victim's job
+  // entry is still readable here; the kernel ends the job later in the same emit.
   function killed(payload) {
-    if (!payload || payload.id == null || !helpers?.npcJobs?.get) return;
-    const victim = state.entities?.get?.(payload.id);
+    if (!payload || payload.id == null) return;
+    const now = simNowOf(state);
+    // The join is the durable returnedEntityId, with the hull's stamped person key as the
+    // second witness (numeric entity ids recycle; the record and the stamp do not).
+    const dyingEntity = state.entities?.get?.(payload.id);
+    const returnedRecord = dyingEntity?.data?.rescuedWorkerPerson
+      ? recordOf(String(dyingEntity.data.rescuedWorkerPerson))
+      : Object.values(own().people).find((rec) => rec.returnedEntityId === payload.id) || null;
+    if (returnedRecord) {
+      noteReturnedLoss(returnedRecord, now);
+      return;
+    }
+    if (!helpers?.npcJobs?.get) return;
+    const victim = dyingEntity;
     const data = victim?.data;
     if (!data?.jobId) return;
     const entry = helpers.npcJobs.get(data.jobId);
@@ -314,7 +334,8 @@ export function createRescuedWorkerReturn(owner) {
       if (existing == null && state.world?.records?.byId?.[record.worldRecordId]) continue;
       if (record.returnedAtS != null) continue; // one return per rescue, never a duplicate
 
-      if (!record.defId) continue; // no known body to rebuild honestly — the record stays open
+      // Unknown defIds are skipped, not kestrelled: no fabricated body for this person.
+      if (!record.defId || !SPAWNABLE_SHIP_IDS.has(record.defId)) continue;
       const home = record.workplace.route[0]?.pos || { x: 0, z: 0 };
       const off = (hash32(state.meta?.seed || 1, record.personKey, 'returnOffset') % 60) + 30;
       let entity = null;
@@ -364,23 +385,11 @@ export function createRescuedWorkerReturn(owner) {
   }
 
   // A returned worker's death is final: outcome 'lost', charged once, never respawned.
+
   function noteReturnedLoss(record, now) {
     if (!record || record.outcome !== 'returned' || record.lostAtS != null) return;
     record.outcome = 'lost';
     record.lostAtS = now;
-  }
-
-  function killedReturn(payload) {
-    if (!payload || payload.id == null) return;
-    const now = simNowOf(state);
-    for (const record of Object.values(own().people)) {
-      if (record.returnedEntityId === payload.id) {
-        noteReturnedLoss(record, now);
-        continue;
-      }
-      const entity = state.entities?.get?.(payload.id);
-      if (entity?.data?.rescuedWorkerPerson === record.personKey) noteReturnedLoss(record, now);
-    }
   }
 
   // Detached-scalar projection for tests/debug (choir berthStatus precedent).
@@ -406,7 +415,6 @@ export function createRescuedWorkerReturn(owner) {
     killed,
     podEjected,
     podResolved,
-    noteReturnedLoss,
     clear: () => { pending.clear(); actors.clear(); },
     status,
   };

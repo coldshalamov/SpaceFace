@@ -126,6 +126,49 @@ test('SF-156: a rescued worker returns to their actual job, once', () => {
   sim.dispose();
 });
 
+test('SF-156: a returned worker\'s death is final — no second person wears the record', () => {
+  const sim = boot();
+  const seen = { returned: [] };
+  sim.bus.on('rescuedWorker:returned', (p) => seen.returned.push(p));
+
+  const worker = hull(sim, 'wr-rescued-156d', { x: 0, z: 0 }, { defId: 'ship_wasp' });
+  sim.helpers.npcJobs.assign(worker, { kind: 'miner', route: ROUTE, sectorId: SECTOR, ...SHORT });
+  stepSeconds(sim, 10);
+  killWorker(sim, worker);
+  rescue(sim, worker, 'survivor:final:1');
+  stepSeconds(sim, 90);
+  sim.bus.emit('economy:tick');
+  steps(sim, 5);
+  assert.equal(seen.returned.length, 1, 'the return happened once');
+  const backHull = hullsByRecord(sim, 'wr-rescued-156d')[0];
+  assert.ok(backHull, 'the returned worker is on the field');
+  assert.ok(backHull.data.jobId, 'the returned worker still holds their job when they die');
+
+  // The returned worker dies: the record closes 'lost' — no NEW capture of the returned hull.
+  sim.bus.emit('entity:killed', { id: backHull.id });
+  sim.state.entities.delete(backHull.id); // the real kill path despawns even persistent hulls
+  // Even if a pod ejects for the dead returned worker and is later rescued: nothing re-fires.
+  sim.bus.emit('survivorPod:ejected', {
+    entityId: 777001, victimId: backHull.id, sectorId: SECTOR,
+    factionId: 'faction_free', phase: 'adrift', source: 'causal_eject',
+  });
+  sim.bus.emit('survivorPod:resolved', {
+    id: 'survivor:final:2', outcome: 'rescued', victimId: backHull.id,
+    sectorId: SECTOR, t: sim.state.simTime,
+  });
+  stepSeconds(sim, 90);
+  sim.bus.emit('economy:tick');
+  steps(sim, 5);
+
+  const status = sim.registry.get('uniqueWrecks')._rescuedWorkers.status();
+  assert.equal(status.length, 1, 'still exactly one person record');
+  assert.equal(status[0].outcome, 'lost', 'the existing record closed lost, not re-opened');
+  assert.ok(status[0].lostAtS != null, 'the loss is on the record');
+  assert.equal(seen.returned.length, 1, 'no second return fires');
+  assert.equal(hullsByRecord(sim, 'wr-rescued-156d').length, 0, 'no hull re-spawned for the lost person');
+  sim.dispose();
+});
+
 test('SF-156: person identity survives save/restore — and never doubles', () => {
   // Save taken between the rescue and the return.
   const simA = boot();

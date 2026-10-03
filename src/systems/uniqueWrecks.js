@@ -39,8 +39,8 @@ import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js'
 // PB-CONS-B (SF-156 + SF-162): the aftermath-people companions, same hosting law as the Choir
 // berth — durable world records live in this owner's saved bag, the physical people ride the
 // job kernel, and every consequence outside the records stays with its canonical owner.
-import { createRescuedWorkerReturn } from './rescuedWorkerReturn.js';
-import { createScavengerOccupationSwitch } from './scavengerOccupationSwitch.js';
+import { createRescuedWorkerReturn, normalizeRescuedWorkers } from './rescuedWorkerReturn.js';
+import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './scavengerOccupationSwitch.js';
 
 const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
 
@@ -140,6 +140,10 @@ export function createUniqueWreckState(metaSeed) {
     receipts: [],
     choirRelief: normalizeChoirRelief(),
     memorialThief: normalizeMemorialThief(),
+    // PB-CONS-B: the aftermath-people bags live in the same whitelist as the Choir's, so a
+    // validation-failure rebuild re-seeds them instead of silently dropping durable people.
+    rescuedWorkers: normalizeRescuedWorkers(),
+    occupationSwitch: normalizeOccupationSwitch(),
   };
 }
 
@@ -161,6 +165,8 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     receipts: [],
     choirRelief: normalizeChoirRelief(input.choirRelief),
     memorialThief: normalizeMemorialThief(input.memorialThief),
+    rescuedWorkers: normalizeRescuedWorkers(input.rescuedWorkers),
+    occupationSwitch: normalizeOccupationSwitch(input.occupationSwitch),
   };
   const bearings = input.bearings && typeof input.bearings === 'object' ? input.bearings : {};
   for (const def of UNIQUE_WRECKS) {

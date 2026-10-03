@@ -280,8 +280,16 @@ export function createScavengerOccupationSwitch(owner) {
       if (state.world?.records?.byId?.[scavengerWorldRecordId(state.meta?.seed || 1, record.fieldId)]) continue;
       const station = stationFor(record.sectorId);
       if (!station) continue;
-      const lastPos = state.entities?.get?.(record.haulerEntityId)?.pos || station.pos;
-      const entity = spawnHauler(record, { x: lastPos.x, z: lastPos.z });
+      // Degenerate-restore guard: never spawn ON the destination — the delivery must be a real
+      // flight. The last known position is used only when it is meaningfully away from the
+      // depot; otherwise the hauler re-enters just outside the station ring.
+      const last = state.entities?.get?.(record.haulerEntityId)?.pos;
+      const ring = (station.radius || 50) + STATION_ARRIVAL;
+      const away = last && Math.hypot(last.x - station.pos.x, last.z - station.pos.z) > ring;
+      const spawnPos = away
+        ? { x: last.x, z: last.z }
+        : { x: station.pos.x - ring, z: station.pos.z };
+      const entity = spawnHauler(record, spawnPos);
       if (!entity) continue;
       assignDeliveryJob(entity, record, station);
       record.haulerEntityId = entity.id;
