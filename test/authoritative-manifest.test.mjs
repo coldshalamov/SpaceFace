@@ -72,8 +72,9 @@ test('production init + update order lengths match the live browser baseline', (
   // Bumper's timed front wedge; one system in both orders, right after impulseCharges so both blast
   // verbs sit before physics. Absent from the frozen legacy47a list, so the 47-A golden cannot see it.
   // Morrow adds one fixed-step character owner before physics.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 166);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 125);
+  // BRACKET adds one fixed-step character owner before physics.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 167);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 126);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
