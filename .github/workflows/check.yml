@@ -87,6 +87,14 @@ jobs:
           npm run check:parallax
           npm run check:live-whole-ship-admission
 
+      - name: Validate planar physics and attachment residency
+        if: ${{ !cancelled() && matrix.shard == 1 }}
+        run: node --test test/sg02-planar-prism-depth.test.mjs test/sg02-planar-prism-restore.test.mjs test/sg02-planar-prism-settings.test.mjs test/activity-broken-attachment-continuation.test.mjs
+
+      - name: Validate native restore transactions
+        if: ${{ !cancelled() && matrix.shard == 1 }}
+        run: node --test test/sg02-native-save-reconciliation.test.mjs test/sg02-native-save-duplicate-record.test.mjs test/sg02-native-attachment-policy.test.mjs test/sg02-native-save-supersession.test.mjs
+
       - name: Validate program control plane
         if: matrix.shard == 1
         run: |

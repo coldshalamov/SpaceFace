@@ -4735,7 +4735,7 @@ export const save = {
       yield 'deserialized-world';
       // Stash the SG-02 world snapshot: a fresh backend owner adopts it (boot-load, harness
       // reset); a live owner keeps its own world and the stash is dropped.
-      this._callDeserialize('physics', data.physics);
+      this.registry?.get?.('physics')?.deserialize?.(data.physics, { deferNative: true });
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
       yield 'deserialized-regional-ecology';
@@ -5070,6 +5070,7 @@ export const save = {
           saveLoadedDrainSince = nowMs();
         }
       }
+      this.registry?.get?.('physics')?.completeRestore?.({ entityIdRemap });
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;
@@ -5122,6 +5123,9 @@ export const save = {
     delete state.restoreEnvelopeRecordIds;
     this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
     this._lastAutosavePlaytime = state.meta.playtimeS;
+    // Release this failed session's physics barrier before a newer queued route can
+    // install its native world. The older epilogue must not cancel that newer restore.
+    if (restoreError != null) this.registry?.get?.('physics')?.cancelRestore?.();
     if (pendingRunTransition) {
       try {
         drainedRunTransition = pendingRunTransition();

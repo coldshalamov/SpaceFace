@@ -298,6 +298,26 @@ export function createAttachmentService(context) {
     return policyForAttachment(def, entity(attachment.ownerId), attachment);
   }
 
+  // Read-only save validation uses the same effective inputs as reconstruction. Policy
+  // rebasing may replace tetherPolicy, so resolve against a scratch semantic record.
+  function physicsContract(attachmentId) {
+    const attachment = get(attachmentId);
+    if (!attachment || attachment.state !== 'active') return null;
+    const def = catalog.attachments.get(attachment.defId);
+    const owner = entity(attachment.ownerId), target = entity(attachment.targetId);
+    if (!def || !owner || owner.alive === false || !target || target.alive === false
+      || owner === target || occupantMismatch(owner, attachment.ownerGeneration)
+      || occupantMismatch(target, attachment.targetGeneration)) return null;
+    const sourceAnchor = validLocalPoint(attachment.sourceAnchorLocal);
+    const targetAnchor = validLocalPoint(attachment.targetAnchorLocal);
+    if (!sourceAnchor || !targetAnchor) return null;
+    const sourceWorld = entityLocalPointToWorld(owner, sourceAnchor);
+    const targetWorld = entityLocalPointToWorld(target, targetAnchor);
+    const scratch = { ...attachment, tetherPolicy: cloneSerializableRecord(attachment.tetherPolicy) };
+    return physicsPolicy(scratch, def, owner, target,
+      Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z));
+  }
+
   function create(spec) {
     const def = catalog.attachments.get(spec && spec.defId);
     const owner = entity(spec && spec.ownerId);
@@ -1007,7 +1027,7 @@ export function createAttachmentService(context) {
         && attachment.controllerId === controllerId);
   }
 
-  return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, listForEntity, listControlledBy });
+  return Object.freeze({ get, breakPolicy, reelPolicy, physicsContract, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, listForEntity, listControlledBy });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;
@@ -1039,17 +1059,7 @@ export function createAttachmentService(context) {
     const sourceWorld = entityLocalPointToWorld(owner, sourceAnchorLocal);
     const targetWorld = entityLocalPointToWorld(target, targetAnchorLocal);
     const fallbackRestLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
-    const requestedRestLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
-      ? attachment.restLength
-      : fallbackRestLength;
-    const tetherPolicy = policyForAttachment(def, owner, attachment);
-    const minLength = Number.isFinite(def && def.minLength) && def.minLength > 0 ? def.minLength : 0;
-    const policyMaxLength = tetherPolicy && typeof tetherPolicy.maxLength === 'number'
-      && Number.isFinite(tetherPolicy.maxLength) && tetherPolicy.maxLength > 0
-      ? tetherPolicy.maxLength
-      : baseTetherMaxLength(def);
-    const maxLength = policyMaxLength == null ? Infinity : Math.max(minLength, policyMaxLength);
-    const restLength = Math.min(maxLength, Math.max(minLength, requestedRestLength));
+    const policy = physicsPolicy(attachment, def, owner, target, fallbackRestLength);
     try {
       const physicsHandle = physics.createAttachment({
         attachmentId: attachment.id,
@@ -1062,12 +1072,7 @@ export function createAttachmentService(context) {
         targetAnchorLocal,
         sourceWorld,
         targetWorld,
-        restLength,
-        break: breakForAttachment(def, owner, target, attachment) || {},
-        spring: springForAttachment(def, owner, target, attachment),
-        forceScale: masslineForceScale(attachment),
-        reelRevision: attachment.reelRevision,
-        springState: attachment.physicsSpringState,
+        ...policy,
         tick: state.tick,
       });
       if (physicsHandle === false || physicsHandle == null) return { ok: false, reason: 'physics_create_rejected' };
@@ -1075,11 +1080,30 @@ export function createAttachmentService(context) {
       attachment.targetSocketId = targetSocket.id;
       attachment.sourceAnchorLocal = sourceAnchorLocal;
       attachment.targetAnchorLocal = targetAnchorLocal;
-      attachment.restLength = restLength;
+      attachment.restLength = policy.restLength;
       return { ok: true, physicsHandle };
     } catch (error) {
       return { ok: false, reason: 'physics_create_failed', error };
     }
+  }
+
+  function physicsPolicy(attachment, def, owner, target, fallbackRestLength) {
+    const requestedRestLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
+      ? attachment.restLength : fallbackRestLength;
+    const tetherPolicy = policyForAttachment(def, owner, attachment);
+    const minLength = Number.isFinite(def && def.minLength) && def.minLength > 0 ? def.minLength : 0;
+    const policyMaxLength = tetherPolicy && typeof tetherPolicy.maxLength === 'number'
+      && Number.isFinite(tetherPolicy.maxLength) && tetherPolicy.maxLength > 0
+      ? tetherPolicy.maxLength : baseTetherMaxLength(def);
+    const maxLength = policyMaxLength == null ? Infinity : Math.max(minLength, policyMaxLength);
+    return {
+      restLength: Math.min(maxLength, Math.max(minLength, requestedRestLength)),
+      break: breakForAttachment(def, owner, target, attachment) || {},
+      spring: springForAttachment(def, owner, target, attachment),
+      forceScale: masslineForceScale(attachment),
+      reelRevision: attachment.reelRevision,
+      springState: attachment.physicsSpringState,
+    };
   }
 
   function selectSocket(runtime, requiredTags, explicitId, entityId, ignoreAttachmentId = null) {

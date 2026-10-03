@@ -22,6 +22,7 @@ import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { SHIPS } from '../data/ships.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
+import { occupantGenerationOf } from './entity.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
@@ -30,7 +31,10 @@ import { combatFlag } from '../data/featureFlags.js';
 import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
-export const SG02_WORLD_SNAPSHOT_SCHEMA_VERSION = 1;
+export const SG02_WORLD_SNAPSHOT_SCHEMA_VERSION = 3;
+// Independent of envelope schema: NEXT schema 2 also carried shallow geometry.
+// Missing/mismatched revisions require authoritative entity-state reconstruction.
+export const SG02_NATIVE_GEOMETRY_REVISION = 'xz-support-prism-v2';
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // Contact-force receipts are gameplay signals, not solver inputs. A zero threshold makes every
@@ -278,7 +282,7 @@ export class Sg02DynamicBodyOwner {
     this._reboundEntityIds = new Set();
     this._sleepHeld = new Set();
     this._sleepReeled = new Set();
-    this._adoptedJointPairs = null;
+    this._adoptedJoints = null;
     this._staticLayerVersion = null;
     this._frameOrigin = {
       x: finite(options.frameOrigin && options.frameOrigin.x),
@@ -392,22 +396,52 @@ export class Sg02DynamicBodyOwner {
    */
   exportWorldSnapshot() {
     const world = this.world;
-    if (!world || typeof world.takeSnapshot !== 'function') return null;
+    if (!world || typeof world.takeSnapshot !== 'function'
+      || this._contactImpacts.length) return null;
+    const nativeGeometryParameters = planarGeometryParameters(world);
+    if (!nativeGeometryParameters || !matchesPlanarPrismGeometry(world, this.RAPIER, nativeGeometryParameters)) return null;
     let bytes;
     try { bytes = world.takeSnapshot(); }
     catch (err) { return null; }
     if (!(bytes instanceof Uint8Array) || !bytes.length) return null;
     const bodies = {};
     for (const [id, rec] of this.records) {
-      // Rapier handles are f64-encoded arena keys; stringify keeps them JSON-exact (denormal
-      // handles serialize as e-notation that parses back to the identical bits).
-      if (rec && rec.body && Number.isFinite(rec.body.handle)) bodies[id] = String(rec.body.handle);
+      if (!rec || !rec.body) return null;
+      bodies[id] = {
+        handle: String(rec.body.handle),
+        identity: nativeEntityIdentity(rec.entity),
+        sourceLife: occupantGenerationOf(rec.entity),
+        state: nativeEntityKinematics(rec.entity),
+        contract: nativeBodyContract(rec.entity, rec.spec),
+        native: nativeBodyProperties(rec.body, rec.colliders),
+        effectiveMass: rec.effectiveMass,
+        effectiveInertiaY: rec.effectiveInertiaY,
+        bodyResponseMassScale: rec.bodyResponseMassScale,
+        bodyResponseInertiaScale: rec.bodyResponseInertiaScale,
+        tumbleMaterial: rec._tumbleMaterial === true,
+        forcesDirty: rec._forcesDirty === true,
+        createdCanSleep: rec._createdCanSleep === true,
+        sleepAllowed: rec._sleepAllowed ?? null,
+        contactEpisode: { lastTick: rec._playerContactLastTick ?? null,
+          cumulativeDeltaV: rec._playerContactCumulativeDeltaV ?? 0 },
+      };
+    }
+    const attachments = {};
+    for (const [id, attachment] of this.attachments) {
+      attachments[id] = nativeAttachmentDescriptor(attachment);
     }
     return {
       schema: SG02_WORLD_SNAPSHOT_SCHEMA_VERSION,
+      nativeGeometryRevision: SG02_NATIVE_GEOMETRY_REVISION,
+      nativeGeometryParameters,
       backend: 'rapier-dynamic',
+      runtime: nativeRuntimeContract(this),
       snapshot: encodeSnapshotBytes(bytes),
       bodies,
+      bodyOrder: Array.from(this.records.keys(), String),
+      dynamicBodyOrder: Array.from(this.dynamicRecords, rec => String(rec.entity.id)),
+      attachments,
+      attachmentOrder: Array.from(this.attachments.keys()),
       tick: this.tick,
       accumulator: finite(this.accumulator),
       frameOrigin: { x: this._frameOrigin.x, z: this._frameOrigin.z },
@@ -416,135 +450,295 @@ export class Sg02DynamicBodyOwner {
   }
 
   /**
-   * Adopt a snapshot-restored world in place of this owner's freshly created empty one.
-   * Entities must already be respawned: every saved handle maps to a live entity or its body
-   * is dropped (that covers entities the restore did not re-materialize and retired
-   * ghost-pool bodies, which have no record and are swept the same way).
-   *
-   * The adopted records rejoin the ordinary sync paths: `spec`/`revision` come from the
-   * respawned entity, so a record whose spec drifted while it was saved out simply rebuilds
-   * through `_syncRecord` like any other stale record — the snapshot only guarantees bodies
-   * that DID round-trip keep their solver continuity.
+   * Native continuation is an all-owner transaction. Resolve identities before adopting any
+   * handle; a missing actor, changed body contract, or unclaimed joint means scalar fallback.
+   * Schema 1 had only raw IDs and cannot establish this contract; old saves remain loadable.
    */
-  adoptWorldSnapshot(payload, entities = []) {
-    const R = this.RAPIER;
+  adoptWorldSnapshot(payload, entities = [], options = {}) {
     if (!payload || payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION
-        || typeof payload.snapshot !== 'string' || !payload.snapshot
-        || !payload.bodies || typeof payload.bodies !== 'object'
-        || !R || !R.World || typeof R.World.restoreSnapshot !== 'function') {
-      return false;
-    }
-    const bytes = decodeSnapshotBytes(payload.snapshot);
-    if (!bytes || !bytes.length) return false;
-    const world = R.World.restoreSnapshot(bytes);
-    if (!world) return false;
-
-    const stale = this.world;
-    this.world = world;
-    world.timestep = this.fixedDt;
-    if (world.integrationParameters) {
-      world.integrationParameters.maxCcdSubsteps = 4;
-      world.integrationParameters.numSolverIterations = 12;
-      world.integrationParameters.normalizedPredictionDistance = 3.5;
-      world.integrationParameters.contact_natural_frequency = 240;
-    }
-
-    const adoptedHandles = new Set();
+      || payload.nativeGeometryRevision !== SG02_NATIVE_GEOMETRY_REVISION
+      || !samePlanarGeometryParameters(payload.nativeGeometryParameters, planarGeometryParameters(this.world))
+      || payload.backend !== 'rapier-dynamic' || !payload.bodies || !payload.attachments
+      || Array.isArray(payload.bodies) || Array.isArray(payload.attachments)
+      || typeof payload.snapshot !== 'string' || !payload.snapshot
+      || !payload.runtime?.engineVersion
+      || !sameNativeValue(payload.runtime, nativeRuntimeContract(this))
+      || !sameNativeKeys(payload.bodyOrder, payload.bodies)
+      || !sameNativeKeys(payload.attachmentOrder, payload.attachments)
+      || !Array.isArray(payload.dynamicBodyOrder)) return false;
+    let candidate = null;
+    let restored = null;
+    let validator = null;
     try {
-      this.records.clear();
-      this.dynamicRecords.clear();
-      this.attachments.clear();
-      this._colliderOwners.clear();
-      this._ghostProjectilePool.clear();
-      this._reboundEntityIds.clear();
-      this._sleepHeld.clear();
-      this._sleepReeled.clear();
-      this._liveEntityIds.clear();
-      this._liveStaticEntityIds.clear();
-      this._liveDynamicEntityIds.clear();
-      this._staticLayerVersion = null;
-      this._adoptedJointPairs = null;
-      this._contactImpacts.length = 0;
-      for (const byB of this._impactMergeRows.values()) {
-        byB.clear();
-        this._impactByBPool.push(byB);
-      }
-      this._impactMergeRows.clear();
-      this._impactReceipts.length = 0;
-      this._stepContactReceipts = null;
-
-      const byId = new Map();
-      for (const entity of entities) {
-        if (entity && entity.id != null) byId.set(String(entity.id), entity);
-      }
-      for (const [idKey, handleText] of Object.entries(payload.bodies)) {
-        const handle = Number(handleText);
-        if (!Number.isFinite(handle)) continue;
-        const body = world.getRigidBody(handle);
-        if (!body) continue;
-        const entity = byId.get(idKey);
-        if (!entity || entity.alive === false) {
-          world.removeRigidBody(body);
-          continue;
+      if (!Number.isSafeInteger(payload.tick) || payload.tick < 0
+        || !Number.isFinite(payload.accumulator) || payload.accumulator < 0
+        || !Number.isFinite(payload.frameOrigin?.x) || !Number.isFinite(payload.frameOrigin?.z)
+        || !Number.isSafeInteger(payload.frameOriginSeq) || payload.frameOriginSeq < 0) return false;
+      if (options.entityIdRemap != null) {
+        if (!(options.entityIdRemap instanceof Map)) return false;
+        const targets = new Set();
+        for (const [key, value] of options.entityIdRemap) {
+          if (typeof key !== 'string' || value == null) return false;
+          // Save owners may include semantic aliases (for example 'player'). Only
+          // body claims must be one-to-one; aliases never authorize another body.
+          if (!Object.prototype.hasOwnProperty.call(payload.bodies, key)) continue;
+          if (targets.has(String(value))) return false;
+          targets.add(String(value));
         }
+      }
+      const bytes = decodeSnapshotBytes(payload.snapshot);
+      if (!bytes || !bytes.length) return false;
+      restored = this.RAPIER.World.restoreSnapshot(bytes);
+      if (!restored) return false;
+      if (!samePlanarGeometryParameters(planarGeometryParameters(restored), payload.nativeGeometryParameters)
+        || !matchesPlanarPrismGeometry(restored, this.RAPIER, payload.nativeGeometryParameters)) {
+        throw new Error('native_geometry_changed');
+      }
+      candidate = new Sg02DynamicBodyOwner(this.RAPIER, {
+        fixedDt: this.fixedDt, quantum: this.quantum, mode: this.mode,
+        captureContactImpacts: this.captureContactImpacts, publishTelemetry: this.publishTelemetry,
+        frameOrigin: payload.frameOrigin, frameOriginSeq: payload.frameOriginSeq,
+      });
+      candidate.world.free();
+      candidate.world = restored;
+      restored = null;
+      if (!sameNativeValue(nativeRuntimeContract(candidate), payload.runtime)) throw new Error('native_runtime_changed');
+      candidate._restoringNative = true;
+      validator = new Sg02DynamicBodyOwner(this.RAPIER, {
+        fixedDt: this.fixedDt, quantum: this.quantum, captureContactImpacts: this.captureContactImpacts, frameOrigin: payload.frameOrigin,
+      });
+      candidate.tick = Math.max(0, Math.trunc(finite(payload.tick)));
+      candidate.accumulator = Math.max(0, finite(payload.accumulator));
+      const live = entities.filter(entity => entity && entity.alive !== false && resolvePhysicsBodySpec(entity));
+      const byId = new Map(live.map(entity => [String(entity.id), entity]));
+      if (byId.size !== live.length) throw new Error('duplicate_current_identity');
+      const claimed = new Set(), handles = new Set(), remapped = new Map();
+      for (const savedId of payload.bodyOrder) {
+        const saved = payload.bodies[savedId];
+        if (!saved || typeof saved.handle !== 'string' || !saved.handle
+          || !Number.isFinite(Number(saved.handle)) || String(Number(saved.handle)) !== saved.handle
+          || !['tumbleMaterial', 'forcesDirty', 'createdCanSleep'].every(key => typeof saved[key] === 'boolean')
+          || !(saved.sleepAllowed === null || typeof saved.sleepAllowed === 'boolean')) {
+          throw new Error('invalid_native_body_descriptor');
+        }
+        const mappedId = options.entityIdRemap?.get(savedId);
+        let entity = mappedId != null ? byId.get(String(mappedId)) : null;
+        if (!options.entityIdRemap) entity = byId.get(savedId);
+        // Regenerated fixed scenery does not pass through the persistent-actor allocator.
+        // Match its identity AND authored contract AND native pose uniquely, never raw ID.
+        if (!entity && mappedId == null && options.entityIdRemap) {
+          const matches = live.filter(value => {
+            const spec = resolvePhysicsBodySpec(value);
+            return !spec.dynamic && !claimed.has(value.id)
+              && sameNativeValue(nativeEntityIdentity(value), saved.identity)
+              && sameNativeValue(nativeBodyContract(value, spec), saved.contract)
+              && bodyStateMatchesEntity({ body: candidate.world.getRigidBody(Number(saved.handle)) },
+                value, candidate._frameOrigin, candidate._frameScratch);
+          });
+          if (matches.length === 1) entity = matches[0];
+        }
+        if (!entity || claimed.has(entity.id)) throw new Error('unresolved_body_identity');
+        // Raw-ID adoption is only a same-life shortcut. The save owner's explicit remap
+        // authorizes a newly spawned life; a reused live number alone never does.
+        if (!options.entityIdRemap && saved.sourceLife != null
+          && occupantGenerationOf(entity) !== saved.sourceLife) throw new Error('body_life_changed');
         const spec = resolvePhysicsBodySpec(entity);
-        if (!spec || !(spec.radius > 0)) {
-          world.removeRigidBody(body);
-          continue;
+        const handle = Number(saved.handle), body = candidate.world.getRigidBody(handle);
+        if (!body || handles.has(handle)
+          || !sameNativeValue(nativeEntityIdentity(entity), saved.identity)
+          || !sameNativeValue(nativeEntityKinematics(entity), saved.state)
+          || !sameNativeValue(nativeBodyContract(entity, spec), saved.contract)) throw new Error('body_contract_changed');
+        const colliders = Array.from({ length: body.numColliders() }, (_, index) => body.collider(index));
+        if (!sameNativeValue(nativeBodyProperties(body, colliders), saved.native)
+          || !nativeMassMatches(body, spec, saved)
+          || !bodyStateMatchesEntity({ body }, entity, candidate._frameOrigin, candidate._frameScratch)) {
+          throw new Error('native_body_mismatch');
         }
-        const colliders = [];
-        const colliderCount = typeof body.numColliders === 'function' ? body.numColliders() : 0;
-        for (let i = 0; i < colliderCount; i++) colliders.push(body.collider(i));
-        this._adoptRecord(entity, spec, body, colliders);
-        adoptedHandles.add(handle);
+        // Compare native geometry against an independently constructed current authored body,
+        // not merely against metadata captured alongside the same opaque native bytes.
+        const scratchEntity = { ...entity, pos: { ...entity.pos }, prevPos: { ...entity.prevPos },
+          vel: { ...entity.vel }, flags: { ...entity.flags }, data: nativePlain(entity.data || {}) };
+        const expected = validator._createRecord(scratchEntity, spec);
+        validator._applyBodyResponse(expected, { massScale: saved.bodyResponseMassScale, inertiaScale: saved.bodyResponseInertiaScale });
+        if (saved.tumbleMaterial) validator._syncTumbleMaterial(expected, true);
+        expected.body.recomputeMassPropertiesFromColliders();
+        if (!sameNativeValue(nativeBodyProperties(expected.body, expected.colliders), saved.native)) {
+          throw new Error('authored_native_geometry_changed');
+        }
+        const rec = this._adoptRecord.call(candidate, entity, spec, body, colliders);
+        validator.world.removeRigidBody(expected.body);
+        validator._colliderOwners.clear();
+        rec.effectiveMass = saved.effectiveMass;
+        rec.effectiveInertiaY = saved.effectiveInertiaY;
+        rec.bodyResponseMassScale = saved.bodyResponseMassScale;
+        rec.bodyResponseInertiaScale = saved.bodyResponseInertiaScale;
+        rec._tumbleMaterial = saved.tumbleMaterial === true;
+        rec._forcesDirty = saved.forcesDirty === true;
+        rec._createdCanSleep = saved.createdCanSleep === true;
+        if (saved.sleepAllowed != null) rec._sleepAllowed = saved.sleepAllowed;
+        if (!saved.contactEpisode || !(saved.contactEpisode.lastTick === null
+          || Number.isFinite(saved.contactEpisode.lastTick))
+          || !Number.isFinite(saved.contactEpisode.cumulativeDeltaV)
+          || saved.contactEpisode.cumulativeDeltaV < 0) throw new Error('invalid_contact_episode');
+        rec._playerContactLastTick = saved.contactEpisode.lastTick;
+        rec._playerContactCumulativeDeltaV = saved.contactEpisode.cumulativeDeltaV;
+        claimed.add(entity.id); handles.add(handle); remapped.set(savedId, entity.id);
       }
-    } catch (err) {
-      // A half-populated adoption must not leak: put the untouched fresh world back and let
-      // the ordinary entity rebuild run on it — exactly the no-snapshot path.
-      this.records.clear();
-      this.dynamicRecords.clear();
-      this.attachments.clear();
-      this._colliderOwners.clear();
-      this._adoptedJointPairs = null;
-      this.world = stale;
-      if (typeof world.free === 'function') world.free();
+      if (claimed.size !== live.length) throw new Error('unclaimed_current_body');
+      // Disabled pooled bodies still affect future reuse/arena allocation. Until their pool
+      // ownership and ordering are serialized, their presence requires honest scalar fallback.
+      candidate.world.forEachRigidBody(body => {
+        if (!handles.has(body.handle)) throw new Error('unrepresented_native_body');
+      });
+      const restoreOrder = (keys, expected) => {
+        const ordered = keys.map(key => candidate.records.get(remapped.get(key)));
+        if (ordered.length !== expected.size || new Set(ordered).size !== expected.size
+          || ordered.some(rec => !expected.has(rec))) throw new Error('native_owner_order_mismatch');
+        return new Set(ordered);
+      };
+      candidate.dynamicRecords = restoreOrder(payload.dynamicBodyOrder, candidate.dynamicRecords);
+      candidate._adoptedJoints = new Map();
+      const jointHandles = new Set();
+      const semantic = options.attachments;
+      for (const id of payload.attachmentOrder) {
+        const saved = payload.attachments[id];
+        const ownerId = remapped.get(String(saved.ownerId)), targetId = remapped.get(String(saved.targetId));
+        if (ownerId == null || targetId == null) throw new Error('unresolved_joint_endpoint');
+        if (semantic && !nativeAttachmentMatchesSemantic(saved, semantic[id], ownerId, targetId)) {
+          throw new Error('attachment_contract_changed');
+        }
+        const current = typeof options.resolveAttachmentContract === 'function'
+          ? options.resolveAttachmentContract(id) : null;
+        const currentPolicy = nativeAttachmentPolicy(current, saved.defId);
+        const savedPolicy = nativeAttachmentPolicy(saved, saved.defId);
+        if (!currentPolicy || !savedPolicy || !sameNativeValue(currentPolicy, savedPolicy)) {
+          throw new Error('attachment_policy_changed');
+        }
+        if (saved.joint != null) {
+          const handle = Number(saved.joint.handle), joint = candidate.world.getImpulseJoint(handle);
+          if (!joint || jointHandles.has(handle)
+            || !sameNativeValue(nativeJointProperties(joint), saved.joint.native)
+            || joint.body1().handle !== candidate.records.get(ownerId).body.handle
+            || joint.body2().handle !== candidate.records.get(targetId).body.handle) throw new Error('joint_identity_changed');
+          candidate._adoptedJoints.set(id, { joint, saved });
+          jointHandles.add(handle);
+        }
+        if (!candidate.createAttachment({ ...saved, attachmentId: id, ownerId, targetId })) {
+          throw new Error('attachment_adoption_failed');
+        }
+      }
+      if (semantic && Object.values(semantic).some(value => value?.state === 'active' && !candidate.attachments.has(value.id))) {
+        throw new Error('unclaimed_semantic_attachment');
+      }
+      if (candidate._adoptedJoints.size) throw new Error('unbound_native_joint');
+      candidate.world.impulseJoints.forEach(joint => {
+        if (!jointHandles.has(joint.handle)) throw new Error('unclaimed_native_joint');
+      });
+      if (candidate.world.multibodyJoints?.len() > 0) throw new Error('unsupported_multibody_joint');
+      candidate._adoptedJoints = null;
+      candidate._restoringNative = false;
+      validator.dispose();
+      validator = null;
+      this._commitNativeOwner(candidate);
+      candidate = null;
+      return true;
+    } catch (_) {
+      if (validator) validator.dispose();
+      if (candidate) candidate.dispose();
+      else if (restored) restored.free();
       return false;
     }
+  }
 
-    this.tick = Math.max(0, Math.trunc(finite(payload.tick)));
-    this.accumulator = Math.max(0, finite(payload.accumulator));
-    this._frameOrigin = {
-      x: finite(payload.frameOrigin && payload.frameOrigin.x),
-      z: finite(payload.frameOrigin && payload.frameOrigin.z),
-    };
-    this._frameOriginSeq = normalizeFrameOriginSeq(payload.frameOriginSeq);
-    this._diagnostics.frameOriginSeq = this._frameOriginSeq;
-    // Any body the entity round-trip did not claim has no record — remove it or it stays in
-    // the world as an orphaned collider (retired ghost-pool bodies land here too).
-    const orphans = [];
-    if (typeof world.forEachRigidBody === 'function') {
-      world.forEachRigidBody((body) => {
-        if (body && !adoptedHandles.has(body.handle)) orphans.push(body);
+  // A fallback owns a fresh complete world, never old bodies with their owner maps cleared.
+  rebuildWorldFromEntities(entities = [], options = {}) {
+    const candidate = new Sg02DynamicBodyOwner(this.RAPIER, {
+      fixedDt: this.fixedDt, quantum: this.quantum, mode: this.mode,
+      captureContactImpacts: this.captureContactImpacts, publishTelemetry: this.publishTelemetry,
+      frameOrigin: options.frameOrigin || this._frameOrigin,
+      frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
+    });
+    try {
+      // Construction may move coincident spawns. Stage those mirrors too so a later
+      // native construction failure cannot mutate entities belonging to the old owner.
+      const originals = new Map();
+      const staged = entities.map(entity => {
+        if (!entity) return entity;
+        const scratch = { ...entity, pos: entity.pos && { ...entity.pos },
+          prevPos: entity.prevPos && { ...entity.prevPos }, vel: entity.vel && { ...entity.vel },
+          flags: entity.flags && { ...entity.flags } };
+        originals.set(scratch, entity);
+        return scratch;
       });
-      for (const body of orphans) world.removeRigidBody(body);
-    }
-
-    // Legacy-rope attachments keep a real impulse joint in the world. The combat layer
-    // re-creates its attachment records after a restore; index the surviving joints by body
-    // pair so `_createAttachmentJoints` rebinds them instead of stacking a second constraint.
-    if (world.impulseJoints && typeof world.impulseJoints.getAll === 'function') {
-      const pairs = new Map();
-      for (const joint of world.impulseJoints.getAll()) {
-        const a = typeof joint.body1 === 'function' ? joint.body1() : null;
-        const b = typeof joint.body2 === 'function' ? joint.body2() : null;
-        if (!a || !b) continue;
-        pairs.set(jointPairKey(a.handle, b.handle), joint);
+      candidate.syncFromEntities(staged);
+      const mirrors = [];
+      for (const rec of candidate.records.values()) {
+        const scratch = rec.entity, entity = originals.get(scratch);
+        for (const property of ['pos', 'prevPos']) {
+          for (const key of ['x', 'z']) {
+            if (entity[property] && scratch[property] && entity[property][key] !== scratch[property][key]) {
+              mirrors.push({ entity: entity[property], key, value: scratch[property][key] });
+            }
+          }
+        }
+        rec.entity = entity;
       }
-      if (pairs.size) this._adoptedJointPairs = pairs;
-    }
+      this._commitNativeOwner(candidate, mirrors);
+    } catch (error) { candidate.dispose(); throw error; }
+  }
 
-    if (stale && stale !== world && typeof stale.free === 'function') stale.free();
-    return true;
+  _commitNativeOwner(candidate, mirrors = []) {
+    const previousWorld = this.world, previousQueue = this._eventQueue;
+    const contactCallback = this._contactManifoldCb;
+    // Native staging must not publish a partial set of sleeping mirrors either. Game entities
+    // use ordinary data properties; refuse accessor/read-only destinations before writing any.
+    for (const rec of candidate.records.values()) {
+      const entity = rec.entity, value = rec.spec.dynamic && rec.body.isSleeping();
+      if (entity.physicsSleeping === value) continue;
+      mirrors.push({ entity, key: 'physicsSleeping', value });
+    }
+    for (const mirror of mirrors) {
+      const descriptor = Object.getOwnPropertyDescriptor(mirror.entity, mirror.key);
+      if (descriptor ? !('value' in descriptor) || !descriptor.writable : !Object.isExtensible(mirror.entity)) {
+        throw new Error('entity_mirror_not_writable');
+      }
+      mirror.descriptor = descriptor;
+    }
+    // Every owner slot is constructor-owned, configurable data. Check before publication so
+    // the following replacement cannot fail midway on an externally sealed/read-only owner.
+    if (!Object.isExtensible(this)) throw new Error('native_owner_not_extensible');
+    for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(this))) {
+      if (!descriptor.configurable) throw new Error('native_owner_slot_not_configurable');
+    }
+    let written = 0;
+    try {
+      for (const mirror of mirrors) {
+        Object.defineProperty(mirror.entity, mirror.key, mirror.descriptor
+          ? { ...mirror.descriptor, value: mirror.value }
+          : { value: mirror.value, writable: true, configurable: true, enumerable: true });
+        written++;
+      }
+    } catch (error) {
+      for (let index = written - 1; index >= 0; index--) {
+        const mirror = mirrors[index];
+        if (mirror.descriptor) Object.defineProperty(mirror.entity, mirror.key, mirror.descriptor);
+        else delete mirror.entity[mirror.key];
+      }
+      throw error;
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(candidate);
+    descriptors._contactManifoldCb.value = contactCallback;
+    for (const key of Object.keys(this)) if (!(key in descriptors)) delete this[key];
+    Object.defineProperties(this, descriptors);
+    // Publication succeeded. Cleanup is best-effort and MUST NOT escape into the staging
+    // catch, which would otherwise free the world now installed on this owner.
+    for (const cleanup of [
+      () => previousQueue?.free(),
+      () => previousWorld?.free(),
+    ]) {
+      try { cleanup(); }
+      catch (_) { this._diagnostics.nativeCleanupFailed = true; }
+    }
   }
 
   /**
@@ -625,7 +819,7 @@ export class Sg02DynamicBodyOwner {
     this._reboundEntityIds.add(entity.id);
     // The restored WASM sleep verdict is authoritative; keep the entity mirror honest so
     // sleep-skip and serialize paths read the same answer the solver holds.
-    entity.physicsSleeping = spec.dynamic === true && typeof body.isSleeping === 'function'
+    if (!this._restoringNative) entity.physicsSleeping = spec.dynamic === true && typeof body.isSleeping === 'function'
       ? body.isSleeping() === true
       : false;
     return record;
@@ -864,8 +1058,10 @@ export class Sg02DynamicBodyOwner {
     };
     this._createAttachmentJoints(attachment);
     this.attachments.set(attachment.id, attachment);
-    this._wakeSleepingBody(owner);
-    this._wakeSleepingBody(target);
+    if (!this._restoringNative) {
+      this._wakeSleepingBody(owner);
+      this._wakeSleepingBody(target);
+    }
     return { id: attachment.id, attachmentId: attachment.id, ownerId: attachment.ownerId, targetId: attachment.targetId };
   }
 
@@ -1812,7 +2008,7 @@ export class Sg02DynamicBodyOwner {
       proxyManifest = proxyManifestForBody(entity, spec);
       let colliderDescs;
       if (proxyManifest) {
-        colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts);
+        colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts, this.world.integrationParameters);
       } else if (spec.shape === 'capsule' || (!spec.shape && (entity.type === 'ship' || entity.type === 'drone'))) {
         colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
       } else {
@@ -2837,17 +3033,16 @@ export class Sg02DynamicBodyOwner {
   _createAttachmentJoints(attachment) {
     attachment.contactJoint = null;
     if (usesLegacyRopeSpring(attachment.spring)) {
-      // A snapshot-restored world already carries this attachment's joint between the same
-      // bodies; rebind it rather than stacking a second constraint on the pair.
-      if (this._adoptedJointPairs && attachment.owner.body && attachment.target.body) {
-        const key = jointPairKey(attachment.owner.body.handle, attachment.target.body.handle);
-        const restored = this._adoptedJointPairs.get(key);
-        if (restored) {
-          this._adoptedJointPairs.delete(key);
-          attachment.contactJoint = restored;
-          return;
-        }
+      const restored = this._adoptedJoints?.get(attachment.id);
+      if (restored) {
+        if (!sameNativeValue(attachment.anchorA, restored.saved.sourceAnchorLocal)
+          || !sameNativeValue(attachment.anchorB, restored.saved.targetAnchorLocal)
+          || attachment.restLength !== restored.saved.restLength) throw new Error('joint_anchor_changed');
+        this._adoptedJoints.delete(attachment.id);
+        attachment.contactJoint = restored.joint;
+        return;
       }
+      if (this._restoringNative) throw new Error('missing_native_joint');
       if (!this.RAPIER.JointData.rope) return;
       attachment.contactJoint = this.world.createImpulseJoint(
         this.RAPIER.JointData.rope(attachment.restLength, attachment.anchorA, attachment.anchorB),
@@ -3353,6 +3548,137 @@ function jointPairKey(a, b) {
 
 // Base64 is the envelope's binary channel. btoa/atob exist in browsers and modern Node;
 // Buffer covers any older host without dragging in a dependency.
+// Save-time only: canonical values keep typed shape arrays and property order JSON-stable.
+function nativePlain(value) {
+  if (ArrayBuffer.isView(value)) return Array.from(value);
+  if (Array.isArray(value)) return value.map(nativePlain);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort()
+    .filter(key => typeof value[key] !== 'function' && value[key] !== undefined)
+    .map(key => [key, nativePlain(value[key])]));
+  return typeof value === 'number' && !Number.isFinite(value) ? null : value;
+}
+function sameNativeValue(a, b) { return JSON.stringify(nativePlain(a)) === JSON.stringify(nativePlain(b)); }
+function sameNativeKeys(order, records) {
+  return Array.isArray(order) && order.length === Object.keys(records).length
+    && new Set(order).size === order.length
+    && order.every(key => typeof key === 'string' && Object.prototype.hasOwnProperty.call(records, key));
+}
+function nativeRuntimeContract(owner) {
+  const parameters = owner.world.integrationParameters;
+  return nativePlain({ engine: 'rapier3d-compat', engineVersion: owner.RAPIER.version?.() || null,
+    fixedDt: owner.fixedDt, quantum: owner.quantum, mode: owner.mode,
+    captureContactImpacts: owner.captureContactImpacts, gravity: owner.world.gravity,
+    integration: Object.fromEntries(['dt', 'contact_erp', 'contact_natural_frequency', 'lengthUnit', 'normalizedAllowedLinearError',
+      'normalizedPredictionDistance', 'numSolverIterations', 'numInternalPgsIterations',
+      'minIslandSize', 'maxCcdSubsteps'].map(key => [key, parameters[key]])) });
+}
+function nativeEntityKinematics(entity) {
+  return { x: finite(entity.pos?.x), z: finite(entity.pos?.z), vx: finite(entity.vel?.x),
+    vz: finite(entity.vel?.z), yaw: finite(entity.rot), wy: finite(entity.angVel) };
+}
+function nativeEntityIdentity(entity) {
+  const data = entity.data || {};
+  return nativePlain({ type: entity.type, isPlayer: entity.isPlayer === true,
+    defId: entity.defId ?? data.defId ?? null, shipId: entity.shipId ?? data.shipId ?? null,
+    worldRecordId: data.worldRecordId ?? entity.worldRecordId ?? null,
+    worldObjectId: data.worldObjectId ?? null, siteId: data.siteId ?? null,
+    worldSiteId: data.worldSiteId ?? entity.worldSiteId ?? null,
+    worldSitePayloadId: data.worldSitePayloadId ?? null,
+    worldSiteComponentId: data.worldSiteComponentId ?? null,
+    worldSiteCollisionProxyId: data.worldSiteCollisionProxyId ?? null,
+    worldSiteProxy: data.worldSiteProxy ?? null,
+    persistenceOwner: data.persistenceOwner ?? null,
+    payloadId: data.payloadId ?? null, stationId: data.stationId ?? entity.stationId ?? null,
+    gateId: data.gateId ?? entity.gateId ?? null, poiId: data.poiId ?? null });
+}
+function nativeBodyContract(entity, spec) {
+  const manifest = proxyManifestForBody(entity, spec);
+  return nativePlain({ spec, manifest,
+    proxyScale: manifest ? proxyScaleFor(entity, manifest) : null,
+    proportions: spec.shape === 'capsule' ? resolveCraftProportions(entity, spec) : null,
+    material: contactMaterialFor(entity, spec),
+    collisionGroups: computeCollisionGroups(entity, spec, contactMaterialFor(entity, spec)),
+    canSleep: mayRapierIslandSleep(entity, spec) });
+}
+function nativeColliderShape(collider) {
+  // Read the actual native geometry. collider.shape may cache the pre-hull input vertices
+  // on a freshly created wrapper, whereas a restored wrapper exposes canonical hull vertices.
+  const type = collider.shapeType();
+  if (type === 0) return { type, radius: collider.radius() };
+  if (type === 1 || type === 12) return { type, halfExtents: collider.halfExtents(),
+    ...(type === 12 ? { borderRadius: collider.roundRadius() } : {}) };
+  if (type === 2) return { type, radius: collider.radius(), halfHeight: collider.halfHeight() };
+  if (type === 9 || type === 16) return { type, vertices: collider.vertices(), indices: collider.indices(),
+    ...(type === 16 ? { borderRadius: collider.roundRadius() } : {}) };
+  throw new Error('unsupported_native_shape');
+}
+function nativeBodyProperties(body, colliders) {
+  return nativePlain({ type: body.bodyType(), enabled: body.isEnabled(), inverseMass: body.effectiveInvMass(),
+    mass: body.mass(), inertia: body.principalInertia(),
+    centerOfMass: body.localCom(), linearDamping: body.linearDamping(), angularDamping: body.angularDamping(),
+    colliders: colliders.map(collider => ({ shape: nativeColliderShape(collider),
+      translation: collider.translationWrtParent(), rotation: collider.rotationWrtParent(),
+      enabled: collider.isEnabled(), activeEvents: collider.activeEvents(),
+      activeCollisionTypes: collider.activeCollisionTypes(), contactSkin: collider.contactSkin(),
+      contactForceEventThreshold: collider.contactForceEventThreshold(),
+      sensor: collider.isSensor(), groups: collider.collisionGroups(), solverGroups: collider.solverGroups(),
+      friction: collider.friction(), restitution: collider.restitution(), density: collider.density(),
+      frictionCombineRule: collider.frictionCombineRule(), restitutionCombineRule: collider.restitutionCombineRule(),
+    })) });
+}
+function nativeMassMatches(body, spec, saved) {
+  if (body.isDynamic() !== spec.dynamic) return false;
+  if (!spec.dynamic) return true;
+  const close = (a, b) => Number.isFinite(a) && Number.isFinite(b)
+    && Math.abs(a - b) <= Math.max(1e-6, Math.abs(b) * 2e-6);
+  return saved.bodyResponseMassScale > 0 && saved.bodyResponseInertiaScale > 0
+    && close(saved.effectiveMass, spec.mass * saved.bodyResponseMassScale)
+    && close(saved.effectiveInertiaY, spec.inertiaY * saved.bodyResponseInertiaScale)
+    && close(body.mass(), saved.effectiveMass)
+    && close(body.principalInertia().y, saved.effectiveInertiaY);
+}
+function nativeJointProperties(joint) {
+  return nativePlain({ type: joint.type(), body1: String(joint.body1().handle), body2: String(joint.body2().handle),
+    anchor1: joint.anchor1(), anchor2: joint.anchor2(), contactsEnabled: joint.contactsEnabled() });
+}
+function nativeAttachmentDescriptor(attachment) {
+  return nativePlain({ attachmentId: attachment.id, defId: attachment.defId,
+    ownerId: attachment.ownerId, targetId: attachment.targetId,
+    sourceSocketId: attachment.sourceSocketId, targetSocketId: attachment.targetSocketId,
+    sourceAnchorLocal: attachment.anchorA, targetAnchorLocal: attachment.anchorB,
+    restLength: attachment.restLength, break: attachment.break, spring: attachment.spring,
+    forceScale: attachment.forceScale, reelRevision: attachment.reelRevision,
+    springState: attachment.springState, tick: attachment.createdTick,
+    joint: attachment.contactJoint ? { handle: String(attachment.contactJoint.handle),
+      native: nativeJointProperties(attachment.contactJoint) } : null });
+}
+function nativeAttachmentMatchesSemantic(saved, semantic, ownerId, targetId) {
+  return semantic?.state === 'active' && semantic.id === saved.attachmentId
+    && semantic.ownerId === ownerId && semantic.targetId === targetId && semantic.defId === saved.defId
+    && semantic.sourceSocketId === saved.sourceSocketId && semantic.targetSocketId === saved.targetSocketId
+    && sameNativeValue(normalizeLocalAnchor(semantic.sourceAnchorLocal), normalizeLocalAnchor(saved.sourceAnchorLocal))
+    && sameNativeValue(normalizeLocalAnchor(semantic.targetAnchorLocal), normalizeLocalAnchor(saved.targetAnchorLocal))
+    && semantic.restLength === saved.restLength
+    && Math.max(0, Math.trunc(finite(semantic.reelRevision))) === saved.reelRevision
+    && sameNativeValue(normalizeSpringState(semantic.physicsSpringState), normalizeSpringState(saved.springState));
+}
+function nativeAttachmentPolicy(input, defId) {
+  if (!input || !['restLength', 'break', 'spring', 'forceScale', 'reelRevision', 'springState']
+    .every(key => Object.prototype.hasOwnProperty.call(input, key))
+    || !Number.isFinite(input.restLength) || !(input.restLength > 0)
+    || !input.break || typeof input.break !== 'object' || Array.isArray(input.break)
+    || !input.spring || typeof input.spring !== 'object' || Array.isArray(input.spring)) return null;
+  const brk = normalizeBreak(input.break);
+  return {
+    restLength: input.restLength,
+    break: brk,
+    spring: normalizeSpring(input.spring, defId, input.break),
+    forceScale: clamp(finite(input.forceScale, 1), 0, 4),
+    reelRevision: Math.max(0, Math.trunc(finite(input.reelRevision))),
+    springState: normalizeSpringState(input.springState),
+  };
+}
+
 function encodeSnapshotBytes(bytes) {
   if (typeof Buffer === 'function' && typeof Buffer.from === 'function') {
     return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
@@ -3691,7 +4017,80 @@ function buildBallColliderDesc(R, spec, material, captureContactImpacts = true, 
 // normalized station-local units and become a bounded static collider set on the fixed body. The
 // body transform (station pos/rot) composes at the body level, so primitives stay entity-local.
 // This runs ONCE at record creation — never per frame.
-function convexPrismDesc(R, verts, scale, halfY) {
+// Native contact settings are part of the exact replay contract, independently
+// of the scale-relative geometric extrusion policy.
+function planarGeometryParameters(world) {
+  const p = world && world.integrationParameters;
+  if (!p) return null;
+  const result = {
+    lengthUnit: p.lengthUnit,
+    normalizedPredictionDistance: p.normalizedPredictionDistance,
+    normalizedAllowedLinearError: p.normalizedAllowedLinearError,
+  };
+  if (!(result.lengthUnit > 0) || result.normalizedPredictionDistance < 0
+      || result.normalizedAllowedLinearError < 0
+      || !Object.values(result).every(Number.isFinite)) return null;
+  return result;
+}
+
+function samePlanarGeometryParameters(a, b) {
+  return !!a && !!b && a.lengthUnit === b.lengthUnit
+    && a.normalizedPredictionDistance === b.normalizedPredictionDistance
+    && a.normalizedAllowedLinearError === b.normalizedAllowedLinearError;
+}
+
+function matchesPlanarPrismGeometry(world, R, parameters) {
+  let matches = true;
+  world.forEachCollider((collider) => {
+    if (!matches || collider.shapeType() !== R.ShapeType.ConvexPolyhedron) return;
+    const vertices = collider.shape.vertices;
+    if (!vertices || vertices.length < 18 || vertices.length % 3 !== 0) { matches = false; return; }
+    const planar = [];
+    for (let i = 0; i < vertices.length; i += 3) {
+      if (![vertices[i], vertices[i + 1], vertices[i + 2]].every(Number.isFinite)) { matches = false; return; }
+      planar.push({ x: vertices[i], z: vertices[i + 2] });
+    }
+    const expectedHalfY = Math.fround(planarProxyPrismHalfHeight(planar, 1, parameters));
+    let upper = false; let lower = false;
+    for (let i = 1; i < vertices.length; i += 3) {
+      if (Math.abs(vertices[i]) !== expectedHalfY) { matches = false; return; }
+      upper ||= vertices[i] > 0;
+      lower ||= vertices[i] < 0;
+    }
+    matches = upper && lower;
+  });
+  return matches;
+}
+
+// The solver is constrained to XZ, but Rapier computes contacts in 3D. A shallow
+// prism permits a roof normal along locked Y. Give each projected convex piece a
+// roof farther away than its enclosing planar radius, plus the contact envelope.
+// XZ coordinates/decomposition and zero-density authored mass stay unchanged.
+export function planarProxyPrismHalfHeight(verts, scale) {
+  let minX = Infinity; let maxX = -Infinity;
+  let minZ = Infinity; let maxZ = -Infinity;
+  let coordinateScale = 0;
+  for (const v of verts) {
+    const x = Math.fround(v.x * scale); const z = Math.fround(v.z * scale);
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+    coordinateScale = Math.max(coordinateScale, Math.abs(x), Math.abs(z));
+  }
+  const cx = (minX + maxX) * 0.5; const cz = (minZ + maxZ) * 0.5;
+  let reach = 0;
+  for (const v of verts) {
+    reach = Math.max(reach, Math.hypot(Math.fround(v.x * scale) - cx, Math.fround(v.z * scale) - cz));
+  }
+  // Predictive-contact distance and allowed penetration do not inflate shapes.
+  // Adding those absolute world distances here destroys similarity at tiny scales.
+  // Keep only a relative f32 margin for vertex conversion/support arithmetic and
+  // local offsets. The roof lies strictly beyond the projected enclosing radius.
+  const roundoff = 32 * (2 ** -23) * Math.max(coordinateScale, reach);
+  return reach + roundoff;
+}
+
+function convexPrismDesc(R, verts, scale, parameters) {
+  const halfY = planarProxyPrismHalfHeight(verts, scale, parameters);
   const points = new Float32Array(verts.length * 6);
   for (let i = 0; i < verts.length; i += 1) {
     const px = verts[i].x * scale;
@@ -3717,12 +4116,11 @@ function dressProxyColliderDesc(R, desc, entity, spec, material, captureContactI
   return desc;
 }
 
-function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, captureContactImpacts = true) {
+function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, captureContactImpacts = true, parameters = {}) {
   const scale = proxyScaleFor(entity, manifest);
   const hasConvexHull = typeof R.ColliderDesc.convexHull === 'function';
-  const halfY = Math.max(0.1, (spec && Number.isFinite(spec.radius) ? spec.radius : 1) * 0.1);
   if (Array.isArray(manifest.compactHull) && manifest.compactHull.length >= 3 && hasConvexHull) {
-    const hullDesc = convexPrismDesc(R, manifest.compactHull, scale, halfY);
+    const hullDesc = convexPrismDesc(R, manifest.compactHull, scale, parameters);
     if (hullDesc) {
       return [dressProxyColliderDesc(R, hullDesc, entity, spec, material, captureContactImpacts)];
     }
@@ -3742,7 +4140,7 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
       const bx = b.x * scale;
       const bz = b.z * scale;
       if (Math.abs(ax * bz - az * bx) < 1e-9) continue;
-      const desc = convexPrismDesc(R, [{ x: 0, z: 0 }, a, b], scale, halfY);
+      const desc = convexPrismDesc(R, [{ x: 0, z: 0 }, a, b], scale, parameters);
       if (!desc) { ok = false; break; }
       descs.push(desc);
     }

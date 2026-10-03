@@ -6,6 +6,7 @@ import {
   createSg02DynamicBodyOwner,
   directContactCausalActorId,
   preSolveRadialClosingSpeed,
+  SG02_WORLD_SNAPSHOT_SCHEMA_VERSION,
 } from './sg02DynamicBodyOwner.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import {
@@ -134,6 +135,9 @@ export const physics = {
     this._sg02Init = null;
     this._sg02Token = 0;
     this._pendingSg02Snapshot = null;
+    this._nativeRestorePending = false;
+    this._nativeRestoreDeferred = false;
+    this._nativeRestoreContext = null;
     this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
     this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
@@ -326,12 +330,60 @@ export const physics = {
     }
   },
 
-  deserialize(payload) {
-    // Stashed until the restore settles: adoption replaces a fresh owner's empty world
-    // (boot-load, harness reset) or the surviving owner's live world in _resetSg02AfterLoad.
-    // A malformed payload is ignored — the entity-level restore still rebuilds every body
-    // the way older saves always did.
+  deserialize(payload, options = {}) {
     this._pendingSg02Snapshot = payload && typeof payload === 'object' ? payload : null;
+    this._nativeRestorePending = true;
+    this._nativeRestoreDeferred = options.deferNative === true;
+    this._nativeRestoreContext = null;
+  },
+
+  // Called by the existing save owner after its event drain and semantic reference resume,
+  // before autosave capture or visual admission. No clock/polling or second restore loop.
+  completeRestore(options = {}) {
+    this._nativeRestoreDeferred = false;
+    this._nativeRestoreContext = options;
+    this._nativeRestorePending = true;
+    if (this._sg02) this._finishNativeRestore();
+  },
+
+  cancelRestore() {
+    this._pendingSg02Snapshot = null;
+    this._nativeRestoreContext = null;
+    this._nativeRestoreDeferred = false;
+    this._nativeRestorePending = true;
+  },
+
+  _finishNativeRestore() {
+    if (!this._sg02 || !this._nativeRestorePending || this._nativeRestoreDeferred) return false;
+    const state = this.state;
+    const payload = this._pendingSg02Snapshot;
+    const context = this._nativeRestoreContext || {};
+    resetActivityRuntimeForRestore(state);
+    const activity = ensureActivityClassified(state);
+    const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    let adopted = false;
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
+    else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
+      || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
+    else if (payload) {
+      adopted = this._sg02.adoptWorldSnapshot(payload, entities, {
+        entityIdRemap: context.entityIdRemap || state.sessionEntityIdRemap,
+        attachments: state.combat?.attachments?.byId || {},
+        resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
+      });
+    }
+    if (!adopted) {
+      this._sg02.rebuildWorldFromEntities(entities, {
+        frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+      });
+    }
+    this._pendingSg02Snapshot = null;
+    this._nativeRestorePending = false;
+    this._nativeRestoreContext = null;
+    if (!state.physicsRuntime) state.physicsRuntime = {};
+    state.physicsRuntime.nativeRestore = { mode: adopted ? 'native' : 'scalar', exact: adopted, reason: adopted ? null : reason };
+    return adopted;
   },
 
   async prepareBackend(state, options = {}) {
@@ -346,8 +398,12 @@ export const physics = {
       // passes the envelope it just wrote so the post-reset owner adopts its own saved world
       // even though a live owner absorbed the load boundary first.
       this._pendingSg02Snapshot = options.sg02Snapshot;
+      this._nativeRestorePending = true;
     }
-    if (reset) this._disableSg02DynamicAuthority();
+    if (reset) {
+      this._nativeRestorePending = true;
+      this._disableSg02DynamicAuthority();
+    }
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
       const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
@@ -511,19 +567,7 @@ export const physics = {
           }
           this._sg02 = owner;
           this._syncSg02FrameOrigin(state);
-          if (this._pendingSg02Snapshot) {
-            const pending = this._pendingSg02Snapshot;
-            this._pendingSg02Snapshot = null;
-            try {
-              const adopted = typeof owner.adoptWorldSnapshot === 'function'
-                && owner.adoptWorldSnapshot(pending, state.entityList);
-              if (!adopted) {
-                console.warn('[physics] SG-02 world snapshot was not adopted; rebuilding bodies from entity state');
-              }
-            } catch (err) {
-              console.warn('[physics] SG-02 world snapshot restore failed; rebuilding bodies from entity state', err);
-            }
-          }
+          if (this._nativeRestorePending && !this._nativeRestoreDeferred) this._finishNativeRestore();
           return owner;
         })
         .catch((err) => {
@@ -552,6 +596,8 @@ export const physics = {
       return;
     }
 
+    if (this._nativeRestoreDeferred) return;
+    if (this._nativeRestorePending) this._finishNativeRestore();
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
     this._syncSg02FrameOrigin(state);
     this._queueSectorFenceImpulses(dt, state);
@@ -620,34 +666,8 @@ export const physics = {
     const state = this.state;
     if (!usesSg02DynamicAuthority(state)) {
       this._disableSg02DynamicAuthority();
-    } else if (this._sg02) {
-      // A saved world snapshot outranks the live world: adopting it restores solver state a
-      // scalar rebind can never express — contact-manifold warm starts, island sleep verdicts,
-      // pending force accumulators. When the payload is absent or unusable the ordinary
-      // rebind path below rebuilds exactly the way older saves always did.
-      const pending = this._pendingSg02Snapshot;
-      this._pendingSg02Snapshot = null;
-      let adopted = false;
-      if (pending && typeof this._sg02.adoptWorldSnapshot === 'function') {
-        try {
-          adopted = this._sg02.adoptWorldSnapshot(pending, state.entityList) === true;
-        } catch (err) {
-          adopted = false;
-          console.warn('[physics] SG-02 world snapshot restore failed; rebuilding bodies from entity state', err);
-        }
-      }
-      // The player-route restore replaces entity objects but serializes the same authoritative
-      // pose. Rebind that fresh player object to the existing Rapier record before prepareBackend
-      // syncs it; rebuilding the body from scalars introduces a tiny solver/quaternion drift.
-      this._syncSg02FrameOrigin(state);
-      if (!adopted) {
-        const player = state.entities && state.entities.get
-          ? state.entities.get(state.playerId)
-          : null;
-        if (player && typeof this._sg02.rebindEntity === 'function') {
-          this._sg02.rebindEntity(player);
-        }
-      }
+    } else if (!this._nativeRestoreDeferred) {
+      this.completeRestore({ entityIdRemap: state.sessionEntityIdRemap });
     }
     // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the
     // previous dock. Reset edge caches so the first post-load physics step re-emits range=true
