@@ -10155,6 +10155,19 @@ export const vfx = {
 
     const ux = (endpoints.bx - endpoints.ax) / endpoints.chord;
     const uz = (endpoints.bz - endpoints.az) / endpoints.chord;
+    const roll = Math.atan2(uz, ux);
+    const priority = 0.88;
+    // Paired anisotropic flashes read as the line's ends springing apart, never as a radial blast.
+    this._spawnSprite(
+      SPR_FLASH, endpoints.ax, 1.15, endpoints.az,
+      0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
+      -ux * 18, -uz * 18, 3.2, roll, priority,
+    );
+    this._spawnSprite(
+      SPR_FLASH, endpoints.bx, 1.15, endpoints.bz,
+      0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
+      ux * 18, uz * 18, 3.2, roll, priority,
+    );
     const cue = releaseCuePicture(
       ux, uz, target.vel && target.vel.x, target.vel && target.vel.z, this._isReduced(),
     );
