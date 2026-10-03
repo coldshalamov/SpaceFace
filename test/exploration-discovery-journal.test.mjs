@@ -69,9 +69,11 @@ test('flying down an anomaly source unlocks one durable find-story and sector pr
   const plates = explorationDiscoveryPlates(t.state);
   assert.equal(plates.length, 1);
   assert.equal(plates[0].title, 'The Resonance Obelisk');
-  assert.match(plates[0].body, /Veil Nebula/);
-  assert.match(plates[0].body, /3 distinct bearings/);
-  assert.match(plates[0].body, /nebula and radiation interference/);
+  // The authored discovery plate wins over the generated triangulation narrative (61181719d);
+  // the find context still rides on the plate's meta line.
+  assert.match(plates[0].body, /nothing recognized as matter/);
+  assert.match(plates[0].body, /dark companion/);
+  assert.match(plates[0].meta, /Veil Nebula · SOURCE INVESTIGATED/);
   assert.match(plates[0].note, /1\/3 authored sites found · 33% sector exploration/);
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1);
 
