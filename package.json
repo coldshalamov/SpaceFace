@@ -1,7 +1,7 @@
 {
   "name": "spaceface",
   "version": "0.1.0",
-  "description": "SpaceFace — a semi-3D top-down space trading/combat/mining game (Three.js).",
+  "description": "SpaceFace \u2014 a semi-3D top-down space trading/combat/mining game (Three.js).",
   "type": "module",
   "main": "electron/main.cjs",
   "engines": {
@@ -373,7 +373,7 @@
     "build:indexes": "node scripts/build-encounter-index.mjs && node scripts/build-flavor-index.mjs && node scripts/build-code-index.mjs",
     "generate:save-schema": "node scripts/generate-save-schema.mjs --write",
     "check:save-schema": "node scripts/generate-save-schema.mjs --check",
-    "check:save-import-safety": "node --test test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs test/save-import-html-safety.test.mjs",
+    "check:save-import-safety": "node --test test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs test/save-import-html-safety.test.mjs test/traffic-restore-roster.test.mjs",
     "check:save-fuzz": "node scripts/fb-fuzz-save-envelope.mjs",
     "check:opening-mesh-defer": "node --test test/opening-mesh-defer.test.mjs",
     "check:smooth-flight": "node --test test/presentation-continuity.test.mjs test/presentation-runner.test.mjs test/simulation-runner.test.mjs test/snapshot-fence-span-alpha.test.mjs",
@@ -648,7 +648,9 @@
     "check:vision:assertions": "node scripts/check-vision-assertions.mjs",
     "check:deep-field": "node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs && node scripts/check-parallax-layers.mjs",
     "check:vfx-field-lifecycle": "node --test test/vfx-field-lifecycle.test.mjs",
-    "capture:vfx-force-language": "python scripts/capture-vfx-field-lifecycle.py"
+    "capture:vfx-force-language": "python scripts/capture-vfx-field-lifecycle.py",
+    "check:ceres-workfleet": "node --max-old-space-size=256 --test --test-concurrency=1 test/ceres-workfleet-runtime.test.mjs test/ceres-workfleet-recovery.test.mjs test/ceres-workfleet-attachment-save.test.mjs test/ceres-cradle-layout-compat.test.mjs test/ceres-workfleet-articulation.test.mjs test/ceres-receiver-keeper.test.mjs test/ceres-receiver-handoff.test.mjs test/ceres-native-lifecycle.test.mjs test/native-failure-query-eligibility.test.mjs test/ceres-workfleet-admission.test.mjs test/ceres-cradle-layout-visibility.test.mjs test/ceres-head-return.test.mjs test/ceres-head-return-continuation.test.mjs",
+    "probe:ceres-production-cycle": "node scripts/probe-ceres-production-cycle.mjs"
   },
   "private": true,
   "devDependencies": {

@@ -29,7 +29,7 @@ function recent(root,tick){return root&&!root.truncated&&tick>=root.tick&&tick-r
 function isHostile(state,entity){const p=state.entities.get(state.playerId);return !!(p&&entity&&isHostileForAI(state,entity,p));}
 function approach(origin,velocity,target,radius,seconds=2){const dx=target.pos.x-origin.x,dz=target.pos.z-origin.z,vx=velocity.x-target.vel.x,vz=velocity.z-target.vel.z;const speed=vx*vx+vz*vz;const time=speed?Math.max(0,Math.min(seconds,(dx*vx+dz*vz)/speed)):0;return {time,clearance:Math.hypot(dx-vx*time,dz-vz*time)-radius};}
 function emissionNode(shot){return {kind:'projectile_emission',tick:shot.tick,entityId:shot.id,lifeId:shot.lifeId,ownerId:shot.ownerId,ownerLife:shot.ownerLife,pos:point(shot.pos),velocity:point(shot.velocity)};}
-function createRoot(state,body,shot,before,after,kind,tick){const j=journalFor(state),life=bodyLife(body,state),player=bodyLife(state.entities.get(state.playerId),state);if(!j||!life||!player||j.roots.size>=EVIDENCE_LIMITS.episodes)return null;
+function createRoot(state,body,shot,before,after,kind,tick){const j=journalFor(state),life=bodyLife(body,state),player=bodyLife(state.entities.get(state.playerId),state);if(!j||!life||!player||j.roots.size+(j.pendingRootTicks?.size||0)>=EVIDENCE_LIMITS.episodes)return null;
 const root={id:`root:${++j.sequence}`,actorId:state.playerId,sourceId:body.id,sourceLife:life.id,sourceType:body.type,sourceDeathTick:null,sourceName:life.name,tick,kind,
 weaponId:body.data?.weaponId??null,pos:point(body.pos),before:point(before),after:point(after),dv:{x:after.x-before.x,z:after.z-before.z},reference:{mass:life.mass,hull:life.hull,cruise:life.cruise,radius:life.radius,length:life.length},playerMass:player.dryMass,playerLength:player.length,encounterId:player.encounterId??shot.encounterId,
 sceneReferenceMass:j.referenceMass,referenceMomentum:.2*j.referenceMass*j.referenceCruise,nodes:[],terminals:[],truncated:false};
@@ -152,8 +152,13 @@ victimLife:{lifeId:contact.targetLife,threatClass:state.entities.get(contact.tar
 stuntEvidence:{revision:EVIDENCE_REVISION,root:snapshot,path:{tick:reflected?.tick??root.tick,edges,closingSpeed,usefulDeltaV:length(root.dv),momentum:contact.aRef.mass*closingSpeed},contact:{aId:shot.id,bId:contact.targetId,aPos:contact.aPos,bPos:contact.bPos,aRef:contact.aRef,bRef:contact.bRef,beforeA:contact.beforeA,beforeB:contact.beforeB,normal:contact.normal}}};
 contact.emitted=true;bus?.emit?.('combat:projectileConsequence',receipt);return receipt;}
 export function serializeProjectileEvidence(state){return own(state)?clone(own(state)):null;}
-export function restoreProjectileEvidence(state,raw,remap=null){const j=journalFor(state);if(!j||raw?.revision!==2)return;const data=clone(raw),mapped=id=>remap?.get(String(id))??id;
+export function restoreProjectileEvidence(state,raw,remap=null,{append=false}={}){const j=journalFor(state);if(!j||raw?.revision!==2)return;const data=clone(raw),mapped=id=>remap?.get(String(id))??id;
 for(const [id,shot] of Object.entries(data.shots||{})){shot.id=mapped(shot.id);shot.ownerId=mapped(shot.ownerId);const body=state.entities.get(shot.id),owner=state.entities.get(shot.ownerId);if(bodyLife(body,state)?.id!==shot.lifeId||bodyLife(owner,state)?.id!==shot.ownerLife||state.tick-shot.tick>480){delete data.shots[id];continue;}for(const n of shot.reflections||[]){n.entityId=mapped(n.entityId);n.surfaceId=mapped(n.surfaceId);for(const t of n.targets||[])t.id=mapped(t.id);}}
-for(const [id,c] of Object.entries(data.contacts||{})){c.projectileId=mapped(c.projectileId);c.targetId=mapped(c.targetId);if(!data.shots[c.projectileLife]||bodyLife(state.entities.get(c.targetId),state)?.id!==c.targetLife)delete data.contacts[id];}
-data.playerHistory=[];data.surfaceHistory={};data.lastTick=-1;j.projectiles=data;}
+for(const [id,c] of Object.entries(data.contacts||{})){c.projectileId=mapped(c.projectileId);c.targetId=mapped(c.targetId);if(!(data.shots[c.projectileLife]||append&&j.projectiles?.shots?.[c.projectileLife])||bodyLife(state.entities.get(c.targetId),state)?.id!==c.targetLife)delete data.contacts[id];}
+data.playerHistory=[];data.surfaceHistory={};data.lastTick=-1;
+if(append&&j.projectiles){
+  const current=j.projectiles;
+  for(const [id,shot] of Object.entries(data.shots||{}))if(!current.shots[id]&&Object.keys(current.shots).length<LIMITS.shots)current.shots[id]=shot;
+  for(const [id,contact] of Object.entries(data.contacts||{}))if(!current.contacts[id]&&Object.keys(current.contacts).length<LIMITS.contacts)current.contacts[id]=contact;
+}else j.projectiles=data;}
 export function pendingProjectileBodyIds(state){const record=own(state),ids=new Set();for(const shot of Object.values(record?.shots||{})){ids.add(shot.id);ids.add(shot.ownerId);for(const reflection of shot.reflections||[]){ids.add(reflection.surfaceId);for(const target of reflection.targets||[])ids.add(target.id);}}for(const c of Object.values(record?.contacts||{}))ids.add(c.targetId);return ids;}

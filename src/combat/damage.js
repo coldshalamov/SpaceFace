@@ -1,3 +1,4 @@
+import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 import { selectHitSubsystem } from './geometry.js';
 import { ensureCombatant, syncCombatantBounds } from './runtime.js';
 import { damageSubsystem } from './subsystems.js';
@@ -82,7 +83,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // PQ-015: damageable type-membership from the shared catalog (identical to the former
     // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
     // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC

@@ -121,7 +121,7 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
     return delivered(previous);
   }
   pruneEvidence(state, tick);
-  if (j.roots.size >= EVIDENCE_LIMITS.episodes) { j.withheld++; return null; }
+  if (j.roots.size + (j.pendingRootTicks?.size || 0) >= EVIDENCE_LIMITS.episodes) { j.withheld++; return null; }
   const playerBody=state.entities?.get?.(state.playerId);
   const root = { id: `root:${++j.sequence}`, actorId, sourceId: entity.id, sourceLife: life.id, tick,
     kind, weaponId: provenance.weaponId ?? null, pos: point(entity.pos), before: point(before), after: point(after), dv,
@@ -345,6 +345,7 @@ export function evidenceForConsequence(receipt, state = activeState) {
 export function pruneEvidence(state, tick, livesSweepEvery = 1) {
   const j = journalFor(state); if (!j) return;
   for (const [id,r] of j.roots) if (tick-r.tick > 480 || tick < r.tick) j.roots.delete(id);
+  for (const [id,savedTick] of j.pendingRootTicks || []) if (tick-savedTick > 480 || tick < savedTick) j.pendingRootTicks.delete(id);
   for (const [id,b] of j.bodies) if (!j.roots.has(b.rootId)) j.bodies.delete(id);
   for (const [id,c] of j.contacts) if (tick-c.tick > 180) j.contacts.delete(id);
   for (const [id,c] of j.constraints) if (!c.attached && tick-c.lastTick > 480) j.constraints.delete(id);
@@ -397,26 +398,34 @@ export function serializeStuntEvidence(state,extraIds=[]) {
       position:point(l.entity.pos),velocity:point(l.entity.vel),entityType:l.entity.type}]),
     roots:[...j.roots],bodies:[...j.bodies],constraints:[...j.constraints],withheld:j.withheld};
 }
-export function restoreStuntEvidence(state,raw,remap=null) {
-  const j=resetStuntEvidence(state);
+export function restoreStuntEvidence(state,raw,remap=null,{append=false}={}) {
+  const j=append?journalFor(state):resetStuntEvidence(state);
+  if(!j)return null;
   if(raw?.revision!==2 || !Number.isSafeInteger(raw.sequence))return j;
   raw=structuredClone(raw);
   const mapped=id=>remap?.get(String(id))??id;
   const remapNode=n=>{for(const key of ['entityId','actorId','sourceId','targetId','projectileOwnerId'])if(n[key]!=null)n[key]=mapped(n[key]);};
   for(const [,r] of raw.roots??[]){remapNode(r);for(const n of r.nodes??[])remapNode(n);if(r.constraint)remapNode(r.constraint);}
   for(const [,c] of raw.constraints??[])remapNode(c);
-  j.sequence=raw.sequence;
+  j.sequence=append?Math.max(j.sequence,raw.sequence):raw.sequence;
   for(const [key,saved] of (raw.lives??[])) {
     const e=state.entities?.get?.(mapped(saved.entityId));
     if(!e || e.type!==(saved.entityType??saved.type) || Math.hypot(e.pos.x-saved.position.x,e.pos.z-saved.position.z)>1e-3
       || Math.hypot(e.vel.x-saved.velocity.x,e.vel.z-saved.velocity.z)>1e-3)continue;
+    const prior=j.lives.get(idKey(e.id));
+    // A newly admitted semantic body can take its saved life, but fresh earned evidence on
+    // that body must never be replaced by a late callback from its earlier saved lifetime.
+    if(append&&prior&&prior.id!==saved.id&&(j.bodies.has(prior.id)
+      ||Object.values(j.projectiles?.shots||{}).some(shot=>shot.lifeId===prior.id)))continue;
     j.lives.set(idKey(e.id),{...saved,entity:e});
   }
   const validLives=new Set([...j.lives.values()].map(l=>l.id));
-  for(const [id,r] of (raw.roots??[]).slice(0,32))if(validLives.has(r.sourceLife)&&r.nodes?.length<=32&&r.tick<=state.tick&&state.tick-r.tick<=480)j.roots.set(id,r);
-  for(const [life,b] of (raw.bodies??[]))if(validLives.has(life)&&j.roots.has(b.rootId)&&b.edges<=4)j.bodies.set(life,b);
-  for(const [id,c] of (raw.constraints??[]).slice(0,32))if(validLives.has(c.lifeId)&&j.roots.has(c.rootId))j.constraints.set(id,c);
-  j.withheld=raw.withheld??0;
+  for(const [id,r] of (raw.roots??[]).slice(0,32))if((!append||!j.roots.has(id)&&j.roots.size<32)
+    &&validLives.has(r.sourceLife)&&r.nodes?.length<=32&&r.tick<=state.tick&&state.tick-r.tick<=480)j.roots.set(id,r);
+  for(const [life,b] of (raw.bodies??[]))if((!append||!j.bodies.has(life))&&validLives.has(life)&&j.roots.has(b.rootId)&&b.edges<=4)j.bodies.set(life,b);
+  for(const [id,c] of (raw.constraints??[]).slice(0,32))if((!append||!j.constraints.has(id)&&j.constraints.size<32)
+    &&validLives.has(c.lifeId)&&j.roots.has(c.rootId))j.constraints.set(id,c);
+  j.withheld=append?Math.max(j.withheld,raw.withheld??0):raw.withheld??0;
   return j;
 }
 export function pendingStuntBodyIds(state) {

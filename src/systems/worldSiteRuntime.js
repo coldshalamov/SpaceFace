@@ -1,3 +1,6 @@
+import { refreshEntityPhysicsIndex } from '../core/coreSystem.js';
+import { refreshPhysicsPartition, requestActivityReclassify } from '../world/activityRuntime.js';
+import { discardWorldSiteStaticFarRows } from '../world/farActorTable.js';
 // PQ-017 — imported materialization helper. asteroidSites remains the sole registered owner.
 
 import { planWorldSiteMaterialization } from './worldSiteKernel.js';
@@ -11,6 +14,7 @@ export const WORLD_SITE_PAYLOAD_CAPTURE_EPSILON = 0.25;
 
 export function syncWorldSiteMaterialization({ state, helpers, manifest, record }) {
   if (!state || !state.entities || !manifest || !record) return { entities: [], spawned: 0, removed: 0 };
+  discardWorldSiteStaticFarRows(state, manifest.id);
   const plan = planWorldSiteMaterialization(manifest, record);
   const desired = new Map(plan.entities.map((entry) => [entry.worldRecordId, entry]));
   const existing = existingByWorldRecord(state, manifest.id);
@@ -30,6 +34,8 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
     ? PRESENTATION_OWNER_ADMISSION.pending
     : observedAdmission;
   const componentAdmitted = presentationOwnerIsAdmitted(admissionAtSync);
+  const entryAdmitted = (entry) => componentAdmitted && (!entry.structural
+    || presentationOwnerIsAdmitted(presentationOwnerAdmissionForWorldRecord(entry.worldRecordId, state)));
   let spawned = 0;
   let removed = 0;
 
@@ -44,7 +50,7 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
     }
     if (keeper && wanted && wanted.type === 'wreck'
       && keeper.farResident !== true
-      && staticProxyNeedsReplacement(keeper, wanted, componentAdmitted)) {
+      && staticProxyNeedsReplacement(keeper, wanted, componentAdmitted, manifest, record)) {
       // Static Rapier bodies are never teleported. A stage/socket transform change retires the old
       // materialization and lets the physics owner create a fresh body at its authoritative pose.
       // Far-ledger rows are not live bodies — leave them shelved until promote.
@@ -60,7 +66,7 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
       if (keeper) { removeEntity(helpers, keeper); removed += 1; }
       continue;
     }
-    if (keeper) updateExisting(keeper, wanted, manifest, record, componentAdmitted);
+    if (keeper) updateExisting(keeper, wanted, manifest, record, entryAdmitted(wanted), state);
   }
 
   const after = existingByWorldRecord(state, manifest.id);
@@ -69,7 +75,7 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
     for (const wanted of plan.entities) {
       const present = after.get(wanted.worldRecordId) || [];
       if (present.some((entity) => entity.alive !== false)) continue;
-      const entity = spawnEntity(entitySpec(wanted, manifest, record, componentAdmitted));
+      const entity = spawnEntity(entitySpec(wanted, manifest, record, entryAdmitted(wanted)));
       if (entity) spawned += 1;
     }
   }
@@ -118,7 +124,14 @@ export function captureWorldSitePayloadState({
     && index._indexedIds.size === entities.size);
   for (const payload of manifest.payloads) {
     const durable = record.payloads && record.payloads[payload.id];
-    if (!durable || durable.status !== 'released') continue;
+    if (!durable || durable.status !== 'released' && !(payload.structural && durable.status === 'stowed')) continue;
+    if (payload.structural && !durable.destroyed) {
+      // A destroyed finite section is not rematerialized on the next sync/Continue. Normal
+      // sector retirement leaves positive hull and must never be interpreted as destruction.
+      const destroyed = [...state.entities.values()].some((entity) => entity?.data?.worldRecordId === payload.worldObjectId
+        && entity.data.worldSiteId === manifest.id && entity.hull <= 0);
+      if (destroyed) { writablePayload(payload.id, durable).destroyed = true; changed = true; continue; }
+    }
     let live = null;
     let indexAnswered = false;
     if (byWorldRecordId) {
@@ -169,6 +182,10 @@ export function captureWorldSitePayloadState({
         mergedPool[d.commodityId] = (mergedPool[d.commodityId] || 0) + whole;
       }
     }
+    if (payload.structural && live && Number.isFinite(live.hull) && live.hull !== durable.remainingHull) {
+      writablePayload(payload.id, durable).remainingHull = Math.max(0, Math.min(1000, live.hull));
+      changed = true;
+    }
     const stored = durable.remainingPool && typeof durable.remainingPool === 'object'
       ? durable.remainingPool : null;
     const poolChanged = sawContents
@@ -179,7 +196,8 @@ export function captureWorldSitePayloadState({
       changed = true;
       continue;
     }
-    const motion = { pos: { x: live.pos.x, z: live.pos.z }, vel: { x: live.vel.x, z: live.vel.z } };
+    const motion = { pos: { x: live.pos.x, z: live.pos.z }, vel: { x: live.vel.x, z: live.vel.z },
+      ...(payload.structural ? { rot: Number(live.rot) || 0, angVel: Number(live.angVel) || 0 } : {}) }; 
     if (!poolChanged && sameMotion(durable.motion, motion, force ? 0 : epsilon)) continue;
     const writable = writablePayload(payload.id, durable);
     writable.motion = motion;
@@ -369,6 +387,16 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
       },
     };
   }
+  if (entry.type === 'payload' && entry.structural) {
+    return {
+      type: 'wreck', pos: { ...entry.pos }, vel: { ...entry.vel },
+      rot: entry.rot, angVel: entry.angVel, radius: entry.radius, mass: entry.mass,
+      hull: entry.hull, hullMax: 1000, collides: componentAdmitted,
+      physicsBody: structuralBodySpec(entry, componentAdmitted),
+      data: { ...commonData, ...structuralData(entry, componentAdmitted),
+        worldSitePayloadId: entry.payloadId, salvagePool: {}, transientSector: false },
+    };
+  }
   if (entry.type === 'payload') {
     return {
       type: 'payload',
@@ -415,6 +443,7 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
     type: 'wreck',
     _noMesh: collisionOnly || hideComponentProxy,
     pos: { ...entry.pos },
+    rot: manifest.placement.rot || 0,
     vel: { x: 0, z: 0 },
     radius: entry.radius,
     mass: solid ? 1e9 : 0,
@@ -428,6 +457,12 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
       inertiaY: 1e9,
       ccd: false,
       material: 'station',
+      ...(entry.shape === 'box' ? { collisionProxyManifest: {
+        schemaVersion: 1, id: `world-site-proxy:${entry.worldRecordId}`, referenceRadius: 'radius',
+        primitives: [{ kind: 'obb', id: 'shell', x: 0, z: 0, angle: 0,
+          hx: entry.proxy.halfExtents.x / Math.hypot(entry.proxy.halfExtents.x, entry.proxy.halfExtents.z),
+          hz: entry.proxy.halfExtents.z / Math.hypot(entry.proxy.halfExtents.x, entry.proxy.halfExtents.z) }],
+      } } : {}),
     } : false,
     data: {
       ...commonData,
@@ -449,7 +484,7 @@ function entitySpec(entry, manifest, record, componentAdmitted) {
   };
 }
 
-function updateExisting(entity, entry, manifest, record, componentAdmitted) {
+function updateExisting(entity, entry, manifest, record, componentAdmitted, state) {
   if (entry.type === 'fx') {
     entity.pos.x = entry.pos.x;
     entity.pos.z = entry.pos.z;
@@ -477,19 +512,41 @@ function updateExisting(entity, entry, manifest, record, componentAdmitted) {
     entity._noMesh = collisionOnly || manifest.visualRoot?.componentProxyPresentation === 'hidden';
     // Pose, radius, collision shape, and body definition are immutable for a live static body.
     // staticProxyNeedsReplacement has already retired any proxy whose authored physics changed.
+  } else if (entry.type === 'payload' && entry.structural) {
+    const next = structuralBodySpec(entry, componentAdmitted);
+    // Changing the physical coupling rebuilds the same entity's body via SG-02's revision seam.
+    // Never assign pose/velocity here: release keeps the actual physical mass where it is.
+    const bodyChanged=entity.physicsBody?.dynamic !== next.dynamic || entity.collides !== componentAdmitted;
+    if (bodyChanged) {
+      next.revision = (entity.physicsBody?.revision || 0) + 1;
+      entity.physicsBody = next;
+    }
+    entity.collides = componentAdmitted;
+    Object.assign(data, structuralData(entry, componentAdmitted));
+    if(bodyChanged&&refreshEntityPhysicsIndex(state,entity,entity.occupantGeneration)) {
+      refreshPhysicsPartition(entity);requestActivityReclassify(state,entity);
+    }
+    // The cut face remains a completed component; an empty generic wreck is not free salvage.
   } else if (entry.type === 'payload') {
     data.worldSiteTargetable = true;
     data.worldSitePresentationAdmitted = true;
   }
 }
 
-function staticProxyNeedsReplacement(entity, wanted, componentAdmitted) {
+function staticProxyNeedsReplacement(entity, wanted, componentAdmitted, manifest, record) {
   const solid = componentAdmitted && wanted.bodyType === 'solid';
+  const canonical = entitySpec(wanted, manifest, record, componentAdmitted).physicsBody;
+  const body = entity.physicsBody;
+  const matchesBody = canonical === false ? body === false : body && body.dynamic === false
+    && body.mass === canonical.mass && body.radius === canonical.radius
+    && body.inertiaY === canonical.inertiaY && body.material === canonical.material
+    && JSON.stringify(body.collisionProxyManifest || null) === JSON.stringify(canonical.collisionProxyManifest || null);
   return !finitePoint(entity.pos)
     || entity.pos.x !== wanted.pos.x
     || entity.pos.z !== wanted.pos.z
     || entity.radius !== wanted.radius
     || !!entity.collides !== solid
+    || !matchesBody
     || !!(entity.data && entity.data.worldSitePresentationAdmitted) !== componentAdmitted;
 }
 
@@ -532,7 +589,9 @@ function sameMotion(a, b, epsilon = 0) {
     && Math.abs(a.pos.x - b.pos.x) <= tolerance
     && Math.abs(a.pos.z - b.pos.z) <= tolerance
     && Math.abs(a.vel.x - b.vel.x) <= tolerance
-    && Math.abs(a.vel.z - b.vel.z) <= tolerance;
+    && Math.abs(a.vel.z - b.vel.z) <= tolerance
+    && (b.rot == null || Math.abs((a.rot || 0) - b.rot) <= tolerance / 100)
+    && (b.angVel == null || Math.abs((a.angVel || 0) - b.angVel) <= tolerance / 100);
 }
 
 function wholeUnits(value) {
@@ -1249,3 +1308,35 @@ export default {
   judgeKillMachineCollateral,
   projectIndustrySiteResult,
 };
+
+function structuralBodySpec(entry, admitted) {
+  const { halfX, halfZ } = entry.structural;
+  return {
+    schemaVersion: 1, dynamic: !entry.attached && !entry.supported,
+    radius: entry.radius, mass: entry.mass,
+    inertiaY: entry.mass * (halfX * halfX + halfZ * halfZ) / 3,
+    ccd: true, revision: 0, material: admitted ? 'wreck' : 'massline_sensor',
+    collisionProxyManifest: {
+      schemaVersion: 1, id: `world-site-structure:${entry.worldRecordId}`,
+      referenceRadius: 'radius',
+      primitives: (entry.structural.boxes || [{ x: 0, z: 0, halfX, halfZ }]).map((box, i) => ({
+        kind: 'obb', id: `matched-section-${i}`, x: box.x / entry.radius, z: box.z / entry.radius,
+        hx: box.halfX / entry.radius, hz: box.halfZ / entry.radius, angle: 0,
+      })),
+    },
+  };
+}
+
+function structuralData(entry, admitted) {
+  return {
+    role: 'world_site_payload', kind: 'structural_section', name: entry.label,
+    presentationOwnerWorldRecordId: entry.worldRecordId,
+    worldSiteStructural: true, worldSiteStructuralAttached: entry.attached,
+    worldSiteStructuralSupported: entry.supported,
+    worldSiteTargetable: admitted, worldSitePresentationAdmitted: admitted,
+    worldSiteComponentStatus: entry.status,
+    worldSiteComponentId: entry.componentId, operationOwner: 'asteroidSites',
+    ...(entry.placeId ? { placeId: entry.placeId, placeScale: entry.structural.placeScale || 1 } : {}),
+    tetherPayload: true,
+  };
+}

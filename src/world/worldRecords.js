@@ -1,3 +1,5 @@
+import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
+import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
 // Pure durable world-entity record schema + rematerialization helpers (M2-C2).
 //
 // Owned exclusively by systems/world.js for capture on demote and rematerialize on promote.
@@ -709,7 +711,9 @@ export function captureEntityRecord(entity, opts = {}) {
     || null;
   const missionId = missionIdentityOf(d) || (previous && previous.missionId) || null;
   const missionTag = d.missionTag || (previous && previous.missionTag) || missionId || null;
-  const jobId = d.jobId || (previous && previous.jobId) || null;
+  // Ceres' existing activity jobId is a same-life runtime lease; durable custody lives in its validated itinerary.
+  const transientCeresJob=ceresWorkfleetRoleForEntity(entity)&&(!d.jobId||d.jobId==='job:ceres:second_measure:long_plate');
+  const jobId = transientCeresJob ? null : d.jobId || (previous && previous.jobId) || null;
   const playerOwned = d.playerOwned === true || entity.playerOwned === true
     || previous && previous.playerOwned === true;
   const playerCreated = d.playerCreated === true || entity.playerCreated === true
@@ -1006,6 +1010,10 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
 export function spawnSpecFromRecord(record) {
   const rec = normalizeRecord(record);
   if (!rec || !recordShouldRematerialize(rec, 'FULL')) return null;
+  if (isCeresWorkfleetRecordIdentity(record)) {
+    const role=ceresWorkfleetHardwareRoleForRecord(record);
+    return role ? ceresWorkfleetHardwareSpec(role,record) : null;
+  }
 
   if (rec.type === 'wreck' || rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
     return {

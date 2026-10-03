@@ -4,6 +4,7 @@
 import {
   applySectorAnchors,
   CERES_WRECK_CATHEDRAL_LOCAL_POS,
+  CERES_SECOND_MEASURE_LOCAL_POS,
 } from './sectorAnchors.js';
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
@@ -185,6 +186,8 @@ const CORE_SECTORS = [
         anchor: CERES_WRECK_CATHEDRAL_LOCAL_POS,
         runtimeOwner: 'asteroidSites',
       },
+      { id: 'world_site_ceres_second_measure', type: 'wreck', name: 'Second Measure Shipbreak',
+        anchor: CERES_SECOND_MEASURE_LOCAL_POS, runtimeOwner: 'asteroidSites' },
       // The Kettle Line drift trail (src/data/kettleLine.js): three authored convoy pieces
       // strung along a drift line off the Helios-gate approach. Plain POI rows; the scan tells
       // and the payoff pod live in that module and its owners.

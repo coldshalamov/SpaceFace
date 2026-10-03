@@ -1,3 +1,4 @@
+import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
 // SpaceFace Flight V3 — production adapter.
 //
 // Drop-in intent: replace the registry's import of src/systems/flight.js with this
@@ -238,6 +239,8 @@ export const flightV3 = {
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
       // Abstract/dormant/aggregate stay under catch-up unless a wake carries intent.
       if (!entityNeedsFlightStep(entity)) continue;
+      const ceresControl=consumeCeresBreakerControl(entity,state);
+      if(ceresControl){writePhysicsControl(entity,ceresControl);publishCeresWorkfleetActuation(entity,ceresControl,state.tick,state);continue;}
       if (!npcFlightNeedsCommand(entity)) continue;
       const intent = entity.data && entity.data.intent;
       if (intent) this._stepCraft(entity, intent, dt, state, false);

@@ -57,6 +57,47 @@ function noteSalvageRightsReceipt(s,record) {
   if(log.some(r=>r&&r.id===record.id))return;
   log.push(record);if(log.length>48)log.shift();
 }
+
+// Only the save owner's four exact Ceres body aliases enter this bounded pending branch.
+// It contains proof fragments, never another copy of the live stunt owner or its counters.
+function containsBodyAlias(value,aliases) {
+  if(typeof value==='string')return aliases.has(value);
+  if(!value||typeof value!=='object')return false;
+  return Object.values(value).some(child=>containsBodyAlias(child,aliases));
+}
+function pendingBodyProofs(raw,aliases,tick) {
+  if(!aliases.size)return null;
+  const evidence=raw?.evidence;
+  const lives=(evidence?.lives||[]).filter(([,life])=>aliases.has(String(life.entityId)));
+  const lifeIds=new Set(lives.map(([,life])=>life.id));
+  const roots=(evidence?.roots||[]).filter(([,root])=>lifeIds.has(root.sourceLife)&&root.tick<=tick&&tick-root.tick<=480);
+  const shots=Object.fromEntries(Object.entries(raw?.projectiles?.shots||{})
+    .filter(([,shot])=>shot.tick<=tick&&tick-shot.tick<=480&&containsBodyAlias(shot,aliases)));
+  const contacts=Object.fromEntries(Object.entries(raw?.projectiles?.contacts||{})
+    .filter(([,contact])=>shots[contact.projectileLife]||containsBodyAlias(contact,aliases)));
+  return {aliases,savedTick:tick,evidence:evidence?{...evidence,lives,roots,
+    bodies:(evidence.bodies||[]).filter(([life])=>lifeIds.has(life)),
+    constraints:(evidence.constraints||[]).filter(([,constraint])=>lifeIds.has(constraint.lifeId)||containsBodyAlias(constraint,aliases))}:null,
+    projectiles:raw?.projectiles?{...raw.projectiles,shots,contacts,playerHistory:[],surfaceHistory:{}}:null};
+}
+function mergePendingProofs(record,pending,tick) {
+  if(!pending||tick<pending.savedTick||tick-pending.savedTick>480)return record;
+  const mergeRows=(oldRows,currentRows,key=([id])=>id)=>[...new Map([...(oldRows||[]),...(currentRows||[])].map(row=>[key(row),row])).values()];
+  if(record.evidence&&pending.evidence) {
+    const a=pending.evidence,b=record.evidence;
+    const roots=a.roots.filter(([,root])=>root.tick<=tick&&tick-root.tick<=480);
+    record.evidence={...b,sequence:Math.max(a.sequence,b.sequence),
+      lives:mergeRows(a.lives,b.lives,([,life])=>life.id),roots:mergeRows(roots,b.roots).slice(-32),
+      bodies:mergeRows(a.bodies,b.bodies),constraints:mergeRows(a.constraints,b.constraints).slice(-32)};
+  }
+  if(pending.projectiles) {
+    const current=record.projectiles||pending.projectiles;
+    record.projectiles={...current,shots:Object.fromEntries(Object.entries({...pending.projectiles.shots,...current.shots})
+      .filter(([,shot])=>shot.tick<=tick&&tick-shot.tick<=480).slice(-64)),
+      contacts:Object.fromEntries(Object.entries({...pending.projectiles.contacts,...current.contacts}).slice(-32))};
+  }
+  return record;
+}
 export const stuntGrammar={
   id:'stuntGrammar',name:'stuntGrammar',
   // serialize() wraps every branch in structuredClone before bounding; saveSystem must not
@@ -72,20 +113,45 @@ export const stuntGrammar={
       const off=this.bus?.on(event,p=>this._event(event,p??{}));if(typeof off==='function')this._unsubs.push(off);
     }
   },
-  destroy() { for(const off of this._unsubs??[])off();this._unsubs=[];unbindStuntEvidence(this.state);this.detector=null;this.flight=null; },
+  destroy() { for(const off of this._unsubs??[])off();this._unsubs=[];this._pendingBodyRestore=null;journalFor(this.state)?.pendingRootTicks?.clear();unbindStuntEvidence(this.state);this.detector=null;this.flight=null; },
   serialize() {
     const s=this.state;if(!s||(s.run?.kind==='survival'&&s.run.phase!=='inactive'))return null;
     if(!this.detector||!this.flight)return null;
-    return boundStuntSavePayload(structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s,pendingProjectileBodyIds(s)),projectiles:serializeProjectileEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()}));
+    const record=structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s,pendingProjectileBodyIds(s)),projectiles:serializeProjectileEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()});
+    return boundStuntSavePayload(mergePendingProofs(record,this._pendingBodyRestore&&structuredClone(this._pendingBodyRestore),s.tick));
   },
-  deserialize(raw,remap=null) {
+  deserialize(raw,remap=null,{pendingBodyRefs=[]}={}) {
     const s=this.state;
+    this._pendingBodyRestore=null;
     if(raw?.revision!==2||raw.mode!=='adventure'){s.stunts=null;ensure(s);resetStuntEvidence(s);this.detector=createStuntDetector({playerId:s.playerId});this.flight=new StuntFlightObserver();return;}
     s.stunts=remapStuntReferences(structuredClone(raw.state),remap);ensure(s);restoreStuntEvidence(s,raw.evidence,remap);
     restoreProjectileEvidence(s,raw.projectiles,remap);
     this.detector=createStuntDetector({playerId:s.playerId});this.detector.deserialize(remapStuntReferences(structuredClone(raw.detector),remap));this.flight=new StuntFlightObserver();
     this.flight.restore(remapStuntReferences(structuredClone(raw.flight),remap));
     remapStuntReferences(s.story?.titles,remap);remapStuntReferences(s.story?.lineContracts,remap);remapStuntReferences(s.barkDirector?.stuntRecognition,remap);
+    const aliases=new Set(pendingBodyRefs.slice(0,4).filter(id=>typeof id==='string'&&id.startsWith('ceres-ref:')));
+    if(aliases.size)this._pendingBodyRestore=pendingBodyProofs(remapStuntReferences(structuredClone(raw),remap),aliases,s.tick);
+    journalFor(s).pendingRootTicks=new Map(this._pendingBodyRestore?.evidence?.roots.map(([id,root])=>[id,root.tick])||[]);
+  },
+  resumeBodyReferences(remap,dropped=[]) {
+    const s=this.state,j=journalFor(s),pending=this._pendingBodyRestore;
+    if(!j)return;
+    // Mutate only references in already-live records; do not replay a serialized detector,
+    // journal or owner over progress earned while a site body was materializing.
+    for(const map of [j.roots,j.bodies,j.constraints,this.detector?.incidents,this.flight?.tracks]) {
+      for(const row of map?.values()||[])remapStuntReferences(row,remap);
+    }
+    for(const value of [s.stunts,j.projectiles,this.detector?.detectedTricks,this.flight?.history,
+      s.story?.titles,s.story?.lineContracts,s.barkDirector?.stuntRecognition])remapStuntReferences(value,remap);
+    if(!pending)return;
+    remapStuntReferences(pending.evidence,remap);remapStuntReferences(pending.projectiles,remap);
+    if(s.tick>=pending.savedTick&&s.tick-pending.savedTick<=480) {
+      restoreStuntEvidence(s,pending.evidence,null,{append:true});
+      restoreProjectileEvidence(s,pending.projectiles,null,{append:true});
+    }
+    for(const alias of [...remap.keys(),...dropped])pending.aliases.delete(alias);
+    this._pendingBodyRestore=pendingBodyProofs(pending,pending.aliases,pending.savedTick);
+    j.pendingRootTicks=new Map(this._pendingBodyRestore?.evidence?.roots.map(([id,root])=>[id,root.tick])||[]);
   },
   _admit(entity) {
     if(!entity)return;
@@ -150,6 +216,7 @@ export const stuntGrammar={
     if(event==='save:restoring') { unbindStuntEvidence(s);return; }
     if(event==='save:loaded') { bindStuntEvidence(s);return; }
     if(['run:started','game:started','game:newGame'].includes(event)) {
+      this._pendingBodyRestore=null;
       resetStuntEvidence(s);s.stunts=null;ensure(s);this.detector=createStuntDetector({playerId:s.playerId});this.flight=new StuntFlightObserver();
       for(const e of s.entities?.values?.()??[])this._admit(e);return;
     }

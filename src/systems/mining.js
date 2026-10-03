@@ -1,3 +1,4 @@
+import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
 // collectible pickups, the magnet auto-collect pull, and wreck salvage.
 //
@@ -1678,6 +1679,7 @@ export const mining = {
   },
 
   _drainWreck(player, wreck, dps, dt) {
+    if (isCeresWorkfleetHardware(wreck)) return 0;
     const d = wreck.data || (wreck.data = {});
     const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
     const salvageApi = sourceKey && this.helpers && this.helpers.salvage;
@@ -2680,6 +2682,7 @@ export function beamRangeFor(player, state) {
 }
 
 export function isBeamTargetEligible(entity, state) {
+  if (isCeresWorkfleetHardware(entity)) return false;
   if (!entity || entity.alive === false) return false;
   if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
     && !weldableHullForBeam(entity, state)) return false;

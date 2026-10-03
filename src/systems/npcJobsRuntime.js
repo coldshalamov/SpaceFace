@@ -1,3 +1,4 @@
+import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
 // PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
 //
@@ -3671,6 +3672,7 @@ export const npcJobsRuntime = {
       this._threatQueryDirty = true;
       return; // scenery only matters in flight (mirrors traffic)
     }
+    stepCeresWorkfleet(this,dt);
     this._stepPlayerTenderDispatch(dt);
     this._stepCrewResponse(dt);
     this._stepTowAssists();
@@ -5362,6 +5364,7 @@ export const npcJobsRuntime = {
   serialize() {
     const byId = this._byId();
     const out = { byId: {} };
+    if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=JSON.parse(JSON.stringify(this.state.npcJobs.ceresWorkfleet));
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
       if (!entry || !entry.job) continue;
@@ -5405,6 +5408,7 @@ export const npcJobsRuntime = {
   // Generator twin: the actor walk and each job record restore are atomic, so yields sit only
   // between those record boundaries — order and RNG consumption stay identical.
   *deserializeChunked(data) {
+    clearCeresWorkfleetControls(this.state);
     // World re-entry happens before this restore step. An outgoing virtual job can therefore
     // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
     // below is authoritative; clear every live marker owned by this runtime before replacing it,
@@ -5455,6 +5459,8 @@ export const npcJobsRuntime = {
       yield 'npcjobs-job';
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
+    const ceresWorkfleet=restoreCeresWorkfleetJob(data?.ceresWorkfleet);
+    if(ceresWorkfleet)this.state.npcJobs.ceresWorkfleet=ceresWorkfleet;
     this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));

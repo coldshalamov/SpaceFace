@@ -1,3 +1,6 @@
+import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
+import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
+import { registerMachineryReconciliation, unregisterMachineryReconciliation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 // Ambient NPC traffic (V2 §28b / cut-list #2 visible-haulers). Spawns benign freighter ships that
 // ply station-to-station routes, making populated space feel ALIVE and — now that the economy
 // wallet bug is fixed — actually moving market prices via aiTrader:requestTrade. This is the §31-Q16
@@ -1498,8 +1501,14 @@ export const traffic = {
   // not defensively clone the (large) traffic payload a second time during autosave capture.
   saveSnapshotOwned: true,
 
+  destroy() {
+    clearCeresWorkfleetControls(this.state);
+    unregisterMachineryReconciliation(this.state, this);
+  },
+
   init(ctx) {
     this.state = ctx.state;
+    registerMachineryReconciliation(this.state, this);
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._registry = ctx.registry || null;
@@ -1596,6 +1605,8 @@ export const traffic = {
     this.bus.on('combat:fire', (p) => this._onCombatFire(p || {}));
     this.bus.on('law:incidentOpened', (p) => this._onLawIncidentOpened(p || {}));
     this.bus.on('save:restoring', () => {
+      captureCeresWorkfleetHardware(this);clearCeresWorkfleetControls(this.state);
+      invalidateMachineryPresentation(this.state);
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
       // may still unwind afterward, but their private reservation tokens no longer own this run.
       this._restoreEpochPending = true;
@@ -1685,12 +1696,15 @@ export const traffic = {
       // Held tools publish progress every fixed tick. Traffic topology changes only on completion;
       // projecting all sites and scanning freighters for every partial tick is pure hot-path waste.
       if (receipt?.complete !== true) return;
+      syncCeresWorkfleetHardware(this);
       const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
       this._applyWorldSiteTrafficHooks(record && record.sectorId);
     });
     // A full hangar depot or a jammed aperture asks for one haul. The job kernel flies it.
     this.bus.on('industry:haulRequested', (p) => this._onIndustryHaulRequested(p || {}));
   },
+
+  _reconcileCeresWorkfleetPresentation() { reconcileCeresWorkfleetPresentation(this); },
 
   heaveToEntity(entityId, {
     durationS = TRAFFIC_HEAVE_TO_DURATION_S,
@@ -1732,6 +1746,7 @@ export const traffic = {
   },
 
   _onSectorExit(p) {
+    captureCeresWorkfleetHardware(this);clearCeresWorkfleetControls(this.state);
     if (p && (p.continuous || p.noTeleport)) {
       this._pruneDead();
       return;
@@ -1993,6 +2008,7 @@ export const traffic = {
     for (const [recordId, record] of Object.entries(records)) {
       const home = record && (record.homeSectorId || record.sectorId);
       if (!record || record.kind !== RECORD_KIND.CONVOY || !record.trafficRole
+        || ceresWorkfleetHardwareRoleForRecord(record)==='breaker'
         || home !== CERES_ACTIVITY_SECTOR_ID || authoredRecordIds.has(recordId)
         || record.itinerary?.kind === 'claim_depot'
         || record.itinerary?.kind === 'claim_convoy'
@@ -5071,6 +5087,7 @@ export const traffic = {
       this._maintainClaimDepotTraffic();
       this._maintainClaimConvoys();
     }
+    syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
@@ -11386,6 +11403,7 @@ export const traffic = {
   },
 
   serialize() {
+    captureCeresWorkfleetHardware(this);
     this._ensureState();
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,

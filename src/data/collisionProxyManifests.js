@@ -24,6 +24,7 @@
 // it never teleports, never writes velocity directly, and never seizes control (player input always
 // blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
 
+import { ceresWorkfleetSlide, ceresWorkfleetSlideRole, poseCeresWorkfleetPrimitive } from './ceresWorkfleetArticulation.js';
 import {
   modelTruthPlanarRadius,
   modelTruthProxyManifest,
@@ -411,12 +412,14 @@ export function expandProxyPrimitives(manifest, options = {}) {
     ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg))
     : 0;
   const out = [];
+  const ceresRole = ceresWorkfleetSlideRole(options.entity, manifest);
   for (const primitive of manifest.primitives || []) {
     if (out.length >= MAX_PROXY_PRIMITIVES) break;
     if (primitive.kind === 'chain') {
       expandChain(primitive, corridorDeg, out);
     } else if (primitive.kind === 'circle' || primitive.kind === 'capsule' || primitive.kind === 'obb') {
-      out.push({ ...primitive });
+      out.push(ceresRole ? poseCeresWorkfleetPrimitive(primitive, ceresRole, ceresWorkfleetSlide(options.entity))
+            : { ...primitive });
     }
   }
   if (frameDeg !== 0) rotateProxyPrimitives(out, frameDeg * DEG);
@@ -1064,9 +1067,10 @@ const EXPANDED_PRIMITIVE_CACHE = new WeakMap();
 
 function expandedPrimitivesCached(manifest, entity, corridorDeg) {
   const cached = EXPANDED_PRIMITIVE_CACHE.get(manifest);
-  if (cached && cached.entity === entity && cached.corridorDeg === corridorDeg) return cached.primitives;
+  const poseAngle = ceresWorkfleetSlideRole(entity, manifest) ? ceresWorkfleetSlide(entity) : 0;
+  if (cached && cached.entity === entity && cached.corridorDeg === corridorDeg && cached.poseAngle === poseAngle) return cached.primitives;
   const primitives = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
-  EXPANDED_PRIMITIVE_CACHE.set(manifest, { entity, corridorDeg, primitives });
+  EXPANDED_PRIMITIVE_CACHE.set(manifest, { entity, corridorDeg, poseAngle, primitives });
   return primitives;
 }
 

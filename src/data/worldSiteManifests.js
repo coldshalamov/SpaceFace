@@ -1,3 +1,4 @@
+import { CERES_SHIPBREAK_MANIFEST } from './ceresShipbreak.js';
 // PQ-017 — versioned data grammar for persistent multi-component World Sites.
 // Runtime mutation stays in asteroidSites/worldSiteKernel; this file is inert content truth.
 
@@ -667,7 +668,7 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
 // Durable site iteration is ID-stable rather than authoring-order-stable. This keeps old saves,
 // natural production, traffic hooks, and map projection deterministic as new manifests are added.
 export const WORLD_SITE_MANIFESTS = Object.freeze(
-  [...WORLD_SITE_MANIFESTS_UNSORTED].sort((a, b) => a.id.localeCompare(b.id)),
+  [...WORLD_SITE_MANIFESTS_UNSORTED, CERES_SHIPBREAK_MANIFEST].sort((a, b) => a.id.localeCompare(b.id)),
 );
 
 const WORLD_SITE_MANIFEST_BY_ID = new Map(WORLD_SITE_MANIFESTS.map((manifest) => [manifest.id, manifest]));

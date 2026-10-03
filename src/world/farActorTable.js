@@ -1,3 +1,5 @@
+import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
+import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 // Far ships and wrecks beyond the combat table. They stay as compact records and
 // rematerialize when the player approaches, or when a projectile's flight reaches
 // them. They are not GameState combat entities while shelved.
@@ -14,6 +16,32 @@ import { resolveFarEncounters } from './farEncounterOutcomes.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
+
+// Static source anatomy has no lean actor recipe. Its canonical site owner alone may
+// re-create a body after admission/stage changes; a generic wreck would lose the compound,
+// fixed-body mode and source mass. Validate stable identity even for an old stripped row.
+const staticSiteAnatomy = new Map(WORLD_SITE_MANIFESTS.flatMap(manifest => [
+  ...manifest.components.filter(component => !manifest.payloads.some(payload =>
+    payload.structural && payload.componentId === component.id)).map(component =>
+    [`${manifest.worldObjectId}/component/${component.id}`, {siteId:manifest.id, role:'world_site_component'}]),
+  ...(manifest.collisionProxies || []).map(proxy =>
+    [`${manifest.worldObjectId}/collision/${proxy.id}`, {siteId:manifest.id, role:'world_site_collision'}]),
+]));
+export function isWorldSiteStaticAnatomy(entity) {
+  const data=entity?.data, identity=staticSiteAnatomy.get(data?.worldRecordId);
+  return !!identity && entity?.type==='wreck' && data?.persistenceOwner==='asteroidSites'
+    && identity?.siteId===data.worldSiteId && identity?.role===data.role;
+}
+
+export function discardWorldSiteStaticFarRows(state, siteId) {
+  if (!state?.world?.farActors?.rows) return 0;
+  const table=ensureFarActorTable(state);
+  let removed=0;
+  for (const row of table.rows.slice()) if (row.data?.worldSiteId===siteId && isWorldSiteStaticAnatomy(row)) {
+    removeFarRecord(table,row); removed++;
+  }
+  return removed;
+}
 
 /** Bench A/B: production default ON. Quiet latch skips shelve-candidate walk when far empty. */
 let FAR_EMPTY_QUIET_LATCH = true;
@@ -150,7 +178,8 @@ export function restoreFarActorTable(state, data) {
   world.farActors = {
     schema: FAR_ACTOR_SCHEMA,
     version: Number.isSafeInteger(data.version) ? data.version : 0,
-    rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)),
+    rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)
+      && !isWorldSiteStaticAnatomy(row)),
   };
   // Shelved ids stay reserved through allocateEntityId's ledger check — no counter bump needed
   // here (bumping nextEntityId would shift the post-load spawn order and break save hash parity).
@@ -245,6 +274,7 @@ export function shouldVirtualizeFarActor(entity, state) {
   if (type !== 'ship' && type !== 'drone' && type !== 'wreck') return false;
   const flags = entity.flags || {};
   const data = entity.data || {};
+  if (isWorldSiteStaticAnatomy(entity)) return false;
   if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
   if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;
   // A marker-bound wreck's body belongs to the aftermath marker (state.aftermathWrecks), which
@@ -257,6 +287,10 @@ export function shouldVirtualizeFarActor(entity, state) {
   // promoted shell and hides the shelved copy from the materializer's live-entity dedup —
   // every load minted a twin anchored to the same permanent record (D141).
   if (data.worldOneOff === true) return false;
+  // P03's three finite matched masses retain site-owned coupling, source-origin geometry and
+  // yaw/integrity. The lean far-actor row cannot reconstruct that contract; normal activity
+  // tiers still gate their physics, while asteroidSites remains their persistence owner.
+  if (data.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
@@ -622,6 +656,9 @@ export function promoteFarActor(state, id, helpers) {
   }
   const rec = getFarActor(state, id);
   if (!rec || rec.alive === false) return live;
+  // A legacy shelf row can arrive before the site owner's restore/sync. Do not admit even
+  // one native frame of generic geometry; that owner will discard the row and reauthor it.
+  if (isWorldSiteStaticAnatomy(rec)) return null;
   const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
   if (!spawn) return null;
   // Re-acquire the slot this body released when it was shelved. A saturated cap defers the
