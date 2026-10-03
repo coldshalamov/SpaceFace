@@ -761,6 +761,11 @@ export const settingsScreen = {
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
       motionEffectsRow(build, s, true);
+      // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
+      // often wants MORE rumble, so this never follows the reduce-motion choice.
+      rowSelect('Controller rumble', () => ac.haptics || 'full',
+        [['off', 'Off'], ['low', 'Low'], ['full', 'Full']],
+        (v) => this._set(ctx, 'accessibility', 'haptics', v));
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
       const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');

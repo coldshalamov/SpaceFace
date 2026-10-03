@@ -89,6 +89,10 @@ function defaultSettings() {
       // Full by default: the OS reduced-motion hint is an explicit opt-in (System), never a silent
       // one — Windows "Animation effects: off" is a desktop tweak, not a request to strip combat feel.
       motionPreference: 'full', motionAsked: false, motionPrompted: false, motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
+      // FB-005: rumble is its own accessibility axis — 'off' | 'low' | 'full'. Reduce-motion is
+      // vestibular and deliberately does NOT silence it; a calmer screen often wants more haptic
+      // feedback, not less. Profile-scoped (never inside a save slot).
+      haptics: 'full',
     },
   };
 }

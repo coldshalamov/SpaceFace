@@ -4161,6 +4161,14 @@ export const save = {
       if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
         restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
       }
+      // FB-005: rumble level is profile-scoped and never persisted inside a save slot. The
+      // profile merge normally wins outright; when the profile predates the setting, the save's
+      // copy must not leak through either — the shipped default stands.
+      const profileHaptics = profile.accessibility && profile.accessibility.haptics;
+      if (profileHaptics !== 'off' && profileHaptics !== 'low' && profileHaptics !== 'full'
+        && restored.accessibility) {
+        restored.accessibility.haptics = 'full';
+      }
     }
     this.state.settings = restored;
   },
@@ -5515,6 +5523,12 @@ function sanitizeRestoredSettings(settings) {
   const mouse = s.controls.mouse;
   if (typeof mouse.sensitivity !== 'number' || !(mouse.sensitivity > 0)) mouse.sensitivity = 1;
   if (typeof mouse.invertY !== 'boolean') mouse.invertY = false;
+  if (!s.accessibility || typeof s.accessibility !== 'object' || Array.isArray(s.accessibility)) {
+    s.accessibility = {};
+  }
+  // FB-005: rumble is its own accessibility axis, never tied to reduce-motion. Profile-scoped.
+  const haptics = s.accessibility.haptics;
+  if (haptics !== 'off' && haptics !== 'low' && haptics !== 'full') s.accessibility.haptics = 'full';
   // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
   if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
     s.controls.touch = { enabled: null };

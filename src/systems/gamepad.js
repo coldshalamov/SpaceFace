@@ -366,16 +366,42 @@ export function resolveGamepadBindings(settings) {
 
 const DEFAULT_DEADZONE = 0.12;
 
-// --- Haptics (PQ-164.03) ---------------------------------------------------------------------------
+// --- Haptics (PQ-164.03 + FB-005) ------------------------------------------------------------------
 // Line tension, slams and boost are carried on the pad's rumble motors. Intensity is a function of
 // the momentum in play: a loaded Massline, an impact and a boost all read stronger the faster the
-// player (or the struck body) is moving. Reduce-motion silences every channel — haptics are
-// vestibular, so the accessibility flag that kills camera shake kills rumble too.
+// player (or the struck body) is moving. Rumble has its OWN accessibility axis
+// (settings.accessibility.haptics: 'off' | 'low' | 'full') — reduce-motion is vestibular and no
+// longer silences it: a calmer screen often wants more haptic substitution, not less.
 export const HAPTIC_REF_MOMENTUM = 120;    // WU/s where momentum-scaled rumble is full
 export const HAPTIC_SLAM_REF_DP = 8000;    // physics impulse at a full-intensity slam
 export const HAPTIC_RUMBLE_MS = 120;       // actuator effect duration; refreshed each active tick
 export const HAPTIC_SLAM_DECAY_TICKS = 18; // ~0.3 s pulse at 60 Hz, decayed on sim ticks
 const HAPTIC_BOOST_FLOOR = 0.30;           // a boost at a standstill still hums
+
+// FB-005: discrete per-verb pulses. Each is a one-shot {strong, weak, ms} profile layered over the
+// continuous channels — a latch "clicks" differently than a cut "twang" differently than a razor
+// release "snap". The pulse table keys are the bus event names; release grades pulse by band.
+// At most one pulse may be live and a fresh one must wait HAPTIC_PULSE_MIN_GAP_TICKS (~80 ms) —
+// a chain of explosions does not turn the pad into a continuous buzz.
+export const HAPTIC_PULSE_MIN_GAP_TICKS = 5; // ~83 ms at 60 Hz — never more than ~12 pulses/s
+export const HAPTIC_VERB_PULSES = Object.freeze({
+  'tether:latched':       { strong: 0.45, weak: 0.30, ms: 90 },
+  'tether:cut':           { strong: 0.25, weak: 0.55, ms: 70 },
+  'massline:snareCaught': { strong: 0.80, weak: 0.95, ms: 150 },
+  'charge:detonated':     { strong: 0.90, weak: 0.65, ms: 170 },
+  'cloak:engaged':        { strong: 0.15, weak: 0.45, ms: 110 },
+});
+// Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
+export const HAPTIC_RELEASE_PULSES = Object.freeze({
+  razor: { strong: 0.50, weak: 1.00, ms: 180 },
+  clean: { strong: 0.40, weak: 0.70, ms: 130 },
+  good:  { strong: 0.30, weak: 0.50, ms: 100 },
+  messy: { strong: 0.20, weak: 0.25, ms: 60 },
+});
+
+export function normalizeHapticLevel(v) {
+  return v === 'off' || v === 'low' ? v : 'full';
+}
 
 function clamp01(v) {
   const n = Number(v);
@@ -389,29 +415,40 @@ function round4(v) {
 
 /**
  * Pure haptic frame. `momentum` is world units/s; `lineLoad` and `slam` are already 0..1
- * (line load from tetherGameplay.computeTetherLoad, slam from the physics impulse). Returns the
- * per-channel intensity plus the dual-rumble motor split (strong = low-freq/left, weak =
- * high-freq/right). Reduce-motion returns an all-zero, disabled frame before anything is scaled.
+ * (line load from tetherGameplay.computeTetherLoad, slam from the physics impulse). `haptics` is
+ * the accessibility level ('off' | 'low' | 'full'); `pulse` is an optional one-shot
+ * {strong, weak} magnitudes object layered over the continuous channels. Returns the per-channel
+ * intensity plus the dual-rumble motor split (strong = low-freq/left, weak = high-freq/right).
+ * 'off' returns an all-zero, disabled frame before anything is scaled; 'low' halves both motors.
  */
 export function computeHapticFrame(input = {}) {
-  if (input.reduceMotion === true) {
-    return { enabled: false, reduceMotion: true, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0 };
+  const level = normalizeHapticLevel(input.haptics);
+  if (level === 'off') {
+    return {
+      enabled: false, haptics: 'off',
+      momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null,
+    };
   }
+  const motor = level === 'low' ? 0.5 : 1;
   const momentum = clamp01(Number(input.momentum) / HAPTIC_REF_MOMENTUM);
   const line = input.lineActive && input.lineLoad > 0 ? clamp01(input.lineLoad) : 0;
   const boost = input.boost ? clamp01(HAPTIC_BOOST_FLOOR + (1 - HAPTIC_BOOST_FLOOR) * momentum) : 0;
   const slam = clamp01(input.slam);
-  const strong = Math.max(line, slam, boost * 0.5);
-  const weak = Math.max(boost, slam * 0.8, line * 0.5);
+  const pulse = input.pulse && (clamp01(input.pulse.strong) > 0 || clamp01(input.pulse.weak) > 0)
+    ? { strong: clamp01(input.pulse.strong), weak: clamp01(input.pulse.weak) }
+    : null;
+  const strong = Math.max(line, slam, boost * 0.5, pulse ? pulse.strong : 0);
+  const weak = Math.max(boost, slam * 0.8, line * 0.5, pulse ? pulse.weak : 0);
   return {
     enabled: true,
-    reduceMotion: false,
+    haptics: level,
     momentum: round4(momentum),
     line: round4(line),
     slam: round4(slam),
     boost: round4(boost),
-    weak: round4(clamp01(weak)),
-    strong: round4(clamp01(strong)),
+    pulse,
+    weak: round4(clamp01(weak * motor)),
+    strong: round4(clamp01(strong * motor)),
   };
 }
 
@@ -695,9 +732,41 @@ export function createGamepad(ctx) {
       : p.impulse;
     registerSlam(momentum);
   };
+
+  // FB-005: per-verb one-shot pulses. Tether events are player-authored by construction (the
+  // player owns the rope the event describes); the snare is the player's deployed anchor; the
+  // cloak is the player's module. charge:detonated is shared with NPC ordnance (detonator
+  // darts, sympathetic cook-offs), so only the player's own verb triggers — manual detonation
+  // and the proximity trap — earn a pulse; everything else stays silent.
+  let pulseTicks = 0;
+  let pulseGapTicks = 0;
+  let pulseSpec = null;
+  // `gp` is declared below; listeners can only fire after createGamepad returns it.
+  const startPulse = (spec, event) => {
+    if (!spec || pulseGapTicks > 0) return false; // ≤ one pulse per ~80 ms, by sim ticks
+    pulseSpec = { strong: spec.strong, weak: spec.weak };
+    pulseTicks = Math.max(1, Math.round((Number(spec.ms) || 60) * 60 / 1000));
+    pulseGapTicks = HAPTIC_PULSE_MIN_GAP_TICKS;
+    gp._lastVerbPulse = event;
+    return true;
+  };
+  const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
   if (bus && typeof bus.on === 'function') {
     bus.on('physics:impact', onImpact);
     bus.on('combat:collisionConsequence', onImpact);
+    bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
+    bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut'));
+    bus.on('tether:releaseRated', (p) => {
+      startPulse(HAPTIC_RELEASE_PULSES[(p && p.classification) || 'messy']
+        || HAPTIC_RELEASE_PULSES.messy, 'tether:releaseRated');
+    });
+    bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught'));
+    bus.on('charge:detonated', (p) => {
+      if (p && CHARGE_PLAYER_TRIGGERS.has(p.trigger)) {
+        startPulse(HAPTIC_VERB_PULSES['charge:detonated'], 'charge:detonated');
+      }
+    });
+    bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged'));
   }
 
   const gp = {
@@ -719,9 +788,11 @@ export function createGamepad(ctx) {
     /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
 
-    // PQ-164.03: last resolved haptic frame (pure data; the actuator is driven from tick).
-    haptics: { enabled: true, reduceMotion: false, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0 },
+    // PQ-164.03 + FB-005: last resolved haptic frame (pure data; the actuator is driven from
+    // tick). `haptics` is the accessibility level; `pulse` is the live one-shot spec or null.
+    haptics: { enabled: true, haptics: 'full', momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null },
     _hapticActive: false,
+    _lastVerbPulse: null,
 
     axes: {
       leftX: 0,
@@ -1041,15 +1112,25 @@ export function createGamepad(ctx) {
       this._stepHaptics(pad, live, cfg);
     },
 
-    // PQ-164.03: resolve the frame from live momentum/tether/boost and the latched slam pulse, then
-    // drive the pad. Reduce-motion (or a disabled `controls.gamepad.haptics`) yields an inert frame
-    // and resets the motors; the frame is always recorded on `this.haptics` for inspection.
+    // PQ-164.03 + FB-005: resolve the frame from live momentum/tether/boost, the latched slam
+    // pulse and any live verb pulse, then drive the pad. Haptics are owned by
+    // `settings.accessibility.haptics` ('off' | 'low' | 'full') — independent of reduce-motion;
+    // the legacy `controls.gamepad.haptics === false` kill-switch still forces 'off'. An 'off'
+    // level yields an inert frame and resets the motors; the frame is always recorded on
+    // `this.haptics` for inspection.
     _stepHaptics(pad, live, cfg) {
-      const reduceMotion = !!(live && live.settings && live.settings.video
-        && live.settings.video.motionReduce);
-      const disabled = !!(cfg && cfg.haptics === false);
+      const access = live && live.settings && live.settings.accessibility;
+      const level = (cfg && cfg.haptics === false)
+        ? 'off'
+        : normalizeHapticLevel(access && access.haptics);
       const slam = slamTicks > 0 ? slamPeak * (slamTicks / HAPTIC_SLAM_DECAY_TICKS) : 0;
       if (slamTicks > 0) slamTicks -= 1;
+      if (pulseGapTicks > 0) pulseGapTicks -= 1;
+      const pulse = pulseTicks > 0 ? pulseSpec : null;
+      if (pulseTicks > 0) {
+        pulseTicks -= 1;
+        if (pulseTicks <= 0) pulseSpec = null;
+      }
 
       const player = live && live.entities && typeof live.entities.get === 'function'
         ? live.entities.get(live.playerId)
@@ -1064,7 +1145,8 @@ export function createGamepad(ctx) {
         lineLoad: tether ? tether.load : 0,
         boost: !!(this.actions.boost && this.actions.boost.held),
         slam,
-        reduceMotion: reduceMotion || disabled,
+        pulse,
+        haptics: level,
       });
       this.haptics = frame;
       this._applyHaptics(pad, frame);
@@ -1127,6 +1209,9 @@ export function createGamepad(ctx) {
       this._chordConsumed = Object.create(null);
       if (Array.isArray(this._pressQueue)) this._pressQueue.length = 0;
       else this._pressQueue = [];
+      pulseTicks = 0;
+      pulseGapTicks = 0;
+      pulseSpec = null;
       this.lastButton = null;
       this._wasActive = false;
     },
