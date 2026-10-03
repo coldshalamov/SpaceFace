@@ -33,6 +33,7 @@ import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
+import { resolveActionLabel } from './input.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -480,6 +481,18 @@ export const onboarding = {
     // the card. The flag rides state.player.hints like every other one-time flag, so it
     // persists with the save and adds no top-level field.
     bus.on('module:equipped', (p) => this._onDemoModuleEquipped(p || {}));
+
+    // TEACH-04 — fitting the transverse snare head speaks its deploy verb once, naming the
+    // player's own bound key. The head does nothing until it is asked to lay the line, so the
+    // lesson belongs at the fit, not before it and not at the first catch.
+    bus.on('module:equipped', (p) => {
+      if (!p || p.defId !== 'mod_transverse_snare_m') return;
+      if (!massline2Flag('masslineHeadTransverseSnare')) return;
+      const key = resolveActionLabel(this.state, 'tether', { empty: 'LATCH' });
+      this._showHint('masslineSnareHead',
+        `Snare head fitted — ${key} lays the line across their path.`,
+        p);
+    });
     bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
