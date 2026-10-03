@@ -954,6 +954,9 @@ export const pauseScreen = {
     // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
     // re-emits `endgame:archive`, so the just-opened codex refreshes to the filed ending.
     const endingArchive = writtenEndingArchive(ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null);
+    // The sheet stays mounted across pause opens, so the row's gate must be re-checkable later:
+    // onShow remounts once if a finale gets filed after this mount.
+    this._endingArchiveAtMount = !!endingArchive;
     if (endingArchive) mk(ENDING_ARCHIVE_LABEL, () => {
       requestCodexTab('Archive');
       nav(ctx, 'pushScreen', 'codex');
@@ -1090,6 +1093,16 @@ export const pauseScreen = {
 
   onShow(ctx) {
     if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    // The Ending Archive row was gated at mount; a finale filed in a later session of this
+    // mounted sheet must open the row. Remount once on the transition — mount owns the whole
+    // sheet build, and the focus/settle work below lands on the fresh frame.
+    if (!this._endingArchiveAtMount && pauseRootEl) {
+      const finale = ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null;
+      if (writtenEndingArchive(finale)) {
+        this._endingArchiveAtMount = true;
+        this.mount(pauseRootEl, ctx);
+      }
+    }
     // The only load reachable from here is F9's 'quick' — start its envelope decode during
     // the pause dwell instead of on the keypress.
     if (ctx.bus && typeof ctx.bus.emit === 'function') {
