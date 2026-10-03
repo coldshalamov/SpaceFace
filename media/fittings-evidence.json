@@ -198,7 +198,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_tractor_beam_m": {
   "id": "mod_tractor_beam_m",
@@ -398,7 +399,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_gravity_bumper_s": {
   "id": "mod_gravity_bumper_s",
@@ -662,7 +664,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_chaff_dispenser_m": {
   "id": "mod_chaff_dispenser_m",
@@ -786,7 +789,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_charge_rack": {
   "id": "mod_charge_rack",
@@ -794,32 +798,35 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/mod_charge_rack.webm",
   "events": {
+   "fields:deployed": 2,
    "cargo:changed": 1,
    "charge:thrown": 1,
    "charge:stuck": 1,
-   "fields:deployed": 1,
-   "combat:damage": 2,
-   "combat:tumbled": 1,
+   "combat:damage": 9,
+   "combat:tumbled": 6,
    "charge:detonated": 1,
-   "toast": 1,
-   "fields:ended": 1
+   "combat:statusApplied": 6,
+   "toast": 3,
+   "shieldDown": 3,
+   "combat:outcome": 1,
+   "combat:statusExpired": 4
   },
   "statDiff": {
    "topSpeed": {
-    "from": 300.7234469904526,
-    "to": 289.05280140662063
+    "from": 300.7046282952383,
+    "to": 289.0354149793869
    },
    "thrust": {
-    "from": 528.5100600132225,
-    "to": 518.5449261625976
+    "from": 528.4939914234125,
+    "to": 518.5300805335942
    },
    "turnRate": {
-    "from": 8.664404176810597,
-    "to": 8.185917527506607
+    "from": 8.663619242134853,
+    "to": 8.18521689059817
    },
    "operationalMass": {
-    "from": 24.0031,
-    "to": 26.0031
+    "from": 24.0062,
+    "to": 26.0062
    }
   },
   "fitOk": true,
@@ -829,6 +836,20 @@
   },
   "poster": "assets/ui/fitting-media/mod_charge_rack.png",
   "evidenceSamples": {
+   "fields:deployed": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "cone"
+     }
+    }
+   ],
    "cargo:changed": [
     {
      "c": 1,
@@ -847,14 +868,6 @@
      "p": {}
     }
    ],
-   "fields:deployed": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "cone"
-     }
-    }
-   ],
    "combat:damage": [
     {
      "c": 1,
@@ -862,17 +875,77 @@
       "targetId": 1,
       "attackerId": 1,
       "weaponId": null,
-      "amount": 3.7599262027087836,
+      "amount": 5.112164844738383,
       "damageType": null
      }
     },
     {
      "c": 2,
      "p": {
-      "targetId": 379,
+      "targetId": 514,
       "attackerId": 1,
       "weaponId": null,
-      "amount": 12.641445016914037,
+      "amount": 14.427860941121262,
+      "damageType": null
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 515,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 6.099119637133386,
+      "damageType": null
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 516,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 1.8893375330322941,
+      "damageType": null
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 514,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 0.22004370407000476,
+      "damageType": null
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "targetId": 516,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 54.671493781645474,
+      "damageType": null
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "targetId": 579,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 108.13439999999999,
+      "damageType": null
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "targetId": 618,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 108.13439999999999,
       "damageType": null
      }
     }
@@ -884,6 +957,41 @@
       "attackerId": 1,
       "source": "impulse_charge"
      }
+    },
+    {
+     "c": 2,
+     "p": {
+      "attackerId": 1,
+      "source": "impulse_charge"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "attackerId": 514,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "attackerId": 618,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "attackerId": 579,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "attackerId": 372,
+      "source": "collision"
+     }
     }
    ],
    "charge:detonated": [
@@ -892,23 +1000,134 @@
      "p": {}
     }
    ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 514,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 515,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 516,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 579,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 618,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "targetId": 366,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    }
+   ],
    "toast": [
     {
      "c": 1,
      "p": {
-      "kind": "warn"
+      "kind": "warn",
+      "text": "TAKING FIRE"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "info",
+      "text": "Nothing armed to detonate"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "kind": "info",
+      "text": "Hauler back to work — thanks for the cover."
      }
     }
    ],
-   "fields:ended": [
+   "shieldDown": [
+    {
+     "c": 1,
+     "p": {}
+    },
+    {
+     "c": 2,
+     "p": {}
+    },
+    {
+     "c": 3,
+     "p": {}
+    }
+   ],
+   "combat:outcome": [
     {
      "c": 1,
      "p": {
-      "kind": "cone"
+      "entityId": 516,
+      "reason": "fsm:flee"
+     }
+    }
+   ],
+   "combat:statusExpired": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 514,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 579,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 618,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 366,
+      "statusId": "status_tumbling"
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_cloak_mk1": {
   "id": "mod_cloak_mk1",
@@ -1162,7 +1381,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "wpn_snarl_s": {
   "id": "wpn_snarl_s",
@@ -1508,7 +1728,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_pulse_laser_s": {
   "id": "wpn_pulse_laser_s",
@@ -1858,7 +2079,8 @@
      "p": {}
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_autocannon_s": {
   "id": "wpn_autocannon_s",
@@ -2230,7 +2452,8 @@
      "p": {}
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_flak_turret_s": {
   "id": "wpn_flak_turret_s",
@@ -2315,7 +2538,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_concussion_cannon_s": {
   "id": "wpn_concussion_cannon_s",
@@ -2543,7 +2767,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_pulse_laser_m": {
   "id": "wpn_pulse_laser_m",
@@ -2949,7 +3174,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_bank_stream_m": {
   "id": "wpn_bank_stream_m",
@@ -3122,7 +3348,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_autocannon_m": {
   "id": "wpn_autocannon_m",
@@ -3511,7 +3738,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_beam_laser_m": {
   "id": "wpn_beam_laser_m",
@@ -3899,7 +4127,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_railgun_m": {
   "id": "wpn_railgun_m",
@@ -4157,7 +4386,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_plasma_cannon_m": {
   "id": "wpn_plasma_cannon_m",
@@ -4530,7 +4760,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_missile_rack_m": {
   "id": "wpn_missile_rack_m",
@@ -4729,7 +4960,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_heavy_beam_l": {
   "id": "wpn_heavy_beam_l",
@@ -5059,7 +5291,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_torpedo_l": {
   "id": "wpn_torpedo_l",
@@ -5428,7 +5661,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_siege_lance_l": {
   "id": "wpn_siege_lance_l",
@@ -5834,7 +6068,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_emp_disruptor_m": {
   "id": "wpn_emp_disruptor_m",
@@ -6281,7 +6516,8 @@
      "p": {}
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_gravity_marker_s": {
   "id": "wpn_gravity_marker_s",
@@ -6477,7 +6713,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_momentum_sink_s": {
   "id": "wpn_momentum_sink_s",
@@ -6606,7 +6843,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_inertial_shunt_s": {
   "id": "wpn_inertial_shunt_s",
@@ -6698,7 +6936,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_concussion_cannon_m": {
   "id": "wpn_concussion_cannon_m",
@@ -6917,7 +7156,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_vector_mine_m": {
   "id": "wpn_vector_mine_m",
@@ -7312,7 +7552,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_gravity_well_m": {
   "id": "wpn_gravity_well_m",
@@ -7789,7 +8030,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_rcs_disruptor_m": {
   "id": "wpn_rcs_disruptor_m",
@@ -8080,7 +8322,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_sticky_detonator": {
   "id": "wpn_sticky_detonator",
@@ -8344,7 +8587,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_conductive_primer": {
   "id": "wpn_conductive_primer",
@@ -8705,7 +8949,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_grav_anchor": {
   "id": "tool_grav_anchor",
@@ -8971,7 +9216,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_thermal_cooker": {
   "id": "wpn_thermal_cooker",
@@ -9092,7 +9338,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "wpn_mass_driver": {
   "id": "wpn_mass_driver",
@@ -9207,7 +9454,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_polarity_inverter": {
   "id": "tool_polarity_inverter",
@@ -9451,7 +9699,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_viscosity_field": {
   "id": "tool_viscosity_field",
@@ -9620,7 +9869,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_hardlight_prism": {
   "id": "tool_hardlight_prism",
@@ -9780,7 +10030,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_thruster_hijacker": {
   "id": "tool_thruster_hijacker",
@@ -9899,7 +10150,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_seismic_gong": {
   "id": "tool_seismic_gong",
@@ -10107,7 +10359,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "tool_quantum_sympathy": {
   "id": "tool_quantum_sympathy",
@@ -10258,7 +10511,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_shield_booster_s": {
   "id": "mod_shield_booster_s",
@@ -10315,7 +10569,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_shield_capacitor_m": {
   "id": "mod_shield_capacitor_m",
@@ -10404,7 +10659,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_shield_aegis_l": {
   "id": "mod_shield_aegis_l",
@@ -10471,7 +10727,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_engine_ion_m": {
   "id": "mod_engine_ion_m",
@@ -10525,7 +10782,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_engine_fusion_m": {
   "id": "mod_engine_fusion_m",
@@ -10578,7 +10836,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_engine_warp_l": {
   "id": "mod_engine_warp_l",
@@ -10619,7 +10878,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_thruster_stripped_s": {
   "id": "mod_thruster_stripped_s",
@@ -10660,7 +10920,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_thruster_vernier_m": {
   "id": "mod_thruster_vernier_m",
@@ -10724,7 +10985,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_thruster_gimbal_l": {
   "id": "mod_thruster_gimbal_l",
@@ -10765,7 +11027,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_cargo_pod_m": {
   "id": "mod_cargo_pod_m",
@@ -10775,30 +11038,33 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 151.22752820681097,
-    "to": 147.8374315277006
+    "from": 57.46557008195967,
+    "to": 56.85733387851985
    },
    "thrust": {
-    "from": 259.3133733103057,
-    "to": 256.68672057236466
+    "from": 88.84272862150061,
+    "to": 88.40993656952888
    },
    "turnRate": {
-    "from": 6.00572638402997,
-    "to": 5.822869776162447
+    "from": 1.203928348372381,
+    "to": 1.186325018281341
    },
    "cargoCap": {
-    "from": 450,
-    "to": 500
+    "from": 3500,
+    "to": 3550
    },
    "operationalMass": {
-    "from": 96.0031,
-    "to": 100.0031
+    "from": 200.0031,
+    "to": 204.0031
    }
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "cargoFlat": 50
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_cargo_expander_l": {
   "id": "mod_cargo_expander_l",
@@ -10830,8 +11096,11 @@
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "cargoFlat": 160
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_cargo_compactor_l": {
   "id": "mod_cargo_compactor_l",
@@ -10863,8 +11132,12 @@
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "cargoFlat": 110,
+   "cargoCapPct": 0.15
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_smuggler_hold": {
   "id": "mod_smuggler_hold",
@@ -10900,8 +11173,12 @@
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "hiddenCargoPct": 0.2,
+   "cargoFlat": 8
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_smuggler_hold_m": {
   "id": "mod_smuggler_hold_m",
@@ -10937,8 +11214,12 @@
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "hiddenCargoPct": 0.35,
+   "cargoFlat": 20
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_market_data_s": {
   "id": "mod_market_data_s",
@@ -10947,21 +11228,41 @@
   "clip": null,
   "events": {},
   "statDiff": {
+   "shield": {
+    "from": 345,
+    "to": 165
+   },
+   "shieldMax": {
+    "from": 345,
+    "to": 165
+   },
+   "shieldRegenRate": {
+    "from": 27.825000000000003,
+    "to": 25.725
+   },
    "topSpeed": {
-    "from": 166.49971242518137,
-    "to": 165.45539804471395
+    "from": 144.94213261347488,
+    "to": 168.3358257826182
    },
    "thrust": {
-    "from": 271.1462879108559,
-    "to": 270.337151332649
+    "from": 309.0142658039686,
+    "to": 328.99742987589156
    },
    "turnRate": {
-    "from": 4.040292272850645,
-    "to": 4.00433882289864
+    "from": 3.265411775908319,
+    "to": 3.971991529644573
+   },
+   "massLoadFactor": {
+    "from": 0.9999370362821499,
+    "to": 1
    },
    "operationalMass": {
-    "from": 80.0031,
-    "to": 81.0031
+    "from": 32.0031,
+    "to": 25.0031
+   },
+   "miningSlotsFilled": {
+    "from": 1,
+    "to": 0
    }
   },
   "fitOk": true,
@@ -10969,7 +11270,8 @@
   "mods": {
    "marketIntel": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_mining_beam_m": {
   "id": "mod_mining_beam_m",
@@ -11169,7 +11471,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_mining_pulverizer_l": {
   "id": "mod_mining_pulverizer_l",
@@ -11369,7 +11672,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_mining_industrial_l": {
   "id": "mod_mining_industrial_l",
@@ -11569,7 +11873,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_drill_amp": {
   "id": "mod_drill_amp",
@@ -11577,14 +11882,12 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/mod_drill_amp.webm",
   "events": {
+   "toast": 2,
    "mining:start": 1,
-   "mining:tick": 535,
-   "cargo:changed": 5,
-   "mining:yield": 4,
-   "alert": 1,
-   "toast": 3,
-   "combat:fire": 46,
-   "projectile:hit": 38
+   "mining:tick": 349,
+   "cargo:changed": 4,
+   "mining:yield": 3,
+   "alert": 1
   },
   "statDiff": {
    "topSpeed": {
@@ -11615,11 +11918,27 @@
   },
   "poster": "assets/ui/fitting-media/mod_drill_amp.png",
   "evidenceSamples": {
+   "toast": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "info",
+      "text": "Free aim · Tab to lock"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "info",
+      "text": "Latch it. Massline."
+     }
+    }
+   ],
    "mining:start": [
     {
      "c": 1,
      "p": {
-      "targetId": 392
+      "targetId": 386
      }
     }
    ],
@@ -11673,10 +11992,6 @@
     {
      "c": 4,
      "p": {}
-    },
-    {
-     "c": 5,
-     "p": {}
     }
    ],
    "mining:yield": [
@@ -11691,155 +12006,18 @@
     {
      "c": 3,
      "p": {}
-    },
-    {
-     "c": 4,
-     "p": {}
     }
    ],
    "alert": [
     {
      "c": 1,
-     "p": {}
-    }
-   ],
-   "toast": [
-    {
-     "c": 1,
      "p": {
-      "kind": "info"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "info"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "kind": "warn"
-     }
-    }
-   ],
-   "combat:fire": [
-    {
-     "c": 1,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_pulse_laser_m",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_pulse_laser_m",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "targetId": 344,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
+      "text": "VENT READY — RELEASE BEAM"
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_elastic_whip_m": {
   "id": "mod_elastic_whip_m",
@@ -12107,7 +12285,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_frame_coupler_m": {
   "id": "mod_frame_coupler_m",
@@ -12315,7 +12494,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_monofilament_sweep_m": {
   "id": "mod_monofilament_sweep_m",
@@ -12596,7 +12776,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_transverse_snare_m": {
   "id": "mod_transverse_snare_m",
@@ -12662,7 +12843,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_twin_bridle_m": {
   "id": "mod_twin_bridle_m",
@@ -12771,7 +12953,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_winch_hd": {
   "id": "mod_winch_hd",
@@ -13064,7 +13247,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_massline_spool_m": {
   "id": "mod_massline_spool_m",
@@ -13328,7 +13512,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_massline_spool_l": {
   "id": "mod_massline_spool_l",
@@ -13554,7 +13739,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_swing_drive_m": {
   "id": "mod_swing_drive_m",
@@ -13744,7 +13930,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_swing_drive_s": {
   "id": "mod_swing_drive_s",
@@ -13847,7 +14034,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_mass_flail_rig_m": {
   "id": "mod_mass_flail_rig_m",
@@ -14037,7 +14225,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_fire_lance_s": {
   "id": "mod_fire_lance_s",
@@ -14345,7 +14534,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_grip_bumper_s": {
   "id": "mod_grip_bumper_s",
@@ -14787,7 +14977,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_gravity_bumper_s_mk2": {
   "id": "mod_gravity_bumper_s_mk2",
@@ -15037,7 +15228,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_fire_lance_s_mk2": {
   "id": "mod_fire_lance_s_mk2",
@@ -15502,7 +15694,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_grip_bumper_s_mk2": {
   "id": "mod_grip_bumper_s_mk2",
@@ -15853,7 +16046,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_ecm_jammer_l": {
   "id": "mod_ecm_jammer_l",
@@ -15938,7 +16132,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_decoy_buoy_s": {
   "id": "mod_decoy_buoy_s",
@@ -16025,7 +16220,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_pds_servo_s": {
   "id": "mod_pds_servo_s",
@@ -16034,29 +16230,31 @@
   "clip": "assets/ui/fitting-media/mod_pds_servo_s.webm",
   "events": {
    "pds:intercept": 1,
-   "toast": 7,
-   "fields:deployed": 2,
+   "combat:damage": 4,
+   "combat:tumbled": 2,
+   "shieldDown": 2,
+   "combat:statusApplied": 2,
+   "toast": 3,
+   "tether:attached": 1,
    "alert": 2,
-   "combat:fire": 6,
-   "projectile:hit": 5,
-   "fields:ended": 1
+   "fields:deployed": 1
   },
   "statDiff": {
    "topSpeed": {
-    "from": 300.7234469904526,
-    "to": 283.5507033870055
+    "from": 300.7046282952383,
+    "to": 283.5339725396525
    },
    "thrust": {
-    "from": 528.5100600132225,
-    "to": 513.8468875810232
+    "from": 528.4939914234125,
+    "to": 513.832601727502
    },
    "turnRate": {
-    "from": 8.664404176810597,
-    "to": 7.965959793972568
+    "from": 8.663619242134853,
+    "to": 7.965296302262734
    },
    "operationalMass": {
-    "from": 24.0031,
-    "to": 27.0031
+    "from": 24.0062,
+    "to": 27.0062
    }
   },
   "fitOk": true,
@@ -16079,54 +16277,134 @@
      }
     }
    ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 362,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 14.913340540498313,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 363,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 14.913340540498313,
+      "damageType": null
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 362,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 108.13439999999999,
+      "damageType": null
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 363,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 108.13439999999999,
+      "damageType": null
+     }
+    }
+   ],
+   "combat:tumbled": [
+    {
+     "c": 1,
+     "p": {
+      "attackerId": 363,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "attackerId": 362,
+      "source": "collision"
+     }
+    }
+   ],
+   "shieldDown": [
+    {
+     "c": 1,
+     "p": {}
+    },
+    {
+     "c": 2,
+     "p": {}
+    }
+   ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 362,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 363,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    }
+   ],
    "toast": [
     {
      "c": 1,
      "p": {
-      "kind": "warn",
-      "text": "COUNTEREXAMPLE INBOUND — Standard lance fit. No committed countermeasure. Counterplay: The ordinary lance reset is your approach window."
+      "kind": "info",
+      "text": "Miner back to work — thanks for the cover."
      }
     },
     {
      "c": 2,
      "p": {
       "kind": "info",
-      "text": "CONCORD PATROL: Patrol Interceptor on scene. Hostile vessel, break off pursuit immediately!"
+      "text": "Salvor back to work — thanks for the cover."
      }
     },
     {
      "c": 3,
      "p": {
-      "kind": "tutorial",
-      "text": "Patrol Interceptor: Cross its pass and shoot the stern while it swings back."
+      "kind": "warn",
+      "text": "OFFICIAL DENIAL"
+     }
+    }
+   ],
+   "tether:attached": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 98
+     }
+    }
+   ],
+   "alert": [
+    {
+     "c": 1,
+     "p": {
+      "text": "PRIORITY COMMS"
      }
     },
     {
-     "c": 4,
+     "c": 2,
      "p": {
-      "kind": "warn",
-      "text": "Hostile reinforcements inbound!"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "kind": "warn",
-      "text": "HOSTILE REINFORCEMENTS INBOUND"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "kind": "warn",
-      "text": "Reinforcements have arrived."
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "kind": "warn",
-      "text": "REINFORCEMENTS ON FIELD"
+      "text": "OFFICIAL DENIAL"
      }
     }
    ],
@@ -16136,118 +16414,10 @@
      "p": {
       "kind": "cone"
      }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "cone"
-     }
-    }
-   ],
-   "alert": [
-    {
-     "c": 1,
-     "p": {
-      "text": "HOSTILE REINFORCEMENTS INBOUND"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "text": "REINFORCEMENTS ON FIELD"
-     }
-    }
-   ],
-   "combat:fire": [
-    {
-     "c": 1,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "weaponId": "wpn_pulse_laser_m"
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 397,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 397,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 379,
-      "weaponId": "wpn_pulse_laser_m",
-      "damageType": "energy"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 397,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 397,
-      "weaponId": "wpn_pulse_laser_m",
-      "damageType": "energy"
-     }
-    }
-   ],
-   "fields:ended": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "cone",
-      "reason": "field_toggled_off"
-     }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_repulsion_trap_s": {
   "id": "mod_repulsion_trap_s",
@@ -16356,7 +16526,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_heat_lure_s": {
   "id": "mod_heat_lure_s",
@@ -16364,31 +16535,34 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/mod_heat_lure_s.webm",
   "events": {
-   "combat:tumbled": 3,
-   "shieldDown": 2,
-   "combat:damage": 3,
    "cargo:changed": 1,
    "charge:thrown": 1,
-   "toast": 4,
+   "toast": 2,
    "alienEcology:lureDropped": 1,
-   "alert": 2
+   "charge:stuck": 1,
+   "fields:ended": 1,
+   "combat:tumbled": 2,
+   "combat:damage": 3,
+   "charge:detonated": 1,
+   "combat:statusApplied": 2,
+   "combat:statusExpired": 2
   },
   "statDiff": {
    "topSpeed": {
-    "from": 277.2025117557909,
-    "to": 267.25590655448957
+    "from": 300.7046282952383,
+    "to": 289.0354149793869
    },
    "thrust": {
-    "from": 508.4264008684363,
-    "to": 499.9333615178449
+    "from": 528.4939914234125,
+    "to": 518.5300805335942
    },
    "turnRate": {
-    "from": 7.716503672775982,
-    "to": 7.33467779029794
+    "from": 8.663619242134853,
+    "to": 8.18521689059817
    },
    "operationalMass": {
-    "from": 28.206200000000003,
-    "to": 30.206200000000003
+    "from": 24.0062,
+    "to": 26.0062
    }
   },
   "fitOk": true,
@@ -16398,71 +16572,6 @@
   },
   "poster": "assets/ui/fitting-media/mod_heat_lure_s.png",
   "evidenceSamples": {
-   "combat:tumbled": [
-    {
-     "c": 1,
-     "p": {
-      "attackerId": 396,
-      "source": "collision"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "attackerId": 389,
-      "source": "collision"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "attackerId": 1,
-      "source": "collision"
-     }
-    }
-   ],
-   "shieldDown": [
-    {
-     "c": 1,
-     "p": {}
-    },
-    {
-     "c": 2,
-     "p": {}
-    }
-   ],
-   "combat:damage": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 389,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 54.06719999999999,
-      "damageType": null
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 396,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 54.06719999999999,
-      "damageType": null
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 392,
-      "attackerId": 392,
-      "weaponId": null,
-      "amount": 0.6853225854581909,
-      "damageType": null
-     }
-    }
-   ],
    "cargo:changed": [
     {
      "c": 1,
@@ -16479,25 +16588,15 @@
     {
      "c": 1,
      "p": {
-      "kind": "info"
+      "kind": "info",
+      "text": "Lure beacon burning hot — the predators hear it."
      }
     },
     {
      "c": 2,
      "p": {
-      "kind": "warn"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "kind": "info"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "kind": "warn"
+      "kind": "warn",
+      "text": "TAKING FIRE"
      }
     }
    ],
@@ -16507,17 +16606,111 @@
      "p": {}
     }
    ],
-   "alert": [
+   "charge:stuck": [
     {
      "c": 1,
      "p": {}
+    }
+   ],
+   "fields:ended": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone",
+      "reason": "field_toggled_off"
+     }
+    }
+   ],
+   "combat:tumbled": [
+    {
+     "c": 1,
+     "p": {
+      "attackerId": 1,
+      "source": "impulse_charge"
+     }
     },
     {
      "c": 2,
+     "p": {
+      "attackerId": 1,
+      "source": "impulse_charge"
+     }
+    }
+   ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 514,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 3.4222879485380315,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 1,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 3.000196762002039,
+      "damageType": null
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 515,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 11.877758271056194,
+      "damageType": null
+     }
+    }
+   ],
+   "charge:detonated": [
+    {
+     "c": 1,
      "p": {}
     }
+   ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 514,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 515,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    }
+   ],
+   "combat:statusExpired": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 514,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 515,
+      "statusId": "status_tumbling"
+     }
+    }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_charge_vector_rack": {
   "id": "mod_charge_vector_rack",
@@ -16529,26 +16722,28 @@
    "charge:thrown": 1,
    "charge:stuck": 1,
    "combat:tumbled": 1,
-   "combat:damage": 1,
+   "combat:damage": 2,
    "charge:detonated": 1,
-   "toast": 1
+   "combat:statusApplied": 1,
+   "toast": 2,
+   "fields:ended": 1
   },
   "statDiff": {
    "topSpeed": {
-    "from": 287.91811329348786,
-    "to": 272.13835285491297
+    "from": 300.7046282952383,
+    "to": 283.5339725396525
    },
    "thrust": {
-    "from": 517.576057830091,
-    "to": 504.102302349157
+    "from": 528.4939914234125,
+    "to": 513.832601727502
    },
    "turnRate": {
-    "from": 8.140266592447682,
-    "to": 7.520747556770654
+    "from": 8.663619242134853,
+    "to": 7.965296302262734
    },
    "operationalMass": {
-    "from": 26.206200000000003,
-    "to": 29.206200000000003
+    "from": 24.0062,
+    "to": 27.0062
    }
   },
   "fitOk": true,
@@ -16590,10 +16785,20 @@
     {
      "c": 1,
      "p": {
-      "targetId": 389,
+      "targetId": 649,
       "attackerId": 1,
       "weaponId": null,
-      "amount": 12.691772807134353,
+      "amount": 12.304089559464815,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 1,
+      "attackerId": 1,
+      "weaponId": null,
+      "amount": 1.3602741664458062,
       "damageType": null
      }
     }
@@ -16604,15 +16809,43 @@
      "p": {}
     }
    ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 649,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    }
+   ],
    "toast": [
     {
      "c": 1,
      "p": {
-      "kind": "warn"
+      "kind": "warn",
+      "text": "TAKING FIRE"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "good",
+      "text": "FLYBY FOCUS — latch window open"
+     }
+    }
+   ],
+   "fields:ended": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone",
+      "reason": "field_toggled_off"
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_cloak_mk2": {
   "id": "mod_cloak_mk2",
@@ -16780,66 +17013,44 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_sensor_scrambler_s": {
   "id": "mod_sensor_scrambler_s",
   "demo": "diagram",
   "ok": true,
   "clip": null,
-  "events": {
-   "combat:fire": 1,
-   "projectile:hit": 1
-  },
+  "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 73.44553525101246,
-    "to": 72.7321469678912
+    "from": 57.46557008195967,
+    "to": 57.159833969909556
    },
    "thrust": {
-    "from": 192.61519640694397,
-    "to": 192.0511816428723
+    "from": 88.84272862150061,
+    "to": 88.62518129605748
    },
    "turnRate": {
-    "from": 1.5197177484292388,
-    "to": 1.5025560934625666
+    "from": 1.203928348372381,
+    "to": 1.1950618623261635
    },
    "scannerCloak": {
     "from": 0,
     "to": 0.25
    },
-   "massLoadFactor": {
-    "from": 0.6638035320446172,
-    "to": 0.6583264304688481
-   },
    "operationalMass": {
-    "from": 155.9062,
-    "to": 157.9062
+    "from": 200.0031,
+    "to": 202.0031
    }
   },
   "fitOk": true,
   "errors": [],
-  "evidenceSamples": {
-   "combat:fire": [
-    {
-     "c": 1,
-     "p": {
-      "weaponId": "wpn_flak_turret_s"
-     }
-    }
-   ],
-   "projectile:hit": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 469,
-      "weaponId": "wpn_flak_turret_s",
-      "damageType": "kinetic"
-     }
-    }
-   ]
+  "mods": {
+   "scannerCloak": 0.25
   },
-  "mods": null
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_sensor_scrambler_m": {
   "id": "mod_sensor_scrambler_m",
@@ -16849,34 +17060,33 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 73.44553525101246,
-    "to": 71.68767609577887
+    "from": 57.46557008195967,
+    "to": 56.70728132769264
    },
    "thrust": {
-    "from": 192.61519640694397,
-    "to": 191.22540834878814
+    "from": 88.84272862150061,
+    "to": 88.30316628685114
    },
    "turnRate": {
-    "from": 1.5197177484292388,
-    "to": 1.4775282583275868
+    "from": 1.203928348372381,
+    "to": 1.1820043266969924
    },
    "scannerCloak": {
     "from": 0,
     "to": 0.5
    },
-   "massLoadFactor": {
-    "from": 0.6638035320446172,
-    "to": 0.6503220116915783
-   },
    "operationalMass": {
-    "from": 155.9062,
-    "to": 160.9062
+    "from": 200.0031,
+    "to": 205.0031
    }
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "scannerCloak": 0.5
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_quiet_mask_s": {
   "id": "mod_quiet_mask_s",
@@ -16886,20 +17096,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 299.4954766056803,
-    "to": 282.4587199519876
+    "from": 300.7422680412372,
+    "to": 283.5674362089915
    },
    "thrust": {
-    "from": 527.4615413892133,
-    "to": 512.9144831982103
+    "from": 528.5261306143672,
+    "to": 513.8611751206105
    },
    "turnRate": {
-    "from": 8.613277118243937,
-    "to": 7.922722724407479
+    "from": 8.665189253731347,
+    "to": 7.966623396226417
    },
    "operationalMass": {
-    "from": 24.206200000000003,
-    "to": 27.206200000000003
+    "from": 24,
+    "to": 27
    }
   },
   "fitOk": true,
@@ -16907,7 +17117,8 @@
   "mods": {
    "stealthBioMult": 0.45
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_drone_bay_l": {
   "id": "mod_drone_bay_l",
@@ -17288,7 +17499,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_loot_magnet_s": {
   "id": "mod_loot_magnet_s",
@@ -17359,7 +17571,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_ram_plate": {
   "id": "mod_ram_plate",
@@ -17479,7 +17692,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_repair_nanobots_m": {
   "id": "mod_repair_nanobots_m",
@@ -17489,24 +17703,24 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 118.66294999770219
+    "from": 155.994962662664,
+    "to": 146.81906726364195
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 228.36471754948332
+    "from": 257.8799294105794,
+    "to": 250.625338045577
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.7319821530867645
+    "from": 3.9598173298553188,
+    "to": 3.6352558839721265
    },
    "hullRepairOOC": {
     "from": 0,
     "to": 4
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 78.2062
+    "from": 48.0031,
+    "to": 54.0031
    }
   },
   "fitOk": true,
@@ -17514,7 +17728,8 @@
   "mods": {
    "hullRepairOOC": 4
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_afterburner_m": {
   "id": "mod_afterburner_m",
@@ -17560,7 +17775,8 @@
    "boostCdS": 12
   },
   "poster": "assets/ui/fitting-media/mod_afterburner_m.png",
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "behavioral"
  },
  "mod_shield_hardener_m": {
   "id": "mod_shield_hardener_m",
@@ -17647,7 +17863,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_jump_drive_m": {
   "id": "mod_jump_drive_m",
@@ -17657,34 +17874,33 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 73.44553525101246,
-    "to": 71.34615366292181
+    "from": 155.994962662664,
+    "to": 146.81906726364195
    },
    "thrust": {
-    "from": 192.61519640694397,
-    "to": 190.95539593205726
+    "from": 257.8799294105794,
+    "to": 250.625338045577
    },
    "turnRate": {
-    "from": 1.5197177484292388,
-    "to": 1.4693699056133913
+    "from": 3.9598173298553188,
+    "to": 3.6352558839721265
    },
    "jumpDriveTier": {
     "from": "jump_t1",
     "to": "jump_t2"
    },
-   "massLoadFactor": {
-    "from": 0.6638035320446172,
-    "to": 0.6477083534308857
-   },
    "operationalMass": {
-    "from": 155.9062,
-    "to": 161.9062
+    "from": 48.0031,
+    "to": 54.0031
    }
   },
   "fitOk": true,
   "errors": [],
+  "mods": {
+   "jumpDriveTier": 2
+  },
   "evidenceSamples": {},
-  "mods": null
+  "proof": "diagram"
  },
  "mod_thermal_sink_s": {
   "id": "mod_thermal_sink_s",
@@ -18060,7 +18276,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_thermal_sink_m": {
   "id": "mod_thermal_sink_m",
@@ -18562,7 +18779,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_targeting_computer_m": {
   "id": "mod_targeting_computer_m",
@@ -19094,7 +19312,8 @@
      "p": {}
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_sensor_array_l": {
   "id": "mod_sensor_array_l",
@@ -19276,7 +19495,8 @@
     }
    ]
   },
-  "mods": null
+  "mods": null,
+  "proof": "behavioral"
  },
  "mod_survey_suite": {
   "id": "mod_survey_suite",
@@ -19286,20 +19506,23 @@
   "events": {
    "scan:pulse": 1,
    "scan:completed": 1,
-   "toast": 1
+   "combat:tumbled": 1,
+   "combat:damage": 1,
+   "combat:statusApplied": 1,
+   "combat:statusExpired": 1
   },
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 120.57369116839577
+    "from": 155.994962662664,
+    "to": 149.7553575839149
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 229.87537626941005
+    "from": 257.8799294105794,
+    "to": 252.9468102808493
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.7892526900767454
+    "from": 3.9598173298553188,
+    "to": 3.737365367519111
    },
    "radarRangeMult": {
     "from": 1,
@@ -19310,8 +19533,8 @@
     "to": 5400
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 76.2062
+    "from": 48.0031,
+    "to": 52.0031
    }
   },
   "fitOk": true,
@@ -19339,15 +19562,48 @@
      }
     }
    ],
-   "toast": [
+   "combat:tumbled": [
     {
      "c": 1,
      "p": {
-      "kind": "warn"
+      "attackerId": 1,
+      "source": "collision"
+     }
+    }
+   ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390,
+      "attackerId": 390,
+      "weaponId": null,
+      "amount": 22.96568617908311,
+      "damageType": null
+     }
+    }
+   ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    }
+   ],
+   "combat:statusExpired": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390,
+      "statusId": "status_tumbling"
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_triangulation_suite_s": {
   "id": "mod_triangulation_suite_s",
@@ -19357,25 +19613,29 @@
   "events": {
    "scan:pulse": 1,
    "scan:completed": 1,
-   "alert": 1,
-   "toast": 1
+   "combat:tumbled": 3,
+   "shieldDown": 2,
+   "combat:damage": 2,
+   "combat:statusApplied": 3,
+   "combat:outcome": 2,
+   "combat:statusExpired": 2
   },
   "statDiff": {
    "topSpeed": {
-    "from": 202.01683277397402,
-    "to": 196.68221801474138
+    "from": 300.7046282952383,
+    "to": 289.0354149793869
    },
    "thrust": {
-    "from": 444.2281224337037,
-    "to": 439.67309163138725
+    "from": 528.4939914234125,
+    "to": 518.5300805335942
    },
    "turnRate": {
-    "from": 5.074723372043924,
-    "to": 4.9067389224054425
+    "from": 8.663619242134853,
+    "to": 8.18521689059817
    },
    "operationalMass": {
-    "from": 48.2062,
-    "to": 50.2062
+    "from": 24.0062,
+    "to": 26.0062
    }
   },
   "fitOk": true,
@@ -19401,21 +19661,121 @@
      }
     }
    ],
-   "alert": [
-    {
-     "c": 1,
-     "p": {}
-    }
-   ],
-   "toast": [
+   "combat:tumbled": [
     {
      "c": 1,
      "p": {
-      "kind": "info"
+      "attackerId": 725,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "attackerId": 724,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "attackerId": 725,
+      "source": "collision"
+     }
+    }
+   ],
+   "shieldDown": [
+    {
+     "c": 1,
+     "p": {}
+    },
+    {
+     "c": 2,
+     "p": {}
+    }
+   ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 724,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 54.06719999999999,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 725,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 54.06719999999999,
+      "damageType": null
+     }
+    }
+   ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 724,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 725,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 726,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    }
+   ],
+   "combat:outcome": [
+    {
+     "c": 1,
+     "p": {
+      "entityId": 724,
+      "reason": "fsm:flee"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "entityId": 725,
+      "reason": "fsm:flee"
+     }
+    }
+   ],
+   "combat:statusExpired": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 724,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 725,
+      "statusId": "status_tumbling"
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_cargo_scanner_s": {
   "id": "mod_cargo_scanner_s",
@@ -19423,26 +19783,27 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/mod_cargo_scanner_s.webm",
   "events": {
+   "toast": 1,
    "scan:pulse": 1,
    "scan:completed": 1,
-   "toast": 1
+   "cargo:changed": 2
   },
   "statDiff": {
    "topSpeed": {
-    "from": 202.01683277397402,
-    "to": 199.31383667805264
+    "from": 300.7234469904526,
+    "to": 294.7726533155419
    },
    "thrust": {
-    "from": 444.2281224337037,
-    "to": 441.9201337538925
+    "from": 528.5100600132225,
+    "to": 523.428896759487
    },
    "turnRate": {
-    "from": 5.074723372043924,
-    "to": 4.98931758804428
+    "from": 8.664404176810597,
+    "to": 8.418367228939424
    },
    "operationalMass": {
-    "from": 48.2062,
-    "to": 49.2062
+    "from": 24.0031,
+    "to": 25.0031
    }
   },
   "fitOk": true,
@@ -19452,6 +19813,15 @@
   },
   "poster": "assets/ui/fitting-media/mod_cargo_scanner_s.png",
   "evidenceSamples": {
+   "toast": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "good",
+      "text": "Sealed cache in the debris — 2 pods exposed!"
+     }
+    }
+   ],
    "scan:pulse": [
     {
      "c": 1,
@@ -19468,15 +19838,18 @@
      }
     }
    ],
-   "toast": [
+   "cargo:changed": [
     {
      "c": 1,
-     "p": {
-      "kind": "warn"
-     }
+     "p": {}
+    },
+    {
+     "c": 2,
+     "p": {}
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_filter_stack_s": {
   "id": "mod_filter_stack_s",
@@ -19486,20 +19859,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 300.7422680412372,
-    "to": 289.07018992568123
+    "from": 300.7046282952383,
+    "to": 289.0354149793869
    },
    "thrust": {
-    "from": 528.5261306143672,
-    "to": 518.5597735777347
+    "from": 528.4939914234125,
+    "to": 518.5300805335942
    },
    "turnRate": {
-    "from": 8.665189253731347,
-    "to": 8.18661828437133
+    "from": 8.663619242134853,
+    "to": 8.18521689059817
    },
    "operationalMass": {
-    "from": 24,
-    "to": 26
+    "from": 24.0062,
+    "to": 26.0062
    }
   },
   "fitOk": true,
@@ -19507,7 +19880,8 @@
   "mods": {
    "bioFilterMult": 0.35
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_filter_stack_m": {
   "id": "mod_filter_stack_m",
@@ -19517,20 +19891,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 155.994962662664,
-    "to": 149.7553575839149
+    "from": 155.98992565063506,
+    "to": 149.75071545564174
    },
    "thrust": {
-    "from": 257.8799294105794,
-    "to": 252.9468102808493
+    "from": 257.87594707835115,
+    "to": 252.9431401492467
    },
    "turnRate": {
-    "from": 3.9598173298553188,
-    "to": 3.737365367519111
+    "from": 3.9596346765625787,
+    "to": 3.737202659318992
    },
    "operationalMass": {
-    "from": 48.0031,
-    "to": 52.0031
+    "from": 48.0062,
+    "to": 52.0062
    }
   },
   "fitOk": true,
@@ -19538,7 +19912,8 @@
   "mods": {
    "bioFilterMult": 0.2
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_bio_spectral_pass_s": {
   "id": "mod_bio_spectral_pass_s",
@@ -19548,20 +19923,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 202.01683277397402,
-    "to": 196.68221801474138
+    "from": 155.98992565063506,
+    "to": 152.80665917054228
    },
    "thrust": {
-    "from": 444.2281224337037,
-    "to": 439.67309163138725
+    "from": 257.87594707835115,
+    "to": 255.35921203345913
    },
    "turnRate": {
-    "from": 5.074723372043924,
-    "to": 4.9067389224054425
+    "from": 3.9596346765625787,
+    "to": 3.8452046203952825
    },
    "operationalMass": {
-    "from": 48.2062,
-    "to": 50.2062
+    "from": 48.0062,
+    "to": 50.0062
    }
   },
   "fitOk": true,
@@ -19569,7 +19944,8 @@
   "mods": {
    "bioScanTier": 1
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_field_coherence_meter": {
   "id": "mod_field_coherence_meter",
@@ -19579,20 +19955,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 202.01683277397402,
-    "to": 196.68221801474138
+    "from": 155.98992565063506,
+    "to": 152.80665917054228
    },
    "thrust": {
-    "from": 444.2281224337037,
-    "to": 439.67309163138725
+    "from": 257.87594707835115,
+    "to": 255.35921203345913
    },
    "turnRate": {
-    "from": 5.074723372043924,
-    "to": 4.9067389224054425
+    "from": 3.9596346765625787,
+    "to": 3.8452046203952825
    },
    "operationalMass": {
-    "from": 48.2062,
-    "to": 50.2062
+    "from": 48.0062,
+    "to": 50.0062
    }
   },
   "fitOk": true,
@@ -19600,7 +19976,8 @@
   "mods": {
    "coherenceMeter": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_quarantine_locker_s": {
   "id": "mod_quarantine_locker_s",
@@ -19610,20 +19987,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 202.01683277397402,
-    "to": 194.11918635456308
+    "from": 155.98992565063506,
+    "to": 151.26325422044278
    },
    "thrust": {
-    "from": 444.2281224337037,
-    "to": 437.4846134213687
+    "from": 257.87594707835115,
+    "to": 254.13897447224116
    },
    "turnRate": {
-    "from": 5.074723372043924,
-    "to": 4.826849284963402
+    "from": 3.9596346765625787,
+    "to": 3.79043446305312
    },
    "operationalMass": {
-    "from": 48.2062,
-    "to": 51.2062
+    "from": 48.0062,
+    "to": 51.0062
    }
   },
   "fitOk": true,
@@ -19631,7 +20008,8 @@
   "mods": {
    "quarantineLocker": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_hull_purge_ring_m": {
   "id": "mod_hull_purge_ring_m",
@@ -19641,20 +20019,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 119.61069020543711
+    "from": 155.98992565063506,
+    "to": 148.26812611503055
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 229.11401422608142
+    "from": 257.87594707835115,
+    "to": 251.77098426030875
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.7603203943314853
+    "from": 3.9596346765625787,
+    "to": 3.685445294171415
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 77.2062
+    "from": 48.0062,
+    "to": 53.0062
    }
   },
   "fitOk": true,
@@ -19662,7 +20040,8 @@
   "mods": {
    "hullPurgeRing": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_relay_needle_s": {
   "id": "mod_relay_needle_s",
@@ -19672,20 +20051,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 123.5580358100493
+    "from": 155.98992565063506,
+    "to": 154.38188486921456
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 232.2348409239263
+    "from": 257.87594707835115,
+    "to": 256.6046075239892
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.8798067662126567
+    "from": 3.9596346765625787,
+    "to": 3.901580794707813
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 73.2062
+    "from": 48.0062,
+    "to": 49.0062
    }
   },
   "fitOk": true,
@@ -19693,7 +20072,8 @@
   "mods": {
    "relayNeedle": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_capture_cradle_m": {
   "id": "mod_capture_cradle_m",
@@ -19703,20 +20083,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 118.66294999770219
+    "from": 155.98992565063506,
+    "to": 146.8146053867314
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 228.36471754948332
+    "from": 257.87594707835115,
+    "to": 250.62181042322524
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.7319821530867645
+    "from": 3.9596346765625787,
+    "to": 3.6351019449172335
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 78.2062
+    "from": 48.0062,
+    "to": 54.0062
    }
   },
   "fitOk": true,
@@ -19724,7 +20104,8 @@
   "mods": {
    "captureSurvivalMult": 0.85
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_containment_seal_s": {
   "id": "mod_containment_seal_s",
@@ -19734,20 +20115,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 122.54697388512204
+    "from": 155.98992565063506,
+    "to": 152.80665917054228
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 231.43548121121188
+    "from": 257.87594707835115,
+    "to": 255.35921203345913
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.8489757639214535
+    "from": 3.9596346765625787,
+    "to": 3.8452046203952825
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 74.2062
+    "from": 48.0062,
+    "to": 50.0062
    }
   },
   "fitOk": true,
@@ -19755,7 +20136,8 @@
   "mods": {
    "containmentSeal": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_filament_contrast_s": {
   "id": "mod_filament_contrast_s",
@@ -19765,20 +20147,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 123.5580358100493
+    "from": 155.98992565063506,
+    "to": 154.38188486921456
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 232.2348409239263
+    "from": 257.87594707835115,
+    "to": 256.6046075239892
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.8798067662126567
+    "from": 3.9596346765625787,
+    "to": 3.901580794707813
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 73.2062
+    "from": 48.0062,
+    "to": 49.0062
    }
   },
   "fitOk": true,
@@ -19786,7 +20168,8 @@
   "mods": {
    "filamentContrast": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_host_cartography_s": {
   "id": "mod_host_cartography_s",
@@ -19796,20 +20179,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 122.54697388512204
+    "from": 155.98992565063506,
+    "to": 152.80665917054228
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 231.43548121121188
+    "from": 257.87594707835115,
+    "to": 255.35921203345913
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.8489757639214535
+    "from": 3.9596346765625787,
+    "to": 3.8452046203952825
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 74.2062
+    "from": 48.0062,
+    "to": 50.0062
    }
   },
   "fitOk": true,
@@ -19817,7 +20200,8 @@
   "mods": {
    "hostMapReveal": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_echo_recorder_s": {
   "id": "mod_echo_recorder_s",
@@ -19827,20 +20211,20 @@
   "events": {},
   "statDiff": {
    "topSpeed": {
-    "from": 124.5859198610388,
-    "to": 123.5580358100493
+    "from": 155.98992565063506,
+    "to": 154.38188486921456
    },
    "thrust": {
-    "from": 233.04750044501534,
-    "to": 232.2348409239263
+    "from": 257.87594707835115,
+    "to": 256.6046075239892
    },
    "turnRate": {
-    "from": 2.9113123617435144,
-    "to": 2.8798067662126567
+    "from": 3.9596346765625787,
+    "to": 3.901580794707813
    },
    "operationalMass": {
-    "from": 72.2062,
-    "to": 73.2062
+    "from": 48.0062,
+    "to": 49.0062
    }
   },
   "fitOk": true,
@@ -19848,7 +20232,8 @@
   "mods": {
    "echoRecorder": true
   },
-  "evidenceSamples": {}
+  "evidenceSamples": {},
+  "proof": "diagram"
  },
  "mod_twin_mount": {
   "id": "mod_twin_mount",
@@ -20170,7 +20555,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_triad_mount": {
   "id": "mod_triad_mount",
@@ -20541,7 +20927,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_piercing_core": {
   "id": "mod_piercing_core",
@@ -20839,7 +21226,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_forked_core": {
   "id": "mod_forked_core",
@@ -21124,7 +21512,8 @@
      "p": {}
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_bank_shot": {
   "id": "mod_bank_shot",
@@ -21284,7 +21673,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_smart_bank": {
   "id": "mod_smart_bank",
@@ -21445,7 +21835,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_ion_payload": {
   "id": "mod_ion_payload",
@@ -21934,7 +22325,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_incendiary_payload": {
   "id": "mod_incendiary_payload",
@@ -22376,7 +22768,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_gravity_tag": {
   "id": "mod_gravity_tag",
@@ -22763,7 +23156,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_relay_arc": {
   "id": "mod_relay_arc",
@@ -23195,7 +23589,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_bank_relay": {
   "id": "mod_bank_relay",
@@ -23422,7 +23817,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_tether_capacitor": {
   "id": "mod_tether_capacitor",
@@ -23803,7 +24199,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_conductive_path": {
   "id": "mod_conductive_path",
@@ -24328,7 +24725,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_cryo_payload": {
   "id": "mod_cryo_payload",
@@ -24760,7 +25158,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_cryo_gyros": {
   "id": "mod_cryo_gyros",
@@ -24883,7 +25282,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_herald_fan": {
   "id": "mod_herald_fan",
@@ -25287,7 +25687,8 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  },
  "mod_storm_carom": {
   "id": "mod_storm_carom",
@@ -25643,6 +26044,7 @@
      }
     }
    ]
-  }
+  },
+  "proof": "behavioral"
  }
 }

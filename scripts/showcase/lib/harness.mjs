@@ -484,8 +484,10 @@ async function installShowcaseApi(page) {
           chaffCount: d.chaffCount, ecmCount: d.ecmCount,
           damageReductionMult: d.damageReductionMult, hiddenCargoPct: d.hiddenCargoPct,
           scannerCloak: d.scannerCloak, ramDamageDealtMult: d.ramDamageDealtMult,
-          scannerRadiusMult: d.scannerRadiusMult, pingPersistMult: d.pingPersistMult,
-          impulseCharges: d.impulseCharges, chargeCapacity: d.chargeCapacity,
+          // use-time-only mods keys are intentionally absent here: the extractor
+          // surfaces fields the derived object actually carries; pins for the
+          // scannerRadiusMult/pingPersistMult/impulseChargeCapacity class read
+          // through the `mods` evidence path instead.
           massLoadFactor: d.massLoadFactor, operationalMass: d.operationalMass,
           miningSlotsFilled: d.miningSlotsFilled, miningSlotsTotal: d.miningSlotsTotal,
         };

@@ -89,19 +89,19 @@ export const DEMOS = {
   mod_thruster_gimbal_l:   { hull: H_BASTION, demo: 'turn', ev: [], stat: 'turnRate', clip: 7 },
 
   // ---- cargo / market (diagram) ---------------------------------------------
-  mod_cargo_pod_m:      { demo: 'diagram', stat: 'cargoCap' },
+  mod_cargo_pod_m:      { demo: 'diagram', hull: H_ATLAS, stat: 'cargoCap' },
   mod_cargo_expander_l: { demo: 'diagram', hull: H_ATLAS, stat: 'cargoCap' },
   mod_cargo_compactor_l:{ demo: 'diagram', hull: H_ATLAS, stat: 'cargoCap' },
   mod_smuggler_hold:    { demo: 'diagram', stat: 'hiddenCargoPct' },
   mod_smuggler_hold_m:  { demo: 'diagram', stat: 'hiddenCargoPct' },
-  mod_market_data_s:    { demo: 'diagram', stat: 'marketIntel' },
+  mod_market_data_s:    { demo: 'diagram', mods: 'marketIntel' },
 
   // ---- mining ----------------------------------------------------------------
   mod_mining_laser_s:      { hull: H_KESTREL, demo: 'mine_ast', ev: ['mining:start', 'mining:beamLocked', 'mining:yield'], clip: 10 },
   mod_mining_beam_m:       { hull: H_DRIFTER, demo: 'mine_ast', ev: ['mining:start', 'mining:beamLocked', 'mining:yield'], clip: 10 },
   mod_mining_pulverizer_l: { hull: H_IRONBACK, demo: 'mine_ast', ev: ['mining:start', 'mining:yield'], clip: 10 },
   mod_mining_industrial_l: { hull: H_IRONBACK, demo: 'mine_ast', ev: ['mining:start', 'mining:yield'], clip: 10 },
-  mod_drill_amp:           { hull: H_DRIFTER, demo: 'mine_ast', ev: ['mining:start', 'mining:yield'], support: ['mod_mining_beam_m'], stat: 'richCoreRingPctBonus', clip: 10 },
+  mod_drill_amp:           { hull: H_DRIFTER, demo: 'mine_ast', ev: ['mining:start', 'mining:yield'], support: ['mod_mining_beam_m'], mods: 'richCoreRingPctBonus', clip: 10 },
 
   // ---- massline rig (tether heads + line gear) -------------------------------
   mod_tractor_beam_m:       { hull: H_DRIFTER, demo: 'tether', ev: ['tether:latched'], stat: 'masslineHeadId', clip: 10 },
@@ -129,20 +129,20 @@ export const DEMOS = {
   mod_chaff_dispenser_m: { hull: H_DRIFTER, demo: 'counter', ev: ['countermeasure:deployed'], stat: 'chaffCount', clip: 15 },
   mod_ecm_jammer_l:      { hull: H_L, demo: 'counter', ev: ['countermeasure:deployed'], stat: 'ecmCount', clip: 15 },
   mod_decoy_buoy_s:      { hull: H_M, demo: 'counter', ev: ['countermeasure:deployed'], clip: 15 },
-  mod_pds_servo_s:       { hull: H_M, demo: 'flak', ev: ['pds:intercept', 'combat:hit'], stat: 'pointDefense', clip: 10 },
+  mod_pds_servo_s:       { hull: H_M, demo: 'flak', ev: ['pds:intercept', 'combat:hit'], mods: 'pointDefense', clip: 10 },
 
   // ---- deployables / ordnance ------------------------------------------------
   mod_repulsion_trap_s:    { hull: H_M, demo: 'deploy', key: 'Digit6', ev: ['fields:deployed', 'combat:shove'], clip: 8 },
-  mod_heat_lure_s:         { hull: H_M, demo: 'charge', ev: ['alienEcology:lureDropped', 'charge:thrown'], stat: 'heatLure', clip: 9 },
-  mod_charge_rack:         { hull: H_M, demo: 'charge', ev: ['charge:thrown', 'charge:detonated', 'combat:shove'], stat: 'impulseChargeCapacity', clip: 9 },
-  mod_charge_vector_rack:  { hull: H_M, demo: 'charge', ev: ['charge:thrown', 'charge:detonated', 'combat:shove'], stat: 'impulseChargeCapacity', clip: 9 },
+  mod_heat_lure_s:         { hull: H_M, demo: 'charge', ev: ['alienEcology:lureDropped', 'charge:thrown'], mods: 'heatLure', clip: 9 },
+  mod_charge_rack:         { hull: H_M, demo: 'charge', ev: ['charge:thrown', 'charge:detonated', 'combat:shove'], mods: 'impulseChargeCapacity', clip: 9 },
+  mod_charge_vector_rack:  { hull: H_M, demo: 'charge', ev: ['charge:thrown', 'charge:detonated', 'combat:shove'], mods: 'impulseChargeCapacity', clip: 9 },
 
   // ---- cloak / stealth --------------------------------------------------------
   mod_cloak_mk1: { hull: H_DRIFTER, demo: 'cloak', ev: ['cloak:engaged'], clip: 7 },
   mod_cloak_mk2: { hull: H_DRIFTER, demo: 'cloak', ev: ['cloak:engaged'], clip: 7 },
   mod_sensor_scrambler_s: { demo: 'diagram', stat: 'scannerCloak' },
   mod_sensor_scrambler_m: { demo: 'diagram', stat: 'scannerCloak' },
-  mod_quiet_mask_s:       { demo: 'diagram', stat: 'stealthBioMult' },
+  mod_quiet_mask_s:       { demo: 'diagram', mods: 'stealthBioMult' },
 
   // ---- drones / loot / ram / repair ------------------------------------------
   mod_drone_bay_l:        { hull: H_L, demo: 'dronebay', ev: ['combat:damage', 'combat:fire'], stat: 'droneBayCount', clip: 10 },
@@ -158,23 +158,23 @@ export const DEMOS = {
 
   // ---- scanners ---------------------------------------------------------------
   mod_sensor_array_l:       { hull: H_L, demo: 'scan', ev: ['scan:pulse'], stat: 'radarRangeMult', clip: 6 },
-  mod_survey_suite:         { hull: H_DRIFTER, demo: 'scan', ev: ['scan:pulse'], stat: 'scannerRadiusMult', clip: 6 },
-  mod_triangulation_suite_s:{ hull: H_M, demo: 'scan', ev: ['scan:pulse'], stat: 'anomalyPingReduction', clip: 6 },
-  mod_cargo_scanner_s:      { hull: H_M, demo: 'scan', ev: ['scan:pulse'], stat: 'revealCargo', clip: 6 },
+  mod_survey_suite:         { hull: H_DRIFTER, demo: 'scan', ev: ['scan:pulse'], mods: 'scannerRadiusMult', clip: 6 },
+  mod_triangulation_suite_s:{ hull: H_M, demo: 'scan', ev: ['scan:pulse'], mods: 'anomalyPingReduction', clip: 6 },
+  mod_cargo_scanner_s:      { hull: H_M, demo: 'scan', ev: ['scan:pulse'], mods: 'revealCargo', clip: 6 },
 
   // ---- bio / host-lane gear (diagram — needs alien hosts, not combat-staged) ---
-  mod_filter_stack_s:        { demo: 'diagram', stat: 'bioFilterMult' },
-  mod_filter_stack_m:        { hull: H_DRIFTER, demo: 'diagram', stat: 'bioFilterMult' },
-  mod_bio_spectral_pass_s:   { demo: 'diagram', stat: 'bioScanTier' },
-  mod_field_coherence_meter: { demo: 'diagram', stat: 'coherenceMeter' },
-  mod_quarantine_locker_s:   { demo: 'diagram', stat: 'quarantineLocker' },
-  mod_hull_purge_ring_m:     { hull: H_DRIFTER, demo: 'diagram', stat: 'hullPurgeRing' },
-  mod_relay_needle_s:        { demo: 'diagram', stat: 'relayNeedle' },
-  mod_capture_cradle_m:      { hull: H_DRIFTER, demo: 'diagram', stat: 'captureSurvivalMult' },
-  mod_containment_seal_s:    { demo: 'diagram', stat: 'containmentSeal' },
-  mod_filament_contrast_s:   { demo: 'diagram', stat: 'filamentContrast' },
-  mod_host_cartography_s:    { demo: 'diagram', stat: 'hostMapReveal' },
-  mod_echo_recorder_s:       { demo: 'diagram', stat: 'echoRecorder' },
+  mod_filter_stack_s:        { demo: 'diagram', mods: 'bioFilterMult' },
+  mod_filter_stack_m:        { hull: H_DRIFTER, demo: 'diagram', mods: 'bioFilterMult' },
+  mod_bio_spectral_pass_s:   { demo: 'diagram', mods: 'bioScanTier' },
+  mod_field_coherence_meter: { demo: 'diagram', mods: 'coherenceMeter' },
+  mod_quarantine_locker_s:   { demo: 'diagram', mods: 'quarantineLocker' },
+  mod_hull_purge_ring_m:     { hull: H_DRIFTER, demo: 'diagram', mods: 'hullPurgeRing' },
+  mod_relay_needle_s:        { demo: 'diagram', mods: 'relayNeedle' },
+  mod_capture_cradle_m:      { hull: H_DRIFTER, demo: 'diagram', mods: 'captureSurvivalMult' },
+  mod_containment_seal_s:    { demo: 'diagram', mods: 'containmentSeal' },
+  mod_filament_contrast_s:   { demo: 'diagram', mods: 'filamentContrast' },
+  mod_host_cartography_s:    { demo: 'diagram', mods: 'hostMapReveal' },
+  mod_echo_recorder_s:       { demo: 'diagram', mods: 'echoRecorder' },
 
   // ---- grammar-rig attack traits (utility mounts) -----------------------------
   mod_twin_mount:        { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:damage', 'combat:fire'], clip: 8 },
