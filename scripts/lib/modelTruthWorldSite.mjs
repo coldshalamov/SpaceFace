@@ -6,6 +6,7 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dequantize } from '@gltf-transform/functions';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { worldSiteAssetBinding } from '../../src/data/worldSiteAssetBindings.js';
 import { ceresShipbreakCollisionAuthority } from '../../src/data/ceresShipbreakCollision.js';
 import { computeRenderPackageContentHash, computeRenderPackageRuntimeHash } from '../../src/contracts/renderPackage.js';
 import { isAuthoredNonRenderHelper } from './modelTruthAuthoredCompound.mjs';
@@ -192,6 +193,15 @@ export function measureWorldSiteTriangles(triangles, measurement, passages) {
     reverseProjectionSamples,
   };
 }
+export function verifyWorldSiteBindingProvenance(binding, row, source, released) {
+  if (!binding || binding.partId !== row.id || binding.assetId !== `SF_${row.id.toUpperCase()}`
+    || binding.source?.path !== `assets/ships/parts/${row.file}`
+    || binding.release?.path !== `assets/ships/release/parts/${row.file}`
+    || binding.source.sha256 !== hash(source) || binding.source.bytes !== source.length
+    || binding.release.sha256 !== hash(released) || binding.release.bytes !== released.length) {
+    throw new Error(`${row.id}: stale or wrong world-site source/release binding provenance`);
+  }
+}
 export async function measureWorldSiteAssetChain(root, row, measurement = authoredWorldSiteMeasurement(row)) {
   const read = file => readFileSync(resolve(root, file));
   const json = file => JSON.parse(read(file));
@@ -208,6 +218,7 @@ export async function measureWorldSiteAssetChain(root, row, measurement = author
     throw new Error(`${row.id}: package metadata hash mismatch`);
   }
   const source = read(release.source), released = read(release.release);
+  verifyWorldSiteBindingProvenance(worldSiteAssetBinding(row.id), row, source, released);
   const packagedPath = `${pilot.outputDir}/render.glb`, packaged = read(packagedPath);
   if (hash(source) !== release.sourceSha256 || hash(released) !== release.releaseSha256
     || pilot.releaseSha256 !== release.releaseSha256 || metadata.render.sha256 !== hash(packaged)) {
