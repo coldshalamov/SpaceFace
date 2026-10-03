@@ -1726,9 +1726,14 @@ export const traffic = {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
     // The cook provider already ran this exact enter; the bus emit replays it synchronously
     // and a second hard cleanup would despawn the freighters the census just cooked. Real
-    // continuous/noTeleport payloads are a different enter and must always run.
+    // continuous/noTeleport payloads are a different enter and must always run. Minted
+    // payloads discriminate by enterEpoch (a frozen simTime can't alias a second real enter);
+    // un-minted payloads (minimal harnesses) fall back to the simTime stamp.
     if (p && !p._viaCook && p.sector && p.sector === this._cookedSector
-      && this.state.simTime === this._cookedSimTime && !(p.continuous || p.noTeleport)) {
+      && (Number.isFinite(p.enterEpoch)
+        ? p.enterEpoch === this._cookedEnterEpoch
+        : this.state.simTime === this._cookedSimTime)
+      && !(p.continuous || p.noTeleport)) {
       return;
     }
     const continuous = !!(p && (p.continuous || p.noTeleport));
@@ -1752,6 +1757,10 @@ export const traffic = {
     if (p._viaCook) {
       this._cookedSector = sector;
       this._cookedSimTime = this.state.simTime;
+      // The cook runs synchronously inside the emit it cooks for, so the world's serial is
+      // already minted for this enter — stamp it so the emit's replay matches by epoch.
+      const serial = this.state.world && this.state.world.enterSerial;
+      this._cookedEnterEpoch = Number.isFinite(serial) ? serial : null;
     }
     const sectorId = sector.id || requestedSectorId;
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {

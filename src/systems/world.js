@@ -1040,7 +1040,11 @@ export const world = {
       tick: state.tick | 0,
       noTeleport,
     });
-    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport });
+    // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
+    // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
+    // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
+    state.world.enterSerial = (Number(state.world.enterSerial) || 0) + 1;
+    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport, enterEpoch: state.world.enterSerial });
     return active;
   },
 
