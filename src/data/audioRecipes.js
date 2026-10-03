@@ -773,6 +773,52 @@ export const RECIPES = [
     repeatCount: 2, repeatIntervalS: 0.12,
     gainMult: 0.75,
   },
+  // Achievement fanfare — a proud rising fifth repeated three times, brighter than the mission
+  // resolve. An unlocked deed is rarer than a finished contract and should sound like it.
+  {
+    id: 'sfx_achievement_fanfare',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 523, freqSweep: [523, 784], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.2 },
+    repeatCount: 3, repeatIntervalS: 0.13,
+    gainMult: 0.62,
+  },
+  // Career promotion — a warm two-step ascent on the triangle voice. Rank is earned over hours,
+  // so the chord lands slower and lower than the mission stingers: acknowledgment, not a blip.
+  {
+    id: 'sfx_promotion_chord',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 392, freqSweep: [392, 587], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.02, sustain: 0.04, release: 0.35 },
+    repeatCount: 2, repeatIntervalS: 0.18,
+    gainMult: 0.65,
+  },
+  // Tech researched — two quick high ascents, the lab-report read. Distinct from lock_acquired
+  // (shorter, softer, no combat urgency) so research paying out has its own small voice.
+  {
+    id: 'sfx_tech_researched',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 880, freqSweep: [880, 1175], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    repeatCount: 2, repeatIntervalS: 0.1,
+    gainMult: 0.55,
+  },
+  // Ship purchased — a low warm swell on the hull voice. The biggest credit sink in the game
+  // should sound like heavy machinery settling into your berth, not a menu confirm.
+  {
+    id: 'sfx_ship_purchased',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196, freqSweep: [196, 262], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.03, sustain: 0.08, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+    gainMult: 0.7,
+  },
   // PQ-146 moment stinger — one material/force accent, 0.45–0.70 s: a low pressure swell that
   // resolves upward a fifth. It follows the physical impact rather than shouting over it, ducks
   // music briefly through cue importance, and never escalates the mix.
