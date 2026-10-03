@@ -93,11 +93,15 @@ jobs:
 
       - name: Validate native restore transactions
         if: ${{ !cancelled() && matrix.shard == 1 }}
-        run: node --test test/sg02-native-save-reconciliation.test.mjs test/sg02-native-save-duplicate-record.test.mjs test/sg02-native-attachment-policy.test.mjs test/sg02-native-save-supersession.test.mjs
+        run: node --test test/sg02-native-save-reconciliation.test.mjs test/sg02-native-save-duplicate-record.test.mjs test/sg02-native-attachment-policy.test.mjs test/sg02-native-save-supersession.test.mjs test/sg02-native-rebuild-lifetime.test.mjs
 
       - name: Validate Ceres physical workfleet and Continue
         if: ${{ !cancelled() && matrix.shard == 1 }}
         run: npm run check:ceres-workfleet
+
+      - name: Validate Ceres authored assets and exact census
+        if: ${{ !cancelled() && matrix.shard == 1 }}
+        run: npm run check:ceres-presentation
 
       - name: Validate program control plane
         if: matrix.shard == 1
