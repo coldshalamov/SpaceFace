@@ -1,0 +1,398 @@
+[
+  {
+    "lod": 0,
+    "triangles": 3456,
+    "draws": 9,
+    "materials": 3,
+    "images": 2,
+    "bytes": 223512,
+    "sha256": "ccda4c0413c7341a78f59ac8dee792bc17a1d49c8d744a795a59f672e468d571",
+    "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+    "parts": [
+      {
+        "name": "MITE_continuous_ventral_core",
+        "before": 2112,
+        "after": 422,
+        "protectedVertices": 8
+      },
+      {
+        "name": "MITE_abdominal_carapace",
+        "before": 1348,
+        "after": 428,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_thoracic_saddle",
+        "before": 1608,
+        "after": 428,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_muscle_PORT",
+        "before": 604,
+        "after": 120,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_coxa_PORT",
+        "before": 604,
+        "after": 120,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_contact_fang_PORT",
+        "before": 788,
+        "after": 260,
+        "protectedVertices": 11
+      },
+      {
+        "name": "MITE_hip_collar_PORT",
+        "before": 360,
+        "after": 72,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_femur_PORT",
+        "before": 596,
+        "after": 118,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_membrane_PORT",
+        "before": 596,
+        "after": 118,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_leading_cartilage_PORT",
+        "before": 616,
+        "after": 122,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_foreleg_PORT",
+        "before": 596,
+        "after": 118,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_muscle_STARBOARD",
+        "before": 604,
+        "after": 120,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_coxa_STARBOARD",
+        "before": 604,
+        "after": 120,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_contact_fang_STARBOARD",
+        "before": 788,
+        "after": 260,
+        "protectedVertices": 11
+      },
+      {
+        "name": "MITE_hip_collar_STARBOARD",
+        "before": 360,
+        "after": 72,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_femur_STARBOARD",
+        "before": 596,
+        "after": 118,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_membrane_STARBOARD",
+        "before": 596,
+        "after": 118,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_leading_cartilage_STARBOARD",
+        "before": 616,
+        "after": 122,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_foreleg_STARBOARD",
+        "before": 596,
+        "after": 118,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_oral_floor",
+        "before": 412,
+        "after": 82,
+        "protectedVertices": 0
+      }
+    ]
+  },
+  {
+    "lod": 1,
+    "triangles": 1482,
+    "draws": 9,
+    "materials": 3,
+    "images": 2,
+    "bytes": 139180,
+    "sha256": "45c2012e97e0704b8cd26a0a3dc4fde53eeb6ec5d11f0b75577e0a02cd119791",
+    "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+    "parts": [
+      {
+        "name": "MITE_continuous_ventral_core",
+        "before": 2112,
+        "after": 190,
+        "protectedVertices": 8
+      },
+      {
+        "name": "MITE_abdominal_carapace",
+        "before": 1348,
+        "after": 122,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_thoracic_saddle",
+        "before": 1608,
+        "after": 122,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_muscle_PORT",
+        "before": 604,
+        "after": 78,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_coxa_PORT",
+        "before": 604,
+        "after": 54,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_contact_fang_PORT",
+        "before": 788,
+        "after": 132,
+        "protectedVertices": 11
+      },
+      {
+        "name": "MITE_hip_collar_PORT",
+        "before": 360,
+        "after": 32,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_femur_PORT",
+        "before": 596,
+        "after": 52,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_membrane_PORT",
+        "before": 596,
+        "after": 52,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_leading_cartilage_PORT",
+        "before": 616,
+        "after": 54,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_foreleg_PORT",
+        "before": 596,
+        "after": 52,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_muscle_STARBOARD",
+        "before": 604,
+        "after": 78,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_coxa_STARBOARD",
+        "before": 604,
+        "after": 54,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_contact_fang_STARBOARD",
+        "before": 788,
+        "after": 132,
+        "protectedVertices": 11
+      },
+      {
+        "name": "MITE_hip_collar_STARBOARD",
+        "before": 360,
+        "after": 32,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_femur_STARBOARD",
+        "before": 596,
+        "after": 52,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_membrane_STARBOARD",
+        "before": 596,
+        "after": 52,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_leading_cartilage_STARBOARD",
+        "before": 616,
+        "after": 54,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_foreleg_STARBOARD",
+        "before": 596,
+        "after": 52,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_oral_floor",
+        "before": 412,
+        "after": 36,
+        "protectedVertices": 0
+      }
+    ]
+  },
+  {
+    "lod": 2,
+    "triangles": 978,
+    "draws": 9,
+    "materials": 3,
+    "images": 2,
+    "bytes": 117176,
+    "sha256": "1fc001c9e1fd049e24b6831b057b97f7152a154cf7251fcd7e1396a3975cc09e",
+    "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+    "parts": [
+      {
+        "name": "MITE_continuous_ventral_core",
+        "before": 2112,
+        "after": 100,
+        "protectedVertices": 8
+      },
+      {
+        "name": "MITE_abdominal_carapace",
+        "before": 1348,
+        "after": 140,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_thoracic_saddle",
+        "before": 1608,
+        "after": 140,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_muscle_PORT",
+        "before": 604,
+        "after": 72,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_coxa_PORT",
+        "before": 604,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_contact_fang_PORT",
+        "before": 788,
+        "after": 62,
+        "protectedVertices": 11
+      },
+      {
+        "name": "MITE_hip_collar_PORT",
+        "before": 360,
+        "after": 16,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_femur_PORT",
+        "before": 596,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_membrane_PORT",
+        "before": 596,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_leading_cartilage_PORT",
+        "before": 616,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_foreleg_PORT",
+        "before": 596,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_muscle_STARBOARD",
+        "before": 604,
+        "after": 72,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_cheliceral_coxa_STARBOARD",
+        "before": 604,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_contact_fang_STARBOARD",
+        "before": 788,
+        "after": 62,
+        "protectedVertices": 11
+      },
+      {
+        "name": "MITE_hip_collar_STARBOARD",
+        "before": 360,
+        "after": 16,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_femur_STARBOARD",
+        "before": 596,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_membrane_STARBOARD",
+        "before": 596,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_fin_leading_cartilage_STARBOARD",
+        "before": 616,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_foreleg_STARBOARD",
+        "before": 596,
+        "after": 28,
+        "protectedVertices": 0
+      },
+      {
+        "name": "MITE_oral_floor",
+        "before": 412,
+        "after": 18,
+        "protectedVertices": 0
+      }
+    ]
+  }
+]
