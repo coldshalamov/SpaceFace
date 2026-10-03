@@ -23,6 +23,7 @@ import {
   nozzleWorldFromRow,
   placeDrawScaleFromRow,
   plumeSocketNameFromNames,
+  trailSocketNameFromNames,
   plumeWorldFromRow,
   ropeEndFromRow,
   shotWorldFromRow,
@@ -380,6 +381,14 @@ export function modelTruthPlumeSocketName(entity) {
   if (!row) return null;
   const names = (row.sockets || []).map((socket) => socket && socket.name);
   return plumeSocketNameFromNames(names);
+}
+
+/** The recorded-wake anchor: authored SOCKET_Trail_* stations first, nozzle as fallback. */
+export function modelTruthTrailSocketName(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const names = (row.sockets || []).map((socket) => socket && socket.name);
+  return trailSocketNameFromNames(names);
 }
 
 export function modelTruthPlumeOrigin(entity) {

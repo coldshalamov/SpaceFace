@@ -29,7 +29,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
-import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
+import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
@@ -3253,26 +3253,21 @@ export const vfx = {
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
     if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
-    const socketName = modelTruthPlumeSocketName(e);
-    if (!socketName) return null;
-    if (this.helpers.socketWorldPose) {
-      const pose = this.helpers.socketWorldPose(e.id, socketName);
-      if (pose) {
-        return this._writeTrailSocketPose(
-          pose.x, pose.y || 0, pose.z,
-          pose.forwardX, pose.forwardY, pose.forwardZ,
-        );
-      }
+    return namedTrailSocketPose(this, e, modelTruthPlumeSocketName(e));
+  },
+
+  // The recorded wake anchors at the authored 'vfx' trail stations (SOCKET_Trail_*), not the
+  // nozzle mount face: on a hull whose drive mount is not its trailing edge — ship_saucer's
+  // ventral field core sits at hull center — a nozzle-anchored ribbon head records history
+  // from mid-body, visibly detached from the silhouette. Nozzle-less hulls fall back to the
+  // same census chain the plume pose uses, with the trail-preferred name pick.
+  _wakeTrailSocketWorldPose(e) {
+    this._trailSocketObjects(e);
+    const cache = e && e.view && e.view.__vfxTrailSockets;
+    if (cache && Array.isArray(cache.wake) && cache.wake.length) {
+      return this._trailSocketPoseFromObject(cache.wake[0]);
     }
-    if (this.helpers.socketWorldPos) {
-      const pos = this.helpers.socketWorldPos(e.id, socketName);
-      if (pos) {
-        const cf = Math.cos(e && e.rot || 0);
-        const sf = Math.sin(e && e.rot || 0);
-        return this._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
-      }
-    }
-    return null;
+    return namedTrailSocketPose(this, e, modelTruthTrailSocketName(e));
   },
 
   _trailSocketObjects(e) {
@@ -3303,6 +3298,9 @@ export const vfx = {
           compositionId,
           childCount,
           sockets: nozzles.length ? nozzles : (sockets.length ? sockets : drivePlumes),
+          // Recorded-wake anchors prefer the authored 'vfx' trail stations; the nozzle mount
+          // face remains the fallback when a hull authors no SOCKET_Trail_* objects.
+          wake: sockets.length ? sockets : (nozzles.length ? nozzles : drivePlumes),
         };
         view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
       }
@@ -15746,7 +15744,7 @@ export const vfx = {
       const anchorRot = presentedAnchorRot(e, anchorAlpha);
       const cf = Math.cos(anchorRot), sf = Math.sin(anchorRot);
       const back = (e.radius || 14) * 0.88;
-      const sock = this._trailSocketWorldPose(e);
+      const sock = this._wakeTrailSocketWorldPose(e);
       const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
       const txG = sock ? sock.x : anchor.x - cf * back;
       const tzG = sock ? sock.z : anchor.z - sf * back;
@@ -16580,6 +16578,31 @@ export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)
 // ---------------------------------------------------------------------------
+// Census-name socket pose for hulls whose live view carries no socket objects. Module scope so
+// the .call probe seam in test/model-truth-mounts.test.mjs keeps working with just helpers and
+// _writeTrailSocketPose on `this`.
+function namedTrailSocketPose(ctx, e, socketName) {
+  if (!socketName) return null;
+  if (ctx.helpers && ctx.helpers.socketWorldPose) {
+    const pose = ctx.helpers.socketWorldPose(e.id, socketName);
+    if (pose) {
+      return ctx._writeTrailSocketPose(
+        pose.x, pose.y || 0, pose.z,
+        pose.forwardX, pose.forwardY, pose.forwardZ,
+      );
+    }
+  }
+  if (ctx.helpers && ctx.helpers.socketWorldPos) {
+    const pos = ctx.helpers.socketWorldPos(e.id, socketName);
+    if (pos) {
+      const cf = Math.cos(e && e.rot || 0);
+      const sf = Math.sin(e && e.rot || 0);
+      return ctx._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
+    }
+  }
+  return null;
+}
+
 function isNozzleSocketObject(object) {
   if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
   return /^SOCKET_Engine_/i.test(String(object.name || ''));
