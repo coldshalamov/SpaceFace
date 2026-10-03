@@ -3690,7 +3690,7 @@ export const traffic = {
   _newPassengerLinerItinerary(entity, originStationId, destinationStationId, legSeq = 0) {
     const worldRecordId = entity && entity.data && entity.data.worldRecordId;
     if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     const departureAt = now + PASSENGER_LINER_SERVICE.dwellS;
     const ids = passengerLinerLegIds(worldRecordId, legSeq);
     return {
@@ -9749,7 +9749,7 @@ export const traffic = {
     if (this._ceresCausal && this._ceresCausal.schema === CERES_CAUSAL_CHAIN_SCHEMA) {
       return this._ceresCausal;
     }
-    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const simTime = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     this._ceresCausal = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       cycle: 0,

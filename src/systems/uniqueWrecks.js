@@ -875,7 +875,7 @@ export const uniqueWrecks = {
 
   _pumpComplications() {
     const own = this._ensureState();
-    const now = Math.max(0, finite(this.state.simTime, 0));
+    const now = Math.max(0, finite(deferredEnterNow(this.state), 0));
     for (const record of Object.values(own.complications)) {
       if (!record || record.status !== 'scheduled' || record.dueAt == null || record.dueAt > now) continue;
       record.status = 'triggered';
@@ -1015,7 +1015,7 @@ export const uniqueWrecks = {
     if (existing && !(options.allowCompletedRepeat === true && existing.status === 'completed')) {
       return existing;
     }
-    const now = Math.max(0, finite(this.state.simTime, 0));
+    const now = Math.max(0, finite(deferredEnterNow(this.state), 0));
     const sectorId = typeof options.sectorId === 'string'
       ? options.sectorId
       : typeof bearing.sectorId === 'string' ? bearing.sectorId : def.sectorId;

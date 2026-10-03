@@ -1850,10 +1850,25 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   // frame. A newer enter's own drain/splice empties the queue first — this block
   // just clears the flag; a dead queue can't strand.
   if (owner._seamDeferredDrain === true) {
-    drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4,
-      owner._sectorHandoffEpoch);
     const rest = owner.state && owner.state.render
       && owner.state.render.deferredEnterMaterializers;
+    const head = rest && rest.length ? rest[0] : null;
+    const liveEnterEpoch = owner.state && owner.state.world && owner.state.world.enterSerial != null
+      ? owner.state.world.enterSerial : null;
+    // A head minted under the live serial belongs to the newer enter's own
+    // drain/splice — a stale hold epoch would only poll the queue each frame
+    // without ever stepping it (the epoch gate breaks on the foreign head).
+    if (head && head.epoch != null && owner._sectorHandoffEpoch != null
+        && head.epoch !== owner._sectorHandoffEpoch && liveEnterEpoch != null
+        && head.epoch === liveEnterEpoch) {
+      owner._seamDeferredDrain = false;
+      owner._sectorHandoffSectorId = null;
+      owner._sectorHandoffSector = null;
+      owner._sectorHandoffEpoch = null;
+      return 'deferred';
+    }
+    drainDeferredEnterSlice(owner.state, owner._sectorHandoffSector || null, 4,
+      owner._sectorHandoffEpoch);
     if (!rest || !rest.length) {
       owner._seamDeferredDrain = false;
       owner._sectorHandoffSectorId = null;
@@ -12150,12 +12165,12 @@ export const render = {
               .filter((entry) => {
                 const live = entry && typeof entry.provider === 'function'
                   && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch);
-                if (live) return true;
-                // A dead-epoch chunked provider still holds iteration state — close it
-                // like the FIFO drains do instead of dropping it silently.
+                // The splice never resumes a suspended iterator — live or dead,
+                // the provider re-runs fresh. Close any held iterator so a
+                // half-consumed generator can't leak or double-commit progress.
                 try { if (entry && entry.iterator && typeof entry.iterator.return === 'function') entry.iterator.return(); }
                 catch (_) { /* drop proceeds regardless */ }
-                return false;
+                return live;
               })
               .map((entry) => entry.provider)
           : null;
