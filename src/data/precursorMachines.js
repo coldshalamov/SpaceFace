@@ -106,9 +106,16 @@ export const MACHINE_KINDS = Object.freeze({
     name: 'Courier Frame',
     // AE-236 (I09): carries a protocol token between dead sites — intercepting it is the
     // only way to read site-to-site mail (L06 evidence source).
+    // SFQ-B141: the token is a physical cargo pod the frame tows through space — custody
+    // is a real body, not a proximity grant. See tickCourierToken in
+    // src/systems/precursorMachines.js.
     radius: 10,
     speed: 90, turnRate: 1.2,
     routePeriodS: 90,
+    mailDwellS: 150,   // recipient countersigns only after the mail has ridden this long —
+                       // the whole transit is the intercept window
+    deliverR: 240,     // recipient intake radius around the route anchor
+    strayR: 220,       // pod dragged this far off the frame breaks custody -> loose cargo
     scannerSignalKind: 'anomaly',
     signature: 'machine',
   }),

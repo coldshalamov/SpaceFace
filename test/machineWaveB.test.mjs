@@ -30,6 +30,7 @@ import {
   materializeMachineLayer,
   tickMachineLayer,
   shepherdFieldAt,
+  handleMachinePickupCollected,
 } from '../src/systems/precursorMachines.js';
 import {
   tickAlienEcology,
@@ -85,8 +86,10 @@ function makeWorld(state, emitLog = [], granted = []) {
     emit: (type, p) => {
       emitLog.push({ type, p });
       // Wire the world.js bus bindings under test: machine-layer emissions land in the
-      // ecology handler exactly as they do on the live bus.
+      // ecology handler exactly as they do on the live bus; a committed pickup receipt is
+      // the courier token's custody transfer (SFQ-B141).
       if (type.startsWith('ecology:')) handleAlienEcologyEvent(world, type, p);
+      if (type === 'pickup:collected') handleMachinePickupCollected(world, p);
     },
   };
   return world;
@@ -217,27 +220,46 @@ test('setpiece defs resolve to real sites and fire once', () => {
   assert.equal(toasts.length, 1, 'N05 fires exactly once');
 });
 
-// ── Phase 24 runtime: courier intercept mints the handshake token ──────────────────
-test('courier intercept grants one gate-handshake token and files L06', () => {
+// ── Phase 24 runtime: courier mail is a physical pod — scooping it files L06 ──────
+// SFQ-B141: the token is a cargo body the frame tows, not a proximity grant. The full
+// custody lifecycle (delivery once / intercept / re-entry dedup) lives in
+// test/sfq-b141-courier-token.test.mjs; here we pin that the old direct grant is gone and
+// the committed pickup receipt is what moves custody + files the evidence.
+test('courier proximity grants nothing — scooping the token pod files L06 once', () => {
   const state = makeState('sector_io_reach');
   const emitLog = [];
   const world = makeWorld(state, emitLog);
   materializeMachineLayer(world, { id: 'sector_io_reach' }, world.active);
   const courier = machinesOf(state, 'courier')[0];
   assert.ok(courier, 'courier spawned');
-  const site = MACHINE_SITES.io_listening_field;
-  // Park the player on the courier so the intercept check passes once it ticks.
+  // Park the player on the courier — the old path added cargo on this tick; it must not.
   makePlayer(state, courier.pos.x + 40, courier.pos.z);
   const ae = ensureAlienEcologyState(state);
   tickMachineLayer(world, 0.1);
-  assert.equal(state.player.cargo.items.cmdty_gate_handshake, 1, 'token granted');
+  assert.equal(state.player.cargo.items.cmdty_gate_handshake || 0, 0,
+    'approach alone no longer mints the handshake');
+  const pod = state.entityList.find((e) => e.type === 'payload'
+    && e.data && e.data.machineToken);
+  assert.ok(pod, 'the mail is a physical pod in the frame\'s custody');
+  // The committed pickup receipt is the custody transfer (mining._collectPayload emits it).
+  world.bus.emit('pickup:collected', {
+    pickupId: pod.id, collectorId: state.playerId, kind: 'cargo',
+    amount: 1, commodityId: 'cmdty_gate_handshake', acceptedAmount: 1,
+    pos: { x: pod.pos.x, z: pod.pos.z },
+  });
   assert.ok(ae.evidence.L06, 'L06 filed');
+  assert.equal(ae.machineSites.io_listening_field.courierToken.status, 'intercepted');
   assert.equal(emitLog.filter((e) => e.type === 'comms:log'
-    && /TOKEN JETTISONED/.test(e.p.text)).length, 1);
-  // Second tick must not re-grant.
+    && /ROUTE MAIL INTERCEPTED/.test(e.p.text)).length, 1);
+  // A second receipt must not refire — the token settled.
+  world.bus.emit('pickup:collected', {
+    pickupId: pod.id, collectorId: state.playerId, kind: 'cargo',
+    amount: 1, commodityId: 'cmdty_gate_handshake', acceptedAmount: 1,
+    pos: { x: pod.pos.x, z: pod.pos.z },
+  });
   tickMachineLayer(world, 0.1);
-  assert.equal(state.player.cargo.items.cmdty_gate_handshake, 1);
-  void site;
+  assert.equal(emitLog.filter((e) => e.type === 'comms:log'
+    && /ROUTE MAIL INTERCEPTED/.test(e.p.text)).length, 1);
 });
 
 // ── Phase 24 runtime: executor scrubs biohazard cargo on the quarantine pulse ──────
