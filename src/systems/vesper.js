@@ -3,6 +3,7 @@
 // RNG draws, global listeners, timers, alternate inventories, fake contacts or player-velocity writes.
 import { VESPER as C, VESPER_LINES, freshVesperMemory, normalizeVesperMemory } from '../data/vesper.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
 const finiteXZ = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -53,7 +54,14 @@ export function createVesper() {
       on('physics:impact', p => this._impact(p));
       on('combat:damage', p => this._damage(p)); on('entity:killed', p => this._killed(p));
       on('sector:exit', () => { this._capture(); this._clear(); this._reset(); });
-      on('sector:enter', () => { this._capture(); this._reset(); this._sync(); });
+      // Live GPU + flight + hard enter: capture/reset stay inline bookkeeping;
+      // the ensemble sync defers into the cook's FIFO — _sync itself (not the
+      // home-gated provider wrapper) so off-home enters keep their capture+clear.
+      on('sector:enter', (p) => {
+        this._capture(); this._reset();
+        if (deferSectorEnterMaterialization(this.state, p, () => this._sync())) return;
+        this._sync();
+      });
       // sector:enter listeners are count-sliced and registration-ordered, so this system's
       // spawn can land after the jump census walks entityList — the four bodies then miss
       // firstFlightIds and mount mid-flight. The renderer's live-sector cook invokes these

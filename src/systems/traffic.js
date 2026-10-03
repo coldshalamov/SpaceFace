@@ -22,6 +22,7 @@
 
 import { anvilTrafficMethods } from './anvilWork.js';
 import { isRunSealed } from '../core/runSeal.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
@@ -401,7 +402,7 @@ function occupationalJobKind(role) {
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
 // not a new write seam — runtime ownership of role resolution is unchanged.
-export { TRAFFIC_ROLES };
+export { TRAFFIC_ROLES, priorityCourierServiceForSector };
 
 /** WORLD-20 — the memorial sightseer stands on the zone center, inside its radius. */
 export const HELIOS_MEMORIAL_TOURIST = Object.freeze({
@@ -1542,8 +1543,10 @@ export const traffic = {
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     // Census arm: ambient traffic materialization lands inside the sector cook
-    // deterministically (the handler falls back to world.currentSectorId itself).
-    this._cookProvider = (sector) => this._onSectorEnter({
+    // deterministically (the handler falls back to world.currentSectorId itself). The cook
+    // drives the chunked twin across the census's slice clock — the emit listener drains
+    // the same steps synchronously, so both paths mint the identical roster.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
       sector: sector || null,
       sectorId: (sector && sector.id) || undefined,
       _viaCook: true,
@@ -1735,7 +1738,25 @@ export const traffic = {
   },
 
   _onSectorEnter(p) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
+    // this same body under its slice clock in listener order instead of paying the
+    // whole cohort synchronously inside the emit.
+    if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: yields between atomic spawn units so the sliced sector
+  // census can interleave presentation between hulls. Dedupe stamps mint in the first
+  // synchronous step (pre-loop); a yield never separates spawnEntity from its record link.
+  *_onSectorEnterSteps(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed payload
+    // whose enterEpoch no longer matches the world's serial is stale — minting/cleanup for
+    // it would wipe the live roster and remint the departed sector's hulls. Synthetic
+    // payloads (tests, the census cook) carry no epoch and always run.
+    if (p && p.enterEpoch != null && this.state.world && this.state.world.enterSerial != null
+        && p.enterEpoch !== this.state.world.enterSerial) return;
     // The emit listener precedes the census cook on the live enter path, so each side can
     // only skip on the other's stamp: a replayed emit for an enter the cook or the first
     // emit already handled, and a census cook for an enter the emit just handled (re-running
@@ -1931,6 +1952,8 @@ export const traffic = {
       // jobId. No-op when the runtime is absent (e.g. the sf-sim golden harness) or the route can't
       // be built (no asteroid field / too few stations) — the hull keeps its ambient stepper.
       if (!priorityCourier) this._maybeAssignJob(ent, role, station, target, stations, sectorId);
+      // Atomic unit complete: hull minted, identity stamped, record linked, job assigned.
+      yield;
     }
     this._ensurePriorityCourierService(sectorId, stations);
     this._ensurePassengerLinerService(sectorId, stations);

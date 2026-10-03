@@ -224,6 +224,11 @@ async function boot() {
       // listener on game:loadingProgress that starts a new-game transition would otherwise take the
       // generation first and the save restore would proceed under a token it no longer owns.
       const token = runTransitionGuard.begin('load');
+      // Continue runs the same admission-generation machinery as game:new — without a fresh
+      // generation here, a New Game attempt that ended 'pending'/'rejected' stamps a record
+      // whose generation never advances, and waitForOpeningGpuResources' owned-run bareStamp
+      // short-circuits to false → the save throws unreachable until another New Game.
+      if (state.render) state.render.admissionRunGeneration = token.generation;
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',
         progress: 0.05,
@@ -1355,6 +1360,11 @@ function resetRunState(state, opts = {}) {
   state.scenario = fresh.scenario;
   state.story = fresh.story;
   state.world = fresh.world;
+  // Mark the fresh world's epoch newer than any pending emit tail: a sector:enter slice
+  // deferred across this reset drains inside the next emit or pump frame, and without an
+  // epoch here its stale payload would pass the live-or-inert guard on an un-serialed world.
+  state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+  state.world.enterSerial = state.enterSerialSeq;
   state.jump = fresh.jump;
   state.fuel = fresh.fuel;
   state.nav = fresh.nav;

@@ -45,7 +45,7 @@ import {
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
-import { authoredRunwayHorizonSeconds, declaredPlaceTargetRadius, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
+import { authoredRunwayHorizonSeconds, closingVelocity, declaredPlaceTargetRadius, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
@@ -969,7 +969,7 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
 // admission the gate itself cannot start. A spindle-class body parked off-table is NOT covered by
 // the cook lane (isFirstFlightCookEntity requires the table) and stays pinned + composed.
 function startupPayloadOwnsVeilPin(entity, state) {
-  if (entity.type !== 'payload' || !packagedPropSpec(entity)) return false;
+  if ((entity.type !== 'payload' && entity.type !== 'beacon') || !packagedPropSpec(entity)) return false;
   return !(entityOnOpeningTable(entity, state) && isExplicitFirstFlightCookEntity(entity));
 }
 
@@ -2538,6 +2538,46 @@ export function authoredReadmissionStatus(status) {
   return READMISSION_STATUSES.has(status == null ? 'missing' : status);
 }
 
+// Statuses enqueueBoundaryUpgrade returns synchronously before a job exists. A refusal leaves
+// the boundary stamped 'loading' with a settled promise — 'loading' is outside
+// READMISSION_STATUSES, so every later request would short-circuit on the dead promise forever
+// and the boundary renders its stand-in for the rest of its mounted life. Every wrap restores
+// on the full set so the ordinary re-request paths (approach trigger, post-run sector return,
+// markAuthoredBoundaryForReadmission) can try again.
+const PRE_JOB_REFUSAL_STATUSES = new Set([
+  'invalid-upgrade-request',
+  'cancelled-before-queue',
+  'deferred-arena-dressing',
+  'regrade-evict-cooloff',
+]);
+
+// Non-counting refusals persist while their class is live (a detached boundary, a survival
+// defer, a malformed request): a synchronously re-armed on-glass trigger reposts every
+// rendered frame for the whole window — a 60 Hz ping-pong of guaranteed-refused enqueues.
+// Counting refusals already pace themselves through the repost cap, so only they re-arm
+// immediately; the rest poll again at this interval while their class may have cleared
+// (re-mount, run end) without a repost per frame.
+const REFUSAL_TRIGGER_REARM_DELAY_MS = 1000;
+function scheduleRefusalTriggerRearm(status, arm) {
+  if (status === 'regrade-evict-cooloff') { arm(); return; }
+  const timer = setTimeout(arm, REFUSAL_TRIGGER_REARM_DELAY_MS);
+  if (timer && typeof timer.unref === 'function') timer.unref();
+}
+
+function restoreBoundaryAfterPreJobRefusal(boundary, status) {
+  delete boundary.userData.authoredUpgradePromise;
+  if (boundary.userData.authoredAssetState === 'loading') {
+    boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+  }
+  if (status === 'regrade-evict-cooloff') {
+    boundary.userData.regradeRestoreCount = (boundary.userData.regradeRestoreCount | 0) + 1;
+    boundary.userData.regradeRestoreLastAt = monotonicNow();
+  }
+  boundary.userData.authoredReadmissionReason = status === 'cancelled-before-queue'
+    ? 'cancelled-before-queue-detached'
+    : status;
+}
+
 /**
  * The entity a kept boundary is currently bound to. `_bindPresentationMesh` stamps
  * `presentationEntityId` at every reattach, so after a save restore the boundary can resolve
@@ -2793,22 +2833,17 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         }
       },
     })).then((result) => {
-      // 'deferred-arena-dressing' is the same armed-but-refused outcome the cancel
-      // path restores: enqueue declined before a job existed, leaving 'loading'
-      // + a settled promise that would pin every future request at the existing
-      // short-circuit. Restore the armed state so the approach trigger and the
-      // post-run sector return re-request it.
-      if (result && (result.status === 'cancelled-before-queue'
-          || result.status === 'deferred-arena-dressing')) {
-        delete boundary.userData.authoredUpgradePromise;
-        if (boundary.userData.authoredAssetState === 'loading') {
-          boundary.userData.authoredAssetState = 'awaiting-authored-admission';
-        }
-        boundary.userData.authoredReadmissionReason = result.status === 'cancelled-before-queue'
-          ? 'cancelled-before-queue-detached'
-          : 'deferred-arena-dressing';
+      // Any pre-job refusal is the same armed-but-refused outcome the cancel path
+      // restores: enqueue declined before a job existed, leaving 'loading' + a settled
+      // promise that would pin every future request at the existing short-circuit.
+      // Restore the armed state so the approach trigger and the post-run sector return
+      // re-request it.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
         armed = true;
-        if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
+        if (trigger) scheduleRefusalTriggerRearm(result.status, () => {
+          if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
+        });
       }
       return result;
     });
@@ -2927,7 +2962,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       ...requestOptions,
     };
     const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       key: `payload:${entity.data.payloadStableId || entity.id}`,
       boundary,
       entity: liveEntity,
@@ -2946,6 +2981,13 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
         admittedOptions,
         setActiveRoot,
       ),
+    })).then((result) => {
+      // A pre-job refusal left 'loading' + a settled promise — restore so the boundary can be
+      // re-requested instead of pinning its stand-in for the rest of its mounted life.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
@@ -3502,6 +3544,18 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
   const trigger = firstRenderable(fallbackRoot);
+  let armed = true;
+  const previousBeforeRender = trigger && trigger.onBeforeRender;
+  function authoredStationTrigger(renderer, scene, ...rest) {
+    if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+    if (!armed) return;
+    if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
+    armed = false;
+    trigger.onBeforeRender = previousBeforeRender;
+    // onBeforeRender only fires with the fallback root inside the presented frustum — the most
+    // in-frame a pending boundary can be — so the upgrade posts at the visible decode class.
+    startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
+  }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
@@ -3525,7 +3579,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       ...residency,
       ...requestOptions,
     };
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: liveEntity,
       run: ({ options: admittedOptions }) => upgradePlaceBoundary(
@@ -3535,6 +3589,17 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       ),
       renderer,
       options: upgradeOptions,
+    })).then((result) => {
+      // A pre-job refusal left 'loading' + a settled promise — restore + re-arm the on-glass
+      // trigger so the boundary can be re-requested instead of pinning its stand-in.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
+        armed = true;
+        if (trigger) scheduleRefusalTriggerRearm(result.status, () => {
+          if (trigger) trigger.onBeforeRender = authoredStationTrigger;
+        });
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
@@ -3542,18 +3607,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
   if (trigger) {
-    let armed = true;
-    const previousBeforeRender = trigger.onBeforeRender;
-    trigger.onBeforeRender = function authoredStationTrigger(renderer, scene, ...rest) {
-      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
-      if (!armed) return;
-      if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
-      armed = false;
-      trigger.onBeforeRender = previousBeforeRender;
-      // onBeforeRender only fires with the fallback root inside the presented frustum — the most
-      // in-frame a pending boundary can be — so the upgrade posts at the visible decode class.
-      startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
-    };
+    trigger.onBeforeRender = authoredStationTrigger;
   }
 
   const stationed = attachStationHlod(boundary, entity);
@@ -3657,6 +3711,16 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     if (controller && typeof controller.update === 'function') controller.update(liveEntity, simTime, a11y);
   };
   const trigger = firstRenderable(fallbackRoot);
+  let armed = true;
+  const previousBeforeRender = trigger && trigger.onBeforeRender;
+  function authoredPlaceTrigger(renderer, scene, ...rest) {
+    if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+    if (!armed) return;
+    if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
+    armed = false;
+    trigger.onBeforeRender = previousBeforeRender;
+    startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
+  }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
@@ -3677,7 +3741,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
       ...requestOptions,
     };
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: liveEntity,
       run: ({ options: admittedOptions }) => upgradePlaceBoundary(
@@ -3687,6 +3751,17 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       ),
       renderer,
       options: upgradeOptions,
+    })).then((result) => {
+      // A pre-job refusal left 'loading' + a settled promise — restore + re-arm the on-glass
+      // trigger so the boundary can be re-requested instead of pinning its stand-in.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
+        armed = true;
+        if (trigger) scheduleRefusalTriggerRearm(result.status, () => {
+          if (trigger) trigger.onBeforeRender = authoredPlaceTrigger;
+        });
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
@@ -3694,16 +3769,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
   if (trigger) {
-    let armed = true;
-    const previousBeforeRender = trigger.onBeforeRender;
-    trigger.onBeforeRender = function authoredPlaceTrigger(renderer, scene, ...rest) {
-      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
-      if (!armed) return;
-      if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
-      armed = false;
-      trigger.onBeforeRender = previousBeforeRender;
-      startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
-    };
+    trigger.onBeforeRender = authoredPlaceTrigger;
   }
 
   const placed = attachPlaceHlod(boundary, entity);
@@ -5390,6 +5456,33 @@ export function enqueueBoundaryUpgrade(scene, job) {
   if (survivalDefersArenaDressingJob(job.entity, authoredRuntimeState())) {
     return Promise.resolve({ status: 'deferred-arena-dressing', boundary: job.boundary });
   }
+  // Cool off after an admit re-grade evict. Skipped only while the stamp is fresh AND the
+  // exact keep domain still fails on a fresh request — glass-law re-requests and a genuinely
+  // re-approaching entity pass the same predicate the admit gate runs and post normally.
+  const evictedAt = job.boundary.userData && job.boundary.userData.upgradeRegradeEvictedAt;
+  if (Number.isFinite(evictedAt)
+      && monotonicNow() - evictedAt < AUTHORED_REGRADE_REPOST_COOLDOWN_MS
+      && !runwayWantedDomain(job.entity, {
+        admissionVisible: !!(job.options && job.options.admissionVisible === true),
+        priority: authoredUpgradePriority(job),
+      })) {
+    return Promise.resolve({ status: 'regrade-evict-cooloff', boundary: job.boundary });
+  }
+  // The cap binds a sustained oscillation episode, not a lifetime tally: refusals older than
+  // the decay window belong to a resolved graze and must not demote a later genuine approach
+  // to glass-time admission for the rest of the boundary's mounted life.
+  const restoreLastAt = job.boundary.userData && job.boundary.userData.regradeRestoreLastAt;
+  const regradeRestores = Number.isFinite(restoreLastAt)
+    && monotonicNow() - restoreLastAt > AUTHORED_REGRADE_RESTORE_DECAY_MS
+    ? 0
+    : (job.boundary.userData && (job.boundary.userData.regradeRestoreCount | 0));
+  if (regradeRestores >= AUTHORED_REGRADE_REPOST_MAX
+      && !runwayWantedBeyondHorizon(job.entity, {
+        admissionVisible: !!(job.options && job.options.admissionVisible === true),
+        priority: authoredUpgradePriority(job),
+      })) {
+    return Promise.resolve({ status: 'regrade-evict-cooloff', boundary: job.boundary });
+  }
   let resolveCompletion;
   const completion = new Promise((resolve) => { resolveCompletion = resolve; });
   const queuedJob = {
@@ -5700,22 +5793,24 @@ function authoredRuntimeState() {
 // zero-draw admission boundary (and the temporary marker) where a ship should be for 20 seconds.
 // A complete NPC body can spend several seconds in decode and pipeline preparation. Start queued
 // runway ships before the contact reaches the glass instead of making the player watch that work.
-const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
 function firstFlightReadableContactKind(entity) {
   const type = entity && entity.type;
   if (type === 'ship' || type === 'station' || type === 'wreck'
-      || type === 'drone' || type === 'payload' || type === 'asteroid') return true;
+      || type === 'drone' || type === 'payload' || type === 'asteroid'
+      || type === 'beacon') return true;
   return type === 'place' && placeFileForEntity(entity) !== null;
 }
-function firstFlightClosingToward(entity, player) {
+function firstFlightClosingToward(entity, player, live) {
   const dx = Number(entity && entity.pos && entity.pos.x) - Number(player && player.pos && player.pos.x);
   const dz = Number(entity && entity.pos && entity.pos.z) - Number(player && player.pos && player.pos.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance) || distance <= 0) return false;
-  const relativeX = (Number(player && player.vel && player.vel.x) || 0)
-    - (Number(entity && entity.vel && entity.vel.x) || 0);
-  const relativeZ = (Number(player && player.vel && player.vel.z) || 0)
-    - (Number(entity && entity.vel && entity.vel.z) || 0);
+  // Ledger rows carry their motion in the itinerary schedule — stored vel is zeroed — so
+  // both reads go through the itinerary-aware lane; plain entities fall back to raw vel.
+  const playerVel = closingVelocity(player, live);
+  const entityVel = closingVelocity(entity, live);
+  const relativeX = playerVel.x - entityVel.x;
+  const relativeZ = playerVel.z - entityVel.z;
   return (dx * relativeX + dz * relativeZ) / distance > 0;
 }
 function firstFlightReadableShipJob(job) {
@@ -5734,10 +5829,13 @@ function firstFlightReadableShipJob(job) {
     // not. The frustum center-point helper can say false while its marker is already drawn.
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
       || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
-        && ((runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)
-          || (firstFlightClosingToward(entity, player)
+        && ((runwayDistance !== null && runwayDistance <= authoredPrefetchRadius(tableTravelSpeed(live)))
+          || (firstFlightClosingToward(entity, player, live)
             && willEntityEnterAuthoredUpgradeRunway(entity, live, {
-              radius: FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU,
+              // The normal ladder admits the same contact the moment its surface crosses the
+              // authored prefetch radius with no closing requirement — a non-closing ship in
+              // that rim band is a stand-in hole if the hold pins it shorter.
+              radius: authoredPrefetchRadius(tableTravelSpeed(live)),
               horizonSeconds: TABLE_DECODE_RUNWAY_SECONDS,
             }))))));
 }
@@ -5799,11 +5897,14 @@ const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
 // inbound — graded at a widened horizon so a rim-skimming borderline keeps its slot instead
 // of oscillating out and re-arming the whole request a poll later.
 const ADMIT_REGRADE_HORIZON_GRACE = 1.5;
-function jobRunwayRegradeStillWanted(state, job) {
-  const entity = job && job.entity;
+// ~2x the residency poll cadence: inside this window the request side declines to re-post a
+// boundary whose job the re-grade just evicted, while the same keep clauses still fail — a
+// sustained rim-grazer otherwise repeats post→prime→evict on every poll.
+const AUTHORED_REGRADE_REPOST_COOLDOWN_MS = 500;
+function runwayWantedDomain(entity, { admissionVisible = false, priority = Infinity } = {}) {
   if (!entityRidesAuthoredRunway(entity)) return true;
-  if (job.options && job.options.admissionVisible === true) return true;
-  if (authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
+  if (admissionVisible === true) return true;
+  if (priority <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
   const live = authoredRuntimeState();
   if (!live || live.mode !== 'flight') return true;
   if (entityIsOnReadableGlass(entity, live)) return true;
@@ -5814,6 +5915,39 @@ function jobRunwayRegradeStillWanted(state, job) {
   return willEntityEnterAuthoredUpgradeRunway(entity, live, {
     horizonSeconds: authoredRunwayHorizonSeconds(entity) * ADMIT_REGRADE_HORIZON_GRACE,
   });
+}
+function jobRunwayRegradeStillWanted(state, job) {
+  return runwayWantedDomain(job && job.entity, {
+    admissionVisible: !!(job && job.options && job.options.admissionVisible === true),
+    priority: authoredUpgradePriority(job),
+  });
+}
+// A rim-grazer oscillating across the runway horizon reposts → primes → evicts → restores at
+// ~1-2/s forever: the request-side cooloff only binds while the keep domain still fails, and
+// an entity inside the horizon always qualifies. `runwayWantedDomain` minus its horizon
+// clause is the hard-evidence floor a capped boundary's repost must clear — real need
+// (admissionVisible, steady priority, actual glass) posts; drift alone does not.
+const AUTHORED_REGRADE_REPOST_MAX = 3;
+// The cap exists for a sustained repost/refuse churn inside one oscillation episode; episodes
+// are separated by minutes, so a refusal history older than this window no longer counts —
+// otherwise two distant grazes permanently demote every later approach to glass-time admission.
+const AUTHORED_REGRADE_RESTORE_DECAY_MS = 30000;
+function runwayWantedBeyondHorizon(entity, { admissionVisible = false, priority = Infinity } = {}) {
+  if (!entityRidesAuthoredRunway(entity)) return true;
+  if (admissionVisible === true) return true;
+  if (priority <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
+  const live = authoredRuntimeState();
+  if (!live || live.mode !== 'flight') return true;
+  if (entityIsOnReadableGlass(entity, live)) return true;
+  const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : live.player;
+  return !entity.pos || !(player && player.pos);
+}
+// An evicted job cleans up synchronously, but nothing downstream of the request remembers the
+// verdict — the next residency poll would re-post the same boundary immediately. Stamp the
+// boundary so the request side cools off while the same keep clauses still fail.
+function armRegradeEvictCooloff(job) {
+  const boundary = job && job.boundary;
+  if (boundary && boundary.userData) boundary.userData.upgradeRegradeEvictedAt = monotonicNow();
 }
 function queuedGlassLawJobStillNeeded(state, job) {
   return !!(job && job.entity && jobStillNeeded(state, job)
@@ -6559,12 +6693,24 @@ export function prefetchAuthoredAssetRequests(requests, loadOne, depth = AUTHORE
 function startAuthoredJobAssetPrefetch(job) {
   const entity = job && job.entity;
   if (!entity || !job.renderer) return null;
+  const options = job.options || {};
+  // A cancelled job's prefetch chain keeps running — and its late retainLibraryPlan revives a
+  // released owner whenever the owner predicate says active, which is entity-alive rather than
+  // job-aware. Compose it with job liveness so a dead job's late retain fails closed instead of
+  // undoing the release cancelQueuedJob just performed.
+  const baseOwnerActive = typeof options.isResidencyOwnerActive === 'function'
+    ? options.isResidencyOwnerActive : null;
+  // Compose unconditionally: request sites that omit the predicate default to "active" inside
+  // the loader, so without the wrap a cancelled job's late retain still revives its owner.
+  const jobScopedOptions = { ...options,
+      isResidencyOwnerActive: () =>
+        (job.lifecycle === 'queued' || job.lifecycle === 'in-flight')
+        && (baseOwnerActive ? baseOwnerActive() : true) };
   if (entity.type === 'ship') {
-    return preloadAuthoredAssetsForEntity(job.renderer, entity, job.options || {});
+    return preloadAuthoredAssetsForEntity(job.renderer, entity, jobScopedOptions);
   }
   const requests = authoredUpgradeAssetRequests(job);
   if (!requests.length) return null;
-  const options = job.options || {};
   const loadPart = typeof options.loadAuthoredPart === 'function' ? options.loadAuthoredPart : loadAuthoredPart;
   // Fan the requests out through the bounded prefetch pool: the slowest request, not their
   // sum, is the honest wait, and the depth cap keeps a place+overlay job's tail bounded.
@@ -6575,7 +6721,7 @@ function startAuthoredJobAssetPrefetch(job) {
     residencyOwner: options.residencyOwner,
     residencyRole: options.residencyRole,
     sectorId: options.sectorId,
-    isResidencyOwnerActive: options.isResidencyOwnerActive,
+    isResidencyOwnerActive: jobScopedOptions.isResidencyOwnerActive,
     admissionVisible: options.admissionVisible,
   }));
 }
@@ -6841,6 +6987,7 @@ function admitNextUpgradeJob(state) {
     return null;
   }
   if (!jobRunwayRegradeStillWanted(state, job)) {
+    armRegradeEvictCooloff(job);
     cancelQueuedJob(state, job);
     scheduleNextUpgradeFrame(state);
     return null;
@@ -7022,8 +7169,12 @@ function primeNextAuthoredAssetPlan(state) {
         && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
     state.firstFlightPrefetchJob = null;
     const player = liveState.entities?.get?.(liveState.playerId);
-    const eligible = state.jobs.filter((job) => firstFlightReadableGlassJob(job)
-      && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
+    const eligible = state.jobs.filter((job) => (firstFlightReadableGlassJob(job)
+        || firstFlightReadableShipJob(job))
+      && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise
+      // A requestless non-ship's prefetch resolves null immediately — it would still park
+      // the first-flight slot for a whole serial admit while real warms wait behind it.
+      && ((job.entity && job.entity.type === 'ship') || authoredUpgradeAssetRequests(job).length > 0));
     eligible.sort((a, b) => {
       const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);
       if (priority) return priority;
@@ -7033,7 +7184,9 @@ function primeNextAuthoredAssetPlan(state) {
     const job = eligible[0];
     if (!job) return;
     state.firstFlightPrefetchJob = job;
-    job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
+    // Same job-liveness compose as the general prefetch: a dropped first-flight job's late
+    // retain would otherwise revive the owner cancelQueuedJob just released.
+    job.prefetchPromise = startAuthoredJobAssetPrefetch(job) || Promise.resolve();
     job.prefetchPromise.then(() => {
       job.prefetchResolved = true;
       scheduleNextUpgradeFrame(state);
@@ -7054,12 +7207,24 @@ function primeNextAuthoredAssetPlan(state) {
   // as an ambient entry, so a deadline splice (admitted job, urgent LOD demotion) still passes.
   let shipLaneWarmed = 0;
   let otherLaneWarmed = 0;
-  for (const job of state.jobs) {
+  // Index walk, not for-of: the splices below would otherwise skip the element that slides
+  // into a removed job's slot — an evict's neighbor misses this pass's re-grade + prefetch.
+  for (let jobIndex = 0; jobIndex < state.jobs.length; jobIndex++) {
+    const job = state.jobs[jobIndex];
     if (shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
         && otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) break;
     if (!jobStillNeeded(state, job)) {
-      const index = state.jobs.indexOf(job);
-      if (index >= 0) state.jobs.splice(index, 1);
+      state.jobs.splice(jobIndex, 1);
+      jobIndex -= 1;
+      cancelQueuedJob(state, job);
+      continue;
+    }
+    // The admit gate's re-grade runs here too: a departed graze sitting top-2 would otherwise
+    // pay the whole fetch+decode before admit ever sees it.
+    if (!jobRunwayRegradeStillWanted(state, job)) {
+      armRegradeEvictCooloff(job);
+      state.jobs.splice(jobIndex, 1);
+      jobIndex -= 1;
       cancelQueuedJob(state, job);
       continue;
     }

@@ -9,6 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
@@ -434,7 +435,9 @@ export const uniqueWrecks = {
     this._listen('save:restoring', () => this._clearRuntime());
     this._listen('sector:enter', (payload) => this._onSectorEnter(payload));
     // Census arm: unique-wreck registration lands inside the sector cook deterministically.
-    this._cookProvider = (sector) => this._onSectorEnter({
+    // The cook drives the chunked twin across its slice clock; the emit listener drains the
+    // same steps synchronously, so both paths mint the identical field.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
       sectorId: (sector && sector.id)
         || (this.state && this.state.world && this.state.world.currentSectorId),
     });
@@ -899,9 +902,24 @@ export const uniqueWrecks = {
   },
 
   _onSectorEnter(payload) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains this same body under its slice clock in listener order.
+    if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
+  },
+
+  *_onSectorEnterSteps(payload) {
     if (isSurvivalRunLive(this.state && this.state.run)) return;
     const sectorId = payload && typeof payload === 'object' ? payload.sectorId : payload;
-    this._syncSector(sectorId);
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — do not
+    // materialize its wreck field under the live world's id. Synthetic payloads carry
+    // no epoch and always run.
+    if (payload && typeof payload === 'object' && payload.enterEpoch != null
+        && this.state && this.state.world && this.state.world.enterSerial != null
+        && payload.enterEpoch !== this.state.world.enterSerial) return;
+    yield* this._syncSectorSteps(sectorId);
     this._pumpComplications();
     this._surfaceSectorRumors(sectorId);
     this._activatePendingEncounters(sectorId);
@@ -1234,6 +1252,12 @@ export const uniqueWrecks = {
   },
 
   _syncSector(sectorId) {
+    for (const _ of this._syncSectorSteps(sectorId)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: one materialize per yield so the sliced census can
+  // interleave presentation between wrecks; _materialize self-dedupes via _findLive.
+  *_syncSectorSteps(sectorId) {
     if (!sectorId) return;
     const own = this._ensureState();
     for (const record of Object.values(own.bearings)) {
@@ -1241,6 +1265,7 @@ export const uniqueWrecks = {
       // spawn the outcome-stamped husk, so a map bearing never points at empty space.
       if (record && record.sectorId === sectorId && VALID_PHASES.has(record.phase)) {
         this._materialize(record.wreckId);
+        yield;
       }
     }
     this._choirRelief?.sync();

@@ -4,6 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
@@ -436,7 +437,13 @@ export const factionPresence = {
     this._presenceWakeSeq = 0;
     ensureOwnState(this.state);
     this._unsub = [
-      this.bus.on('sector:enter', (payload) => this._onSectorEnter(payload || {})),
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains this same body under its slice clock in listener order.
+      this.bus.on('sector:enter', (payload) => {
+        if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+        // Sync lane (emit listener): drain the chunked steps inline.
+        for (const _ of this._onSectorEnterSteps(payload || {})) { /* inline */ }
+      }),
       this.bus.on('sector:exit', (payload) => this._onSectorExit(payload || {})),
       this.bus.on('dock:docked', (payload) => this._onDocked(payload || {})),
       this.bus.on('lossLedger:recorded', (payload) => this._onLossRecorded(payload || {})),
@@ -451,8 +458,8 @@ export const factionPresence = {
     // Census arm: faction-presence materialization lands inside the sector cook
     // deterministically (the handler falls back to world.currentSectorId itself).
     this._cookProvider = (sector) => {
-      if (!this._unsub || !this._unsub.length) return;
-      this._onSectorEnter({ sectorId: (sector && sector.id) || undefined });
+      if (!this._unsub || !this._unsub.length) return null;
+      return this._onSectorEnterSteps({ sectorId: (sector && sector.id) || undefined });
     };
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
@@ -544,8 +551,20 @@ export const factionPresence = {
   },
 
   _onSectorEnter(payload) {
+    for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: one presence per yield so the sliced census interleaves
+  // presentation between hulls; own.active dedupe makes a superseded cook's re-run safe.
+  *_onSectorEnterSteps(payload) {
     this._wakePresenceQuiet();
     const state = this.state;
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — presence
+    // must not mint for it under the live world's id. Synthetic payloads carry no epoch
+    // and always run.
+    if (payload.enterEpoch != null && state.world && state.world.enterSerial != null
+        && payload.enterEpoch !== state.world.enterSerial) return;
     const sectorId = payload.sectorId || (state.world && state.world.currentSectorId);
     if (!sectorId) return;
     const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
@@ -596,6 +615,8 @@ export const factionPresence = {
       };
       pushReceipt(state, { kind: 'spawned', ...receipt });
       this.bus.emit('factionPresence:spawned', receipt);
+      // Atomic unit complete: hull minted, active record stamped, receipt emitted.
+      yield;
     }
     this._bindPitbornConcordTargets();
     this._rehydrateBoardingConvoy();

@@ -13,6 +13,7 @@
 // team-0 wings — wingmen just join it.
 
 import { makeShipEntitySpec } from './ships.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import {
   WING_ORDER,
   WING_ORDER_LIMITS,
@@ -116,7 +117,12 @@ export const wingmen = {
     this._wingmenQuiet = null; // FB-090 quiet latch
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
     // _spawnWingmen skips fleet entries that already have a live _liveId (continuous handoff).
-    this.bus.on('sector:enter', () => { this._wingmenQuiet = null; this._spawnWingmen(); });
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
+    // the same clear+spawn under its slice clock in listener order.
+    this.bus.on('sector:enter', (p) => {
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this._wingmenQuiet = null; this._spawnWingmen();
+    });
     // Census arm: the same re-fire as a sector cook provider so wingmen spawn inside the
     // deterministic composition census, not wherever listener registration order puts them.
     this._cookProvider = () => {

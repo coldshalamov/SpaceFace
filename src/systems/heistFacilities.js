@@ -6,6 +6,7 @@
 //   WANTED heat, missions, patrols, or saves.
 
 import { Masks } from '../core/entity.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
@@ -242,7 +243,20 @@ export const heistFacilities = {
     }
     this._wiredBus = this.bus;
 
-    this.bus.on('sector:enter', ({ sectorId } = {}) => this.materializeForSector(sectorId));
+    this.bus.on('sector:enter', (p = {}) => {
+      const { sectorId, enterEpoch } = p;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — do not
+      // materialize its facilities under the live world's id. Synthetic payloads carry
+      // no epoch and always run.
+      if (enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && enterEpoch !== this.state.world.enterSerial) return;
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
+      // the same materializeForSector call under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this.materializeForSector(sectorId);
+    });
     // Census arm: facility materialization lands inside the sector cook deterministically.
     this._cookProvider = (sector) => this.materializeForSector(sector && sector.id);
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))

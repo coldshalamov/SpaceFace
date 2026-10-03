@@ -153,6 +153,7 @@ import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -1414,8 +1415,10 @@ export const missions = {
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
-    // Census arm: mission-target spawns land inside the sector cook deterministically.
-    this._cookProvider = (sector) => this._onSectorEnter({
+    // Census arm: mission-target spawns land inside the sector cook deterministically. The
+    // cook drives the chunked twin across its slice clock; the emit listener drains the same
+    // steps synchronously, so both paths mint the identical cohort.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
       sectorId: (sector && sector.id)
         || (this.state && this.state.world && this.state.world.currentSectorId),
     });
@@ -9128,9 +9131,24 @@ export const missions = {
   },
 
   _onSectorEnter(p) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains this same body under its slice clock in listener order.
+    if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
+  },
+
+  *_onSectorEnterSteps(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
-    this.spawnTargetsForSector(sectorId);
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — spawning
+    // its mission targets mints bodies keyed to the departed sector. Synthetic payloads
+    // carry no epoch and always run.
+    if (p && p.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null
+        && p.enterEpoch !== this.state.world.enterSerial) return;
+    yield* this.spawnTargetsForSectorChunked(sectorId);
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
     this._onPassengerSectorEnter(sectorId);
@@ -9270,7 +9288,9 @@ export const missions = {
           && prev.sig === passKey.sig && prev.version === passKey.version) {
         return;
       }
-      this._spawnTargetsPassKey = passKey;
+      // Not stored yet: a superseded cook pass (iterator.return mid-loop) must not leave a
+      // key that reads like a completed pass — the next invocation would skip on the stale
+      // latch while missions this pass never reached stay unevaluated.
     }
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     // Continue order: world rematerializes mission_target records first; adopt those live IDs
@@ -9288,7 +9308,10 @@ export const missions = {
       }
       yield 'mission-targets';
     }
-    if (passKey) passKey.version = entityIndexVersion(this.state);
+    if (passKey) {
+      passKey.version = entityIndexVersion(this.state);
+      this._spawnTargetsPassKey = passKey;
+    }
   },
 
   _onSectorExit(p) {

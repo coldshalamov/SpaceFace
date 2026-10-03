@@ -1034,6 +1034,11 @@ export function commitRequiredPackageAdmission(render, capturedGeneration, class
  * No new timer: a cook that has not settled stays pending, and a late result whose
  * generation changed writes nothing.
  */
+// This path fires exactly when the bounded gates already judged the cook too slow — awaiting
+// the same cook's real completion would park embark for minutes on a contended host with no
+// rejection route. The settle borrows the gate's own contract: bounded, then classify.
+const REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS = 45000;
+
 export async function settleRequiredPackageAdmission(state) {
   const render = state && state.render;
   if (!render) return null;
@@ -1043,19 +1048,11 @@ export async function settleRequiredPackageAdmission(state) {
   const livePromise = render.liveScenePresentReady;
   let prepareSettled = null;
   if (preparePromise && typeof preparePromise.then === 'function') {
-    try {
-      prepareSettled = { ok: true, value: await preparePromise };
-    } catch (error) {
-      prepareSettled = { ok: false, error };
-    }
+    prepareSettled = await settleWithin(preparePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
   }
   let liveSettled = null;
   if (livePromise && typeof livePromise.then === 'function') {
-    try {
-      liveSettled = { ok: true, value: await livePromise };
-    } catch (error) {
-      liveSettled = { ok: false, error };
-    }
+    liveSettled = await settleWithin(livePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
   }
   if (render.admissionRunGeneration !== generation) {
     return classifyRequiredPackageAdmission({

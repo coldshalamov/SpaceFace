@@ -1246,7 +1246,8 @@ function isInboundDecodeHull(entity, state, radius = null, admissionEnv = null) 
   if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
   const stationBoundary = entity.type === 'station';
   if (!stationBoundary
-      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
+      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone'
+      && entity.type !== 'payload' && entity.type !== 'beacon') return false;
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
@@ -1737,15 +1738,57 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
   if (owner._sectorHandoffStreamHoldS > 0) {
     owner._sectorHandoffStreamHoldS = Math.max(0, owner._sectorHandoffStreamHoldS - dt);
+    // The identically-lengthed jump-arrival hold below keeps an exempt collect+drain+decode
+    // beat every 100 ms so the cohort materializing inside the window mounts behind the
+    // blend. A continuous seam materializes the same FULL-extras cohort inside its hold
+    // (the residency plan promotes before the emit) — run the same budgeted beat here or
+    // on-seam rows wait hold-end + a full poll for their first build. The late-present
+    // gate still throttles each slice.
+    owner._holdExemptCollectS = (Number(owner._holdExemptCollectS) || 0) - dt;
+    if (owner._holdExemptCollectS <= 0) {
+      owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
+      enqueueHoldExemptMeshBuilds(owner);
+      owner._holdExemptRepartition = true;
+      kickDecodeRunwayAssets(owner, owner._presentationMeshScratch);
+    }
+    if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
+    // Covered exempt rows still ride the count-budgeted pump — cheap dressing mounts
+    // bind on 8/frame before the slice clock, so a dressing-heavy seam on a loaded
+    // host finishes mounting after the blend ends and pops in over the next frames.
+    // When the uncovered count outruns what the frames left in the hold can cover,
+    // drain the hoisted exempt prefix with a cap sized to the remainder — the
+    // admission-slice clock still bounds each burst.
+    const holdExemptLeft = Math.max(0, Number(owner._holdExemptRemaining) || 0);
+    if (holdExemptLeft > 0 && owner._sectorHandoffStreamHoldS > 0) {
+      const framesLeft = owner._sectorHandoffStreamHoldS / Math.max(dt, 1 / 240);
+      if (holdExemptLeft > framesLeft * RUNTIME_MESH_BUILD_BUDGET) {
+        const headBefore = owner._meshBuildQueueHead;
+        owner._drainMeshBuildQueue(holdExemptLeft);
+        owner._holdExemptRemaining = Math.max(
+          0,
+          holdExemptLeft - (owner._meshBuildQueueHead - headBefore),
+        );
+      }
+    }
     if (owner._sectorHandoffStreamHoldS === 0) {
       // The seam's dirty flag requests a whole-world recovery scan. Once the visual blend has
       // finished, discard that seam-only request and let the ordinary spatial poll self-heal.
       owner._meshReconcileDirty = false;
+      // The predicted prewarm pinned the destination cohort while the spatial runway was
+      // frozen; the ordinary lanes are live again, so the pin can drop now. Only the held
+      // record may drop: a re-charge minted inside the window owns the slot now and must
+      // not lose its pin to this seam's tail (mirror of the pending-id guard below).
+      if (owner._incomingSectorPrewarm
+          && owner._incomingSectorPrewarm.sectorId === owner._sectorHandoffSectorId) {
+        releaseSectorPrewarm(owner._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
+        owner._incomingSectorPrewarm = null;
+      }
       if (owner._authoredSectorPrewarmPendingId === owner._sectorHandoffSectorId) {
         owner._authoredSectorPrewarmPendingId = null;
         owner._authoredSectorPrewarmPending = null;
       }
       owner._sectorHandoffSectorId = null;
+      owner._holdExemptPersistentSkips = null;
     }
     return 'deferred';
   }
@@ -1780,6 +1823,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   owner._holdExemptCollectS = 0;
   owner._holdExemptRepartition = false;
   owner._holdExemptRemaining = 0;
+  owner._holdExemptPersistentSkips = null;
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
   const pollCamera = owner.state && owner.state.camera || {};
@@ -1873,7 +1917,7 @@ function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGlass, adm
   if (entityMatchesWaveHullRunway(entity, state)) return true;
   const env = admissionEnv();
   const hull = entity.type === 'ship' || entity.type === 'wreck'
-    || entity.type === 'drone' || entity.type === 'payload';
+    || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'beacon';
   // Station/hull rows ride the shared authored ladder (station→decode runway,
   // hull→promote horizon); ledger + other rows keep their own horizon names.
   const horizon = entity.type === 'station' || hull
@@ -11788,6 +11832,14 @@ export const render = {
       }
       return { skipped: false, liveScene: true, programs, present, buffers, rockPools };
     };
+    // Single-source predicate for the emit-side deferral (core/sectorEnterDefer.js):
+    // true exactly when this listener's own gating reaches compileSectorPipelines and
+    // prepareLiveSectorAfterJump will run its census — a live GPU, a hard enter, flight
+    // mode, and no session-recook-keep. Anything else takes the inline emit path.
+    state.render.sectorEnterCookWillRun = (payload) => state.mode === 'flight'
+      && !(payload && (payload.continuous === true || payload.noTeleport === true))
+      && this._sessionRecookKeepGpu !== true
+      && !(gpu && gpu.software === true);
     state.render.prepareLiveSectorAfterJump = async (sector) => {
       if (state.mode !== 'flight') {
         return { skipped: true, reason: 'not-flight' };
@@ -11815,8 +11867,24 @@ export const render = {
         }
       };
       state.render.liveSectorGpuAdmission = true;
+      // A second sector:enter inside a yield gap makes this cook stale: it captured S1 while
+      // the world moved to S2 — the stale census's provider calls then run cleanup/mint under
+      // the wrong sector (traffic._cookProvider's dedupe fails on the sector OBJECT, so its
+      // _cleanup wipes S2's roster and re-mints S1 hulls into live space stamped with S2's
+      // epoch). Generations plus a currentSectorId re-check at every yield bail the stale
+      // cook; the newest invocation owns the shared queues, flags, and its own finally tail.
+      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
+      const cookSectorId = String(sector && sector.id || '');
+      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
+        || (!!cookSectorId && !!state.world && !!state.world.currentSectorId
+          && state.world.currentSectorId !== cookSectorId);
+      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
       const jumpLedger = beginOpeningCookLedger(state.render, 'jump');
       try {
+        // Minted-stale cooks exist: a second sliced enter force-drains the first emit's
+        // deferred tail after currentSectorId already flipped, so this cook can start
+        // out superseded — check before the prefix pays it (pure boolean, no yield).
+        if (cookStale()) return cookSuperseded;
         if (!scene.environment) this._bakeEnv({ force: true });
         if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
         const player = state.entities && typeof state.entities.get === 'function'
@@ -11852,13 +11920,89 @@ export const render = {
         // the drain window) mounts post-census. Route new enter-time materializers through
         // sectorCookProviders instead of relying on that ordering.
         const cookProviders = this._simHelpers && this._simHelpers.sectorCookProviders;
-        if (Array.isArray(cookProviders)) {
-          for (const provider of cookProviders) provider(sector);
+        // Deferral FIFO (core/sectorEnterDefer.js): cook-covered materializers'
+        // sector:enter listeners enqueue here instead of running their body
+        // synchronously inside the emit, so the spawn cohort drains under this
+        // census's slice clock. FIFO position = listener order = the exact spawn
+        // order the inline emit produced. Entries whose epoch no longer matches
+        // the world's serial belong to a superseded enter — drop them; that
+        // enter's own emit re-enqueued a fresh cohort (the emit for THIS enter
+        // minted the matching set). The provider pass after them re-runs covered
+        // systems as cheap dedupe-skips, preserving provider-only order.
+        if (cookStale()) return cookSuperseded;
+        const deferredEnterWork = state.render
+          && Array.isArray(state.render.deferredEnterMaterializers)
+          ? state.render.deferredEnterMaterializers.splice(0)
+          : null;
+        const liveEnterEpoch = state.world && state.world.enterSerial != null
+          ? state.world.enterSerial : null;
+        const deferredProviders = Array.isArray(deferredEnterWork) && deferredEnterWork.length
+          ? deferredEnterWork
+              .filter((entry) => entry && typeof entry.provider === 'function'
+                && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch))
+              .map((entry) => entry.provider)
+          : null;
+        const censusProviders = deferredProviders
+          ? deferredProviders.concat(Array.isArray(cookProviders) ? cookProviders.slice() : [])
+          : (Array.isArray(cookProviders) ? cookProviders.slice() : null);
+        if (Array.isArray(censusProviders)) {
+          // Bound the synchronous provider run: materializing the whole destination cohort
+          // in one task freezes the transition's own rAF-driven presentation. Yield once a
+          // slice spends its budget — order preserved: every provider still runs before
+          // the first-flight collect below.
+          const providerNow = () => (typeof performance !== 'undefined'
+            && typeof performance.now === 'function' ? performance.now() : Date.now());
+          const providerYield = async () => {
+            await yieldLiveSectorGpu();
+            providerSliceStart = providerNow();
+            if (cookStale()) return cookSuperseded;
+            return null;
+          };
+          let providerSliceStart = providerNow();
+          // Iterate a snapshot: a provider whose body synchronously tears a sibling system
+          // down splices the live registry and would skip the sliding element. Each provider is
+          // isolated like a bus listener — a throw skips only its own cook pass (its cohort was
+          // already minted at emit) instead of aborting the whole remaining census.
+          for (const provider of censusProviders) {
+            if (cookStale()) return cookSuperseded;
+            try {
+              const iterator = provider(sector);
+              // Chunked providers return an iterator the census drives serially to completion
+              // before the next provider starts (cross-provider adoption order holds), yielding
+              // between atomic items on the same slice clock.
+              if (iterator && typeof iterator.next === 'function') {
+                for (;;) {
+                  const step = iterator.next();
+                  if (step.done) break;
+                  if (providerNow() - providerSliceStart >= 8) {
+                    const superseded = await providerYield();
+                    if (superseded) {
+                      if (typeof iterator.return === 'function') iterator.return();
+                      return superseded;
+                    }
+                  }
+                }
+              }
+            } catch (providerError) {
+              try {
+                recordOpeningCookStep(state.render, 'jump.sectorCookProvider', providerSliceStart,
+                  'failed', { reason: String(providerError && providerError.message || providerError) });
+              } catch { /* ledger bookkeeping only */ }
+              continue;
+            }
+            if (providerNow() - providerSliceStart >= 8) {
+              const superseded = await providerYield();
+              if (superseded) return superseded;
+            }
+          }
         }
         const firstFlightEntities = collectFirstFlightCookEntities(state);
         state.render.liveSectorFirstFlightIds = new Set(
           firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
         );
+        // Departing a dense sector sweeps hundreds of mounted meshes through GL dispose —
+        // the same brick class the build drain below slices, so it rides the same clock.
+        let teardownSliceStart = providerNow();
         for (const [id, mesh] of this._meshes) {
           const entity = resolveWorldPresentationEntity(state, id);
           if (entity && isEntityRenderRelevant(entity, state)) continue;
@@ -11870,6 +12014,11 @@ export const render = {
           this._meshesVersion += 1;
           noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
+          if (providerNow() - teardownSliceStart >= 8) {
+            await yieldLiveSectorGpu();
+            teardownSliceStart = providerNow();
+            if (cookStale()) return cookSuperseded;
+          }
         }
         enqueueMissingMeshBuilds(
           firstFlightEntities,
@@ -11879,7 +12028,28 @@ export const render = {
         );
         const jumpBuildsStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now();
-        const jumpBuilt = this._drainMeshBuildQueue(Number.POSITIVE_INFINITY);
+        // The whole destination cohort's procedural builds used to drain unbounded inside this
+        // same task — the last un-sliced brick on the enter path, visible as a hard freeze of the
+        // jump-transition visuals. Bounded slices + a frame yield between them keep the transition
+        // presenting; same builds, same order. The late-present gate can refuse a bounded drain
+        // with zero head progress — after two consecutive refusals fall back to one unbounded
+        // pass so completion stays certain (the veil still lifts on pipelinePrecompile, so the
+        // first live frame is identical either way).
+        let jumpBuilt = 0;
+        let censusStallSlices = 0;
+        while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
+          const headBeforeSlice = this._meshBuildQueueHead;
+          jumpBuilt += this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET) || 0;
+          if (this._meshBuildQueueHead >= this._meshBuildQueue.length) break;
+          if (this._meshBuildQueueHead === headBeforeSlice) {
+            if (++censusStallSlices >= 2) {
+              jumpBuilt += this._drainMeshBuildQueue(Number.POSITIVE_INFINITY) || 0;
+              break;
+            }
+          } else censusStallSlices = 0;
+          await yieldLiveSectorGpu();
+          if (cookStale()) return cookSuperseded;
+        }
         recordOpeningCookStep(state.render, 'jump.meshBuilds', jumpBuildsStarted, 'resolved', {
           built: jumpBuilt,
           firstFlightEntities: firstFlightEntities.length,
@@ -11894,6 +12064,7 @@ export const render = {
           holdLeftoverFx: true,
           yieldToMain: yieldLiveSectorGpu,
         });
+        if (cookStale()) return cookSuperseded;
         // cook.buffers stays skipped for the run70 TDR, but scene-level instance pools have no
         // per-subject admission owner: chunks published during this window would otherwise first
         // upload inside a presented post-jump bloomScene — the same brick class the opening
@@ -11914,6 +12085,7 @@ export const render = {
         } catch (error) {
           poolSeal = { skipped: true, reason: String(error && error.message || error) };
         }
+        if (cookStale()) return cookSuperseded;
         recordOpeningCookStep(state.render, 'jump.instancePoolSeal', poolSealStarted,
           poolSeal && poolSeal.skipped === true ? 'skipped' : 'resolved', {
             reason: poolSeal && poolSeal.reason,
@@ -11927,6 +12099,9 @@ export const render = {
           leftover,
         };
       } finally {
+        // A superseded cook skips the shared-flag tail — the newest cook owns it and runs
+        // this same finally when it finishes.
+        if (cookGeneration === this._liveSectorCookGeneration) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
@@ -11938,6 +12113,7 @@ export const render = {
         // re-arm the guards are permanent: every authored body materialized in the arriving sector
         // prepares and then parks, and the destination station stays `pending` for the session.
         armSectorArrivalPublishRelease(this);
+        }
       }
     };
     const runPostOpeningPipelines = async () => {
@@ -13410,12 +13586,19 @@ export const render = {
         // normal spatial authored-upgrade runway. Do not assemble a whole-sector decode/GPU batch
         // at the seam; that batch is exactly the admission spike the visual transition is meant to
         // hide. Intentional jumps retain the prepare-then-publish contract below.
-        if (this._incomingSectorPrewarm) {
+        // Keep a matching predicted pin until the hold ends: the spatial runway that is
+        // supposed to own the cohort is frozen for the whole window, so releasing here
+        // would leave nothing able to re-request the pin. A stale/different-sector record
+        // still releases now; supersession inside the window releases it there instead.
+        if (this._incomingSectorPrewarm && this._incomingSectorPrewarm.sectorId !== exactSectorId) {
           releaseSectorPrewarm(this._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
           this._incomingSectorPrewarm = null;
         }
         this._authoredSectorPrewarmPendingId = null;
         this._authoredSectorPrewarmPending = null;
+        // A fresh seam: persistent-skip stamps from a prior hold must not exclude a row
+        // whose relevance moved with the camera between holds.
+        this._holdExemptPersistentSkips = null;
         this._sectorHandoffSectorId = exactSectorId || null;
         this._sectorHandoffStreamHoldS = exactSectorId
           ? SECTOR_VISUAL_TRANSITION_SECONDS
@@ -16381,6 +16564,7 @@ export const render = {
     // against the hoisted prefix via consumed head entries, not built count.
     if (this._holdExemptRepartition === true) {
       this._holdExemptRepartition = false;
+      if (!this._holdExemptPersistentSkips) this._holdExemptPersistentSkips = new Set();
       const frame = this._activityFrame;
       const glassIds = frame && frame.renderGlassIds;
       const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
@@ -16392,7 +16576,9 @@ export const render = {
       const remainder = [];
       for (let i = 0; i < tail.length; i++) {
         const id = tail[i];
-        (exempt(resolveWorldPresentationEntity(this.state, id)) ? hoisted : remainder).push(id);
+        (exempt(resolveWorldPresentationEntity(this.state, id))
+          && !(this._holdExemptPersistentSkips && this._holdExemptPersistentSkips.has(id))
+          ? hoisted : remainder).push(id);
       }
       queue.length = head;
       for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
@@ -16489,9 +16675,22 @@ export const render = {
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = resolveWorldPresentationEntity(this.state, id);
-      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
-          || this._sectorBoundaryPreparations?.has(id)
-          || !isEntityRenderRelevant(e, this.state, null, drainScanOpts)) continue;
+      const alreadyServed = !e || e.alive === false || e._noMesh || this._meshes.has(id);
+      const irrelevant = !alreadyServed && !this._sectorBoundaryPreparations?.has(id)
+        && !isEntityRenderRelevant(e, this.state, null, drainScanOpts);
+      if (alreadyServed || this._sectorBoundaryPreparations?.has(id) || irrelevant) {
+        // Persistent-for-this-drain-epoch classes: a dead/_noMesh/already-built row
+        // re-enqueues and re-hoists on every exempt beat while it cannot build. Stamp
+        // it so the hold's hoisted prefix only counts rows that can still cover — the
+        // uncovered-row kick stops re-firing on a prefix made entirely of skips. `irrelevant`
+        // is a live verdict that flips with player position, so it skips but never stamps:
+        // a row drained while momentarily out of frame must not stay excluded from the
+        // hoisted prefix for the rest of the hold.
+        if (this._holdExemptPersistentSkips && alreadyServed) {
+          this._holdExemptPersistentSkips.add(id);
+        }
+        continue;
+      }
       // Transient-failure backoff: a null or thrown build must not latch _noMesh on the first
       // miss — enqueueMeshBuildCandidate skips _noMesh forever, so a first-frame asset race
       // used to permanently strand the entity. Failed candidates re-enter via the next
