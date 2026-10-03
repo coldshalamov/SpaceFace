@@ -206,6 +206,7 @@ function copySample(dst, src) {
   dst.fenceBytesPacked = src.fenceBytesPacked;
   dst.worldSpawnLimited = src.worldSpawnLimited;
   dst.worldSpawnCriticalDeferred = src.worldSpawnCriticalDeferred;
+  dst.geometryPending = src.geometryPending;
   dst.hitch = src.hitch;
   return dst;
 }
@@ -245,6 +246,7 @@ function emptySample() {
     fenceBytesPacked: 0,
     worldSpawnLimited: 0,
     worldSpawnCriticalDeferred: 0,
+    geometryPending: 0,
     hitch: false,
   };
 }
@@ -308,6 +310,11 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   const spawnWitness = state?.world?.spawnWitness;
   sample.worldSpawnLimited = finite(spawnWitness?.limited);
   sample.worldSpawnCriticalDeferred = finite(spawnWitness?.criticalDeferred);
+  // MACH-07: the live geometry queue publishes one number — roots still pending — on
+  // state.render.geometryPending (pipelineAutoFlushPolicy.publishGeometryPending reads the
+  // queue stats). The witness prints it so an arrival drain is a number falling to 0, not a
+  // per-mesh flag an agent has to hunt for.
+  sample.geometryPending = finite(state?.render?.geometryPending);
   sample.hitch = callbackMs >= 33.4;
   sample.costs = costs;
   return sample;
@@ -544,6 +551,21 @@ function formatSpawnWitnessLine(samples) {
   return `- world spawn limited ${limited} (+${limitedDelta}) / critical deferred ${critical} (+${criticalDelta})`;
 }
 
+/**
+ * One line: live geometry roots still pending on the admission queue (state.render.geometryPending
+ * published from the queue's own stats) plus the window delta — an arrival reads it falling to 0
+ * instead of a per-mesh flag (MACH-07).
+ */
+function formatGeometryPendingLine(samples) {
+  const rows = Array.isArray(samples) ? samples : [];
+  const first = rows[0] || null;
+  const last = rows[rows.length - 1] || null;
+  const pending = finite(last?.geometryPending);
+  const pendingDelta = pending - finite(first?.geometryPending);
+  const signed = pendingDelta >= 0 ? `+${pendingDelta}` : String(pendingDelta);
+  return `- geometry roots pending ${pending} (${signed} in window)`;
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -578,6 +600,7 @@ export function formatRuntimeWitnessReport({
     `- gpu: ${gpu ? `${gpu.renderer || '?'} (tier ${gpu.tier ?? '?'})` : 'n/a'}`,
     formatFenceBytesLine(samples),
     formatSpawnWitnessLine(samples),
+    formatGeometryPendingLine(samples),
     '',
     '## Where the last frames went (ms)',
   ];
