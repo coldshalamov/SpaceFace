@@ -351,7 +351,7 @@ function finiteNumber(value) {
 }
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.52 ≈ default).
-const BLOOM_PYRAMID_NORM = 1.5;
+const BLOOM_PYRAMID_NORM = 1.32;
 
 /**
  * Compile one Object3D subtree against the exact output target used by the live renderer.
@@ -900,8 +900,8 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 
 // Multi-scale composite weights: tight core glow (1/2 res, weight 1), body halo (1/8), wide
 // atmosphere (1/16). Each level is sampled directly with hardware bilinear — no upsample RT or pass.
-const BLOOM_MID_WEIGHT = 0.62;
-const BLOOM_WIDE_WEIGHT = 0.48;
+const BLOOM_MID_WEIGHT = 0.52;
+const BLOOM_WIDE_WEIGHT = 0.38;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).

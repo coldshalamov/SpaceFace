@@ -554,6 +554,9 @@
     "probe:body-scale": "node scripts/probe-body-scale.mjs",
     "probe:solid-world": "node scripts/probe-solid-world.mjs --headless",
     "probe:frame-solid": "node scripts/probe-frame-solid.mjs",
+    "probe:heap-verify": "node scripts/probe-heap-verify.mjs",
+    "probe:main-thread": "node scripts/probe-main-thread-profile.mjs",
+    "probe:crucible-cpu": "node scripts/probe-crucible-cpu-profile.mjs",
     "check:concept-index": "node scripts/check-concept-index.mjs",
     "check:asset-pipeline-contract": "node scripts/check-asset-pipeline-contract.mjs",
     "build:render-package-pilots": "node scripts/build-render-package-pilots.mjs",
@@ -674,22 +677,22 @@
     },
     "files": [
       "build/web/**",
+      "assets/brand/exports/spaceface-launcher-256.png",
       "electron/main.cjs",
       "electron/preload.cjs",
       "electron/autoUpdate.cjs",
-      "assets/brand/exports/spaceface-launcher-256.png",
       "electron/releaseIdentity.cjs",
+      "electron/workshopMods.cjs",
+      "electron/windowState.cjs",
       "electron/steamworks.cjs",
       "electron/steamAchievements.json",
       "scripts/lib/gameServer.cjs",
-      "electron/workshopMods.cjs",
-      "electron/windowState.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
       "scripts/lib/playerSaveStore.cjs",
+      "scripts/lib/userContentStore.cjs",
       "scripts/lib/staticCachePolicy.cjs",
       "package.json",
       "NOTICE"
-      "scripts/lib/userContentStore.cjs",
     ],
     "publish": {
       "provider": "github",
@@ -697,22 +700,22 @@
       "repo": "SpaceFace"
     },
     "win": {
+      "icon": "assets/brand/exports/spaceface.ico",
       "target": "nsis",
       "artifactName": "SpaceFace-Setup-${version}.${ext}"
     },
-      "icon": "assets/brand/exports/spaceface.ico",
     "mac": {
+      "icon": "assets/brand/exports/spaceface.icns",
       "target": [
         "dmg",
         "zip"
-      "icon": "assets/brand/exports/spaceface.icns",
       ]
     },
     "linux": {
+      "icon": "assets/brand/exports/spaceface-launcher-512.png",
       "target": "AppImage"
     }
   },
-      "icon": "assets/brand/exports/spaceface-launcher-512.png",
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
     "@elemaudio/web-renderer": "^4.0.3",
