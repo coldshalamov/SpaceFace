@@ -9,6 +9,7 @@ import {
   missions as missionsProto,
   partialDeliverySettlement,
 } from '../src/systems/missions.js';
+import { contractClausesSystem } from '../src/systems/contractClauses.js';
 import { addCargo, removeCargo } from '../src/systems/cargo.js';
 import { createGameState } from '../src/core/gameState.js';
 
@@ -76,6 +77,8 @@ function makeHarness({ seed = 91 } = {}) {
   };
   const missions = Object.assign({}, missionsProto);
   missions.init({ state, bus, helpers, registry: { get: () => null } });
+  const clauses = Object.assign({}, contractClausesSystem);
+  clauses.init({ state, bus, helpers, registry: { get: () => null } });
   bus.emit('game:started');
   state.missions.active = [];
   state.missions.boards = {};
@@ -185,6 +188,50 @@ test('NXB-028: a full hold still settles the whole contract unchanged', () => {
   assert.equal(m.reward_cr, 1000);
   assert.equal(h.state.player.cargo.items[ORE] || 0, 0);
   assert.equal(h.state.player.credits, 5000 + 1000);
+});
+
+// PB-ECON-B (row 107) — the graded damage clause: `fragile_graded` forfeits only its premium on
+// a crack; the surviving units still settle short on recorded terms instead of voiding.
+test('PB-ECON-B: a graded fragile contract cracks to partial terms, premium forfeited', () => {
+  const h = makeHarness();
+  const m = freightMission(h, { qty: 10, rewardCr: 1000 });
+  m.clauses = [{
+    id: 'fragile_graded', event: 'cargo:fragileLost',
+    label: 'Fragile — graded terms', rewardMult: 1.15,
+  }];
+  addCargo(h.state, ORE, 10);
+  removeCargo(h.state, ORE, 4); // the crack physically spills four units
+
+  h.bus.emit('cargo:fragileLost', { totalQty: 4, items: [{ commodityId: ORE, qty: 4 }] });
+
+  assert.equal(m.status, 'active', 'graded terms keep the contract alive after a crack');
+  const broken = evs(h, 'mission:conditionBroken');
+  assert.equal(broken.length, 1);
+  assert.equal(broken[0].payload.conditionId, 'fragile_graded');
+  assert.equal(broken[0].payload.onBreach, 'forfeit');
+
+  h.bus.emit('dock:docked', { stationId: 'station_ceres' });
+
+  assert.equal(m.status, 'completed');
+  assert.equal(m.params.completionMethod, 'partial_delivery');
+  assert.equal(m.params.deliveredUnits, 6);
+  assert.equal(h.state.player.credits, 5000 + 600, 'recorded per-unit terms, premium forfeited');
+});
+
+test('PB-ECON-B: an unbroken graded contract still pays its premium on the full load', () => {
+  const h = makeHarness();
+  const m = freightMission(h, { qty: 10, rewardCr: 1000 });
+  m.clauses = [{
+    id: 'fragile_graded', event: 'cargo:fragileLost',
+    label: 'Fragile — graded terms', rewardMult: 1.15,
+  }];
+  addCargo(h.state, ORE, 10);
+
+  h.bus.emit('dock:docked', { stationId: 'station_ceres' });
+
+  assert.equal(m.status, 'completed');
+  assert.notEqual(m.params.completionMethod, 'partial_delivery');
+  assert.equal(h.state.player.credits, 5000 + 1150, 'full freight plus the honored premium');
 });
 
 test('NXB-028: an empty hold keeps the binary refusal — nothing settles', () => {
