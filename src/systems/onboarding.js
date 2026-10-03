@@ -31,6 +31,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -690,6 +691,15 @@ export const onboarding = {
     });
     bus.on('cargo:jettisoned', (p) => {
       if (!massline2Flag('jettisonImpulse')) return;
+      // TEACH-01 — 'Dump aft to push' is the drop-kick lesson; it must be earned at cruise
+      // speed. A parked dump teaches nothing about reaction mass, so it cannot spend the
+      // one-per-profile line.
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const speed = Math.hypot(
+        Number(player && player.vel && player.vel.x) || 0,
+        Number(player && player.vel && player.vel.z) || 0,
+      );
+      if (!(speed >= DROP_KICK_CRUISE_SPEED)) return;
       this._showHint('masslineJettisonImpulse', firstUseLine('masslineJettisonImpulse'), p);
     });
     bus.on('bulletTime:start', (p) => {
