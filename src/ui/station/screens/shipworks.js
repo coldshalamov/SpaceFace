@@ -58,6 +58,7 @@ import {
   stationShopOffer,
 } from '../../../systems/ships.js';
 import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
+import { instanceIdentityText } from '../../../systems/shipLedger.js';
 import { hullNameForOwnedShip, SHIP_NAME_MAX } from '../../../data/hullIdentity.js';
 import { buildParkedHoldModel } from '../../navigation/cargoDeck.js';
 import { forwardAccelFor, governedFightSpeedFor, travelSpeedFor, turnRecordText } from '../../../systems/shipCapabilities.js';
@@ -3825,26 +3826,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // the defect class this section exists to close, so they are skipped.
     const inventory = (ctx.state.player && Array.isArray(ctx.state.player.moduleInventory))
       ? ctx.state.player.moduleInventory : [];
+    // NXI-127 — a provenance/condition-tagged instance keeps its own row: two identical catalog
+    // units with different identities never collapse into one pristine-looking count, and the
+    // Fit verb still carries the identity group's own instanceId. Pristine units share the
+    // empty signature and collapse exactly as before.
     const holdByDef = new Map();
     const holdRefusedByDef = new Map();
     for (const item of inventory) {
       const d = item && FITTABLE_BY_ID.get(item.defId);
       if (!d || d.slotType !== slot.type) continue;
+      const instText = instanceIdentityText(item);
+      const key = d.id + '|' + instText;
       if (fits(slot, d)) {
         if (typeof item.instanceId !== 'string' || !item.instanceId) continue;
-        const row = holdByDef.get(d.id) || { d, count: 0, instanceId: item.instanceId };
+        const row = holdByDef.get(key) || { d, count: 0, instanceId: item.instanceId, instText };
         row.count += 1;
-        holdByDef.set(d.id, row);
+        holdByDef.set(key, row);
       } else if (slot.type === 'weapon' && sizeFits(slot, d)) {
         // Right size, wrong mount — the buy list refuses these in words; the hold must too.
-        const row = holdRefusedByDef.get(d.id) || { d, count: 0 };
+        const row = holdRefusedByDef.get(key) || { d, count: 0, instText };
         row.count += 1;
-        holdRefusedByDef.set(d.id, row);
+        holdRefusedByDef.set(key, row);
       }
     }
     const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
       ? ctx.state.player.researchedNodes : [];
-    const holdRowHtml = ({ d, count, instanceId, mountBlock }) => {
+    const holdRowHtml = ({ d, count, instanceId, instText, mountBlock }) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const prospective = fittings.slice();
       prospective[slotIndex] = d.id;
@@ -3870,6 +3877,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
+            (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
         `</li>`
@@ -3882,6 +3890,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const list = compat.map((d) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const equipped = d.id === fittedId;
+      // NXI-127 — the fitted occupancy's instance record names THIS unit (recovered/worn) so the
+      // selected instance does not read as a generic pristine catalog unit.
+      const equippedInstText = equipped
+        ? instanceIdentityText((s.fittedInstances || {})[slotIndex])
+        : '';
       const shopDelta = presentShopModuleDelta({
         defId: def.id,
         fittings,
@@ -3921,7 +3934,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : ''}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
+            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
