@@ -830,7 +830,11 @@ async function finishShot(shot) {
         const button = [...screensEl.querySelectorAll('button')].find((el) => (el.textContent || '').toUpperCase().includes(want));
         button?.click();
       }
-      if (shot.overlay) await openOverlay(shot.overlay);
+      if (shot.overlay) {
+        await openOverlay(shot.overlay);
+        // The live loop keeps ticking the HUD under an open radial (the travel tape yields to it).
+        for (let i = 0; i < 24; i += 1) { try { window.__benchHud?.frame?.(1 / 30); } catch { /* still only */ } }
+      }
     }
   } catch (error) {
     showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);
@@ -963,9 +967,19 @@ async function openOverlay(kind) {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,
       pos: { x: 80, y: 0, z: 40 }, vel: { x: 0, y: 0, z: 0 },
-      data: { callsign: 'HAULER 12', trafficRole: 'hauler', ai: { passive: true, archetype: 'fleeing_trader' } },
+      data: {
+        callsign: 'HAULER 12',
+        trafficRole: 'hauler',
+        jobId: 'job_hauler_12',
+        cargoManifest: { lines: [{ commodityId: 'cmdty_fuel_cells', qty: 20 }], totalQty: 20 },
+        ai: { passive: true, archetype: 'fleeing_trader' },
+      },
     };
     state.player.targetId = 7;
+    const activeShip = state.player.ownedShips?.[state.player.activeShipIndex || 0];
+    if (activeShip) {
+      activeShip.fittings = ['wpn_autocannon_s', null, null, null, null, 'mod_cargo_scanner_s', 'mod_thruster_stock_s'];
+    }
     state.entities.set(7, contact);
     if (!state.entityList.some((entity) => entity.id === 7)) state.entityList.push(contact);
     const { createCommsRadial } = await import('../src/ui/commsRadial.js');

@@ -1771,7 +1771,6 @@ export const asteroidSites = {
     }
 
     this._markDirty(site.id, { net: true });
-    this.bus.emit('site:overlayChanged', { siteId, kind, col, row, on: !!on });
     return { ok: true, reason: null, spilled: confirmedSpill ? confirmedSpill.spilledTotal : 0 };
   },
 

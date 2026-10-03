@@ -37,18 +37,18 @@ function injectStyle() {
   --orr-mute:var(--dp-ink-mute, #8f8c80);
   --orr-hand:var(--dp-hand, var(--dp-lamp, #f2b950));
   --orr-danger:var(--dp-danger, #ff5038);
-  --dp-glass:rgb(22 29 40 / .66);
+  --dp-glass:rgb(26 35 48 / .82);
   background:
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .07), rgb(var(--orr-bone) / 0) 24%),
+    linear-gradient(to bottom, rgb(var(--orr-bone) / .09), rgb(var(--orr-bone) / 0) 24%),
     var(--dp-glass);
   -webkit-backdrop-filter:blur(18px) saturate(1.15);
   backdrop-filter:blur(18px) saturate(1.15);
   border:0; border-radius:0; box-shadow:none;
   padding:0; min-width:0; max-width:min(94vw, 1120px);
   overflow:hidden; isolation:isolate; z-index:101;
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%), linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   -webkit-mask-composite:source-in;
-  mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%), linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   mask-composite:intersect;
 }
 #screens .screen.sf-menu.orr-base.orr-base.is-empty {

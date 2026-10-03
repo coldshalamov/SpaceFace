@@ -43,3 +43,28 @@ test('a ready scanner does not invent a recharge toast', () => {
   assert.equal(events.some((event) => event.name === 'toast'), false);
   assert.equal(events.some((event) => event.name === 'pulsed'), true);
 });
+
+test('a dead sensor bank does not pulse and does not start the recharge', () => {
+  const { events, sys } = pulseSystem(12, 0);
+  sys.state.combat = {
+    entities: { 1: { subsystems: { subsystem_sensor: { effectiveDisabled: true } } } },
+  };
+  sys._cooldownUntil = 0;
+  sys.state.input.actions.scanPulse = true;
+  sys.update(1 / 60, sys.state);
+  assert.equal(events.filter((event) => event.name === 'pulsed').length, 1);
+  const second = events.filter((event) => event.name === 'toast');
+  assert.equal(second.length, 1);
+  assert.equal(second[0].payload.text, 'Sensors out — the board is blind');
+  assert.equal(sys._cooldownUntil, 0);
+});
+
+test('a jammed sensor does not pulse either', () => {
+  const { events, sys } = pulseSystem(1, 20);
+  sys.state.combat = { entities: { 1: { capabilities: { sensor: false }, subsystems: { subsystem_sensor: { effectiveDisabled: false } } } } };
+  sys.state.input.actions.scanPulse = true;
+  sys.update(1 / 60, sys.state);
+  assert.equal(events.some((event) => event.name === 'pulsed'), false);
+  assert.equal(events.at(-1).payload.text, 'Sensors aren\'t answering — jammed');
+  assert.equal(sys._cooldownUntil, 20);
+});

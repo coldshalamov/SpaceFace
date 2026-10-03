@@ -39,15 +39,27 @@ export const beacons = {
   name: 'beacons',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     if (!Array.isArray(this.state.beacons)) this.state.beacons = [];
     this._lureScratch = [];
     this._nextId = 1;
-    this.bus.on('beacon:deploy', () => this.deploy());
-    // Beacons are transient; a loaded save starts with none.
-    this.bus.on('save:loaded', () => { this.state.beacons = []; });
+    // Unsubscribe-first so a registry/harness re-init cannot stack a second deploy
+    // listener (double deploy, double charge) on the same bus.
+    this._unsubs = [
+      this.bus.on('beacon:deploy', () => this.deploy()),
+      // Beacons are transient; a loaded save starts with none.
+      this.bus.on('save:loaded', () => { this.state.beacons = []; }),
+    ].filter((off) => typeof off === 'function');
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) {
+      try { off(); } catch (err) { /* cleanup must not throw */ }
+    }
+    this._unsubs = [];
   },
 
   newGame() { this.state.beacons = []; this._nextId = 1; },

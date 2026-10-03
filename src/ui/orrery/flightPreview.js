@@ -18,6 +18,7 @@ const CSS = `
 .orr-flightpreview__cluster { position:absolute; left:18px; bottom:24px; }
 .orr-flightpreview__place { left:40px; }
 @media (max-width:1700px) { .orr-flightpreview { --orr-cluster-scale:.82; } .orr-radar, .orr-tape { zoom:.86; } }
+@media (max-width:1400px) { .orr-flightpreview__cluster { left:8px; } }
 .orr-flightpreview__radar { position:absolute; right:30px; bottom:18px; }
 /* a low vignette only where instruments sit, so they read over bright nebula without any box */
 .orr-flightpreview::before { content:""; position:absolute; inset:0; pointer-events:none;

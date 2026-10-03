@@ -471,7 +471,14 @@ export class Sg02DynamicBodyOwner {
       }
       this._impactMergeRows.clear();
       this._impactReceipts.length = 0;
+      this._impactStamp = 0;
       this._stepContactReceipts = null;
+      // Fresh-owner parity: a load-path adoption starts from a just-constructed owner, so the
+      // same fields must reset here or a same-owner adoption (post-save canonicalization)
+      // would carry counters the load path never has.
+      if (this._eventQueue && typeof this._eventQueue.free === 'function') this._eventQueue.free();
+      this._eventQueue = this.captureContactImpacts && typeof R.EventQueue === 'function'
+        ? new R.EventQueue(true) : null;
 
       const byId = new Map();
       for (const entity of entities) {
@@ -518,7 +525,23 @@ export class Sg02DynamicBodyOwner {
       z: finite(payload.frameOrigin && payload.frameOrigin.z),
     };
     this._frameOriginSeq = normalizeFrameOriginSeq(payload.frameOriginSeq);
-    this._diagnostics.frameOriginSeq = this._frameOriginSeq;
+    this._diagnostics = {
+      schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
+      tick: 0,
+      fixedDt: this.fixedDt,
+      bodies: 0,
+      colliders: 0,
+      attachments: 0,
+      dynamicBodies: 0,
+      ccdBodies: 0,
+      lockedPlaneBodies: 0,
+      syncMode: 'none',
+      syncFullEntities: 0,
+      syncStaticEntities: 0,
+      syncDynamicEntities: 0,
+      syncStaticVersion: -1,
+      frameOriginSeq: this._frameOriginSeq,
+    };
     // Any body the entity round-trip did not claim has no record — remove it or it stays in
     // the world as an orphaned collider (retired ghost-pool bodies land here too).
     const orphans = [];
@@ -545,6 +568,23 @@ export class Sg02DynamicBodyOwner {
 
     if (stale && stale !== world && typeof stale.free === 'function') stale.free();
     return true;
+  }
+
+  /**
+   * Re-adopt a payload this owner just exported, replacing the live world with the byte-restored
+   * one. Rapier's restored world layout is canonical with respect to the snapshot bytes, but the
+   * organic layout it replaces is not itself serializable (dimforge/rapier#910: broad-phase
+   * workspace state does not round-trip). Canonicalizing at save time is what makes
+   * "save and keep flying" bit-identical to "save, quit, reload".
+   * Entities come from the live records — the same objects a respawned load would resolve.
+   */
+  canonicalizeWorldSnapshot(payload) {
+    if (!payload || typeof payload !== 'object') return false;
+    const entities = [];
+    for (const rec of this.records.values()) {
+      if (rec && rec.entity && !entities.includes(rec.entity)) entities.push(rec.entity);
+    }
+    return this.adoptWorldSnapshot(payload, entities);
   }
 
   /**

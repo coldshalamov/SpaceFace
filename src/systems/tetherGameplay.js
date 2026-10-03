@@ -148,6 +148,7 @@ const LINE_CONTROL_DENIAL_COPY = Object.freeze({
   maximum_length: 'maximum line length reached',
   reel_unavailable: 'winch unavailable',
   attachment_missing: 'line no longer attached',
+  spool_out: 'the spool is out',
 });
 const CUT_DENIAL_COPY = Object.freeze({
   attachment_missing: 'line already gone',
@@ -156,6 +157,15 @@ const CUT_DENIAL_COPY = Object.freeze({
   cut_rejected: 'the line holds',
 });
 const NO_REEL_RESULT = Object.freeze({ changed: false, reason: null, attachment: null });
+
+/** The player's own spool is dead. A hull with no spool subsystem is not blocked. */
+export function playerTetherSpoolOut(state, player) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return false;
+  const runtime = book[String(player.id)];
+  const spool = runtime && runtime.subsystems && runtime.subsystems.subsystem_tether_spool;
+  return !!(spool && spool.effectiveDisabled === true);
+}
 
 export const tetherGameplay = {
   id: 'tetherGameplay',
@@ -407,9 +417,14 @@ export const tetherGameplay = {
         ? approachReelDelta
         : lineLengthCommand;
       const lineCommandIsAxis = !Number.isFinite(approachReelDelta);
-      const reelResult = effectiveLineLengthCommand === 0
-        ? NO_REEL_RESULT
-        : this._reelActive(
+      const spoolOut = playerTetherSpoolOut(state, player);
+      let reelResult = NO_REEL_RESULT;
+      if (spoolOut && effectiveLineLengthCommand !== 0) {
+        this._emitLineControlDenied(state, 'spool_out', effectiveLineLengthCommand, boundAttachment);
+      } else {
+        reelResult = effectiveLineLengthCommand === 0
+          ? NO_REEL_RESULT
+          : this._reelActive(
           attachments,
           effectiveLineLengthCommand,
           dt,
@@ -418,6 +433,7 @@ export const tetherGameplay = {
           target,
           { normalizedAxis: lineCommandIsAxis },
         );
+      }
       const approachSpooling = !!approach && effectiveLineLengthCommand !== 0;
       this._updateReelStrength(approachSpooling || reelHeld, reelResult.changed, dt);
       if (approach && approachSpooling && !reelResult.changed) {
@@ -459,6 +475,10 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     const wantsLatch = !!(actions && actions.tetherFire);
+    if (wantsLatch && playerTetherSpoolOut(state, player)) {
+      this.bus.emit('tether:latchDenied', { reason: 'spool_out' });
+      return;
+    }
     const bridleHeadActive = player.data?.derived?.masslineHeadId === TWIN_BRIDLE_HEAD_ID
       && massline2Flag('masslineHeadTwinBridle', state.runtime && state.runtime.features);
     const remoteBridleActive = state.player?.remoteMassline?.active

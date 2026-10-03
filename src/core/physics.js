@@ -319,7 +319,17 @@ export const physics = {
     const owner = this._sg02;
     if (!owner || typeof owner.exportWorldSnapshot !== 'function') return null;
     try {
-      return owner.exportWorldSnapshot();
+      const payload = owner.exportWorldSnapshot();
+      // A restored Rapier world is canonical w.r.t. its snapshot bytes, but the organic
+      // world it replaces is not itself serializable (broad-phase workspace state,
+      // dimforge/rapier#910). Re-adopting our own export keeps the post-save continuation
+      // bit-identical to the post-load continuation instead of letting the two worlds'
+      // internal layouts drift.
+      if (payload && typeof owner.canonicalizeWorldSnapshot === 'function') {
+        try { owner.canonicalizeWorldSnapshot(payload); }
+        catch (err) { console.error('[physics] SG-02 post-save canonicalization failed', err); }
+      }
+      return payload;
     } catch (err) {
       console.error('[physics] SG-02 world snapshot export failed', err);
       return null;

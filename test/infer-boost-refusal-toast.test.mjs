@@ -35,3 +35,38 @@ test('another ship failing a dash does not toast the player', () => {
   assert.equal(fired, false);
   assert.equal(events.length, 0);
 });
+
+test('a dash that still fires on a dead drive says the thrust is only a crawl', () => {
+  const events = [];
+  const flight = Object.assign(Object.create(flightV3), {
+    bus: { emit(name, payload) { events.push({ name, payload }); } },
+    _driveAuthority: { forward: 0.22 },
+  });
+  const ship = { id: 1, rot: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: 20 };
+  const state = {
+    playerId: 1,
+    simTime: 1,
+    entities: { get() { return null; } },
+    combat: {
+      entities: {
+        1: { subsystems: { subsystem_drive: { effectiveDisabled: true } } },
+      },
+    },
+  };
+  assert.equal(flight._triggerDash(ship, { ...ready }, state), true);
+  assert.equal(events.find((event) => event.name === 'toast').payload.text, 'Drive out — thrust is down to a crawl');
+  assert.equal(events.some((event) => event.name === 'ship:dash'), true);
+});
+
+test('a healthy drive dash does not mention the drive', () => {
+  const events = [];
+  const flight = Object.assign(Object.create(flightV3), {
+    bus: { emit(name, payload) { events.push({ name, payload }); } },
+    _driveAuthority: { forward: 1 },
+  });
+  const ship = { id: 1, rot: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: 20 };
+  const state = { playerId: 1, simTime: 1, entities: { get() { return null; } } };
+  assert.equal(flight._triggerDash(ship, { ...ready }, state), true);
+  assert.equal(events.some((event) => event.name === 'toast'), false);
+  assert.equal(events.some((event) => event.name === 'ship:dash'), true);
+});

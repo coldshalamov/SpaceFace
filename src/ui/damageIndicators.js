@@ -138,7 +138,7 @@ function injectStyle() {
 .sf-dmgind-marker.layer-nearmiss .sf-dmgind-marker__letter { display:none; }
 .sf-dmgind-marker__letter {
   font-family:var(--dp-face-label, "Archivo");
-  font-size:9px; font-weight:600; line-height:1; letter-spacing:.08em;
+  font-size:12px; font-weight:600; line-height:1; letter-spacing:.08em;
 }
 .sf-dmgind-marker.layer-nearmiss { --impact-tone:var(--sf-quiet, #9fb4c8); }
 .sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #39d0ff); }

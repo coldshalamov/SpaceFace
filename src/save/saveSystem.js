@@ -1131,6 +1131,12 @@ export const save = {
       persistent: out.filter((x) => !x._isPlayer),
       simTime: state.simTime,
       tick: state.tick,
+      // Entity-id allocator state. freeIds order is load-bearing: allocateEntityId pops from
+      // the tail, so a save/continue that resumes with a different recycle list assigns
+      // different ids to the same post-load spawns and the sim hash diverges.
+      freeIds: Array.isArray(state.freeIds) ? state.freeIds.slice() : [],
+      nextEntityId: Number.isSafeInteger(state.nextEntityId) ? state.nextEntityId : null,
+      nextOccupantGeneration: Number.isSafeInteger(state.nextOccupantGeneration) ? state.nextOccupantGeneration : null,
     };
   },
 
@@ -4855,6 +4861,7 @@ export const save = {
         this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
         yield 'persistent-spawned';
       }
+      this._restoreEntityIdAllocator(data.entities);
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
@@ -5168,6 +5175,37 @@ export const save = {
     state.tick = Number.isFinite(tick) && tick >= 0 ? Math.floor(tick) : 0;
     state.accumulator = 0;
     state.days = Math.max(0, Math.floor(state.simTime / 600));
+  },
+
+  /**
+   * Restore the entity-id allocator after every respawn has claimed its saved id. freeIds
+   * order is load-bearing (allocateEntityId pops from the tail), so the recycle list is
+   * serialized verbatim and dropped ids that a restore-side spawn meanwhile claimed are
+   * filtered out — allocateEntityId already skips live/ledger-held ids at pop time, this
+   * just keeps the list itself identical to the pre-save one.
+   */
+  _restoreEntityIdAllocator(entities) {
+    const state = this.state;
+    if (!entities || typeof entities !== 'object') return;
+    const live = state.entities instanceof Map ? state.entities : null;
+    const savedFree = Array.isArray(entities.freeIds) ? entities.freeIds : [];
+    const free = [];
+    const seen = new Set();
+    for (const id of savedFree) {
+      if (!Number.isSafeInteger(id) || id < 1 || seen.has(id)) continue;
+      if (live && live.has(id)) continue;
+      if (worldLedgerHoldsId(state.world, id)) continue;
+      seen.add(id);
+      free.push(id);
+    }
+    state.freeIds.length = 0;
+    state.freeIds.push(...free);
+    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0) {
+      state.nextEntityId = entities.nextEntityId;
+    }
+    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0) {
+      state.nextOccupantGeneration = entities.nextOccupantGeneration;
+    }
   },
 
   // Reconstruction (not live play): assign credits/cargo directly — routing through

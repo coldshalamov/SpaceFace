@@ -342,6 +342,9 @@ export function createCommsRadial(ctx) {
   const fan = document.createElement('div');
   fan.id = 'sf-commsfan';
   fan.className = 'sf-commsfan';
+  fan.setAttribute('role', 'dialog');
+  fan.setAttribute('aria-modal', 'true');
+  fan.setAttribute('aria-label', 'Quick communications');
   fan.hidden = true;
   fan.innerHTML = `
     <div class="sf-commsfan__fan" role="region" aria-label="Quick comms fan">
@@ -501,8 +504,11 @@ export function createCommsRadial(ctx) {
       button.className = 'sf-commsfan__wedge';
       button.dataset.choice = action.id;
       button.dataset.why = why;
-      button.setAttribute('aria-label', `${action.label}${why ? `. ${why}` : ''}`);
+      const keyDigit = i + 1;
+      button.setAttribute('aria-keyshortcuts', String(keyDigit));
+      button.setAttribute('aria-label', `${action.label} (key ${keyDigit})${why ? `. ${why}` : ''}`);
       button.innerHTML = `
+        <span class="sf-commsfan__keychip mono" aria-hidden="true">${keyDigit}</span>
         ${wedgeIconSvg(action.id)}
         <span class="sf-commsfan__verb">${action.label}</span>
         ${why ? `<span class="sf-commsfan__why">${why}</span>` : ''}
@@ -565,30 +571,26 @@ export function createCommsRadial(ctx) {
       (Number(state.simTime) || 0) + CONTACT_HAIL_REQUEST_TTL_S,
     );
     if (!probe || !Array.isArray(probe.actions) || probe.actions.length === 0) return null;
-    return availability;
+    return { availability, probe };
   }
 
   function openFan() {
     if (open || isFlightBlocked(state)) return false;
-    const availability = buildTargetAvailability();
-    if (!availability) return false;
+    const info = buildTargetAvailability();
+    if (!info) return false;
+    const { availability, probe } = info;
     open = true;
     currentTargetId = availability.targetId;
     currentAvailability = availability;
-    activeOffer = null;
-    activePayload = null;
+    activeOffer = probe;
+    activePayload = probe;
     fan.hidden = false;
     fan.classList.add('is-open');
     if (!state.ui) state.ui = {};
     state.ui.commsRadialOpen = true;
     bus.emit('audio:cue', { id: 'ui_open' });
     bus.emit('contactHail:request', { targetId: currentTargetId, source: 'radial' });
-    updateHubVisual({
-      targetId: currentTargetId,
-      kind: availability.kind,
-      lines: [availability.label || 'CONTACT'],
-      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_REQUEST_TTL_S,
-    });
+    updateHubVisual(probe);
     renderFanWedges();
     nextUiUpdateAt = Number(state.simTime) || 0;
     return true;
@@ -754,6 +756,18 @@ export function createCommsRadial(ctx) {
       if (escLatchedOnHold) return;
       openFan();
       return;
+    }
+    if (open && event.key >= '1' && event.key <= '9') {
+      const idx = Number(event.key) - 1;
+      if (idx >= 0 && idx < wedgeButtons.length) {
+        const btn = wedgeButtons[idx];
+        if (btn && !btn.classList.contains('is-dim') && btn.dataset && btn.dataset.choice) {
+          event.preventDefault();
+          event.stopPropagation();
+          choose(btn.dataset.choice, 'keyboard');
+          return;
+        }
+      }
     }
     if (event.key === 'Escape') {
       if (deckOpen) {

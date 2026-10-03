@@ -799,6 +799,7 @@ export const travelLanes = {
     const mass = bodyMass(entity);
     const impulse = deltaV * mass;
     const axis = ring.axis;
+    if (entity.id === 6 && process.env.SF_PROBE6) console.error(`SLING6 boost-impulse dt=${dt.toFixed(3)} dV=${deltaV.toFixed(3)} pos=(${entity.pos.x.toFixed(1)},${entity.pos.z.toFixed(1)}) along=${bodyAlongSpeed(entity, ring).toFixed(1)}`);
     queuePhysicsImpulse(entity, { x: axis.x * impulse, y: 0, z: axis.z * impulse });
     return true;
   },
@@ -839,6 +840,7 @@ export const travelLanes = {
     if (id != null && !this._slingThrownIds.has(id)) {
       this._slingThrownIds.add(id);
       const need = target - along;
+      if (entity.id === 6 && process.env.SF_PROBE6) console.error(`SLING6 fling-catchup dt=${dt.toFixed(3)} need=${need.toFixed(3)} pos=(${entity.pos.x.toFixed(1)},${entity.pos.z.toFixed(1)}) along=${along.toFixed(1)}`);
       if (need > 0) {
         const impulse = need * mass;
         queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
@@ -847,6 +849,7 @@ export const travelLanes = {
     }
     if (along >= target) return true;
     const impulse = SLING_THROW_ACCEL_WU_S2 * mass * dt;
+    if (entity.id === 6 && process.env.SF_PROBE6) console.error(`SLING6 fling-sustain dt=${dt.toFixed(3)} pos=(${entity.pos.x.toFixed(1)},${entity.pos.z.toFixed(1)}) along=${along.toFixed(1)}`);
     queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
     return true;
   },

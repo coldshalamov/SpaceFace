@@ -69,6 +69,10 @@ export const bountyHunt = {
     this._subs = [];
     this._huntersQuiet = null;
     this._hunterWakeSeq = 0;
+    // Scratch for the per-tick shipLike census (impulseCharges _stickScratch idiom):
+    // cleared each update() instead of reallocated while the quiet latch is awake.
+    this._scanHuntersByTarget = new Map();
+    this._scanQuarries = [];
     ensureState(this.state);
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
     this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
@@ -160,8 +164,10 @@ export const bountyHunt = {
     }
 
     let anyHunter = false;
-    const hunterByTarget = new Map();
-    const quarries = [];
+    const hunterByTarget = this._scanHuntersByTarget || (this._scanHuntersByTarget = new Map());
+    const quarries = this._scanQuarries || (this._scanQuarries = []);
+    hunterByTarget.clear();
+    quarries.length = 0;
     for (const entity of indexedShipLikeScan(state)) {
       if (isBountyHunter(entity)) {
         anyHunter = true;

@@ -59,7 +59,7 @@ export function mountBootRing(document, overlay) {
   const bloom = element(document, 'circle', { ...attrs, class: 'boot-ring__bloom' });
   const fill = element(document, 'circle', { ...attrs, class: 'boot-ring__fill' });
   const marks = element(document, 'g', { class: 'boot-ring__marks' });
-  const head = element(document, 'circle', { r: 2.2, cx: 88, cy: 28, class: 'boot-ring__head' });
+  const head = element(document, 'circle', { r: 2.2, cx: 88, cy: 24, class: 'boot-ring__head' });
   const percent = element(document, 'text', { x: 88, y: 195, class: 'boot-ring__percent', 'text-anchor': 'middle' });
   percent.textContent = '0.0%';
   live.append(bloom, fill, marks, head, percent);
@@ -93,7 +93,7 @@ export function mountBootRing(document, overlay) {
       const dash = `${f.toFixed(5)} 1`;
       fill.setAttribute('stroke-dasharray', dash); bloom.setAttribute('stroke-dasharray', dash);
       bloom.style.opacity = String(.25 + .75 * f * f);
-      const [x, y] = point(60, f * 360);
+      const [x, y] = point(64, f * 360);
       head.setAttribute('cx', x.toFixed(3)); head.setAttribute('cy', y.toFixed(3));
       percent.textContent = model.format();
     }

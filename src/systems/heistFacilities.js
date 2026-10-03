@@ -1228,6 +1228,15 @@ export const heistFacilities = {
    * voluntary cut on arrival, then the departure lane and a bounded despawn. Written every step by
    * this owner — `flightV3` executes the intent; nothing here touches position or velocity.
    */
+  /** The clamp bolt is gone. A hull with no clamp subsystem is not refused. */
+  _clampBankOut(state, entity) {
+    const book = state && state.combat && state.combat.entities;
+    if (!book || !entity || entity.id == null) return false;
+    const runtime = book[String(entity.id)];
+    const clamp = runtime && runtime.subsystems && runtime.subsystems.subsystem_transport_clamp;
+    return !!(clamp && clamp.effectiveDisabled === true);
+  },
+
   _stepCarrier(state) {
     const owned = this.state.heistFacilities;
     if (!owned || owned.carrierEntityId == null) return;
@@ -1253,6 +1262,11 @@ export const heistFacilities = {
     // tick. A real refusal (socket missing, limit, dead endpoint) ends the cage — the load
     // continues free, honestly; a physics-port rejection just means the records are not up yet.
     if (owned.carrierPendingClamp) {
+      if (this._clampBankOut(state, carrier)) {
+        owned.carrierPendingClamp = false;
+        owned.carrierReleased = true;
+        return;
+      }
       const load = this._activeScheduleCapsule(owned.schedule);
       const result = attachments && load && load.alive !== false
         ? attachments.create({ defId: 'attachment_transport_clamp', ownerId: carrier.id, targetId: load.id })
@@ -3252,7 +3266,7 @@ export const heistFacilities = {
 
     if (cw.crewPhase === 'lost' || cw.crewPhase === 'parked') {
       const next = staged();
-      if (next && cw.gate === 'open' && attachments) {
+      if (next && cw.gate === 'open' && attachments && !this._clampBankOut(state, crew)) {
         cw.crewPhase = 'fetch';
         cw.crewTargetId = next[0];
       } else {
@@ -3281,6 +3295,11 @@ export const heistFacilities = {
       const dist = Math.hypot(crew.pos.x - crate.pos.x, crew.pos.z - crate.pos.z);
       const clampRing = crew.radius + crate.radius + scene.crew.clampStandoffWu + 4;
       if (dist <= clampRing) {
+        if (this._clampBankOut(state, crew)) {
+          cw.crewPhase = 'parked';
+          cw.crewTargetId = null;
+          return;
+        }
         const result = attachments && attachments.create({
           defId: 'attachment_transport_clamp',
           ownerId: crew.id,

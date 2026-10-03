@@ -435,7 +435,42 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
    The name is the drawn logotype mark, not bold UI type; the progress is a ring of ice (data in
    motion) round the slowly turning emblem, with a bone tick for every stage the boot reports; the
    2 px bar stays in the DOM for the presenter and its checks, hidden. Stage sentences read below. */
-#boot-overlay.boot-overlay--orrery .boot-lockup { width:min(92vw, 620px); }
+#boot-overlay.boot-overlay--orrery {
+  background:
+    radial-gradient(ellipse 1000px 520px at 50% 86%, rgb(18 24 35 / .85), transparent 75%),
+    radial-gradient(circle 1.5px at center, rgb(232 226 212 / .06) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--bg, #05070a);
+}
+#boot-overlay.boot-overlay--orrery .boot-meta__registry {
+  font-family: var(--dp-face-display, "Archivo", sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgb(232 226 212 / .75);
+}
+#boot-overlay.boot-overlay--orrery .boot-meta__clock {
+  font-family: var(--dp-face-numeral, "Space Grotesk", sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  color: rgb(232 226 212 / .75);
+}
+#boot-overlay.boot-overlay--orrery .boot-meta__clock::before {
+  content: "ELAPSED ";
+  font-family: var(--dp-face-label, "Archivo", sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .16em;
+  color: rgb(232 226 212 / .45);
+}
+#boot-overlay.boot-overlay--orrery .boot-lockup {
+  width:min(92vw, 620px);
+  padding: 24px 32px;
+  border-radius: 4px;
+  background: radial-gradient(ellipse closest-side, rgb(16 22 30 / .65), transparent 95%);
+}
 #boot-overlay.boot-overlay--orrery .boot-wordmark {
   display:block; width:min(64vw, 380px); aspect-ratio:684.7 / 60; font-size:0; line-height:0; color:transparent; text-indent:0;
   background:rgb(236 230 216); filter:drop-shadow(0 2px 14px rgb(0 0 0 / .6));
@@ -447,7 +482,7 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
   text-align:center; color:#dfeeff; font-size:17px; font-weight:600; letter-spacing:.02em; text-shadow:0 0 12px rgb(0 0 0 / .8); }
 #boot-overlay.boot-overlay--orrery .boot-label { margin-top:16px; font-size: 12px; font-weight:650; letter-spacing:.24em; text-transform:uppercase; color:rgb(232 226 212 / .85); }
 #boot-overlay.boot-overlay--orrery .boot-detail { font-size:13px; color:rgb(232 226 212 / .6); }
-.boot-ring { width:144px; height:144px; overflow:visible; }
+.boot-ring { width:172px; height:172px; overflow:visible; }
 .boot-ring__emblem { opacity:.5; transform-box:fill-box; transform-origin:center; animation:boot-ring-turn 60s linear infinite; }
 .boot-ring__grad { fill:none; stroke:rgb(232 226 212 / .28); stroke-width:1; }
 .boot-ring__track { fill:none; stroke:rgb(232 226 212 / .14); stroke-width:1.5; }

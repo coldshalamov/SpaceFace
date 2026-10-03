@@ -918,10 +918,9 @@ function drawThreatRing(g, metrics, hostileCount, now, reducedMotion) {
 }
 
 function waypointLabel(waypoint) {
-  return sanitizeMapLabel(
-    waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE'),
-    20,
-  );
+  const raw = waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE');
+  const cleaned = String(raw || '').replace(/\s+\d+\s*(?:wu|WU)?\b/g, '').trim();
+  return sanitizeMapLabel(cleaned || 'OBJECTIVE', 20);
 }
 
 function drawWaypointDiamond(g, cue, now, reducedMotion) {
@@ -1191,19 +1190,34 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
     g.stroke();
   }
   for (const fraction of [0.25, 0.5, 1]) {
+    // 4px 20% geometric bloom twin
     g.strokeStyle = fraction === 1
-      ? 'rgba(232,226,212,0.16)'
-      : 'rgba(232,226,212,0.065)';
-    g.lineWidth = fraction === 1 ? 1.25 : 1;
+      ? 'rgba(232,226,212,0.22)'
+      : 'rgba(232,226,212,0.12)';
+    g.lineWidth = fraction === 1 ? 4 : 3;
+    g.beginPath();
+    g.arc(center, center, radius * fraction, 0, Math.PI * 2);
+    g.stroke();
+
+    // core ring
+    g.strokeStyle = fraction === 1
+      ? 'rgba(232,226,212,0.65)'
+      : 'rgba(232,226,212,0.32)';
+    g.lineWidth = fraction === 1 ? 1.5 : 1;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
   }
   g.strokeStyle = 'rgba(232,226,212,0.08)';
+  const muteR = 18;
   g.beginPath();
   g.moveTo(center, center - radius);
+  g.lineTo(center, center - muteR);
+  g.moveTo(center, center + muteR);
   g.lineTo(center, center + radius);
   g.moveTo(center - radius, center);
+  g.lineTo(center - muteR, center);
+  g.moveTo(center + muteR, center);
   g.lineTo(center + radius, center);
   g.stroke();
   g.restore();
@@ -1222,7 +1236,7 @@ function createRadarFrame(size, center, radius) {
     viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
     'aria-hidden': 'true',
   });
-  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'rest', width: 1, bloom: 4 }));
+  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'hi', width: 1.5, bloom: 5 }));
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
   root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,

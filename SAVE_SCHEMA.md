@@ -166,6 +166,9 @@ Current save version: `14`
 | `$.encounterDirector` | object | {} |
 | `$.enemyMind` | null | null |
 | `$.entities` | object | {} |
+| `$.entities.freeIds` | array | length 0 |
+| `$.entities.nextEntityId` | number | 2 |
+| `$.entities.nextOccupantGeneration` | null | null |
 | `$.entities.persistent` | array | length 0 |
 | `$.entities.player` | object | {} |
 | `$.entities.player._isPlayer` | boolean | true |

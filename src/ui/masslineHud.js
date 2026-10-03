@@ -115,6 +115,7 @@ const DENIAL_NEXT_ACTION = Object.freeze({
   'SCRIPTED MOTION': 'PICK A PHYSICAL BODY',
   'CANNOT LATCH': 'PICK ANOTHER TARGET',
   'UNAVAILABLE': 'REPOSITION AND RETRY',
+  'SPOOL OUT': 'REPAIR THE SPOOL',
 });
 export function denialNextAction(status, reason) {
   return DENIAL_NEXT_ACTION[previewStatusCopy(status, reason)] ?? 'REPOSITION AND RETRY';
@@ -137,6 +138,7 @@ const BRACKET_DENIAL_REASON = Object.freeze({
   'SCRIPTED MOTION': 'SCRIPTED MOTION',
   'CANNOT LATCH': 'CANNOT LATCH',
   'UNAVAILABLE': 'LATCH NOT READY',
+  'SPOOL OUT': 'SPOOL IS OUT',
 });
 
 export function resolveMasslineBracketRead(status, reason) {
@@ -2175,6 +2177,7 @@ function previewStatusCopy(status, reason) {
   if (r === 'site-machinery') return 'MACHINE, NOT CARGO';
   if (r === 'scripted-body') return 'SCRIPTED MOTION';
   if (r === 'not-tetherable') return 'CANNOT LATCH';
+  if (r === 'spool_out' || r === 'spool-out') return 'SPOOL OUT';
   return 'UNAVAILABLE';
 }
 

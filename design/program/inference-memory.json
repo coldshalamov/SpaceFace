@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "ace-gimmick-labels",
-      "date": "2026-09-28",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "All 16 authored ace/nemesis specialty tags now read as named problems on the target panel instead of raw uppercase fallbacks",
-      "fingerprint": "verb=label,subject=target panel,sector=none,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "0ed830adc",
-      "verification": "focused_green"
-    },
-    {
       "id": "first-frontier-hint",
       "date": "2026-09-28",
       "wf": "WF-14",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "b3cdd5f76",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ending-archive-regate",
+      "date": "2026-10-03",
+      "wf": "WF-18",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Cold-review P1 fix: the archive row re-gates on a mid-run filed finale instead of the mount-time snapshot",
+      "fingerprint": "verb=open,subject=ending-archive,sector=pause,domain=wf-18",
+      "references": [],
+      "integration": "live",
+      "commit": "70b2512b5",
       "verification": "focused_green"
     }
   ],

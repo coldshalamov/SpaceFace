@@ -56,11 +56,22 @@ function injectStyle() {
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
   .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
-  /* The stage must be the scroller: as a plain flex child it shrank to the leftover space and its
-     overflow painted UNDER the apron, so the launch bar sliced the scenario cards mid-row and the
-     fine-tune section below the tiles was unreachable. */
-  .sf-sandbox .sf-stage { overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
-  .sf-sandbox .sf-section-h { margin: var(--sp-4) 0 var(--sp-2); color: var(--sf-calm); }
+  .sf-sandbox .sf-stage {
+    padding-right: 6px;
+    padding-bottom: 24px;
+  }
+  .sf-sandbox .sf-apron {
+    position: relative;
+    padding: 16px 0 32px;
+    border-top: 1px solid rgb(236 230 216 / .14);
+  }
+  .sf-sandbox .sf-section-h {
+    margin: var(--sp-4) 0 var(--sp-2);
+    color: rgb(236 230 216 / .75);
+    font-family: var(--dp-face-label, "Archivo");
+    font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  }
+  .sf-sandbox .sf-section-h::before { display: none !important; }
   .sf-sandbox.sf-menu h1 {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
     letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);

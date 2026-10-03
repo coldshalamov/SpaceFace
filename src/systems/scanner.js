@@ -61,6 +61,18 @@ import { makeShipEntitySpec } from './ships.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 
+/** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
+export function playerSensorBlock(state, player) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return null;
+  const runtime = book[String(player.id)];
+  if (!runtime) return null;
+  const sensor = runtime.subsystems && runtime.subsystems.subsystem_sensor;
+  if (sensor && sensor.effectiveDisabled === true) return 'out';
+  if (runtime.capabilities && runtime.capabilities.sensor === false) return 'jammed';
+  return null;
+}
+
 const PULSE_COOLDOWN_S = 8;
 const NEAR_SCAN_RADIUS = 1200;
 const HIDDEN_POI_RADIUS = 2000;
@@ -953,13 +965,26 @@ export const scanner = {
     actions.scanPulse = false;
 
     const now = state.simTime || 0;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && player.alive) {
+      const block = playerSensorBlock(state, player);
+      if (block) {
+        this.bus.emit('toast', {
+          text: block === 'jammed'
+            ? 'Sensors aren\'t answering — jammed'
+            : 'Sensors out — the board is blind',
+          kind: 'warn',
+          ttl: 1.6,
+        });
+        return;
+      }
+    }
     if (now < this._cooldownUntil) {
       const left = Math.max(1, Math.ceil(this._cooldownUntil - now));
       this.bus.emit('toast', { text: `Scanner recharging — ${left}s`, kind: 'warn', ttl: 1.6 });
       return;
     }
 
-    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive) return;
 
     this._cooldownUntil = now + PULSE_COOLDOWN_S;
