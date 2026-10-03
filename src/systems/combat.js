@@ -1066,12 +1066,14 @@ export const combat = {
           reason: plan.insured ? 'recovery:deductible' : 'recovery:hull_share',
         });
       }
-      // FB-124: a live cargo policy pays its priced claim once, at the recovery berth.
+      // FB-124: a live cargo policy pays its priced claim once, at the recovery berth —
+      // the policy is consumed here so a second defeat on the same trip cannot re-claim it.
       if (plan.cargoPayoutCr > 0) {
         this.bus.emit('economy:grantCredits', {
           amount: plan.cargoPayoutCr,
           reason: 'recovery:cargo_policy',
         });
+        if (this.state.player && this.state.player.cargoPolicy) delete this.state.player.cargoPolicy;
       }
 
       this._pendingPlayerRecovery = null;

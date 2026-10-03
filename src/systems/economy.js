@@ -3134,6 +3134,9 @@ export const economy = {
     const player = state && state.player;
     const fuel = state && state.fuel;
     if (!player || !fuel) return;
+    // A dry tank on a berth is a refuel quote, not a rescue case — the docked hardship
+    // branch in handleService owns that door.
+    if (state.ui && state.ui.docked === true) return;
     const sector = state.world && state.world.activeSector;
     const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
     const pumpHere = stations.some((st) => {

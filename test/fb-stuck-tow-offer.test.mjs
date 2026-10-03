@@ -96,6 +96,34 @@ test('accept docks at the lawful berth and charges the quoted cost', () => {
   assert.ok(player.pos.x > 500 - 1e-6, 'the hull was delivered beside the berth');
 });
 
+test('a wedge tow is priced as a tow, not as a hull loss', () => {
+  const { state, bus, w, player } = harness();
+  wedge(w, state, player, 9);
+  const offer = bus.of('world:stuckTowOffer')[0].p;
+  assert.equal(offer.quotedCr, 120, 'the starter-hull tow is the call-out fee, not the recovery share');
+});
+
+test('the tow never fights a live jump — tunnel refuses, a charging drive stands down', () => {
+  // Mid-tunnel the offer's wedge is already in the leaving sector: a stale answer tows nothing.
+  let h = harness();
+  wedge(h.w, h.state, h.player, 9);
+  assert.equal(h.bus.of('world:stuckTowOffer').length, 1);
+  h.state.jump = { state: 'JUMPING' };
+  h.bus.emit('world:stuckTowAccept', {});
+  assert.equal(h.bus.of('dock:docked').length, 0, 'a mid-tunnel hull cannot take the tow');
+  assert.equal(h.bus.of('economy:towCharge').length, 0, 'no charge files for a refused tow');
+
+  // A charging drive stands down for the tow — one transition, not two on the same hull.
+  h = harness();
+  h.state.jump = { state: 'CHARGING', via: 'drive', targetSectorId: 'sector_x', _fuelCost: 0 };
+  h.state.fuel = { current: 20, max: 20 };
+  wedge(h.w, h.state, h.player, 9);
+  h.bus.emit('world:stuckTowAccept', {});
+  assert.equal(h.state.jump.state, 'IDLE', 'the tow aborts the charge instead of double-transitioning');
+  assert.equal(h.bus.of('jump:chargeAbort').length, 1);
+  assert.equal(h.bus.of('dock:docked').length, 1, 'the tow still delivers the hull');
+});
+
 test('a broke pilot still gets towed — the shortfall goes on the note', () => {
   const { state, bus, w, player } = harness();
   state.player.credits = 100;

@@ -263,6 +263,10 @@ const STUCK_OFFER_S = 8;
 const STUCK_DISPLACEMENT_WU = 3;
 const STUCK_SPEED_EPS_WU_S = 4;
 const TOW_BERTH_CLEARANCE_WU = 140;
+// A wedge rescue is a berth tow, not a hull loss — a small fraction of the recovery quote,
+// floored so a starter hull still owes a real service call-out.
+const TOW_FEE_MIN_CR = 120;
+const TOW_FEE_RECOVERY_FRAC = 0.125;
 
 // Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
 function setVecXZTow(vec, x, z) {
@@ -3870,7 +3874,9 @@ export const world = {
 
     const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
     this._tickFrameOrigin(state);
-    this._updateStuckWatch(dt, state);
+    // A wedge cannot form inside a charge or the tunnel — and an offer latched just before
+    // either is answered only under the tow's jump-state guard in _executeStuckTow.
+    if (jump.state === 'IDLE' || jump.state === 'COOLDOWN') this._updateStuckWatch(dt, state);
     if (observeTick) this._tickResidency(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
@@ -5501,11 +5507,12 @@ export const world = {
     const owned = Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
     const shipId = (owned && owned.defId) || (playerEntity && playerEntity.data && playerEntity.data.defId) || 'ship_kestrel';
     const q = recoveryCostQuote(shipId, player.insurance || {});
+    const base = q && q.insured ? q.insuredCostCr : q.uninsuredCostCr;
     return {
       station,
       stationId: station.id,
       stationName: station.name || station.id,
-      quotedCr: q && q.insured ? q.insuredCostCr : q.uninsuredCostCr,
+      quotedCr: Math.max(TOW_FEE_MIN_CR, Math.round((Number(base) || 0) * TOW_FEE_RECOVERY_FRAC)),
     };
   },
 
@@ -5516,6 +5523,12 @@ export const world = {
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
     if (state.ui && state.ui.docked === true) return;
+    // A live jump owns the sector transition. Mid-tunnel the answer is stale — the wedge it
+    // priced was in the sector already leaving; a charging drive stands down for the tow
+    // instead of both transitions landing on the same hull.
+    const jump = state.jump;
+    if (jump && jump.state === 'JUMPING') { this._resetStuckWatch(w, false); return; }
+    if (jump && jump.state === 'CHARGING') this._abortCharge('tow');
     const quote = this._stuckTowQuote(state, player);
     if (!quote || !quote.station) return;
     const charge = { quotedCr: quote.quotedCr };
@@ -5542,8 +5555,10 @@ export const world = {
     else if (player.prevPos) setVecXZTow(player.prevPos, px, pz);
     this._resetStuckWatch(w, false);
     this.bus.emit('toast', {
-      text: `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
-        + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
+      text: charge.ok === false
+        ? `Towed to ${quote.stationName}`
+        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
+          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
       kind: charge.debtCr > 0 ? 'warn' : 'success',
       ttl: 4,
     });

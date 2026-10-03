@@ -79,6 +79,28 @@ test('a policy that reached a dock expired — a later defeat pays nothing', () 
   assert.equal(plan.cargoPayoutCr, 0, 'an expired policy never invents a claim');
 });
 
+test('an honored claim consumes the policy — a second defeat on the same trip pays nothing', async () => {
+  const { state, econ } = harness({ items: { [ORE.id]: 20 } });
+  econ.handleService({ type: 'cargo_insurance' });
+  assert.ok(state.player.cargoPolicy, 'policy written');
+  const plan = buildRecoveryPlan(state, null);
+  assert.ok(plan.cargoPayoutCr > 0, 'the live policy priced a claim');
+  // Drive the recovery seam the way combat.recoverPendingPlayer runs it: placement, losses,
+  // charge, then the honored payout — which must consume the policy it just paid on.
+  const { combat } = await import('../src/systems/combat.js');
+  const c = Object.create(combat);
+  c.state = state;
+  c.bus = { emit() {}, on() {} };
+  c.restorePlayerAtRecoveryDock = () => {};
+  state.entities = new Map([['player', { id: 'player', pos: { x: 0, z: 0 }, data: {} }]]);
+  c._pendingPlayerRecovery = { playerId: 'player', receipt: { recovery: plan } };
+  const res = c.recoverPendingPlayer({});
+  assert.equal(res.ok, true, 'recovery committed');
+  assert.equal(state.player.cargoPolicy, undefined, 'the honored claim consumed the policy');
+  const second = buildRecoveryPlan(state, null);
+  assert.equal(second.cargoPayoutCr, 0, 'one premium never pays two defeats');
+});
+
 test('the berth refuses a policy on an empty or all-illicit hold', () => {
   const items = ILLEGAL ? { [ILLEGAL.id]: 10 } : {};
   const { state, econ } = harness({ items, credits: 5000 });

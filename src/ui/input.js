@@ -169,7 +169,11 @@ export function createUiInput(ctx, screenManager) {
   // Emit the dock intent; uiRoot's dock:docked handler owns setting ui.docked + pushing the
   // station hub (single owner of the flight→dock transition, avoids a double-push).
   function doDock() {
+    // A live jump owns the sector transition — docking mid-charge/mid-tunnel would leave the
+    // ui.docked latch on while the jump machine moves the hull into the next sector.
     if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
+    const jumpState = state.jump && state.jump.state;
+    if (jumpState === 'CHARGING' || jumpState === 'JUMPING') return;
     const attempt = { stationId: dockStationId };
     // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
     // a refusal. The same pure selector is the command gate; a banner can never be the authority.

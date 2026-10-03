@@ -509,6 +509,20 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'cargo_insurance') {
+    // Same ironman rule as hull recovery: permadeath never reaches the payout path, so the
+    // premium would buy a strict no-op. Say so instead of selling it.
+    const difficulty = state && state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    if (difficulty === 'ironman') {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'Permadeath — there is no recovery for a policy to pay on.',
+        buttonLabel: 'Purchase',
+        disabled: true,
+        disabledReason: 'ironman runs have no recovery to insure',
+        chips: [{ text: 'no-op on ironman', kind: 'bad' }],
+      };
+    }
     // FB-124 — the same quote the click applies: legal manifest × sector danger, one trip.
     const policy = p.cargoPolicy && typeof p.cargoPolicy === 'object' ? p.cargoPolicy : null;
     if (policy && Number(policy.coverCr) > 0) {

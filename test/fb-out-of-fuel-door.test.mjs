@@ -61,7 +61,7 @@ test('dry + broke at a refuel berth yields a minimum fill and a debt entry', () 
 });
 
 test('dry in a station-less sector grants one reserve a day, filed as debt, announced', () => {
-  const { state, econ, bus } = harness({ credits: 5000, fuel: 0, stations: [] });
+  const { state, econ, bus } = harness({ credits: 5000, fuel: 0, stations: [], docked: false });
   econ._onFuelEmpty({ sectorId: 'sector_test' });
   assert.ok(state.fuel.current > 0, 'the reserve landed');
   assert.equal(state.player.debt, Math.round(state.fuel.current * 6));
@@ -73,9 +73,19 @@ test('dry in a station-less sector grants one reserve a day, filed as debt, anno
 
 test('a sector with a real pump grants no free reserve', () => {
   const pumpStations = (REFUEL_SECTOR.stations || []).map((st) => ({ id: st.id, stationId: st.id }));
-  const { state, econ, bus } = harness({ credits: 0, fuel: 0, stations: pumpStations });
+  const { state, econ, bus } = harness({ credits: 0, fuel: 0, stations: pumpStations, docked: false });
   econ._onFuelEmpty({ sectorId: REFUEL_SECTOR.id });
   assert.equal(state.fuel.current, 0, 'a pump in reach is the door already');
   assert.equal(state.player.debt || 0, 0, 'no debt filed');
   assert.equal(bus.of('alert').length, 0, 'nothing announced');
+});
+
+test('a dry tank at a berth is a refuel quote — docked empty never takes the reserve', () => {
+  // fuel:empty while docked (a stray spend landing after dock) must not grant the
+  // free-sector reserve — the berth's own hardship branch owns the docked door.
+  const { state, econ, bus } = harness({ credits: 0, fuel: 0, stations: [], docked: true });
+  econ._onFuelEmpty({ sectorId: 'sector_test' });
+  assert.equal(state.fuel.current, 0, 'docked empty is a quote, not a rescue');
+  assert.equal(state.player.debt || 0, 0);
+  assert.equal(bus.of('alert').length, 0, 'the docked case does not announce the reserve');
 });

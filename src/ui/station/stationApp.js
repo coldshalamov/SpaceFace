@@ -838,6 +838,17 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         refuel: toCost(q('refuel'), 'refuel'),
         resupply: toCost(q('ammo'), 'ammo'),
         insurance: toCost(q('insurance'), 'insurance'),
+        // FB-049/FB-124 — the note and the manifest cover are berth services like the rest:
+        // quote them through the same table so every verb shows its live number. A draw
+        // pays the player, so it reads as a gain like redemption, not a price.
+        loan: (() => {
+          const lq = q('loan');
+          return lq && !lq.disabled
+            ? { text: `+${fmtCr(lq.amount)} cr`, tone: 'gain', title: lq.detail }
+            : { text: lq ? (lq.disabledReason || 'Unavailable') : 'Offline', disabled: true, title: lq ? lq.detail : 'Loan quote unavailable' };
+        })(),
+        settle: toCost(q('settle'), 'settle'),
+        cargoInsure: toCost(q('cargo_insurance'), 'cargo_insurance'),
         wash: washAvailable
           ? toCost(q('hull_wash'), 'hull_wash')
           : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
@@ -874,7 +885,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights', loan: 'loan', settle: 'settle', cargoInsure: 'cargo_insurance' };
     const type = typeMap[id];
     if (!type && bus) {
       const presence = runFactionPresenceDockAction(bus, state(), stationId(), id);
@@ -1080,9 +1091,29 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         acts: [carrying
           ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`
-          : ''],
+          : '',
+          // FB-124 — the manifest cover lives on the hold row it prices.
+          vitalActHtml('cargoInsure', costs.cargoInsure, 'Cover', true)],
       },
     ];
+    // FB-049 — the note is an instrument, and instruments need a visible home. One action
+    // unit (like Munitions/Rights): present only while there is a balance to settle or a
+    // line left to draw.
+    const debtCr = Math.max(0, Math.round(Number(s.player && s.player.debt) || 0));
+    const loanOpen = !!(costs.loan && !costs.loan.disabled);
+    if (debtCr > 0 || loanOpen) {
+      vitals.push({
+        k: 'note', label: 'Ledger', frac: 0, tone: debtCr > 0 ? 'warn' : 'ok', track: false,
+        value: debtCr > 0 ? `Debt ${fmtCr(debtCr)} cr` : 'Credit line open',
+        aria: debtCr > 0
+          ? `${fmtCr(debtCr)} credits owed — stale notes levy a daily bounty share`
+          : 'A note can be drawn at this berth',
+        acts: [
+          vitalActHtml('settle', costs.settle, 'Settle'),
+          vitalActHtml('loan', costs.loan, 'Draw', true),
+        ],
+      });
+    }
     // Munitions has no meter in state, so it appears only when there is something to load — an
     // action-only unit rather than a permanently-present tile reading "Rearm".
     const muniAboard = Math.max(0, Math.floor(Number(cargo.items && cargo.items.cmdty_munitions) || 0));
