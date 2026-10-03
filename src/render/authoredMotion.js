@@ -1,3 +1,4 @@
+import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
 // The contracts layer (motionBank.js) stays simulation-free; this module is the ship-side glue:
@@ -95,28 +96,55 @@ export function createAuthoredClock({ simNow, wallNow } = {}) {
 export function attachAuthoredMotionDriver(root, entity, controllers) {
   const entityId = entity && entity.id;
   const live = (controllers || []).filter(Boolean);
-  if (!root || !live.length) return null;
+  const workfleetRole=ceresWorkfleetRole(entity);
+  const workfleet=!!workfleetRole;
+  if (!root || (!live.length && !workfleet)) return null;
+  const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
+  const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):null;
+  const priorDriveUpdate=root.userData.updateDriveState;
+  const updatePropulsion=propulsion ? function updateCeresPropulsion(liveEntity,simNow) {
+    priorDriveUpdate?.(liveEntity,simNow);
+    propulsion.update(liveEntity);
+  } : null;
+  if(updatePropulsion)root.userData.updateDriveState=updatePropulsion;
+  const updatePhysical = workfleet ? (liveEntity, a11y) => {
+    updateWorkfleet?.(liveEntity);
+    propulsion?.update(liveEntity, a11y);
+  } : null;
+  if (updatePhysical) root.userData.updateCeresPhysicalState = updatePhysical;
 
-  // Replace, don't accumulate: an entity rebuild rebinds fresh controllers on the same key, and
-  // the stale set must release with its old root rather than keep updating detached pivots.
-  registry.set(entityId, new Set(live));
-  // Site-scoped alias: dressing/props that stand for a site's exterior machinery carry the
-  // site key on entity.data (siteId/siteBeacon), and `site:*` events dispatch to `site:<id>`.
-  // Registering the alias lets the same physical rigs answer site lifecycle events.
+  // A hidden appearance candidate owns controllers, but cannot steal the retained body's
+  // event registration before its GPU/publication gate succeeds. Ordinary builds bind now.
   const aliasKeys = [];
-  for (const key of [entity && entity.data && entity.data.siteId,
-    entity && entity.data && entity.data.siteBeacon]) {
-    if (key != null) {
+  let registered = false;
+  let retired = false;
+  const activate = (liveEntity = entity) => {
+    if (registered || retired) return false;
+    if (propulsion && !propulsion.activate(liveEntity)) return false;
+    registered = true;
+    registry.set(entityId, new Set(live));
+    for (const key of [liveEntity?.data?.siteId, liveEntity?.data?.siteBeacon]) {
+      if (key == null) continue;
       const alias = `site:${key}`;
       let set = registry.get(alias);
       if (!set) registry.set(alias, (set = new Set()));
       for (const controller of live) set.add(controller);
       aliasKeys.push(alias);
     }
-  }
+    return true;
+  };
+  if (entity?.deferAuthoredMotionRegistration !== true) activate();
+  root.userData.activateAuthoredMotionRegistration = activate;
 
   const detach = function detachAuthoredMotionDriver() {
-    for (const key of [entityId, ...aliasKeys]) {
+    retired = true;
+    if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
+    propulsion?.dispose();
+    if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
+      if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
+      else delete root.userData.updateDriveState;
+    }
+    for (const key of registered ? [entityId, ...aliasKeys] : []) {
       const set = registry.get(key);
       if (set) {
         for (const controller of live) set.delete(controller);
@@ -129,6 +157,9 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
       delete root.userData.authoredMotionEvent;
       delete root.userData.authoredMotionPadSpec;
       delete root.userData.__authoredMotionPad;
+    }
+    if (root.userData.activateAuthoredMotionRegistration === activate) {
+      delete root.userData.activateAuthoredMotionRegistration;
     }
     if (root.userData.detachAuthoredMotion === detach) {
       delete root.userData.detachAuthoredMotion;
@@ -149,12 +180,14 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   delete root.userData.__authoredMotionPad;
   // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
   let attachFired = false;
-  root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y) {
+  root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y, state = null) {
     if (!attachFired) {
       attachFired = true;
       for (const controller of live) controller.handleEvent?.('authoredMotion:attach', {}, simNow);
     }
     for (const controller of live) controller.update(simNow, a11y);
+    updatePhysical?.(liveEntity, a11y);
+
   };
   root.userData.authoredMotionEvent = function authoredMotionEvent(type, payload, simNow) {
     for (const controller of live) controller.handleEvent?.(type, payload, simNow);

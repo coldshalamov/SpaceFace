@@ -658,3 +658,86 @@ for(const stage of ['gpu','preflight','pipeline']) test('state identity replacem
  assert.equal(f.marks.includes('rest-effects'),false);
  assert.equal(f.state.render.sectorShellAdmission,true);
 });
+
+test('Ceres appearance owner survives a stale same-sector enter epoch', () => {
+  const f = enterFixture(), canceled = [];
+  const newOwner = { cancel: reason => canceled.push(reason) };
+  f.owner._appearanceReplacements = new Map([['new-ceres-owner', newOwner]]);
+  f.state.world.enterSerial = f.state.enterSerialSeq = 8;
+  f.enter({ sectorId: 'ceres', sector: { id: 'ceres' }, enterEpoch: 7 });
+  assert.deepEqual(canceled, []);
+  assert.strictEqual(f.owner._appearanceReplacements.get('new-ceres-owner'), newOwner);
+  assert.deepEqual(f.marks, []);
+});
+
+test('Ceres appearance owner survives an epochless event for a departed sector', () => {
+  const f = enterFixture(), canceled = [];
+  const newOwner = { cancel: reason => canceled.push(reason) };
+  f.owner._appearanceReplacements = new Map([['new-ceres-owner', newOwner]]);
+  f.state.world.currentSectorId = 'new-sector';
+  f.enter({ sectorId: 'ceres', sector: { id: 'ceres' } });
+  assert.deepEqual(canceled, []);
+  assert.strictEqual(f.owner._appearanceReplacements.get('new-ceres-owner'), newOwner);
+  assert.deepEqual(f.marks, []);
+});
+
+test('Ceres appearance owner is canceled once by its current sector enter', () => {
+  const f = enterFixture(), canceled = [];
+  f.owner._appearanceReplacements = new Map([['old-ceres-owner', {
+    cancel: reason => canceled.push(reason),
+  }]]);
+  f.enter({ sectorId: 'ceres', sector: { id: 'ceres' }, enterEpoch: 7 });
+  assert.deepEqual(canceled, ['appearance-sector-changed']);
+  assert.deepEqual(f.marks, ['clear', 'reattach', 'diagnostics']);
+});
+
+test('throwing provider return preserves supersession and both captured clock owners', async () => {
+  const f = fixture(), closed = [], capturedRender = f.state.render;
+  capturedRender._deferredEnterClock = 40;
+  capturedRender._deferredEnterTick = 41;
+  capturedRender.sectorEnterCookWillRun = () => true;
+  lifecycleHelpers.deferSectorEnterMaterialization(f.state, {
+    enterEpoch: 7, enterSimTime: 10, enterTick: 12,
+  }, () => ({
+    next: () => ({ done: false }),
+    return() {
+      closed.push([capturedRender._deferredEnterClock, capturedRender._deferredEnterTick]);
+      throw new Error('controlled-finalizer-failure');
+    },
+  }));
+  const run = f.cook({ id: 'ceres' }, 7);
+  const replacementRender = { ...capturedRender, _deferredEnterClock: 99, _deferredEnterTick: 101 };
+  f.state.render = replacementRender;
+  f.state.world.enterSerial = 8;
+  assert.equal((await flush(run, f.frames)).reason, 'sector-superseded');
+  assert.deepEqual(closed, [[10, 12]], 'cleanup closes once under the captured emit clock');
+  assert.equal(capturedRender._deferredEnterClock, 40);
+  assert.equal(capturedRender._deferredEnterTick, 41);
+  assert.equal(replacementRender._deferredEnterClock, 99);
+  assert.equal(replacementRender._deferredEnterTick, 101);
+  assert.deepEqual(f.marks, []);
+});
+
+test('throwing provider step and return isolate failure without skipping its sibling', async () => {
+  const calls = [];
+  const f = fixture([() => ({
+    next() { calls.push('failed-step'); throw new Error('controlled-step-failure'); },
+    return() { calls.push('closed'); throw new Error('controlled-finalizer-failure'); },
+  }), () => calls.push('sibling')]);
+  const result = await flush(f.cook({ id: 'ceres' }, 7), f.frames);
+  assert.equal(result.skipped, false);
+  assert.deepEqual(calls, ['failed-step', 'closed', 'sibling']);
+  assert.deepEqual(f.marks, ['hold', 'freeze', 'release']);
+});
+
+test('throwing presentation finalizer preserves the original context-loss rejection', async () => {
+  const f = fixture();
+  let contextReads = 0, closed = 0;
+  f.values.collectMeshPresentationEntitiesChunked = () => ({
+    next: () => ({ done: false }),
+    return() { closed++; throw new Error('controlled-collect-finalizer-failure'); },
+  });
+  f.values.renderer.getContext = () => ({ flush() {}, isContextLost: () => ++contextReads > 1 });
+  await assert.rejects(flush(f.cook({ id: 'ceres' }, 7), f.frames), /webgl-context-lost-during-live-sector-cook/);
+  assert.equal(closed, 1);
+});

@@ -1,3 +1,6 @@
+import { bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
+import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
+import { createAsyncAdmission } from './asyncAdmission.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
@@ -2498,6 +2501,7 @@ function liveFlyDefersOnGlassAuthoredUpgrade(state) {
 }
 
 function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state, scan = null) {
+  if (ceresWorkfleetRole(entity)) owner?._retryAppearanceReplacement?.(entity, mesh);
   if (!canRequestAuthoredUpgrade(entity, state, owner && owner._authoredSectorPrewarmPendingId)) return;
   // A terminal verdict that published nothing drawable is retryable while the entity stays
   // relevant — a transient fetch/decode miss must not blank the owner for the session. The
@@ -4986,6 +4990,14 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   if (!owner || !recovery || typeof rebuild !== 'function') {
     throw new TypeError('context restore rebuild requires owner, recovery state, and rebuild callback');
   }
+  const machineryState=owner.state, machineryScene=owner.scene, machineryRenderer=owner.renderer;
+  const machineryBindings=[];
+  for(const [id,mesh] of owner._meshes || []) {
+    const entity=machineryState?.entities?.get(id);
+    if(ceresWorkfleetRole(entity) && entity.mesh===mesh)
+      machineryBindings.push({entity,mesh,life:entity.occupantGeneration});
+  }
+  invalidateMachineryPresentation(machineryState);
   owner._contextLost = true;
   recovery.pending = true;
   try {
@@ -5042,6 +5054,14 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
           console.warn('[render] queued exact-target touch failed after context restore', error);
         }
       }
+    }
+  }
+  if(owner.state===machineryState && owner.scene===machineryScene && owner.renderer===machineryRenderer
+      && owner._rendererResourcesDisposed!==true) {
+    for(const {entity,mesh,life} of machineryBindings) {
+      if(machineryState?.entities?.get(entity.id)===entity && entity.occupantGeneration===life
+          && entity.mesh===mesh && owner._meshes?.get(entity.id)===mesh)
+        bindMachineryPresentation(entity,mesh,machineryState);
     }
   }
   return { ok: true };
@@ -7000,6 +7020,22 @@ function stampCanonicalSurfaceProgramKeys(root) {
   return root;
 }
 
+export function assertCompleteAppearanceAdmission(receipt) {
+  const visit = (value) => {
+    if (Array.isArray(value)) { for (const entry of value) visit(entry); return; }
+    if (!value || typeof value !== 'object'
+        || value.contextLost === true || value.partial === true || value.cancelled === true
+        || (value.skipped === true && value.reason !== 'no drawable geometry')) {
+      throw new Error(`Incomplete appearance admission: ${value?.reason || 'missing/partial receipt'}`);
+    }
+    for (const key of ['pipelines', 'gpuResidency', 'geometryResidency', 'results']) {
+      if (key in value) visit(value[key]);
+    }
+  };
+  visit(receipt);
+  return receipt;
+}
+
 export function compilePipelineSubject(tracker, subject, options = {}, urgent = false) {
   if (urgent === true) return tracker.compile(subject, { ...options, urgent: true });
   if (options && options.explicit === true) return tracker.compileExplicit(subject, options);
@@ -7503,9 +7539,26 @@ function clearRendererStateReferences(owner) {
  * WebGL context takes the abandon path: roots and references are detached, but old-context GPU
  * resource disposers are not invoked.
  */
+export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroyed') {
+  for (const record of owner?._appearanceReplacements?.values() || []) record.endGpuLifetime(reason);
+  for (const record of owner?._appearanceGpuOwners || []) record.endGpuLifetime(reason);
+  // Keep the cancelled logical claim until its catch records the retained appearance as
+  // retryable. Otherwise a context loss silently drops the requested appearance for good.
+  if (reason === 'renderer-destroyed') owner?._appearanceReplacements?.clear();
+  owner?._unboundMachineryAppearanceFailures?.clear();
+  owner?._appearanceRetirements?.clear();
+  if (reason === 'webgl-context-lost') {
+    for (const mesh of owner?._meshes?.values() || []) {
+      const failure = mesh?.userData?.appearanceReplacementFailure;
+      if (failure) { failure.attempts = 0; failure.retryAt = 0; failure.retryable = true; }
+    }
+  }
+}
+
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  invalidateMachineryPresentation(owner.state);
   const contextLost = options.contextLost === true || owner._contextLost === true;
   const disposeGpu = !contextLost;
   const scene = owner.scene || null;
@@ -7525,6 +7578,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   try { owner._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
   try { releaseOpeningGraphPublication(owner); } catch (_) { /* best effort */ }
   owner._contextRestoreReceipt = null;
+  retireAppearanceGpuGeneration(owner, 'renderer-destroyed');
   const boundaryManager = owner._sectorBoundaryPreparations;
   try {
     boundaryManager?.abortAll?.('renderer-destroyed');
@@ -8176,6 +8230,7 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         this._contextLost = true;
+        invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;
         if (state.render) state.render.sessionLiveSectorCookedId = null;
         this._authoredPreparationEpoch++;
@@ -8214,6 +8269,7 @@ export const render = {
         // its dead handles through the lost generation's managers (the v6 Electron delete storm).
         stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
         if (this._assetResidency) this._assetResidency.handleContextLost();
+        retireAppearanceGpuGeneration(this, 'webgl-context-lost');
         // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
         // admission receipts here; the detached warmup graph belongs to the lost context and must
         // not dispatch stale dispose listeners after restoration.
@@ -9683,6 +9739,7 @@ export const render = {
       try {
         admission = compilation
         .then((result) => {
+          if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(result);
           // Once a subject's programs have linked it can keep drawing through any
           // later re-admission: the pending latch's hide exists to keep a never-
           // compiled root out of bloomScene, and an already-linked root has
@@ -9700,7 +9757,8 @@ export const render = {
           // during loading pick up residency once the compile drain lands in
           // flight. While the loading shell is up the opening plan's scene sweep
           // owns mounted uploads, so the extra walk is skipped there.
-          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+              && admissionOptions.strict !== true) {
             return result;
           }
           const residencyUrgent = urgent === true
@@ -9710,8 +9768,9 @@ export const render = {
           return preparePipelineSubjectResidency(
             gpuResidencyAdmissions, subject, admissionOptions, residencyUrgent,
           ).then(
-            () => result,
-            () => result,
+            (gpuResidency) => admissionOptions.strict === true
+              ? { pipelines: result, gpuResidency: assertCompleteAppearanceAdmission(gpuResidency) } : result,
+            (error) => { if (admissionOptions.strict === true) throw error; return result; },
           );
         })
         .then(async (result) => {
@@ -9722,6 +9781,7 @@ export const render = {
             && state.render.contextRecovery && state.render.contextRecovery.pending === true;
           if (!result || result.contextLost === true || recovering
               || !subject || !this.scene || !cam.obj) {
+            if (admissionOptions.strict === true) throw new Error('Exact-target appearance admission unavailable');
             return result;
           }
           if (typeof admissionOptions.isActive === 'function'
@@ -13716,6 +13776,7 @@ export const render = {
     onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
     onBus('world:residency', () => { this._meshReconcileDirty = true; });
     onBus('entity:destroyed', ({ id }) => {
+      this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
       const still = resolveWorldPresentationEntity(this.state, id);
       if (still && still.alive !== false && isPresentationLedgerRow(still)) {
         const kept = this._meshes.get(id);
@@ -13947,6 +14008,7 @@ export const render = {
     // rather than leaving it mounted hidden until the next New Game supersedes it.
     onBus('game:startFailed', () => { this._discardEarlyCrucibleWarm(); });
     onBus('save:restoring', () => {
+      for (const record of this._appearanceReplacements?.values() || []) record.cancel('appearance-save-restoring');
       // The save system emits this synchronously before it destroys the current entity graph.
       // Keep the current sector's decoded authored resources resident across that short gap; the
       // registry hands this temporary hold back only after rebuilt live boundaries cover every
@@ -14670,6 +14732,7 @@ export const render = {
         }
         return;
       }
+      for (const record of this._appearanceReplacements?.values() || []) record.cancel('appearance-sector-changed');
       // A second restore while already 'loading' emits no mode:changed, so the flag keeps
       // its stale value — a different-sector enter would take the same-sector keep shortcut
       // and skip the new sector's palette/post/background/residency work. Recompute on the
@@ -17251,11 +17314,17 @@ export const render = {
     entity.mesh = mesh;
     if (entity.view) entity.view.root = mesh;
     else entity.view = { root: mesh };
+    if (ceresWorkfleetRole(entity)) {
+      bindMachineryPresentation(entity, mesh, this.state);
+      mesh.userData.rebindCeresCradleLayout?.(entity, this.state);
+    }
     return true;
   },
 
   _unbindPresentationMesh(entityId, mesh = null) {
     if (mesh) releasePooledPresentationTextures(mesh, entityId, this);
+    const machinery = this.state?.entities?.get(entityId);
+    if (ceresWorkfleetRole(machinery) && machinery.mesh === mesh) machineryPresentationPlace(machinery, this.state);
     if (this._livingHullPresentation) {
       if (mesh) this._livingHullPresentation.detach(mesh);
       else if (entityId === this.state.playerId) this._livingHullPresentation.detach();
@@ -17566,6 +17635,7 @@ export const render = {
   },
 
   *_reconcileMeshesSteps(options = {}) {
+    this._retryUnboundMachineryAppearances?.();
     const state = this.state;
     // Same-sector quick-load keeps the cooked GPU set resident across the restore; meshes that
     // found no restored entity are still released, but restored-but-distant members of the kept
@@ -17610,10 +17680,12 @@ export const render = {
       const residencyEvict = !shellLatched
         && !!(e && e.alive !== false && !mismatched)
         && !keepResidentSet
+        && !this._retainMachineryAppearanceWork?.(e, m)
         && !isEntityRenderRelevant(e, state,
           e.type === 'ship' || e.type === 'wreck' ? reconcileEvictShipWreck : reconcileEvictBase,
           reconcileScanOpts);
       if (!e || e.alive === false || mismatched || residencyEvict) {
+        this._appearanceReplacements?.get(id)?.cancel('appearance-owner-evicted');
         if (residencyEvict) noteOnGlassResidencyEviction(state, e);
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
@@ -17709,6 +17781,7 @@ export const render = {
   },
 
   *_reconcileMeshResidencySteps() {
+    this._retryUnboundMachineryAppearances?.();
     const state = this.state;
     const shipCandidates = this._meshResidencyShipCandidates;
     const otherCandidates = this._meshResidencyOtherCandidates;
@@ -17746,8 +17819,10 @@ export const render = {
         : evictRadiusBase;
       const residencyEvict = !residencyShellLatched
         && !!(entity && entity.alive !== false)
+        && !this._retainMachineryAppearanceWork?.(entity, mesh)
         && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
       if (!entity || entity.alive === false || residencyEvict) {
+        this._appearanceReplacements?.get(id)?.cancel('appearance-owner-evicted');
         if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
         this._unbindPresentationMesh(id, mesh);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
@@ -18298,7 +18373,8 @@ export const render = {
   // doesn't snap. Player-only in practice, but safe for any ship id. Textures/geo/materials are
   // cached in the factory (never disposed), so only the per-entity Object3D graph is freed here —
   // exactly the same lifecycle the per-entity disposer in disposeObject() already assumes.
-  rebuildShipMesh(id) {
+  rebuildShipMesh(id, options = {}) {
+    if (ceresWorkfleetRole(this.state?.entities?.get(id))) return this._rebuildCeresMachineryMesh(id, options);
     if (this._sectorBoundaryPreparations?.has(id)) {
       this._sectorBoundaryPreparations.abortEntity(id, 'ship-rebuild-during-sector-prewarm');
       this._meshReconcileDirty = true;
@@ -18349,6 +18425,282 @@ export const render = {
     noteShadowMeshAdded(this, m);
   },
 
+
+  _rebuildCeresMachineryMesh(id, options = {}) {
+    if (!ceresWorkfleetRole(this.state?.entities?.get(id))) return;
+    if (this._sectorBoundaryPreparations?.has(id)) {
+      this._sectorBoundaryPreparations.abortEntity(id, 'ship-rebuild-during-sector-prewarm');
+      this._meshReconcileDirty = true;
+      return;
+    }
+    const state = this.state;
+    const e = state.entities.get(id);
+    if (!e || e.alive === false) return;
+    const occupantGeneration = e.occupantGeneration;
+    const pending = this._appearanceReplacements || (this._appearanceReplacements = new Map());
+    pending.get(id)?.cancel('appearance-superseded');
+    const retirements = this._appearanceRetirements || (this._appearanceRetirements = new Map());
+    const priorRetirement = retirements.get(id)?.retirement;
+    const gpuOwners = this._appearanceGpuOwners || (this._appearanceGpuOwners = new Set());
+    const old = this._meshes.get(id);
+    const scene = this.scene;
+    const renderState = state.render;
+    const compile = renderState?.compileObjectPipelines;
+    const prepareResidency = renderState?.prepareAuthoredGpuResidency;
+    const generation = renderState?.admissionRunGeneration;
+    const nativeRenderer = this.renderer;
+    const renderPortRenderer = renderState?.renderer;
+    const machineryKind=(ceresWorkfleetRole(e) ? `ceres_${ceresWorkfleetRole(e)}` : null);
+    const machineryRequestedPlace=machineryKind?machineryRequestedPresentation(e):null;
+    const unboundFailures=this._unboundMachineryAppearanceFailures;
+    const unboundFailure=machineryKind && unboundFailures?.get(machineryKind);
+    const priorFailure=old?.userData?.appearanceReplacementFailure || (unboundFailure?.entity===e?unboundFailure.failure:null);
+    const attempts = options.retry === true ? (priorFailure?.attempts || 0) + 1 : 1;
+    if(machineryKind)unboundFailures?.delete(machineryKind);
+    const sector = state.world?.currentSectorId;
+    const contextGeneration = this._contextRecovery?.generation;
+    const preparationEpoch = this._authoredPreparationEpoch;
+    const preparationSignature = authoredBoundaryPreparationSignature(nativeRenderer, state, contextGeneration);
+    const scope = createAsyncAdmission({ label: `appearance:${id}` });
+    const record = { boundary: null, scope, committed: false, gpuWork: [], gpuPending: 0,
+      phase: priorRetirement ? 'waiting-for-gpu-retirement' : 'building' };
+    record.cancel = (reason) => {
+      scope.abort(reason);
+      // Keep the hidden boundary retained until raw GPU retirement. Detaching would fire the
+      // residency owner's removed hook and make its buffers evictable while still compiling.
+      if (record.boundary) record.boundary.visible = false;
+    };
+    let endGpuLifetime;
+    const gpuLifetimeEnded = new Promise(resolve => { endGpuLifetime = resolve; });
+    record.endGpuLifetime = (reason) => {
+      record.gpuLifetimeRetired = true;
+      record.cancel(reason);
+      endGpuLifetime(scope.signal.reason);
+    };
+    pending.set(id, record);
+    const isActive = () => !scope.signal.aborted
+      && pending.get(id) === record && this._rendererResourcesDisposed !== true
+      && this._contextLost !== true && this._contextRecovery?.generation === contextGeneration
+      && this._authoredPreparationEpoch === preparationEpoch
+      && this.state === state && state.render === renderState
+      && renderState?.admissionRunGeneration === generation
+      && renderState?.compileObjectPipelines === compile
+      && this.renderer === nativeRenderer && renderState?.renderer === renderPortRenderer
+      && this.scene === scene && state.world?.currentSectorId === sector
+      && state.entities.get(id) === e && e.alive !== false && e.occupantGeneration === occupantGeneration
+      && (!machineryKind || ((ceresWorkfleetRole(e) ? `ceres_${ceresWorkfleetRole(e)}` : null) === machineryKind
+        && machineryRequestedPresentation(e) === machineryRequestedPlace))
+      && this._meshes.get(id) === old && (e.mesh === old || (!e.mesh && !old));
+    const assertActive = () => {
+      if (!isActive()) scope.abort('appearance-owner-inactive');
+      scope.assertActive();
+    };
+    const seat = (m) => {
+      const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
+      m.position.set(local.x, 0, local.z);
+      m.rotation.y = -(e.rot || 0);
+      const hull = m.userData?.hull;
+      if (hull && e.bank != null) hull.rotation.x = e.bank;
+      if (hull && e.pitch != null) hull.rotation.z = e.pitch;
+      if (m.matrixAutoUpdate === false) m.updateMatrix();
+    };
+    const trackGpu = (raw) => {
+      const owned = Promise.race([raw, gpuLifetimeEnded.then(error => { throw error; })]);
+      record.gpuWork.push(owned); record.gpuPending++; record.phase = 'gpu-admission';
+      owned.then(() => record.gpuPending--, () => record.gpuPending--);
+      return owned;
+    };
+    const admit = async (m) => {
+      assertActive();
+      if (typeof compile !== 'function') throw new Error('Appearance pipeline admission unavailable');
+      const raw = Promise.resolve(compile(m, { strict: true, explicit: true, isActive,
+        urgent: entityIsOnDeadlineGlass(e, state) }));
+      const receipt = await trackGpu(raw);
+      assertActive();
+      assertCompleteAppearanceAdmission(receipt);
+      return receipt;
+    };
+    const work = Promise.resolve(priorRetirement).catch(error => {
+      // Prior cleanup failed after its GPU fence settled. Keep the diagnosis, but do not
+      // let a rejected prerequisite permanently poison later appearance requests.
+      console.warn('[render] previous appearance retirement failed', id, error);
+    }).then(async () => {
+      assertActive();
+      const snapshot = { ...e, occupantGeneration, pos: { ...e.pos }, flags: { ...e.flags },
+        data: structuredClone(e.data || {}), mesh: null, view: null,
+        deferAuthoredMotionRegistration: true };
+      const m = record.boundary = this.vf.build(snapshot);
+      gpuOwners.add(record);
+      if (!m || m.userData?.visualBuildFailed === true) throw new Error('Appearance factory returned no valid visual');
+      snapshot.mesh = m;
+      snapshot.view = { root: m };
+      seat(m);
+      if (e.type === 'ship' || e.type === 'station') {
+        attachContactShadow(m, snapshot);
+        syncShadowCasterPolicy(m, m.userData?.lod?.level ?? null, this._shadowPolicyOptions(e, m));
+      }
+      m.visible = false;
+      scene.add(m);
+      const authored = typeof m.userData?.requestAuthoredUpgrade === 'function';
+      if (authored) {
+        await requestAuthoredUpgrade(m, this.renderer, scene, {
+          signal: scope.signal, asyncAdmission: scope, admissionEntity: e,
+          retainGpuOwnershipUntilSettled: true,
+          isResidencyOwnerActive: isActive,
+          prepareAuthoredPipelines: admit,
+          ...(typeof prepareResidency === 'function' ? {
+            prepareAuthoredGpuResidency: async (root) => {
+              assertActive();
+              const raw = Promise.resolve(prepareResidency(root, { strict: true, isActive,
+                unSliced: entityIsOnDeadlineGlass(e, state) }));
+              const result = await trackGpu(raw);
+              assertActive();
+              return assertCompleteAppearanceAdmission(result);
+            },
+          } : {}),
+          deferPackagePoolActivation: true, deferBoundaryPublication: true,
+          overlapAuthoredPipelineCompile: false,
+          upgradeJobKey: `appearance:${id}:${m.uuid}`,
+        });
+        assertActive();
+        if (!['authored', 'same-semantic-fallback', 'authored-prepared',
+          'same-semantic-fallback-prepared'].includes(m.userData.authoredAssetState)) {
+          throw new Error(`Appearance authored admission failed: ${m.userData.authoredAssetState}`);
+        }
+      }
+      // Also admit the boundary-owned auxiliary geometry. Legacy packaged roots publish their
+      // payload internally; this exact-root gate covers those as well as procedural-only roots.
+      await admit(m);
+      assertActive();
+      if (preparationSignature !== authoredBoundaryPreparationSignature(nativeRenderer, state, contextGeneration)) {
+        throw new Error('Appearance render target changed during admission');
+      }
+      seat(m); // current pose/origin, never the pre-await pose
+      if (authored && publishPreparedAuthoredBoundary(m) !== true) {
+        throw new Error('Appearance authored publication declined');
+      }
+      const previousView = e.view;
+      const previousAdmission = e.presentationAdmission;
+      try {
+        if (old) this._unbindPresentationMesh(id, old);
+        e.mesh = m; e.view = { root: m };
+        this._meshes.set(id, m);
+        if (this._bindPresentationMesh(e, m) === false) throw new Error('Appearance binding declined');
+        if (snapshot.presentationAdmission !== undefined) e.presentationAdmission = snapshot.presentationAdmission;
+      } catch (error) {
+        this._unbindPresentationMesh(id, m);
+        e.mesh = old; e.view = previousView; e.presentationAdmission = previousAdmission;
+        if (old) { this._meshes.set(id, old); this._bindPresentationMesh(e, old); }
+        else this._meshes.delete(id);
+        throw error;
+      }
+      m.traverse((node) => node.userData?.activateAuthoredMotionRegistration?.(e));
+      m.visible = old ? old.visible : true;
+      record.committed = true;
+      this._meshesVersion += 1;
+      if (old) {
+        old.removeFromParent();
+        disposeRendererObject(old, `replaced appearance ${id}`);
+        noteShadowMeshRemoved(this, old);
+      }
+      noteShadowMeshAdded(this, m);
+      return { status: 'committed' };
+    });
+    // Preserve the original work promise for safe teardown even if the bounded wait expires.
+    const cleanup = async () => {
+      if (record.committed || !record.boundary) return;
+      await Promise.allSettled(record.gpuWork);
+      record.boundary.removeFromParent();
+      await disposePreparedAuthoredBoundary(record.boundary);
+      disposeObject(record.boundary);
+    };
+    record.completion = scope.wait(work).catch((error) => {
+      record.cancel(error);
+      const waitingForClearance = false;
+      const data = old?.userData;
+      if (pending.get(id) === record) {
+        const failure = { message: String(error.message || error),
+          cancelled: error.name === 'AbortError', attempts: record.gpuLifetimeRetired ? 0 : (waitingForClearance ? attempts - 1 : attempts),
+          isCurrentOwner: (entity) => entity === e && this.state === state
+            && state.entities.get(id) === e && e.alive !== false && e.occupantGeneration === occupantGeneration
+            && state.world?.currentSectorId === sector
+            && (!machineryKind || ((ceresWorkfleetRole(e) ? `ceres_${ceresWorkfleetRole(e)}` : null) === machineryKind
+              && machineryRequestedPresentation(e) === machineryRequestedPlace)),
+          phase: record.phase, waitingForGpuRetirement: record.gpuPending > 0 || record.phase === 'waiting-for-gpu-retirement',
+          retryable: state.entities.get(id) === e && e.alive !== false && e.occupantGeneration===occupantGeneration && this._meshes.get(id) === old,
+          // Occupancy spends no asset retry and adds no backoff. Preserve any genuine
+          // failure budget/deadline; the residency poll recomputes clearance every time.
+          retryAt: record.gpuLifetimeRetired ? 0 : waitingForClearance ? (priorFailure?.retryAt || 0)
+            : performance.now() + 2500 * (2 ** (attempts - 1)) };
+        if(data)data.appearanceReplacementFailure=failure;
+        else if(machineryKind && failure.retryable && !record.gpuLifetimeRetired
+            && this.state===state && this.scene===scene && this.renderer===nativeRenderer
+            && state.render===renderState && renderState?.admissionRunGeneration===generation
+            && state.world?.currentSectorId===sector && this._rendererResourcesDisposed!==true && this._contextLost!==true) {
+          const failures=this._unboundMachineryAppearanceFailures || (this._unboundMachineryAppearanceFailures=new Map());
+          failures.set(machineryKind,{entity:e,life:occupantGeneration,state,renderState,generation,sector,scene,nativeRenderer,
+            place:machineryRequestedPlace,request:Symbol('machinery-appearance'),failure});
+        }
+      }
+      if (error.name !== 'AbortError' && !waitingForClearance) console.warn('[render] appearance replacement retained previous visual', id, error);
+      return { status: 'retained', error };
+    }).finally(() => {
+      scope.finish();
+      if (pending.get(id) === record) pending.delete(id);
+    });
+    record.retirement = work.then(cleanup, cleanup).finally(() => {
+      gpuOwners.delete(record);
+      if (retirements.get(id) === record) retirements.delete(id);
+    });
+    retirements.set(id, record);
+    observePipelineAdmission(record.retirement,
+      (error) => console.warn('[render] appearance replacement cleanup failed', id, error));
+    return record.completion;
+  },
+
+
+  // Use the existing residency poll, not another timer/queue. Explicit appearance events start
+  // a fresh budget; a transient miss gets bounded backoff while its last admitted body remains.
+  _retryUnboundMachineryAppearances(now=performance.now()) {
+    const failures=this._unboundMachineryAppearanceFailures;
+    if(!failures?.size)return;
+    for(const [kind,row] of failures) {
+      const e=row.entity,state=this.state;
+      if(state!==row.state || state.render!==row.renderState || this.scene!==row.scene || this.renderer!==row.nativeRenderer
+          || state.render?.admissionRunGeneration!==row.generation || state.world?.currentSectorId!==row.sector
+          || state.entities.get(e.id)!==e || e.alive===false || e.occupantGeneration!==row.life
+          || (ceresWorkfleetRole(e) ? `ceres_${ceresWorkfleetRole(e)}` : null)!==kind || machineryRequestedPresentation(e)!==row.place || this._meshes.get(e.id) || e.mesh
+          || this._rendererResourcesDisposed===true) {failures.delete(kind);continue;}
+      if(this._contextLost===true || this._contextRecovery?.pending===true
+          || row.failure.attempts>=4 || now<row.failure.retryAt
+          || this._appearanceReplacements?.has(e.id) || this._appearanceRetirements?.has(e.id))continue;
+      this.rebuildShipMesh(e.id,{retry:true});
+    }
+  },
+
+  _retainMachineryAppearanceWork(entity, mesh) {
+    if (!ceresWorkfleetRole(entity)) return false;
+    const failure=mesh?.userData?.appearanceReplacementFailure;
+    return this._appearanceReplacements?.has(entity.id) === true
+      || (failure?.retryable === true && failure.attempts < 4);
+  },
+
+  _retryAppearanceReplacement(entity, mesh, now = performance.now()) {
+    const failure = mesh?.userData?.appearanceReplacementFailure;
+    if (failure && (this.state.entities.get(entity.id) !== entity || entity.alive === false
+        || failure.isCurrentOwner?.(entity) === false)) {
+      delete mesh.userData.appearanceReplacementFailure;
+      return false;
+    }
+    if (this._contextLost === true || this._contextRecovery?.pending === true
+        || this._rendererResourcesDisposed === true
+        || !failure || failure.retryable !== true || failure.attempts >= 4 || now < failure.retryAt
+        || this._appearanceReplacements?.has(entity.id)
+        || this._appearanceRetirements?.has(entity.id)
+        || this._meshes.get(entity.id) !== mesh || entity.mesh !== mesh) return false;
+    this.rebuildShipMesh(entity.id, { retry: true });
+    return true;
+  },
 
   _entityViewCullBounds() {
     const camObj = this.cam && this.cam.obj;
@@ -18785,6 +19137,8 @@ export const render = {
           userData._appliedLodLevel = lodLevel;
         }
       }
+      // Keeper masks remain correctness at every LOD and decorative sleep cadence.
+      if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
@@ -18943,6 +19297,9 @@ export const render = {
       if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
           && userData.updateAuthoredMotion) {
         userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y);
+      } else if (entity && userData.updateCeresPhysicalState) {
+        // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
+        userData.updateCeresPhysicalState(entity, _worldSiteA11y);
       }
 
       // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale

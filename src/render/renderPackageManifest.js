@@ -2861,6 +2861,76 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "3631dfd1916a1dad409db0e23762cb8643dc9b112f445e15491c3180caf380a1",
     "sourceUrl": "assets/ships/release/parts/places/place_wasp_frag_aft.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-second-measure",
+    "expectedContentHash": "fae71668505180337c4e70120a1e5796dd41d3918e18c3a68b0e5b34d9e8d003",
+    "key": "ceres-second-measure",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE",
+    "slot": "place",
+    "sourceSha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+    "sourceUrl": "assets/ships/release/parts/places/place_ceres_second_measure.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-second-measure-long-plate",
+    "expectedContentHash": "a05c52e309e7f18527e2223c660ab3a2adc5a60c6233fa876556b73947f07aa7",
+    "key": "ceres-second-measure-long-plate",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE",
+    "slot": "place",
+    "sourceSha256": "29625dac9588d3d9e44f8b88c46cd2fb679d0e3cb492ddafd4d3199562ebc61b",
+    "sourceUrl": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-second-measure-crossbeam",
+    "expectedContentHash": "124d562da92abfd836acbfbf19e42731402fa708062dfcec2794e78af6d351f3",
+    "key": "ceres-second-measure-crossbeam",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM",
+    "slot": "place",
+    "sourceSha256": "985bac61950a8ec8c1754ad444627e8aa7ffa8a083cee3dedb4cf0a5fbc24187",
+    "sourceUrl": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-second-measure-keel",
+    "expectedContentHash": "5c63ceb103485d9197506a71cf6c994bb6adb5c20d6e883cf926ef4dd906046d",
+    "key": "ceres-second-measure-keel",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE_KEEL",
+    "slot": "place",
+    "sourceSha256": "b8b0cdd789cd4de83f5766554c7ec3f72c03ea31f26d641a2c625411161b2c33",
+    "sourceUrl": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-breaker",
+    "expectedContentHash": "9da77c0cd6a239fd9162e102d270f0523dda6d0f71ee379fe07cdc8631c3cf0a",
+    "key": "ceres-breaker",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-breaker/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_CERES_BREAKER",
+    "slot": "hull",
+    "sourceSha256": "0edc8c7a224226347a6a11b0cb2a704cd0ecafafe2c40c13ea884d3282b4a69b",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ceres_breaker.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-section-cradle",
+    "expectedContentHash": "3d25e92b51041336b39a58e9016ce2de45507af673852678c3ee83990d771526",
+    "key": "ceres-section-cradle",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-section-cradle/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CERES_SECTION_CRADLE",
+    "slot": "place",
+    "sourceSha256": "f4c8e303e9cbc32760adf0243334420379a7f8d7cae68627ca653f40f065bf19",
+    "sourceUrl": "assets/ships/release/parts/places/place_ceres_section_cradle.glb"
+  },
+  {
+    "assetId": "sf.render.ceres-breaker-cutter-head",
+    "expectedContentHash": "89b29a8a89196eec035676b59e9dc0d990ccbc1f7caa53e555c0dbb7a5f29bd6",
+    "key": "ceres-breaker-cutter-head",
+    "metadataUrl": "assets/ships/release/render-packages/ceres-breaker-cutter-head/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD",
+    "slot": "place",
+    "sourceSha256": "7deac548cdab9ce20dfcd36eb1af9d5d0b75731864a6018f123c69693e30454a",
+    "sourceUrl": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb"
   }
 ];
 
