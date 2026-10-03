@@ -881,7 +881,7 @@ export const factionPresence = {
         ...(ai.activity || {}),
         kind: 'attack_run',
         reason: 'fulfillment_variance_response',
-        startedTick: this.state.tick | 0,
+        startedTick: deferredEnterTick(this.state) | 0,
         targetId: playerId,
       };
       activated++;

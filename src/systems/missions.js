@@ -1691,7 +1691,7 @@ export const missions = {
    *  via the per-station hash, but all advance on the same cadence). */
   _epoch() {
     const cfg = this.state.missions.config || MISSION_TUNING;
-    return Math.floor((this.state.simTime || 0) / (cfg.refreshSec || 600));
+    return Math.floor((deferredEnterNow(this.state) || 0) / (cfg.refreshSec || 600));
   },
 
   /** Build (or refresh) a station's board iff missing or its epoch advanced. Stable within an epoch
@@ -2598,7 +2598,7 @@ export const missions = {
    *  seam. Board generation is a dock-side boundary; per-tick simulation never sees it. Same
    *  'YYYY-MM-DD' UTC key the Crucible daily board uses, so "today" means one thing everywhere. */
   _dayKey() {
-    return `sim-day:${Math.floor(Math.max(0, Number(this.state.simTime) || 0) / 86400)}`;
+    return `sim-day:${Math.floor(Math.max(0, Number(deferredEnterNow(this.state)) || 0) / 86400)}`;
   },
 
   /** One generated offer per station per day bucket pays the featured premium. The pick is a
@@ -3721,7 +3721,7 @@ export const missions = {
     const last = legs[legs.length - 1];
     if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) return;
     const key = `${currentSectorId}->${waypoint.sectorId}`;
-    const now = state.simTime || 0;
+    const now = deferredEnterNow(state) || 0;
     if (this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
     this._lastWaypointRouteKey = key;
     this._lastWaypointRouteAt = now;
@@ -3947,7 +3947,7 @@ export const missions = {
       const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
       const short = (m.objectiveProgress || 0) < target;
       const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
-      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(this.state.simTime) || 0);
+      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(deferredEnterNow(this.state)) || 0);
       if (short && !clockOut && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
         const home = (station && station.name) || 'home';
         return {
@@ -9676,7 +9676,7 @@ export const missions = {
   _syncCampaignSidecarAfterAdvance() {
     const state = this.state;
     this._ensureCampaignSidecar();
-    syncObservedBeat(state, state.simTime || 0);
+    syncObservedBeat(state, deferredEnterNow(state) || 0);
   },
 
   /**

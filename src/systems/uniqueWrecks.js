@@ -839,7 +839,7 @@ export const uniqueWrecks = {
   // is inert until a call site passes that trigger through here.
   _scheduleSeededTimers(def, trigger) {
     const own = this._ensureState();
-    const now = Math.max(0, finite(this.state.simTime, 0));
+    const now = Math.max(0, finite(deferredEnterNow(this.state), 0));
     for (const timer of Array.isArray(def && def.seededTimers) ? def.seededTimers : []) {
       if (timer.trigger && timer.trigger !== trigger) continue;
       const key = `${def.id}:timer:${timer.id}`;

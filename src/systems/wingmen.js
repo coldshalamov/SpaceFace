@@ -13,7 +13,7 @@
 // team-0 wings — wingmen just join it.
 
 import { makeShipEntitySpec } from './ships.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import {
   WING_ORDER,
   WING_ORDER_LIMITS,
@@ -397,7 +397,7 @@ export const wingmen = {
         leashRadius: GUARD_INTERCEPT_LEASH_WU,
         preferredRange: GUARD_INTERCEPT_RANGE_WU,
         targetId: interceptId,
-        startedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+        startedTick: Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0,
       } : wingOrderActivity(fs.wingOrder, {
         playerPos: player.pos,
         anchorPos: guardAnchor,
@@ -446,7 +446,7 @@ export const wingmen = {
     fs.wingOrder = normalizeLiveWingOrder({
       kind: WING_ORDER.REGROUP,
       commandId: previousCommandId,
-      issuedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+      issuedTick: Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0,
     }, this.state.world && this.state.world.currentSectorId);
     fs.order = legacyFleetOrderFor(WING_ORDER.REGROUP);
     fs.targetRef = null;

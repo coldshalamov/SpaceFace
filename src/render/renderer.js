@@ -12225,13 +12225,22 @@ export const render = {
               ? deferredProviderTick.get(provider) : null;
             const prevDeferredEnterClock = state.render._deferredEnterClock;
             const prevDeferredEnterTick = state.render._deferredEnterTick;
-            try {
+            const pinDeferredEnter = () => {
               if (deferredEnterClock != null) state.render._deferredEnterClock = deferredEnterClock;
               if (deferredEnterTick != null) state.render._deferredEnterTick = deferredEnterTick;
+            };
+            const unpinDeferredEnter = () => {
+              state.render._deferredEnterClock = prevDeferredEnterClock;
+              state.render._deferredEnterTick = prevDeferredEnterTick;
+            };
+            try {
+              pinDeferredEnter();
               const iterator = provider(sector);
               // Chunked providers return an iterator the census drives serially to completion
               // before the next provider starts (cross-provider adoption order holds), yielding
-              // between atomic items on the same slice clock.
+              // between atomic items on the same slice clock. The pin only covers synchronous
+              // provider code — each awaited yield restores it so a yielded frame can't leak
+              // the entry's emit clock to live-path callers of the pin helpers.
               if (iterator && typeof iterator.next === 'function') {
                 for (;;) {
                   // Staleness is consulted per atomic item too: a continuous membership
@@ -12243,7 +12252,9 @@ export const render = {
                   const step = iterator.next();
                   if (step.done) break;
                   if (providerNow() - providerSliceStart >= 8) {
-                    const superseded = await providerYield();
+                    unpinDeferredEnter();
+                    let superseded = null;
+                    try { superseded = await providerYield(); } finally { pinDeferredEnter(); }
                     if (superseded) {
                       if (typeof iterator.return === 'function') iterator.return();
                       return superseded;
