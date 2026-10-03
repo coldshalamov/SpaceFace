@@ -5,6 +5,8 @@ export const PAINTED_PLANET_URL = '/assets/background/quiet-planets.png';
 // Second 2x2 atlas, same cell layout: ember world (rocky), cyan ice giant (gas), frozen rift world (ice), dune world (rocky).
 export const PAINTED_PLANET_URL_2 = '/assets/background/quiet-planets-2.png';
 export const PAINTED_RING_URL = '/assets/background/quiet-ringed-planet.png';
+// A second, clearly different ringed giant (rust-orange bands, a thin double ring tilted the other way).
+export const PAINTED_RING_URL_2 = '/assets/background/quiet-ringed-planet-2.png';
 // The generated bodies fill about 86% of each cell. Transparent gutters isolate mip filtering.
 export const PAINTED_PLANET_DIAMETER = 0.86;
 
@@ -64,11 +66,16 @@ export class PaintedPlanets {
     }, undefined, onError);
     this.extraTexture.colorSpace = THREE.SRGBColorSpace;
     makeViews(this.extraTexture, this.extraViews, 'QuietSky_PlanetB');
+    this.ringTexture2 = loader.load(PAINTED_RING_URL_2, () => {}, undefined, onError);
+    this.ringTexture2.colorSpace = THREE.SRGBColorSpace;
+    this.ringTexture2.userData.paintedPlanet = true;
+    this.ringTexture2.userData.paintedPlanetDiameter = 0.474;
   }
 
   get(spec) {
     if (this.failed || this.disposed) return null;
-    if (spec.ring) return this.ringTexture;
+    // Seed bit 1 picks between the two painted ringed giants.
+    if (spec.ring) return ((spec.seed >>> 1) & 1) ? this.ringTexture2 : this.ringTexture;
     const base = spec.type === 'gas' ? 1 : spec.type === 'ice' ? 2 : (spec.seed & 1) ? 3 : 0;
     const extras = EXTRA_CELLS[spec.type] || EXTRA_CELLS.rocky;
     // Seed bit 0 already picks the rocky base cell, so the look is chosen from the bits above it.
@@ -83,5 +90,6 @@ export class PaintedPlanets {
     this.texture.dispose();
     this.extraTexture.dispose();
     this.ringTexture.dispose();
+    this.ringTexture2.dispose();
   }
 }

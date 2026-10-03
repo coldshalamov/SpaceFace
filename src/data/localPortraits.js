@@ -9,17 +9,32 @@
 //
 // Provenance for every face: assets/portraits/locals/manifest.json.
 import { PORTRAIT_ASSET_ROOT } from './portraits.js';
+import { SECTORS } from './sectors.js';
 
 export const LOCAL_PORTRAIT_ROOT = `${PORTRAIT_ASSET_ROOT}locals/`;
 
 /** role -> number of authored faces (files `<role>_01.jpg` … `<role>_NN.jpg`). Raise a count only with its files. */
 export const LOCAL_PORTRAIT_POOL = Object.freeze({
   barkeep: 8,
+  merchant: 8,
+  pilot: 8,
+  smuggler: 8,
+  engineer: 8,
+  bounty_hunter: 8,
+  miner: 8,
 });
 
-// Bar slots step by 3 through the pool: 3 is coprime to every pool size of 8, so slots 0..7 at one station all
-// land on different faces.
+// Bar slots step by 3 through the pool, and stations by 5: both are coprime to a pool size of 8 or 16, so slots 0..7 at
+// one station all land on different faces and consecutive stations spread across the pool instead of colliding.
 const SLOT_STRIDE = 3;
+const STATION_STRIDE = 5;
+
+// Stations in data order: the ordinal spreads faces EVENLY over the stations (a hash alone left two different stations
+// with the same barkeep by luck). A station not in the data falls back to a hash of its id.
+const STATION_ORDINAL = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) STATION_ORDINAL.set(station.id, STATION_ORDINAL.size);
+}
 
 function fnvHash(text) {
   let h = 2166136261 >>> 0;
@@ -44,6 +59,8 @@ export function localPortraitForContact(contact) {
   const match = /^contact_(.+)_(\d+)$/.exec(id);
   const stationKey = match ? match[1] : id;
   const slot = match ? Number(match[2]) : 0;
-  const index = (fnvHash(`${contact.role}:${stationKey}`) + slot * SLOT_STRIDE) % count;
+  const ordinal = STATION_ORDINAL.has(stationKey) ? STATION_ORDINAL.get(stationKey) : fnvHash(stationKey);
+  // The role salt keeps two roles from stepping through their pools in lockstep.
+  const index = (ordinal * STATION_STRIDE + (fnvHash(contact.role) % count) + slot * SLOT_STRIDE) % count;
   return `${LOCAL_PORTRAIT_ROOT}${contact.role}_${String(index + 1).padStart(2, '0')}.jpg`;
 }

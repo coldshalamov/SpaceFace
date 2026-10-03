@@ -20,3 +20,10 @@ Planet clauses: volcanic ember world with glowing lava fissures; pale cyan-teal 
 frozen violet-white ice world with dark rift valleys and craters; desert world with ochre dune seas, dark highlands and salt flats.
 
 Rejected: planet_frozen v2/v3 and planet_icegiant v3 returned on a solid green key background instead of alpha.
+
+quiet-ringed-planet-2.png — second ringed giant (2026-10-03)
+planet_ring3 v2 of 3 (the first ring attempt, planet_ring2, looked like the existing ringed planet and was rejected; two later runs stalled).
+Prompt: a single photoreal ringed gas giant on a fully transparent background, matching the reference ringed planet only for rendering style and
+sun direction (upper left), but clearly different: deep rust-orange and cream banded giant with dark umber bands, small pale storm ovals, a slightly
+flattened globe, no great red spot; a thin bright double ring tilted about 12 degrees the opposite way with a narrow dark gap, casting a thin shadow on
+the globe. Globe about 47% of the canvas width (paintedPlanetDiameter 0.474), rings about 96%.
