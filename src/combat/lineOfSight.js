@@ -25,7 +25,7 @@ function segmentIntersects(a,b,c,d) {
   const cross=(p,q,r)=>(q.x-p.x)*(r.z-p.z)-(r.x-p.x)*(q.z-p.z);
   return cross(a,b,c)*cross(a,b,d)<=0&&cross(c,d,a)*cross(c,d,b)<=0;
 }
-function primitiveBlocksSegment(a, b, p) {
+export function primitiveBlocksSegment(a, b, p) {
   if (p.kind === 'circle' && p.r > 0 && pointSegmentDistance(p, a, b) < p.r) return true;
   if (p.kind === 'obb' && crossesBox(a, b, p)) return true;
   if (p.kind === 'capsule') {

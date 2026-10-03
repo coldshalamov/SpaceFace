@@ -208,7 +208,7 @@ export function offerWreckHandoff(book, entity, now) {
 }
 
 /** Bind a pending kill only to a wreck id that is already in the entity book. */
-export function bindKillStreak(book, entities, now) {
+export function bindKillStreak(book, entities, now, wreckScan) {
   if (!book || !book.pending || !book.pending.length || !entities || typeof entities.get !== 'function') {
     return null;
   }
@@ -218,14 +218,18 @@ export function bindKillStreak(book, entities, now) {
     const pending = book.pending[i];
     if (!pending.bound && t - pending.at <= 1.4) waiting = true;
   }
-  if (!waiting || typeof entities.values !== 'function') return null;
+  if (!waiting) return null;
+  const candidates = wreckScan
+    ? wreckScan
+    : (typeof entities.values === 'function' ? entities.values() : null);
+  if (!candidates) return null;
   let bound = null;
   for (let i = 0; i < book.pending.length; i++) {
     const pending = book.pending[i];
     if (pending.bound || t - pending.at > 1.4) continue;
     let best = null;
     let bestD = 48;
-    for (const entity of entities.values()) {
+    for (const entity of candidates) {
       if (!entity || entity.type !== 'wreck' || entity.id == null || !entity.pos) continue;
       if (entities.get(entity.id) !== entity) continue;
       const d = Math.hypot(entity.pos.x - pending.x, entity.pos.z - pending.z);

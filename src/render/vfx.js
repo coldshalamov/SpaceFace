@@ -5117,7 +5117,9 @@ export const vfx = {
     }
     const entities = this.state && this.state.entities;
     const now = this._causeNow();
-    if (entities && typeof entities.get === 'function') bindKillStreak(layer.handoff, entities, now);
+    if (entities && typeof entities.get === 'function') {
+      bindKillStreak(layer.handoff, entities, now, indexedTypeScan(this.state, 'wrecks'));
+    }
     layer.update(now, (id) => this._ent(id), this._isReduced(), entities);
   },
 
@@ -5153,7 +5155,9 @@ export const vfx = {
     const now = this._causeNow();
     layer.noteKill({ ...p, pos: { x: pos.x, z: pos.z } }, now);
     const entities = this.state && this.state.entities;
-    if (entities && typeof entities.get === 'function') bindKillStreak(layer.handoff, entities, now);
+    if (entities && typeof entities.get === 'function') {
+      bindKillStreak(layer.handoff, entities, now, indexedTypeScan(this.state, 'wrecks'));
+    }
   },
 
   _offerWreckHandoff(p) {

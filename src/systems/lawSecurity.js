@@ -8,8 +8,8 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
-import { segmentHitsProxy } from '../combat/lineOfSight.js';
-import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
+import { proxyWorldPrimitives, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
@@ -5738,26 +5738,107 @@ function finiteLawPoint(pos) {
 // formation noise rather than on the act itself. `data.sensorBlocking === true` opts a body in.
 const LAW_WITNESS_OCCLUDER_TYPES = new Set(['station', 'asteroid', 'planet', 'wreck', 'debris']);
 
-function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds) {
-  if (!observer || !observer.pos || !targetPos) return false;
-  const occludes = (occ) => {
-    if (!occ || occ.alive === false || occ.collides === false || !occ.pos) return false;
-    if (occ === observer || occ.id === observer.id) return false;
-    if (ignoredIds && ignoredIds.has(occ.id)) return false;
-    return scanLineOccluded(observer.pos, targetPos, occ);
-  };
+// One collection + proxy-resolution pass shared by every witness candidate in a query —
+// a witnessed kill evaluates tens of candidates against the same world, so the entity walk,
+// field-rock walk, manifest resolution, and primitive expansion happen once per query
+// instead of once per candidate. The candidate evaluator below mirrors scanLineOccluded
+// verdict-for-verdict on the prepared views.
+function lawWitnessOccluderPlan(state) {
+  const prepared = [];
   const entities = state && state.entities;
   if (entities && typeof entities.values === 'function') {
     for (const occ of entities.values()) {
       if (!occ || occ.type === 'asteroid') continue; // every rock is walked by forEachFieldRock
       if (!LAW_WITNESS_OCCLUDER_TYPES.has(occ.type)
         && !(occ.data && occ.data.sensorBlocking === true)) continue;
-      if (occludes(occ)) return true;
+      prepared.push(lawWitnessOccluderView(occ));
     }
   }
-  let blocked = false;
-  forEachFieldRock(state, (rec) => { if (!blocked && occludes(rec)) blocked = true; });
-  return blocked;
+  forEachFieldRock(state, (rec) => { prepared.push(lawWitnessOccluderView(rec)); });
+  return prepared;
+}
+
+function lawWitnessOccluderView(occ) {
+  const manifest = (occ && (occ.data || occ.type || occ.physicsBody))
+    ? resolveCollisionProxyManifest(occ)
+    : null;
+  if (!manifest) {
+    return { occ, primitives: null, reach: Math.max(0, Number(occ && occ.radius) || 0) };
+  }
+  const primitives = proxyWorldPrimitives(occ, manifest);
+  // Furthest primitive surface from the body's own origin, in the same finite() frame the
+  // primitives were placed — a provable over-cover of every occlusion shape.
+  const px = occ && occ.pos && Number.isFinite(occ.pos.x) ? occ.pos.x : 0;
+  const pz = occ && occ.pos && Number.isFinite(occ.pos.z) ? occ.pos.z : 0;
+  let reach = 0;
+  for (const primitive of primitives) {
+    let extent = 0;
+    if (primitive.kind === 'capsule') {
+      extent = Math.max(
+        Math.hypot(primitive.ax - px, primitive.az - pz),
+        Math.hypot(primitive.bx - px, primitive.bz - pz),
+      ) + Math.max(0, Number(primitive.r) || 0);
+    } else {
+      const body = primitive.kind === 'obb'
+        ? Math.hypot(Number(primitive.hx) || 0, Number(primitive.hz) || 0)
+        : Math.max(0, Number(primitive.r) || 0);
+      extent = Math.hypot(primitive.x - px, primitive.z - pz) + body;
+    }
+    if (extent > reach) reach = extent;
+  }
+  return { occ, primitives, reach };
+}
+
+function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluders) {
+  if (!observer || !observer.pos || !targetPos || !Array.isArray(occluders)) return false;
+  const ax = observer.pos.x;
+  const az = observer.pos.z;
+  const bx = targetPos.x;
+  const bz = targetPos.z;
+  const mx = (ax + bx) * 0.5;
+  const mz = (az + bz) * 0.5;
+  const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
+  for (const rec of occluders) {
+    const occ = rec.occ;
+    if (!occ || occ.alive === false || occ.collides === false || !occ.pos) continue;
+    if (occ === observer || occ.id === observer.id) continue;
+    if (ignoredIds && ignoredIds.has(occ.id)) continue;
+    // Every surface point of this occluder sits within `reach` of its origin; a center outside
+    // the segment's enclosing ball cannot intersect — identical verdict, no segment math.
+    const dxm = occ.pos.x - mx;
+    const dzm = occ.pos.z - mz;
+    const bound = halfLen + rec.reach;
+    if (dxm * dxm + dzm * dzm > bound * bound) continue;
+    if (rec.primitives) {
+      // segmentHitsProxy's finite guards, preserved verbatim.
+      if (!Number.isFinite(occ.pos.x) || !Number.isFinite(occ.pos.z)
+        || !Number.isFinite(ax) || !Number.isFinite(az)
+        || !Number.isFinite(bx) || !Number.isFinite(bz)) continue;
+      for (const primitive of rec.primitives) {
+        if (primitiveBlocksSegment(observer.pos, targetPos, primitive)) return true;
+      }
+      continue;
+    }
+    // Disc fallback identical to scanLineOccluded's radius path.
+    const r = rec.reach;
+    if (!(r > 0)) continue;
+    const abx = bx - ax;
+    const abz = bz - az;
+    const acx = occ.pos.x - ax;
+    const acz = occ.pos.z - az;
+    const abLen2 = abx * abx + abz * abz;
+    if (!(abLen2 > 1e-8)) {
+      if (Math.hypot(acx, acz) <= r) return true;
+      continue;
+    }
+    let t = (acx * abx + acz * abz) / abLen2;
+    if (t < 0) t = 0;
+    else if (t > 1) t = 1;
+    const dx = ax + abx * t - occ.pos.x;
+    const dz = az + abz * t - occ.pos.z;
+    if (dx * dx + dz * dz <= r * r) return true;
+  }
+  return false;
 }
 
 /**
@@ -5787,6 +5868,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
   }
   const out = [];
   const seen = new Set();
+  const occluders = lawWitnessOccluderPlan(state);
   const consider = (entity) => {
     if (!entity || !entity.pos) return;
     if (offenderEntityId != null && entity.id === offenderEntityId) return;
@@ -5795,7 +5877,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
     if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
-    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders)) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluders)) return;
     seen.add(entity.id);
     out.push({
       stableId: String(entity.data?.worldRecordId
@@ -5834,6 +5916,7 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
   if (state.playerId != null) ignoredOccluders.add(state.playerId);
   if (victimEntityId != null) ignoredOccluders.add(victimEntityId);
   const out = [];
+  const occluders = lawWitnessOccluderPlan(state);
   forEachLivingWorldActor(state, (entity) => {
     if (!entity || !entity.pos || entity.alive === false) return;
     if (entity.id === offenderEntityId || entity.id === state.playerId) return;
@@ -5843,7 +5926,7 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
     // Civilian eyes obey the same sight rule — a hauler behind a station did not watch it.
-    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders)) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluders)) return;
     out.push({
       stableId: String(entity.data?.worldRecordId
         || entity.data?.stationId

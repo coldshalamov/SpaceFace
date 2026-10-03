@@ -155,18 +155,6 @@ export function spillNoticeBarkText(seed, hullId) {
   return SPILL_NOTICE_LINES[index % SPILL_NOTICE_LINES.length];
 }
 
-function eachLiveEntity(state, fn) {
-  const entities = state && state.entities;
-  if (!entities || typeof fn !== 'function') return;
-  if (typeof entities.forEach === 'function') {
-    entities.forEach(fn);
-    return;
-  }
-  if (typeof entities.values === 'function') {
-    for (const entity of entities.values()) fn(entity);
-  }
-}
-
 /** Nearest living ship inside the watch, never the player and never a hull that missed the spill. */
 export function noticingHullForSpill(state, payload) {
   if (!state || !payload) return null;
@@ -182,9 +170,9 @@ export function noticingHullForSpill(state, payload) {
   const limit = SPILL_NOTICE_WATCH_WU * SPILL_NOTICE_WATCH_WU;
   let best = null;
   let bestD = limit;
-  eachLiveEntity(state, (entity) => {
-    if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) return;
-    if (entity.id === state.playerId) return;
+  for (const entity of indexedShipLikeOrEntitiesScan(state)) {
+    if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+    if (entity.id === state.playerId) continue;
     let nearest = Infinity;
     for (let i = 0; i < pods.length; i++) {
       const dx = entity.pos.x - pods[i].pos.x;
@@ -192,12 +180,12 @@ export function noticingHullForSpill(state, payload) {
       const d2 = dx * dx + dz * dz;
       if (d2 < nearest) nearest = d2;
     }
-    if (nearest > limit) return;
+    if (nearest > limit) continue;
     if (nearest < bestD || (nearest === bestD && best && entity.id < best.id)) {
       best = entity;
       bestD = nearest;
     }
-  });
+  }
   return best;
 }
 
