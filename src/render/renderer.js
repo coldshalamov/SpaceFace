@@ -1818,13 +1818,23 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       }
       // A deferred cohort still queued at hold end used to drain inline here — a
       // fat sector's leftover chunked steps land a real brick inside the presented
-      // blend-release frame. The hold is the only drain owner for its epoch, so
-      // instead of one inline pass keep the seam sector and retire the FIFO in
-      // 4 ms slices on the next frames (the post-hold block below).
+      // blend-release frame. The hold is the only drain owner for its epoch: while
+      // the FIFO is non-empty, re-arm the hold in beats so the tail keeps riding
+      // the deferred streaming window instead of mounting post-blend, escaped by a
+      // hard extension budget; only a spent budget (or a queue that never empties)
+      // falls to the post-hold slice drain below.
       const seamQueue = owner.state && owner.state.render
         && owner.state.render.deferredEnterMaterializers;
       if (seamQueue && seamQueue.length) {
-        owner._seamDeferredDrain = true;
+        if (!Number.isFinite(owner._seamDeferredExtendS)) owner._seamDeferredExtendS = 2;
+        if (owner._seamDeferredExtendS > 0) {
+          const beat = Math.min(0.25, owner._seamDeferredExtendS);
+          owner._seamDeferredExtendS = Math.max(0, owner._seamDeferredExtendS - beat);
+          owner._sectorHandoffStreamHoldS = beat;
+        } else {
+          owner._seamDeferredExtendS = null;
+          owner._seamDeferredDrain = true;
+        }
       } else {
         owner._sectorHandoffSectorId = null;
         owner._sectorHandoffSector = null;
@@ -9928,12 +9938,12 @@ export const render = {
         meshBuilds: this._meshBuildQueue.length - this._meshBuildQueueHead,
       };
     };
-    state.render.drainPendingPipelineAdmissions = () => {
+    state.render.drainPendingPipelineAdmissions = (options) => {
       const plan = pipelineAdmissions.capturePending();
       if (!plan || plan.pendingCount === 0) {
         return Promise.resolve({ skipped: true, pendingCount: 0 });
       }
-      return pipelineAdmissions.waitForCaptured(plan);
+      return pipelineAdmissions.waitForCaptured(plan, options);
     };
     state.render.prepareLiveSectorBeforeFlight = async () => {
       if (state.mode !== 'loading') {
@@ -10223,7 +10233,10 @@ export const render = {
       if (!recook) {
         try {
           if (cookStale()) return cookSuperseded;
-          pending = await state.render.drainPendingPipelineAdmissions();
+          pending = await state.render.drainPendingPipelineAdmissions({
+            timeoutMs: Math.min(4000, remainingMs()),
+            stale: cookStale,
+          });
         } catch (error) {
           pending = { skipped: false, error: String(error && error.message || error) };
         }
@@ -10741,7 +10754,10 @@ export const render = {
             flushPipelinesBehindShell();
             try {
               if (cookStale()) return cookSuperseded;
-              await state.render.drainPendingPipelineAdmissions();
+              await state.render.drainPendingPipelineAdmissions({
+                timeoutMs: Math.min(sliceMs, 4000),
+                stale: cookStale,
+              });
             } catch (_) { /* drain errors surface in the ledger above */ }
           }
           recordOpeningCookStep(state.render, 'live.survivalUpgradeDrain', drainStarted, drainOutcome, {
@@ -11041,7 +11057,11 @@ export const render = {
               if (settleDeadline - prepareNow() <= 0) { settleOutcome = 'timeout'; break; }
               try {
                 if (cookStale()) return cookSuperseded;
-                await admitSubjectPipelines(subject);
+                await Promise.race([
+                  admitSubjectPipelines(subject),
+                  new Promise((resolve) => setTimeout(resolve,
+                    Math.min(4000, Math.max(0, settleDeadline - prepareNow())))),
+                ]);
               } catch (_) { /* admission errors surface through the queue diagnostics */ }
             }
             if (settleOutcome === 'timeout') break;
@@ -11050,7 +11070,10 @@ export const render = {
           flushPipelinesBehindShell();
           try {
             if (cookStale()) return cookSuperseded;
-            await state.render.drainPendingPipelineAdmissions();
+            await state.render.drainPendingPipelineAdmissions({
+              timeoutMs: Math.min(sliceMs, 4000),
+              stale: cookStale,
+            });
           } catch (_) { /* drain errors surface in the ledger above */ }
         }
         recordOpeningCookStep(state.render, 'live.survivalBoundarySettle', settleStarted, settleOutcome, {
@@ -11276,7 +11299,13 @@ export const render = {
           // (headed sector-entry run70).
           programs = { skipped: false, method: 'first-flight-hulls', route };
         } else {
-          await this._compilePostRoute(route, scene, cam.obj, scene);
+          // Bound the scene compile by the cook's own budget: a wedged link used to park the
+          // shell until waitForOpeningGpuResources' outer settle (120/360 s).
+          await Promise.race([
+            this._compilePostRoute(route, scene, cam.obj, scene),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('post-route compile deadline')),
+              Math.max(0, cookDeadlineMs - (cookNow() - cookStarted)))),
+          ]);
           programs = { skipped: false, method: 'post-route', route };
         }
       } catch (error) {
@@ -11463,7 +11492,14 @@ export const render = {
               });
             } finally {
               cohort.close();
-              await Promise.allSettled(issued);
+              // The bounded drain above already surrendered the deadline — the settle tail may
+              // wait on a compile that outlived it. Cap the bookkeeping await at a short tail so
+              // it cannot re-park the cook; the link work itself continues detached.
+              await Promise.race([
+                Promise.allSettled(issued),
+                new Promise((resolve) => setTimeout(resolve,
+                  Math.min(4000, Math.max(0, cookDeadlineMs - (cookNow() - cookStarted))))),
+              ]);
               cohort.restoreEntryTarget();
             }
           }
@@ -12105,8 +12141,16 @@ export const render = {
           ? state.world.enterSerial : null;
         const deferredProviders = Array.isArray(deferredEnterWork) && deferredEnterWork.length
           ? deferredEnterWork
-              .filter((entry) => entry && typeof entry.provider === 'function'
-                && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch))
+              .filter((entry) => {
+                const live = entry && typeof entry.provider === 'function'
+                  && (entry.epoch == null || liveEnterEpoch == null || entry.epoch === liveEnterEpoch);
+                if (live) return true;
+                // A dead-epoch chunked provider still holds iteration state — close it
+                // like the FIFO drains do instead of dropping it silently.
+                try { if (entry && entry.iterator && typeof entry.iterator.return === 'function') entry.iterator.return(); }
+                catch (_) { /* drop proceeds regardless */ }
+                return false;
+              })
               .map((entry) => entry.provider)
           : null;
         // Each deferred entry carries the emit's own clock (core/sectorEnterDefer.js):
@@ -12156,6 +12200,8 @@ export const render = {
               ? deferredProviderClock.get(provider) : null;
             const deferredEnterTick = deferredProviderTick
               ? deferredProviderTick.get(provider) : null;
+            const prevDeferredEnterClock = state.render._deferredEnterClock;
+            const prevDeferredEnterTick = state.render._deferredEnterTick;
             try {
               if (deferredEnterClock != null) state.render._deferredEnterClock = deferredEnterClock;
               if (deferredEnterTick != null) state.render._deferredEnterTick = deferredEnterTick;
@@ -12189,8 +12235,10 @@ export const render = {
               } catch { /* ledger bookkeeping only */ }
               continue;
             } finally {
-              if (deferredEnterClock != null) state.render._deferredEnterClock = null;
-              if (deferredEnterTick != null) state.render._deferredEnterTick = null;
+              // Restore the previous pin — a suspended outer driver (another drain,
+              // a superseded cook's own provider window) may still be holding one.
+              state.render._deferredEnterClock = prevDeferredEnterClock;
+              state.render._deferredEnterTick = prevDeferredEnterTick;
             }
             if (providerNow() - providerSliceStart >= 8) {
               const superseded = await providerYield();
@@ -13805,6 +13853,7 @@ export const render = {
         // The post-hold slice drain holds this sector too — the census owns the
         // new epoch's entries now, so a lingering seam driver must not step them.
         this._seamDeferredDrain = false;
+        this._seamDeferredExtendS = null;
         this._sectorHandoffSectorId = null;
         this._sectorHandoffSector = null;
       }
@@ -13939,6 +13988,7 @@ export const render = {
         this._sectorHandoffStreamHoldS = exactSectorId
           ? SECTOR_VISUAL_TRANSITION_SECONDS
           : 0;
+        this._seamDeferredExtendS = null;
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;

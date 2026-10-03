@@ -153,7 +153,7 @@ import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -7905,7 +7905,7 @@ export const missions = {
     ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.MISSION_TARGET, key);
     ent.data.identityKey = key;
     ent.data.durable = true;
-    ent.data.recordCreatedTick = this.state.tick | 0;
+    ent.data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) (the contender path
     // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
     registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
@@ -8084,7 +8084,7 @@ export const missions = {
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, level, pos, {
           factionId: storyTarget && storyTarget.factionId,
-          startedTick: this.state.tick,
+          startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
@@ -8178,7 +8178,7 @@ export const missions = {
         };
         // Real haulers: friendly (team 0) ships that TRAVEL toward the destination. The lead must
         // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
-        const spec = makeEnemySpawnSpec('mule_trader', level, pos, { startedTick: this.state.tick });
+        const spec = makeEnemySpawnSpec('mule_trader', level, pos, { startedTick: deferredEnterTick(this.state) });
         spec.team = 0; spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
         spec.data = spec.data || {};
         spec.data.missionTag = m.id;
@@ -8245,7 +8245,7 @@ export const missions = {
               };
               const archetype = pool[Math.floor(rng() * pool.length)];
               const raiderLevel = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
-              const spec = makeEnemySpawnSpec(archetype, raiderLevel, pos, { startedTick: this.state.tick });
+              const spec = makeEnemySpawnSpec(archetype, raiderLevel, pos, { startedTick: deferredEnterTick(this.state) });
               spec.data = spec.data || {};
               spec.data.escortAmbushOf = String(m.id);
               let ent;
@@ -8285,7 +8285,7 @@ export const missions = {
         const e = this.state.entities.get(id);
         return e && e.alive !== false;
       });
-      const nowS = Number(this.state.simTime) || 0;
+      const nowS = Number(deferredEnterNow(this.state)) || 0;
       const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
       const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= nowS;
       if (!m.targetEntityIds.length && !clockOut) {
@@ -9398,7 +9398,7 @@ export const missions = {
     // Sidecar step/fail recovery observer (never advances beatIndex itself).
     const signal = STORY_SIGNAL_BY_KIND[kind];
     const stepResult = signal
-      ? recordBeatStep(this.state, signal, data || {}, this.state.simTime || 0)
+      ? recordBeatStep(this.state, signal, data || {}, deferredEnterNow(this.state) || 0)
       : null;
 
     // B0 is ordered AND: mining:yield then dock:docked — gate on isBeatStepsComplete.

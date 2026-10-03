@@ -469,7 +469,9 @@ export async function settleOpeningCompositionTail(state, options = {}) {
   const flushPipelineLane = () => {
     if (laneDrain || typeof render.drainPendingPipelineAdmissions !== 'function') return;
     try {
-      laneDrain = Promise.resolve(render.drainPendingPipelineAdmissions())
+      laneDrain = Promise.resolve(render.drainPendingPipelineAdmissions({
+        timeoutMs: Math.min(4000, Math.max(0, deadline - now())),
+      }))
         .catch(() => null)
         .finally(() => { laneDrain = null; });
     } catch { /* the wait below still bounds the settle */ }
@@ -518,7 +520,16 @@ export async function settleOpeningCompositionTail(state, options = {}) {
     flushPipelineLane();
     if (stats && stats.idle === true && residencyPending() === 0) break;
   }
-  if (laneDrain) { try { await laneDrain; } catch { /* best effort */ } }
+  // The tail await of the last lane drain must stay bounded: a wedged compile otherwise
+  // parks here past the budget and (worse) leaves the first-flight hold un-rearmed below.
+  if (laneDrain) {
+    try {
+      await Promise.race([
+        laneDrain,
+        new Promise((resolve) => setTimeout(resolve, Math.min(4000, Math.max(0, deadline - now())))),
+      ]);
+    } catch { /* best effort */ }
+  }
   if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene);
   const residency = residencyPending();
   return {

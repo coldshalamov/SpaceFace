@@ -96,6 +96,10 @@ export function drainDeferredEnterMaterializers(state, sector) {
     try {
       // Enter-clock pinning: durable schedulers invoked inside a provider read the
       // emit's own clock so deferred and emit delivery stamp identical dueAts.
+      // Save/restore: a suspended outer driver (census splice, hold beat) may hold
+      // its own pin — clobbering it to null would stamp its tail with live clocks.
+      const prevClock = render._deferredEnterClock;
+      const prevTick = render._deferredEnterTick;
       if (entry.clock != null) render._deferredEnterClock = entry.clock;
       if (entry.tick != null) render._deferredEnterTick = entry.tick;
       try {
@@ -103,7 +107,7 @@ export function drainDeferredEnterMaterializers(state, sector) {
         if (iterator && typeof iterator.next === 'function') {
           for (;;) { const step = iterator.next(); if (step.done) break; }
         }
-      } finally { render._deferredEnterClock = null; render._deferredEnterTick = null; }
+      } finally { render._deferredEnterClock = prevClock; render._deferredEnterTick = prevTick; }
     } catch (_) { /* isolated like a bus listener — one body's throw frees the rest */ }
   }
   queue.length = 0;
@@ -140,10 +144,12 @@ export function drainDeferredEnterSlice(state, sector, budgetMs) {
       try {
         // Enter-clock pinning (see the inline drain): schedulers inside a provider
         // read the emit's own clock so deferred delivery stamps identical dueAts.
+        const prevClock = render._deferredEnterClock;
+        const prevTick = render._deferredEnterTick;
         if (entry.clock != null) render._deferredEnterClock = entry.clock;
         if (entry.tick != null) render._deferredEnterTick = entry.tick;
         try { entry.iterator = entry.provider(sector) || null; }
-        finally { render._deferredEnterClock = null; render._deferredEnterTick = null; }
+        finally { render._deferredEnterClock = prevClock; render._deferredEnterTick = prevTick; }
       } catch (_) { entry.iterator = null; entry.done = true; }
       if (entry.iterator != null && typeof entry.iterator.next !== 'function') {
         entry.iterator = null;
@@ -152,12 +158,14 @@ export function drainDeferredEnterSlice(state, sector, budgetMs) {
     }
     if (!entry.done) {
       try {
+        const prevClock = render._deferredEnterClock;
+        const prevTick = render._deferredEnterTick;
         if (entry.clock != null) render._deferredEnterClock = entry.clock;
         if (entry.tick != null) render._deferredEnterTick = entry.tick;
         try {
           const step = entry.iterator.next();
           if (step.done) entry.done = true;
-        } finally { render._deferredEnterClock = null; render._deferredEnterTick = null; }
+        } finally { render._deferredEnterClock = prevClock; render._deferredEnterTick = prevTick; }
       } catch (_) { entry.done = true; }
     }
     if (entry.done) queue.shift();

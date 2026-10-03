@@ -587,7 +587,7 @@ export const factionPresence = {
     });
     const own = ensureOwnState(state);
     for (const presencePlan of plans) {
-      const tenderContext = ceresTenderContext(presencePlan, seed, state.tick);
+      const tenderContext = ceresTenderContext(presencePlan, seed, deferredEnterTick(state));
       if (tenderContext) {
         this._bindCeresRefineryTender(tenderContext, own);
         continue;
@@ -606,7 +606,7 @@ export const factionPresence = {
         routeId: presencePlan.routeId || null,
       };
       const receipt = {
-        t: state.simTime || 0,
+        t: deferredEnterNow(state) || 0,
         sectorId,
         factionId: presencePlan.factionId,
         entityId: entity.id || null,
@@ -701,7 +701,7 @@ export const factionPresence = {
 
     if (spawned) {
       const receipt = {
-        t: state.simTime || 0,
+        t: deferredEnterNow(state) || 0,
         sectorId: CERES_ACTIVITY_SECTOR_ID,
         factionId: context.plan.factionId,
         entityId: entity.id || null,
@@ -936,7 +936,7 @@ export const factionPresence = {
       const seed = ((this.state.meta && this.state.meta.seed) || 1) >>> 0;
       const tenderPlan = planFactionPresence({ sectorId, seed })
         .find((plan) => matchesCeresRefineryTender(plan));
-      const context = tenderPlan && ceresTenderContext(tenderPlan, seed, this.state.tick);
+      const context = tenderPlan && ceresTenderContext(tenderPlan, seed, deferredEnterTick(this.state));
       if (context) this._bindCeresRefineryTender(context, ensureOwnState(this.state));
     }
     const boarding = ensureOwnState(this.state).boarding;

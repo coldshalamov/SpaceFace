@@ -9,7 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
@@ -529,7 +529,7 @@ export const uniqueWrecks = {
 
   _receipt(type, wreckId) {
     const own = this._ensureState();
-    own.receipts.push({ type, wreckId, t: Math.max(0, finite(this.state.simTime, 0)) });
+    own.receipts.push({ type, wreckId, t: Math.max(0, finite(deferredEnterNow(this.state), 0)) });
     if (own.receipts.length > UNIQUE_WRECK_RECEIPT_LIMIT) {
       own.receipts.splice(0, own.receipts.length - UNIQUE_WRECK_RECEIPT_LIMIT);
     }
@@ -713,7 +713,7 @@ export const uniqueWrecks = {
       phase: 'rumored',
       sourceRef,
       channelId: payload.recordedChannelId || payload.channelId || source.channelId,
-      heardAtS: Math.max(0, finite(this.state.simTime, 0)),
+      heardAtS: Math.max(0, finite(deferredEnterNow(this.state), 0)),
       coordSpace: 'global_v1',
       bearingCenter: { ...placement.bearingCenterGlobal },
       radius: placement.radius,
@@ -1416,7 +1416,7 @@ export const uniqueWrecks = {
       data.scanLabel = data.scanLabel;
       if (arm) {
         data.unstableReactor = {
-          dueAt: finite(this.state.simTime) + def.reactor.timerS,
+          dueAt: finite(deferredEnterNow(this.state)) + def.reactor.timerS,
           damage: def.reactor.damage,
           vented: false,
           burst: false,

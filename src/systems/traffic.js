@@ -2028,7 +2028,7 @@ export const traffic = {
         reservedByWorldRecordId: recordId,
         reservedByActivityActorSlotId: CERES_SEAM_MINER_SLOT_ID,
         reservedByJobId: `job:${recordId}`,
-        simTime: this.state.simTime,
+        simTime: deferredEnterNow(this.state),
       });
       if (missed && this.bus && typeof this.bus.emit === 'function') {
         this.bus.emit('field:richSeamMissed', { ...missed, reason: 'owner_invalidated' });
@@ -2389,7 +2389,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.ceresActivityCast = true;
     data.ceresActivityJobOwned = !entry.service;
@@ -2526,7 +2526,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.authoredActivityCast = true;
     data.authoredActivityJobOwned = true;
@@ -3391,7 +3391,7 @@ export const traffic = {
   },
 
   _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
-    const departureAt = (Number.isFinite(this.state.simTime) ? this.state.simTime : 0)
+    const departureAt = (Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0)
       + PRIORITY_COURIER_SERVICE.dwellS;
     const dueAt = this._priorityCourierDueAt(stations, originStationId, destinationStationId, departureAt);
     if (!Number.isFinite(dueAt)) return null;
@@ -11227,7 +11227,7 @@ export const traffic = {
 
   _resetRngForSector(sectorId) {
     this._ensureState();
-    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, this.state.tick || 0);
+    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, deferredEnterTick(this.state) || 0);
   },
 
   _rng() {

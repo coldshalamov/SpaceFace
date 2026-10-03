@@ -43,7 +43,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAdmission.js';
 import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
 import {
@@ -789,7 +789,7 @@ export const asteroidSites = {
   _captureWorldSitePayloads(sectorId = null, { force = false } = {}) {
     const sites = this.state.sites;
     if (!sites || !sites.worldById) return;
-    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    const tick = Math.max(0, Math.trunc(Number(deferredEnterTick(this.state)) || 0));
     const captureTicks = this._worldPayloadCaptureTicks || (this._worldPayloadCaptureTicks = new Map());
     for (const siteId of sites.worldOrder || []) {
       const manifest = worldSiteManifestById(siteId);
