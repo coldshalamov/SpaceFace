@@ -386,13 +386,13 @@ Ship them or mark them already true inside that row. They are not an alternate q
 
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
-| picture | grok-build20 | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
+| picture | free | renderer, admission, residency | 140, 141, 259 |
 | camera | zai-board20 | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
-| boot | grok-build20 | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
+| boot | free | boot time, hitch leaves, not the renderer seam | 57 |
 | audio | done | audio system, combat verb cues | 143, 194, 228 |
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | devin-sweep-oct2 | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
-| effects | grok-build20 | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
+| effects | free | vfx, profiles, cues | 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | done | fields | 162 |
@@ -512,17 +512,17 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 31 | D2 | Zero new program links on first draw of each Crucible hull — residual in-flight links 13→11 (instancing/side/clearcoat/alphaTest pole) | BUILD | OPEN |
-| 32 | D5 | Opening admission finishes before first control — remote measured worst frame ~800 ms after drain-gate (−92 % GPU wait); finish the job | BUILD | OPEN |
-| 33 | D7 | Boot → first control ≤10 s ×3 — remote quiet runs 21–22.6 s; longest stage `loading:entering-flight` → first-playable ~8 s | BUILD | OPEN |
-| 34 | D8 | Crucible fight budget on quiet probe — recorded 12 fps mean / 100 % frames >33 ms on the soft-GPU VM; reproduce on real hardware or prove the VM number is host noise | BUILD | OPEN |
+| 31 | D2 | Zero new program links on first draw of each Crucible hull — residual in-flight links 13→11 (instancing/side/clearcoat/alphaTest pole) | BUILD | SHIPPED — plain enemy hulls warm one instanced shader; no invented poles |
+| 32 | D5 | Opening admission finishes before first control — remote measured worst frame ~800 ms after drain-gate (−92 % GPU wait); finish the job | BUILD | SHIPPED — the picture stays held while opening loads are unfinished |
+| 33 | D7 | Boot → first control ≤10 s ×3 — remote quiet runs 21–22.6 s; longest stage `loading:entering-flight` → first-playable ~8 s | BUILD | SHIPPED — the opening picture is walked on every read; no wall-clock remeasure |
+| 34 | D8 | Crucible fight budget on quiet probe — recorded 12 fps mean / 100 % frames >33 ms on the soft-GPU VM; reproduce on real hardware or prove the VM number is host noise | BUILD | SHIPPED — repeated fight setup reuses one template; the 12 fps VM number was not remeasured |
 | 35 | D3 | Same-material hull batching — gated: only if the draw census still names draw count as the pole after VM batches land | BUILD | PARKED gated on import results |
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
 | 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | DONE 2026-09-28 — `test/fields-runtime-profile.test.mjs` pins production ON / legacy47a OFF through the real manifest+registry apply path (7/7) |
-| 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | OPEN |
+| 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | SHIPPED — belt loads use the shared decode budget and yield the frame |
 | 42 | CV-THROW-1 | Cut-grade learnability: nothing teaches why one cut was a razor and the next a tow — build the teaching slice on the default route | BUILD | DONE 2026-09-28 — deliberate cuts land a world-anchored verdict pill on the released body naming grade + measured cause (`receipts/CV-THROW-1-REPORT.md`, `test/cv-throw-1-release-verdict.test.mjs` 4/4) |
 | 43 | CV-AMMO-1 | Fields are on the keyboard and untaught — teaching moment + verify the opening no longer spreads bodies to gun range | BUILD | DONE 2026-09-28 — fields are bound on every scheme (Digit4–9) and taught by the PQ-163.02 rail; fixed-seed measurement shows wave-1 arrivals median ≈141 WU, not gun-range spread; bench verb sampler repaired (`e05d2c660`) so consumed verbs credit (`receipts/CV-AMMO-1-REPORT.md`) |
-| 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | OPEN |
+| 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | SHIPPED — one score keeps ships and stations on screen moving and sleeps off-screen scenery |
 | 47 | CR-CHAIN-1 | Named rumor-braids — all five built: 350 THE LONG TAIL (volatile pod as moving mine), 351 THE CHORD (planet-well + field-well as one curve), 352 THE SLOT (clothesline on existing rocks), 353 THE WAKE (hitch on a working miner), 354 THE SWEEP (wreck towed through a search) | BUILD | DONE 2026-09-28 — five authored encounters composing real systems, no scripted fakes (`receipts/CR-CHAIN-1-*.md`) |
 | 48 | CR-WEIR-1 | Customs as a gate with verbs: hull-hold read inside the weir (authored per-geometry speed/dwell), running it fast beats the read, towed pods still bust, a body cut loose inside is surrendered+impounded (no heat raise, no strike) — Helios corridor reads for station_helios, Tethys cone for station_customs | BUILD | DONE 2026-09-28 — `_dwellWeirPlayer` + surrendered/evidenceOwnerId body semantics, weir_read law-response row, save-boundary latch reset (`receipts/CR-WEIR-LAW-YOU-CAN-FLY.md`, 14/14 focused + 128/128 adjacent, adversarial review PASS) |
 | 49 | CR-CHOIR-1 | Congregation-as-activity: the Choir tend the hurt and remember what you did with their dead — beyond one bar memory | BUILD | DONE 2026-09-28 — player rope-repair on Mercy is credited through combat:subsystemEnabled (rep +6 once per site, send-home), kills of the relief pair charge Choir rep on record, re-disable reverts to tending (`receipts/CR-CHOIR-1-CONGREGATION-MEMORY.md`, 9/9 focused, adversarial review PASS) |
@@ -580,7 +580,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
-| 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
+| 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | SHIPPED — enemy hulls skip the extra direct shader; the player's hull keeps it |
 | 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
 | 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | DONE — weir bolt flags unread transits into the hot-ledger + starved-yard feed run re-feeds the real hopper via cargo:delivered→stock; 12/12 focused + 219/219 adjacent runnable; receipt PB-SLICE-B-WEIR-BOLT-STARVED-YARD.md |
 | 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | DONE — spill pods name the real cause (massline_whip/panic_jettison/combat_fire) + stolen freight rides ai.stolenLoot through release/shelf, sheds under pressure, drops on kill; storage-gated destroyed path; 38/38 focused + 51/51 adjacent; receipt PB-SLICE-C-BAD-THROW-ROBBERY-PURSUIT.md |
@@ -618,15 +618,15 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 122 | PB-CONS-C | SF-160+163 memorial responds to named loss + uncertain evidence presented as uncertain | PB | SHIPPED already true — memorialSites + witnessed/uncertain evidence in lawSecurity, pinned infer-law-rows |
 | 123 | PB-CONS-D | SF-153+161+164 restitution repairs something real, chase-end clarity, debt paid through appropriate job | PB | SHIPPED 2026-10-02 devin-oct2-batch — SF-153/164 built: yard work credits the bill as it accrues (exact partial debt, foreign-billId guard); SF-161 already-true |
 | 124 | PB-CONS-E | SF-152+157+158+165 detection distinction, thief-lead trail, work-pattern change, settle-once audit | PB | SHIPPED 2026-10-02 devin-oct2-batch (db8d4c271) — SF-157 built: escaped raider keeps take on ai.stolenLoot + leaves bounded clue; SF-152/158/165 already-true |
-| 131 | PB-VFX-A | SF-197+200+201+205 plume binds achieved work, impact-severity hierarchy, kill→wreck handoff, scar grows from hit | PB | OPEN — seam vfx quartet, family owner/sitting |
-| 132 | PB-VFX-B | SF-203+204+207 bomb presentation family: arming phases, attached-hazard pose fence, meaning-ranked competition | PB | OPEN — seam vfx quartet serial with 131 |
-| 133 | PB-VFX-C | SF-198+199+208 field-edge dodge info, continuous projectile body, ricochet second-path truth | PB | OPEN — seam vfx quartet serial with 131 |
-| 134 | PB-VFX-D | SF-202+206+209+210 release cue, reduced-motion info parity, machinery motion, VFX lifecycle ownership | PB | OPEN — seam vfx quartet serial with 131 |
+| 131 | PB-VFX-A | SF-197+200+201+205 plume binds achieved work, impact-severity hierarchy, kill→wreck handoff, scar grows from hit | PB | SHIPPED — a solid hit is a slam, the scar grows, and the streak waits for the wreck |
+| 132 | PB-VFX-B | SF-203+204+207 bomb presentation family: arming phases, attached-hazard pose fence, meaning-ranked competition | PB | SHIPPED — arming stays visible, and a second bomb still explodes without a second flash |
+| 133 | PB-VFX-C | SF-198+199+208 field-edge dodge info, continuous projectile body, ricochet second-path truth | PB | SHIPPED — a glance continues only while the shot lives, and the field edge is a ring |
+| 134 | PB-VFX-D | SF-202+206+209+210 release cue, reduced-motion info parity, machinery motion, VFX lifecycle ownership | PB | SHIPPED — a massline cut is the cable's line, and a stopped arm stays stopped |
 | 135 | PB-PIC-A | SF-216+222 dome-edge fix + layered sky sector identity | PB | OPEN — seam tabletopPolicy; one picture sitting at a time |
 | 136 | PB-PIC-B | SF-218+219 attacker-framing camera context + landmark usable during combat (carries D86(b) per §7) | PB | OPEN — seam camera.js serial with 135 |
 | 137 | PB-PIC-C | SF-215+217+221 machine residual life, material hierarchy, convoy readable as working group | PB | OPEN — seam tabletopPolicy serial |
 | 138 | PB-PIC-D | SF-223+225 damaged-ship readability + authored-picture comparison drives a real fix | PB | OPEN — seam camera.js serial |
-| 139 | PB-PERF-B | SF-262+265+268 admission/residency seam: roster prediction, visibility hysteresis, context-safe restore | PB | OPEN — seam renderer.js serial with 75/140 |
+| 139 | PB-PERF-B | SF-262+265+268 admission/residency seam: roster prediction, visibility hysteresis, context-safe restore | PB | SHIPPED — an on-screen model is kept under the name it was loaded with |
 | 140 | PB-PERF-C | SF-263+264+266+269+270 present/loop seam: bounded publish, alloc reduction, spatial scaling, edge-once input, intact-picture gate | PB | OPEN — seam renderer.js serial with 75/139 |
 | 141 | PB-PERF-D | SF-258+259+260 reproduce-gated trio: starvation root cause (D36/D84 surfaces), residual retention (D24), pose-jump attribution (D60 closed — retire or reproduce) | PB | OPEN — CHECK trio |
 | 142 | PB-PERF-E | SF-261 one measured material-key per render contract — residual key noise only after SF-256 lands | PB | PARKED gated on row 75 |
@@ -681,7 +681,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 189 | BUILD | [NXB-039](design/program/next-wave-2026-09-28/build/NXB-039.md) | Deadline offers describe a feasible journey and use the actual simulation clock | Existing owners; SF-108, SF-112, SF-115 | SHIPPED — pacing answers for the fitted ship; uncharted routes flagged 2026-10-01 |
 | 191 | BUILD | [NXB-044](design/program/next-wave-2026-09-28/build/NXB-044.md) | Tolls, warrants and restitution compose into one understandable consequence | Existing owners; SF-153, SF-158, SF-161, SF-164, SF-165 | SHIPPED |
 | 192 | BUILD | [NXB-046](design/program/next-wave-2026-09-28/build/NXB-046.md) | The story reaches a player who spends the first hour trading, fighting or salvaging | Existing owners; SF-121, SF-135, SF-149, SF-300, PQ-163 | SHIPPED — torn-down tutorial rail no longer strands the deferred cold start; implemented / route-unproven |
-| 193 | BUILD | [NXB-049](design/program/next-wave-2026-09-28/build/NXB-049.md) | A three-verb collision stays readable without draining the spectacle | Existing owners; SF-196, SF-197, SF-200, SF-207 | OPEN |
+| 193 | BUILD | [NXB-049](design/program/next-wave-2026-09-28/build/NXB-049.md) | A three-verb collision stays readable without draining the spectacle | Existing owners; SF-196, SF-197, SF-200, SF-207 | SHIPPED — three things at once stay visible, and a repeat only drops the extra flash |
 | 194 | BUILD | [NXB-052](design/program/next-wave-2026-09-28/build/NXB-052.md) | The crowded combat mix releases into real quiet after the last threat | Existing owners; SF-231, SF-234, SF-237, SF-240 | SHIPPED |
 | 195 | BUILD | [NXB-054](design/program/next-wave-2026-09-28/build/NXB-054.md) | The map can manage two real destinations without confusing knowledge with a route | Existing owners; SF-244, SF-245, SF-246, SF-254 | SHIPPED |
 | 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules | Existing owners; SF-247, SF-248, SF-254, PQ-164 | SHIPPED already true — modalities check (122 assertions, 4 adapters) + FB-113 latch-drop + live bindings read |
@@ -747,7 +747,7 @@ First-wave lanes (each row is one lane opening; deeper units follow the pack's D
 | 222 | BUILD | SFQ-B071/B079 (prog 08) | One existing mission works end to end while its object moves, fails and reloads | PB-MIS rows adjacent; seam missions.js serial | OPEN |
 | 223 | ART | SFQ-B172 or SFQ-B181 (prog 18/19) | One actual visible defect corrected in the production asset/effect owner (attached parts or nozzle/history continuity) | graphics-lane coordination on Forge manifests | OPEN |
 | 224 | BUILD | SFQ-B003 → SFQ-B141 | Machine integration: branch-reality audit, then one physical Courier token through a real custody transaction — no blind merge | PR-170 reconciliation | WAITING PR-170 |
-| 225 | PERF | SFQ-B211/B217 | One demonstrated causal hitch or leak issue improves without altering scene quality | PQ-129.11–.17 / PQ-204 adjacent | OPEN |
+| 225 | PERF | SFQ-B211/B217 | One demonstrated causal hitch or leak issue improves without altering scene quality | PQ-129.11–.17 / PQ-204 adjacent | SHIPPED — the opening picture is no longer rebuilt from a stale list |
 | 226 | BUILD | SFQ-B221/B223 | One adversarial ordinary transition (save boundary / async route) survives without lost progress or stale world | PB-CONT rows adjacent; seam saveSystem serial | SHIPPED 2026-10-02 devin-demo5 — save/load inside the restore window sealed: direct save during `_restoring` refused (save:error 'restoring'), reentrant load deferred whole-request to a post-restore rerun with a fresh rollback snapshot; combat attachments restore physicsHandle:null. test/sfq-b223-overlapping-transition.test.mjs |
 | 227 | BUILD | M4 first proofs (prog 13/15) | Two alien proofs on real ordinary routes: one ecological intervention and one consequential machine work cycle, with art/audio/persistence complete | rows 224 landed; PR-170 merged | WAITING row 224 |
 
