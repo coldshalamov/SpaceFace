@@ -143,6 +143,7 @@ import {
 } from '../missions/heistMissionRuntime.js';
 import { priceProceduralOffer, offerMixForTier, economicRiskTier, standingWorkTier } from '../economy/economyMissionTerms.js';
 import { actionById as salvageActionById } from '../data/salvageActions.js';
+import { towClassMassFor } from './shipCapabilities.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
@@ -1129,7 +1130,7 @@ function missionNavReason(m, station, sector) {
       : `Find the bounty near ${sectorName}`;
     case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
     case 'recon_scan': return `Scan sites in ${sectorName}`;
-    case 'tow_recovery': return `Tow the slag core to ${stationName}, or sling it into the yard`;
+    case 'tow_recovery': return `Tow the ${p.massU} t slag core to ${stationName}, or sling it into the yard`;
     case 'demolition': return `Knock down the marked tower in ${sectorName}`;
     case 'rescue_under_fire': return `Pull the life pods out of ${sectorName}`;
     case AUTHORED_SET_PIECE_TYPE: return m.title || `Finish the physical job in ${sectorName}`;
@@ -2911,7 +2912,12 @@ export const missions = {
         return { scanTargets, progress: 0, fValue: 1 + scanTargets * 0.25, taskTime: scanTargets * 25 };
       }
       case 'tow_recovery': {
-        const massU = 28 + Math.floor(rng() * 18);
+        // SF-117 — the ceiling is the fit's real tow class: a stronger drive grows the heaviest
+        // core this board will post, and the extra pay comes through the real cargoValue terms
+        // (mass × price), never a multiplier. Under the standard band nothing changes, and a
+        // lighter fit is never refused — the mass law decides whether the load gets under way.
+        const towCeil = Math.max(45, Math.floor(this._playerTowClassMassT() * 1.15));
+        const massU = 28 + Math.floor(rng() * (towCeil - 27));
         const cargoValue = massU * 22;
         return {
           massU, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 40,
@@ -2938,6 +2944,17 @@ export const missions = {
       default:
         return { fValue: 1, taskTime: 30 };
     }
+  },
+
+  /**
+   * SF-117 — the fit's real tow class in tonnes, read off the player entity's published derived
+   * block (the same block the fit screen and the tether law consume). 0 when no block exists —
+   * callers fall back to the standard band rather than guessing.
+   */
+  _playerTowClassMassT() {
+    const p = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+    const derived = p && p.data && p.data.derived;
+    return derived ? Math.max(0, Number(towClassMassFor(derived)) || 0) : 0;
   },
 
   /**
@@ -2981,7 +2998,7 @@ export const missions = {
       case 'passenger_transport': return p.passenger
         ? `Take ${p.passenger.name} to ${destName}`
         : `Transport a passenger to ${destName}`;
-      case 'tow_recovery': return `Tow the slag core to ${destName}`;
+      case 'tow_recovery': return `Tow the ${p.massU} t slag core to ${destName}`;
       case 'demolition': return `Knock down the tower near ${destName}`;
       case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
       case AUTHORED_SET_PIECE_TYPE: return p.title || `Physical set piece at ${destName}`;
