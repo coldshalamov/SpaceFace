@@ -224,6 +224,9 @@ export const FIRST_USE_LINE = Object.freeze({
   // TEACH-03 — the cadence winch is taught by the first swing that could actually pump,
   // not by a straight tow that would lie about the gesture.
   masslineCadenceWinch: 'Swing carries — reel under BOOST to pump.',
+  // TEACH-05 — the mass seed's first deploy names the warning-then-collapse rule it lives
+  // by; the lesson belongs at the deploy, never at the collapse.
+  massSeedDeploy: 'Anchor seed out — it warns, then it folds.',
   masslineBulletTime: 'Hold to stretch time.',
   masslineCloak: 'Coast to stay hidden.',
   // FB-013 — the four silent heads announce themselves once, on the head's first defining

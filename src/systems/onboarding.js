@@ -728,6 +728,13 @@ export const onboarding = {
       if (!massline2Flag('bombPropulsion')) return;
       this._showHint('bombPropulsion', firstUseLine('bombPropulsion'), p);
     });
+    // TEACH-05 — the first mass seed deploy is spoken with the warning-then-collapse rule
+    // the seed lives by. Once per profile; a foreign owner's deploy never teaches it.
+    bus.on('massSeed:deployed', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
+      this._showHint('massSeedDeploy', firstUseLine('massSeedDeploy'), p);
+    });
 
     this._lastControlMode = null;
   },
