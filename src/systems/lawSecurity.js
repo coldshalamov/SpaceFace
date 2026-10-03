@@ -66,6 +66,7 @@ import {
   collectLivingWorldActors,
   findLivingWorldActor,
   forEachExplicitWitnessMarker,
+  forEachFieldRock,
   forEachJobInteractable,
   forEachLivingWorldActor,
   indexedShipLikeScan,
@@ -193,6 +194,17 @@ const LAWFUL_INSPECTION_SETTLED_PATROL_CAP = 12;
 // the same stable reportId the witnessed path would have used.
 const UNREPORTED_KILL_CAP = 24;
 
+// PB-CONS-A / SF-159 verdict escalation window. A kill's cause says HOW the victim died; the
+// recent-harm window says WHETHER the scene was an accident. An isolated contact — a bump, a
+// single thrown hull — stays an accident (the reckless tier). Sustained player-caused harm to
+// the same victim inside the window means the pilot kept at it, so a collision death inside a
+// continued attack is murder, not a traffic mishap. This only re-reads harm the charge path
+// already adjudicates: unprovoked-hit chips still never convict on their own.
+const SUSTAINED_HARM_WINDOW_S = 10;
+const SUSTAINED_HARM_MIN_EVENTS = 3;
+const SUSTAINED_HARM_VICTIM_CAP = 24;
+const SUSTAINED_HARM_EVENT_CAP = 16;
+
 // High-security lawful coverage: a WANTED player lingering in well-policed space eventually draws
 // a reserve patrol even below the bounty band. The exposure clock only runs while wanted AND in a
 // high-sec sector; the post threshold is seeded per (sector, epoch) so the arrival is deterministic
@@ -240,12 +252,14 @@ export const lawSecurity = {
     this._onSectorExit = (payload) => {
       this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
       this._observeInspectionSectorExit(payload);
+      this._clearHarmWindows(); // victim ids recycle across sectors — history cannot cross the jump
       this._sanctuaryQuiet = null;
     };
     this._onSaveRestoring = () => {
       this._releaseAllJobResponses('save_restoring');
       this._resetInspectionTransient();
       this._resetWeirTransient();
+      this._clearHarmWindows();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -857,6 +871,10 @@ export const lawSecurity = {
     }
 
     if (attacker.id === state.playerId && target.id !== state.playerId) {
+      // SF-159 verdict escalation window: remember the hit. A kill verdict later reads this
+      // bounded recent-harm history to tell an isolated contact (accident) from a continued
+      // attack (murder). Recording is not accusing — chips still never convict on their own.
+      this._noteHarmOnVictim(target.id);
       // Already hostile at first contact: the fight was lawful before it began. The combat
       // receipt carries the FROZEN first-hit truth, so a victim who only turned hostile by
       // retaliating to the player's own first shot still flows through as a crime scene —
@@ -920,6 +938,67 @@ export const lawSecurity = {
       attacker.id === state.playerId
         ? (isLawful(target) ? 'player_assault' : 'player_piracy')
         : (isLawful(target) ? 'hostile_fire' : 'npc_piracy'));
+  },
+
+  /**
+   * SF-159 — bounded recent-harm history per victim (session-scoped, like `incidents`; a save
+   * boundary or sector hop drops it and the next contact starts a fresh window — the window
+   * degrades toward mercy, never toward a stranger's accusation). Not serialized.
+   */
+  _noteHarmOnVictim(victimId) {
+    const state = this.state;
+    if (!state || victimId == null) return;
+    const own = ensureState(state);
+    if (!own.harmWindows || typeof own.harmWindows !== 'object' || Array.isArray(own.harmWindows)) {
+      own.harmWindows = {};
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const key = String(victimId);
+    let row = own.harmWindows[key];
+    if (!row) {
+      row = { lastT: now, events: [] };
+      own.harmWindows[key] = row;
+    }
+    row.lastT = now;
+    row.events.push(now);
+    while (row.events.length > SUSTAINED_HARM_EVENT_CAP) row.events.shift();
+    const keys = Object.keys(own.harmWindows);
+    if (keys.length <= SUSTAINED_HARM_VICTIM_CAP) return;
+    // Bounded: evict the stalest victim window, never the row just written.
+    let oldestKey = null;
+    let oldestT = Infinity;
+    for (const k of keys) {
+      const t = own.harmWindows[k] && Number.isFinite(own.harmWindows[k].lastT)
+        ? own.harmWindows[k].lastT
+        : -Infinity;
+      if (t < oldestT) { oldestT = t; oldestKey = k; }
+    }
+    if (oldestKey != null && oldestKey !== key) delete own.harmWindows[oldestKey];
+  },
+
+  /** Player-caused harm events on this victim inside the rolling window; prunes as it reads. */
+  _recentHarmCount(victimId, windowS) {
+    const state = this.state;
+    const own = state && state.lawSecurity;
+    const row = own && own.harmWindows && own.harmWindows[String(victimId)];
+    if (!row || !Array.isArray(row.events)) return 0;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const cutoff = now - Math.max(0, Number(windowS) || 0);
+    let write = 0;
+    for (let i = 0; i < row.events.length; i++) {
+      if (row.events[i] >= cutoff) row.events[write++] = row.events[i];
+    }
+    row.events.length = write;
+    if (row.events.length === 0) {
+      delete own.harmWindows[String(victimId)];
+      return 0;
+    }
+    return row.events.length;
+  },
+
+  _clearHarmWindows() {
+    const own = this.state && this.state.lawSecurity;
+    if (own && own.harmWindows) own.harmWindows = {};
   },
 
   _retaliate(victim, attacker) {
@@ -2053,6 +2132,8 @@ export const lawSecurity = {
       pos,
       offenderEntityId: request.offenderEntityId,
       radius: LAW_INCIDENT_WITNESS_RADIUS,
+      // The reporting victim's own body (e.g. a robbed station) never occludes its own scene.
+      ignoreEntityIds: [victim && victim.id, request.victimEntityId, request.victimId],
     });
     if (witnesses.length === 0) {
       return this._denyIncidentReport('no_witness', { reportId, kind, causalTick });
@@ -2232,6 +2313,12 @@ export const lawSecurity = {
     const causality = compactKillCausality(payload, state.playerId);
     const collisionKill = causality.cause === KillCause.TERRAIN_COLLISION
       || causality.cause === KillCause.SHIP_COLLISION;
+    // SF-159: a collision kill's verdict reads the recent-harm window. An isolated contact —
+    // a bump, one thrown hull — is an accident and stays at the reckless tier; sustained
+    // player-caused harm inside the window is a continued attack, so the collision death it
+    // ends is murder, not a mishap. Non-collision causes already charge as attacks.
+    const harmEvents = collisionKill ? this._recentHarmCount(payload.id, SUSTAINED_HARM_WINDOW_S) : 0;
+    const sustainedAssault = collisionKill && harmEvents >= SUSTAINED_HARM_MIN_EVENTS;
     const victim = entityById(state, payload.id);
     const victimType = payload.type || (victim && victim.type);
     if (!LAW_KILL_ADJUDICATION_TYPES.has(victimType)) return;
@@ -2265,6 +2352,7 @@ export const lawSecurity = {
       || null;
     const witnesses = lawWitnessesNear(state, {
       pos, offenderEntityId: state.playerId, radius: LAW_KILL_WITNESS_RADIUS,
+      ignoreEntityIds: [payload.id], // the victim's own hull is never its own cover
     }).filter((w) => w.entityId !== payload.id); // the dead cannot testify
     const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id);
     const witnessStableIds = directWitnessIds(state, [witnesses, civilians]);
@@ -2273,8 +2361,10 @@ export const lawSecurity = {
     const victimFactionId = (victim && victim.factionId) || payload.factionId || null;
     // Lawful-network victims still charge as lawful_kill when someone saw the act. Collision
     // deaths of ordinary victims charge as reckless_kill — the witnessed outcome is materially
-    // lighter than murder, and the heat owner prices the kind, not this file.
+    // lighter than murder — UNLESS the recent-harm window proves a continued attack, which
+    // prices the full unlawful kill. The heat owner prices the kind, not this file.
     const chargeKind = factionLawful ? 'lawful_kill'
+      : sustainedAssault ? 'unlawful_kill'
       : collisionKill ? 'reckless_kill' : 'unlawful_kill';
 
     // THE ONE WITNESS TRUTH. factions.js consumes this receipt instead of running its own
@@ -2301,6 +2391,8 @@ export const lawSecurity = {
         cause: causality.cause,
         surface: causality.surface,
         playerCaused: causality.playerCaused === true,
+        sustainedAssault: sustainedAssault === true,
+        harmEvents: collisionKill ? harmEvents : null,
         kind: outcome === 'charged' ? chargeKind : null,
         reportId,
         stationId: jurisdiction ? jurisdiction.stationId : null,
@@ -2341,6 +2433,8 @@ export const lawSecurity = {
         kind: chargeKind,
         killCause: causality.cause,
         surface: causality.surface,
+        sustainedAssault: sustainedAssault === true,
+        harmEvents: collisionKill ? harmEvents : null,
         pos: { x: pos.x, z: pos.z },
         causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
         reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
@@ -2411,6 +2505,8 @@ export const lawSecurity = {
       victimStableId,
       victimClass: payload.victimClass || null,
       killCause: causality.cause,
+      sustainedAssault: sustainedAssault === true,
+      harmEvents: collisionKill ? harmEvents : null,
       causalTick,
       stationId: jurisdiction ? jurisdiction.stationId : null,
       factionId: (jurisdiction && jurisdiction.factionId)
@@ -2434,7 +2530,7 @@ export const lawSecurity = {
       attackerId: state.playerId,
       targetId: payload.id,
       stationId: receipt.stationId,
-      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
     });
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_validated', {
@@ -2561,6 +2657,8 @@ export const lawSecurity = {
       victimStableId: pending.victimStableId,
       victimClass: pending.victimClass || null,
       killCause: pending.killCause || null,
+      sustainedAssault: pending.sustainedAssault === true,
+      harmEvents: Number.isInteger(pending.harmEvents) ? pending.harmEvents : null,
       causalTick,
       stationId: null,
       factionId: pending.victimFactionId || null,
@@ -4185,6 +4283,7 @@ export const lawSecurity = {
       pos,
       offenderEntityId: payload.killerId ?? payload.attackerId ?? state.playerId,
       radius: LAW_INCIDENT_WITNESS_RADIUS,
+      ignoreEntityIds: [entity && entity.id, payload.id, payload.entityId], // the memorial itself
     }) : [];
     const witnessed = witnesses.length > 0;
     const killerId = payload.killerId ?? payload.attackerId ?? null;
@@ -5574,6 +5673,37 @@ function finiteLawPoint(pos) {
     : null;
 }
 
+// PB-CONS-A / SF-151 — what counts as cover at law ranges. The witness gate asks "could a
+// person there actually see the act": a station bulk, a rock, a hulk — bodies a crime can be
+// hidden behind — block the sightline through the same proxy-aware segment test the customs
+// cone uses (`scanLineOccluded`). Ordinary hulls are deliberately NOT cover here, unlike the
+// 90-WU customs pod cone where a ship hides a pod: at a 450-WU kill radius a passing ship is a
+// sliver, and letting incidental traffic blind every witness would make the charge depend on
+// formation noise rather than on the act itself. `data.sensorBlocking === true` opts a body in.
+const LAW_WITNESS_OCCLUDER_TYPES = new Set(['station', 'asteroid', 'planet', 'wreck', 'debris']);
+
+function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds) {
+  if (!observer || !observer.pos || !targetPos) return false;
+  const occludes = (occ) => {
+    if (!occ || occ.alive === false || occ.collides === false || !occ.pos) return false;
+    if (occ === observer || occ.id === observer.id) return false;
+    if (ignoredIds && ignoredIds.has(occ.id)) return false;
+    return scanLineOccluded(observer.pos, targetPos, occ);
+  };
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const occ of entities.values()) {
+      if (!occ || occ.type === 'asteroid') continue; // every rock is walked by forEachFieldRock
+      if (!LAW_WITNESS_OCCLUDER_TYPES.has(occ.type)
+        && !(occ.data && occ.data.sensorBlocking === true)) continue;
+      if (occludes(occ)) return true;
+    }
+  }
+  let blocked = false;
+  forEachFieldRock(state, (rec) => { if (!blocked && occludes(rec)) blocked = true; });
+  return blocked;
+}
+
 /**
  * Who could see this. There is NO witness owner in the live codebase — jurisdiction
  * (`protectedStationAt`) and responder ranking (`rankLawfulResponders`) exist, witnesses do not — so
@@ -5584,11 +5714,21 @@ function finiteLawPoint(pos) {
  *
  * The marker exists so a facility or authored actor can be a witness without this file learning what
  * a heist is. Sorted by distance then stable id, capped — deterministic and bounded.
+ *
+ * SF-151: "in range" is not "could see". A candidate fully occluded by real cover is blind and
+ * is dropped before it can sign an accusation; the observer's own hull and any caller-ignored
+ * ids (victim, offender) never occlude.
  */
-export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius = LAW_INCIDENT_WITNESS_RADIUS } = {}) {
+export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius = LAW_INCIDENT_WITNESS_RADIUS, ignoreEntityIds = null } = {}) {
   const anchor = finiteLawPoint(pos);
   if (!state || !anchor) return [];
   const limitSq = Math.max(0, Number(radius) || 0) ** 2;
+  const ignoredOccluders = new Set();
+  if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
+  if (state.playerId != null) ignoredOccluders.add(state.playerId);
+  if (ignoreEntityIds) {
+    for (const id of ignoreEntityIds) { if (id != null) ignoredOccluders.add(id); }
+  }
   const out = [];
   const seen = new Set();
   const consider = (entity) => {
@@ -5599,6 +5739,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
     if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders)) return;
     seen.add(entity.id);
     out.push({
       stableId: String(entity.data?.worldRecordId
@@ -5632,6 +5773,10 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
   if (!state || !anchor) return [];
   const limitSq = LAW_KILL_WITNESS_RADIUS ** 2;
   const taken = new Set((alreadyCollected || []).map((w) => w.entityId));
+  const ignoredOccluders = new Set();
+  if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
+  if (state.playerId != null) ignoredOccluders.add(state.playerId);
+  if (victimEntityId != null) ignoredOccluders.add(victimEntityId);
   const out = [];
   forEachLivingWorldActor(state, (entity) => {
     if (!entity || !entity.pos || entity.alive === false) return;
@@ -5641,6 +5786,8 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
     if (!isProtectedCivilian(entity)) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
+    // Civilian eyes obey the same sight rule — a hauler behind a station did not watch it.
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders)) return;
     out.push({
       stableId: String(entity.data?.worldRecordId
         || entity.data?.stationId
