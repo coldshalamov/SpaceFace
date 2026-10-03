@@ -841,6 +841,9 @@ export const encounterDirector = {
       && state.story.depthProgramEncounters.completed || {};
     if (g.uniqueOnce && completed[shape.id]) return false;
     if (g.blockAfterOutcome && completed[shape.id] && completed[shape.id].outcome === g.blockAfterOutcome) return false;
+    // A second chapter must know its first happened: the named shape has to be in the
+    // completed record (any outcome) before this shape can fire.
+    if (g.requiresCompletedShape && !completed[g.requiresCompletedShape]) return false;
     if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
     if (Number.isFinite(g.storyBeatMin) && ((state.story && state.story.beatIndex) | 0) < g.storyBeatMin) return false;
     if (!options.ignoreMinSectorTier
