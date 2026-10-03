@@ -1591,9 +1591,10 @@ export const ships = {
         const def = defById(defId);
         const slot = slots[slotIndex];
         if (!def || !slot || fits(slot, def)) return;
+        const inst = this._takeFittedInstance(owned, slotIndex);
         owned.fittings[slotIndex] = null;
         if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
-        p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId });
+        p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
         movedHere += 1;
         this.bus.emit('toast', {
           text: (fitRefusalText(slot, def) || def.name + ' does not fit this slot') + ' It is in your inventory.',
@@ -1936,11 +1937,15 @@ export const ships = {
 
   /** Add a mission/career reward through the ships-owned inventory authority, without charging
    *  credits. Callers own idempotent reward receipts; ships owns validation + mutation. */
-  grantModule({ defId, reason = 'reward' }) {
+  grantModule({ defId, reason = 'reward', provenance, condition }) {
     const def = defById(defId);
     const p = this.state.player;
     if (!def || !p || !Array.isArray(p.moduleInventory)) return false;
     const item = { instanceId: this.nextInstanceId(), defId };
+    // NXB-032 — supported optional instance fields ride along unchanged; absence is
+    // legitimate ('unrecorded' fallback), never fabricated.
+    if (provenance != null) item.provenance = provenance;
+    if (condition != null) item.condition = condition;
     p.moduleInventory.push(item);
     this.bus.emit('module:granted', { defId, instanceId: item.instanceId, reason });
     return true;
@@ -1990,6 +1995,7 @@ export const ships = {
     p.ownedShips.push({
       defId,
       fittings: new Array(slots.length).fill(null),
+      fittedInstances: {},
       appearance: defaultShipAppearance(defId),
       livingHull: defaultLivingHull(this.state.simTime || 0),
     });
@@ -2010,8 +2016,13 @@ export const ships = {
     const def = SHIP_BY_ID.get(owned.defId);
     const base = (def && (def.buyback != null ? def.buyback : def.price)) || 0;
     const refund = Math.floor(base * 0.5);
-    // return fitted modules to inventory before scrapping the hull
-    for (const id of owned.fittings) if (id) p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId: id });
+    // return fitted modules to inventory before scrapping the hull — NXB-032: the same
+    // instance (id + provenance) goes back to the hold, never a fresh mint.
+    for (let i = 0; i < owned.fittings.length; i++) {
+      if (!owned.fittings[i]) continue;
+      const inst = this._takeFittedInstance(owned, i);
+      p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId: owned.fittings[i] });
+    }
     p.ownedShips.splice(index, 1);
     if (p.activeShipIndex > index) p.activeShipIndex--;
     if (refund) this.bus.emit('economy:grantCredits', { amount: refund, reason: 'sellShip:' + owned.defId });
@@ -2098,6 +2109,35 @@ export const ships = {
     return null;
   },
 
+  /** NXB-032 — `owned.fittings[]` owns slot occupancy (defIds consumed by stats/UI/save);
+   *  `owned.fittedInstances` owns the IDENTITY of that occupancy so a recovered unique
+   *  module survives fit/unfit/displacement/sale as the same instance. Reconcile is
+   *  lazy: an occupancy without a matching record gets one minted (legacy saves and
+   *  direct fittings writers spawn no provenance), and a record whose defId no longer
+   *  matches occupancy is dropped — the writer that changed occupancy already routed
+   *  the module. Never mints a second copy of a live occupancy. */
+  _reconcileFittedInstance(owned, slotIndex) {
+    const defId = owned.fittings[slotIndex];
+    if (!owned.fittedInstances) owned.fittedInstances = {};
+    const inst = owned.fittedInstances[slotIndex];
+    if (!defId) {
+      delete owned.fittedInstances[slotIndex];
+      return null;
+    }
+    if (inst && inst.defId === defId && inst.instanceId) return inst;
+    const minted = { instanceId: this.nextInstanceId(), defId };
+    owned.fittedInstances[slotIndex] = minted;
+    return minted;
+  },
+
+  /** Remove the slot's identity record and return it — the caller routes it somewhere
+   *  real (hold, sale); the record must not linger or the module duplicates. */
+  _takeFittedInstance(owned, slotIndex) {
+    const inst = this._reconcileFittedInstance(owned, slotIndex);
+    if (inst && owned.fittedInstances) delete owned.fittedInstances[slotIndex];
+    return inst;
+  },
+
   /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
    *  slot on the active (or given) owned ship. */
   fitModule({ shipIndex, slotIndex, instanceId, defId }) {
@@ -2138,14 +2178,22 @@ export const ships = {
     }
 
     const existing = owned.fittings[slotIndex];
+    // NXB-032 — lift the displaced module's identity record before the slot is overwritten.
+    const displaced = existing ? this._takeFittedInstance(owned, slotIndex) : null;
 
     // remove the module from inventory if it came from there
     const fittedInventoryItem = invIdx >= 0 ? p.moduleInventory.splice(invIdx, 1)[0] : null;
 
     owned.fittings[slotIndex] = defId;
+    if (!owned.fittedInstances) owned.fittedInstances = {};
+    // A defId-only fit (bought straight into the slot) mints a fresh record; an inventory
+    // fit carries its provenance/condition through unchanged.
+    owned.fittedInstances[slotIndex] = fittedInventoryItem
+      ? { ...fittedInventoryItem, defId }
+      : { instanceId: this.nextInstanceId(), defId };
 
     // Unfit whatever previously occupied the slot back to inventory after validation succeeds.
-    if (existing) p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId: existing });
+    if (displaced) p.moduleInventory.push({ ...displaced });
 
     this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
     this.recomputeIfActive(shipIndex, owned.fittings);
@@ -2159,13 +2207,18 @@ export const ships = {
     const defId = owned.fittings[slotIndex];
     if (!defId) return false;
 
+    const inst = this._takeFittedInstance(owned, slotIndex);
     owned.fittings[slotIndex] = null;
     if (this.wouldOverflowCargo(owned)) {
       owned.fittings[slotIndex] = defId; // revert
+      if (inst) {
+        if (!owned.fittedInstances) owned.fittedInstances = {};
+        owned.fittedInstances[slotIndex] = inst;
+      }
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
       return false;
     }
-    p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId });
+    p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
     this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
     this.recomputeIfActive(shipIndex, owned.fittings);
     return true;

@@ -1542,6 +1542,9 @@ export const uniqueWrecks = {
               && ships.grantModule({
                 defId: reward.id,
                 reason: `unique-wreck:${def.id}:${choice.id}`,
+                // NXB-032 — the recovered instance keeps where it came from through
+                // hold/fit/resale; plain string reads through formatInstanceProvenance.
+                provenance: `Recovered: ${def.name || def.id}`,
               }));
             if (granted) own.grants[reward.id] = { wreckId: def.id, grantedAtS: resolvedAtS };
           }

@@ -627,7 +627,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 119 | PB-BUILD-C | SF-121+127+130+132 starter-identity proofs, charge-after-fit race verify, route-geometry upgrade, drawback management | PB | OPEN |
 | 120 | PB-CONS-A | SF-151+159 witness-validated intake legibility + verdict escalation windows | PB | OPEN — law pair; reproduce first |
 | 121 | PB-CONS-B | SF-156+162 rescued worker returns to work + scavenger occupation switch | PB | OPEN — aftermath pair |
-| 122 | PB-CONS-C | SF-160+163 memorial responds to named loss + uncertain evidence presented as uncertain | PB | OPEN — ledger pair |
+| 122 | PB-CONS-C | SF-160+163 memorial responds to named loss + uncertain evidence presented as uncertain | PB | SHIPPED already true — memorialSites + witnessed/uncertain evidence in lawSecurity, pinned infer-law-rows |
 | 123 | PB-CONS-D | SF-153+161+164 restitution repairs something real, chase-end clarity, debt paid through appropriate job | PB | OPEN — custody trio |
 | 124 | PB-CONS-E | SF-152+157+158+165 detection distinction, thief-lead trail, work-pattern change, settle-once audit | PB | OPEN — CHECK quartet |
 | 125 | PB-DISC-A | SF-166+168 wreck-trail navigation + survey feeds a trade decision | PB | OPEN — seam scanReveal+scanner |
@@ -718,7 +718,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 205 | BUILD | [NXB-023](design/program/next-wave-2026-09-28/build/NXB-023.md) | A congested receiver offers a physical sorting job with a real throughput consequence | Existing owners; SF-091, SF-093, SF-098, SF-102 | OPEN |
 | 206 | BUILD | [NXB-024](design/program/next-wave-2026-09-28/build/NXB-024.md) | Repair consumes delivered materials and preserves unfinished work | Existing owners; SF-077, SF-094, SF-101, SF-274 | SHIPPED — receipts name retained total/threshold; projection + map history readout of remaining work 2026-10-01 |
 | 207 | BUILD | [NXB-028](design/program/next-wave-2026-09-28/build/NXB-028.md) | A damaged delivery settles explicit partial terms instead of binary magical failure | NXB-025; SF-096, SF-114, SF-146 | OPEN |
-| 208 | BUILD | [NXB-032](design/program/next-wave-2026-09-28/build/NXB-032.md) | A recovered unique module keeps its identity and condition through fitting and resale | Existing owners; SF-131, SF-134, SF-155, SF-280 | OPEN |
+| 208 | BUILD | [NXB-032](design/program/next-wave-2026-09-28/build/NXB-032.md) | A recovered unique module keeps its identity and condition through fitting and resale | Existing owners; SF-131, SF-134, SF-155, SF-280 | SHIPPED — fittedInstances identity map; implemented / route-unproven |
 | 209 | BUILD | [NXB-034](design/program/next-wave-2026-09-28/build/NXB-034.md) | A relay convoy can return partially successful without fabricating profit | Existing owners; SF-103, SF-108, SF-112, SF-119 | SHIPPED |
 | 210 | BUILD | [NXB-036](design/program/next-wave-2026-09-28/build/NXB-036.md) | Station growth creates a usable route change, not only a throughput number | NXB-027; SF-117, SF-130, SF-177, PQ-170 | OPEN |
 | 211 | BUILD | [NXB-040](design/program/next-wave-2026-09-28/build/NXB-040.md) | A heist handover is committed by actual custody, with one honest chance to withdraw | NXB-025; SF-137, SF-145, SF-147, CR-HOLLOW-1 | OPEN |
