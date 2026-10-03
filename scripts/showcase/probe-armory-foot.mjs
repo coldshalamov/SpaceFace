@@ -1,7 +1,11 @@
 // Verify the docked armory footer: Install must be inside the reading pane at scrollTop=0.
 import { bootShowcase } from './lib/harness.mjs';
 
-const { page, browser, server } = await bootShowcase({ viewport: { width: 960, height: 540 } });
+const vp = {
+  width: Number(process.env.PROBE_W) || 960,
+  height: Number(process.env.PROBE_H) || 540,
+};
+const { page, browser, server } = await bootShowcase({ viewport: vp });
 const sh = (expr, arg) => page.evaluate(expr, arg);
 const settle = (ms) => page.waitForTimeout(ms);
 
@@ -52,7 +56,7 @@ try {
     return { buyBottom: buy && (buy.getBoundingClientRect().bottom | 0), paneBottom: reading && (reading.getBoundingClientRect().bottom | 0) };
   });
   console.log('deep-scroll:', JSON.stringify(deep));
-  await page.screenshot({ path: 'media/armory-foot-960.png' });
+  await page.screenshot({ path: `media/armory-foot-${vp.width}x${vp.height}.png` });
 } finally {
   await browser.close(); server.close();
 }
