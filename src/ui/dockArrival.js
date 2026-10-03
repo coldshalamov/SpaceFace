@@ -98,6 +98,23 @@ function localNews(state, stationId) {
   return null;
 }
 
+/**
+ * The pocket's own deed news (stationContacts keeps the latest notable lane event per
+ * sector). Fresher than it is loud: the berth line speaks it as "the station heard", once
+ * the sector's event is still inside its news window. Read-only, like every dock line.
+ */
+function localDeedLine(state) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const deed = sectorId && state.stationLife && state.stationLife.deeds
+    ? state.stationLife.deeds[sectorId] : null;
+  if (!deed || !deed.text) return null;
+  const simTime = Number(state.simTime) || 0;
+  if (simTime - (Number(deed.simTime) || 0) > DEED_NEWS_TTL_S) return null;
+  return `DOCK LOG: ${String(deed.text).replace(/\s+/g, ' ').trim()}`;
+}
+
+const DEED_NEWS_TTL_S = 1800;
+
 function leftoverCardFields(card) {
   if (!card || !card.badge || !card.title || !card.body) return null;
   return {
@@ -400,7 +417,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const stationId = station.id || station.stationId || '';
   const action = primaryActionFor(state);
   const rumor = leftoverRumorLine(state, stationId);
-  const news = rumor || localNews(state, stationId);
+  const news = rumor || localNews(state, stationId) || localDeedLine(state);
   const route = leftoverRouteLine(state, stationId);
   const traffic = localTraffic(state, stationId) || route;
   const paperwork = paperworkFor(state);
