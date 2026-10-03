@@ -586,6 +586,16 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
 // _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
 // per-entity `{ type: typeName }` allocation.
 const _shadowFallbackEntity = { id: undefined, type: '' };
+// livingMachineScore destructures its options synchronously — same contract as the
+// scratches above: every field is rewritten per entity, nothing retains the struct.
+const _livingMachineOptions = {
+  isPlayer: false,
+  onGlass: false,
+  distanceWu: 0,
+  speedWu: 0,
+  role: '',
+  glassRadiusWu: 800,
+};
 
 // Projection/LOD retain: skip updateLod when hysteresis keeps the same band.
 // Asteroid/station updateLod used to re-traverse every visible frame; ships already self-retain.
@@ -1027,7 +1037,13 @@ function entityWithinPlayerRadius(entity, state, radius) {
   return relPx * relPx + relPz * relPz <= reach2;
 }
 
-function liveTableCamera(state) {
+// Every liveTableCamera caller reads the fields synchronously in the same expression that
+// follows the call (residency/shadow radii, admission env, glass extents) and none retains
+// the struct — one pooled env like _admissionEnv, with `out` left for a caller that ever
+// needs its own copy.
+const _liveTableCamera = { zoom: 0, prefetchZoom: 0, fov: 0, tilt: 0, aspect: 0 };
+
+function liveTableCamera(state, out = _liveTableCamera) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
   const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
@@ -1038,7 +1054,12 @@ function liveTableCamera(state) {
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
-  return { zoom, prefetchZoom, fov, tilt, aspect };
+  out.zoom = zoom;
+  out.prefetchZoom = prefetchZoom;
+  out.fov = fov;
+  out.tilt = tilt;
+  out.aspect = aspect;
+  return out;
 }
 
 function liveShadowCastRadius(state) {
@@ -1434,6 +1455,15 @@ function _landmarkKeepOptsFor(entity, state) {
   return _landmarkKeepOpts;
 }
 
+// Activity-frame glass/runway membership: Set.has when the frame publishes a real set,
+// array includes for the serialized/lite frames — hoisted so the per-entity residency
+// poll does not re-allocate the probe closure.
+function activityFrameListsId(collection, id) {
+  return collection && typeof collection.has === 'function'
+    ? collection.has(id)
+    : Array.isArray(collection) && collection.includes(id);
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null, options = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
@@ -1476,11 +1506,8 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   const activityFrame = state && state.render && state.render.activityFrame;
   const inboundDecode = isInboundDecodeHull(entity, state, radius, scan && scan.env);
   if (activityFrame && activityFrame.complete === true) {
-    const has = (collection) => collection && typeof collection.has === 'function'
-      ? collection.has(entity.id)
-      : Array.isArray(collection) && collection.includes(entity.id);
-    if (has(activityFrame.renderGlassIds)) return true;
-    if (has(activityFrame.renderRunwayIds)) return true;
+    if (activityFrameListsId(activityFrame.renderGlassIds, entity.id)) return true;
+    if (activityFrameListsId(activityFrame.renderRunwayIds, entity.id)) return true;
     // Ledger rows are not combat-list members, so the activity frame never
     // names them. Distance policy still owns their mesh so the rim cannot pop.
     // A just-promoted inbound hull has the same hole: requestDecodeRunwayPromote
@@ -17490,6 +17517,20 @@ export const render = {
     return this._posePackEpoch;
   },
 
+  // The state.render mirror is a stats record, not an event: consumers read the fields
+  // (runtimeWitness bytes), nothing compares wrapper identity. One stable object mutated
+  // in place keeps the per-frame pack path allocation-free.
+  _publishSnapshotFenceStats(packed) {
+    const renderState = this.state && this.state.render;
+    const fence = this._snapshotFence;
+    if (!renderState || !fence) return;
+    const info = renderState.snapshotFence
+      || (renderState.snapshotFence = { sequence: 0, packed: 0, bytes: 0 });
+    info.sequence = fence.sequence;
+    info.packed = packed;
+    info.bytes = fence.lastBytesPacked;
+  },
+
   _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
     if (!mesh || !mesh.position) return false;
     const world = this._presentationWorld;
@@ -17766,7 +17807,9 @@ export const render = {
       _viewBandOptions.radius = viewRadius;
       _viewBandOptions.forceInner = forceRender || neverCull;
       const viewBand = classifyEntityViewBand(_viewBandOptions);
-      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
+      // _viewBandOptions already carries forceInner; a middle band can only exist with it
+      // false, so the pooled struct answers exactly like the callee's `{}` default.
+      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
       let lodLevel = userData.lod ? userData.lod.level : null;
       const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
       // Projected size must measure the drawn envelope, not the presence proxy: a station's
@@ -17828,17 +17871,16 @@ export const render = {
         if (Number.isFinite(entity.speed)) planarSpeed = entity.speed;
         else if (entity.vel) planarSpeed = Math.hypot(Number(entity.vel.x) || 0, Number(entity.vel.z) || 0);
       }
-      const machineScore = livingMachineScore({
-        isPlayer,
-        onGlass: onLiveGlass,
-        distanceWu: Math.hypot(
-          (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
-          (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
-        ),
-        speedWu: planarSpeed,
-        role: typeName,
-        glassRadiusWu: glassSpan,
-      });
+      _livingMachineOptions.isPlayer = isPlayer;
+      _livingMachineOptions.onGlass = onLiveGlass;
+      _livingMachineOptions.distanceWu = Math.hypot(
+        (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
+        (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
+      );
+      _livingMachineOptions.speedWu = planarSpeed;
+      _livingMachineOptions.role = typeName;
+      _livingMachineOptions.glassRadiusWu = glassSpan;
+      const machineScore = livingMachineScore(_livingMachineOptions);
       userData.livingMachineScore = machineScore;
       userData.livingMachineAwake = livingMachineStaysInMotion(machineScore);
       if (living) {
@@ -18293,6 +18335,20 @@ export const render = {
     const originSeq = (this.state.world && this.state.world.frameOriginSeq) | 0;
     const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
     const fieldCount = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
+    // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
+    // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
+    const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
+    const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
+    const fieldStale = !!(field && Array.isArray(field.rocks))
+      && (this._worldFieldPoseOriginSeq !== originSeq
+        || this._worldFieldPoseVersion !== fieldVersion
+        || this._worldFieldPoseCount !== fieldCount);
+    const dressingStale = !!(dressing && Array.isArray(dressing.rows))
+      && (this._worldDressingPoseOriginSeq !== originSeq
+        || this._worldDressingPoseVersion !== dressingVersion
+        || this._worldDressingPoseCount !== dressingCount);
+    // Steady state is the common frame: skip before the poseRow closure is even created.
+    if (!fieldStale && !dressingStale) return 0;
     let posedField = 0;
     const poseRow = (row) => {
       if (!row || row.alive === false || !row.pos) return false;
@@ -18308,10 +18364,7 @@ export const render = {
       if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
     };
-    if ((this._worldFieldPoseOriginSeq !== originSeq
-        || this._worldFieldPoseVersion !== fieldVersion
-        || this._worldFieldPoseCount !== fieldCount)
-      && field && Array.isArray(field.rocks)) {
+    if (fieldStale) {
       const fieldDirty = field.dirtyPoseIds;
       if (this._worldFieldPoseOriginSeq !== originSeq || !(fieldDirty instanceof Set)) {
         // Origin rebase touches every row's local pose; a table without the dirty journal
@@ -18333,14 +18386,7 @@ export const render = {
       this._worldFieldPoseCount = fieldCount;
       if (posedField) invalidateAsteroidInstancePool(this._asteroidInstancePool);
     }
-    // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
-    // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
-    const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
-    const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
-    if (dressing && Array.isArray(dressing.rows)
-      && (this._worldDressingPoseOriginSeq !== originSeq
-        || this._worldDressingPoseVersion !== dressingVersion
-        || this._worldDressingPoseCount !== dressingCount)) {
+    if (dressingStale) {
       const dressingDirty = dressing.dirtyPoseIds;
       if (this._worldDressingPoseOriginSeq !== originSeq || !(dressingDirty instanceof Set)) {
         for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
@@ -18428,13 +18474,7 @@ export const render = {
         this._advancePosePackEpoch(publication),
       );
       this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
-      if (state && state.render) {
-        state.render.snapshotFence = {
-          sequence: this._snapshotFence.sequence,
-          packed,
-          bytes: this._snapshotFence.lastBytesPacked,
-        };
-      }
+      this._publishSnapshotFenceStats(packed);
     }
 
     const activityTick = state && Number.isInteger(state.tick) ? state.tick : -1;
@@ -18752,13 +18792,7 @@ export const render = {
         this._advancePosePackEpoch(publication),
       );
       this._snapshotSourceTick = completedTick;
-      if (this.state && this.state.render) {
-        this.state.render.snapshotFence = {
-          sequence: this._snapshotFence.sequence,
-          packed,
-          bytes: this._snapshotFence.lastBytesPacked,
-        };
-      }
+      this._publishSnapshotFenceStats(packed);
     }
     // While the GL context is lost, the renderer can't draw — skip all remaining per-frame work until
     // webglcontextrestored rebuilds GPU resources. The derived publication mirror remains current.
