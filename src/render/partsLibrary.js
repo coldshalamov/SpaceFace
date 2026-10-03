@@ -8165,12 +8165,18 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     // shared url::slot decode tasks join at this job's class (budget.promote + compile
     // regrade), so sustained deadline traffic cannot stall the in-flight job behind its
     // own ambient prefetch chain all the way to the stall bound.
-    const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options);
+    // Observe both outcomes immediately: this deadline load can reject while the independent
+    // prefetch below is still pending, or after that wait exits on owner cancellation. Keep its
+    // original error for the owning admission rather than leaving a temporarily unhandled promise.
+    const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options)
+      .then((library) => ({ ok: true, library }), (error) => ({ ok: false, error }));
     if (prefetchedLibrary) {
       try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
       catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
     }
-    const library = await deadlineLibrary;
+    const deadlineResult = await deadlineLibrary;
+    if (!deadlineResult.ok) throw deadlineResult.error;
+    const library = deadlineResult.library;
     assertQueuedAuthoredAdmissionActive(options, 'before-ship-composition');
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
