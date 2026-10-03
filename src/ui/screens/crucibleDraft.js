@@ -480,11 +480,14 @@ function budgetGauge(wallet, price) {
     root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y} L ${at(p).toFixed(1)} ${y}`, class: 'orr-armory-budget__short' }));
   }
   root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y - 9} L ${at(w).toFixed(1)} ${y + 9}`, class: 'orr-armory-budget__end' }));
-  // Center-anchored at the wallet marker, but clamped inside the viewBox — at wallet
-  // ≈ 0 the label used to render half off the left edge ("T 0 CR").
-  const tx = Math.max(42, Math.min(at(w), x1 - 42));
+  // Center-anchored at the wallet marker, clamped inside the viewBox by the label's own
+  // half-width — at wallet ≈ 0 an unclamped center anchors the first character off the
+  // left edge ("ALLET 0 CR").
+  const label = `WALLET ${w} CR`;
+  const half = Math.ceil(label.length * 4.5) + 4;
+  const tx = Math.max(half, Math.min(at(w), 356 - half));
   const top = svgNode('text', { x: tx.toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
-  top.textContent = `WALLET ${w} CR`;
+  top.textContent = label;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
   under.textContent = left >= 0 ? `costs ${p} \u00b7 leaves ${left}` : `short ${-left} cr`;

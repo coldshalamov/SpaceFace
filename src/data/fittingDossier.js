@@ -264,10 +264,10 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   // ---- hull-burst utilities ---------------------------------------------------
   mod_gravity_bumper_s: {
-    tip: 'The faster you arrive the farther they fly; boost into a pack and scatter it.',
+    tip: 'Boost into a pack and scatter it — arrival speed is the payload.',
   },
   mod_fire_lance_s: {
-    tip: 'Fly straight at a hull and hold the line — light and medium hulls die, heavies ignite.',
+    tip: 'Hold the nose on a hull and commit — the lance only burns what stays in front of it.',
   },
   mod_grip_bumper_s: {
     tip: 'Ram things with the catch, then key it again to let go.',
@@ -603,6 +603,10 @@ function weaponStats(def) {
   push('Blast radius', num(def.mineBlastRadius));
   push('Life', def.mineLifeS != null ? `${num(def.mineLifeS)} s` : null);
   push('Max active', num(def.mineMaxActive));
+  push('Splits', def.emergentSplit ? `×${num(def.emergentSplit.count)}` : null);
+  push('Arcs', def.emergentChain ? `${num(def.emergentChain.count)} · R${num(def.emergentChain.range)}` : null);
+  push('Bounces', def.emergentBounces != null ? num(def.emergentBounces) : null);
+  push('Generations', def.lineageGenerationMax != null ? num(def.lineageGenerationMax) : null);
   push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec)}/s` : null));
   push('Cooling', def.heatDissip != null ? `${num(def.heatDissip)}/s` : null);
   push('Energy', def.energyCost != null ? `${num(def.energyCost)}${def.continuous ? '/s' : '/shot'}` : null);
