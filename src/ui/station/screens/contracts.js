@@ -496,6 +496,11 @@ export function createContractsScreen(ctx) {
   // the pad's A feed one rAF loop that fills the key's ring AND the route's combined hold path
   // together. hold = { frac, dir, source, ms, last, frame, done }.
   let hold = null;
+  // P04 — a completed hold's 260 ms drain is a pending commit on the OFFER THAT WAS HELD, captured
+  // by identity and stated terms at fire time. A repaint, a selection/context change or an offer
+  // removal landing mid-drain retires it; a detached Accept node never falls through to whatever
+  // the dossier happens to paint now.
+  let pendingCommit = null;
   let acceptHoldMs = 450;
   let pointerAt = -1;
   let keyAt = -1;
@@ -1082,6 +1087,37 @@ export function createContractsScreen(ctx) {
     hold = null;
     paintHold();
   }
+  /**
+   * Retire a completed hold's pending commit (P04). Selection change, show-options, hide and
+   * dispose call this directly; a dossier repaint does NOT — the commit validates the captured
+   * offer identity and terms against live state and still lands on an unchanged repainted offer.
+   */
+  function cancelPendingCommit() {
+    if (pendingCommit) pendingCommit.cancelled = true;
+    pendingCommit = null;
+  }
+  /**
+   * The terms the dossier stated for this offer, as one comparable string: the payout, the rep
+   * outcomes, the collateral and upfront at risk, and the clause set. A board that no longer holds
+   * the offer answers null — which never equals a captured non-null term set.
+   */
+  function offerTermsKey(missionId, state) {
+    const offer = offers(state).find((row) => String(mid(row)) === String(missionId));
+    if (!offer) return null;
+    const cons = missionConsequenceSummary(offer) || {};
+    const clauseIds = (Array.isArray(offer.clauses) ? offer.clauses : [])
+      .map((clause) => clause && clause.id != null ? String(clause.id) : '')
+      .filter(Boolean)
+      .join('|');
+    return JSON.stringify({
+      reward: Number(cons.reward) || 0,
+      repReward: Number(cons.repReward) || 0,
+      repPenalty: Number(cons.repPenalty) || 0,
+      collateral: Number(cons.collateral) || 0,
+      upfront: missionUpfrontCost(offer),
+      clauses: clauseIds,
+    });
+  }
   function stepHold() {
     if (!hold) return;
     hold.frame = 0;
@@ -1127,25 +1163,47 @@ export function createContractsScreen(ctx) {
   function drainAndCommit(key) {
     const missionId = key ? key.getAttribute('data-accept') : null;
     const fromRect = key && typeof key.getBoundingClientRect === 'function' ? key.getBoundingClientRect() : null;
+    const drainedHold = hold;
+    // P04 — capture the held offer's identity and stated terms NOW. The retract runs ~260 ms of
+    // live rAF while the board may repaint: the commit lands only on the offer that was held, and
+    // only while that offer is still posted on the same terms.
+    const token = pendingCommit = {
+      missionId,
+      terms: offerTermsKey(missionId, ctx.state || {}),
+      cancelled: false,
+    };
     if (routeInstrument && typeof routeInstrument.flashBerth === 'function') {
       try { routeInstrument.flashBerth(); } catch (_) { /* cosmetic */ }
     }
     const commit = () => {
+      if (token.cancelled || pendingCommit !== token) return false;
+      pendingCommit = null;
       const acc = key && key.isConnected ? key : acceptKey();
       if (key) key.classList.remove('is-holding');
       endHold();
-      if (acc) acceptMission(acc);
-      if (missionId && fromRect && !reducedMotion() && typeof setTimeout === 'function') {
+      // Commit only the still-valid captured offer — never a detached-A fallback onto the
+      // dossier's current B. The accept owner revalidates the intent on its side as usual; this
+      // layer simply refuses to aim it at a contract the player did not hold.
+      const stillValid = !!(missionId && token.terms != null && acc
+        && acc.getAttribute('data-accept') === missionId
+        && el.isConnected !== false
+        && offerTermsKey(missionId, ctx.state || {}) === token.terms);
+      if (!stillValid) return false;
+      acceptMission(acc);
+      if (fromRect && !reducedMotion() && typeof setTimeout === 'function') {
         setTimeout(() => flyHomeTrack(missionId, fromRect), 160);
       }
+      return true;
     };
     if (reducedMotion() || typeof requestAnimationFrame !== 'function') { commit(); return; }
     // the retract: the head travels the run backwards, berth to key, in about a quarter second
     const t0 = holdClock();
     const bead = dossierEl.querySelector('.sx-ct-tether__bead');
     const step = () => {
+      // a retired drain lets the light die quietly — no commit, no further frames
+      if (token.cancelled || pendingCommit !== token) return;
       const t = Math.min(1, (holdClock() - t0) / 260);
-      if (hold) { hold.frac = 1 - t; paintHold(); }
+      if (hold && hold === drainedHold) { hold.frac = 1 - t; paintHold(); }
       if (t < 1) { requestAnimationFrame(step); return; }
       // the bead takes the light back: it swells as the run lands in it, then settles
       try {
@@ -1287,11 +1345,16 @@ export function createContractsScreen(ctx) {
     }
     if (options.missionId != null) selectedId = String(options.missionId);
     else if (attention && attention.focusMissionId != null) selectedId = String(attention.focusMissionId);
+    // a show/refresh that retargets the dossier is a context change: a drain armed on the old
+    // selection is retired, not aimed at the new one (P04)
+    if (pendingCommit && String(pendingCommit.missionId) !== String(selectedId)) cancelPendingCommit();
   }
 
   function select(id, focus) {
     if (id == null) return;
     if (hold && !hold.done) endHold();
+    // a selection change is a context change — a completed hold's drain must not commit under it
+    cancelPendingCommit();
     selectedId = String(id);
     const state = ctx.state || {};
     renderBoard(state); renderDossier(state);
@@ -1410,10 +1473,17 @@ export function createContractsScreen(ctx) {
       if (next && (next.attention || next.missionId != null)) applyShowOptions(next);
       renderAll((next && next.state) || ctx.state || {});
     },
+    onHide() {
+      // leaving view is a context change — a drain in flight never commits behind the player's
+      // back (P04); an unfinished hold retracts exactly as it always has.
+      cancelPendingCommit();
+      endHold();
+    },
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
       for (const stop of stopDecrypt.splice(0)) stop();
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
+      cancelPendingCommit();
       endHold();
       for (const gauge of standGauges.splice(0)) { try { gauge.dispose(); } catch (_) { /* inert */ } }
       if (tetherTailTimer) { clearTimeout(tetherTailTimer); tetherTailTimer = 0; }
