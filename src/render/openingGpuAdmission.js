@@ -483,7 +483,9 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     }
     issueMs = now() - issueStarted;
     const drainStarted = now();
-    drained = await batch.drain();
+    drained = await batch.drain(
+      deadlineMs > 0 ? { timeoutMs: Math.max(0, deadlineMs - (now() - started)) } : undefined,
+    );
     // One rejected compile must not discard the cohort's touches — every issued unit that skips
     // its draw still links inside the first presented scene pass. Settle each and keep going.
     compiled = (await Promise.allSettled(issued))

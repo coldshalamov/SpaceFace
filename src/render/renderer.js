@@ -10169,7 +10169,7 @@ export const render = {
         }
         let drained;
         try {
-          drained = state.render.drainPendingPipelineAdmissions();
+          drained = state.render.drainPendingPipelineAdmissions({ timeoutMs: 8000 });
         } catch (error) {
           drained = Promise.reject(error);
         }
@@ -10306,11 +10306,47 @@ export const render = {
       // Same deterministic arm as the jump census: registered sector:enter spawners fire
       // inside the opening cook too, so opening-flight spawns land in the composition set
       // instead of arriving on listener order after the veil lifts.
+      const openingProviderNow = () => (typeof performance !== 'undefined'
+        && typeof performance.now === 'function' ? performance.now() : Date.now());
       const openingCookProviders = this._simHelpers && this._simHelpers.sectorCookProviders;
       if (Array.isArray(openingCookProviders)) {
         const openingSector = state.world && state.world.sectors
           ? state.world.sectors[state.world.currentSectorId] : null;
-        for (const provider of openingCookProviders) provider(openingSector);
+        // Same isolation the jump census carries: a fat cohort yields between atomic
+        // steps instead of freezing the loading presenter in one burst, and a throwing
+        // provider only skips its own cook pass (its cohort was minted at emit) — the
+        // cook tail (entity census → teardown → build drain → seals → receipt) survives.
+        let openingSliceStart = openingProviderNow();
+        for (const provider of openingCookProviders) {
+          if (cookStale()) return cookSuperseded;
+          try {
+            const iterator = provider(openingSector);
+            if (iterator && typeof iterator.next === 'function') {
+              for (;;) {
+                if (cookStale()) {
+                  if (typeof iterator.return === 'function') iterator.return();
+                  return cookSuperseded;
+                }
+                const step = iterator.next();
+                if (step.done) break;
+                if (openingProviderNow() - openingSliceStart >= 8) {
+                  await yieldLiveSectorGpu();
+                  openingSliceStart = openingProviderNow();
+                }
+              }
+            }
+          } catch (providerError) {
+            try {
+              recordOpeningCookStep(state.render, 'opening.sectorCookProvider', openingSliceStart,
+                'failed', { reason: String(providerError && providerError.message || providerError) });
+            } catch { /* ledger bookkeeping only */ }
+            continue;
+          }
+          if (openingProviderNow() - openingSliceStart >= 8) {
+            await yieldLiveSectorGpu();
+            openingSliceStart = openingProviderNow();
+          }
+        }
       }
       const firstFlightEntities = recook
         ? openingEntities
@@ -10424,6 +10460,7 @@ export const render = {
       // F9 rematerializes the sector while the previous flight's meshes still
       // sit on the scene. Whole-scene compile/1x1 of that leftover set TDR'd
       // Intel during gpu-resources. Jump already dumps them before cook.
+      let leftoverSliceStart = openingProviderNow();
       for (const [id, mesh] of this._meshes) {
         const entity = resolveWorldPresentationEntity(state, id);
         if (entity && isEntityRenderRelevant(entity, state)) continue;
@@ -10435,6 +10472,11 @@ export const render = {
         this._meshesVersion += 1;
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
+        if (openingProviderNow() - leftoverSliceStart >= 8) {
+          await yieldLiveSectorGpu();
+          leftoverSliceStart = openingProviderNow();
+          if (cookStale()) return cookSuperseded;
+        }
       }
       enqueueMissingMeshBuilds(
         firstFlightEntities,

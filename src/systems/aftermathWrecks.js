@@ -8,7 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest } from './lootShards.js';
 import { peekPendingSlam } from './hullFracture.js';
@@ -2168,7 +2168,7 @@ export const aftermathWrecks = {
       zoneId: source.zoneId || null,
       kind: source.kind || 'aftermath',
       pos,
-      bornAt: Number.isFinite(source.bornAt) ? source.bornAt : (Number(state && state.simTime) || 0),
+      bornAt: Number.isFinite(source.bornAt) ? source.bornAt : (Number(deferredEnterNow(state)) || 0),
       inhabitedAt: null,
       decayed: false,
       budget: WRECK_ECOLOGY_BUDGET,
@@ -2213,7 +2213,7 @@ export const aftermathWrecks = {
         if (Number.isFinite(t) && t < bornAt) bornAt = t;
         if (!pos && marker.pos) pos = marker.pos;
       }
-      if (!Number.isFinite(bornAt)) bornAt = Number(this.state && this.state.simTime) || 0;
+      if (!Number.isFinite(bornAt)) bornAt = Number(deferredEnterNow(this.state)) || 0;
       this.registerWreckFieldSource({
         fieldId,
         sectorId,
@@ -2227,7 +2227,7 @@ export const aftermathWrecks = {
 
   _populateField(field) {
     if (!field || this._saveRestoring) return 0;
-    const now = Number(this.state && this.state.simTime) || 0;
+    const now = Number(deferredEnterNow(this.state)) || 0;
     const age = now - (Number.isFinite(field.bornAt) ? field.bornAt : 0);
     if (field.decayed || age >= WRECK_ECOLOGY_DECAY_S) {
       this._decayField(field);
