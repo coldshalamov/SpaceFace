@@ -8687,16 +8687,49 @@ export const render = {
       })) {
         const sliced = batch.flatMap((root) => collectUniqueCompileSubjects(root, openingCompileIssueKey)
           .map((subject) => ({ subject, root })));
-        return finish(compileSubjectsAcrossPresents(
-          sliced,
-          (entry) => {
-            if (!isRootActive(entry.root)) {
-              return Promise.resolve({ skipped: true, reason: 'owner-inactive' });
+        return finish((async () => {
+          // Issue each drawable's compile paced across presents without awaiting its
+          // readiness: renderer.compile() only STARTS the driver link, and pooling the
+          // program wait into one per-link readiness batch collapses the link wall to
+          // the slowest drawable instead of the sum (the opening cook's
+          // issue-all / drain-once pattern, compilePresentSlice comment).
+          const linkBatch = beginScenePipelineReadinessBatch(renderer);
+          const paceQueue = linkBatch && typeof linkBatch.paceQueue === 'function'
+            ? linkBatch.paceQueue : null;
+          const issued = [];
+          try {
+            await compileSubjectsAcrossPresents(
+              sliced,
+              (entry) => {
+                if (!isRootActive(entry.root)) {
+                  issued.push(Promise.resolve({ skipped: true, reason: 'owner-inactive' }));
+                  return Promise.resolve({ skipped: true });
+                }
+                try {
+                  issued.push(Promise.resolve(
+                    compileSubjectColorAndDepth(entry.subject, route, compileOptions),
+                  ));
+                } catch (error) {
+                  issued.push(Promise.reject(error));
+                }
+                // Serial-route queues (no KHR_parallel_shader_compile) keep each forced
+                // GL drain bounded to one unit — same pacing the opening cohort runs.
+                return paceQueue ? paceQueue() : Promise.resolve({ issued: true });
+              },
+              admissionPaceYield,
+            );
+            if (linkBatch) await linkBatch.drain({});
+            return Promise.all(issued);
+          } finally {
+            if (linkBatch) {
+              linkBatch.close();
+              await Promise.allSettled(issued);
+              linkBatch.restoreEntryTarget();
+            } else {
+              await Promise.allSettled(issued);
             }
-            return compileSubjectColorAndDepth(entry.subject, route, compileOptions);
-          },
-          admissionPaceYield,
-        ));
+          }
+        })());
       }
       if (batch.length === 1) {
         return finish(compileSubjectColorAndDepth(batch[0], route, compileOptions));
