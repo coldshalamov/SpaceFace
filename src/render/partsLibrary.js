@@ -5370,6 +5370,18 @@ export function enqueueBoundaryUpgrade(scene, job) {
   if (survivalDefersArenaDressingJob(job.entity, authoredRuntimeState())) {
     return Promise.resolve({ status: 'deferred-arena-dressing', boundary: job.boundary });
   }
+  // Cool off after an admit re-grade evict. Skipped only while the stamp is fresh AND the
+  // exact keep domain still fails on a fresh request — glass-law re-requests and a genuinely
+  // re-approaching entity pass the same predicate the admit gate runs and post normally.
+  const evictedAt = job.boundary.userData && job.boundary.userData.upgradeRegradeEvictedAt;
+  if (Number.isFinite(evictedAt)
+      && monotonicNow() - evictedAt < AUTHORED_REGRADE_REPOST_COOLDOWN_MS
+      && !runwayWantedDomain(job.entity, {
+        admissionVisible: !!(job.options && job.options.admissionVisible === true),
+        priority: authoredUpgradePriority(job),
+      })) {
+    return Promise.resolve({ status: 'regrade-evict-cooloff', boundary: job.boundary });
+  }
   let resolveCompletion;
   const completion = new Promise((resolve) => { resolveCompletion = resolve; });
   const queuedJob = {
@@ -5779,11 +5791,14 @@ const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
 // inbound — graded at a widened horizon so a rim-skimming borderline keeps its slot instead
 // of oscillating out and re-arming the whole request a poll later.
 const ADMIT_REGRADE_HORIZON_GRACE = 1.5;
-function jobRunwayRegradeStillWanted(state, job) {
-  const entity = job && job.entity;
+// ~2x the residency poll cadence: inside this window the request side declines to re-post a
+// boundary whose job the re-grade just evicted, while the same keep clauses still fail — a
+// sustained rim-grazer otherwise repeats post→prime→evict on every poll.
+const AUTHORED_REGRADE_REPOST_COOLDOWN_MS = 500;
+function runwayWantedDomain(entity, { admissionVisible = false, priority = Infinity } = {}) {
   if (!entityRidesAuthoredRunway(entity)) return true;
-  if (job.options && job.options.admissionVisible === true) return true;
-  if (authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
+  if (admissionVisible === true) return true;
+  if (priority <= STEADY_SHIP_PASS_MAX_PRIORITY) return true;
   const live = authoredRuntimeState();
   if (!live || live.mode !== 'flight') return true;
   if (entityIsOnReadableGlass(entity, live)) return true;
@@ -5794,6 +5809,19 @@ function jobRunwayRegradeStillWanted(state, job) {
   return willEntityEnterAuthoredUpgradeRunway(entity, live, {
     horizonSeconds: authoredRunwayHorizonSeconds(entity) * ADMIT_REGRADE_HORIZON_GRACE,
   });
+}
+function jobRunwayRegradeStillWanted(state, job) {
+  return runwayWantedDomain(job && job.entity, {
+    admissionVisible: !!(job && job.options && job.options.admissionVisible === true),
+    priority: authoredUpgradePriority(job),
+  });
+}
+// An evicted job cleans up synchronously, but nothing downstream of the request remembers the
+// verdict — the next residency poll would re-post the same boundary immediately. Stamp the
+// boundary so the request side cools off while the same keep clauses still fail.
+function armRegradeEvictCooloff(job) {
+  const boundary = job && job.boundary;
+  if (boundary && boundary.userData) boundary.userData.upgradeRegradeEvictedAt = monotonicNow();
 }
 function queuedGlassLawJobStillNeeded(state, job) {
   return !!(job && job.entity && jobStillNeeded(state, job)
@@ -6539,12 +6567,23 @@ export function prefetchAuthoredAssetRequests(requests, loadOne, depth = AUTHORE
 function startAuthoredJobAssetPrefetch(job) {
   const entity = job && job.entity;
   if (!entity || !job.renderer) return null;
+  const options = job.options || {};
+  // A cancelled job's prefetch chain keeps running — and its late retainLibraryPlan revives a
+  // released owner whenever the owner predicate says active, which is entity-alive rather than
+  // job-aware. Compose it with job liveness so a dead job's late retain fails closed instead of
+  // undoing the release cancelQueuedJob just performed.
+  const baseOwnerActive = typeof options.isResidencyOwnerActive === 'function'
+    ? options.isResidencyOwnerActive : null;
+  const jobScopedOptions = baseOwnerActive
+    ? { ...options,
+        isResidencyOwnerActive: () =>
+          (job.lifecycle === 'queued' || job.lifecycle === 'in-flight') && baseOwnerActive() }
+    : options;
   if (entity.type === 'ship') {
-    return preloadAuthoredAssetsForEntity(job.renderer, entity, job.options || {});
+    return preloadAuthoredAssetsForEntity(job.renderer, entity, jobScopedOptions);
   }
   const requests = authoredUpgradeAssetRequests(job);
   if (!requests.length) return null;
-  const options = job.options || {};
   const loadPart = typeof options.loadAuthoredPart === 'function' ? options.loadAuthoredPart : loadAuthoredPart;
   // Fan the requests out through the bounded prefetch pool: the slowest request, not their
   // sum, is the honest wait, and the depth cap keeps a place+overlay job's tail bounded.
@@ -6555,7 +6594,7 @@ function startAuthoredJobAssetPrefetch(job) {
     residencyOwner: options.residencyOwner,
     residencyRole: options.residencyRole,
     sectorId: options.sectorId,
-    isResidencyOwnerActive: options.isResidencyOwnerActive,
+    isResidencyOwnerActive: jobScopedOptions.isResidencyOwnerActive,
     admissionVisible: options.admissionVisible,
   }));
 }
@@ -6821,6 +6860,7 @@ function admitNextUpgradeJob(state) {
     return null;
   }
   if (!jobRunwayRegradeStillWanted(state, job)) {
+    armRegradeEvictCooloff(job);
     cancelQueuedJob(state, job);
     scheduleNextUpgradeFrame(state);
     return null;
@@ -7002,7 +7042,8 @@ function primeNextAuthoredAssetPlan(state) {
         && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
     state.firstFlightPrefetchJob = null;
     const player = liveState.entities?.get?.(liveState.playerId);
-    const eligible = state.jobs.filter((job) => firstFlightReadableGlassJob(job)
+    const eligible = state.jobs.filter((job) => (firstFlightReadableGlassJob(job)
+        || firstFlightReadableShipJob(job))
       && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
     eligible.sort((a, b) => {
       const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);
@@ -7038,6 +7079,15 @@ function primeNextAuthoredAssetPlan(state) {
     if (shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
         && otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) break;
     if (!jobStillNeeded(state, job)) {
+      const index = state.jobs.indexOf(job);
+      if (index >= 0) state.jobs.splice(index, 1);
+      cancelQueuedJob(state, job);
+      continue;
+    }
+    // The admit gate's re-grade runs here too: a departed graze sitting top-2 would otherwise
+    // pay the whole fetch+decode before admit ever sees it.
+    if (!jobRunwayRegradeStillWanted(state, job)) {
+      armRegradeEvictCooloff(job);
       const index = state.jobs.indexOf(job);
       if (index >= 0) state.jobs.splice(index, 1);
       cancelQueuedJob(state, job);
@@ -7670,9 +7720,15 @@ export function authoredCriticalVisualReadiness(state) {
             // mount hook's own predicate — attachPackagedScenarioProp no-ops without it)
             // settles through the same authoredPackageUrl admission the wreck/drone pins
             // ride; an on-runway tow body (survivor pod at +6/-4) holds the veil for its
-            // warm commit instead of swapping a beat after it lifts. Explicit-authored
-            // payloads already pin via entityRequiresAuthoredPresentation above.
-            || (entity.type === 'payload' && !!packagedPropSpec(entity)))
+            // warm commit instead of swapping a beat after it lifts. The beacon branch of
+            // the same mount domain (rescue-exit lane beacon) pins the same way, and
+            // explicit-authored payloads (PQ-019 pod, SP-07 spindle, yard-tug lots) need
+            // their own term here: autoGlassRole can't bind during loading, so without it
+            // an authored-lane payload on the opening runway reveals its resolving marker
+            // then pops in mid-reveal — the exact defect this clause exists to prevent.
+            || ((entity.type === 'payload' || entity.type === 'beacon')
+              && !!packagedPropSpec(entity))
+            || hasExplicitAuthoredPayloadPresentation(entity))
           && entity.alive !== false
           && !authoredOpeningFailedClosed(authoredAssetState(entity))
           && startupAuthoredContactOnRunway(entity, state)

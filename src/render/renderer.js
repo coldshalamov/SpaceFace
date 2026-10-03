@@ -11850,7 +11850,20 @@ export const render = {
         // sectorCookProviders instead of relying on that ordering.
         const cookProviders = this._simHelpers && this._simHelpers.sectorCookProviders;
         if (Array.isArray(cookProviders)) {
-          for (const provider of cookProviders) provider(sector);
+          // Bound the synchronous provider run: materializing the whole destination cohort
+          // in one task freezes the transition's own rAF-driven presentation. Yield once a
+          // slice spends its budget — order preserved: every provider still runs before
+          // the first-flight collect below.
+          const providerNow = () => (typeof performance !== 'undefined'
+            && typeof performance.now === 'function' ? performance.now() : Date.now());
+          let providerSliceStart = providerNow();
+          for (const provider of cookProviders) {
+            provider(sector);
+            if (providerNow() - providerSliceStart >= 8) {
+              await yieldLiveSectorGpu();
+              providerSliceStart = providerNow();
+            }
+          }
         }
         const firstFlightEntities = collectFirstFlightCookEntities(state);
         state.render.liveSectorFirstFlightIds = new Set(
@@ -11876,7 +11889,27 @@ export const render = {
         );
         const jumpBuildsStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now();
-        const jumpBuilt = this._drainMeshBuildQueue(Number.POSITIVE_INFINITY);
+        // The whole destination cohort's procedural builds used to drain unbounded inside this
+        // same task — the last un-sliced brick on the enter path, visible as a hard freeze of the
+        // jump-transition visuals. Bounded slices + a frame yield between them keep the transition
+        // presenting; same builds, same order. The late-present gate can refuse a bounded drain
+        // with zero head progress — after two consecutive refusals fall back to one unbounded
+        // pass so completion stays certain (the veil still lifts on pipelinePrecompile, so the
+        // first live frame is identical either way).
+        let jumpBuilt = 0;
+        let censusStallSlices = 0;
+        while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
+          const headBeforeSlice = this._meshBuildQueueHead;
+          jumpBuilt += this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET) || 0;
+          if (this._meshBuildQueueHead >= this._meshBuildQueue.length) break;
+          if (this._meshBuildQueueHead === headBeforeSlice) {
+            if (++censusStallSlices >= 2) {
+              jumpBuilt += this._drainMeshBuildQueue(Number.POSITIVE_INFINITY) || 0;
+              break;
+            }
+          } else censusStallSlices = 0;
+          await yieldLiveSectorGpu();
+        }
         recordOpeningCookStep(state.render, 'jump.meshBuilds', jumpBuildsStarted, 'resolved', {
           built: jumpBuilt,
           firstFlightEntities: firstFlightEntities.length,

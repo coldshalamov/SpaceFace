@@ -185,9 +185,17 @@ function witnessOccluderPlan(state) {
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
 export function witnessLineOfSight(state, observer, destination, ignored = []) {
   if (!point(observer?.pos)||!point(destination))return false;
+  const ax = observer.pos.x, az = observer.pos.z, bx = destination.x, bz = destination.z;
+  const mx = (ax + bx) * 0.5, mz = (az + bz) * 0.5;
+  const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
   for (const rec of witnessOccluderPlan(state)) {
     const entity = rec.occ;
     if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
+    // Every surface point sits within reach of its origin: a center outside the segment's
+    // enclosing ball cannot intersect — identical verdict, no segment math (law twin).
+    const dxm = entity.pos.x - mx, dzm = entity.pos.z - mz;
+    const bound = halfLen + rec.reach;
+    if (dxm * dxm + dzm * dzm > bound * bound) continue;
     if (pointSegmentDistance(entity.pos, observer.pos, destination) > rec.reach) continue;
     if (segmentHitsProxy(entity, observer.pos, destination)) return false;
   }
