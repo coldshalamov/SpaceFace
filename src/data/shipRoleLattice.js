@@ -577,6 +577,13 @@ export function describeHullRole(shipId) {
 /**
  * Compare candidate hull vs owned/current hull using real catalog + optional derived stats.
  * Never invents numbers — derived block must come from getDerivedStats when provided.
+ *
+ * NXB-030: when the derived branch runs, the motion rows quote the LIVE propulsion profile
+ * (`propulsion.combatSpeed` / `maxYawRate` / `mainAccel`) — the numbers the flight kernel
+ * actually commands — not the legacy `maxSpeed`/`turnRate`/`thrust` spec fields, which kept
+ * scaling with mass after the PQ-176 law stopped doing that. Rows carry `condition`, the words
+ * that say when the advantage is real, so a compare row can never claim a turn or speed edge
+ * the tick would not produce.
  */
 export function compareHulls(candidateId, currentId, derivedCandidate = null, derivedCurrent = null) {
   const cand = SHIP_BY_ID.get(candidateId);
@@ -585,7 +592,7 @@ export function compareHulls(candidateId, currentId, derivedCandidate = null, de
   const candDesc = describeHullRole(candidateId);
   const curDesc = cur ? describeHullRole(currentId) : null;
 
-  function pair(label, a, b, higherIsBetter = true) {
+  function pair(label, a, b, higherIsBetter = true, condition = null) {
     const av = Number(a) || 0;
     const bv = Number(b) || 0;
     let delta = av - bv;
@@ -593,25 +600,57 @@ export function compareHulls(candidateId, currentId, derivedCandidate = null, de
     if (Math.abs(delta) < 1e-6) tone = 'same';
     else if (higherIsBetter ? delta > 0 : delta < 0) tone = 'better';
     else tone = 'worse';
-    return Object.freeze({ label, candidate: av, current: bv, delta, tone, higherIsBetter });
+    return Object.freeze({
+      label, candidate: av, current: bv, delta, tone, higherIsBetter,
+      ...(condition ? { condition } : {}),
+    });
   }
+
+  // Local reads of the derived block's live profile — data/ must not import runtime systems,
+  // and these mirror exactly what systems/shipCapabilities.js exposes for the same purpose.
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const liveFightSpeed = (d) => {
+    const p = d && d.propulsion;
+    return num(p && p.combatSpeed) || num(p && p.maxSpeed)
+      || num(d && d.flightModel && d.flightModel.maxSpeed) || num(d && d.maxSpeed);
+  };
+  const liveYawCap = (d) => {
+    const p = d && d.propulsion;
+    return num(p && p.maxYawRate) || num(d && d.flightModel && d.flightModel.maxYawRate)
+      || num(d && d.turnRate);
+  };
+  const liveForwardAccel = (d) => {
+    const p = d && d.propulsion;
+    for (const key of ['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']) {
+      const v = num(p && p[key]);
+      if (v > 0) return v;
+    }
+    return num(d && d.flightModel && d.flightModel.mainAccel) || num(d && d.thrust);
+  };
 
   const rows = [];
   if (derivedCandidate && derivedCurrent) {
     rows.push(pair('Hull', derivedCandidate.hullMax, derivedCurrent.hullMax));
     rows.push(pair('Shield', derivedCandidate.shieldMax, derivedCurrent.shieldMax));
-    rows.push(pair('Cargo', derivedCandidate.cargoCap, derivedCurrent.cargoCap));
-    rows.push(pair('Max speed', derivedCandidate.maxSpeed, derivedCurrent.maxSpeed));
-    rows.push(pair('Turn rate', derivedCandidate.turnRate, derivedCurrent.turnRate));
-    rows.push(pair('Thrust', derivedCandidate.thrust, derivedCurrent.thrust));
+    rows.push(pair('Cargo', derivedCandidate.cargoCap, derivedCurrent.cargoCap, true,
+      'hold units one contract leg can accept'));
+    rows.push(pair('Fight speed', liveFightSpeed(derivedCandidate), liveFightSpeed(derivedCurrent), true,
+      'the governed cap — loading the hold never moves it, and a bigger drive does not buy it'));
+    rows.push(pair('Turn rate', liveYawCap(derivedCandidate), liveYawCap(derivedCurrent), true,
+      'the kernel yaw ceiling — only a thruster-bay refit moves it'));
+    rows.push(pair('Thrust', liveForwardAccel(derivedCandidate), liveForwardAccel(derivedCurrent), true,
+      'forward push at the printed mass — a fuller hold drops it'));
     rows.push(pair('Op. mass', derivedCandidate.operationalMass ?? derivedCandidate.mass,
-      derivedCurrent.operationalMass ?? derivedCurrent.mass, false));
+      derivedCurrent.operationalMass ?? derivedCurrent.mass, false,
+      'lighter reaches and leaves a stop sooner; heavier survives slams and tows more'));
   } else {
     rows.push(pair('Hull', cand.hull, cur ? cur.hull : 0));
     rows.push(pair('Shield', cand.shield, cur ? cur.shield : 0));
-    rows.push(pair('Cargo', cand.cargo, cur ? cur.cargo : 0));
+    rows.push(pair('Cargo', cand.cargo, cur ? cur.cargo : 0, true,
+      'hold units one contract leg can accept'));
     rows.push(pair('Handling', cand.handling, cur ? cur.handling : 0));
-    rows.push(pair('Mass', cand.mass, cur ? cur.mass : 0, false));
+    rows.push(pair('Mass', cand.mass, cur ? cur.mass : 0, false,
+      'lighter reaches and leaves a stop sooner; heavier survives slams and tows more'));
   }
 
   rows.push(pair('Weapons', slotEntries(cand, 'weapon').length, cur ? slotEntries(cur, 'weapon').length : 0));

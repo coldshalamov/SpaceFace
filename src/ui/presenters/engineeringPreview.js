@@ -21,28 +21,48 @@ import {
   getDerivedStats,
 } from '../../systems/ships.js';
 import {
+  forwardAccelFor,
+  governedFightSpeedFor,
+  governedYawRateFor,
+  travelSpeedFor,
+} from '../../systems/shipCapabilities.js';
+import {
   compareHulls,
   describeHullRole,
 } from '../../data/shipRoleLattice.js';
 
 export const ENGINEERING_PREVIEW_SCHEMA = 'spaceface.engineeringPreview.v1';
 
-/** Player-facing derived metrics shown on Shipyard/Outfitting comparison surfaces. */
+/**
+ * Player-facing derived metrics shown on Shipyard/Outfitting comparison surfaces.
+ * `condition` names the circumstance the advantage actually depends on (NXB-030) so a row
+ * or chip never reads as a blanket win; `readMetric` resolves the motion keys through the
+ * capability owner's live-profile reads — the governed fight cap, the kernel yaw ceiling,
+ * forward push at the shown mass — never the legacy spec fields.
+ */
 export const PREVIEW_METRICS = Object.freeze([
   Object.freeze({ key: 'hullMax', label: 'Hull', higherIsBetter: true }),
   Object.freeze({ key: 'shieldMax', label: 'Shield', higherIsBetter: true }),
-  Object.freeze({ key: 'cargoCap', label: 'Cargo', higherIsBetter: true }),
-  Object.freeze({ key: 'maxSpeed', label: 'Max speed', higherIsBetter: true }),
-  Object.freeze({ key: 'turnRate', label: 'Turn rate', higherIsBetter: true }),
-  Object.freeze({ key: 'thrust', label: 'Thrust', higherIsBetter: true }),
-  Object.freeze({ key: 'operationalMass', label: 'Op. mass', higherIsBetter: false }),
+  Object.freeze({ key: 'cargoCap', label: 'Cargo', higherIsBetter: true,
+    condition: 'hold units one contract leg can accept' }),
+  // 'Max speed' is the governed FIGHT cap: no drive buys it, no cargo spends it.
+  Object.freeze({ key: 'maxSpeed', label: 'Max speed', higherIsBetter: true,
+    condition: 'the governed fight cap — the hold never moves it' }),
+  Object.freeze({ key: 'travelCeiling', label: 'Travel speed', higherIsBetter: true,
+    condition: 'the burn ceiling the drive actually buys' }),
+  Object.freeze({ key: 'turnRate', label: 'Turn rate', higherIsBetter: true,
+    condition: 'the kernel yaw ceiling — only a thruster refit moves it' }),
+  Object.freeze({ key: 'thrust', label: 'Thrust', higherIsBetter: true,
+    condition: 'forward push at the shown mass' }),
+  Object.freeze({ key: 'operationalMass', label: 'Op. mass', higherIsBetter: false,
+    condition: 'lighter accelerates and stops sooner; heavier survives slams and tows more' }),
   Object.freeze({ key: 'continuousDrain', label: 'Power draw', higherIsBetter: false }),
   Object.freeze({ key: 'capMax', label: 'Energy', higherIsBetter: true }),
 ]);
 
 /** Compact shop-row subset (keeps five-second scan readable). */
 export const SHOP_DELTA_METRICS = Object.freeze([
-  'shieldMax', 'cargoCap', 'maxSpeed', 'turnRate', 'thrust', 'operationalMass', 'continuousDrain',
+  'shieldMax', 'cargoCap', 'maxSpeed', 'travelCeiling', 'turnRate', 'thrust', 'operationalMass', 'continuousDrain',
 ]);
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -153,7 +173,7 @@ export function presentGaugePacket(defId, fittings = [], player = null) {
       capRegen: null,
       shieldMax: null,
       cargoCap: null,
-      maxSpeed: null,
+      thrust: null,
       continuousDrain: null,
     });
   }
@@ -172,7 +192,9 @@ function gaugePacketFromDerived(derived) {
     capRegen: finite(derived.capRegen, 0),
     shieldMax: finite(derived.shieldMax, 0),
     cargoCap: finite(derived.cargoCap, 0),
-    maxSpeed: finite(derived.maxSpeed, 0),
+    // The 'Thrust' gauge reads what full throttle commands — forward accel at this mass —
+    // not the legacy maxSpeed spec field it used to be fed (NXB-030).
+    thrust: forwardAccelFor(derived),
     continuousDrain: finite(derived.continuousDrain, 0),
   };
 }
@@ -223,7 +245,8 @@ export function presentHullCompare(candidateDefOrId, player = {}) {
     body: why + ' ' + betterText + worseText + '.' + adj,
     compare,
     basis: 'stock',
-    note: 'Stock hull stats (empty fittings, no cargo). Outfitting changes live loadout numbers.',
+    note: 'Stock hull stats (empty fittings, no cargo) over the live flight profile. '
+      + 'Each row names the condition its advantage depends on; outfitting and a loaded hold move the numbers.',
     candidateFittings: Object.freeze(candFit),
     currentFittings: Object.freeze(curFit),
     candidateDerived: candDerived,
@@ -292,7 +315,20 @@ function deltaRow(metric, before, after) {
     delta,
     tone,
     higherIsBetter: metric.higherIsBetter,
+    ...(metric.condition ? { condition: metric.condition } : {}),
   });
+}
+
+/**
+ * The value a comparison row prints for `key`. The motion keys resolve through the
+ * capability owner's live-profile reads (shipCapabilities.js): 'maxSpeed' is the governed
+ * fight cap, 'travelCeiling' the burn ceiling, 'turnRate' the kernel yaw ceiling, 'thrust'
+ * the forward acceleration at the shown mass. The legacy derived fields of the same names
+ * keep scaling in ways the flight kernel stopped applying — quoting them advertised edges
+ * the tick never produces (NXB-030).
+ */
+export function previewMetricValue(derived, key) {
+  return readMetric(derived, key);
 }
 
 function readMetric(derived, key) {
@@ -301,6 +337,10 @@ function readMetric(derived, key) {
     const v = derived.operationalMass != null ? derived.operationalMass : derived.mass;
     return finite(v, NaN);
   }
+  if (key === 'maxSpeed') return finite(governedFightSpeedFor(derived), NaN);
+  if (key === 'travelCeiling') return finite(travelSpeedFor(derived), NaN);
+  if (key === 'turnRate') return finite(governedYawRateFor(derived), NaN);
+  if (key === 'thrust') return finite(forwardAccelFor(derived), NaN);
   return finite(derived[key], NaN);
 }
 
