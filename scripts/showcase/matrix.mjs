@@ -193,5 +193,5 @@ export const DEMOS = {
   mod_cryo_payload:      { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:statusApplied', 'combat:damage'], clip: 8 },
   mod_cryo_gyros:        { hull: H_DRIFTER, demo: 'gyros', support: ['wpn_pulse_laser_m'], ev: ['combat:statusApplied', 'combat:damage', 'combat:tumbled'], clip: 9, dist: 25 },
   mod_herald_fan:        { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:damage', 'combat:fire'], clip: 8 },
-  mod_storm_carom:       { hull: H_M, demo: 'bank', support: ['wpn_pulse_laser_s'], ev: ['combat:damage', 'projectile:hit'], clip: 8 },
+  mod_storm_carom:       { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s', 'mod_ion_payload'], ev: ['combat:damage', 'combat:statusApplied'], clip: 8 },
 };

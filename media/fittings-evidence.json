@@ -25291,32 +25291,36 @@
  },
  "mod_storm_carom": {
   "id": "mod_storm_carom",
-  "demo": "bank",
+  "demo": "trait",
   "ok": true,
   "clip": "assets/ui/fitting-media/mod_storm_carom.webm",
   "events": {
-   "combat:fire": 36,
-   "combat:fire:player": 36,
-   "projectile:hit": 36,
-   "toast": 1,
-   "combat:damage": 2
+   "combat:fire": 28,
+   "combat:fire:player": 28,
+   "combat:damage": 22,
+   "projectile:hit": 19,
+   "combat:statusApplied": 20,
+   "shieldDown": 2,
+   "combat:statusExpired": 3,
+   "combat:tumbled": 1,
+   "toast": 1
   },
   "statDiff": {
    "topSpeed": {
     "from": 300.7234469904526,
-    "to": 258.9091260873998
+    "to": 250.21141679648775
    },
    "thrust": {
     "from": 528.5100600132225,
-    "to": 492.80635350626056
+    "to": 485.37970031426937
    },
    "turnRate": {
     "from": 8.664404176810597,
-    "to": 7.022480415626736
+    "to": 6.704835142213562
    },
    "operationalMass": {
     "from": 24.0031,
-    "to": 32.0031
+    "to": 34.0031
    }
   },
   "fitOk": true,
@@ -25374,11 +25378,93 @@
      }
     }
    ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "targetId": 379,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "targetId": 379,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "targetId": 379,
+      "attackerId": 1,
+      "weaponId": "wpn_pulse_laser_s",
+      "amount": 9.2,
+      "damageType": null
+     }
+    }
+   ],
    "projectile:hit": [
     {
      "c": 1,
      "p": {
-      "targetId": 388,
+      "targetId": 380,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25386,7 +25472,7 @@
     {
      "c": 2,
      "p": {
-      "targetId": 388,
+      "targetId": 380,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25394,7 +25480,7 @@
     {
      "c": 3,
      "p": {
-      "targetId": 388,
+      "targetId": 380,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25402,7 +25488,7 @@
     {
      "c": 4,
      "p": {
-      "targetId": 388,
+      "targetId": 380,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25410,7 +25496,7 @@
     {
      "c": 5,
      "p": {
-      "targetId": 388,
+      "targetId": 380,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25418,7 +25504,7 @@
     {
      "c": 6,
      "p": {
-      "targetId": 388,
+      "targetId": 379,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25426,7 +25512,7 @@
     {
      "c": 7,
      "p": {
-      "targetId": 388,
+      "targetId": 379,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
      }
@@ -25434,9 +25520,117 @@
     {
      "c": 8,
      "p": {
-      "targetId": 388,
+      "targetId": 379,
       "weaponId": "wpn_pulse_laser_s",
       "damageType": "energy"
+     }
+    }
+   ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 380,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "targetId": 379,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "targetId": 379,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "targetId": 379,
+      "attackerId": 1,
+      "statusId": "status_ionized"
+     }
+    }
+   ],
+   "shieldDown": [
+    {
+     "c": 1,
+     "p": {}
+    },
+    {
+     "c": 2,
+     "p": {}
+    }
+   ],
+   "combat:statusExpired": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 380,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 379,
+      "statusId": "status_ionized"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 379,
+      "statusId": "status_ionized"
+     }
+    }
+   ],
+   "combat:tumbled": [
+    {
+     "c": 1,
+     "p": {
+      "attackerId": 1,
+      "source": "collision"
      }
     }
    ],
@@ -25444,30 +25638,8 @@
     {
      "c": 1,
      "p": {
-      "kind": "good",
-      "text": "Autosaved"
-     }
-    }
-   ],
-   "combat:damage": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 376,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 0.26117937915243544,
-      "damageType": null
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "targetId": 398,
-      "attackerId": null,
-      "weaponId": null,
-      "amount": 0.26117937915243544,
-      "damageType": null
+      "kind": "info",
+      "text": "Miner back to work — thanks for the cover."
      }
     }
    ]
