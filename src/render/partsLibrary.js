@@ -956,18 +956,27 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   // cook lane instead; a spindle-class payload parked in the runway margin still joins the
   // composition so its pin cannot deadlock.
   const isPackagedContact = entity.type === 'wreck' || entity.type === 'drone'
-    || (entity.type === 'payload' && !!packagedPropSpec(entity)
-      && !(entityOnOpeningTable(entity, state) && isExplicitFirstFlightCookEntity(entity)));
+    || startupPayloadOwnsVeilPin(entity, state);
   if (entity.type !== 'ship' && !isPlace && !isPackagedContact) return false;
   if (isPackagedContact) return startupAuthoredContactOnRunway(entity, state);
   const radius = tableOpeningCompositionWu(state);
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
+// A payload the packaged-prop lane can mount pins the loading veil only when its admission is
+// schedulable during loading. The on-table 47-A spindle is the exception: it owns the dedicated
+// first-flight cook lane below (it must not compose early), so pinning it here would wait on an
+// admission the gate itself cannot start. A spindle-class body parked off-table is NOT covered by
+// the cook lane (isFirstFlightCookEntity requires the table) and stays pinned + composed.
+function startupPayloadOwnsVeilPin(entity, state) {
+  if (entity.type !== 'payload' || !packagedPropSpec(entity)) return false;
+  return !(entityOnOpeningTable(entity, state) && isExplicitFirstFlightCookEntity(entity));
+}
+
 /**
- * First-flight cook set. Opening composition is ships and places only, so a nearby
- * 47-A payload (the evidence spindle) has no mesh until mode becomes flight — then
- * its untextured env-mapped standard program is a 100 ms+ bloom brick.
+ * First-flight cook set. The on-table 47-A payload (the evidence spindle) is deliberately kept
+ * out of the opening composition, so it has no mesh until this lane runs — without it the first
+ * presented frame links its untextured env-mapped standard program as a 100 ms+ bloom brick.
  */
 export function isFirstFlightCookEntity(entity, state) {
   if (isInitialAuthoredCompositionEntity(entity, state)) return true;
@@ -7683,7 +7692,10 @@ export function authoredCriticalVisualReadiness(state) {
             // ride; an on-runway tow body (survivor pod at +6/-4) holds the veil for its
             // warm commit instead of swapping a beat after it lifts. Explicit-authored
             // payloads already pin via entityRequiresAuthoredPresentation above.
-            || (entity.type === 'payload' && !!packagedPropSpec(entity)))
+            // startupPayloadOwnsVeilPin is the composition's own predicate — pinning a
+            // payload the composition cannot schedule (the on-table 47-A spindle, whose
+            // admission is the post-gate first-flight cook) deadlocks this gate.
+            || startupPayloadOwnsVeilPin(entity, state))
           && entity.alive !== false
           && !authoredOpeningFailedClosed(authoredAssetState(entity))
           && startupAuthoredContactOnRunway(entity, state)
