@@ -1,8 +1,8 @@
 // Decode-runway candidate selection. kickDecodeRunwayAssets used to copy and fully sort the
 // whole presentation list every poll with a comparator that recomputed the wave-runway match
-// and the decode seconds for both sides, then walked the sorted copy until two eligible
-// entities had started. Only the first two in that order can ever start, so this keeps the two
-// best while walking the list once: identical ordering (wave-matched first, then smaller decode
+// and the decode seconds for both sides, then walked the sorted copy until its start cap was
+// reached. Only the first K in that order can ever start, so this keeps the K best while
+// walking the list once: identical ordering (wave-matched first, then smaller decode
 // seconds, ties keep the earlier list position the stable sort gave) with one evaluation per
 // surviving candidate and no per-call allocation on the list.
 //
@@ -20,17 +20,14 @@
 const _key = { wave: 0, seconds: 0 };
 const _picks = [];
 const _claims = new Map();
+const _top = [];
 
-export function pickDecodeRunwayCandidates(list, evaluate) {
+export function pickDecodeRunwayCandidates(list, evaluate, maxPicks = 2) {
   _picks.length = 0;
-  if (!Array.isArray(list) || list.length === 0) return _picks;
+  if (!Array.isArray(list) || list.length === 0 || !(maxPicks > 0)) return _picks;
   _claims.clear();
-  let e0 = null;
-  let w0 = 0;
-  let d0 = 0;
-  let e1 = null;
-  let w1 = 0;
-  let d1 = 0;
+  _top.length = 0;
+  const cap = Math.floor(maxPicks);
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!evaluate(entity, _key)) continue;
@@ -40,28 +37,36 @@ export function pickDecodeRunwayCandidates(list, evaluate) {
     if (claim) {
       const earlier = w < claim.w || (w === claim.w && d < claim.d);
       if (!earlier) continue;
-      // The superseded occurrence drops out of the picked pair entirely: in the old walk it
-      // sorted behind this occurrence and was filtered by the pending id.
-      if (claim.entity === e0) {
-        e0 = e1; w0 = w1; d0 = d1;
-        e1 = null;
-      } else if (claim.entity === e1) {
-        e1 = null;
-      }
+      // The superseded occurrence drops out of the picked prefix entirely: in the old
+      // walk it sorted behind this occurrence and was filtered by the pending id.
+      const held = topIndexOf(_top, claim.entity);
+      if (held !== -1) _top.splice(held, 1);
       claim.entity = entity;
       claim.w = w;
       claim.d = d;
     } else {
       _claims.set(entity.id, { entity, w, d });
     }
-    if (e0 === null || w < w0 || (w === w0 && d < d0)) {
-      e1 = e0; w1 = w0; d1 = d0;
-      e0 = entity; w0 = w; d0 = d;
-    } else if (e1 === null || w < w1 || (w === w1 && d < d1)) {
-      e1 = entity; w1 = w; d1 = d;
+    // Bounded insertion into the top-K prefix — strictly-better comparison so equal
+    // keys keep the earlier list position the stable sort gave.
+    let pos = _top.length;
+    while (pos > 0) {
+      const t = _top[pos - 1];
+      if (w < t.w || (w === t.w && d < t.d)) pos -= 1;
+      else break;
+    }
+    if (pos < cap) {
+      _top.splice(pos, 0, { entity, w, d });
+      if (_top.length > cap) _top.length = cap;
     }
   }
-  if (e0) _picks.push(e0);
-  if (e1) _picks.push(e1);
+  for (let i = 0; i < _top.length; i++) _picks.push(_top[i].entity);
   return _picks;
+}
+
+function topIndexOf(top, entity) {
+  for (let i = 0; i < top.length; i++) {
+    if (top[i].entity === entity) return i;
+  }
+  return -1;
 }

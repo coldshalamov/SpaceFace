@@ -114,14 +114,33 @@ export function* collectJournalPresentationEntitiesChunked(state, out = []) {
   if (rows) {
     for (let i = 0; i < rows.length; i++) { pushAlive(out, rows[i]); yield; }
   }
-  // Rows appended while the walk was suspended sit past the snapshot tail; sweep
-  // them so a mid-walk spawn joins this drive instead of waiting a whole cycle.
+  // Rows appended while the walk was suspended do not only sit past the snapshot
+  // tail: a destroy's swap-pop plus a later spawn leaves the live list no longer
+  // than the snapshot while the newcomer hides inside it. Sweep every disturbed
+  // position (identity mismatch or beyond the snapshot span) in both walked
+  // arrays; the Set dedupe keeps each committed row exactly-once.
   const liveList = state && state.entityList;
-  if (liveList && liveList.length > (list ? list.length : 0)) {
-    for (let i = list ? list.length : 0; i < liveList.length; i++) {
+  if (liveList && list) {
+    const seen = new Set(list);
+    for (let i = 0; i < liveList.length; i++) {
       const row = liveList[i];
-      if (!list || !list.includes(row)) pushAlive(out, row);
-      yield;
+      if ((i >= list.length || list[i] !== row) && !seen.has(row)) {
+        seen.add(row);
+        pushAlive(out, row);
+        yield;
+      }
+    }
+  }
+  const liveRows = dressing && Array.isArray(dressing.rows) ? dressing.rows : null;
+  if (liveRows && rows) {
+    const seen = new Set(rows);
+    for (let i = 0; i < liveRows.length; i++) {
+      const row = liveRows[i];
+      if ((i >= rows.length || rows[i] !== row) && !seen.has(row)) {
+        seen.add(row);
+        pushAlive(out, row);
+        yield;
+      }
     }
   }
   return out;

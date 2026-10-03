@@ -11,6 +11,7 @@ import {
   TABLE_DECODE_RUNWAY_SECONDS,
   TABLE_PROMOTE_HORIZON_SECONDS,
   tableLookAtDelta,
+  tablePrefetchZoomFromState,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 import { isPresentationLedgerRow } from '../world/presentationSources.js';
@@ -123,12 +124,9 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const glass = ctx ? ctx.glass : (() => {
     const camera = state && state.camera || {};
     const video = state && state.settings && state.settings.video || {};
-    const requested = Number(camera.zoom);
-    const live = Number(camera.liveZoom);
-    const zoom = Math.max(
-      Number.isFinite(live) ? live : 0,
-      Number.isFinite(requested) ? requested : 0,
-    ) || 144;
+    // Same prefetch-zoom convention as ctx glassR (live ∪ requested ∪ composed) —
+    // a zoom-out compose widens the runway here exactly as it does for ctx callers.
+    const zoom = tablePrefetchZoomFromState(state);
     const tilt = Number.isFinite(Number(camera.tilt)) ? Number(camera.tilt) : 60;
     const fov = Number.isFinite(Number(camera.fov))
       ? Number(camera.fov)

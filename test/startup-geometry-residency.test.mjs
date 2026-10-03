@@ -492,7 +492,7 @@ test('the first-frame pool census seal is not gated on KHR or the prepare budget
   assert.ok(sealIndex > barrierIndex,
     'the seal must run after the barrier decision, not inside it');
   const between = body.slice(barrierIndex, sealIndex)
-    .split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
+    .split('\n').map((line) => line.replace(/\/\/.*/, '')).join('\n');
   assert.doesNotMatch(between, /PREPARE_BUDGET_MS/,
     'no prepare-budget gate may sit between the barrier decision and the seal');
 });
@@ -677,7 +677,7 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
   assert.match(between, /tGlass\(a\) - tGlass\(b\)/,
     'each tier must be sorted by predicted time-to-glass before enqueue');
-  const reconcileStart = RENDERER_SOURCE.indexOf('enqueueMissingMeshBuilds(\n      presentationList');
+  const reconcileStart = RENDERER_SOURCE.search(/enqueueMissingMeshBuildsSteps\(\r?\n\s+presentationList/);
   assert.ok(reconcileStart >= 0, 'the full reconcile enqueue must exist');
   const reconcileCall = RENDERER_SOURCE.slice(reconcileStart, reconcileStart + 900);
   assert.match(reconcileCall, /\(entity\) => tGlass\(entity\),\s*\)/,
@@ -693,10 +693,10 @@ test('the poll re-hoists queued builds whose deadline moved inside the urgent wi
   const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
-  assert.match(between, /pendingBuilds\.splice\(/,
+  assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]/,
     'the already-queued tail must be repartitioned, not just newly enqueued candidates');
-  assert.match(between, /tGlass\(entity\) <= TABLE_BUILD_URGENT_SECONDS/,
-    'the hoist must use the same urgent deadline as the enqueue tiers');
+  assert.match(between, /entityTimeToGlassSeconds\(entity, env, state\) <= TABLE_BUILD_URGENT_SECONDS/,
+    'the hoist must re-grade on fresh verdicts at the same urgent deadline as the enqueue tiers');
 });
 
 // The exempt set only changes on sim ticks and spawn events; a full entity scan every display

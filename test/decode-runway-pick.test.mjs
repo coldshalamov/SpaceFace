@@ -9,7 +9,7 @@ import { pickDecodeRunwayCandidates } from '../src/render/decodeRunwayPick.js';
 // inputs; RUNWAY stands in for TABLE_DECODE_RUNWAY_SECONDS.
 const RUNWAY = 42;
 
-function oracleStarts(list, pending) {
+function oracleStarts(list, pending, cap = 2) {
   const decodeSeconds = (e) => (e ? e.decodeS : NaN);
   const ordered = list.length > 1
     ? list.slice().sort((a, b) => {
@@ -20,7 +20,7 @@ function oracleStarts(list, pending) {
     })
     : list;
   const started = [];
-  for (let i = 0; i < ordered.length && started.length < 2; i++) {
+  for (let i = 0; i < ordered.length && started.length < cap; i++) {
     const entity = ordered[i];
     if (!entity || entity.alive === false) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
@@ -34,7 +34,7 @@ function oracleStarts(list, pending) {
 }
 
 // Mirrors the real kickDecodeRunwayAssets evaluate + start loop with the same stub fields.
-function newStarts(list, pending) {
+function newStarts(list, pending, cap = 2) {
   const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
     if (entity.type !== 'ship' && entity.type !== 'station') return false;
@@ -46,7 +46,7 @@ function newStarts(list, pending) {
     key.wave = wave ? 0 : 1;
     key.seconds = seconds;
     return true;
-  });
+  }, cap);
   const started = [];
   for (const entity of ordered) {
     pending.add(entity.id);
@@ -105,6 +105,23 @@ test('linear top-two pick matches the old full-sort oracle on 800 randomized lis
     }
     const expected = oracleStarts(list, new Set(pending));
     const actual = newStarts(list, new Set(pending));
+    assert.equal(actual.length, expected.length, `case ${c}: started count`);
+    for (let i = 0; i < expected.length; i++) {
+      assert.equal(actual[i], expected[i], `case ${c}: pick ${i} identity`);
+    }
+  }
+});
+
+test('top-K pick matches the full-sort oracle at cap 4 on 800 randomized lists', () => {
+  const rand = mulberry32(0xDEC0DE);
+  for (let c = 0; c < 800; c++) {
+    const list = randomList(rand);
+    const pending = new Set();
+    for (let i = 0; i < Math.floor(rand() * 10); i++) {
+      pending.add(`e${Math.floor(rand() * 30)}`);
+    }
+    const expected = oracleStarts(list, new Set(pending), 4);
+    const actual = newStarts(list, new Set(pending), 4);
     assert.equal(actual.length, expected.length, `case ${c}: started count`);
     for (let i = 0; i < expected.length; i++) {
       assert.equal(actual[i], expected[i], `case ${c}: pick ${i} identity`);
