@@ -2574,6 +2574,35 @@ function admissionSubjectIsOnDeadlineGlass(subject, state) {
 }
 
 /**
+ * D38 — the pending latch hiding a first-arrival root may sit on work that was queued ambient
+ * BEFORE the body reached the glass. Once the submit pass measures the latched root on the live
+ * glass (or its entity on the deadline band), the outstanding admission is deadline work: re-fire
+ * it at the urgent class so a still-queued ambient compile folds into the urgent run, an in-flight
+ * link is joined, and an already-urgent admission returns its own record. The tracker's fold/join
+ * carries all the dedupe — after the first promotion this costs one map read per frame until the
+ * latch clears. Urgency is passed explicitly because the caller measured the glass; the subject's
+ * own classification can lag (a just-crossed ledger row is not in the frame's published set yet).
+ */
+const GLASS_LATCH_PROMOTE_OPTIONS = Object.freeze({
+  debugBy: 'glass-pending-promote',
+  joinOutstanding: true,
+  urgent: true,
+});
+export function promoteOnGlassPipelineLatch(owner, mesh) {
+  if (!mesh || !mesh.userData || mesh.userData.pipelinesPending !== true) return false;
+  const compile = owner && owner.state && owner.state.render
+    && owner.state.render.compileObjectPipelines;
+  if (typeof compile !== 'function') return false;
+  try {
+    compile(mesh, GLASS_LATCH_PROMOTE_OPTIONS);
+    return true;
+  } catch (_) {
+    // A refused promotion (stale owner, mid-teardown) retries on the next measured frame.
+    return false;
+  }
+}
+
+/**
  * Stable-partition the pending mesh-build tail so entities that reached the
  * deadline glass since the queue was last ordered drain before the leftover
  * runway/ambient backlog. Reconcile re-orders the queue every poll (~0.25 s);
@@ -18717,6 +18746,14 @@ export const render = {
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+      // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
+      // its compile/residency while it was still off-glass must not finish under ambient FIFO
+      // rules. The deadline-band clause catches the same root one band early — the pending
+      // latch already hides it, so waiting for the measured crossing only adds frames.
+      if (userData.pipelinesPending === true && liveScreen
+          && (onLiveGlass === true || (entity && entityIsOnDeadlineGlass(entity, this.state)))) {
+        promoteOnGlassPipelineLatch(this, mesh);
+      }
       if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
         // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
         // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
