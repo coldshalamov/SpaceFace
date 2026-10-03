@@ -36,6 +36,7 @@ import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
 import { SWARM_RULESET } from '../../data/swarmMode.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../../data/swarmStakes.js';
+import { swarmThreatPurseMult } from '../../data/swarmThreats.js';
 import { swarmCheckpointPurseFor, swarmZoneIndexFor } from '../../data/swarmLadder.js';
 import {
   COMBAT_LAB_ARENAS,
@@ -170,6 +171,14 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       // to the tuned baseline at consume time.
       if (typeof overrides.swarmStake === 'string' && overrides.swarmStake) {
         out.swarmStake = overrides.swarmStake;
+      }
+      // SWARM-06: the Threat wager and an explicit perk pick ride beside the setup on the same
+      // seam — catalog ids only, normalized again at begin against the run's own catalog read.
+      if (Array.isArray(overrides.swarmThreats) && overrides.swarmThreats.length) {
+        out.swarmThreats = overrides.swarmThreats.filter((id) => typeof id === 'string' && id);
+      }
+      if (Array.isArray(overrides.swarmPerks) && overrides.swarmPerks.length) {
+        out.swarmPerks = overrides.swarmPerks.filter((id) => typeof id === 'string' && id);
       }
       if (overrides.openingLesson === true) out.openingLesson = true;
     }
@@ -1174,6 +1183,15 @@ export function applySandboxSetup(ctx, config) {
           swarmStake: launchRuleset === SWARM_RULESET && typeof cfg.swarmStake === 'string'
             ? cfg.swarmStake
             : undefined,
+          // SWARM-06: the wager and the pick ride the begin request — runSession stamps them
+          // onto telemetry (threats normalized to the catalog, perks earned-checked against
+          // the profile). Absent stays absent; a no-wager run writes nothing.
+          threats: launchRuleset === SWARM_RULESET && Array.isArray(cfg.swarmThreats)
+            ? cfg.swarmThreats
+            : undefined,
+          perks: launchRuleset === SWARM_RULESET && Array.isArray(cfg.swarmPerks)
+            ? cfg.swarmPerks
+            : undefined,
           // SWARM-04: a checkpoint start enters mid-ladder. The schema-validated wave is the
           // ladder's bought entry point — anything ≤1 is an ordinary opening, so the field
           // only travels when a checkpoint is actually picked.
@@ -1188,7 +1206,10 @@ export function applySandboxSetup(ctx, config) {
         // must not credit a foreign wallet.
         if (launchRuleset === SWARM_RULESET) {
           const run = ctx.state && ctx.state.run;
-          const purse = swarmStakeFor(cfg.swarmStake).purse;
+          // SWARM-06: Thin Purse takes its factor off the stake purse before the armory ever
+          // sees it — the wager's own blurb ("the stake purse halves") is the contract.
+          const purse = Math.round(
+            swarmStakeFor(cfg.swarmStake).purse * swarmThreatPurseMult(cfg.swarmThreats));
           if (purse > 0 && run && run.kind === 'survival' && run.phase === 'loadout'
             && run.seed === (setup.seed >>> 0)) {
             ctx.bus.emit('run:awardRequested', {

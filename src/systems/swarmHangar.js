@@ -1,6 +1,7 @@
 // SWARM-01 runtime. The Hangar writes the Crucible profile and the run wallet. Adventure credits stay put.
 
 import { hangarRank, migrateHangar } from '../data/swarmHangar.js';
+import { swarmEarnedHullDefIds } from '../data/swarmCrossover.js';
 
 export function applyHangarToPlayer(state, hangar) {
   const bag = migrateHangar(hangar);
@@ -11,6 +12,13 @@ export function applyHangarToPlayer(state, hangar) {
       if (/saucer/i.test(hullId)) continue;
       const already = player.ownedShips.some((row) => row && (row.defId === hullId || row === hullId));
       if (!already) player.ownedShips.push({ defId: hullId, fittings: [] });
+    }
+    // SWARM-06: the earned crossover hulls — the Saucer rides the ledger, not the Hangar's
+    // bought list (Bounty can never buy it; the Zone 3 boss is the only counter it answers).
+    // Once earned, the disc is flyable inside the mode that proved it.
+    for (const defId of swarmEarnedHullDefIds()) {
+      const already = player.ownedShips.some((row) => row && (row.defId === defId || row === defId));
+      if (!already) player.ownedShips.push({ defId, fittings: [] });
     }
   }
   const entity = state.entities && typeof state.entities.get === 'function'
