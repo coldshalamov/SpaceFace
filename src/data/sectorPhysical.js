@@ -16,6 +16,26 @@ export const SECTOR_PHYSICAL = Object.freeze({
   sector_pallas_drift: ROW(1, 1, 1, 1.75),
   sector_io_reach: ROW(0.65, 1, 1, 1),
   sector_charon_expanse: ROW(1, 1, 1, 2.2),
+  // Frontier and the three core sectors that were still inheriting Helios.
+  // Exactly one ratio leaves 1. Nebula keeps trafficSpeed at 1 (no drag) and
+  // dims the patrol response. Radiation moves gravity. Dense rock moves mass.
+  sector_sker_haven: ROW(1.4, 1, 1, 1),
+  sector_veil_nebula: ROW(1, 1, 1, 1.3),
+  sector_ashfall_reach: ROW(1, 1, 1.22, 1),
+  sector_nyx_march: ROW(1, 1, 1, 0.72),
+  sector_hyperion_cut: ROW(1.7, 1, 1, 1),
+  sector_kepler_scar: ROW(1, 1, 0.84, 1),
+  sector_orcus_shadow: ROW(1, 1, 1.4, 1),
+  sector_rhea_cinder: ROW(1, 1, 1.55, 1),
+  sector_haumea_rift: ROW(0.78, 1, 1, 1),
+  sector_eris_margin: ROW(1, 1, 1, 2.05),
+  sector_phoebe_echo: ROW(1, 1, 0.66, 1),
+  sector_nereid_shoal: ROW(1.9, 1, 1, 1),
+  sector_proteus_well: ROW(1, 1, 1, 0.62),
+  sector_triton_wake: ROW(1, 1, 1.75, 1),
+  sector_eunomia_gulf: ROW(1, 0.84, 1, 1),
+  sector_sedna_dark: ROW(1, 1, 0.58, 1),
+  sector_dione_lane: ROW(1, 1.15, 1, 1),
 });
 
 /** The six sectors the row names, in chart order. Helios is the comparison, not a member. */
