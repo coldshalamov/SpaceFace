@@ -1467,6 +1467,13 @@ export const traffic = {
     }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
+    // Census arm: ambient traffic materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself).
+    this._cookProvider = (sector) => this._onSectorEnter({
+      sectorId: (sector && sector.id) || undefined,
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     // PIC-21: one glint record for the open seam, cleared when the seam is worked.
     // The listeners fire on the events; nothing here emits per tick.
     if (!this._richSeamGlintBound && this.bus && typeof this.bus.on === 'function') {

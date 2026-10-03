@@ -1411,6 +1411,13 @@ export const missions = {
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
+    // Census arm: mission-target spawns land inside the sector cook deterministically.
+    this._cookProvider = (sector) => this._onSectorEnter({
+      sectorId: (sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
 
     // ── WF-08 claim-stake salvage: the contested wreck's own listeners. Every row below is a
     // strict no-op unless an active contract owns the touched entity, so ordinary wrecks,

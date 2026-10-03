@@ -442,6 +442,17 @@ export const survivorPod = {
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:placed', this._onPlaced);
       this._bus.on('sector:enter', this._onSectorEnter);
+      // Census arm: survivor-pod promotion lands inside the sector cook deterministically.
+      if (this.helpers) {
+        this._cookProvider = (sector) => {
+          if (this._onSectorEnter) this._onSectorEnter({
+            sectorId: (sector && sector.id)
+              || (this.state && this.state.world && this.state.world.currentSectorId),
+          });
+        };
+        (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+          .push(this._cookProvider);
+      }
       this._bus.on('mission:offered', this._onMissionOffered);
       this._bus.on('survivorPod:choose', this._onChoice);
       this._bus.on('game:newGame', this._onNewGame);

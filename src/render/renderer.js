@@ -10021,6 +10021,15 @@ export const render = {
           seenRockKeys.add(key);
         }
       }
+      // Same deterministic arm as the jump census: registered sector:enter spawners fire
+      // inside the opening cook too, so opening-flight spawns land in the composition set
+      // instead of arriving on listener order after the veil lifts.
+      const openingCookProviders = this._simHelpers && this._simHelpers.sectorCookProviders;
+      if (Array.isArray(openingCookProviders)) {
+        const openingSector = state.world && state.world.sectors
+          ? state.world.sectors[state.world.currentSectorId] : null;
+        for (const provider of openingCookProviders) provider(openingSector);
+      }
       const firstFlightEntities = recook
         ? openingEntities
         : collectFirstFlightCookEntities(state);

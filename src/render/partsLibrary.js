@@ -5640,12 +5640,27 @@ function backgroundUpgradePriority(job) {
   // Payloads are hulls on the same horizon — the renderer's deadline classifier and the
   // readable-contact predicate both include them: a jettisoned pod towed into frame starves
   // identically at rung 10 while its capsule waits behind ambient work.
-  if ((entity.type === 'ship' || entity.type === 'wreck' || entity.type === 'drone'
-      || entity.type === 'station' || entity.type === 'payload')
+  if (entityRidesAuthoredRunway(entity)
       && willEntityEnterAuthoredUpgradeRunway(entity, liveState, {
         horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
       })) return 5;
   return 10;
+}
+
+// Serial-lane authored riders the runway grade + bypass + release clauses all agree on:
+// hulls on the promote horizon, station props ('fx'), and geology-skinned asteroids —
+// every type that can enqueue an authored boundary the player is about to see.
+function entityRidesAuthoredRunway(entity) {
+  return !!(entity && (entity.type === 'ship' || entity.type === 'wreck'
+    || entity.type === 'drone' || entity.type === 'station' || entity.type === 'payload'
+    || entity.type === 'fx' || hasExplicitAuthoredGeologyPresentation(entity)));
+}
+
+function entityIsAuthoredRunwayInbound(entity, live) {
+  return !!(entityRidesAuthoredRunway(entity) && live
+    && willEntityEnterAuthoredUpgradeRunway(entity, live, {
+      horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
+    }));
 }
 
 function authoredRuntimeState() {
@@ -5749,7 +5764,11 @@ function firstFlightShipCanPassBusyPlace(state) {
 const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
 function queuedGlassLawJobStillNeeded(state, job) {
   return !!(job && job.entity && jobStillNeeded(state, job)
-    && authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY);
+    && (authoredUpgradePriority(job) <= STEADY_SHIP_PASS_MAX_PRIORITY
+      // Runway-inbound riders grade nearly-on-glass for the pass too: a hull due inside
+      // the promote horizon held behind a wedged non-ship crosses the glass as a marker
+      // long before the 120s stall bound — the pop the runway grade exists to prevent.
+      || entityIsAuthoredRunwayInbound(job.entity, authoredRuntimeState())));
 }
 function steadyFlightShipCanPassBusyPlace(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true
@@ -6816,13 +6835,7 @@ function admitNextUpgradeJob(state) {
           // Same runway-inbound grade as rung 5: a hull due inside the promote horizon
           // is nearly on the glass — holding the serial slot through the running job's
           // whole upload drain would hand the pop it was staged to prevent.
-          || (queued.entity
-            && (queued.entity.type === 'ship' || queued.entity.type === 'wreck'
-              || queued.entity.type === 'drone' || queued.entity.type === 'station'
-              || queued.entity.type === 'payload')
-            && willEntityEnterAuthoredUpgradeRunway(queued.entity, authoredRuntimeState(), {
-              horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
-            }))));
+          || entityIsAuthoredRunwayInbound(queued.entity, authoredRuntimeState())));
       if (!glassQueued) return false;
       return releaseSerialSlotAfterPipelineStaging();
     };

@@ -445,6 +445,14 @@ export const factionPresence = {
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
       this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
     ];
+    // Census arm: faction-presence materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself).
+    this._cookProvider = (sector) => {
+      if (!this._unsub || !this._unsub.length) return;
+      this._onSectorEnter({ sectorId: (sector && sector.id) || undefined });
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
   },
 
   newGame() {

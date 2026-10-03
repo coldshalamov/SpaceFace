@@ -111,6 +111,15 @@ export const aceMemory = {
       this._scheduleCultureIntro(p);
       this._schedulePlanetChallenges(p);
     });
+    // Census arm: ace challenge scheduling lands inside the sector cook deterministically.
+    this._cookProvider = (sector) => {
+      if (!this._subs || !this._subs.length) return;
+      const p = { sectorId: (sector && sector.id) || sectorOf(this.state) };
+      this._scheduleCultureIntro(p);
+      this._schedulePlanetChallenges(p);
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this._listen('save:loaded', () => {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();

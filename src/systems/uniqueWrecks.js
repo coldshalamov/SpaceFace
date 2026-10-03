@@ -424,6 +424,13 @@ export const uniqueWrecks = {
     this._listen('save:loaded', () => this._onSaveLoaded());
     this._listen('save:restoring', () => this._clearRuntime());
     this._listen('sector:enter', (payload) => this._onSectorEnter(payload));
+    // Census arm: unique-wreck registration lands inside the sector cook deterministically.
+    this._cookProvider = (sector) => this._onSectorEnter({
+      sectorId: (sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this._listen('dock:docked', (payload) => this._onDocked(payload));
     for (const [channelId, event] of Object.entries(RUMOR_EVENT_BY_CHANNEL)) {
       this._listen(event, (payload) => this._onNativeRumor(channelId, payload));

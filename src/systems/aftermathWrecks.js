@@ -956,6 +956,15 @@ export const aftermathWrecks = {
       this.bus.on('wreckField:source', this._onFieldSource);
       this.bus.on('sector:enter', this._onSectorEnter);
       this.bus.on('sector:exit', this._onSectorExit);
+      // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
+      this._cookProvider = (sector) => {
+        if (this._onSectorEnter) this._onSectorEnter({
+          sectorId: (sector && sector.id)
+            || (this.state && this.state.world && this.state.world.currentSectorId),
+        });
+      };
+      (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
       this.bus.on('encounter:resolved', this._onEncounterResolved);
       this.bus.on('dock:docked', this._onDocked);

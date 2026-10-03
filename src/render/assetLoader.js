@@ -724,9 +724,12 @@ export async function loadAuthoredPart(url, options = {}) {
         const compileClass = options.admissionVisible === true
           ? 'visible'
           : (joinedAssetTaskClasses.get(task) || (deadlineClass ? 'deadline' : 'ambient'));
-        if (typeof options.isResidencyOwnerActive === 'function') {
-          consumerPredicatesFor(task).push(options.isResidencyOwnerActive);
-        }
+        // Always register a creator predicate: an ownerless warm holds zero joiner
+        // predicates, and without one a compile tail resolves null the moment its last
+        // joiner dies — evicting the shared decode the warm exists to pre-stage. The
+        // composed check keeps real owners exact and defaults ownerless creators live
+        // (aborted signals still read dead).
+        consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
         return scheduleGltfCompile(() => {
           // Owner departed while the tail queued: compile is the expensive stage — skip it
           // and let the settled-null path cancel the request below. Joiners deduped onto
