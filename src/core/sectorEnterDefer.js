@@ -51,7 +51,11 @@ export function deferSectorEnterMaterialization(state, payload, provider) {
       || render.sectorEnterCookWillRun(payload) !== true
       || typeof provider !== 'function') return false;
   const queue = render.deferredEnterMaterializers || (render.deferredEnterMaterializers = []);
-  const epoch = payload && Number.isFinite(payload.enterEpoch) ? payload.enterEpoch : null;
+  // An epochless payload binds to the world's current serial instead of staying null-immortal:
+  // a null epoch passed every future drain's liveness check, so a stale entry would re-run its
+  // provider on whatever world was then current, forever.
+  const epoch = payload && Number.isFinite(payload.enterEpoch) ? payload.enterEpoch
+    : (state.world && Number.isFinite(state.world.enterSerial) ? state.world.enterSerial : null);
   // A second emit carrying the same epoch must not stack a second copy of this
   // system's entry — both would drain and the cohort would materialize twice.
   if (queue.some((entry) => entry && entry.provider === provider && entry.epoch === epoch)) return true;

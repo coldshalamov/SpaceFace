@@ -213,25 +213,28 @@ export function createBus() {
     dispatchPresentation(event, payload);
   }
 
-  function startEmitSlice(event, payload, budget) {
+  function startEmitSlice(event, payload, budget, maxMs) {
     // A second sliced emit while a predecessor still has a deferred tail used to discard that
     // tail outright — every listener past the cut never heard the first sector:enter. Drain the
     // remainder synchronously so no listener is ever skipped — but bound the flush to one
     // thin slice: a tail that outlives the wall-clock cap queues the NEW emit behind the
     // drain (ordering still holds emit-by-emit) instead of holding this frame hostage.
-    if (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER, 4);
+    // A bounded caller threads its remaining deadline in maxMs — both the forced flush and
+    // the fresh slice must fit inside it, or a ≤4ms pump call pays a whole first slice inline.
+    const flushCap = Number.isFinite(maxMs) && maxMs > 0 ? Math.min(4, maxMs) : 4;
+    if (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER, flushCap);
     if (emitSlice) { pendingSlicedEmits.push({ event, payload, budget }); return; }
     const fns = snapshotListeners(listeners, listenerSnapshots, event);
     if (!fns) {
       dispatchPresentation(event, payload);
       if (pendingSlicedEmits.length) {
         const next = pendingSlicedEmits.shift();
-        startEmitSlice(next.event, next.payload, next.budget);
+        startEmitSlice(next.event, next.payload, next.budget, maxMs);
       }
       return;
     }
     emitSlice = { event, payload, fns, index: 0 };
-    drainEmitSlice(budget);
+    drainEmitSlice(budget, maxMs);
     dispatchPresentation(event, payload);
   }
 
@@ -278,7 +281,14 @@ export function createBus() {
       emitSlice = null;
       if (pendingSlicedEmits.length) {
         const next = pendingSlicedEmits.shift();
-        startEmitSlice(next.event, next.payload, next.budget);
+        // The restart shares this drain's remaining window — a queued emit's first slice
+        // can't spend past the caller's deadline (it still runs ≥1 listener per the
+        // checked-after-each contract, so progress is guaranteed). The epsilon floor keeps
+        // an expired window from widening back to Infinity — 0 would fail maxMs > 0.
+        const remainingMs = Number.isFinite(deadline)
+          ? Math.max(0.001, deadline - performance.now())
+          : Infinity;
+        startEmitSlice(next.event, next.payload, next.budget, remainingMs);
       }
     }
     return ran;
@@ -388,6 +398,9 @@ export function createBus() {
     deferredPool.length = 0;
     sliceBudgets.clear();
     emitSlice = null;
+    // A stranded queue outlives the slice that fed it: pendingEmitSliceCount() would
+    // never converge while drainEmitSlice early-returns on emitSlice === null.
+    pendingSlicedEmits.length = 0;
     generation += 1;
   }
 

@@ -1047,11 +1047,14 @@ export function collectFirstFlightCookEntities(state) {
     }
     if (entity.type !== 'asteroid') continue;
     const distanceSq = playerPlanarDistanceSq(entity, state);
-    if (distanceSq <= rockRadiusSq) asteroids.push(entity);
+    // Sort reads the distance the filter just paid for — a per-comparison
+    // playerPlanarDistanceSq call re-does entities.get(playerId) O(A·logA) times
+    // inside the cook's unyielded collect window.
+    if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
   }
-  asteroids.sort((left, right) => playerPlanarDistanceSq(left, state) - playerPlanarDistanceSq(right, state));
+  asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
   const seenKeys = new Set();
-  for (const entity of asteroids) {
+  for (const { entity } of asteroids) {
     const key = asteroidFirstFlightCookKey(entity);
     if (seenKeys.has(key) || seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
     seenKeys.add(key);

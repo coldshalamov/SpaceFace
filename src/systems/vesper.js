@@ -55,11 +55,13 @@ export function createVesper() {
       on('combat:damage', p => this._damage(p)); on('entity:killed', p => this._killed(p));
       on('sector:exit', () => { this._capture(); this._clear(); this._reset(); });
       // Live GPU + flight + hard enter: capture/reset stay inline bookkeeping;
-      // the ensemble sync defers into the cook's FIFO — _sync itself (not the
-      // home-gated provider wrapper) so off-home enters keep their capture+clear.
+      // the ensemble sync defers into the cook's FIFO — the same stored provider
+      // the census registers, so (provider,epoch) dedupe + the identity-skip both
+      // hold (a fresh closure would double-run _sync on every home enter). _sync's
+      // own !_home() branch preserves the off-home capture+clear, so no gate needed.
       on('sector:enter', (p) => {
         this._capture(); this._reset();
-        if (deferSectorEnterMaterialization(this.state, p, () => this._sync())) return;
+        if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
         this._sync();
       });
       // sector:enter listeners are count-sliced and registration-ordered, so this system's
@@ -67,7 +69,7 @@ export function createVesper() {
       // firstFlightIds and mount mid-flight. The renderer's live-sector cook invokes these
       // providers inside its census instead of relying on listener order.
       const providers = this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []);
-      this._cookProvider = () => { if (this._home()) this._sync(); };
+      this._cookProvider = () => this._sync();
       providers.push(this._cookProvider);
       on('save:restoring', () => { this._clear(); this._reset(); });
       on('save:loaded', () => { this._reset(); this._sync(); });
