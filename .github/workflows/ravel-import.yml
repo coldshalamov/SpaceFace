@@ -31,7 +31,10 @@ jobs:
         run: |
           python3 - <<'PY'
           import base64, gzip, hashlib, json, pathlib, subprocess
-          raw = gzip.decompress(base64.b64decode(''.join(p.read_text() for p in sorted(pathlib.Path('.ravel-delivery').glob('part*.b64')))))
+          encoded = ''.join(p.read_text() for p in sorted(pathlib.Path('.ravel-delivery').glob('part*.b64')))
+          # Correct the one transport substitution, then verify the complete original payload.
+          encoded = encoded.replace('TKJ6p3Y3', 'TKJ6p0Y3', 1)
+          raw = gzip.decompress(base64.b64decode(encoded, validate=True))
           assert hashlib.sha256(raw).hexdigest() == '9fc2355ca3dc03d732e9b68346319469b98d93dd349113f9c7429944d8312afe', 'Delivery hash mismatch'
           payload = json.loads(raw)
           patch = pathlib.Path('/tmp/ravel.patch')
