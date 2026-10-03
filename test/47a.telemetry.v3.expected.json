@@ -69,7 +69,11 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4",
+    "authoritativeHash": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7",
+    "authoritativeHashByReloadAt": {
+      "60": "0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4",
+      "600": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7"
+    },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -228,6 +232,7 @@
     "(cont.) Reload-vs-baseline bitwise equality now holds at 60/120/240/360/480/600 (was red at 240, 258 via recycled-id order). Repeat-20 deterministic. Trajectory delta vs prior pin is post-save-tick only, by design.",
     "Prior authoritativeHash was 0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4.",
     "2026-10-03 polish pass: authoritativeHash is the CANONICAL reload-run hash (save canonicalizes the Rapier world once), not the organic never-saved hash — organic layouts are not reproducible (rapier#910); do not re-pin from a plain --hash run.",
-    "2026-10-03 correction: 0d85fa3f is the reload-60 hash, not stale — under canonicalization the final hash is a function of the save tick, so the envelope now pins per reload point: authoritativeHash = reload-600 (check:sim:v3), authoritativeHashByReloadAt[60] = reload-60 (baseline sim-v3 link)."
+    "(cont.) The canonical hash depends on the save tick: reload-60 -> 0d85fa3f, reload-600 -> f4a62175. Pin by reload point via authoritativeHashByReloadAt; the top-level field is the reload-600 gate value.",
+    "2026-10-03 correction: 0d85fa3f is the reload-60 hash, not stale — the canonical hash is a function of the save tick, so the envelope pins per reload point via authoritativeHashByReloadAt."
   ]
 }

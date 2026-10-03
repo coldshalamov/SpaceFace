@@ -161,7 +161,7 @@ if (command === 'inspect') {
   const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   const run = profiled.run;
   assert47aPhase0Metrics(run.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
-  if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed });
+  if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed, reloadAt });
   const result = {
     schema: 'spaceface.sfSimProfileResult.v1',
     deterministic: true,
@@ -239,7 +239,7 @@ if (command === 'inspect') {
     if (!loadEnvelopePath) assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt, counterTetherProbe });
     assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
   }
-  if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
+  if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat, reloadAt });
 
   const result = {
     schema: 'spaceface.sfSimResult.v1',
@@ -778,8 +778,11 @@ function assertExpectedEnvelope(envelope, run, options) {
   assert(run.scenarioContract && run.scenarioContract.sha256 === scenarioContract.sha256,
     'loaded scenario contract hash must match the canonical scenario contract');
   const criteria = envelope.acceptanceCriteria || {};
-  if (criteria.authoritativeHash != null) {
-    assert.equal(run.sha256, criteria.authoritativeHash, '47-A authoritative hash drifted from expected telemetry envelope');
+  const perReload = (options.reloadAt != null && criteria.authoritativeHashByReloadAt)
+    ? criteria.authoritativeHashByReloadAt[String(options.reloadAt)] : null;
+  const expectedHash = perReload != null ? perReload : criteria.authoritativeHash;
+  if (expectedHash != null) {
+    assert.equal(run.sha256, expectedHash, '47-A authoritative hash drifted from expected telemetry envelope');
   }
   if (criteria.firstMeaningfulSteeringTickMax != null) {
     assert(run.metrics.firstMeaningfulSteeringTick <= criteria.firstMeaningfulSteeringTickMax,
