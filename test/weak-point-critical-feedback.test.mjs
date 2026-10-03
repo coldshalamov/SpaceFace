@@ -38,7 +38,11 @@ function mountText(t, ctx) {
   const elements = [];
   const doc = {
     createElement() {
-      const el = { id: '', style: {}, className: '', textContent: '', children: [],
+      const el = { id: '', style: {}, className: '', children: [],
+        // Drawn-mark pass: the root's text lives in a label child (the mark is an SVG
+        // sibling), so the stub derives textContent the way a real element does.
+        get textContent() { return this._text !== undefined ? this._text : this.children.map((c) => c.textContent).join(''); },
+        set textContent(v) { this.children.length = 0; this._text = v; },
         appendChild(child) { this.children.push(child); return child; } };
       elements.push(el);
       return el;
@@ -94,22 +98,22 @@ test('projectile hit produces one critical callout and one correctly multiplied 
   // FB-019: a player-caused hull hit also paints its layer pip between the callout and the
   // number (a flat mark — no --rise), and spawns carry the --rise class since demo-prep.
   assert.deepEqual(dom.visible().map(el => [el.textContent, el.className]), [
-    ['◈ CRIT · DRIVE COIL', 'sf-ft sf-ft--rise sf-ft--weak sf-ft--critical'],
-    ['✕', 'sf-ft sf-ft--pip sf-ft--pip-hull'],
+    ['CRIT · DRIVE COIL', 'sf-ft sf-ft--rise sf-ft--weak sf-ft--critical'],
+    ['', 'sf-ft sf-ft--pip sf-ft--pip-hull'],
     ['16', 'sf-ft sf-ft--rise sf-ft--hull'],
   ]);
   // An ordinary hit in the same burst still aggregates solely into the numeric receipt.
   f.bus.emit('projectile:hit', { ...HIT, pos: { x: 10, z: 0 } });
   assert.equal(f.receipts.length, 1);
   assert.equal(f.target.hull, 974);
-  assert.deepEqual(dom.visible().map(el => el.textContent), ['◈ CRIT · DRIVE COIL', '✕', '26']);
+  assert.deepEqual(dom.visible().map(el => el.textContent), ['CRIT · DRIVE COIL', '', '26']);
   assert.equal(dom.visible()[2].className, 'sf-ft sf-ft--rise sf-ft--hull sf-ft--big');
 });
 
 // FB-019: player-caused hull hits paint their layer pip beside the number (a control receipt,
 // not a crit path) — only the non-player-attacker case keeps a pip-free list.
 const ORDINARY = [['10', 'sf-ft sf-ft--rise sf-ft--hull']];
-const WITH_PIP = [['✕', 'sf-ft sf-ft--pip sf-ft--pip-hull'], ['10', 'sf-ft sf-ft--rise sf-ft--hull']];
+const WITH_PIP = [['', 'sf-ft sf-ft--pip sf-ft--pip-hull'], ['10', 'sf-ft sf-ft--rise sf-ft--hull']];
 for (const [name, options, hit, expected] of [
   ['outside the weak arc', {}, { ...HIT, pos: { x: 10, z: 0 } }, WITH_PIP],
   ['a hull without a weak point', { shipClass: 'fighter' }, HIT, WITH_PIP],
@@ -135,11 +139,11 @@ test('legacy and malformed weak-point payloads retain their existing text and cl
   assert.equal(weakPointFloatingTextSpec({ critical: true }), null);
   for (const critical of [undefined, false, 1, 'true']) {
     assert.deepEqual(weakPointFloatingTextSpec({ ...HIT, label: 'DRIVE COIL', critical }),
-      { text: '◈ DRIVE COIL', cls: 'sf-ft--weak' });
+      { text: 'DRIVE COIL', cls: 'sf-ft--weak' });
   }
-  assert.deepEqual(weakPointFloatingTextSpec(HIT), { text: '◈ WEAK POINT', cls: 'sf-ft--weak' });
+  assert.deepEqual(weakPointFloatingTextSpec(HIT), { text: 'WEAK POINT', cls: 'sf-ft--weak' });
   assert.deepEqual(weakPointFloatingTextSpec({ ...HIT, critical: true }),
-    { text: '◈ CRIT · WEAK POINT', cls: 'sf-ft--weak sf-ft--critical' });
+    { text: 'CRIT · WEAK POINT', cls: 'sf-ft--weak sf-ft--critical' });
 });
 
 test('critical text uses the pool and existing reduced-motion lifetime without new frame work', t => {
@@ -156,7 +160,7 @@ test('critical text uses the pool and existing reduced-motion lifetime without n
   assert.match(critical.style.transform, /scale\(1\)$/);
   assert.equal(critical.style.opacity, legacy.style.opacity);
   assert.equal(legacy.className, 'sf-ft sf-ft--rise sf-ft--weak');
-  assert.equal(legacy.textContent, '◈ DRIVE COIL');
+  assert.equal(legacy.textContent, 'DRIVE COIL');
   f.state.settings.video.motionReduce = false;
   dom.text.update(0.02);
   const scale = Number(critical.style.transform.match(/scale\(([^)]+)\)$/)[1]);
