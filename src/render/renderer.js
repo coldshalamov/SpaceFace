@@ -10068,6 +10068,9 @@ export const render = {
       for (const entity of indexedShipLikeScan(state)) considerOpening(entity);
       for (const entity of indexedTypeScan(state, 'stations')) considerOpening(entity);
       for (const entity of indexedTypeScan(state, 'wrecks')) considerOpening(entity);
+      // On-runway tow bodies pin GLASS_ACTORS at the readiness gate (partsLibrary); they must
+      // enter this drain too or the gate waits on a mesh nobody schedules.
+      for (const entity of indexedTypeScan(state, 'payloads')) considerOpening(entity);
       enqueueMissingMeshBuilds(
         openingEntities,
         this._meshes,

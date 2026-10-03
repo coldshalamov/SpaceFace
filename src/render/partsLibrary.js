@@ -950,23 +950,43 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
   const isPlace = (entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity);
-  const isPackagedContact = entity.type === 'wreck' || entity.type === 'drone';
+  // The readiness gate pins any on-runway payload that packagedPropSpec can mount
+  // (GLASS_ACTORS, below) — the composition must schedule the same set or the pin waits on an
+  // admission that never starts. The on-table 47-A spindle keeps its dedicated first-flight
+  // cook lane instead; a spindle-class payload parked in the runway margin still joins the
+  // composition so its pin cannot deadlock.
+  const isPackagedContact = entity.type === 'wreck' || entity.type === 'drone'
+    || startupPayloadOwnsVeilPin(entity, state);
   if (entity.type !== 'ship' && !isPlace && !isPackagedContact) return false;
   if (isPackagedContact) return startupAuthoredContactOnRunway(entity, state);
   const radius = tableOpeningCompositionWu(state);
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
+// A payload the packaged-prop lane can mount pins the loading veil only when its admission is
+// schedulable during loading. The on-table 47-A spindle is the exception: it owns the dedicated
+// first-flight cook lane below (it must not compose early), so pinning it here would wait on an
+// admission the gate itself cannot start. A spindle-class body parked off-table is NOT covered by
+// the cook lane (isFirstFlightCookEntity requires the table) and stays pinned + composed.
+function startupPayloadOwnsVeilPin(entity, state) {
+  if ((entity.type !== 'payload' && entity.type !== 'beacon') || !packagedPropSpec(entity)) return false;
+  return !(entityOnOpeningTable(entity, state) && isExplicitFirstFlightCookEntity(entity));
+}
+
 /**
- * First-flight cook set. Opening composition is ships and places only, so a nearby
- * 47-A payload (the evidence spindle) has no mesh until mode becomes flight — then
- * its untextured env-mapped standard program is a 100 ms+ bloom brick.
+ * First-flight cook set. The on-table 47-A payload (the evidence spindle) is deliberately kept
+ * out of the opening composition, so it has no mesh until this lane runs — without it the first
+ * presented frame links its untextured env-mapped standard program as a 100 ms+ bloom brick.
  */
 export function isFirstFlightCookEntity(entity, state) {
   if (isInitialAuthoredCompositionEntity(entity, state)) return true;
   if (!entity || entity.alive === false || !state) return false;
   if (!entityOnOpeningTable(entity, state)) return false;
-  const data = entity.data || {};
+  return isExplicitFirstFlightCookEntity(entity);
+}
+
+function isExplicitFirstFlightCookEntity(entity) {
+  const data = entity && entity.data || {};
   const ref = typeof data.assetRef === 'string' ? data.assetRef : '';
   return ref === 'asset.slice.47a_spindle'
     || data.scenarioActorId === 'evidence_spindle_47a';
@@ -7802,15 +7822,12 @@ export function authoredCriticalVisualReadiness(state) {
             // mount hook's own predicate — attachPackagedScenarioProp no-ops without it)
             // settles through the same authoredPackageUrl admission the wreck/drone pins
             // ride; an on-runway tow body (survivor pod at +6/-4) holds the veil for its
-            // warm commit instead of swapping a beat after it lifts. The beacon branch of
-            // the same mount domain (rescue-exit lane beacon) pins the same way, and
-            // explicit-authored payloads (PQ-019 pod, SP-07 spindle, yard-tug lots) need
-            // their own term here: autoGlassRole can't bind during loading, so without it
-            // an authored-lane payload on the opening runway reveals its resolving marker
-            // then pops in mid-reveal — the exact defect this clause exists to prevent.
-            || ((entity.type === 'payload' || entity.type === 'beacon')
-              && !!packagedPropSpec(entity))
-            || hasExplicitAuthoredPayloadPresentation(entity))
+            // warm commit instead of swapping a beat after it lifts. Explicit-authored
+            // payloads already pin via entityRequiresAuthoredPresentation above.
+            // startupPayloadOwnsVeilPin is the composition's own predicate — pinning a
+            // payload the composition cannot schedule (the on-table 47-A spindle, whose
+            // admission is the post-gate first-flight cook) deadlocks this gate.
+            || startupPayloadOwnsVeilPin(entity, state))
           && entity.alive !== false
           && !authoredOpeningFailedClosed(authoredAssetState(entity))
           && startupAuthoredContactOnRunway(entity, state)
