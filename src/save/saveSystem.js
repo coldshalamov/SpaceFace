@@ -61,6 +61,18 @@ import {
   SAVE_WRITE_MAX_BYTES,
 } from './saveWorker.js';
 import {
+  ACHIEVEMENTS_STORAGE_KEY,
+  parseAchievementBag,
+  saveAchievementBag,
+} from '../systems/achievements.js';
+import {
+  CRUCIBLE_META_STORAGE_KEY,
+  loadCrucibleMeta,
+  mergeCrucibleProfiles,
+  parseCrucibleMeta,
+  saveCrucibleMeta,
+} from '../systems/survivalRecords.js';
+import {
   applySharedStoreKeys,
   collectLocalSharedStoreKeys,
   fetchSharedPlayerStore,
@@ -3349,6 +3361,7 @@ export const save = {
       });
       return false;
     }
+    this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot);
   },
 
@@ -3369,6 +3382,7 @@ export const save = {
       });
       return false;
     }
+    this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot, { acceptSeq });
   },
 
@@ -3385,6 +3399,7 @@ export const save = {
       });
       return false;
     }
+    this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot);
   },
 
@@ -4679,6 +4694,11 @@ export const save = {
     }
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
+    // FB-104 — the file is the transport for a machine move, so the profile side bags ride
+    // along as a `profile` sibling of the envelope (never inside data: the checksum scope is
+    // unchanged and an older build simply ignores the field). With neither bag stored the
+    // export returns the envelope bytes untouched.
+    json = this._attachProfileToExport(json);
     const date = new Date().toISOString().slice(0, 10);
     const filename = `spaceface_${slot}_${date}.json`;
     try {
@@ -4695,13 +4715,95 @@ export const save = {
     return json;
   },
 
-  /** Import a JSON envelope string: validate + migrate + load (into the import's own slot or 'quick'). */
+  // FB-104 — the two profile-level side bags (achievement ledger, crucible records) sit outside
+  // the save envelope by design, so the export bundle carries them under `profile`. Each rides
+  // as the exact stored JSON object; a missing or unreadable bag is simply absent, and with
+  // neither present the export is the plain envelope byte-for-byte.
+  _profileBundleSection() {
+    const bags = {};
+    for (const [name, key] of [
+      ['achievements', ACHIEVEMENTS_STORAGE_KEY],
+      ['crucibleMeta', CRUCIBLE_META_STORAGE_KEY],
+    ]) {
+      let raw = null;
+      try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(key) : null; } catch (err) { raw = null; }
+      if (typeof raw !== 'string' || !raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) bags[name] = parsed;
+      } catch (err) { /* an unparsable bag is omitted rather than exported as garbage */ }
+    }
+    return Object.keys(bags).length ? bags : null;
+  },
+
+  // FB-104 — attach the profile section to whichever JSON the export resolved: a plain envelope
+  // or the gzip wrapper (whose payload stays the plain envelope; the sibling rides on the outer
+  // object and decodeSaveEnvelopeText surfaces it on import).
+  _attachProfileToExport(json) {
+    const profile = this._profileBundleSection();
+    if (!profile || typeof json !== 'string' || !json) return json;
+    try {
+      const parsed = JSON.parse(json);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return json;
+      parsed.profile = profile;
+      return JSON.stringify(parsed);
+    } catch (err) { return json; }
+  },
+
+  // FB-104 — the envelope has already validated when this runs, so each side bag merges into
+  // localStorage additively: the achievement write keeps the earliest unlock stamp and the max
+  // of every counter, and mergeCrucibleProfiles never lowers a record. A hostile or unreadable
+  // bag can forfeit its own transfer; it must never block or corrupt the world load.
+  _importProfileSideBags(env, slot) {
+    const profile = env && typeof env === 'object' ? env.profile : null;
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return;
+    if (typeof localStorage === 'undefined') return;
+    const merged = {};
+    try {
+      if (profile.achievements != null) {
+        const bag = saveAchievementBag(parseAchievementBag(profile.achievements), localStorage);
+        if (bag) merged.achievements = Object.keys(bag.unlocked || {}).length;
+      }
+    } catch (err) { /* the bag forfeits; the world load continues */ }
+    try {
+      if (profile.crucibleMeta != null) {
+        const incoming = parseCrucibleMeta(profile.crucibleMeta);
+        const next = mergeCrucibleProfiles(incoming, loadCrucibleMeta(localStorage));
+        if (saveCrucibleMeta(next, localStorage)) merged.crucibleMeta = true;
+      }
+    } catch (err) { /* the bag forfeits; the world load continues */ }
+    if (!Object.keys(merged).length) return;
+    this.bus.emit('save:profile-imported', { slot, ...merged });
+    // The live achievement ledger folds store keys back in on this signal — the same one a
+    // regular side-bag write emits — so imported medals and records light up without a reload.
+    this.bus.emit('save:store-synced', { ok: true, durableStore: 'local', source: 'import' });
+  },
+
+  // FB-104 — an import without an explicit destination lands in the first empty numbered slot.
+  // 'quick'/'auto' are system-owned and are never the silent answer; numbered slots beyond the
+  // save screen's four remain loadable through listSlots, so a genuinely empty destination
+  // always exists and nothing is ever silently overwritten.
+  _firstEmptyImportSlot() {
+    for (let n = 1; n <= 999; n += 1) {
+      const slot = String(n);
+      let occupied = false;
+      try {
+        occupied = typeof localStorage !== 'undefined'
+          && (localStorage.getItem(LS_PREFIX + slot) != null
+            || localStorage.getItem(RECOVERY_PREFIX + slot) != null);
+      } catch (err) { occupied = false; }
+      if (!occupied) return slot;
+    }
+    return 'quick';
+  },
+
+  /** Import a JSON envelope string: validate + migrate + load into `slot` or the first empty slot. */
   importString(jsonStr, slot) {
-    return this.loadEnvelopeFromString(jsonStr, slot || 'quick');
+    return this.loadEnvelopeFromString(jsonStr, slot || this._firstEmptyImportSlot());
   },
 
   /** Import from a File (FileReader → importString). Calls cb(ok) when done. */
-  importFile(file, cb) {
+  importFile(file, cb, slot) {
     if (!file) { if (cb) cb(false); return; }
     const bytes = Number(file.size);
     if (Number.isFinite(bytes) && bytes > SAVE_IMPORT_MAX_BYTES) {
@@ -4719,7 +4821,7 @@ export const save = {
     if (typeof FileReader === 'undefined') { if (cb) cb(false); return; }
     const reader = new FileReader();
     reader.onload = () => {
-      const out = this.importString(String(reader.result || ''), 'quick');
+      const out = this.importString(String(reader.result || ''), slot);
       // A compressed import restores through the async lane and reports on resolution; legacy
       // plain imports keep the synchronous callback contract callers already observe.
       if (out && typeof out.then === 'function') out.then((ok) => { if (cb) cb(!!ok); });
@@ -4851,7 +4953,9 @@ function roundSaveMs(value) {
   return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : 0;
 }
 
-function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
+// Exported for the migration-ladder proof (test/fb-migration-ladder.test.mjs) — the named
+// rejection contract lives on this one reader.
+export function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
   // `| 0` of 1e308/2^32 is 0, which used to look like a missing version and skip every migration.
   if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
   if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
@@ -4862,7 +4966,8 @@ function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
 
 // Run the ordered migration chain from `fromVer` up to CURRENT_VERSION, mutating `data` in place.
 // Returns false if a migration throws (caller aborts the load without touching live state).
-function runMigrations(data, fromVer) {
+// Exported for the migration-ladder proof.
+export function runMigrations(data, fromVer) {
   let v = fromVer | 0;
   let guard = 0;
   while (v < CURRENT_VERSION && guard++ < 64) {
