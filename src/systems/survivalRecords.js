@@ -33,6 +33,7 @@ import { hash32, wrapAngle } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
+import { applyBank, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
 
 export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
 export const CRUCIBLE_META_SCHEMA_VERSION = 1;
@@ -605,6 +606,7 @@ export function emptyCrucibleProfile() {
     daily: emptyDaily(),
     ghosts: emptyGhosts(),
     bestLines: [],
+    hangar: emptyHangar(),
   };
 }
 
@@ -650,6 +652,8 @@ function migrateProfile(raw) {
     ghosts: migrateGhosts(src.ghosts),
     // Historical rows keep their absent metadata. Never promote a v1 pose tape into a causal line.
     bestLines: Array.isArray(src.bestLines) ? src.bestLines.map(normalizeBestLine).filter(Boolean).slice(0, BEST_LINE_RETAIN_CAP) : [],
+    // Schema stays at 1. Unknown-key copy runs only above that, so the hangar has to be named here.
+    hangar: migrateHangar(src.hangar),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -661,6 +665,7 @@ function migrateProfile(raw) {
         || key === 'daily'
         || key === 'ghosts'
         || key === 'bestLines'
+        || key === 'hangar'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -862,6 +867,200 @@ export function saveCrucibleMeta(profile, storage = liveStorage()) {
     }
   }
   return true;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* additive profile merge (FB-104 — save-file transport carries the bag across machines)           */
+/* ---------------------------------------------------------------------------------------------- */
+
+function mergeInt(a, b) {
+  const x = Number.isInteger(a) && a >= 0 ? a : 0;
+  const y = Number.isInteger(b) && b >= 0 ? b : 0;
+  return Math.max(x, y);
+}
+
+function mergeRecordRow(ra, rb) {
+  const a = asObject(ra);
+  const b = asObject(rb);
+  if (!a && !b) return emptyRecord();
+  if (!a) return { ...b };
+  if (!b) return { ...a };
+  // Unknown future fields survive on the primary copy; the named fields below always resolve
+  // upward so a merge can never lower a best or drop a counter.
+  const out = { ...emptyRecord(), ...b, ...a };
+  for (const key of ['attempts', 'victories', 'bestScore', 'deepestWave', 'bestKills', 'tieCount']) {
+    out[key] = mergeInt(a[key], b[key]);
+  }
+  // bestResult is the comparable run under recordRules — the stronger one wins; an incomparable
+  // pair keeps the imported row (it is the newer claim to the slot).
+  const ar = asObject(a.bestResult);
+  const br = asObject(b.bestResult);
+  let best = null;
+  if (ar && br) {
+    const order = compareRunRecords(ar, br);
+    best = order == null || order >= 0 ? ar : br;
+  } else {
+    best = ar || br;
+  }
+  out.bestResult = best ? cloneJson(best) : null;
+  out.bestSeed = best && Number.isInteger(best.seed) ? best.seed : mergeInt(a.bestSeed, b.bestSeed);
+  const tied = [];
+  const seen = new Set();
+  const tiedIn = [
+    ...(Array.isArray(a.tiedResults) ? a.tiedResults : []),
+    ...(Array.isArray(b.tiedResults) ? b.tiedResults : []),
+  ];
+  for (const row of tiedIn) {
+    if (!asObject(row)) continue;
+    const sig = stableStringify(row);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    tied.push(cloneJson(row));
+    if (tied.length >= CRUCIBLE_HISTORY_LIMIT) break;
+  }
+  out.tiedResults = tied;
+  return out;
+}
+
+function mergeDailyRow(key, ra, rb) {
+  const a = asObject(ra);
+  const b = asObject(rb);
+  if (!a && !b) return null;
+  if (!a) return { ...b };
+  if (!b) return { ...a };
+  const out = { ...b, ...a };
+  out.dateKey = isUtcDateKey(a.dateKey) ? a.dateKey : (isUtcDateKey(b.dateKey) ? b.dateKey : key);
+  out.bestScore = mergeInt(a.bestScore, b.bestScore);
+  out.deepestWave = mergeInt(a.deepestWave, b.deepestWave);
+  out.attempts = mergeInt(a.attempts, b.attempts);
+  // The newer stamp owns the displayed outcome and seed; a tie keeps the imported row.
+  const at = typeof a.recordedAt === 'string' ? a.recordedAt : '';
+  const bt = typeof b.recordedAt === 'string' ? b.recordedAt : '';
+  const newer = at >= bt ? a : b;
+  out.lastOutcome = newer.lastOutcome || a.lastOutcome || b.lastOutcome || null;
+  out.seed = Number.isInteger(newer.seed) && newer.seed > 0 ? newer.seed : mergeInt(a.seed, b.seed);
+  out.recordedAt = newer.recordedAt || null;
+  return out;
+}
+
+function mergeHistoryRows(aRows, bRows) {
+  // Oldest-first union — the file's rows first, then stored rows it never carried (usually the
+  // newer tail when the same machine kept playing after export). Rows dedupe on their canonical
+  // content so an export→wipe→import round trip restores the timeline once.
+  const out = [];
+  const seen = new Set();
+  for (const row of [...aRows, ...bRows]) {
+    if (!asObject(row)) continue;
+    const sig = stableStringify(row);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    out.push(cloneJson(row));
+  }
+  return out.slice(-CRUCIBLE_HISTORY_LIMIT);
+}
+
+/**
+ * Additive union of two crucible profiles (FB-104). `primary` is the imported bag, `secondary`
+ * the stored one. Merge law mirrors mergeAchievementBags: collections union (imported row wins a
+ * true same-key conflict), every counter and every best takes the max, and the comparable
+ * bestResult keeps the stronger run — an import can never lower a record. Unknown future-schema
+ * keys pass through, primary winning. Re-running the merge on its own output is a no-op.
+ */
+export function mergeCrucibleProfiles(primary, secondary) {
+  const a = migrateProfile(primary);
+  const b = migrateProfile(secondary);
+  const out = emptyCrucibleProfile();
+  // Union of unlocks — the same key names the same unlock, so the imported row simply wins.
+  out.unlocks = { ...b.unlocks, ...a.unlocks };
+  // Records: lifetime counters max, per-key rows merge upward under the record rules.
+  const lifetime = emptyLifetime();
+  const la = asObject(a.records && a.records.lifetime) ? a.records.lifetime : {};
+  const lb = asObject(b.records && b.records.lifetime) ? b.records.lifetime : {};
+  for (const key of Object.keys(lifetime)) lifetime[key] = mergeInt(la[key], lb[key]);
+  const byKeyA = asObject(a.records && a.records.byKey) ? a.records.byKey : {};
+  const byKeyB = asObject(b.records && b.records.byKey) ? b.records.byKey : {};
+  const byKey = {};
+  for (const key of new Set([...Object.keys(byKeyA), ...Object.keys(byKeyB)])) {
+    byKey[key] = mergeRecordRow(byKeyA[key], byKeyB[key]);
+  }
+  out.records = { byKey, lifetime };
+  out.history = mergeHistoryRows(
+    Array.isArray(a.history) ? a.history : [],
+    Array.isArray(b.history) ? b.history : [],
+  );
+  // Daily boards: per-date merge upward; the freshest stamp keeps the displayed outcome.
+  const dailyA = asObject(a.daily && a.daily.byDate) ? a.daily.byDate : {};
+  const dailyB = asObject(b.daily && b.daily.byDate) ? b.daily.byDate : {};
+  const byDate = {};
+  for (const key of new Set([...Object.keys(dailyA), ...Object.keys(dailyB)])) {
+    const row = mergeDailyRow(key, dailyA[key], dailyB[key]);
+    if (row) byDate[row.dateKey] = row;
+  }
+  out.daily = { byDate: pruneDailyByDate(byDate) };
+  // Ghosts: a hash names one tape, so a same-key conflict is the same run — the fresher stamp
+  // wins the display fields. lastHash tracks the newest recordedAt across the union.
+  const ghostA = asObject(a.ghosts && a.ghosts.byHash) ? a.ghosts.byHash : {};
+  const ghostB = asObject(b.ghosts && b.ghosts.byHash) ? b.ghosts.byHash : {};
+  const byHash = {};
+  for (const key of new Set([...Object.keys(ghostA), ...Object.keys(ghostB)])) {
+    const ra = asObject(ghostA[key]);
+    const rb = asObject(ghostB[key]);
+    if (ra && rb) {
+      const at = typeof ra.recordedAt === 'string' ? ra.recordedAt : '';
+      const bt = typeof rb.recordedAt === 'string' ? rb.recordedAt : '';
+      byHash[key] = cloneJson(at >= bt ? ra : rb);
+    } else {
+      byHash[key] = cloneJson(ra || rb);
+    }
+  }
+  const pruned = pruneGhostsByHash(byHash);
+  let lastHash = null;
+  let lastAt = '';
+  for (const row of Object.values(pruned)) {
+    const at = typeof row.recordedAt === 'string' ? row.recordedAt : '';
+    if (lastHash == null || at >= lastAt) { lastAt = at; lastHash = row.hash; }
+  }
+  out.ghosts = { byHash: pruned, lastHash };
+  // Best lines union by canonical id, points-descending, same retain cap as retainBestLine.
+  const lines = [];
+  const seenIds = new Set();
+  for (const line of [
+    ...(Array.isArray(a.bestLines) ? a.bestLines : []),
+    ...(Array.isArray(b.bestLines) ? b.bestLines : []),
+  ]) {
+    if (!asObject(line)) continue;
+    const id = typeof line.id === 'string' && line.id ? line.id : stableStringify(line);
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    lines.push(cloneJson(line));
+  }
+  out.bestLines = lines.sort((x, y) => (y.points || 0) - (x.points || 0)).slice(0, BEST_LINE_RETAIN_CAP);
+  // Hangar: bounty and the reroll counter are wallet-style totals (max), per-track ranks are
+  // purchased progression (per-track max), settled keys and owned hulls union — a settled key
+  // must stay settled on both sides so neither run can be banked twice, and a hull either
+  // side owns stays owned. migrateProfile already normalized both bags into the same shape.
+  const hangarA = asObject(a.hangar) ? a.hangar : emptyHangar();
+  const hangarB = asObject(b.hangar) ? b.hangar : emptyHangar();
+  const ranks = {};
+  for (const key of new Set([...Object.keys(hangarA.ranks || {}), ...Object.keys(hangarB.ranks || {})])) {
+    ranks[key] = mergeInt((hangarA.ranks || {})[key], (hangarB.ranks || {})[key]);
+  }
+  out.hangar = {
+    bounty: mergeInt(hangarA.bounty, hangarB.bounty),
+    ranks,
+    settledKeys: [...new Set([...(hangarB.settledKeys || []), ...(hangarA.settledKeys || [])])].slice(-80),
+    ownedHulls: [...new Set([...(hangarB.ownedHulls || []), ...(hangarA.ownedHulls || [])])],
+    rerollsUsed: mergeInt(hangarA.rerollsUsed, hangarB.rerollsUsed),
+  };
+  // Unknown top-level keys (a newer schema riding inside the bag) pass through; the imported
+  // copy wins a conflict, matching migrateProfile's own passthrough rule.
+  for (const key of Object.keys(b)) {
+    if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = b[key];
+  }
+  for (const key of Object.keys(a)) {
+    if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = a[key];
+  }
+  return out;
 }
 
 export function recordRulesFor(result = {}, run = {}) {
@@ -1109,8 +1308,39 @@ function applyDailyBoard(daily, compact, recordedAt) {
   return { ...prevBag, byDate: pruneDailyByDate(byDate) };
 }
 
+function hangarEndedAt(value) {
+  if (value == null) return undefined;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (typeof value === 'object') {
+    const tick = value.tick != null ? value.tick : '';
+    const simTime = value.simTime != null ? value.simTime : '';
+    if (tick === '' && simTime === '') return undefined;
+    // settleKey joins this into one string. A stamp object would collapse every death together.
+    return `${tick}:${simTime}`;
+  }
+  return String(value);
+}
+
+function hangarBankInput(result, run) {
+  const src = result && typeof result === 'object' ? result : {};
+  const runSrc = run && typeof run === 'object' ? run : {};
+  const outcome = typeof src.outcome === 'string' ? src.outcome : '';
+  return {
+    credits: src.credits,
+    // The results plate says "defeat". The hangar banks a death.
+    outcome: outcome === 'defeat' ? 'death' : outcome,
+    cashOut: src.cashOut === true,
+    wavesCleared: src.wavesCleared != null ? src.wavesCleared : src.wave,
+    wave: src.wave != null ? src.wave : runSrc.wave,
+    runId: src.runId != null ? src.runId : runSrc.runId,
+    seed: src.seed != null ? src.seed : runSrc.seed,
+    endedAt: hangarEndedAt(src.endedAt),
+  };
+}
+
 export function settleCrucibleRun({ result, run, profile = null, storage = liveStorage() } = {}) {
   const loaded = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
+  const bank = applyBank(loaded.hangar, hangarBankInput(result, run));
   const evaluated = evaluateUnlocks(loaded, result || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
   const line = compact.bestLine;
@@ -1127,6 +1357,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     ghosts = upsertGhost(ghosts, tape, recordedAt, compact.recordRules);
     compact.ghostHash = ghosts.lastHash;
   }
+  compact.bankedBounty = bank.banked;
+  compact.hangarBounty = bank.hangarBounty;
+  compact.cashOut = bank.cashOut;
   const next = {
     ...loaded,
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
@@ -1139,6 +1372,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     daily: applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,
     bestLines: retainBestLine(loaded.bestLines, line),
+    hangar: bank.hangar,
   };
   saveCrucibleMeta(next, storage);
   consumeQueuedDailyDateKey();
