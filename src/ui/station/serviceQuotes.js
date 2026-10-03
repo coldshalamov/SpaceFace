@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -90,6 +90,9 @@ const SERVICE_ROWS = Object.freeze([
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
   { type: 'insurance', label: 'Hull Insurance', desc: 'Caps the station recovery fee; cargo loss still applies', requires: [] },
+  { type: 'cargo_insurance', label: 'Cargo Insurance', desc: 'Cover the legal manifest for one trip', requires: [] },
+  { type: 'loan', label: 'Take a Note', desc: 'Borrow against hull, hold, and standing', requires: [] },
+  { type: 'settle', label: 'Settle the Note', desc: 'Pay down standing debt before it ages to bounty', requires: [] },
   { type: 'redeem_rights', label: 'Redeem Salvage Rights', desc: 'A Pitborn yard buys out claimed wreck rights', requires: [] },
 ]);
 
@@ -503,6 +506,103 @@ export function serviceQuote(type, state, entity) {
              ? []
              : [{ text: 'saves ' + fmtCr(quote.coveredCostCr) + ' cr/loss', kind: 'gain' }]),
            afterCreditsChip(credits, deductible)],
+    };
+  }
+  if (type === 'cargo_insurance') {
+    // FB-124 — the same quote the click applies: legal manifest × sector danger, one trip.
+    const policy = p.cargoPolicy && typeof p.cargoPolicy === 'object' ? p.cargoPolicy : null;
+    if (policy && Number(policy.coverCr) > 0) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'Active · manifest ' + fmtCr(policy.manifestCr) + ' cr · pays up to ' + fmtCr(policy.coverCr) + ' cr · ends next dock',
+        buttonLabel: 'Covered',
+        disabled: true,
+        chips: [{ text: 'active', kind: 'ok' }],
+      };
+    }
+    const quote = cargoPolicyQuoteFor(state);
+    if (!quote) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'No legal cargo in the hold — nothing to cover',
+        buttonLabel: 'Purchase',
+        disabled: true,
+        chips: [{ text: 'empty manifest', kind: 'warn' }],
+      };
+    }
+    const disabled = credits < quote.premiumCr;
+    return {
+      amount: 1,
+      cost: quote.premiumCr,
+      detail: 'Manifest ' + fmtCr(quote.manifestCr) + ' cr · danger tier ' + quote.dangerTier
+        + ' · pays ' + Math.round(quote.coverFrac * 100) + '% of lost value, up to ' + fmtCr(quote.coverCr) + ' cr · one trip',
+      buttonLabel: 'Purchase',
+      disabled,
+      disabledReason: disabled ? 'need ' + fmtCr(quote.premiumCr - credits) + ' cr' : '',
+      chips: disabled
+        ? [{ text: fmtCr(quote.premiumCr) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(quote.premiumCr - credits) + ' cr', kind: 'bad' }]
+        : [{ text: fmtCr(quote.premiumCr) + ' cr', kind: 'cost' },
+           { text: 'covers ' + fmtCr(quote.coverCr) + ' cr', kind: 'gain' },
+           afterCreditsChip(credits, quote.premiumCr)],
+    };
+  }
+  if (type === 'loan') {
+    // FB-049 — the note as an instrument. The limit is the same function the click enforces.
+    const dockedId = (state && state.ui && state.ui.dockedStationId) || null;
+    const limit = loanLimitFor(state, dockedId);
+    const debt = Math.max(0, Math.round(Number(p.debt) || 0));
+    const room = Math.max(0, limit - debt);
+    if (room <= 0) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'Note ' + fmtCr(debt) + ' cr · at the ' + fmtCr(limit) + ' cr limit',
+        buttonLabel: 'Borrow',
+        disabled: true,
+        disabledReason: 'note is at its limit — settle first',
+        chips: [{ text: 'at limit', kind: 'bad' }],
+      };
+    }
+    return {
+      amount: room,
+      cost: 0,
+      payout: room,
+      detail: 'Borrow up to ' + fmtCr(room) + ' cr'
+        + (debt > 0 ? ' · note already ' + fmtCr(debt) + ' cr' : '')
+        + ' · stale notes levy 25%/day to bounty',
+      buttonLabel: 'Borrow ' + fmtCr(room) + ' cr',
+      disabled: false,
+      chips: [{ text: '+' + fmtCr(room) + ' cr', kind: 'gain' },
+              { text: 'note ' + fmtCr(debt + room) + ' cr', kind: 'warn' }],
+    };
+  }
+  if (type === 'settle') {
+    const debt = Math.max(0, Math.round(Number(p.debt) || 0));
+    if (debt <= 0) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'No note on the ledger',
+        buttonLabel: 'Settle',
+        disabled: true,
+        chips: [{ text: 'clear', kind: 'ok' }],
+      };
+    }
+    const pay = Math.min(debt, Math.max(0, Math.round(credits)));
+    const disabled = pay <= 0;
+    return {
+      amount: pay,
+      cost: pay,
+      detail: 'Note ' + fmtCr(debt) + ' cr · settle ' + fmtCr(pay) + ' cr now'
+        + (debt - pay > 0 ? ' · ' + fmtCr(debt - pay) + ' cr still on the ledger' : ' · clears the ledger'),
+      buttonLabel: 'Settle ' + fmtCr(pay) + ' cr',
+      disabled,
+      disabledReason: disabled ? 'need credits' : '',
+      chips: disabled
+        ? [{ text: fmtCr(debt) + ' cr owed', kind: 'cost' }, { text: 'need credits', kind: 'bad' }]
+        : [{ text: fmtCr(pay) + ' cr', kind: 'cost' }, afterCreditsChip(credits, pay)],
     };
   }
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };

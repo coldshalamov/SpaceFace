@@ -96,6 +96,7 @@ import {
   releaseNextFieldOpportunity,
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -254,6 +255,21 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 const DEFAULT_WORLD_RADIUS = 4000;
 const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
 const BASE_FUEL = 4;            // fuel units per lightyear
+// FB-111 — a wedged hull gets a paid door, not a silent reload. Thrust held, the ship
+// producing no displacement and no speed for STUCK_OFFER_S ⇒ one tow offer per wedge
+// episode. A deliberate brake-hold or a coasting hull never counts: only an engine asked
+// for motion it cannot produce.
+const STUCK_OFFER_S = 8;
+const STUCK_DISPLACEMENT_WU = 3;
+const STUCK_SPEED_EPS_WU_S = 4;
+const TOW_BERTH_CLEARANCE_WU = 140;
+
+// Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
+function setVecXZTow(vec, x, z) {
+  if (!vec) return;
+  if (typeof vec.set === 'function') vec.set(x, 0, z);
+  else { vec.x = x; vec.y = 0; vec.z = z; }
+}
 const BASE_INTERDICT = 0.35;
 const GATE_CHARGE = 3.0;        // s align time for a gate jump
 const GATE_COOLDOWN = 0;
@@ -630,6 +646,9 @@ export const world = {
     bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
     bus.on('ecology:evidence', (p) => handleAlienEcologyEvent(this, 'ecology:evidence', p));
     bus.on('ecology:quarantinePulse', (p) => handleAlienEcologyEvent(this, 'ecology:quarantinePulse', p));
+    // FB-111 — the deck's "take the tow" verb lands here; the engine re-validates the wedge
+    // before charging or moving anything, so a stale offer can never tow a free ship.
+    bus.on('world:stuckTowAccept', () => this._executeStuckTow());
     bus.on('pickup:collected', (p) => {
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
@@ -3851,6 +3870,7 @@ export const world = {
 
     const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
     this._tickFrameOrigin(state);
+    this._updateStuckWatch(dt, state);
     if (observeTick) this._tickResidency(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
@@ -5416,6 +5436,118 @@ export const world = {
     const f = this.state.fuel;
     f.current = Math.min(f.max, f.current + amount);
     this.bus.emit('fuel:changed', { current: f.current, max: f.max });
+  },
+
+  // --- FB-111: wedged-hull tow -----------------------------------------------------------
+  // A ship thrusting at full commitment that produces neither speed nor displacement is
+  // wedged on geometry physics will not release — the depenetration impulse keeps solving
+  // and losing. After STUCK_OFFER_S of that, the sector offers one paid tow; the engine
+  // re-validates the wedge on accept so a freed ship can never buy a ride it stopped needing.
+
+  _resetStuckWatch(w, cleared) {
+    const wasOffered = w && w.offered === true;
+    w.s = 0;
+    w.live = false;
+    w.offered = false;
+    w.ax = 0;
+    w.az = 0;
+    if (cleared && wasOffered) this.bus.emit('world:stuckCleared', {});
+  },
+
+  _updateStuckWatch(dt, state) {
+    const w = this._stuckWatch || (this._stuckWatch = { s: 0, live: false, offered: false, ax: 0, az: 0 });
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const input = state.input;
+    const thrusting = !!(input && Number(input.moveZ) > 0.2 && input.brake !== true);
+    const docked = !!(state.ui && state.ui.docked === true);
+    if (!player || player.alive === false || docked || !thrusting || !player.pos) {
+      this._resetStuckWatch(w, thrusting === false || docked);
+      return;
+    }
+    const px = Number(player.pos.x) || 0;
+    const pz = Number(player.pos.z) || 0;
+    const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+    if (!w.live) {
+      w.live = true;
+      w.ax = px;
+      w.az = pz;
+      w.s = 0;
+      return;
+    }
+    const drifted = Math.hypot(px - w.ax, pz - w.az);
+    if (drifted > STUCK_DISPLACEMENT_WU || speed > STUCK_SPEED_EPS_WU_S) {
+      // The hull still answers the engine — a grind along a wall is motion, not a wedge.
+      this._resetStuckWatch(w, true);
+      return;
+    }
+    w.s += Math.max(0, Number(dt) || 0);
+    if (w.s >= STUCK_OFFER_S && !w.offered) {
+      w.offered = true;
+      const quote = this._stuckTowQuote(state, player);
+      this.bus.emit('world:stuckTowOffer', {
+        stuckS: w.s,
+        stationId: quote && quote.stationId || null,
+        stationName: quote && quote.stationName || null,
+        quotedCr: quote ? quote.quotedCr : null,
+      });
+    }
+  },
+
+  _stuckTowQuote(state, playerEntity) {
+    const station = chooseLawfulStation(state);
+    if (!station) return null;
+    const player = state.player || {};
+    const index = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+    const shipId = (owned && owned.defId) || (playerEntity && playerEntity.data && playerEntity.data.defId) || 'ship_kestrel';
+    const q = recoveryCostQuote(shipId, player.insurance || {});
+    return {
+      station,
+      stationId: station.id,
+      stationName: station.name || station.id,
+      quotedCr: q && q.insured ? q.insuredCostCr : q.uninsuredCostCr,
+    };
+  },
+
+  _executeStuckTow() {
+    const state = this.state;
+    const w = this._stuckWatch;
+    if (!w || w.offered !== true) return;    // no live offer — a stale deck answer tows nothing
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    if (state.ui && state.ui.docked === true) return;
+    const quote = this._stuckTowQuote(state, player);
+    if (!quote || !quote.station) return;
+    const charge = { quotedCr: quote.quotedCr };
+    if (this.bus && this.bus.emit) this.bus.emit('economy:towCharge', charge);
+    const station = quote.station;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (station.sectorId && station.sectorId !== currentSectorId && typeof this.enterSector === 'function') {
+      this.enterSector(station.sectorId, {
+        via: 'tow',
+        fromSectorId: currentSectorId || null,
+        placePlayer: true,
+      });
+    }
+    const active = state.world && state.world.activeSector;
+    const record = active && Array.isArray(active.stations)
+      ? active.stations.find((st) => st && (st.stationId || st.id) === station.id)
+      : null;
+    const base = record && record.pos ? record.pos : { x: 0, z: 0 };
+    const px = (Number(base.x) || 0) + TOW_BERTH_CLEARANCE_WU;
+    const pz = Number(base.z) || 0;
+    setVecXZTow(player.pos, px, pz);
+    setVecXZTow(player.vel, 0, 0);
+    if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+    else if (player.prevPos) setVecXZTow(player.prevPos, px, pz);
+    this._resetStuckWatch(w, false);
+    this.bus.emit('toast', {
+      text: `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
+        + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
+      kind: charge.debtCr > 0 ? 'warn' : 'success',
+      ttl: 4,
+    });
+    this.bus.emit('dock:docked', { stationId: station.id, via: 'tow' });
   },
 
   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------

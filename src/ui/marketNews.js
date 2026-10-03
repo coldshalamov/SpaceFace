@@ -386,6 +386,15 @@ export function createMarketNews(ctx) {
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
   on('news:publish', surfacePublished);
+  // FB-049 — a stale note escalating to bounty is a cited headline, not a silent ledger move.
+  on('economy:debtEscalated', (p) => {
+    if (!p || !(Number(p.levyCr) > 0)) return null;
+    return surfacePublished({
+      text: `A stale note went to the board: ${Math.round(p.debtCr || 0)} cr owed, +${Math.round(p.levyCr)} cr bounty posted.`,
+      kind: 'debt_escalated',
+      sourceRef: `economy:debtEscalated:${Math.round(Number(p.daysOverdue) || 0)}:${Math.round(Number(p.bountyCr) || 0)}`,
+    });
+  });
   on('freight:loss', surfaceFreightLoss);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
