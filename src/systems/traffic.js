@@ -1599,6 +1599,9 @@ export const traffic = {
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
       // may still unwind afterward, but their private reservation tokens no longer own this run.
       this._restoreEpochPending = true;
+      // Sector materialization reuses numeric IDs before save:loaded. This roster belongs
+      // to the outgoing run; cleanup must never resolve it against fresh occupants.
+      this._active = [];
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
     });
