@@ -117,8 +117,8 @@ ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; lett
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
 ${A} .orr-armory-reading__main { display:grid; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr); grid-template-rows:minmax(0,1fr); gap:24px; flex:1 1 auto; min-height:0; overflow:auto; }
 ${A} .orr-armory-reading__foot { flex:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--dp-line-faint); }
-${A} .orr-armory-reading__foot .orr-armory-reading__buy { margin:0; }
-${A} .orr-armory-reading__foot .orr-armory-reading__budget { margin:0 0 12px; }
+${A} .orr-armory-reading__foot .orr-armory-reading__demo { margin:0 0 6px; }
+${A} .orr-armory-reading__foot .orr-armory-reading__demo:empty { display:none; }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 /* bottom fade on the scrollable pane — the cue that dossier words continue below the fold */
 ${A} .orr-armory-reading__main { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); }
@@ -139,8 +139,8 @@ ${A} .orr-armory-reading__name { font:800 clamp(24px,2.4vw,36px)/1.06 var(--dp-f
 ${A} .orr-armory-reading__blurb { font:400 15px/1.5 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink) !important; max-width:none !important; }
 ${A} .orr-armory-reading__act { font:400 13px/1.5 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink-dim) !important; }
 ${A} .orr-armory-reading__compare { margin:14px 0 !important; }
-${A} .orr-armory-reading__budget { margin:20px 0 !important; }
-${A} .orr-armory-reading__buy { margin:18px 0 12px !important; }
+${A} .orr-armory-reading__budget { margin:0 0 12px !important; }
+${A} .orr-armory-reading__buy { margin:0 !important; }
 ${A} .orr-armory-purchase { display:block; width:100%; min-height:50px; padding:12px 16px; background:var(--dp-hand); color:var(--dp-void); border:0; border-radius:0; font:650 16px/1.25 var(--dp-face-label); cursor:pointer; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%); }
 ${A} .orr-armory-purchase:disabled { background:var(--dp-line); color:var(--dp-ink-dim); cursor:default; }
 ${A} .orr-armory-refusal { margin:8px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }

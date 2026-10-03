@@ -700,7 +700,7 @@ export const crucibleDraftScreen = {
       // Wallet and Install dock as a footer under the scrolling dossier — the buy key
       // stays reachable no matter how far the words column scrolls.
       const foot = el('div', 'orr-armory-reading__foot');
-      foot.append(parts.budget, parts.buy);
+      foot.append(parts.budget, parts.demo, parts.buy);
       reading.append(main, foot);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
