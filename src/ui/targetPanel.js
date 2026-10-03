@@ -404,6 +404,19 @@ export function targetPhysicalClassLabel(t) {
   return typeof cls === 'string' && cls.length > 0 ? cls.toUpperCase() : null;
 }
 
+/**
+ * FB-058: the scanned ship's build badge — the label the buildIdentity system stamped on the
+ * entity. Shown only at the SF-133 disclosure stage (deep/full reveal, where fittings are
+ * disclosed); a class-band contact never advertises hidden hardware. Pure and DOM-free.
+ */
+export function targetBuildBadgeLabel(t) {
+  const data = t && t.data;
+  const reveal = data && data.scanRevealed;
+  const disclosed = reveal && (reveal.quality === 'full' || reveal.quality === 'deep');
+  const label = disclosed && data.buildIdentity ? data.buildIdentity.label : null;
+  return typeof label === 'string' && label.length > 0 ? label.toUpperCase() : null;
+}
+
 export function targetBountyPreview(target) {
   const amount = Math.max(0, Math.round(Number(target && target.data && target.data.bountyCr) || 0));
   if (amount <= 0) return 0;
@@ -665,12 +678,14 @@ export function createTargetPanel(ctx) {
       const facShort = fac ? (fac.short || fac.name) : '—';
       const callsign = t.data && t.data.callsign;
       const classLabel = targetPhysicalClassLabel(t);
-      const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}:${classLabel || ''}`;
+      const badgeLabel = targetBuildBadgeLabel(t);
+      const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}:${classLabel || ''}:${badgeLabel || ''}`;
       if (idKey !== lastIdentityKey) {
         lastIdentityKey = idKey;
         const levelBit = level != null ? ` · L${level}` : '';
         const classBit = classLabel ? ` · ${classLabel}` : '';
-        setText(elIdentity, `${facShort} · ${role}${levelBit}${classBit}`);
+        const badgeBit = badgeLabel ? ` · ${badgeLabel}` : '';
+        setText(elIdentity, `${facShort} · ${role}${levelBit}${classBit}${badgeBit}`);
       }
       if (elIdentity.style.display !== 'block') elIdentity.style.display = 'block';
     } else if (elIdentity.style.display !== 'none') {

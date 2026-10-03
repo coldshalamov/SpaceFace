@@ -77,11 +77,14 @@ export function isPriorityDuckTarget(target) {
 
   const busName = normalizeTargetToken(target.busName || target.bus || target.output);
   const category = normalizeTargetToken(target.category || target.recipeCategory);
+  if (busName === 'music' || busName === 'comms' || busName === 'ui' || busName === 'master') return false;
+  if (role === 'music' || role === 'comms' || role === 'ui' || role === 'master') return false;
   const loop = target.loop === true || target.sustained === true;
   if (!loop) return false;
-  if (busName === 'engine' || category === 'engine') return true;
-  if (category === 'weapon') return true;
-  return busName === 'combat' && (target.weapon === true || target.recipeId && String(target.recipeId).includes('wpn'));
+  // FB-083 — any sustained voice on the world buses bows. Music, comms, ui, and master do not.
+  if (busName === 'sfx' || busName === 'engine' || busName === 'combat' || busName === 'ambient') return true;
+  if (category === 'engine' || category === 'weapon' || category === 'ambient' || category === 'sfx') return true;
+  return false;
 }
 
 export function duckGainForTarget(target, envelope, nowMs = 0) {

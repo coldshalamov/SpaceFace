@@ -1,9 +1,17 @@
 // Presentation snapshot fence. Render reads the latest complete packed frame,
 // never live entity objects. Required before a simulation Worker.
 
-import { createPresentationSnapshot } from './presentationSnapshot.js';
+import { createPresentationSnapshot, SNAPSHOT_COLUMNS } from './presentationSnapshot.js';
 
 export const SNAPSHOT_FENCE_BUFFERS = 3;
+
+/** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
+export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
+  .reduce((total, spec) => total + spec.stride, 0) * 4;
+/** Bytes recorded for one journal event: kind + index + payload, all u32. */
+export const PACKED_BYTES_PER_JOURNAL_EVENT = 12;
+/** Commits of byte counts kept for p50/p95 reporting. Preallocated — no per-frame allocation. */
+export const PACK_BYTES_RING = 64;
 
 function readonlyColumns(columns) {
   // Ownership is the immutability boundary: only the writer slot can call
@@ -104,6 +112,10 @@ export function createSnapshotFence(options = {}) {
   let previous = -1;
   let sequence = 0;
   let packCount = 0;
+  const packBytesRing = new Float64Array(PACK_BYTES_RING);
+  let packBytesIndex = 0;
+  let packBytesCount = 0;
+  let lastBytesPacked = 0;
 
   return {
     beginPack(expectedCount, simTime = 0, poseEpoch = 0) {
@@ -124,6 +136,11 @@ export function createSnapshotFence(options = {}) {
       buffer.sequence = sequence;
       write = (write + 1) % SNAPSHOT_FENCE_BUFFERS;
       packCount++;
+      lastBytesPacked = buffer.snapshot.count * PACKED_BYTES_PER_ENTITY
+        + buffer.snapshot.journalCount * PACKED_BYTES_PER_JOURNAL_EVENT;
+      packBytesRing[packBytesIndex] = lastBytesPacked;
+      packBytesIndex = (packBytesIndex + 1) % PACK_BYTES_RING;
+      if (packBytesCount < PACK_BYTES_RING) packBytesCount++;
       return sequence;
     },
     latestSnapshot() {
@@ -146,6 +163,27 @@ export function createSnapshotFence(options = {}) {
     },
     get sequence() { return sequence; },
     get packCount() { return packCount; },
+    /** Bytes packed by the most recent commit. 0 before the first pack. */
+    get lastBytesPacked() { return lastBytesPacked; },
+    /**
+     * p50/p95 of bytes packed per commit over the retained ring. Sorts a scratch copy — call
+     * from a witness/report cadence, not per frame.
+     */
+    bytesPackedStats() {
+      if (packBytesCount === 0) return { samples: 0, last: 0, p50: 0, p95: 0, max: 0, mean: 0 };
+      const scratch = Array.prototype.slice.call(packBytesRing, 0, packBytesCount).sort((a, b) => a - b);
+      const pick = (q) => scratch[Math.min(scratch.length - 1, Math.max(0, Math.ceil(q * scratch.length) - 1))];
+      let total = 0;
+      for (let i = 0; i < scratch.length; i++) total += scratch[i];
+      return {
+        samples: scratch.length,
+        last: lastBytesPacked,
+        p50: pick(0.5),
+        p95: pick(0.95),
+        max: scratch[scratch.length - 1],
+        mean: total / scratch.length,
+      };
+    },
   };
 }
 

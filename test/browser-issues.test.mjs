@@ -81,6 +81,21 @@ test('navigation-cancellation classification is exact', () => {
   assert.equal(isNavigationCancelledRequest(null), false);
 });
 
+test('an optional save-store deadline is ignored only on an explicitly store-less server', () => {
+  const page = new FakePage();
+  const absent = collectPageIssues(page, { playerStoreMounted: false });
+  const mounted = collectPageIssues(page, { playerStoreMounted: true });
+  const unknown = collectPageIssues(page);
+  page.emit('requestfailed', failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_ABORTED'));
+  assert.equal(absent.issues.length, 0);
+  assert.equal(absent.ignoredIssues[0].absentPlayerStore, true);
+  assert.equal(mounted.issues.length, 1);
+  assert.equal(unknown.issues.length, 1);
+  page.emit('requestfailed', failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_FAILED'));
+  page.emit('requestfailed', failedRequest('http://game.test/asset.glb', 'net::ERR_ABORTED'));
+  assert.equal(absent.issues.length, 2, 'asset failures and real transport faults remain visible');
+});
+
 test('GLTF blob errors are ignored only during the harness-owned reload', () => {
   const blobError = "THREE.GLTFLoader: Couldn't load texture blob:http://game.test/texture";
   assert.equal(isExpectedNavigationTextureAbort(blobError, 'harness-reload'), true);

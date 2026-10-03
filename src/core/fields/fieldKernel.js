@@ -310,6 +310,100 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
   return o;
 }
 
+// ── Predictor corridor relevance (RELEASE-TRUTH C4) ─────────────────────────────────────────
+// A field-aware preview only changes a ballistic contact claim when some field can actually
+// apply force along the path the predictor samples. Three kinds of fields cannot:
+//   • payload-excluded — the body's own deployer filter / team / type opts it out;
+//   • zero-force — strength <= 0 contributes no raw acceleration anywhere (damping lives
+//     inside that term), and no hitch lock reaches an unhitched body;
+//   • provably disjoint — its volume never touches the ballistic corridor and never touches
+//     the volume of a field that does (a chain of overlapping fields can ferry a bent path
+//     in, so relevance closes transitively over touching volumes — a field outside every
+//     link is provably unreachable while the read stays corridor-shaped).
+// "Conservative" here means the WHOLE predicted corridor, not the starting point: a field
+// ahead on the lane is relevant even though the payload stands outside it now.
+
+// Conservative bound on a field's reach around its center — the same bound for every kind:
+// radial volumes are disks of `radius`; a cone wedge never exceeds its radius; a scoop sheet
+// extends `radius` along its axis plus `halfWidth` laterally, so radius+halfWidth covers it.
+export function fieldInfluenceRadius(field) {
+  if (!field) return 0;
+  let reach = positive(field.radius, 0);
+  if (field.kind === FIELD_KINDS.SHEET) reach += positive(field.halfWidth, 0);
+  return reach;
+}
+
+function segmentPointDistance(ax, az, bx, bz, px, pz) {
+  const dx = bx - ax, dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-14 ? clamp(((px - ax) * dx + (pz - az) * dz) / len2, 0, 1) : 0;
+  const cx = ax + dx * t, cz = az + dz * t;
+  return Math.hypot(px - cx, pz - cz);
+}
+
+/**
+ * Can this field apply ANY acceleration to this body at all (before position is even asked)?
+ * Same gates production uses inside sampleFieldAcceleration: the coupling pre-filter plus a
+ * nonzero force source — authored strength, or a hitch lock that actually reaches this body.
+ */
+export function fieldCanApplyTo(field, profile) {
+  if (!fieldAffectsBody(field, profile)) return false;
+  if (field.strength > 0) return true;
+  const hitchId = profile && profile.hitchedTo;
+  return field.lockStrength > 0
+    && field.sourceId != null && hitchId != null
+    && String(field.sourceId) === String(hitchId);
+}
+
+/**
+ * The subset of `fields` that can apply force along the ballistic corridor a→b for `profile`
+ * — payload-excluded, zero-force, and provably disjoint fields are dropped. Relevance is a
+ * transitive closure: a field touching the corridor is relevant, and a field touching a
+ * relevant field's volume is relevant too (the first can push the path into the second).
+ * Returns a new array in input order; empty when nothing can bend the path — the caller's
+ * correct response to that is a ballistic preview, not a field solve that cannot see the
+ * full ballistic horizon.
+ *
+ * Residual bound, stated honestly: a body that exits a relevant field with bent velocity can
+ * still fly to a field this closure did not reach. Chasing that spoke needs the live solve;
+ * the frozen-field preview is advisory and the actual release authority never consults it.
+ */
+export function fieldsRelevantAlongCorridor(fields, a, b, profile) {
+  const out = [];
+  if (!Array.isArray(fields) || fields.length === 0 || !a || !b) return out;
+  const ax = finite(a.x), az = finite(a.z), bx = finite(b.x), bz = finite(b.z);
+  const reaches = fields.map(fieldInfluenceRadius);
+  const relevant = new Array(fields.length).fill(false);
+  // Pass 1: fields whose reach envelope intersects the ballistic corridor itself.
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (!field || !fieldCanApplyTo(field, profile)) continue;
+    const d = segmentPointDistance(ax, az, bx, bz, finite(field.center && field.center.x), finite(field.center && field.center.z));
+    if (d <= reaches[i]) relevant[i] = true;
+  }
+  // Closure: a field whose volume touches a relevant field's volume can be entered through
+  // it — the corridor is only provably clear of fields outside every link in the chain.
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (let i = 0; i < fields.length; i++) {
+      if (relevant[i]) continue;
+      const field = fields[i];
+      if (!field || !fieldCanApplyTo(field, profile)) continue;
+      const cx = finite(field.center && field.center.x), cz = finite(field.center && field.center.z);
+      for (let j = 0; j < fields.length; j++) {
+        if (!relevant[j]) continue;
+        const other = fields[j];
+        const dx = cx - finite(other.center && other.center.x);
+        const dz = cz - finite(other.center && other.center.z);
+        if (Math.hypot(dx, dz) <= reaches[i] + reaches[j]) { relevant[i] = true; grew = true; break; }
+      }
+    }
+  }
+  for (let i = 0; i < fields.length; i++) if (relevant[i]) out.push(fields[i]);
+  return out;
+}
+
 const _rawScratch = { ax: 0, az: 0 };
 const _fieldOrder = [];
 

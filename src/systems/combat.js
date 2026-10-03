@@ -12,10 +12,10 @@ import { hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { opticBeamHit, opticMaterialOf } from '../combat/opticField.js';
-import { markDirty, isDirty, DIRTY } from '../core/dirtyJournal.js';
+import { markDirty, isDirty, hasDirty, DIRTY } from '../core/dirtyJournal.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
@@ -51,6 +51,42 @@ const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
 const KILL_PRESENTATION_CAUSES = new Set(Object.values(KillCause));
 const KILL_PRESENTATION_SURFACES = new Set(Object.values(KillSurface));
 const BEAM_QUERY_RADIUS_PAD = 256;
+
+// ── FB-090 owner-local quiet latch ──────────────────────────────────────────────
+// Bench A/B: production default ON. The per-tick ship walk only writes shield/cap regen and
+// invuln expiry, and only for ships already below max or flagged invuln — damage arrives via
+// onHit/onWhipImpact (DIRTY.COMBAT marks) and spawn/despawn bumps the entity-index version, so
+// a scan that found nothing regenerating cannot find work until one of those signals fires.
+// A 0.5 s rescan covers foreign writers that drain cap/shield without marking dirty
+// (countermeasures, unique loot). Beams are checked live: a non-empty list means weapons fired
+// this tick and _applyBeamDamage must run.
+let COMBAT_QUIET_LATCH = true;
+export function setCombatQuietLatchForBench(enabled) {
+  COMBAT_QUIET_LATCH = enabled !== false;
+}
+export function getCombatQuietLatchForBench() {
+  return COMBAT_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const COMBAT_QUIET_RESCAN_TICKS = 30;
+
+function combatEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function combatBeamsIdle(state) {
+  const beams = state && state.combat && state.combat.beams;
+  return !Array.isArray(beams) || beams.length === 0;
+}
+
+function publishCombatQuiet(state, latched) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.quietLatched = !!latched;
+}
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   swarmer: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
   sniper: Object.freeze(['ranged']),
@@ -65,15 +101,55 @@ const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   kamikaze: Object.freeze([]),
 });
 
+// A wave of the same archetype samples one frozen doctrine row. Rebuilding it per body
+// was pure repeat work on fight entry (same faction, same seed, same count of 1).
+const factionSpawnBehaviorCache = new Map();
+const weaponTemplateCache = new Map();
+let capabilityByDef = new WeakMap();
+const enemySpawnRepeatWork = {
+  factionBehaviorBuilds: 0,
+  factionBehaviorHits: 0,
+  capabilityBuilds: 0,
+  capabilityHits: 0,
+  weaponTemplateBuilds: 0,
+  weaponTemplateHits: 0,
+};
+
+/** How many identical fight-entry samples were rebuilt versus reused. Test seam. */
+export function readEnemySpawnRepeatWork() {
+  return { ...enemySpawnRepeatWork };
+}
+
+export function resetEnemySpawnRepeatWork() {
+  enemySpawnRepeatWork.factionBehaviorBuilds = 0;
+  enemySpawnRepeatWork.factionBehaviorHits = 0;
+  enemySpawnRepeatWork.capabilityBuilds = 0;
+  enemySpawnRepeatWork.capabilityHits = 0;
+  enemySpawnRepeatWork.weaponTemplateBuilds = 0;
+  enemySpawnRepeatWork.weaponTemplateHits = 0;
+  factionSpawnBehaviorCache.clear();
+  weaponTemplateCache.clear();
+  capabilityByDef = new WeakMap();
+}
+
 function factionBehaviorForCombatSpawn(factionId, opts = {}) {
   const seedBase = Number.isFinite(opts.doctrineSeed)
     ? opts.doctrineSeed
     : (Number.isFinite(opts.startedTick) ? opts.startedTick : 0);
-  return sampleFactionBehavior(
+  const key = `${String(factionId)}|${seedBase}`;
+  if (factionSpawnBehaviorCache.has(key)) {
+    enemySpawnRepeatWork.factionBehaviorHits += 1;
+    return factionSpawnBehaviorCache.get(key);
+  }
+  enemySpawnRepeatWork.factionBehaviorBuilds += 1;
+  const row = sampleFactionBehavior(
     factionId,
     hash32(seedBase, factionId, 'combat-spawn-doctrine'),
     1,
   )[0] || null;
+  if (factionSpawnBehaviorCache.size > 64) factionSpawnBehaviorCache.clear();
+  factionSpawnBehaviorCache.set(key, row);
+  return row;
 }
 
 /** Scale an enemy archetype's base stats by encounter level. */
@@ -85,40 +161,66 @@ export function scaleCombatant(def, level) {
 // C1: floor for enemy direct-fire projectile speed (WU/s) — keeps shots readable on screen.
 const ENEMY_PROJ_SPEED_FLOOR = 380;
 
+function enemyWeaponTemplateKey(w) {
+  return [
+    w.id,
+    w.turret === true ? 1 : 0,
+    w.dmgOverride ?? '',
+    w.rofOverride ?? '',
+    w.projSpeedOverride ?? '',
+    w.rangeOverride ?? '',
+    w.occasional === true ? 1 : 0,
+    w.defensiveOnly === true ? 1 : 0,
+  ].join('|');
+}
+
 function resolveEnemyWeapon(w, slotIndex) {
   const base = WPN.get(w.id);
   if (!base) return null;
-  // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
-  // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
-  // An enemy entry may force a turret mount via w.turret:true (e.g. capital boss broadside beams).
-  const isTurret = base.tracking === 'auto_turret' || !!w.turret;
-  const isHoming = base.tracking === 'homing';
-  const facing = isTurret ? 'turret' : 'front';
-  const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
-    : (isHoming ? Math.PI : 22 * Math.PI / 180);
-  return {
-    ...base, slotIndex, defId: w.id,
-    facing, facingAngle: facing === 'turret' ? 0 : 0, gimbalArc,
-    muzzleOffset: [0.8, 0],
-    dmg: w.dmgOverride ?? base.dmg,
-    rof: w.rofOverride ?? base.rof,
-    // C1 engagement scale: enemy direct-fire projectiles fly at >= 380 WU/s so a shot crosses the
-    // visible frame in well under a second. Homing and deployed ordnance keep authored speeds.
-    projSpeed: (isHoming || base.tracking === 'deploy')
-      ? (w.projSpeedOverride ?? base.projSpeed)
-      : Math.max(ENEMY_PROJ_SPEED_FLOOR, w.projSpeedOverride ?? base.projSpeed),
-    range: w.rangeOverride ?? base.range,
-    spread: base.spreadDeg ?? 0,
-    tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
-    arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
-    heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
-    // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
-    // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
-    // these — they must survive resolution or the mounts read as always-on primaries.
-    ...(w.occasional === true ? { occasional: true } : null),
-    ...(w.defensiveOnly === true ? { defensiveOnly: true } : null),
-    _cooldown: 0, _heat: 0,
-  };
+  const templateKey = enemyWeaponTemplateKey(w);
+  let template = weaponTemplateCache.get(templateKey);
+  if (template) {
+    enemySpawnRepeatWork.weaponTemplateHits += 1;
+  } else {
+    enemySpawnRepeatWork.weaponTemplateBuilds += 1;
+    // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
+    // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
+    // An enemy entry may force a turret mount via w.turret:true (e.g. capital boss broadside beams).
+    const isTurret = base.tracking === 'auto_turret' || !!w.turret;
+    const isHoming = base.tracking === 'homing';
+    const facing = isTurret ? 'turret' : 'front';
+    const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
+      : (isHoming ? Math.PI : 22 * Math.PI / 180);
+    template = {
+      ...base, defId: w.id,
+      facing, facingAngle: facing === 'turret' ? 0 : 0, gimbalArc,
+      muzzleOffset: [0.8, 0],
+      dmg: w.dmgOverride ?? base.dmg,
+      rof: w.rofOverride ?? base.rof,
+      // C1 engagement scale: enemy direct-fire projectiles fly at >= 380 WU/s so a shot crosses the
+      // visible frame in well under a second. Homing and deployed ordnance keep authored speeds.
+      projSpeed: (isHoming || base.tracking === 'deploy')
+        ? (w.projSpeedOverride ?? base.projSpeed)
+        : Math.max(ENEMY_PROJ_SPEED_FLOOR, w.projSpeedOverride ?? base.projSpeed),
+      range: w.rangeOverride ?? base.range,
+      spread: base.spreadDeg ?? 0,
+      tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
+      arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
+      heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
+      // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
+      // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
+      // these — they must survive resolution or the mounts read as always-on primaries.
+      ...(w.occasional === true ? { occasional: true } : null),
+      ...(w.defensiveOnly === true ? { defensiveOnly: true } : null),
+    };
+    if (weaponTemplateCache.size > 128) weaponTemplateCache.clear();
+    weaponTemplateCache.set(templateKey, template);
+  }
+  // Cooldown, heat, and the small per-mount arrays are per body. The template stays shared.
+  const instance = { ...template, slotIndex, _cooldown: 0, _heat: 0 };
+  if (Array.isArray(template.muzzleOffset)) instance.muzzleOffset = template.muzzleOffset.slice();
+  if (template.arc && typeof template.arc === 'object') instance.arc = { ...template.arc };
+  return instance;
 }
 
 /** Build a spawnEntity spec for a hostile NPC (team 1) from an enemy archetype id. */
@@ -324,6 +426,12 @@ function doctrineTelegraphFor(doctrineId) {
 }
 
 function tacticalCapabilitiesFor(def) {
+  const cached = def ? capabilityByDef.get(def) : null;
+  if (cached) {
+    enemySpawnRepeatWork.capabilityHits += 1;
+    return cached.slice();
+  }
+  enemySpawnRepeatWork.capabilityBuilds += 1;
   const caps = new Set(BASE_AI_CAPABILITIES);
   if (Array.isArray(def.weapons) && def.weapons.length) caps.add('ranged');
   for (const capability of ARCHETYPE_TACTICAL_CAPABILITIES[def.aiArchetype] || []) caps.add(capability);
@@ -335,7 +443,9 @@ function tacticalCapabilitiesFor(def) {
     caps.add('disable');
     caps.add('screen');
   }
-  return [...caps].sort();
+  const sorted = Object.freeze([...caps].sort());
+  if (def) capabilityByDef.set(def, sorted);
+  return sorted.slice();
 }
 
 function defaultDoctrineFor(def, pos, startedTick = 0) {
@@ -564,27 +674,54 @@ export const combat = {
     this._recoveryInFlight = false;
     this._beamCandidateScratch = [];
     this._beamQueryCenter = { x: 0, z: 0 };
+    this._combatQuiet = null;
     this._diag = {
       beamSpatialQueries: 0,
       beamCandidates: 0,
     };
-    ctx.bus.on('projectile:hit', (p) => this.onHit(p));
-    ctx.bus.on('tether:whipImpact', (p) => this.onWhipImpact(p || {}));
+    // Every subscription that can create work for the per-tick walk also drops the quiet
+    // latch; the journal/index signals inside update() are the redundant second wake.
+    const wakeQuiet = () => { this._combatQuiet = null; };
+    ctx.bus.on('projectile:hit', (p) => { wakeQuiet(); this.onHit(p); });
+    ctx.bus.on('tether:whipImpact', (p) => { wakeQuiet(); this.onWhipImpact(p || {}); });
     ctx.bus.on('dock:docked', (p) => {
+      wakeQuiet();
       this.rememberRespawnStation(p && p.stationId);
       this.setPlayerDocked(true);
     });
-    ctx.bus.on('dock:undocked', () => this.setPlayerDocked(false));
-    ctx.bus.on('player:recoveryRequested', (payload) => this.recoverPendingPlayer(payload || {}));
+    ctx.bus.on('dock:undocked', () => { wakeQuiet(); this.setPlayerDocked(false); });
+    ctx.bus.on('player:recoveryRequested', (payload) => { wakeQuiet(); this.recoverPendingPlayer(payload || {}); });
     const clearPendingDefeat = () => {
-      this._pendingPlayerRecovery = null;
+      wakeQuiet();
       this._recoveryInFlight = false;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const restoredDefeat = !!player
+        && (player.alive === false || !!(player.flags && player.flags.defeated));
+      if (restoredDefeat) {
+        // SF-285: a save written mid-defeat restores the wreck AND the offer attached to it.
+        // Clearing here would strand the player in a dead hull with no reachable resolution —
+        // latch onto the restored durable receipt (or a receipt-less pending for pre-field
+        // saves, so buildRecoveryPlan still derives a truthful berth from live state).
+        // Ironman stays permadeath: the final screen is owed, a recovery latch is not.
+        const difficulty = this.state.settings && this.state.settings.gameplay
+          && this.state.settings.gameplay.difficulty;
+        this._pendingPlayerRecovery = difficulty === 'ironman'
+          ? null
+          : {
+            playerId: player.id,
+            receipt: (this.state.combat && this.state.combat.lastPlayerDefeat) || null,
+          };
+        return;
+      }
+      this._pendingPlayerRecovery = null;
       if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
-    ctx.bus.on('debug:refillPlayer', () => refillLabPlayer(this.state));
-    ctx.bus.on('debug:invulnerable', (p) => setLabInvulnerable(this.state, p || {}));
+    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state); });
+    ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
@@ -929,6 +1066,15 @@ export const combat = {
           reason: plan.insured ? 'recovery:deductible' : 'recovery:hull_share',
         });
       }
+      // FB-124: a live cargo policy pays its priced claim once, at the recovery berth —
+      // the policy is consumed here so a second defeat on the same trip cannot re-claim it.
+      if (plan.cargoPayoutCr > 0) {
+        this.bus.emit('economy:grantCredits', {
+          amount: plan.cargoPayoutCr,
+          reason: 'recovery:cargo_policy',
+        });
+        if (this.state.player && this.state.player.cargoPolicy) delete this.state.player.cargoPolicy;
+      }
 
       this._pendingPlayerRecovery = null;
       if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
@@ -1118,12 +1264,35 @@ export const combat = {
   update(dt, state) {
     ensureCombatRuntime(this);
     resetCombatDiagnostics(this._diag);
+    state.combatRuntime = state.combatRuntime || {};
+    const membership = combatEntityIndexVersion(state);
+    const tick = state.tick | 0;
+    const beamsIdle = combatBeamsIdle(state);
+    const combatDirty = hasDirty(state, DIRTY.COMBAT);
+    // Quiet-latched: the last full scan proved no ship needs regen or invuln service and no
+    // damage is in flight, so the walk + beam sweep can only no-op this tick. The kernel still
+    // runs — it owns attachment telemetry and keeps its own independent quiet path.
+    const quiet = this._combatQuiet;
+    if (COMBAT_QUIET_LATCH !== false
+        && quiet
+        && membership != null
+        && quiet.membership === membership
+        && !combatDirty
+        && beamsIdle
+        && ((tick - (quiet.armedTick | 0)) < COMBAT_QUIET_RESCAN_TICKS)) {
+      publishCombatQuiet(state, true);
+      state.combatRuntime.diagnostics = this._diag;
+      if (this.kernel) this.kernel.postPhysics(dt);
+      return;
+    }
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    let needsService = false;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       const regenerating = (e.shieldMax > 0 && e.shield < e.shieldMax)
         || (e.capMax > 0 && e.cap < e.capMax)
         || !!(e.flags && e.flags.invuln);
+      if (regenerating) needsService = true;
       if (!regenerating && !isDirty(state, e.id, DIRTY.COMBAT | DIRTY.POSE)) continue;
       if (e.flags && e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
@@ -1142,8 +1311,21 @@ export const combat = {
       }
     }
     this._applyBeamDamage(state);
-    state.combatRuntime = state.combatRuntime || {};
     state.combatRuntime.diagnostics = this._diag;
+    // Arm only when the just-run scan proved every live ship is fully serviced. A dirty mark or
+    // live beam this tick keeps the walk live; a missing entity index refuses the latch so the
+    // entityList fallback stays live for harnesses without the typed index.
+    if (COMBAT_QUIET_LATCH !== false
+        && membership != null
+        && !needsService
+        && !combatDirty
+        && beamsIdle) {
+      this._combatQuiet = { membership, armedTick: tick };
+      publishCombatQuiet(state, true);
+    } else {
+      this._combatQuiet = null;
+      publishCombatQuiet(state, false);
+    }
     if (this.kernel) this.kernel.postPhysics(dt);
   },
 
@@ -1251,10 +1433,31 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
     host._diag.beamCandidates += tableHits.length;
     return tableHits;
   }
-  const candidates = queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
-  if (candidates === host._beamCandidateScratch) host._diag.beamSpatialQueries++;
+  const candidates = hasActiveSpatialHash(state.spatialHash)
+    ? beamSharedDisc(host, state, beam, dx, dz)
+    : queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
+  if (candidates === host._beamCandidateScratch || candidates === host._beamDiscScratch) {
+    host._diag.beamSpatialQueries++;
+  }
   host._diag.beamCandidates += candidates.length;
   return candidates;
+}
+
+// The active-hash path of queryNearbyEntities walks the shared collider buckets — the
+// fallback lane is only consulted when no hash is live, so the hull sweep and the optic
+// sweep were paying the identical disc scan twice per energy beam. Keyed on the beam
+// object: one fill per beam serves whichever consumer reaches it first.
+function beamSharedDisc(host, state, beam, dx, dz) {
+  if (host._beamDiscBeam !== beam) {
+    host._beamDiscBeam = beam;
+    const center = host._beamQueryCenter;
+    center.x = (beam.from.x + beam.to.x) * 0.5;
+    center.z = (beam.from.z + beam.to.z) * 0.5;
+    const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+    host._beamDiscScratch.length = 0;
+    state.spatialHash.queryRadius(center.x, center.z, queryRadius, host._beamDiscScratch);
+  }
+  return host._beamDiscScratch;
 }
 
 // Optic terrain rides `collidables` (rocks are colliders, never damageables): same query
@@ -1263,6 +1466,7 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
 function beamOpticCandidates(host, state, beam, dx, dz) {
   ensureCombatRuntime(host);
   const fallback = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+  if (hasActiveSpatialHash(state.spatialHash)) return beamSharedDisc(host, state, beam, dx, dz);
   const center = host._beamQueryCenter;
   center.x = (beam.from.x + beam.to.x) * 0.5;
   center.z = (beam.from.z + beam.to.z) * 0.5;
@@ -1273,6 +1477,7 @@ function beamOpticCandidates(host, state, beam, dx, dz) {
 function ensureCombatRuntime(host) {
   if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
   if (!host._opticBeamScratch) host._opticBeamScratch = [];
+  if (!host._beamDiscScratch) host._beamDiscScratch = [];
   if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
   if (!host._diag) {
     host._diag = {

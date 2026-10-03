@@ -24,6 +24,8 @@ import {
   HELIOS_AUTHORED_ACTIVITY_CAPACITY,
   HELIOS_POCKET_ACTOR_SLOT_ORDER,
   HELIOS_ROUTE_TOPOLOGY,
+  PALLAS_ACTIVITY_POCKETS,
+  PALLAS_ACTIVITY_SECTOR_ID,
   activityActorSlotById,
   activityPocketById,
   activityPocketsForSector,
@@ -47,8 +49,12 @@ const SEED = 4242;
 test('the activity-pocket registry is multi-sector, and Ceres is unchanged', () => {
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(CERES_ACTIVITY_SECTOR_ID));
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(HELIOS_ACTIVITY_SECTOR_ID));
+  assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(PALLAS_ACTIVITY_SECTOR_ID));
   assert.equal(ACTIVITY_POCKETS_BY_SECTOR[CERES_ACTIVITY_SECTOR_ID], CERES_ACTIVITY_POCKETS);
-  assert.equal(ACTIVITY_POCKETS.length, CERES_ACTIVITY_POCKETS.length + HELIOS_ACTIVITY_POCKETS.length);
+  assert.equal(
+    ACTIVITY_POCKETS.length,
+    CERES_ACTIVITY_POCKETS.length + HELIOS_ACTIVITY_POCKETS.length + PALLAS_ACTIVITY_POCKETS.length,
+  );
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 
   // Ceres keeps its exact contract: 8 pocket actors, 4 pockets, unchanged topology rows.

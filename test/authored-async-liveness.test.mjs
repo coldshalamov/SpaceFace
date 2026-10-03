@@ -11,6 +11,7 @@ import {
   admitAuthoredAssetTask,
   configureCspSafeKtx2Loader,
   createAuthoredAssetRuntimeRegistry,
+  loadAuthoredRenderPackagePilot,
   retireAuthoredAssetRuntime,
 } from '../src/render/assetLoader.js';
 import {
@@ -358,6 +359,32 @@ test('a rejected KTX2 transcoder init clears the latch so the next decode retrie
   await assert.rejects(loader.init(), /disposed/);
 });
 
+test('a stalled KTX2 transcode releases its token at the deadline and admits a later decode', async () => {
+  const clock = fakeTimerQueue();
+  const budget = createDecodeTaskBudget(1);
+  const { loader, pool } = fakeKtx2Loader();
+  configureCspSafeKtx2Loader(loader, {
+    decodeBudget: budget,
+    admissionTimers: { setTimer: clock.setTimer, clearTimer: clock.clearTimer },
+  });
+  const stalled = rejectedFields(pool.postMessage({ type: 'transcode', spacefaceDecodeClass: 'visible' }));
+  await flush();
+  assert.equal(pool.posted.length, 1);
+  assert.equal(budget.inFlight, 1);
+  clock.fireWhere(AUTHORED_ASYNC_DEADLINE_MS);
+  assert.equal((await stalled).error.code, 'AUTHORED_ADMISSION_TIMEOUT');
+  assert.equal(budget.inFlight, 0);
+
+  const later = rejectedFields(pool.postMessage({ type: 'transcode' }));
+  await flush();
+  assert.equal(pool.posted.length, 2, 'the abandoned worker cannot pin the only decode slot');
+  assert.equal(budget.inFlight, 1);
+  loader.dispose();
+  assert.equal((await later).error.name, 'AbortError');
+  assert.equal(budget.inFlight, 0);
+  assert.equal(clock.pending(), 0);
+});
+
 function freshRuntime(extra = {}) {
   return { assets: new Map(), failures: new Map(), retiring: false, ...extra };
 }
@@ -392,6 +419,115 @@ test('a hung authored asset task settles at the deadline and cannot evict a fres
     'the late-settling expired task cannot evict or overwrite the fresh admission');
   assert.equal(runtime.failures.has('u::s'), false,
     'a healed key clears its recorded failure');
+});
+
+test('an authored source URL timeout retains fallback and its late result cannot replace a retry', async () => {
+  const clock = fakeTimerQueue();
+  const url = 'fixture/outer-timeout.glb';
+  const cacheKey = `${url}::hull`;
+  const pilot = { metadataUrl: 'fixture/outer-timeout.json' };
+  let resolveStale;
+  let loadCalls = 0;
+  let staleObservers = 0;
+  let freshObservers = 0;
+  const packageFixture = (contentHash, onStale) => ({
+    prepared: { url, report: {} },
+    assetId: 'fixture.outer-timeout',
+    contentHash,
+    residencyKey: `render-package:${contentHash}`,
+    retain() { return true; },
+    onStale,
+  });
+  const stale = packageFixture('stale', () => { staleObservers += 1; });
+  const fresh = packageFixture('fresh', () => { freshObservers += 1; });
+  const runtime = freshRuntime({
+    admissionTimers: { setTimer: clock.setTimer, clearTimer: clock.clearTimer },
+    renderPackages: {
+      load() {
+        loadCalls += 1;
+        return loadCalls === 1
+          ? new Promise((resolve) => { resolveStale = resolve; })
+          : Promise.resolve(fresh);
+      },
+    },
+  });
+  const options = { slot: 'hull', optional: true };
+  const expired = loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+  await flush();
+  assert.equal(loadCalls, 1);
+  clock.fireWhere(AUTHORED_ASYNC_DEADLINE_MS);
+  assert.equal(await expired, null, 'the public asset owner keeps its procedural fallback');
+  assert.equal(runtime.failures.get(cacheKey).code, 'AUTHORED_ADMISSION_TIMEOUT');
+  assert.equal(runtime.assets.has(cacheKey), false);
+
+  const record = await loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+  const freshTask = runtime.assets.get(cacheKey);
+  assert.strictEqual(record.renderPackage, fresh);
+  assert.equal(freshObservers, 1);
+  resolveStale(stale);
+  await flush();
+  await flush();
+  assert.equal(staleObservers, 0, 'expired work never installs a stale-generation cache invalidator');
+  assert.strictEqual(runtime.assets.get(cacheKey), freshTask);
+  assert.equal(runtime.failures.has(cacheKey), false);
+  assert.equal(clock.pending(), 0);
+});
+
+test('authored consumers can cancel independently while another owner finishes the shared decode', async () => {
+  for (const useAdmission of [false, true]) {
+    const clock = fakeTimerQueue();
+    const timerOptions = { setTimer: clock.setTimer, clearTimer: clock.clearTimer };
+    const controller = new AbortController();
+    const consumerAdmission = useAdmission ? createAsyncAdmission({ signal: controller.signal, ...timerOptions }) : null;
+    const canceledOwner = { id: 'departed' };
+    const activeOwner = { id: 'visible' };
+    const retained = [];
+    let resolveDecode;
+    let loadCalls = 0;
+    let loaderOptions;
+    const renderPackage = {
+      prepared: { url: 'shared.glb', report: {} },
+      assetId: 'fixture.shared-consumers',
+      contentHash: 'shared',
+      residencyKey: 'render-package:shared',
+      retain(owner) { retained.push(owner); return true; },
+    };
+    const runtime = freshRuntime({
+      admissionTimers: timerOptions,
+      renderPackages: {
+        load(_url, options) {
+          loadCalls += 1;
+          loaderOptions = options;
+          return new Promise((resolve) => { resolveDecode = resolve; });
+        },
+      },
+    });
+    const pilot = { metadataUrl: 'shared.json' };
+    const departed = loadAuthoredRenderPackagePilot(runtime, pilot, 'shared.glb', {
+      optional: true,
+      residencyOwner: canceledOwner,
+      signal: consumerAdmission?.signal || controller.signal,
+      ...(consumerAdmission ? { asyncAdmission: consumerAdmission } : {}),
+    });
+    const visible = loadAuthoredRenderPackagePilot(runtime, pilot, 'shared.glb', {
+      optional: true,
+      residencyOwner: activeOwner,
+    });
+    await flush();
+    assert.equal(loadCalls, 1, 'both consumers share the same source URL decode');
+    controller.abort(new Error('entity left the frame'));
+    assert.equal(await departed, null, 'the departed consumer settles before the worker answers');
+    assert.equal(runtime.pendingAssetTasks.size, 1, 'consumer cancellation keeps the shared task alive');
+    assert.equal(loaderOptions.isResidencyOwnerActive(), false,
+      'the package commit receives the same consumer lifetime check');
+
+    resolveDecode(renderPackage);
+    assert.strictEqual((await visible).renderPackage, renderPackage);
+    assert.deepEqual(retained, [activeOwner], 'late decode never retains the departed owner');
+    assert.equal(runtime.failures.size, 0);
+    assert.equal(runtime.pendingAssetTasks.size, 0);
+    assert.equal(clock.pending(), 0);
+  }
 });
 
 test('runtime retirement resolves after bounded task settlement and disposes decoders once', async () => {

@@ -774,7 +774,7 @@ async function loadSceneContent(built, renderer, request) {
     let live = null;
     try {
       live = await buildKillcamStage(built, {
-        loadPart: (file, slot) => loadPart(file, renderer, slot, built),
+        loadPart: (file, slot, partOptions) => loadPart(file, renderer, slot, built, partOptions),
       });
     } catch (error) {
       lastError = error && error.message ? error.message : String(error);
@@ -841,7 +841,7 @@ async function loadSceneContent(built, renderer, request) {
   }
 }
 
-async function loadPart(file, renderer, slot, built = null) {
+async function loadPart(file, renderer, slot, built = null, partOptions = null) {
   const urls = isReleaseAssetMode()
     ? [`${PART_RELEASE_ROOT}${file}`, `${PART_ROOT}${file}`]
     : [`${PART_ROOT}${file}`];
@@ -856,6 +856,7 @@ async function loadPart(file, renderer, slot, built = null) {
         isResidencyOwnerActive: residencyOwner
           ? () => built.disposed !== true
           : undefined,
+        ...(partOptions || {}),
       });
       if (record) return record;
     } catch (error) {

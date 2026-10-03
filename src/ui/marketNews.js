@@ -26,6 +26,7 @@ import {
   normalizeKind, fillTemplate,
 } from '../data/newsTemplates.js';
 import { isSurvivalRunLive } from '../systems/adventureMigration.js';
+import { ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME_BY_ID = new Map();
@@ -278,6 +279,17 @@ export function createMarketNews(ctx) {
   // would replace the authored line with a commodity template and discard provenance metadata.
   function surfacePublished(ev) {
     if (!ev || typeof ev.text !== 'string' || !ev.text.trim()) return null;
+    if (ev.source === 'chronicler') {
+      if (ev.kind === 'chronicler-legend') {
+        const bag = ensureWorldNews(state);
+        const day = Math.floor((state.simTime || 0) / 600);
+        if (bag.legendDay === day) return null;
+        bag.legendDay = day;
+      } else {
+        const evidence = Array.isArray(ev.evidence) ? ev.evidence : [];
+        if (evidence.length === 0 && ev.witnessed !== true) return null;
+      }
+    }
     return commitHeadline(ev.text, ev, { metadata: ev });
   }
 
@@ -386,6 +398,29 @@ export function createMarketNews(ctx) {
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
   on('news:publish', surfacePublished);
+  registerWorldBeats((evt, fn) => {
+    on(evt, (payload) => {
+      const headline = fn(payload);
+      if (!headline || !headline.text || !headline.sourceRef) return null;
+      return surfacePublished({
+        text: headline.text,
+        kind: headline.kind,
+        source: 'world-beat',
+        sourceRef: headline.sourceRef,
+        eventId: headline.sourceRef,
+        stationId: headline.stationId || null,
+      });
+    });
+  }, state);
+  // FB-049 — a stale note escalating to bounty is a cited headline, not a silent ledger move.
+  on('economy:debtEscalated', (p) => {
+    if (!p || !(Number(p.levyCr) > 0)) return null;
+    return surfacePublished({
+      text: `A stale note went to the board: ${Math.round(p.debtCr || 0)} cr owed, +${Math.round(p.levyCr)} cr bounty posted.`,
+      kind: 'debt_escalated',
+      sourceRef: `economy:debtEscalated:${Math.round(Number(p.daysOverdue) || 0)}:${Math.round(Number(p.bountyCr) || 0)}`,
+    });
+  });
   on('freight:loss', surfaceFreightLoss);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);

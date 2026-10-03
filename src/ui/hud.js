@@ -53,7 +53,12 @@ import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
 import { mountOrreryCluster } from './orrery/hudAdapter.js';
+import { arcGauge } from './orrery/instruments.js';
 import { createForkInstrument } from './forkInstrument.js';
+// FB-012 — the flight HUD mounts the stunt callout layer, so a wrecking ball, a clothesline or
+// a tow kill is NAMED in adventure too, not only inside a Crucible run. The layer self-gates:
+// its quiet path renders nothing and drops its frame listener when there is nothing to say.
+import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import { targetBracketShape } from './targetBracket.js';
@@ -1026,6 +1031,24 @@ function setScaleX(el, value, opts = null) {
   el._sfScaleX = next;
   el.style.transform = `scaleX(${next})`;
 }
+// A vitals row's compact Arc Gauge (ORRERY §6): the library element mounted into the row's
+// existing .sf-bar slot. Same dial convention as the rest of the orrery library — 0 deg is
+// straight up, the 270 deg sweep leaves the foot of the dial open. The gauge's own spring is
+// never driven animated: frame paths feed settled values with { instant: true }, so it stays a
+// pure painter (the hud settle spring is the one animation owner) and costs no rAF of its own.
+const VITAL_ARC_SET = { instant: true };
+function mountVitalArc(barEl) {
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgEl = document.createElementNS(SVGNS, 'svg');
+  svgEl.setAttribute('class', 'orr-svg sf-vital-arc');
+  svgEl.setAttribute('viewBox', '0 0 30 30');
+  svgEl.setAttribute('aria-hidden', 'true');
+  const gauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: 'phos' });
+  svgEl.appendChild(gauge.el);
+  barEl.appendChild(svgEl);
+  barEl.classList.add('sf-vital-gauge');
+  return gauge;
+}
 // JS-side last-written cache — never read el.style/dataset (those can themselves dirty or miss).
 function setStyle(el, prop, value) {
   if (!el) return;
@@ -1393,6 +1416,11 @@ export function createHud(ctx, alerts) {
   const forkInstrument = createForkInstrument();
   forkInstrument.mount(leftContext);
 
+  // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
+  // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
+  // layer's update returns false and stops listening for frames when nothing is on screen.
+  ensureStuntCallout({ state, bus: ctx.bus });
+
   // Lamina: authored hull laminae + a split, globally driven shield envelope.
   // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
   const bars = document.createElement('div');
@@ -1418,6 +1446,14 @@ export function createHud(ctx, alerts) {
     ['heat', 'heat', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
   ];
   const fillEls = {}, numEls = {}, rowEls = {}, barEls = {};
+  // ORRERY §6 Flight: each vitals row is a compact Arc Gauge — the library element the Cluster's
+  // own arcs use (src/ui/orrery/instruments.js), seated in the row's existing gauge slot. The
+  // pinned contract DOM stays underneath: .sf-bar keeps its meter role and aria-valuenow, and
+  // .sf-bar__fill keeps its scaleX transform as the hidden scalar store the frame path and the
+  // headless fixtures pin; the arc painted beside it is the instrument (hudStyles mutes the
+  // plate, segments and fill paint). The hud settle springs stay the one smoothing owner, so
+  // the arcs are fed their settled values and never run a second animation loop.
+  const vitalArcs = {};
   for (const [key, label, mod] of barDefs) {
     const row = document.createElement('div');
     row.className = 'sf-barrow';
@@ -1427,6 +1463,7 @@ export function createHud(ctx, alerts) {
     barEls[key] = row.querySelector('.sf-bar');
     numEls[key] = row.querySelector('.sf-barrow__num');
     rowEls[key] = row;
+    if (barEls[key]) vitalArcs[key] = mountVitalArc(barEls[key]);
   }
   // One instrument cluster (FRONTEND_PROGRAM Wave 1): integrity, vitals and the speed deck are
   // seated in ONE machined chassis with one baseline, instead of three plates that float apart.
@@ -1727,7 +1764,7 @@ export function createHud(ctx, alerts) {
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     ctx.bus.on('combat:damage', (hit) => {
       if (hit && hit.isPlayer) underFireUntilMs = performance.now() + UNDER_FIRE_HOLD_MS;
-    });
+    }, { presentation: true });
   }
   function updateFireControl(p, tether, latching, ml) {
     let underFire = false;
@@ -2003,18 +2040,21 @@ export function createHud(ctx, alerts) {
     state.playerId,
   );
   root.appendChild(dmgInd.el);
-  ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p));
+  ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p), { presentation: true });
   ctx.bus.on('projectile:nearMiss', (p) => dmgInd.onNearMiss(p));
-  ctx.bus.on('collision', (p) => {
+  ctx.bus.on('physics:impact', (p) => {
     const other = state.entities && state.entities.get
       ? state.entities.get(p && p.aId === state.playerId ? p.bId : p && p.aId)
       : null;
+    // The pooled receipt's pos object is refilled per contact — the cue must snapshot,
+    // never retain it.
+    const fallbackPos = p && p.pos ? { x: p.pos.x, z: p.pos.z } : null;
     const cue = buildReducedMotionContactCue({
       ...p,
-      otherPos: (other && other.pos) || (p && p.pos),
+      otherPos: (other && other.pos) || fallbackPos,
     }, state.playerId);
     if (cue) dmgInd.onDamage(cue);
-  });
+  }, { presentation: true });
 
   // Shield blowout visual cue: momentary HUD glitch/flicker when player shields collapse
   let shieldBlowoutTimer = null;
@@ -2066,7 +2106,18 @@ export function createHud(ctx, alerts) {
   arrow.style.display = 'none';
   arrow.setAttribute('role', 'img');
   arrow.setAttribute('aria-label', 'Current objective marker');
-  arrow.innerHTML = '<span class="sf-objarrow__glyph" aria-hidden="true"></span><span class="sf-objarrow__label mono"></span>';
+  // One glyph SVG carrying both states of the goal mark (hudStyles picks by class): the edge cue
+  // is the kit's objective chevron (assets/ui/kit/assets/svg/plates/objective-chevron.svg — the
+  // icon family's notched construction, ported verbatim) riding --sf-arrow-angle; the on-screen
+  // mark is the GOAL diamond in the same light. Shape carries the meaning — diamond = here,
+  // chevron = that way — colour only repeats it, so it survives colour-blind play.
+  arrow.innerHTML =
+    '<svg class="sf-objarrow__glyph" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-objarrow__mark-bloom" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/>' +
+      '<path class="sf-objarrow__mark" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/>' +
+      '<path class="sf-objarrow__chev" d="M9 3.8 17.8 12 9 20.2 5.6 16.8 11 12 5.6 7.2Z"/>' +
+    '</svg>' +
+    '<span class="sf-objarrow__label mono"></span>';
   root.appendChild(arrow);
   const arrowLabel = arrow.querySelector('.sf-objarrow__label');
   const firstUse = document.createElement('div');
@@ -2210,7 +2261,7 @@ export function createHud(ctx, alerts) {
       if (p.targetId === state.playerId && (p.brokeShield || p.shieldBroke || p.damageType === 'emp' || p.emp)) {
         triggerElectronicDisruption(p.damageType === 'emp' ? 'emp' : 'shield_collapse');
       }
-    });
+    }, { presentation: true });
     ctx.bus.on('combat:emp', (p) => {
       if (!p || p.targetId === state.playerId) {
         triggerElectronicDisruption('emp');
@@ -2224,9 +2275,20 @@ export function createHud(ctx, alerts) {
   // and the centered aim reticle diverge, you can read "facing vs travel" without instruments.
   const proTick = document.createElement('div');
   proTick.className = 'sf-protick';
+  // The wrapper keeps the 8x2 anchor box and its heading rotation (the placement contract is
+  // pinned and quantized); the box itself is no longer the mark — it centres the instrument.
   proTick.style.cssText =
     'position:absolute;left:0;top:0;width:8px;height:2px;margin-left:-4px;margin-top:-1px;' +
-    'background:#d7e6ff;border-radius:1px;opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
+    'opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
+  // The mark is the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/reticle/
+  // reticle-pro-tick.svg), ported in HUD voice: a bloom stroke under a core stroke, token
+  // colours (hudStyles). The ticks are laid along the wrapper's X so the gap between them
+  // opens along the velocity vector the wrapper rotates to — the prograde point rides the gap.
+  proTick.innerHTML =
+    '<svg class="sf-protick__svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-protick__bloom" d="M3 12h6M15 12h6"/>' +
+      '<path class="sf-protick__tick" d="M3 12h6M15 12h6"/>' +
+    '</svg>';
   root.appendChild(proTick);
   let _proAlpha = 0;   // smooth-damped opacity so it eases in/out, never pops
   // The moving-flight path projects two points every visible frame. Keep both input and output
@@ -4796,9 +4858,13 @@ export function createHud(ctx, alerts) {
       return;
     }
 
-    const rShield = targetPixelRadius(tgtAnchor, tgt.radius + 12, center);
-    const rArmor = targetPixelRadius(tgtAnchor, tgt.radius + 9, center);
-    const rHull = targetPixelRadius(tgtAnchor, tgt.radius + 6, center);
+    // The ring set quantizes to whole px (all three projections still run every frame —
+    // they feed the shared lag record; the arcSig contract below counts on it): raw
+    // projected radii write float `r`/viewBox records (`25.80000000000001`) that no
+    // fixture can pin, for a sub-visible gain.
+    const rShield = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 12, center));
+    const rArmor = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 9, center));
+    const rHull = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 6, center));
     
     if (rShield <= 0) {
       setDisplay(targetArcs, false);
@@ -5100,6 +5166,10 @@ export function createHud(ctx, alerts) {
       setKitBar(barEls.energy, capVisual, capFrac < 0.2 ? 'hot' : 'on');
       setKitBar(barEls.heat, heatVisual, wpnHeat.overheated ? 'hot' : 'on');
       if (barEls.fuel) setKitBar(barEls.fuel, fuelVisual, fuelFrac < 0.25 ? 'hot' : 'on');
+      // The arc gauges read the same settled values the pinned fill drivers just stored.
+      if (vitalArcs.energy) vitalArcs.energy.set(capVisual, VITAL_ARC_SET);
+      if (vitalArcs.heat) vitalArcs.heat.set(heatVisual, VITAL_ARC_SET);
+      if (vitalArcs.fuel) vitalArcs.fuel.set(fuelVisual, VITAL_ARC_SET);
 
       // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
       // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
@@ -5120,6 +5190,7 @@ export function createHud(ctx, alerts) {
         const burning = !!(travelFlag('travelBurn') && state.input && state.input.travelDrive
           && state.input.travelDrive.state === 'engaged');
         setKitBar(barEls.boost, boostVisual, burning ? 'hot' : 'on');
+        if (vitalArcs.boost) vitalArcs.boost.set(boostVisual, VITAL_ARC_SET);
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--burn', burning);
         if (slow) setText(numEls.boost, Math.round(bf * 100) + (burning ? ' ⟫' : (dashReady ? ' ▸' : '%')));
       } else if (boostRow) {
@@ -5756,6 +5827,9 @@ export function createHud(ctx, alerts) {
         disruptionTimeout = null;
       }
       objectiveHudDrag.destroy();
+      // FB-012 — the flight HUD owns the stunt callout mount; releasing it here mirrors the
+      // Crucible results screen's dispose (the layer re-ensures idempotently on next mount).
+      releaseStuntCallout();
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();
       clearCargoGaugeSettle(cargoGaugeSettle.used);

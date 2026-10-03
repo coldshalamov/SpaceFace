@@ -33,6 +33,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
 import { drawGlyph } from './glyphs.js';
@@ -1515,6 +1516,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       markers.push(partMarker);
     }
   }
+  for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);
   return markers;
 }
 
@@ -1688,9 +1690,83 @@ function anchorFrames(anchor, sid, localZ) {
  * player entity; it is never a fabricated origin position.
  *
  * @returns {{ level:'system', sectorId, sectorName, zones:Array, points:Array, ownership:Array,
- *             bearings:Array,
+ *             bearings:Array, wrecks:Array,
  *             player:{id,x,z,drawPos,rot,inSector,bearing,distance}|null }}
  */
+function aftermathCauseLine(marker) {
+  const cause = marker && marker.cause;
+  if (typeof cause === 'string' && cause.trim()) return cause.replace(/\s+/g, ' ').trim();
+  if (cause && typeof cause === 'object') {
+    if (typeof cause.line === 'string' && cause.line.trim()) return cause.line.replace(/\s+/g, ' ').trim();
+    if (cause.actor) {
+      const victim = marker.victimLabel || marker.victimClass || 'ship';
+      const zone = marker.zoneName || 'a local zone';
+      const motive = cause.motiveId ? ` to ${cause.motiveId}` : '';
+      return `${victim} destroyed in ${zone}; evidence links ${cause.actor}${motive}.`;
+    }
+  }
+  if (marker && marker.headline) return String(marker.headline).replace(/\s+/g, ' ').trim();
+  return '';
+}
+
+/** WORLD-41 — chart projection only. Retirement stays with the wreck system. */
+export function noteAftermathWreckRetired(state, payload) {
+  if (!state || !payload || payload.markerId == null || payload.markerId === '') return false;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!state.ui.retiredAftermathChart || typeof state.ui.retiredAftermathChart !== 'object') {
+    state.ui.retiredAftermathChart = {};
+  }
+  const markerId = String(payload.markerId);
+  state.ui.retiredAftermathChart[markerId] = {
+    markerId,
+    sectorId: payload.sectorId || null,
+    causeCleared: true,
+  };
+  return true;
+}
+
+export function installAftermathChartListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._aftermathChartBound) return () => {};
+  state.ui._aftermathChartBound = true;
+  const off = bus.on('aftermathWreck:retired', (payload) => noteAftermathWreckRetired(state, payload));
+  return () => {
+    if (typeof off === 'function') off();
+  };
+}
+
+/** Aftermath wrecks the chart still lists. A retired id drops the marker and its cause line. */
+export function aftermathChartMarkers(state, sectorId) {
+  const own = state && state.aftermathWrecks;
+  const list = own && own.bySector && sectorId ? own.bySector[sectorId] : null;
+  if (!Array.isArray(list)) return [];
+  const retired = state && state.ui && state.ui.retiredAftermathChart;
+  const rows = [];
+  for (const marker of list) {
+    if (!marker || marker.markerId == null || marker.markerId === '') continue;
+    const markerId = String(marker.markerId);
+    if (retired && retired[markerId]) continue;
+    const causeLine = aftermathCauseLine(marker);
+    const pos = marker.pos || { x: 0, z: 0 };
+    rows.push({
+      id: `wreck:${markerId}`,
+      markerId,
+      kind: 'wreck',
+      name: marker.victimLabel || marker.wreckClassLabel || 'Aftermath wreck',
+      causeLine,
+      statusLine: causeLine,
+      x: Number(pos.x) || 0,
+      z: Number(pos.z) || 0,
+      drawPos: globalToSectorLocalForSector(pos, sectorId),
+      entityId: null,
+      stationId: null,
+      sectorId,
+    });
+  }
+  return rows;
+}
+
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
@@ -1899,9 +1975,12 @@ export function buildSystemModel(state, sectorId, options = {}) {
     };
   }
 
+  const wrecks = aftermathChartMarkers(state, sid);
+  for (const wreck of wrecks) points.push(wreck);
+
   return {
     level: 'system', sectorId: sid, sectorName, ...confidence,
-    zones, points, ownership, bearings, player: playerMark,
+    zones, points, ownership, bearings, wrecks, player: playerMark,
   };
 }
 
@@ -2024,6 +2103,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     contacts,
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
+    wrecks: aftermathChartMarkers(state, sectorId),
   };
 }
 
@@ -3852,6 +3932,10 @@ export const galaxyMapScreen = {
   _selectedCommodity: 'cmdty_ore_iron',
   _searchResultsList: [],
   _searchSelectedIdx: 0,
+  // The normalized query that produced `_searchResultsList`. A result is committable only while it
+  // still answers the CURRENT visible query — a blank field, a no-match repaint, or a selection
+  // consumed by Enter/click clears both, so stale hits can never be committed blind (J1).
+  _searchResultsQuery: null,
   _currentLayerFocus: 'route',
   _lastRouteDest: null,
   _routeAnimTime: 0,
@@ -3862,6 +3946,7 @@ export const galaxyMapScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     this._ctx = ctx;
+    installAftermathChartListener(ctx && ctx.bus, ctx && ctx.state);
     if (HAS_DOC && rootEl && this._setCourseButton && this._setCourseHandler) {
       this._setCourseButton.removeEventListener('click', this._setCourseHandler);
     }
@@ -4252,16 +4337,32 @@ export const galaxyMapScreen = {
     const searchInput = rootEl.querySelector('.gm-search-input');
     const resultsContainer = rootEl.querySelector('.gm-search-results');
 
+    const clearSearchResults = () => {
+      this._searchResultsList = [];
+      this._searchSelectedIdx = 0;
+      this._searchResultsQuery = null;
+    };
+    // A result row is eligible to commit only while the list it came from is the live, painted
+    // answer to the text currently in the field (J1). The stamp also catches value writes that
+    // never fired an `input` event — the old list must outlive nothing it no longer answers.
+    const searchResultsCurrent = () => (
+      this._searchResultsList
+      && this._searchResultsList.length > 0
+      && resultsContainer.hidden === false
+      && this._searchResultsQuery === searchInput.value.trim().toLowerCase()
+    );
+
     searchInput.addEventListener('input', () => {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) {
         resultsContainer.hidden = true;
         resultsContainer.innerHTML = '';
+        clearSearchResults();
         return;
       }
 
       const state = this._ctx && this._ctx.state;
-      if (!state) return;
+      if (!state) { clearSearchResults(); return; }
 
       const targets = getSearchTargets(
         state,
@@ -4281,6 +4382,7 @@ export const galaxyMapScreen = {
       if (filtered.length === 0) {
         resultsContainer.innerHTML = '<div class="gm-search-item gm-search-empty k-t-fine k-38">No results found</div>';
         resultsContainer.hidden = false;
+        clearSearchResults();
         return;
       }
 
@@ -4289,11 +4391,14 @@ export const galaxyMapScreen = {
 
       this._searchResultsList = filtered;
       this._searchSelectedIdx = 0;
+      this._searchResultsQuery = q;
     });
 
     searchInput.addEventListener('keydown', (ev) => {
-      const list = this._searchResultsList || [];
-      if (!list.length) return;
+      // Arrows and Enter own the field only while a real result list is answering it; a stale,
+      // hidden or empty list leaves every key to its normal text-entry behavior.
+      if (!searchResultsCurrent()) return;
+      const list = this._searchResultsList;
       if (ev.key === 'ArrowDown') {
         ev.preventDefault();
         this._searchSelectedIdx = (this._searchSelectedIdx + 1) % list.length;
@@ -4309,17 +4414,20 @@ export const galaxyMapScreen = {
           this._selectSearchTarget(selected);
           searchInput.value = '';
           resultsContainer.hidden = true;
+          clearSearchResults();
         }
       }
     });
 
     resultsContainer.addEventListener('click', (ev) => {
+      if (!searchResultsCurrent()) return;
       const itemEl = ev.target.closest('.gm-search-item');
       const idx = itemEl && parseInt(itemEl.getAttribute('data-idx'));
-      if (idx != null && this._searchResultsList && this._searchResultsList[idx]) {
+      if (idx != null && this._searchResultsList[idx]) {
         this._selectSearchTarget(this._searchResultsList[idx]);
         searchInput.value = '';
         resultsContainer.hidden = true;
+        clearSearchResults();
       }
     });
 
@@ -4601,8 +4709,8 @@ export const galaxyMapScreen = {
     const bus = this._ctx && this._ctx.bus;
     if (!bus || typeof bus.on !== 'function') return;
     this._busUnsubs = [];
-    const on = (event, handler) => {
-      const off = bus.on(event, handler);
+    const on = (event, handler, opts) => {
+      const off = bus.on(event, handler, opts);
       const disposer = typeof off === 'function'
         ? off
         : (typeof bus.off === 'function' ? () => bus.off(event, handler) : null);
@@ -4615,7 +4723,7 @@ export const galaxyMapScreen = {
       galaxyMapScreen._localModelDirty = true;
       galaxyMapScreen._inspectorPending = true;
       galaxyMapScreen._wake();
-    });
+    }, { presentation: true });
     const wake = () => {
       galaxyMapScreen._lastRibbonKey = null;
       galaxyMapScreen._lastDeckKey = null;
@@ -4961,15 +5069,30 @@ _stepAnimation(now) {
     }
 
     // Esc lets a line being laid go before it closes the chart.
-    if (key === 'escape' && (this._line || this._hold)) {
-      this._hold = null;
-      if (this._line) this._endLine({ commit: false });
-      if (event && typeof event.preventDefault === 'function') event.preventDefault();
-      return true;
-    }
+    if (key === 'escape' && this._cancelChartGesture(event)) return true;
 
     if (key === 'escape' || key === 'm' || key === 'n') {
       popCurrentScreen(ctx || this._ctx);
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * First refusal on Escape (J6): the UI router asks the active screen before the generic
+   * back/pop runs. While a line is being laid or a hold ring is filling, one Escape lets the
+   * gesture go — never commits a course, never pops the screen — and the NEXT Escape closes the
+   * chart. Every other moment declines so the router's ordinary close stays untouched.
+   */
+  onEscape(event) {
+    return this._cancelChartGesture(event);
+  },
+
+  _cancelChartGesture(event) {
+    if (this._line || this._hold) {
+      this._hold = null;
+      if (this._line) this._endLine({ commit: false });
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
       return true;
     }
     return false;
@@ -5947,8 +6070,8 @@ _stepAnimation(now) {
     }
     const html = acts.map((a) => {
       // Ignore is a claim-defense verb, not a chart-control id. The place-action button is enough.
-      const control = a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id);
-      return `<button ${control} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
+      // The call stays inline in the tag so the binding-map label check can see it.
+      return `<button ${a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
     }).join('');
     if (this._lastPlaceActionsHtml !== html) {

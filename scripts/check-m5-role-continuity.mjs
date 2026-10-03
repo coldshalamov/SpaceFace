@@ -113,7 +113,7 @@ function boot() {
     assert.equal(roleIds.has(first.role), false, `${def.id} duplicate public role ${first.role}`);
     roleIds.add(first.role);
   }
-  assert.equal(roleIds.size, 14, 'all fourteen hull roles must remain distinct');
+  assert.equal(roleIds.size, SHIPS.length, 'every shipped hull role must remain distinct');
   // Queries must not emit packets or toasts.
   assert.equal(roleContexts.length, afterNewGameContexts, 'queries must not publish role context');
   assert.equal(briefingToasts(toasts).length, afterNewGameToasts, 'queries must not toast');
@@ -397,4 +397,4 @@ function boot() {
   assert.equal(briefingToasts(toasts).length, 1, 'Continue surfaces one restored-hull briefing at flight');
 }
 
-console.log('M5 role continuity OK — 14 roles, New Game/Continue/switch briefings once each, loading-boundary delivery, silence guards, legacy fallback, presentation-owned toast.');
+console.log(`M5 role continuity OK — ${SHIPS.length} roles, New Game/Continue/switch briefings once each, loading-boundary delivery, silence guards, legacy fallback, presentation-owned toast.`);

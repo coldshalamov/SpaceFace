@@ -557,6 +557,11 @@ export const lossLedger = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each index bucket append is record-atomic — yields sit only at record boundaries.
+  *deserializeChunked(data) {
     const state = this._state;
     if (!state) return;
     const L = ensureState(state);
@@ -573,6 +578,7 @@ export const lossLedger = {
       if (!e || !e.sectorId) continue;
       const arr = L.bySector[e.sectorId] || (L.bySector[e.sectorId] = []);
       arr.push(e);
+      yield 'loss-entry';
     }
     // newest-first within each sector (entries are already newest-first from serialize).
   },

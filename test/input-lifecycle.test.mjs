@@ -212,6 +212,21 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     autoTarget: true,
     chargeDetonate: true,
     deployRepulsor: true,
+    dropBomb: true,
+    cycleBomb: true,
+    // FB-003 chord verbs carry the same neutral-sample guarantee.
+    scanPulse: true,
+    cruise: true,
+    deployBeacon: true,
+    deployMassSeed: true,
+    deployWell: true,
+    toggleClearingCone: true,
+    toggleSkimCollector: true,
+    siteBeam: true,
+    bulletTime: true,
+    cloak: true,
+    chargeThrow: true,
+    jettisonLot: true,
   });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
   assert.deepEqual(grammarResetBlocks, [undefined]);

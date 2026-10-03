@@ -57,11 +57,16 @@ export const FACT_EVENTS = Object.freeze([
   'formation:discovered', 'gate:verdict', 'claim:freightDelivered',
   // An opt-in producer contract, NOT an assertion that stock cargo/economy already emit it.
   'chronicler:provenance',
+  // Authored-story batch: emitted by the story owner when a player choice is recorded, a Verge
+  // evidence item lands, the Kurtz ledger is read, or the lattice revokes Vale's gates. These
+  // are the receipts that turn the campaign into evidence the Chronicler can cite.
+  'story:playerChoiceRecorded', 'story:vergeEvidenceRecorded',
+  'story:kurtzLedger', 'story:vergeValeGatesRevoked',
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
   'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy',
-  'spill', 'predation', 'survey', 'gate', 'delivery',
+  'spill', 'predation', 'survey', 'gate', 'delivery', 'story',
 ]);
 export const REF_KINDS = Object.freeze(['death', 'marker', 'wreck', 'receipt', 'cause']);
 export const COUNTERS = Object.freeze([

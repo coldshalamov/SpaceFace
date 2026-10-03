@@ -444,15 +444,15 @@ export function createAsteroidMotionTracker() {
 
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
-    busSubscribers.push(bus.on('combat:damage', onDamage));
-    busSubscribers.push(bus.on('physics:impact', onImpact));
+    busSubscribers.push(bus.on('combat:damage', onDamage, { presentation: true }));
+    busSubscribers.push(bus.on('physics:impact', onImpact, { presentation: true }));
     // `mining:beamContact` is never emitted by the sim — the live beam lifecycle pair is
     // mining:start / mining:stop (src/systems/mining.js). Keep combat:beamStop as a failsafe.
     busSubscribers.push(bus.on('mining:start', onMiningContact));
     busSubscribers.push(bus.on('mining:stop', onMiningStop));
     busSubscribers.push(bus.on('combat:beamStop', onMiningStop));
     busSubscribers.push(bus.on('asteroid:chunked', onAsteroidChunked));
-    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
     busSubscribers.push(bus.on('mining:richCoreExposed', onRichCoreExposed));
     busSubscribers.push(bus.on('mining:richCoreChargeStart', onRichCoreChargeStart));
     busSubscribers.push(bus.on('mining:richCoreCompleted', onRichCoreDone));

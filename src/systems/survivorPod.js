@@ -25,6 +25,7 @@
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
@@ -425,7 +426,17 @@ export const survivorPod = {
     this.helpers = ctx && ctx.helpers;
     ensureState(this._state);
     this._onPlaced = (p) => this._promoteSector(p && p.sectorId);
-    this._onSectorEnter = (p) => this._promoteSector(p && p.sectorId);
+    this._onSectorEnter = (p) => {
+      const sectorId = p && p.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — promoting
+      // its pod mints a body keyed to the departed sector. Synthetic payloads carry no
+      // epoch and always run.
+      if (p && p.enterEpoch != null && this._state && this._state.world
+          && this._state.world.enterSerial != null
+          && p.enterEpoch !== this._state.world.enterSerial) return;
+      this._promoteSector(sectorId);
+    };
     this._onMissionOffered = (offer) => this._stampOffer(offer);
     this._onChoice = (p) => this._handleChoice(p);
     this._onNewGame = () => this.newGame();
@@ -441,7 +452,23 @@ export const survivorPod = {
     };
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:placed', this._onPlaced);
-      this._bus.on('sector:enter', this._onSectorEnter);
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same _onSectorEnter under its slice clock in listener order.
+      this._bus.on('sector:enter', (p) => {
+        if (deferSectorEnterMaterialization(this._state, p, this._cookProvider)) return;
+        this._onSectorEnter(p);
+      });
+      // Census arm: survivor-pod promotion lands inside the sector cook deterministically.
+      if (this.helpers) {
+        this._cookProvider = (sector) => {
+          if (this._onSectorEnter) this._onSectorEnter({
+            sectorId: (sector && sector.id)
+              || (this.state && this.state.world && this.state.world.currentSectorId),
+          });
+        };
+        (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+          .push(this._cookProvider);
+      }
       this._bus.on('mission:offered', this._onMissionOffered);
       this._bus.on('survivorPod:choose', this._onChoice);
       this._bus.on('game:newGame', this._onNewGame);

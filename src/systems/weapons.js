@@ -782,6 +782,7 @@ export const weapons = {
     const ws = e.data && e.data.weapons;
     const combat = e.data && e.data.combat;
     if (!ws || !combat) return;
+    const tgt = this._resolveTarget(e);
     // Does this ship carry any lock-requiring weapon that is open this tick? An `occasional`
     // rack is ignored while its window is closed so the incoming-lock warning re-arms per
     // actual launch window instead of crying wolf between volleys.
@@ -790,6 +791,13 @@ export const weapons = {
       const def = this._byId.get(w.defId) || {};
       const tracking = w.tracking || def.tracking;
       if (tracking === 'homing' && this._mountRoleOpen(e, w, def, state)) {
+        // A lock is a launch solution. An unreachable rack must neither warn/interdict the
+        // player nor lend its shorter observation window to a longer-range torpedo mount.
+        const range = w.range != null ? w.range : def.range;
+        if (tgt && Number.isFinite(range)) {
+          const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+          if (range < 0 || dx * dx + dz * dz > range * range) continue;
+        }
         needsLock = true;
         const lt = w.lockTimeS != null ? w.lockTimeS : def.lockTimeS;
         if (lt != null) lockTimeS = Math.min(lockTimeS, lt);
@@ -799,7 +807,6 @@ export const weapons = {
     // for racks that author no time — starting there silently ignored slower authored locks.
     if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
     if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; combat.lockTargetGeneration = null; return; }
-    const tgt = this._resolveTarget(e);
     // Cloak interplay (flag massline2.cloak): a target dark to THIS shooter cannot grow a lock and
     // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
     // under a scanner burn) the lock behaves exactly as before. One gate, player and NPC alike.
@@ -1236,8 +1243,14 @@ export const weapons = {
     if (isMissile) {
       // Missiles require a lock before launch.
       const combat = e.data && e.data.combat;
-      const locked = combat && combat.lockTarget != null && (combat.lockProgress || 0) >= 1;
+      const locked = combat && tgt && combat.lockTarget === tgt.id && (combat.lockProgress || 0) >= 1
+        && (combat.lockTargetGeneration == null || combat.lockTargetGeneration === targetIdentityGeneration(tgt));
       if (!tgt || !locked) return capLeft;
+      const range = w.range != null ? w.range : def.range;
+      if (Number.isFinite(range)) {
+        const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+        if (range < 0 || dx * dx + dz * dz > range * range) return capLeft;
+      }
       dir = Math.atan2(tgt.pos.z - e.pos.z, tgt.pos.x - e.pos.x);
     } else if (isTurret) {
       if (!tgt) return capLeft;
@@ -2006,7 +2019,9 @@ export function weaponBankReadiness(mount, runtime) {
 
 function combatRuntimeOf(state, entity) {
   const bag = state && state.combat && state.combat.entities;
-  if (bag && entity && entity.id != null && bag[String(entity.id)]) return bag[String(entity.id)];
+  // Numeric keys coerce inside the dictionary lookup — String(id) would allocate
+  // a boxed key per weapon-tick per ship for the same answer.
+  if (bag && entity && entity.id != null && bag[entity.id]) return bag[entity.id];
   return (entity && entity.data && entity.data.combatRuntime) || null;
 }
 

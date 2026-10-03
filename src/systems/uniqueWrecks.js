@@ -9,6 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
@@ -17,6 +18,7 @@ import {
   rewardDescriptors,
 } from '../core/uniqueWreckComplications.js';
 import {
+  UNIQUE_WRECK_MATERIALIZE_PHASES,
   UNIQUE_WRECK_RECEIPT_LIMIT,
   UNIQUE_WRECK_SCAN_RADIUS,
   UNIQUE_WRECK_STATE_SCHEMA_VERSION,
@@ -36,8 +38,15 @@ import {
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { createChoirReliefBerth, normalizeChoirRelief } from './choirReliefBerth.js';
 import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js';
+// PB-CONS-B (SF-156 + SF-162): the aftermath-people companions, same hosting law as the Choir
+// berth — durable world records live in this owner's saved bag, the physical people ride the
+// job kernel, and every consequence outside the records stays with its canonical owner.
+import { createRescuedWorkerReturn, normalizeRescuedWorkers } from './rescuedWorkerReturn.js';
+import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './scavengerOccupationSwitch.js';
 
-const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
+// The materialize phase set lives beside the registry so the sector decode warms grade
+// the same gate without importing this module (data/uniqueWrecks.js owns the constants).
+const VALID_PHASES = UNIQUE_WRECK_MATERIALIZE_PHASES;
 
 // The seven canon rumor channels remain native surfaces. A carrier event is only a transport:
 // `_recordRumor` additionally requires the exact primary sourceRef and matching channel.
@@ -120,6 +129,38 @@ function copyPoint(value, fallback) {
   };
 }
 
+/**
+ * The deterministic plan a wreck complication's fire resolves: pseudo-zone from the def,
+ * rng stream keyed on (programSeed, wreck, encounter), day bucket off simTime. Shared by
+ * _activateEncounter and the renderer's decode warm so the warm replays the same shape.
+ */
+export function planUniqueWreckEncounter({ programSeed, def, bearing, complication, sectorId, simTime, shape }) {
+  const center = globalToSectorLocalForSector(copyPoint(complication.anchor || bearing.exactPos), sectorId);
+  const rng = mulberry32(hash32(
+    programSeed,
+    def.id,
+    complication.encounterId,
+    'unique-wreck-direct-encounter:v1',
+  ) || 1);
+  const zone = {
+    id: `unique-wreck-zone:${def.id}`,
+    name: def.name,
+    type: 'unique_wreck',
+    center,
+    radius: 520,
+    threat: def.programSlot === 'D6' ? 4 : 3,
+    factionId: def.factionId,
+  };
+  return planEncounterShape(
+    shape,
+    zone,
+    sectorId,
+    Math.floor(Math.max(0, finite(simTime, 0)) / 600),
+    0,
+    rng,
+  );
+}
+
 export function createUniqueWreckState(metaSeed) {
   return {
     schemaVersion: UNIQUE_WRECK_STATE_SCHEMA_VERSION,
@@ -135,6 +176,10 @@ export function createUniqueWreckState(metaSeed) {
     receipts: [],
     choirRelief: normalizeChoirRelief(),
     memorialThief: normalizeMemorialThief(),
+    // PB-CONS-B: the aftermath-people bags live in the same whitelist as the Choir's, so a
+    // validation-failure rebuild re-seeds them instead of silently dropping durable people.
+    rescuedWorkers: normalizeRescuedWorkers(),
+    occupationSwitch: normalizeOccupationSwitch(),
   };
 }
 
@@ -156,6 +201,8 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     receipts: [],
     choirRelief: normalizeChoirRelief(input.choirRelief),
     memorialThief: normalizeMemorialThief(input.memorialThief),
+    rescuedWorkers: normalizeRescuedWorkers(input.rescuedWorkers),
+    occupationSwitch: normalizeOccupationSwitch(input.occupationSwitch),
   };
   const bearings = input.bearings && typeof input.bearings === 'object' ? input.bearings : {};
   for (const def of UNIQUE_WRECKS) {
@@ -380,11 +427,22 @@ export const uniqueWrecks = {
     this._ensureState();
     this._choirRelief = createChoirReliefBerth(this);
     this._memorialThief = createMemorialThief(this);
+    this._rescuedWorkers = createRescuedWorkerReturn(this);
+    this._occupationSwitch = createScavengerOccupationSwitch(this);
 
     this._listen('game:started', () => this._onGameStarted());
     this._listen('save:loaded', () => this._onSaveLoaded());
     this._listen('save:restoring', () => this._clearRuntime());
     this._listen('sector:enter', (payload) => this._onSectorEnter(payload));
+    // Census arm: unique-wreck registration lands inside the sector cook deterministically.
+    // The cook drives the chunked twin across its slice clock; the emit listener drains the
+    // same steps synchronously, so both paths mint the identical field.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
+      sectorId: (sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this._listen('dock:docked', (payload) => this._onDocked(payload));
     for (const [channelId, event] of Object.entries(RUMOR_EVENT_BY_CHANNEL)) {
       this._listen(event, (payload) => this._onNativeRumor(channelId, payload));
@@ -395,15 +453,31 @@ export const uniqueWrecks = {
       this._pumpComplications();
       this._choirRelief.sync();
       this._memorialThief.sync();
+      this._rescuedWorkers.sync();
+      this._occupationSwitch.sync();
     });
     this._listen('npcjobs:work', (payload) => this._choirRelief.work(payload));
-    this._listen('npcjobs:complete', (payload) => this._choirRelief.complete(payload));
+    this._listen('npcjobs:complete', (payload) => {
+      this._choirRelief.complete(payload);
+      this._occupationSwitch.jobComplete(payload || {});
+    });
     this._listen('combat:subsystemEnabled', (payload) => this._choirRelief.enabled(payload));
     this._listen('combat:subsystemDisabled', (payload) => this._choirRelief.disabled(payload));
     this._listen('entity:killed', (payload) => {
       this._choirRelief.killed(payload);
       this._memorialThief.killed(payload);
+      this._rescuedWorkers.killed(payload);
+      this._occupationSwitch.killed(payload || {});
     });
+    // SF-156: the survivor-pod resolution seam decides the person's fate; the return is the
+    // later workplace beat. SF-162: the field owner's own departed event is the released
+    // obligation both packets require before any switch may fire.
+    this._listen('survivorPod:ejected', (payload) => this._rescuedWorkers.podEjected(payload || {}));
+    this._listen('survivorPod:resolved', (payload) => this._rescuedWorkers.podResolved(payload || {}));
+    // NXB-042: the rescue is acknowledged in the person's own voice exactly once — the owner
+    // latches the receipt when the hail offer the player actually receives targets that person.
+    this._listen('contactHail:offer', (payload) => this._rescuedWorkers.hailOffered(payload || {}));
+    this._listen('wreckEcology:departed', (payload) => this._occupationSwitch.departed(payload || {}));
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
@@ -449,6 +523,8 @@ export const uniqueWrecks = {
   _clearRuntime() {
     this._choirRelief?.clear();
     this._memorialThief?.clear();
+    this._rescuedWorkers?.clear();
+    this._occupationSwitch?.clear();
     if (this._entityByWreck) this._entityByWreck.clear();
     if (this._wreckByEntity) this._wreckByEntity.clear();
     if (this._bandRequestResolutions) this._bandRequestResolutions.clear();
@@ -829,9 +905,24 @@ export const uniqueWrecks = {
   },
 
   _onSectorEnter(payload) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains this same body under its slice clock in listener order.
+    if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
+  },
+
+  *_onSectorEnterSteps(payload) {
     if (isSurvivalRunLive(this.state && this.state.run)) return;
     const sectorId = payload && typeof payload === 'object' ? payload.sectorId : payload;
-    this._syncSector(sectorId);
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — do not
+    // materialize its wreck field under the live world's id. Synthetic payloads carry
+    // no epoch and always run.
+    if (payload && typeof payload === 'object' && payload.enterEpoch != null
+        && this.state && this.state.world && this.state.world.enterSerial != null
+        && payload.enterEpoch !== this.state.world.enterSerial) return;
+    yield* this._syncSectorSteps(sectorId);
     this._pumpComplications();
     this._surfaceSectorRumors(sectorId);
     this._activatePendingEncounters(sectorId);
@@ -987,30 +1078,15 @@ export const uniqueWrecks = {
       return true;
     }
     const own = this._ensureState();
-    const center = globalToSectorLocalForSector(anchor, sectorId);
-    const rng = mulberry32(hash32(
-      own.programSeed,
-      def.id,
-      complication.encounterId,
-      'unique-wreck-direct-encounter:v1',
-    ) || 1);
-    const zone = {
-      id: `unique-wreck-zone:${def.id}`,
-      name: def.name,
-      type: 'unique_wreck',
-      center,
-      radius: 520,
-      threat: def.programSlot === 'D6' ? 4 : 3,
-      factionId: def.factionId,
-    };
-    const item = planEncounterShape(
-      shape,
-      zone,
+    const item = planUniqueWreckEncounter({
+      programSeed: own.programSeed,
+      def,
+      bearing,
+      complication,
       sectorId,
-      Math.floor(Math.max(0, finite(this.state.simTime, 0)) / 600),
-      0,
-      rng,
-    );
+      simTime: this.state.simTime,
+      shape,
+    });
     if (!item || !Array.isArray(item.ships) || !item.ships.length) return false;
     item.encounterId = encounterId;
     item.squadId = encounterId;
@@ -1179,6 +1255,12 @@ export const uniqueWrecks = {
   },
 
   _syncSector(sectorId) {
+    for (const _ of this._syncSectorSteps(sectorId)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: one materialize per yield so the sliced census can
+  // interleave presentation between wrecks; _materialize self-dedupes via _findLive.
+  *_syncSectorSteps(sectorId) {
     if (!sectorId) return;
     const own = this._ensureState();
     for (const record of Object.values(own.bearings)) {
@@ -1186,6 +1268,7 @@ export const uniqueWrecks = {
       // spawn the outcome-stamped husk, so a map bearing never points at empty space.
       if (record && record.sectorId === sectorId && VALID_PHASES.has(record.phase)) {
         this._materialize(record.wreckId);
+        yield;
       }
     }
     this._choirRelief?.sync();
@@ -1232,7 +1315,8 @@ export const uniqueWrecks = {
         hull: 1,
         hullMax: 1,
         factionId: def.factionId,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: a named unique wreck keeps its authored dead-mass through normalization.
+        physicsBody: { shape: 'capsule', mass: 1e6 },
         data: {
           uniqueWreckId: def.id,
           authoredWreckId: def.id,
@@ -1542,6 +1626,9 @@ export const uniqueWrecks = {
               && ships.grantModule({
                 defId: reward.id,
                 reason: `unique-wreck:${def.id}:${choice.id}`,
+                // NXB-032 — the recovered instance keeps where it came from through
+                // hold/fit/resale; plain string reads through formatInstanceProvenance.
+                provenance: `Recovered: ${def.name || def.id}`,
               }));
             if (granted) own.grants[reward.id] = { wreckId: def.id, grantedAtS: resolvedAtS };
           }

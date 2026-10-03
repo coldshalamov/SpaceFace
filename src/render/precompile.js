@@ -893,27 +893,213 @@ function addAuthoredCanopyPipelineWarmup(staging) {
   ];
   const root = new THREE.Group();
   root.name = 'SF_Precompile_Canopy_KeepAlive';
-  for (let i = 0; i < variants.length; i++) {
-    const { id, ...maps } = variants[i];
-    const material = new THREE.MeshPhysicalMaterial({
-      color: 0xd7edff,
-      metalness: 0,
-      roughness: 0.12,
-      transmission: 0.65,
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-      dithering: true,
-      ...maps,
-    });
-    material.name = `SF_Precompile_Canopy_${id}`;
-    applyRealtimeCanopyPolicy(material);
-    const geometry = new THREE.PlaneGeometry(8, 5);
-    geometry.computeTangents();
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = `SF_Precompile_Canopy_${id}`;
-    mesh.userData.precompileCanopyVariant = id;
-    mesh.position.set(i * 10, 28, 0);
-    root.add(mesh);
+  const classes = [
+    {
+      suffix: '',
+      make: (maps) => new THREE.MeshPhysicalMaterial({
+        color: 0xd7edff,
+        metalness: 0,
+        roughness: 0.12,
+        transmission: 0.65,
+        side: THREE.DoubleSide,
+        forceSinglePass: true,
+        dithering: true,
+        ...maps,
+      }),
+    },
+    // The observed draw-time miss this warmup exists for is `physical,STANDARD`: every authored
+    // canopy loads through assetLoader's physical conversion — MeshPhysicalMaterial with
+    // defines { STANDARD, PHYSICAL } — and the program-canon pass then fills all six texture
+    // slots plus dithering, so a sourced MeshStandardMaterial never reaches the GPU and a
+    // standard-class probe mints a key nothing can hit. Mint the one key the real canopy
+    // program owns: physical + STANDARD/PHYSICAL defines + the canonical slot set.
+    {
+      suffix: '_Canon',
+      layouts: ['canon'],
+      make: () => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xd7edff,
+          metalness: 0,
+          roughness: 0.12,
+          clearcoat: 1,
+          transmission: 0.65,
+          side: THREE.DoubleSide,
+          forceSinglePass: true,
+          dithering: true,
+          map: baseColor,
+          normalMap: normal,
+          roughnessMap: surface,
+          metalnessMap: surface,
+          aoMap: surface,
+          emissiveMap: baseColor,
+        });
+        material.defines = { STANDARD: '', PHYSICAL: '' };
+        return material;
+      },
+    },
+    // Signature axes the canopy conversion path (GLTF physical clone → realtime-canopy policy →
+    // canon slot fill) leaves variable post-canonicalization: authored doubleSided, alphaMode
+    // MASK, vertex colors, object-space normals, and the KHR extension slots canon never fills.
+    // The first canopy carrying any one of them would otherwise link a cold program at draw.
+    // Probes enumerate the single-axis classes; each still rides the canon slot set + policy.
+    {
+      suffix: '_Axis',
+      layouts: [
+        'frontside', 'tangentless', 'vertexcolors', 'mask',
+        'iridescence', 'sheen', 'anisotropy', 'transmission-map',
+        'clearcoat-map', 'objectspace-normal',
+        // KHR map slots shipped canopies actually carry (catalog grep: clearcoat ~793 GLBs,
+        // specular ~502, anisotropy ~10): each mints a USE_* variant the canon slot set lacks.
+        'clearcoat-roughness-map', 'clearcoat-normal-map',
+        'specular-intensity-map', 'specular-color-map', 'anisotropy-map',
+      ],
+      make: (maps, axisId) => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xd7edff,
+          metalness: 0,
+          roughness: 0.12,
+          clearcoat: 1,
+          transmission: 0.65,
+          side: axisId === 'frontside' ? THREE.FrontSide : THREE.DoubleSide,
+          forceSinglePass: true,
+          dithering: true,
+          map: baseColor,
+          normalMap: normal,
+          roughnessMap: surface,
+          metalnessMap: surface,
+          aoMap: surface,
+          emissiveMap: baseColor,
+        });
+        material.defines = { STANDARD: '', PHYSICAL: '' };
+        switch (axisId) {
+          case 'vertexcolors':
+            material.vertexColors = true;
+            break;
+          case 'mask':
+            material.alphaTest = 0.5;
+            break;
+          case 'iridescence':
+            material.iridescence = 1;
+            material.iridescenceIOR = 1.3;
+            break;
+          case 'sheen':
+            material.sheen = 1;
+            material.sheenColor = new THREE.Color(0xffffff);
+            break;
+          case 'anisotropy':
+            material.anisotropy = 1;
+            break;
+          case 'transmission-map':
+            material.transmissionMap = surface;
+            break;
+          case 'clearcoat-map':
+            material.clearcoatMap = surface;
+            break;
+          case 'clearcoat-roughness-map':
+            material.clearcoatRoughnessMap = surface;
+            break;
+          case 'clearcoat-normal-map':
+            material.clearcoatNormalMap = normal;
+            break;
+          case 'specular-intensity-map':
+            material.specularIntensityMap = surface;
+            break;
+          case 'specular-color-map':
+            material.specularColorMap = baseColor;
+            break;
+          case 'anisotropy-map':
+            material.anisotropy = 1;
+            material.anisotropyMap = surface;
+            break;
+          case 'objectspace-normal':
+            material.normalMapType = THREE.ObjectSpaceNormalMap;
+            break;
+          default:
+            break;
+        }
+        return material;
+      },
+      prepareGeometry: (geometry, axisId) => {
+        if (axisId !== 'tangentless') geometry.computeTangents();
+        if (axisId === 'vertexcolors') {
+          const count = geometry.attributes.position.count;
+          const colors = new Float32Array(count * 3).fill(1);
+          geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        }
+      },
+    },
+    // Shipped glass that never reaches the canopy policy — names outside /canopy|cockpit.?glass/
+    // keep authored transmission or alpha-blend programs (GLB audit: cockpit glass = physical +
+    // transmission + DOUBLE_SIDED, with and without TEXCOORD_1; pelican/wasp window glass =
+    // standard + BLEND + DOUBLE_SIDED). Every existing probe mints the policy-converted key
+    // (transmission zeroed, forceSinglePass set), so these signatures would link cold at the
+    // first glass admission.
+    {
+      suffix: '_Glass',
+      skipPolicy: true,
+      layouts: ['trans', 'trans-uv1', 'blend-standard'],
+      make: (maps, axisId) => {
+        if (axisId === 'blend-standard') {
+          const material = new THREE.MeshStandardMaterial({
+            color: 0xd7edff,
+            metalness: 0,
+            roughness: 0.12,
+            side: THREE.DoubleSide,
+            transparent: true,
+            dithering: true,
+            map: baseColor,
+            normalMap: normal,
+            roughnessMap: surface,
+            metalnessMap: surface,
+            aoMap: surface,
+            emissiveMap: baseColor,
+          });
+          material.defines = { STANDARD: '' };
+          return material;
+        }
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xd7edff,
+          metalness: 0,
+          roughness: 0.12,
+          transmission: 0.65,
+          side: THREE.DoubleSide,
+          dithering: true,
+          map: baseColor,
+          normalMap: normal,
+          roughnessMap: surface,
+          metalnessMap: surface,
+          aoMap: surface,
+          emissiveMap: baseColor,
+        });
+        material.defines = { STANDARD: '', PHYSICAL: '' };
+        return material;
+      },
+      prepareGeometry: (geometry, axisId) => {
+        geometry.computeTangents();
+        if (axisId === 'trans-uv1' && geometry.attributes.uv) {
+          geometry.setAttribute('uv1', geometry.attributes.uv);
+        }
+      },
+    },
+  ];
+  for (const { suffix, layouts, make, prepareGeometry, skipPolicy } of classes) {
+    const classLayouts = Array.isArray(layouts) ? layouts : variants.map((variant) => variant.id);
+    for (let i = 0; i < classLayouts.length; i++) {
+      const id = classLayouts[i];
+      const variant = variants.find((entry) => entry.id === id);
+      const { id: _variantId, ...maps } = variant || { id };
+      const material = make(maps, id);
+      material.name = `SF_Precompile_Canopy${suffix}_${id}`;
+      if (skipPolicy !== true) applyRealtimeCanopyPolicy(material);
+      const geometry = new THREE.PlaneGeometry(8, 5);
+      if (typeof prepareGeometry === 'function') prepareGeometry(geometry, id);
+      else geometry.computeTangents();
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = `SF_Precompile_Canopy${suffix}_${id}`;
+      mesh.userData.precompileCanopyVariant = suffix ? `${suffix.replace(/^_/, '').toLowerCase()}_${id}` : id;
+      mesh.position.set(i * 10, suffix ? 48 : 28, 0);
+      root.add(mesh);
+    }
   }
   staging.add(root);
   return root;

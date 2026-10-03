@@ -43,6 +43,7 @@ import {
   protectedStationAt,
 } from './engagementAuthority.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../systems/lootShards.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 export const AMBIENT_PREDATION = Object.freeze({
   evalPeriodS: 2,            // pairing cadence inside the director's 1 Hz tick
@@ -102,7 +103,7 @@ export function isAmbientPredationRaider(entity) {
  */
 export function ambientRaidersOf(state) {
   const out = [];
-  const entities = entityScan(state);
+  const entities = ambientEntitySubsets(state).ships;
   for (const entity of entities) {
     if (!entity || entity.type !== 'ship') continue;
     if (ambientObjective(entity) || isAmbientPredationRaider(entity)) {
@@ -116,7 +117,7 @@ export function ambientRaidersOf(state) {
 /** Orphaned ambient victim stamps: ambient predationEncounterId whose raid has no live raider. */
 function ambientVictimsOf(state) {
   const out = [];
-  for (const entity of entityScan(state)) {
+  for (const entity of ambientEntitySubsets(state).ships) {
     const data = entity && entity.data;
     if (!data || data.predationRole !== 'manifest_carrier') continue;
     if (!isAmbientRaidId(data.predationEncounterId)) continue;
@@ -911,7 +912,7 @@ export function evaluateAmbientPairing(state, ambient, ctx = {}) {
   const liveIds = liveEncounterMemberIds(state);
   const raiders = [];
   const victims = [];
-  for (const entity of entityScan(state)) {
+  for (const entity of ambientEntitySubsets(state).ships) {
     if (!entity || entity.type !== 'ship' || entity.alive === false) continue;
     if (entity.id === state.playerId) continue;
     if (liveIds.has(entity.id)) continue;
@@ -1125,7 +1126,7 @@ function isAmbientVictimCandidate(state, sectorId, zones, entity, now) {
   if (protectedStationAt(state, entity)) return false;
   // Low lawful presence: no lawful hull or lawful-faction station covering the victim.
   const r2 = AMBIENT_PREDATION.lawPresenceRadiusWu * AMBIENT_PREDATION.lawPresenceRadiusWu;
-  for (const other of entityScan(state)) {
+  for (const other of ambientEntitySubsets(state).shipOrStation) {
     if (!other || other.alive === false || other === entity) continue;
     const otherAi = other.data && other.data.ai;
     const lawfulShip = other.type === 'ship' && otherAi && otherAi.lawful === true;
@@ -1174,7 +1175,7 @@ function liveEncounterMemberIds(state) {
 
 function spilledPodIdsFor(state, victim) {
   const out = [];
-  for (const entity of entityScan(state)) {
+  for (const entity of ambientEntitySubsets(state).pods) {
     // Traffic's violence spill and the raider's own respill both mint `payload` jettisoned-cargo
     // pods; pickup-type freight custody pods are included for harnesses that exercise that shape.
     if (!entity || entity.alive === false) continue;
@@ -1222,6 +1223,36 @@ function entityScan(state) {
   const entities = state && state.entities;
   if (entities && typeof entities.values === 'function') return entities.values();
   return Array.isArray(state && state.entityList) ? state.entityList : [];
+}
+
+// Spawn-stable base sets latched on {entityIndexVersion, state.entities} — the director's
+// cadence walks (raider/victim scans, pairing eval, lawful presence, spilled pods) used to
+// pay a full entity-map pass each. Membership in a subset preserves entities.values() order
+// exactly, so early-breaks (maxRaidScan) pick the identical entities, and every volatile
+// gate (predation stamps, alive, hostility, liveIds) still re-runs per call per entity.
+const _ambientEntitySubsets = { version: null, source: null, ships: [], shipOrStation: [], pods: [] };
+// Members are ship/station/payload/pickup — latch the lane sum over exactly that domain so
+// projectile/fx churn during combat stops re-walking the entity map per index bump. The
+// rebuild still runs the same entityScan (member order is load-bearing), only the key moves.
+const AMBIENT_SUBSET_LANES = ['shipLike', 'stations', 'payloads', 'pickups'];
+function ambientEntitySubsets(state) {
+  const laneVersion = entityIndexLaneVersion(state, AMBIENT_SUBSET_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  const cache = _ambientEntitySubsets;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.ships.length = 0;
+    cache.shipOrStation.length = 0;
+    cache.pods.length = 0;
+    for (const e of entityScan(state)) {
+      if (!e) continue;
+      if (e.type === 'ship') { cache.ships.push(e); cache.shipOrStation.push(e); }
+      else if (e.type === 'station') cache.shipOrStation.push(e);
+      else if (e.type === 'payload' || e.type === 'pickup') cache.pods.push(e);
+    }
+  }
+  return cache;
 }
 
 function entityById(state, id) {

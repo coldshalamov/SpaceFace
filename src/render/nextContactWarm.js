@@ -1,8 +1,11 @@
 // Predictive compile of the next real contact hull from traffic intent.
 // Queues an existing mesh — never a dummy draw or dummy program key.
 
-export function pickNextContactCompileSubject(state, meshes) {
+export function pickNextContactCompileSubject(state, meshes, pendingSubjects = null) {
   if (!state || !meshes || typeof meshes.get !== 'function') return null;
+  // Candidates require pipelinesPending === true, so an empty pending set means the
+  // shipLike walk below can only yield null — drain calls this every frame.
+  if (pendingSubjects && pendingSubjects.size === 0) return null;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : null;

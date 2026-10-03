@@ -23,6 +23,7 @@ import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
+import { bindReturningPilotSummary } from './dockArrival.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -313,11 +314,19 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
+  // the pre-save session — dismiss them rather than letting their TTL finish over the restored
+  // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
+  // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
+  for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
+    bus.on(name, () => { while (live.length) dismiss(live[live.length - 1]); });
+  }
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindJumpDenialToasts(bus, () => ctx.state);
   bindExportRecoveryToasts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
+  bindReturningPilotSummary(bus, ctx && ctx.state);
 
   return { push, tick };
 }

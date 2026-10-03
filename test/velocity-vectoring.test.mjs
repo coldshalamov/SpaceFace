@@ -47,7 +47,9 @@ function body(overrides = {}) {
 }
 
 function step(profile, b, input, runtime = createPropulsionRuntime(profile)) {
-  return stepPropulsion({ dt: DT, body: b, input: { assistMode: 'assisted', ...input }, profile, runtime });
+  return stepPropulsion({ dt: DT, body: b, input: {
+    assistMode: 'assisted', unvectoredCruiseSteering: true, ...input,
+  }, profile, runtime });
 }
 
 function speedOf(b) { return Math.hypot(b.vel.x, b.vel.z); }
@@ -112,6 +114,36 @@ test(`opt-out is byte-identical: no flag, no vectoring key, no change — "${EAR
   assert.deepEqual(explicitOff, plain, 'velocityVectoring:false must be the same as no key');
   assert.equal('vectoring' in plain.telemetry, false, 'no key means no telemetry key (frozen-fixture shape)');
   assert.equal('vectoring' in explicitOff.telemetry, false);
+});
+
+test('the unvectored governor keeps forward steering authority at cruise without buying overspeed', () => {
+  const profile = hitchPlayerProfile();
+  const cruise = profile.combatSpeed;
+  for (const sign of [-1, 1]) {
+    const result = step(profile, body({ vel: { x: cruise, z: 0 }, rot: sign * Math.PI / 4 }), {
+      throttle: 1, strafe: sign, turn: sign, velocityVectoring: false,
+    });
+    assert.ok(result.telemetry.manualLocal.forward > 0,
+      'turning the nose off the path at cruise must leave real forward thrust available to steer');
+    assert.equal(result.maxSpeed, cruise, 'the physics owner still bounds the total thrust-made speed');
+    const earned = step(profile, body({ vel: { x: cruise * 2, z: 0 }, rot: sign * Math.PI / 4 }), {
+      throttle: 1, velocityVectoring: false,
+    });
+    assert.equal(earned.telemetry.manualLocal.forward, 0,
+      'a nose still in the forward hemisphere cannot replenish physics-earned overspeed');
+  }
+});
+
+test('manual cruise steering does not leak into NPC, rope or autopilot input packets', () => {
+  const profile = hitchPlayerProfile();
+  const b = () => body({ vel: { x: profile.combatSpeed, z: 0 }, rot: Math.PI / 4 });
+  const input = { throttle: 1, turn: 1, velocityVectoring: false };
+  const raw = step(profile, b(), { ...input, unvectoredCruiseSteering: false });
+  const manual = step(profile, b(), input);
+  assert.equal(raw.telemetry.manualLocal.forward, 0, 'an unmarked packet keeps its original cap servo');
+  assert.equal(raw.telemetry.targetYawRate, profile.maxYawRate, 'an unmarked packet keeps free yaw');
+  assert.ok(manual.telemetry.manualLocal.forward > 0);
+  assert.ok(manual.telemetry.targetYawRate < profile.maxYawRate);
 });
 
 test(`above the cap the weld holds: overspeed steers the arc and cannot spend the speed — "${EARNED}"`, () => {
@@ -328,15 +360,15 @@ test(`kernel redirect table: twitch, W+turn sweep and W+strafe+turn per variant 
   for (const row of rows) {
     console.log(`  ${row.variant.padEnd(24)} twitch100->90deg ${fmt(row.twitch90)} | W+turn 90deg ${fmt(row.turn90)} | W+strafe+turn 90deg ${fmt(row.redirect90)}`);
   }
-  // NOTE on the `off` row: this harness has no steady damping, so at the cap the governor cuts
-  // thrust entirely and the unassisted ship only bends its path once the nose leads by 90 deg and
-  // the governor slams full thrust against the reversed component — a speed dump whose heading
-  // flips through zero. The real path (Rapier) cruises a hair under the cap and keeps a little
-  // thrust on, so its `off` numbers are far better than these. Only the real-path numbers
-  // (test/velocity-vectoring.real-path.mjs) are evidence for the bars; here the assertions guard
-  // the assist's own direction of travel on the well-conditioned twitch arm.
+  // The cruise governor keeps raw main-drive steering available, and assisted yaw follows the
+  // attainable path before the nose crosses into a repeated retro-burn. The off arm must be a
+  // usable inertial turn too; the band buys a quicker, tighter arc without starving that arm.
   const off = rows[0];
   const band = rows.find((r) => r.variant.startsWith('1.6/0.9'));
+  assert.ok(off.turn90.timeS != null && off.redirect90.timeS != null,
+    'unvectored W+turn and W+strafe+turn must both complete a 90 degree sweep');
+  assert.ok(off.redirect90.minSpeed >= off.redirect90.cruise * 0.5,
+    'a commanded unvectored turn must not stall into a repeating retro-burn');
   assert.ok(off.twitch90.timeS != null && band.twitch90.timeS != null, 'both arms must complete the 90 deg redirect');
   assert.ok(band.twitch90.timeS < off.twitch90.timeS * 0.75,
     `${TWITCH} — the band assist must redirect a held 100 deg twitch at least 25% sooner (${band.twitch90.timeS} vs ${off.twitch90.timeS} s)`);

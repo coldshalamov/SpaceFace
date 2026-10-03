@@ -47,6 +47,12 @@ export const PRESENTATION_RECIPES = Object.freeze({
   'mining.survey.classified': miningRecipe(0.62, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'classified']),
   'mining.survey.tracked': miningRecipe(0.54, 20, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'tracked']),
   'mining.survey.investigated': miningRecipe(0.7, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'investigated']),
+  // FB-131 — the scanner speaks. Three variants close the family: a lost contact, a counted
+  // bearing (pitch rises with count, sequence distinguishes each step in the dedupe window),
+  // and a reveal receipt for wrecks and debris caches.
+  'mining.survey.escaped': miningRecipe(0.68, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'escaped']),
+  'mining.survey.bearing': miningRecipe(0.5, 8, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'bearing']),
+  'mining.survey.revealed': miningRecipe(0.66, 20, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'revealed']),
   'mining.extraction.locked': miningRecipe(0.5, 1, 'mining_beam', 'vfx.direct_mining_beam', ['mining', 'extraction', 'locked']),
   'mining.seam.quality': miningRecipe(0.64, 1, 'seam', 'vfx.direct_mining_seam', ['mining', 'seam']),
   'mining.seam.reward': miningRecipe(0.64, 30, 'seam', 'vfx.direct_mining_seam', ['mining', 'seam', 'reward']),

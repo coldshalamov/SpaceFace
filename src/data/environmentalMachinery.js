@@ -1225,6 +1225,24 @@ export function apertureHazardZones(sectorId) {
   })];
 }
 
+// The hangar mouth is the moving receiver. Numbers are the acceptance window, the
+// unit capacity, and the two draws that share one power budget. Hulls are not spawned here.
+export const APERTURE_RECEIVER = Object.freeze({
+  maxRelativeSpeed: 22,
+  capacity: 8,
+  damagedHalfWidthScale: 0.55,
+  classes: Object.freeze(['ore', 'scrap']),
+  intakeClass: 'ore',
+  obstructClass: 'scrap',
+  powerBudget: 10,
+  refineDemand: 7,
+  sortDemand: 6,
+  repairCommodityId: 'cmdty_scrap_metal',
+  repairQty: 4,
+  repairSourceId: 'station_ceres',
+  bypassScale: 0.4,
+});
+
 // H1f / C12 — The Metronome (Eris Margin): an authored area-denial emitter on an
 // unyielding 8.00 s sweep (depth-program BUILD_PLAN: "beam plane, sim-clocked 8s
 // period, radiation damage through the hazard system, timing-crossing" — "a pulsar

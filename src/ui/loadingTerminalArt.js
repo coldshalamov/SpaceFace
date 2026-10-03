@@ -2209,7 +2209,9 @@ export function startBootIntroVideo({ document = globalThis.document, onFallback
   video.addEventListener('playing', markLive);
   // A missing file errors fast, but a stalled connection can sit — bound the probe.
   timer = setTimeout(() => { if (!live) fail(); }, 6000);
-  try { video.load(); } catch (_) {}
+  // Reduced motion holds the poster frame — the ~29MB stream itself is never needed.
+  if (bootVideoReducedMotion(document)) { markLive(); }
+  else { try { video.load(); } catch (_) {} }
   bootVideoCtl = ctl;
   return ctl;
 }

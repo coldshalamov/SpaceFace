@@ -8,6 +8,46 @@ import * as THREE from 'three';
 import { entityPresenceRadius } from '../world/activityClassification.js';
 
 const _drawnCullBox = new THREE.Box3();
+const _motionPadBox = new THREE.Box3();
+const _motionPadOrigin = new THREE.Vector3();
+const _motionPadCorner = new THREE.Vector3();
+
+/**
+ * Farthest authored-motion excursion beyond the rest-pose envelope. The pad spec rides on
+ * the entity root (attachAuthoredMotionDriver); each entry's subtree radius is measured in
+ * world space at first query — after fit/scale mounts — so a pivot swinging an arm can't
+ * draw past the committed envelope. Same-named LOD twin pivots max within a binding
+ * (only one level draws); distinct bindings sum (nested pivots compose).
+ */
+function motionTravelPadFor(mesh) {
+  const data = mesh && mesh.userData;
+  const spec = data && data.authoredMotionPadSpec;
+  if (!spec || !spec.length) return 0;
+  const cached = data.__authoredMotionPad;
+  if (typeof cached === 'number') return cached;
+  let pad = 0;
+  for (const entry of spec) {
+    let reach = 0;
+    for (const node of entry.nodes || []) {
+      if (!node || node.isObject3D !== true) continue;
+      _motionPadBox.setFromObject(node);
+      if (_motionPadBox.isEmpty()) continue;
+      node.getWorldPosition(_motionPadOrigin);
+      for (let cx = 0; cx < 2; cx++) for (let cy = 0; cy < 2; cy++) for (let cz = 0; cz < 2; cz++) {
+        _motionPadCorner.set(
+          cx ? _motionPadBox.max.x : _motionPadBox.min.x,
+          cy ? _motionPadBox.max.y : _motionPadBox.min.y,
+          cz ? _motionPadBox.max.z : _motionPadBox.min.z,
+        );
+        const r = _motionPadCorner.distanceTo(_motionPadOrigin);
+        if (r > reach) reach = r;
+      }
+    }
+    pad += reach * (Number(entry.chordFactor) || 0) + (Number(entry.tMax) || 0);
+  }
+  data.__authoredMotionPad = pad;
+  return pad;
+}
 
 /**
  * True drawn reach for an authored root that carries no authored visualBounds: measure the
@@ -56,6 +96,7 @@ function drawnCullRadiusForMesh(mesh) {
 export function entityVisualCullRadius(entity, mesh = null) {
   const presence = entityPresenceRadius(entity);
   const data = mesh && mesh.userData;
+  const pad = motionTravelPadFor(mesh);
   const hull = data && data.hull;
   const bounds = hull && hull.userData && hull.userData.visualBounds
     || data && data.visualBounds;
@@ -63,10 +104,15 @@ export function entityVisualCullRadius(entity, mesh = null) {
   if (Array.isArray(size)) {
     const x = Math.max(0, Number(size[0]) || 0);
     const z = Math.max(0, Number(size[2]) || 0);
-    return Math.max(presence, Math.hypot(x, z) * 0.5);
+    // Envelope stamps can sit off-origin (a composed body's far parts extend past the
+    // authored center); the cull radius must reach the far edge, not just half the size.
+    const center = bounds.center;
+    const cx = Array.isArray(center) ? Number(center[0]) || 0 : 0;
+    const cz = Array.isArray(center) ? Number(center[2]) || 0 : 0;
+    return Math.max(presence, Math.hypot(cx, cz) + Math.hypot(x, z) * 0.5 + pad);
   }
   if (data && String(data.authoredAssetState || '').startsWith('authored')) {
-    return Math.max(presence, drawnCullRadiusForMesh(mesh));
+    return Math.max(presence, drawnCullRadiusForMesh(mesh) + pad);
   }
-  return presence;
+  return Math.max(presence, pad);
 }

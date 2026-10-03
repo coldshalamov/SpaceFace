@@ -381,9 +381,25 @@ export function selectEvictions(entries, options = {}) {
   });
 }
 
+// Named ceilings. Callers and the residency registry use these instead of a
+// null that used to mean "no cap". Do not lower them.
+export const GOVERNOR_RESIDENCY_BYTE_CEILING = 384 * 1024 * 1024;
+export const GOVERNOR_CPU_RESIDENCY_BYTE_CEILING = 512 * 1024 * 1024;
+
+/** A missing caller cap is the named ceiling. It is never "no limit". */
+export function residencyEvictionCeiling(maxBytes) {
+  if (maxBytes == null) return GOVERNOR_RESIDENCY_BYTE_CEILING;
+  const value = Number(maxBytes);
+  return Number.isFinite(value) ? value : GOVERNOR_RESIDENCY_BYTE_CEILING;
+}
+
 export function createResourceGovernor(options = {}) {
-  const maxCpuBytes = Number(options.maxCpuBytes) > 0 ? Number(options.maxCpuBytes) : 512 * 1024 * 1024;
-  const maxGpuBytes = Number(options.maxGpuBytes) > 0 ? Number(options.maxGpuBytes) : 384 * 1024 * 1024;
+  const maxCpuBytes = Number(options.maxCpuBytes) > 0
+    ? Number(options.maxCpuBytes)
+    : GOVERNOR_CPU_RESIDENCY_BYTE_CEILING;
+  const maxGpuBytes = Number(options.maxGpuBytes) > 0
+    ? Number(options.maxGpuBytes)
+    : GOVERNOR_RESIDENCY_BYTE_CEILING;
   let lastPlan = null;
 
   return {

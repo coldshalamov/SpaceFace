@@ -1653,10 +1653,10 @@ function bindContacts(host, trace, watchIds) {
     const b = payload && payload.bId;
     if (watch.has(a) || watch.has(b)) pushContact(trace, host.state.tick | 0, a, b);
   };
-  host.runtime.bus.on('collision', handler);
+  host.runtime.bus.on('physics:impact', handler);
   return {
     unbind() {
-      if (typeof host.runtime.bus.off === 'function') host.runtime.bus.off('collision', handler);
+      if (typeof host.runtime.bus.off === 'function') host.runtime.bus.off('physics:impact', handler);
     },
   };
 }

@@ -48,7 +48,7 @@ function makeDetailRoom(story, incoming) {
   }
   if (!disposable) return false;
   story.nodes.splice(story.nodes.indexOf(disposable), 1);
-  return true;
+  return disposable;
 }
 
 /**
@@ -59,6 +59,13 @@ function makeDetailRoom(story, incoming) {
 export function ingestBatch(memory, batch) {
   const groups = new Map();
   for (const s of memory.stories) for (const group of s.groups) groups.set(group, s);
+  const touched = new Set();
+  const droppedDedupe = [];
+  // The lineage pass is only reachable when a batch carries provides/parent refs (a link can
+  // only be created or re-resolved by one) or appends a node out of t/seq order (the pass owns
+  // node sorting). Plain kill/heat/receipt batches satisfy neither and skip the archive-wide
+  // rebuild entirely.
+  let needsLineage = false;
   for (const f of batch) {
     let group = f.group;
     if (f.stage === 'wanted') {
@@ -72,9 +79,17 @@ export function ingestBatch(memory, batch) {
     }
     if (story.nodes.length >= memory.config.maxFactsPerStory) {
       increment(memory.metrics, 'detailDropped');
-      if (!makeDetailRoom(story, f)) continue;
+      const dropped = makeDetailRoom(story, f);
+      if (!dropped) { droppedDedupe.push(f.dedupe); continue; }
+      droppedDedupe.push(dropped.dedupe);
+      touched.add(story.id);
     }
+    const last = story.nodes[story.nodes.length - 1];
+    if (last && (f.t - last.t || f.seq - last.seq) < 0) needsLineage = true;
+    if (f.parent || (f.provides && f.provides.length)) needsLineage = true;
+    else if (f.parentStatus === undefined) f.parentStatus = 'none';
     story.nodes.push(f);
+    touched.add(story.id);
     story.updatedAt = Math.max(story.updatedAt, f.t);
     if (group && !story.groups.includes(group)) story.groups.push(group);
     if (f.stage === 'wanted' && f.details.level > 0) {
@@ -86,13 +101,24 @@ export function ingestBatch(memory, batch) {
     increment(memory.metrics, 'accepted');
     updateProfile(memory, f);
   }
-  resolveLineage(memory);
+  if (needsLineage) {
+    for (const id of resolveLineage(memory, touched)) touched.add(id);
+  }
+  return { touched, droppedDedupe };
 }
 
-export function resolveLineage(memory) {
+/**
+ * Rebuild lineage across the whole archive and return the ids of stories whose view-relevant
+ * content changed: ingested/absorbed members (seedTouched), nodes whose parentStatus flipped,
+ * and merged stories whose edge set differs from all prior contributors'. Callers that only
+ * need the rebuild may ignore the return.
+ */
+export function resolveLineage(memory, seedTouched = null) {
   const providers = new Map();
   const nodes = [];
   const owner = new Map();
+  const priorStatus = new Map();
+  const priorEdgeKeys = new Map();
   const stories = memory.stories;
   const byId = new Map(stories.map(s => [s.id, s]));
   const roots = new Map(stories.map(s => [s.id, s.id]));
@@ -115,8 +141,14 @@ export function resolveLineage(memory) {
     return true;
   }
   for (const story of stories) {
+    const edgeKeys = new Set();
+    for (const e of story.edges || []) {
+      edgeKeys.add(`${e.from}|${e.to}|${e.relation}|${e.certainty || ''}`);
+    }
+    priorEdgeKeys.set(story.id, edgeKeys);
     for (const fact of story.nodes) {
       nodes.push(fact); owner.set(fact.id, story.id);
+      priorStatus.set(fact, fact.parentStatus);
       for (const r of fact.provides) {
         const key = refKey(r);
         if (!providers.has(key)) providers.set(key, []);
@@ -196,6 +228,35 @@ export function resolveLineage(memory) {
   memory.metrics.unresolvedLinks = unresolved;
   memory.metrics.invalidLinks = invalid;
   memory.metrics.ambiguousLinks = ambiguous;
+  // Touched-set: every story whose (nodes, edges, node statuses) changed this pass, in
+  // post-merge root ids. Status flips and seed ids land through their owner's root; absorbed
+  // stories mark both sides; the edge diff catches a re-resolution to a different parent that
+  // keeps the same 'resolved' status (the only view change no flip reveals).
+  const touchedPreMerge = new Set(seedTouched || []);
+  for (const fact of nodes) {
+    if (priorStatus.get(fact) !== fact.parentStatus) touchedPreMerge.add(owner.get(fact.id));
+  }
+  for (const story of stories) {
+    const key = root(story.id);
+    if (key !== story.id) { touchedPreMerge.add(key); touchedPreMerge.add(story.id); }
+  }
+  const touched = new Set();
+  for (const id of touchedPreMerge) touched.add(root(id));
+  for (const [key, mergedStory] of merged) {
+    if (touched.has(key)) continue;
+    const priorKeys = new Set();
+    for (const story of stories) {
+      if (root(story.id) === key) for (const k of priorEdgeKeys.get(story.id)) priorKeys.add(k);
+    }
+    let differs = mergedStory.edges.length !== priorKeys.size;
+    if (!differs) {
+      for (const e of mergedStory.edges) {
+        if (!priorKeys.has(`${e.from}|${e.to}|${e.relation}|${e.certainty || ''}`)) { differs = true; break; }
+      }
+    }
+    if (differs) touched.add(key);
+  }
+  return touched;
 }
 function later(a, b) { return a === null ? b : b === null ? a : Math.max(a, b); }
 
@@ -266,7 +327,8 @@ function updateProfile(memory, f) {
  */
 const CITED_BONUS = 100;
 
-/** Whole-story eviction preserves referential integrity: never leave half a causal proof. */
+/** Whole-story eviction preserves referential integrity: never leave half a causal proof.
+ *  Returns the dedupe keys of evicted nodes so callers can retire dedupe slots. */
 export function pruneMemory(memory, views, now) {
   // The bound is enforced on the fact count as well as the story count, because the fact ledger IS
   // `stories[].nodes[]`: two individually-legal configs (many small stories, few large ones) can
@@ -275,7 +337,7 @@ export function pruneMemory(memory, views, now) {
   for (const story of memory.stories) facts += story.nodes.length;
   const over = Math.max(memory.stories.length - memory.config.maxStories,
     facts - MAX_RETAINED_FACTS, 0);
-  if (over <= 0) return;
+  if (over <= 0) return [];
   const scored = memory.stories.map(story => {
     const view = views.get(story.id);
     const agePenalty = Math.min(35, Math.max(0, now - story.updatedAt) / 600);
@@ -305,7 +367,13 @@ export function pruneMemory(memory, views, now) {
   }).sort((a, b) => a.incubating - b.incubating || a.score - b.score
     || a.story.updatedAt - b.story.updatedAt || a.story.sequence - b.story.sequence);
   const remove = new Set(scored.slice(0, over).map(r => r.story.id));
-  memory.stories = memory.stories.filter(s => !remove.has(s.id));
+  const droppedDedupe = [];
+  memory.stories = memory.stories.filter(s => {
+    if (!remove.has(s.id)) return true;
+    for (const f of s.nodes) droppedDedupe.push(f.dedupe);
+    return false;
+  });
   increment(memory.metrics, 'storiesEvicted', remove.size);
   if (remove.has(memory.activeWanted)) memory.activeWanted = null;
+  return droppedDedupe;
 }

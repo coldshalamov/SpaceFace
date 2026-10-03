@@ -96,6 +96,7 @@ import {
   releaseNextFieldOpportunity,
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -146,7 +147,7 @@ import {
   bindEntityToRecord,
   captureEntityRecord,
   createEmptyRecordsBag,
-  deserializeRecordsBag,
+  normalizeRecordsBagChunked,
   ensureWorldRecords,
   entityHasDurableMarkers,
   entityIsDurableCandidate,
@@ -162,7 +163,8 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
@@ -178,6 +180,7 @@ import {
   dropDressingSector,
   insertDressingRow,
   getDressingRow,
+  markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
@@ -208,7 +211,7 @@ import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
   createEmptyResourceBodyBag,
-  deserializeResourceBodyBag,
+  normalizeResourceBodyBagChunked,
   ensureResourceBodies,
   findResourceBodyForEntity,
   serializeResourceBodyBag,
@@ -254,6 +257,25 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 const DEFAULT_WORLD_RADIUS = 4000;
 const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
 const BASE_FUEL = 4;            // fuel units per lightyear
+// FB-111 — a wedged hull gets a paid door, not a silent reload. Thrust held, the ship
+// producing no displacement and no speed for STUCK_OFFER_S ⇒ one tow offer per wedge
+// episode. A deliberate brake-hold or a coasting hull never counts: only an engine asked
+// for motion it cannot produce.
+const STUCK_OFFER_S = 8;
+const STUCK_DISPLACEMENT_WU = 3;
+const STUCK_SPEED_EPS_WU_S = 4;
+const TOW_BERTH_CLEARANCE_WU = 140;
+// A wedge rescue is a berth tow, not a hull loss — a small fraction of the recovery quote,
+// floored so a starter hull still owes a real service call-out.
+const TOW_FEE_MIN_CR = 120;
+const TOW_FEE_RECOVERY_FRAC = 0.125;
+
+// Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
+function setVecXZTow(vec, x, z) {
+  if (!vec) return;
+  if (typeof vec.set === 'function') vec.set(x, 0, z);
+  else { vec.x = x; vec.y = 0; vec.z = z; }
+}
 const BASE_INTERDICT = 0.35;
 const GATE_CHARGE = 3.0;        // s align time for a gate jump
 const GATE_COOLDOWN = 0;
@@ -630,6 +652,9 @@ export const world = {
     bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
     bus.on('ecology:evidence', (p) => handleAlienEcologyEvent(this, 'ecology:evidence', p));
     bus.on('ecology:quarantinePulse', (p) => handleAlienEcologyEvent(this, 'ecology:quarantinePulse', p));
+    // FB-111 — the deck's "take the tow" verb lands here; the engine re-validates the wedge
+    // before charging or moving anything, so a stale offer can never tow a free ship.
+    bus.on('world:stuckTowAccept', () => this._executeStuckTow());
     bus.on('pickup:collected', (p) => {
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
@@ -907,6 +932,20 @@ export const world = {
    * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean, restoreDurableRecords?:boolean}} [opts]
    */
   enterSector(sectorId, opts = {}) {
+    // Sync lane: drain the generator twin — every batch inline, identical order.
+    let done = null;
+    const gen = this.enterSectorChunked(sectorId, opts);
+    while (!(done = gen.next()).done) { /* inline */ }
+    return done.value;
+  },
+
+  /**
+   * Generator twin of enterSector: yields only at phase boundaries (the residency plan's
+   * per-resident materialization steps pass through, then one paint point before the atomic
+   * emit tail). The restore generator drains it so a save's sector regen never freezes the
+   * loading shell behind a single unyielded brick.
+   */
+  *enterSectorChunked(sectorId, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { console.warn('[world] enterSector: unknown sector', sectorId); return null; }
@@ -951,12 +990,19 @@ export const world = {
     const focusGlobal = placePlayer
       ? { x: entryPoint.x, z: entryPoint.z }
       : (this._playerGlobalPos() || sectorGlobalOrigin(sectorId));
-    this._applyResidencyPlan(sectorId, {
+    // _applyResidencyPlan is the observability seam (tests/tools wrap it to inspect plan opts):
+    // an own-property override still intercepts the enter and just collapses that call's yields.
+    const planOpts = {
       reason,
       noTeleport,
       focusGlobal,
       restoreDurableRecords: opts.restoreDurableRecords === true,
-    });
+    };
+    if (this._applyResidencyPlan !== world._applyResidencyPlan) {
+      this._applyResidencyPlan(sectorId, planOpts);
+    } else {
+      yield* this._applyResidencyPlanChunks(sectorId, planOpts);
+    }
 
     const active = state.world.sectorContents[sectorId]
       || (state.world.sectorContents[sectorId] = this._emptySectorBag());
@@ -976,6 +1022,10 @@ export const world = {
     this._resolveShipModules();
     this._flushPendingSpawns(sectorId, sector);
 
+    // One paint point before the atomic emit tail — sector:enter listeners see a fully
+    // materialized world either way, but the restore lane gets to paint between spawn bricks.
+    yield 'enter-pre-emit';
+
     if (firstVisit) {
       this.bus.emit('sector:discovered', { sectorId });
       this.bus.emit('toast', { text: `New sector discovered: ${sector.name}`, kind: 'info', ttl: 4 });
@@ -990,7 +1040,16 @@ export const world = {
       tick: state.tick | 0,
       noTeleport,
     });
-    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport });
+    // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
+    // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
+    // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
+    // The sequence lives on the state root, not the world record: New Game replaces
+    // state.world wholesale, so a per-world counter restarts at 1 and a pending emit tail
+    // carrying epoch 1 would alias into the fresh world. A run-scoped monotonic keeps every
+    // pre-reset payload mismatched forever.
+    state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+    state.world.enterSerial = state.enterSerialSeq;
+    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport, enterEpoch: state.world.enterSerial });
     return active;
   },
 
@@ -1052,8 +1111,17 @@ export const world = {
   /**
    * Apply FULL/REDUCED/RECORD_ONLY plan for membership. Materializes missing residents,
    * demotes extras, never global-wipes, never touches the player.
+   * Sync lane: drain the generator twin — every batch inline, identical order.
    */
   _applyResidencyPlan(membershipSectorId, opts = {}) {
+    for (const _ of this._applyResidencyPlanChunks(membershipSectorId, opts)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin: yields only after each resident's materialization — plan order is
+   * unchanged, the yields simply let the restore lane paint between sector bricks.
+   */
+  *_applyResidencyPlanChunks(membershipSectorId, opts = {}) {
     const state = this.state;
     this._ensureResidencyState();
     this._pendingResidency = [];
@@ -1096,8 +1164,9 @@ export const world = {
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
         && tier === RESIDENCY_TIER.FULL;
-      this._ensureSectorMaterialized(id, tier, { restoreDurableRecords });
+      yield* this._ensureSectorMaterializedChunks(id, tier, { restoreDurableRecords });
       this._setResidentMeta(id, tier, opts.reason || 'residency');
+      yield 'residency:materialized';
     }
     // Demote everyone marked RECORD_ONLY (scoped despawn only).
     for (const id of plan.demote) {
@@ -1163,21 +1232,44 @@ export const world = {
       ran++;
     }
     if (!jobs.length) {
-      const state = this.state;
-      this.bus.emit('world:residency', {
-        sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
-          sectorId,
-          tier: state.world.residentSectors[sectorId].tier,
-          epoch: state.world.residentSectors[sectorId].epoch,
-        })),
-        membershipSectorId: state.world.currentSectorId,
-        reason: 'arrival-slice',
-        tick: state.tick | 0,
-        noTeleport: true,
-        pending: [],
-      });
+      this._emitResidencyArrivalSlice();
     }
     return ran;
+  },
+
+  _emitResidencyArrivalSlice() {
+    const state = this.state;
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
+        sectorId,
+        tier: state.world.residentSectors[sectorId].tier,
+        epoch: state.world.residentSectors[sectorId].epoch,
+      })),
+      membershipSectorId: state.world.currentSectorId,
+      reason: 'arrival-slice',
+      tick: state.tick | 0,
+      noTeleport: true,
+      pending: [],
+    });
+  },
+
+  /**
+   * Generator twin of _drainResidencyQueue for the restore lane: each deferred neighbor
+   * materializes through _ensureSectorMaterializedChunks so phase boundaries paint inside
+   * the neighbor too — the sync lane's per-job order (materialize → meta → tier sync) is
+   * preserved and the residency emit still fires once when the queue empties.
+   */
+  *_drainResidencyQueueChunks() {
+    const jobs = this._pendingResidency;
+    if (!jobs || !jobs.length) return;
+    while (jobs.length) {
+      const job = jobs.shift();
+      yield* this._ensureSectorMaterializedChunks(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
+      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      yield 'residency-job';
+    }
+    this._emitResidencyArrivalSlice();
   },
 
   _setResidentMeta(sectorId, tier, reason) {
@@ -1195,8 +1287,18 @@ export const world = {
   /**
    * First materialization creates the sector bag with epoch-stable RNG.
    * FULL includes combat/dressing; REDUCED is structural only.
+   * Sync lane: drain the generator twin — every batch inline, identical phase order.
    */
   _ensureSectorMaterialized(sectorId, tier, opts = {}) {
+    for (const _ of this._ensureSectorMaterializedChunks(sectorId, tier, opts)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin: yields only between whole catalog spawn phases — RNG order, spawn order,
+   * and the final bag assignment are identical to the sync lane; the restore generator uses
+   * the boundaries as paint points instead of freezing the loading shell behind one brick.
+   */
+  *_ensureSectorMaterializedChunks(sectorId, tier, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) return;
@@ -1219,27 +1321,45 @@ export const world = {
     const active = this._emptySectorBag();
 
     this._spawnStations(sector, active, rng);
-    this._spawnFields(sector, active, disc, rng);
+    yield 'materialize:stations';
+    yield* this._spawnFieldsChunks(sector, active, disc, rng);
+    yield 'materialize:fields';
     this._spawnGates(sector, active, rng);
+    yield 'materialize:gates';
     this._spawnPOIs(sector, active, disc, rng, tier);
+    yield 'materialize:pois';
     this._spawnHazards(sector, active);
     // A used-up field's onward seam is a durable promise: the nextFields record outlives the
     // sector bag, so re-materialize re-derives the same plan and re-places its rocks before
     // ambient re-roll. Rocks the player already mined stay mined via resourceBodies.
     this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
+    yield 'materialize:field-opportunity';
     // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
-    const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier, opts);
+    const rematerialized = yield* this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
+    yield 'materialize:records';
     if (tier === RESIDENCY_TIER.FULL) {
-      this._spawnDressing(sector, active, rng);
+      // The bag is populated (anchors + records) but not yet published — arm the FULL-extras
+      // decode runway while dressing/enemies/optics still mount. Covers fresh-boot embark and
+      // first-visit jumps, which no prewarm arm reaches (no bag existed to enumerate).
+      if (this.helpers && typeof this.helpers.warmSectorFullExtras === 'function') {
+        this.helpers.warmSectorFullExtras(sectorId, active);
+      }
+      yield* this._spawnDressingChunks(sector, active, rng);
+      yield 'materialize:dressing';
       // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
       if (!rematerialized.hadCombatHistory) {
-        this._spawnEnemies(sector, active, rng);
+        yield* this._spawnEnemiesChunks(sector, active, rng);
         this._spawnBossIfDue(sector, active, rng);
       } else {
         // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
         if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
       }
+      yield 'materialize:enemies';
       this._ensureOpticStructures(sector, active);
+      // Built-at-FULL stamp: _promoteSectorToFull skips its whole rescan when set — the bag
+      // already carries dressing/enemies/records from this build. Keys on the tier the bag
+      // was BUILT at, not rec.tier (the materialize call itself overwrites rec.tier below).
+      active.fullExtrasBuilt = true;
     }
 
     state.world.sectorContents[sectorId] = active;
@@ -1271,6 +1391,11 @@ export const world = {
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     const active = state.world.sectorContents[sectorId];
     if (!sector || !active) return;
+    // A bag already built at FULL carries records/dressing/enemies/optics from its own
+    // materialize — promoting it re-walked the entire record bag a second time in one
+    // unyielded task (the largest restore-lane brick on a mature save). Bags built REDUCED
+    // or stripped since still run the full promote below.
+    if (active.fullExtrasBuilt === true) return;
     // Rematerialize durable combat/convoy/mission records first (idempotent).
     const rematerialized = this._rematerializeSectorRecords(
       sectorId,
@@ -1290,6 +1415,7 @@ export const world = {
         this.helpers.requestPresentationRebuild?.('sector-full-dressing');
       }
       this._ensureOpticStructures(sector, active);
+      active.fullExtrasBuilt = true;
       return;
     }
     const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
@@ -1306,6 +1432,7 @@ export const world = {
     }
     this._ensureOpticStructures(sector, active);
     this.helpers.requestPresentationRebuild?.('sector-full');
+    active.fullExtrasBuilt = true;
   },
 
   /**
@@ -1491,6 +1618,7 @@ export const world = {
     active.dressing = [];
     active.worldOneOffSpins = [];
     if (active.boss) delete active.boss;
+    active.fullExtrasBuilt = false;
   },
 
   _demoteSectorToRecordOnly(sectorId) {
@@ -1581,7 +1709,12 @@ export const world = {
       if (!captured) return;
       if (captured.kind === RECORD_KIND.CONVOY && !bag.byId[captured.recordId]) {
         if (countAliveConvoyRecords() >= MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR) {
-          if (e.data && e.data.worldRecordId === captured.recordId) delete e.data.worldRecordId;
+          if (e.data && e.data.worldRecordId === captured.recordId) {
+            delete e.data.worldRecordId;
+            // Unregistered clear — decrement the counted lane now so the refused record id
+            // can't leave a stale positive entry (or a stale miss-memo negative) behind.
+            registerEntityWorldRecordId(state && state.entityIndex, e);
+          }
           // The hull's job is keyed on that record id and re-enters the world ONLY through a
           // persisted record — npcJobsRuntime restores every job VIRTUAL and re-links it by
           // worldRecordId — so a refused record leaves a job nothing will ever bind. Release it
@@ -1595,6 +1728,10 @@ export const world = {
       }
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
+      // Register the stamp with the counted lane — the delete path above registers its clear;
+      // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
+      // so every lookup takes the self-heal walk and the lane never bumps.
+      registerEntityWorldRecordId(state && state.entityIndex, e);
     });
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
@@ -1606,17 +1743,34 @@ export const world = {
    * @returns {{ spawned:number, hadCombatHistory:boolean, spawnedBoss:boolean }}
    */
   _rematerializeSectorRecords(sectorId, active, tier, opts = {}) {
+    const it = this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
+  },
+
+  /**
+   * Generator twin of _rematerializeSectorRecords: yields every 8 processed records so the
+   * restore lane can paint inside a record-dense sector. The sync wrapper drains inline —
+   * identical record order and result.
+   */
+  *_rematerializeSectorRecordsChunks(sectorId, active, tier, opts = {}) {
     const state = this.state;
     const bag = ensureWorldRecords(state.world);
     // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
     if (tier === RESIDENCY_TIER.FULL && opts.restoreDurableRecords !== true) {
-      this._reconcileEmbodimentRecords(sectorId, bag);
+      yield* this._reconcileEmbodimentRecordsChunks(sectorId, bag);
     }
     const list = recordsForSector(bag, sectorId);
+    const liveByRecordId = liveRecordEntityIndex(state);
+    const farRecordIds = farActorRecordIdSet(state);
+    const deferredRecordIds = restoreEnvelopeRecordIds(state);
     let spawned = 0;
     let hadCombatHistory = false;
     let spawnedBoss = false;
+    let processed = 0;
     for (const rec of list) {
+      if ((++processed & 7) === 0) yield 'materialize:records-batch';
       if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
         hadCombatHistory = true;
       }
@@ -1626,9 +1780,11 @@ export const world = {
       // Orrin witness recorder) carry no aftermath marker and still rematerialize.
       if (rec.kind === RECORD_KIND.AFTERMATH && aftermathOwnsMarker(state, rec.markerId)) continue;
       if (!recordShouldRematerialize(rec, tier)) continue;
-      // Exactly-once: never double-spawn a live entity for the same record.
-      const existing = findLiveRecordEntity(state, rec.recordId);
-      if (existing) {
+      // Exactly-once: never double-spawn a live entity for the same record. A corpse still
+      // in the index (alive=false written, lifetimeSweep not yet run) is not a live holder —
+      // treating it as one defers rematerialize a pass and can pin a dead id into enemies.
+      const existing = liveByRecordId.get(rec.recordId) || null;
+      if (existing && existing.alive !== false) {
         if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
           if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
             active.enemies.push(existing.id);
@@ -1638,7 +1794,12 @@ export const world = {
       }
       // A shelved far-actor row already carries this record's live state — respawning here would
       // double the actor (it promotes back to a live entity on approach via tickFarActors).
-      if (farActorHoldsWorldRecord(state, rec.recordId)) continue;
+      if (farRecordIds.has(rec.recordId)) continue;
+      // The restore's persistent envelope already carries this record's live body — the saved
+      // hull respawns later in _restoreChunks and is authoritative. Materializing the record
+      // shell now stands a second hull beside every respawned copy (D136: +1 live carrier per
+      // record per save→load round-trip, each later stamped persistent and re-serialized).
+      if (deferredRecordIds && deferredRecordIds.has(rec.recordId)) continue;
       const ent = this._spawnFromDurableRecord(rec, sectorId);
       if (!ent) continue;
       spawned++;
@@ -1659,13 +1820,18 @@ export const world = {
    * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
    * generated recipes retire once their live body is gone; destroyed tombstones stay under the
    * existing MAX_RECORDS_PER_SECTOR bound so an old outcome cannot be re-rolled.
+   * The intent/stale/insert phases yield at the same 8-row cadence the records loop uses, so a
+   * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
+   * generator that exists to be chunked; the sync wrapper drains inline with identical output.
    */
-  _reconcileEmbodimentRecords(sectorId, bag = ensureWorldRecords(this.state.world)) {
+  *_reconcileEmbodimentRecordsChunks(sectorId, bag = ensureWorldRecords(this.state.world)) {
     const intents = embodimentRecordIntents(this.state.world.embodiment, sectorId);
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const sector = this.state.world.sectors && this.state.world.sectors[sectorId];
     const current = [];
+    let processed = 0;
     for (const intent of intents) {
+      if ((++processed & 7) === 0) yield 'reconcile:intents-batch';
       const rec = recordFromEmbodimentIntent(intent, {
         seed,
         tick: this.state.tick | 0,
@@ -1677,20 +1843,31 @@ export const world = {
 
     // Delete only stale, still-active generated recipes with no live body. Player-authored
     // outcomes (destroyed/defeated) are history and remain as bounded tombstones.
+    const liveByRecordId = liveRecordEntityIndex(this.state);
     for (const rec of recordsForSector(bag, sectorId)) {
+      if ((++processed & 7) === 0) yield 'reconcile:stale-batch';
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
-      if (findLiveRecordEntity(this.state, rec.recordId)) continue;
+      const holder = liveByRecordId.get(rec.recordId) || null;
+      if (holder && holder.alive !== false) continue;
       delete bag.byId[rec.recordId];
     }
 
     let inserted = 0;
     for (const rec of current) {
+      if ((++processed & 7) === 0) yield 'reconcile:insert-batch';
       // Never overwrite an existing active/damaged/destroyed record for this identity.
       if (bag.byId[rec.recordId]) continue;
       if (upsertRecord(bag, rec)) inserted++;
     }
     return { inserted, retained: current.length - inserted, current: current.length };
+  },
+
+  _reconcileEmbodimentRecords(sectorId, bag = ensureWorldRecords(this.state.world)) {
+    const it = this._reconcileEmbodimentRecordsChunks(sectorId, bag);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
   },
 
   /**
@@ -1734,6 +1911,7 @@ export const world = {
     const budgeted = spec.type === 'ship' && budget && typeof budget.request === 'function';
     if (budgeted && budget.request(1, requester) <= 0) {
       if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss) {
+        this._noteSpawnWitness('criticalDeferred');
         this.bus.emit('world:criticalSpawnDeferred', {
           kind: rec.isBoss ? 'boss_record' : 'mission_record',
           recordId: rec.recordId || null,
@@ -1764,6 +1942,10 @@ export const world = {
     const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
+    // bindEntityToRecord stamps data.worldRecordId post-append — register it so the index's
+    // byWorldRecordId/count answer O(1) for this rematerialized durable immediately instead
+    // of waiting on a fallback-walk reseed (which can't bump the lane or the count).
+    registerEntityWorldRecordId(state && state.entityIndex, ent);
     this._decorateOrrinWitnessRecorder(ent, advanced);
     this._stampHomeSector(ent, advanced.homeSectorId || sectorId);
     // Restore pose after stamp (global — never re-add sector origin). Catch-up is simTime-closed-form.
@@ -2003,28 +2185,32 @@ export const world = {
     return false;
   },
 
-  _destroyEntityAtIndex(i) {
+  _destroyEntityAtIndex(i, reason) {
     const state = this.state;
     const list = state.entityList;
     const e = list[i];
     if (!e) return;
     const removeEntity = this.helpers && this.helpers.removeEntity;
-    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i });
+    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i, reason });
     else e.alive = false;
   },
 
   // Batch despawn: one index pass via the core multi-corpse helper; falls back to the
   // per-entity walk when helpers are stubbed (minimal harnesses). Indices are normalized to
-  // highest-first — the reverse-walk order every caller used before.
-  _destroyEntitiesAtIndices(indices) {
+  // highest-first — the reverse-walk order every caller used before. Every caller is a
+  // residency-family teardown, so corpse emits carry reason:'sector_residency' like the
+  // run_reset/save_restore/virtualize tags — a listener that can classify the transition
+  // skips work it would otherwise pay per corpse inside the flush.
+  _destroyEntitiesAtIndices(indices, opts) {
     if (!indices || indices.length === 0) return;
     indices.sort((a, b) => b - a);
+    const reason = opts && opts.reason != null ? opts.reason : 'sector_residency';
     const removeAt = this.helpers && this.helpers.removeEntitiesAtIndices;
     if (typeof removeAt === 'function') {
-      removeAt(indices, { immediate: true });
+      removeAt(indices, { immediate: true, reason });
       return;
     }
-    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k]);
+    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k], reason);
   },
 
   /**
@@ -2079,6 +2265,12 @@ export const world = {
     const now = state.simTime || 0;
     if (!this._membershipCandidate || this._membershipCandidate.sectorId !== next) {
       this._membershipCandidate = { sectorId: next, sinceT: now };
+      // The dwell window before the switch is a warm runway for a candidate whose bag is
+      // already materialized REDUCED — continuous sector entry mounts the FULL-extras
+      // cohort with no charge screen to hide the decode.
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('sector:membershipCandidate', { sectorId: next });
+      }
       return;
     }
     if (now - this._membershipCandidate.sinceT < MEMBERSHIP_DWELL_S) return;
@@ -2206,6 +2398,14 @@ export const world = {
 
   // Asteroid FIELDS: clusters of real ASTEROIDS-type rocks so mining oreTables resolve.
   _spawnFields(sector, active, disc, rng) {
+    for (const _ of this._spawnFieldsChunks(sector, active, disc, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnFields: yields every 8 rock inserts so the restore lane paints
+   * inside a big field. The sync wrapper drains inline — identical rng draws and spawn order.
+   */
+  *_spawnFieldsChunks(sector, active, disc, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
     // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
@@ -2243,6 +2443,7 @@ export const world = {
       const arrangement = arranger && arranger.createField(fdef, center, clusterR);
       const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
       for (let i = 0; i < count; i++) {
+        if (i > 0 && (i & 7) === 0) yield 'materialize:field-rocks';
         const activityBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
           && fdef.id === 'f_ceres_1'
           && i === 1
@@ -2709,6 +2910,15 @@ export const world = {
   },
 
   _spawnDressing(sector, active, rng) {
+    for (const _ of this._spawnDressingChunks(sector, active, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnDressing: yields between the named sub-spawns so the restore
+   * lane paints inside a dressing-heavy sector. The sync wrapper drains inline — identical
+   * spawn order.
+   */
+  *_spawnDressingChunks(sector, active, rng) {
     const arranger = this._arrangerForSector(sector, active);
     const paletteClass = paletteClassForSector(sector);
     if (paletteClass === 'core') {
@@ -2720,13 +2930,18 @@ export const world = {
     } else if (paletteClass === 'anomaly') {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass, arranger);
     }
+    yield 'materialize:dressing-palette';
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
+    yield 'materialize:dressing-kit';
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
+    yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
+    yield 'materialize:dressing-oneoffs';
     // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
     // untouched by ecology content.
     materializeAlienEcology(this, sector, active);
+    yield 'materialize:dressing-ecology';
     // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
     // entities, same deterministic seam, same dressing substrate.
     materializeMachineLayer(this, sector, active);
@@ -2760,6 +2975,11 @@ export const world = {
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
           this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+          // A shelved far row already owns this record's body. Minting a second copy here
+          // shelves again on exit — one extra durable row per load cycle (D141). The row
+          // promotes back on approach and this path re-decorates it live next materialize.
+          continue;
         } else {
           const mass = oneOff.physicalBody.mass;
           ent = this.helpers.spawnEntity({
@@ -2823,7 +3043,14 @@ export const world = {
     if (!ent) return ent;
     const mass = oneOff.physicalBody.mass;
     ent.type = 'wreck';
+    if (ent.collides !== true) bumpCollidesFlipEpoch();
     ent.collides = true;
+    // The reuse path can revive an entity appended collides:false — re-key the collision
+    // slice or its hull physically collides while broadphase/splinter lanes see nothing.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the reused body was appended under a different type,
+    // so without this re-key it never reaches wrecks/mineables readers (or vice versa).
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
     ent.radius = oneOff.radius;
     ent.mass = mass;
     ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),
@@ -2980,6 +3207,9 @@ export const world = {
       const ent = (entities && entities.get && entities.get(row.id))
         || getDressingRow(this.state, row.id);
       if (ent) ent.rot += row.spin * dt;
+      // Dormant dressing rows (no live entity) need the journal for the renderer pose
+      // gate; live ids no-op inside the mark. Otherwise the prop freezes at insert yaw.
+      markDressingRowPoseDirty(this.state, row.id);
     }
   },
 
@@ -3330,6 +3560,14 @@ export const world = {
 
   // Enemy spawns sized by enemyDensity / enemyLevel via makeEnemySpawnSpec (combat).
   _spawnEnemies(sector, active, rng) {
+    for (const _ of this._spawnEnemiesChunks(sector, active, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnEnemies: yields every 8 spawned combatants so the restore lane
+   * paints inside a dense ambient roll. The sync wrapper drains inline — identical rng draws.
+   */
+  *_spawnEnemiesChunks(sector, active, rng) {
     // If sectorSim has drifted this sector while the player was away, use the drifted density/
     // security so re-entering a sector reflects its current state (V2 §33/§35.3). Falls back to the
     // passed-in sector (no drift → first visit or pre-sectorSim) so behavior is unchanged otherwise.
@@ -3358,6 +3596,7 @@ export const world = {
     // The ships are relocated onto believable zones, not multiplied. Sectors with no authored zones
     // keep the legacy ring path. `grant` (not `count`) caps how many we place, per the budget above.
     const zonePlan = grant > 0 ? planZoneSpawns(sector.id, grant, sector.enemyLevel || [lvLo, lvHi], rng) : [];
+    let spawned = 0;
     if (zonePlan.length) {
       const player = this.state.entities.get(this.state.playerId);
       const starterSafe = starterSafeRadius(sector);
@@ -3392,6 +3631,7 @@ export const world = {
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
         active.enemies.push(ent.id);
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
       }
     } else if (grant > 0) {
       const pool = this._enemyPool(sector);
@@ -3408,13 +3648,14 @@ export const world = {
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
         active.enemies.push(ent.id);
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
       }
     }
     // Return any reserved-but-unspent ambient slots (safe-zone skips / no valid pos) so the
     // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
     if (budget && typeof budget.releaseSome === 'function') {
-      const spawned = active.enemies.length - enemiesBefore;
-      if (spawned < grant) budget.releaseSome(ambientRequester, grant - spawned);
+      const spawnedAmbient = active.enemies.length - enemiesBefore;
+      if (spawnedAmbient < grant) budget.releaseSome(ambientRequester, grant - spawnedAmbient);
     }
     // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
     // spawn specifically to hunt them — real consequence for piracy. Count scales with heat; they
@@ -3433,6 +3674,7 @@ export const world = {
         ? budget.request(hunters, hunterRequester)
         : hunters;
       if (hunterGrant < hunters) {
+        this._noteSpawnWitness('limited');
         this.bus.emit('world:spawnLimited', {
           kind: 'bounty_hunter', sectorId: sector.id, requested: hunters, granted: hunterGrant,
           reason: 'spawn_cap',
@@ -3452,11 +3694,22 @@ export const world = {
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, 'patrol_lawman:hunter', active);
         active.enemies.push(ent.id);
         huntersSpawned++;
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
       }
       if (budget && typeof budget.releaseSome === 'function' && huntersSpawned < hunterGrant) {
         budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);
       }
     }
+  },
+
+  // MACH-06: cumulative spawn-authority counters the runtime witness samples. Limited clamps
+  // (spawnLimited) and critical deferrals (criticalSpawnDeferred) counted at emit time — a
+  // saturated scene reads non-zero limited / zero critical without a per-event log.
+  _noteSpawnWitness(key) {
+    const w = this.state && this.state.world;
+    if (!w) return;
+    const bag = w.spawnWitness || (w.spawnWitness = { limited: 0, criticalDeferred: 0 });
+    bag[key] = (bag[key] | 0) + 1;
   },
 
   /**
@@ -3465,7 +3718,10 @@ export const world = {
    */
   _assignDurableRecordId(ent, sectorId, kind, keyHint, active) {
     if (!ent || !ent.data) return null;
-    if (ent.data.worldRecordId) return ent.data.worldRecordId;
+    if (ent.data.worldRecordId) {
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
+      return ent.data.worldRecordId;
+    }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const seq = (active && (active._durableSeq = (active._durableSeq || 0) + 1)) || 0;
     const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
@@ -3475,6 +3731,7 @@ export const world = {
     ent.data.worldRecordId = recordId;
     ent.data.identityKey = key;
     ent.data.recordCreatedTick = this.state.tick | 0;
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
     return recordId;
   },
 
@@ -3497,6 +3754,7 @@ export const world = {
     const requester = `world:boss:${sector.id}:${bossPoi.id}`;
     if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
       if (!rec.bossSpawnDeferred) {
+        this._noteSpawnWitness('criticalDeferred');
         this.bus.emit('world:criticalSpawnDeferred', {
           kind: 'boss', sectorId: sector.id, poiId: bossPoi.id, reason: 'spawn_cap',
         });
@@ -3838,6 +4096,9 @@ export const world = {
 
     const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
     this._tickFrameOrigin(state);
+    // A wedge cannot form inside a charge or the tunnel — and an offer latched just before
+    // either is answered only under the tow's jump-state guard in _executeStuckTow.
+    if (jump.state === 'IDLE' || jump.state === 'COOLDOWN') this._updateStuckWatch(dt, state);
     if (observeTick) this._tickResidency(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
@@ -4854,7 +5115,12 @@ export const world = {
     jump._fuelCost = fuelCost;
     jump._unfiled = false;
     jump._unfiledConfirmed = false;
-    this.bus.emit('jump:chargeStart', { targetSectorId, via, chargeNeeded, playerId: this.state.playerId });
+    // Drive interdiction rolls on arrival against this sector's fixed hostile pool — publish
+    // it with the charge so the squad's hulls decode during the charge window.
+    this.bus.emit('jump:chargeStart', {
+      targetSectorId, via, chargeNeeded, playerId: this.state.playerId,
+      interdictionPool: via === 'drive' && target ? this._enemyPool(target) : null,
+    });
   },
 
   /**
@@ -4901,6 +5167,7 @@ export const world = {
       chargeNeeded: jump.chargeNeeded,
       unfiled: true,
       playerId: state.playerId,
+      interdictionPool: target ? this._enemyPool(target) : null,
     });
     return true;
   },
@@ -4913,7 +5180,11 @@ export const world = {
       return false;
     }
     jump._unfiledConfirmed = true;
-    this.bus.emit('jump:unfiledConfirmed', { returnSectorId: UNFILED_JUMP_RETURN });
+    const returnSector = this.state.world.sectors[UNFILED_JUMP_RETURN] || SECTOR_BY_ID.get(UNFILED_JUMP_RETURN);
+    this.bus.emit('jump:unfiledConfirmed', {
+      returnSectorId: UNFILED_JUMP_RETURN,
+      interdictionPool: returnSector ? this._enemyPool(returnSector) : null,
+    });
     return true;
   },
 
@@ -5150,10 +5421,11 @@ export const world = {
     if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
     const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
     if (cached && cached.alive !== false) return cached;
-    // A miss latches on the entity-index version: while the set is unchanged the walk cannot
-    // find anything new, so a site whose root never materializes doesn't re-scan every tick.
-    const indexVersion = entityIndexVersion(this.state);
-    if (indexVersion != null && p._wsCarrierMissVersion === indexVersion) return null;
+    // A miss latches on the world_site_root lane: while root membership is unchanged the walk
+    // cannot find anything new, so a site whose root never materializes doesn't re-scan — and
+    // projectile/pickup churn no longer wakes it like the global entity version did.
+    const laneVersion = entityIndexLaneVersion(this.state, ['worldSiteRoots']);
+    if (laneVersion !== -1 && p._wsCarrierMissVersion === laneVersion) return null;
     let found = null;
     for (const e of entities.values()) {
       const d = e && e.data;
@@ -5163,7 +5435,7 @@ export const world = {
       }
     }
     p._wsCarrierId = found ? found.id : null;
-    p._wsCarrierMissVersion = found || indexVersion == null ? null : indexVersion;
+    p._wsCarrierMissVersion = found || laneVersion === -1 ? null : laneVersion;
     return found;
   },
 
@@ -5403,6 +5675,127 @@ export const world = {
     const f = this.state.fuel;
     f.current = Math.min(f.max, f.current + amount);
     this.bus.emit('fuel:changed', { current: f.current, max: f.max });
+  },
+
+  // --- FB-111: wedged-hull tow -----------------------------------------------------------
+  // A ship thrusting at full commitment that produces neither speed nor displacement is
+  // wedged on geometry physics will not release — the depenetration impulse keeps solving
+  // and losing. After STUCK_OFFER_S of that, the sector offers one paid tow; the engine
+  // re-validates the wedge on accept so a freed ship can never buy a ride it stopped needing.
+
+  _resetStuckWatch(w, cleared) {
+    const wasOffered = w && w.offered === true;
+    w.s = 0;
+    w.live = false;
+    w.offered = false;
+    w.ax = 0;
+    w.az = 0;
+    if (cleared && wasOffered) this.bus.emit('world:stuckCleared', {});
+  },
+
+  _updateStuckWatch(dt, state) {
+    const w = this._stuckWatch || (this._stuckWatch = { s: 0, live: false, offered: false, ax: 0, az: 0 });
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const input = state.input;
+    const thrusting = !!(input && Number(input.moveZ) > 0.2 && input.brake !== true);
+    const docked = !!(state.ui && state.ui.docked === true);
+    if (!player || player.alive === false || docked || !thrusting || !player.pos) {
+      this._resetStuckWatch(w, thrusting === false || docked);
+      return;
+    }
+    const px = Number(player.pos.x) || 0;
+    const pz = Number(player.pos.z) || 0;
+    const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+    if (!w.live) {
+      w.live = true;
+      w.ax = px;
+      w.az = pz;
+      w.s = 0;
+      return;
+    }
+    const drifted = Math.hypot(px - w.ax, pz - w.az);
+    if (drifted > STUCK_DISPLACEMENT_WU || speed > STUCK_SPEED_EPS_WU_S) {
+      // The hull still answers the engine — a grind along a wall is motion, not a wedge.
+      this._resetStuckWatch(w, true);
+      return;
+    }
+    w.s += Math.max(0, Number(dt) || 0);
+    if (w.s >= STUCK_OFFER_S && !w.offered) {
+      w.offered = true;
+      const quote = this._stuckTowQuote(state, player);
+      this.bus.emit('world:stuckTowOffer', {
+        stuckS: w.s,
+        stationId: quote && quote.stationId || null,
+        stationName: quote && quote.stationName || null,
+        quotedCr: quote ? quote.quotedCr : null,
+      });
+    }
+  },
+
+  _stuckTowQuote(state, playerEntity) {
+    const station = chooseLawfulStation(state);
+    if (!station) return null;
+    const player = state.player || {};
+    const index = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+    const shipId = (owned && owned.defId) || (playerEntity && playerEntity.data && playerEntity.data.defId) || 'ship_kestrel';
+    const q = recoveryCostQuote(shipId, player.insurance || {});
+    const base = q && q.insured ? q.insuredCostCr : q.uninsuredCostCr;
+    return {
+      station,
+      stationId: station.id,
+      stationName: station.name || station.id,
+      quotedCr: Math.max(TOW_FEE_MIN_CR, Math.round((Number(base) || 0) * TOW_FEE_RECOVERY_FRAC)),
+    };
+  },
+
+  _executeStuckTow() {
+    const state = this.state;
+    const w = this._stuckWatch;
+    if (!w || w.offered !== true) return;    // no live offer — a stale deck answer tows nothing
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    if (state.ui && state.ui.docked === true) return;
+    // A live jump owns the sector transition. Mid-tunnel the answer is stale — the wedge it
+    // priced was in the sector already leaving; a charging drive stands down for the tow
+    // instead of both transitions landing on the same hull.
+    const jump = state.jump;
+    if (jump && jump.state === 'JUMPING') { this._resetStuckWatch(w, false); return; }
+    if (jump && jump.state === 'CHARGING') this._abortCharge('tow');
+    const quote = this._stuckTowQuote(state, player);
+    if (!quote || !quote.station) return;
+    const charge = { quotedCr: quote.quotedCr };
+    if (this.bus && this.bus.emit) this.bus.emit('economy:towCharge', charge);
+    const station = quote.station;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (station.sectorId && station.sectorId !== currentSectorId && typeof this.enterSector === 'function') {
+      this.enterSector(station.sectorId, {
+        via: 'tow',
+        fromSectorId: currentSectorId || null,
+        placePlayer: true,
+      });
+    }
+    const active = state.world && state.world.activeSector;
+    const record = active && Array.isArray(active.stations)
+      ? active.stations.find((st) => st && (st.stationId || st.id) === station.id)
+      : null;
+    const base = record && record.pos ? record.pos : { x: 0, z: 0 };
+    const px = (Number(base.x) || 0) + TOW_BERTH_CLEARANCE_WU;
+    const pz = Number(base.z) || 0;
+    setVecXZTow(player.pos, px, pz);
+    setVecXZTow(player.vel, 0, 0);
+    if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+    else if (player.prevPos) setVecXZTow(player.prevPos, px, pz);
+    this._resetStuckWatch(w, false);
+    this.bus.emit('toast', {
+      text: charge.ok === false
+        ? `Towed to ${quote.stationName}`
+        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
+          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
+      kind: charge.debtCr > 0 ? 'warn' : 'success',
+      ttl: 4,
+    });
+    this.bus.emit('dock:docked', { stationId: station.id, via: 'tow' });
   },
 
   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------
@@ -6297,6 +6690,12 @@ export const world = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: yields only at section boundaries (between the durable bag restores), never
+  // inside a section — the async lane paints between them while every call keeps sync order.
+  *deserializeChunked(data) {
     if (!data) return;
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
@@ -6325,13 +6724,16 @@ export const world = {
     this._pallasDecisionSignature = null;
     this._pallasDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
-    state.world.records = deserializeRecordsBag(data.records);
-    state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
+    state.world.records = yield* normalizeRecordsBagChunked(data.records);
+    yield 'world-records';
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies);
+    yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
     state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     deserializeAlienEcologyState(state, data.alienEcology);
+    yield 'world-alien-ecology';
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
     // than trusting a stale rendering frame that may have been smuggled into a payload.
@@ -6615,12 +7017,105 @@ function findLiveRecordEntity(state, recordId) {
   if (!recordId || !state) return null;
   const index = state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    // Same covered+unambiguous gate liveRecordEntityIndex applies to the whole batch: a
+    // provably-unique row on a total-coverage index answers O(1); anything else keeps the
+    // lane-order walk (first-match priority is part of the contract).
+    const byRecord = index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    if (byRecord) {
+      const entities = state.entities;
+      const indexedIds = index._indexedIds;
+      const covered = entities && typeof entities.values === 'function'
+        && indexedIds instanceof Set && indexedIds.size === entities.size;
+      const count = index.byWorldRecordIdCount instanceof Map
+        ? (index.byWorldRecordIdCount.get(recordId) || 0) : 1;
+      if (covered && count <= 1) {
+        const e = byRecord.get(recordId);
+        return e && e.alive !== false ? e : null;
+      }
+    }
     return findLiveEntityForRecord(index.shipLike, recordId)
       || findLiveEntityForRecord(index.wrecks, recordId)
       || findLiveEntityForRecord(index.stations, recordId)
       || findLiveEntityForRecord(index.payloads, recordId);
   }
   return findLiveEntityForRecord(state.entityList, recordId);
+}
+
+// Batch record->entity lookup for rematerialize/reconcile passes: per-record scans of up to
+// four index lanes (then a far-actor row walk) cost O(records x entities) inside a single
+// chunked-enter section. byWorldRecordId answers O(1) whenever coverage is total (no
+// bare-map divergence and no duplicate carriers); the rare path falls back to the
+// lane-order walk (shipLike, wrecks, stations, payloads — entityList only when the
+// index is cold, then a full-map pass covers holders no lane indexes).
+function liveRecordEntityIndex(state) {
+  const map = new Map();
+  const index = state && state.entityIndex;
+  const indexReady = index && index.__spacefaceEntityIndexV1 && index.ready === true;
+  // Total-coverage index (W26): every live holder registers its data.worldRecordId stamp,
+  // including the non-lane carriers the old lane-union existed to catch. Only the
+  // bare-map residual (entities Map members the index never saw — poiSignal-rebadged
+  // husks) still needs a scan; when the sets agree the index answer is already total.
+  const byRecord = indexReady && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+  if (byRecord) {
+    const entities = state.entities;
+    const indexedIds = index._indexedIds;
+    const diverged = entities && typeof entities.values === 'function'
+      && (!indexedIds || indexedIds.size !== entities.size);
+    // First-match priority matters to the .get() consumer (it pushes the winner's id into
+    // active.enemies only for ships). A recordId with >1 live carrier could pick a
+    // different winner by index order than by lane order — rebuild lane-priority then.
+    const countMap = index.byWorldRecordIdCount instanceof Map ? index.byWorldRecordIdCount : null;
+    let ambiguous = false;
+    if (countMap) {
+      for (const n of countMap.values()) {
+        if (n > 1) { ambiguous = true; break; }
+      }
+    }
+    if (!diverged && !ambiguous) return byRecord;
+    const lanes = [index.shipLike, index.wrecks, index.stations, index.payloads];
+    for (const lane of lanes) {
+      if (!lane) continue;
+      for (const e of lane) {
+        if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+        if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+      }
+    }
+    if (entities) {
+      for (const e of entities.values()) {
+        if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+        if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+      }
+    }
+    return map;
+  }
+  for (const e of state && state.entityList || []) {
+    if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+    if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+  }
+  return map;
+}
+
+// During a save restore, saveSystem publishes the incoming persistent envelope's worldRecordIds
+// on state (null outside a restore). It is the third carrier class of the exactly-once law:
+// the saved live hull respawns at _restoreChunks step 10, so a record it names must not
+// materialize a shell twin here.
+function restoreEnvelopeRecordIds(state) {
+  const set = state && state.restoreEnvelopeRecordIds;
+  return set instanceof Set ? set : null;
+}
+
+// Far-actor shelved rows carrying a worldRecordId — the same batch surface as the live index.
+function farActorRecordIdSet(state) {
+  const set = new Set();
+  const rows = state && state.world && state.world.farActors && state.world.farActors.rows;
+  if (!rows) return set;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.alive !== false && row.data && row.data.worldRecordId != null) {
+      set.add(row.data.worldRecordId);
+    }
+  }
+  return set;
 }
 
 function finitePositive(value) {

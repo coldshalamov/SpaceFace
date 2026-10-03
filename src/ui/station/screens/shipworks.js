@@ -53,10 +53,15 @@ import {
   mountRefusal,
   outfitBudgetBlocker,
   shipworksStationAccess,
+  shipyardHullInfo,
   sizeFits,
   stationShopOffer,
 } from '../../../systems/ships.js';
-import { turnRecordText } from '../../../systems/shipCapabilities.js';
+import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
+import { instanceIdentityText } from '../../../systems/shipLedger.js';
+import { hullNameForOwnedShip, SHIP_NAME_MAX } from '../../../data/hullIdentity.js';
+import { buildParkedHoldModel } from '../../navigation/cargoDeck.js';
+import { forwardAccelFor, governedFightSpeedFor, travelSpeedFor, turnRecordText } from '../../../systems/shipCapabilities.js';
 import { SHIPS } from '../../../data/ships.js';
 import { techDisplayName } from '../../../data/tech.js';
 import { describeHullRole } from '../../../data/shipRoleLattice.js';
@@ -83,6 +88,7 @@ import {
   formatPreviewDelta,
   presentModuleFitPreview,
   presentShopModuleDelta,
+  previewMetricValue,
   stockPreviewPlayer,
 } from '../../presenters/engineeringPreview.js';
 import { buildMassDelta } from '../../panels/massDelta.js';
@@ -184,9 +190,12 @@ function withCargoMass(player, usedMass) {
 function plusMinus(value, digits = 1) {
   const scale = Math.pow(10, digits);
   const rounded = Math.round(finite(value, 0) * scale) / scale;
-  if (!Number.isFinite(rounded) || Object.is(rounded, -0)) return '0';
-  const text = Number.isInteger(rounded) ? String(rounded) : String(rounded.toFixed(digits));
-  return rounded > 0 ? `+${text}` : text;
+  if (!Number.isFinite(rounded) || Object.is(rounded, -0) || rounded === 0) return '0';
+  // U+2212, not HYPHEN-MINUS: a narrow comparison must never wrap the sign away from the
+  // amount and read it as a separate item (NXI-222).
+  const abs = Math.abs(rounded);
+  const text = Number.isInteger(abs) ? String(abs) : String(abs.toFixed(digits));
+  return rounded > 0 ? `+${text}` : `−${text}`;
 }
 
 function whyAttr(text) {
@@ -230,6 +239,32 @@ function fittedIdentityLine(def) {
   const parts = [];
   if (def.size) parts.push(String(def.size));
   if (def.tier != null) parts.push('T' + def.tier);
+  return parts.join(' · ');
+}
+
+/**
+ * FB-058 — a unique module's variantBonuses printed as one "what is different" line: each key
+ * becomes a readable fragment (+25 % shield flat, 1 missile knockback / fight, whole-wreck
+ * tractor). Pure presentation of the authored record; the numbers are not re-derived here.
+ */
+export function variantBonusWords(bonuses) {
+  if (!bonuses || typeof bonuses !== 'object') return '';
+  const parts = [];
+  for (const key of Object.keys(bonuses)) {
+    const value = bonuses[key];
+    const base = key
+      .replace(/Pct$/, '')
+      .replace(/UsesPerEncounter$/, '')
+      .replace(/([A-Z])/g, ' $1')
+      .toLowerCase()
+      .trim();
+    if (value === true) parts.push(base);
+    else if (value === false) continue;
+    else if (key.endsWith('Pct')) parts.push(`${value >= 0 ? '+' : '−'}${Math.abs(Math.round(Number(value) * 100))} % ${base}`);
+    else if (key.endsWith('UsesPerEncounter')) parts.push(`${Number(value)} ${base} / fight`);
+    else if (Number.isFinite(Number(value))) parts.push(`${Number(value) >= 0 ? '+' : '−'}${Math.abs(Number(value))} ${base}`);
+    else parts.push(`${base}: ${value}`);
+  }
   return parts.join(' · ');
 }
 
@@ -1121,8 +1156,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ['Cargo cap', `${fmt(d.cargoCap)} u`],
       ['Operational mass', `${fmt(d.operationalMass)} t`],
       ['Turn rate', turnRecordText(d)],
-      ['Thrust', `${fmt(d.thrust)}`],
-      ['Top speed', `${fmt(d.maxSpeed)}`],
+      // NXB-030: 'Thrust' and 'Fight speed' quote the live propulsion profile (the numbers
+      // the kernel commands — forward accel at this mass, the governed fight cap), not the
+      // legacy spec fields that kept scaling in ways the tick no longer applies.
+      ['Thrust', `${fmt(forwardAccelFor(d))}`],
+      ['Fight speed', `${fmt(governedFightSpeedFor(d))}`],
     ];
     return entries.map(([k, v]) =>
       `<div class="sx-sw-record__row"><span>${escapeHtml(k)}</span><b>${escapeHtml(String(v))}</b></div>`
@@ -1168,6 +1206,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const fitted = fittings[index] && FITTABLE_BY_ID.get(fittings[index]);
       if (slotHasContinuousDraw(fitted)) poweredSlotIndices.push(index);
     });
+    // FB-057: the crest says the hull's real name — an owner-given word outranks the banked one;
+    // a catalog preview keeps the class name.
+    const ownedShip = mode === 'fleet' ? viewedShip() : null;
+    const hullName = mode === 'fleet' && ownedShip
+      ? hullNameForOwnedShip(ownedShip, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)
+      : def.name;
+    // FB-058: the badge is the buildIdentity system's own classifier over this fit — the UI
+    // reads the model, it never reimplements the classification. Fleet hulls only: a catalog
+    // hull with empty fittings has no build to read.
+    const identity = mode === 'fleet' ? classifyBuildIdentity(fittings) : null;
+    const variantRows = fittedDefs
+      .filter((d) => d && d.variantBonuses)
+      .map((d) => ({ id: d.id, name: d.name || d.id, words: variantBonusWords(d.variantBonuses) }));
     return {
       def,
       fittings,
@@ -1181,6 +1232,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       fittedDefs,
       poweredSlotIndices,
       availability,
+      ownedShip,
+      hullIndex: mode === 'fleet' ? viewIdx : null,
+      hullName,
+      identity,
+      variantRows,
     };
   }
 
@@ -1236,8 +1292,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       metricsMirrorEl.setAttribute('aria-hidden', 'true');
       statsEl.appendChild(metricsMirrorEl);
     }
+    // previewMetricValue resolves the motion keys to the live channels the panel actually
+    // prints (governed fight cap, kernel yaw ceiling, forward accel) so the mirror proves the
+    // VISIBLE numbers come from getDerivedStats — raw derived[key] would stamp the legacy
+    // spec fields the panel no longer shows (NXB-030).
     metricsMirrorEl.innerHTML = PREVIEW_METRIC_KEYS.map((key) =>
-      `<span data-metric="${key}" data-value="${finite(model.derived[key], 0)}"></span>`,
+      `<span data-metric="${key}" data-value="${finite(previewMetricValue(model.derived, key), 0)}"></span>`,
     ).join('');
   }
 
@@ -1262,7 +1322,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       capRegen: finite(model.derived.capRegen, 0),
       shieldMax: finite(model.derived.shieldMax, 0),
       cargoCap: finite(model.derived.cargoCap, 0),
-      maxSpeed: finite(model.derived.maxSpeed, 0),
+      // The 'Thrust' gauge shows what full throttle commands — forward accel at the shown
+      // mass — not the legacy maxSpeed field it used to be fed (NXB-030).
+      thrust: forwardAccelFor(model.derived),
       continuousDrain: finite(model.derived.continuousDrain, 0),
     };
     if (!ghost) currentGaugeStats = stats;
@@ -1316,15 +1378,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       : '';
     const verb = model.condition ? model.condition.verb : 'DOCKED';
     const sentence = model.handling && model.handling.crestSentence ? model.handling.crestSentence : '';
-    // The title block: the hull's name at title size, its blurb as one emphasised sentence, the
-    // condition verb as a fine word after the name (it carries the why).
+    // FB-057 — the nameplate is the rename field's home: the resolved hull name stays the
+    // display title, and an owned hull carries an inline editor under it. The field only emits
+    // ui:setShipName; ships owns the write.
+    const nameInput = model.hullIndex != null
+      ? `<input class="k-input sx-sw__nameEdit" type="text" data-ship-name maxlength="${SHIP_NAME_MAX}" ` +
+          `value="${escapeHtml(model.ownedShip && typeof model.ownedShip.name === 'string' ? model.ownedShip.name : '')}" ` +
+          `placeholder="${escapeHtml(model.hullName)}" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
+      : '';
     nameplateEl.innerHTML =
       `<div class="sx-sw__crestLine">` +
-        `<h2 class="k-display k-t-title sx-sw__name">${entitySpanHtml('hull:' + model.def.id, escapeHtml(model.def.name))}</h2>` +
+        `<h2 class="k-display k-t-title sx-sw__name">${entitySpanHtml('hull:' + model.def.id, escapeHtml(model.hullName || model.def.name))}</h2>` +
         `<span class="k-t-fine k-62 sx-sw__condition${conditionClass}"${whyAttr(model.condition && model.condition.why)}>` +
           `<span class="sx-sw__conditionVerb">${escapeHtml(titleCaseWords(verb))}</span>${percent}` +
         `</span>` +
       `</div>` +
+      nameInput +
       `<p class="k-sentence k-sentence--emph sx-sw__blurb">${escapeHtml(sentence || fittedIdentityLine(model.def) || model.def.role || '')}</p>`;
     dressCrest();
   }
@@ -1497,6 +1566,29 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `</div>`
       );
     }
+    if (selectedBand === 'identity') {
+      const identity = model.identity;
+      if (!identity) return '';
+      // FB-058 — the build read in words: archetype + summary, each live synergy tell with its
+      // benefit AND its drawback, then a "what is different" row per unique module fitted.
+      const notes = (identity.synergyNotes || []).filter((note) => note && !note.hidden);
+      const tells = notes.length
+        ? notes.map((note) => staticRow(
+            note.active ? 'Tell' : 'Dormant tell',
+            escapeHtml(note.text || ''),
+          )).join('')
+        : staticRow('Tell', 'No module pair reads as a named build yet.');
+      const different = (model.variantRows || []).map((row) =>
+        staticRow(escapeHtml(row.name), `Different: ${escapeHtml(row.words)}`)).join('');
+      return (
+        `<p class="k-t-fine k-38 sx-sw-band__meta">${escapeHtml(identity.summary || '')}</p>` +
+        `<ul class="k-rows sx-sw-bars">` +
+          staticRow('Archetype', escapeHtml(identity.label)) +
+          tells +
+          different +
+        `</ul>`
+      );
+    }
     return renderCapabilityChips(model);
   }
 
@@ -1547,9 +1639,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // same hull-service access (the yard mixes and cures while you are berthed).
     const paintVisible = host === 'dock' && mode === 'fleet';
     const paintEnabled = paintVisible && model.availability && model.availability.hullEnabled;
+    // FB-061 — viewing a parked hull shows its hold and, at a shipyard, the deck verbs that move
+    // units between it and the live hold. The verbs emit ui:transferParkedCargo; cargo owns the
+    // move. The parked hold line stays visible even without yard service — it is the hull's
+    // record, not a station fact.
+    const holdModel = host === 'dock' && mode === 'fleet' ? buildParkedHoldModel(ctx.state) : null;
+    const holdRow = holdModel && model.hullIndex != null && model.hullIndex !== holdModel.activeIndex
+      ? (holdModel.holds.find((row) => row.index === model.hullIndex) || { index: model.hullIndex, units: 0 })
+      : null;
+    const holdDeckReady = !!(holdModel && holdModel.dockedAtShipyard && holdRow);
+    const loadHoldEnabled = holdDeckReady && holdRow.units > 0;
+    const stowHoldEnabled = holdDeckReady && holdModel.activeUnits > 0;
+    const holdWhy = holdDeckReady ? '' : 'Deck transfer needs a shipyard berth';
     statsEl.innerHTML =
       `<div class="sx-sw-bands" role="group" aria-label="Ship bands">` +
-        heroHtml('handling', topSpeed ? barValueText(topSpeed) : fmt(model.derived.maxSpeed), 'top speed', { selected: selectedBand === 'handling', why: topSpeed && topSpeed.why }) +
+        heroHtml('handling', topSpeed ? barValueText(topSpeed) : fmt(travelSpeedFor(model.derived)), 'top speed', { selected: selectedBand === 'handling', why: topSpeed && topSpeed.why }) +
         heroHtml('power', `${plusMinus(headroom, 1)}/s`, 'power', { tone: powerTone, selected: selectedBand === 'power', why: headroomLabel }) +
         heroHtml('condition', conditionVerb, 'condition', { selected: selectedBand === 'condition', why: model.condition && model.condition.why }) +
         heroHtml(
@@ -1561,6 +1665,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             why: (model.capability && model.capability.lead && model.capability.lead.why) || '',
           },
         ) +
+        // FB-058 — the build badge stands as a fifth hero on owned hulls.
+        (model.identity
+          ? heroHtml('identity', model.identity.label, 'build', { selected: selectedBand === 'identity', why: model.identity.summary })
+          : '') +
         `<ul class="k-words k-words--row sx-sw-verbs">` +
           `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${escapeHtml(String(stationControlLabel('range')).replace(/\bit\b/i, `the ${model.def.name}`))}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
@@ -1570,6 +1678,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             : '') +
           (paintVisible
             ? `<li><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--body sx-sw-verb${paintOpen ? ' is-active' : ''}" data-verb="paint" aria-pressed="${paintOpen ? 'true' : 'false'}"${paintEnabled ? '' : ` disabled aria-label="${escapeHtml((model.availability && model.availability.hullLabel) || 'Dock at a shipyard to paint')}"`}>${stationControlLabel('paint')}</button></li>`
+            : '') +
+          (holdRow
+            ? `<li><button type="button" ${stationControlAttrs('load-hold')} class="k-word k-word--body sx-sw-verb" data-verb="load-hold"${loadHoldEnabled ? '' : ` disabled aria-label="${escapeHtml(holdWhy || 'That hold is empty')}"`}>${stationControlLabel('load-hold')}</button></li>` +
+              `<li><button type="button" ${stationControlAttrs('stow-hold')} class="k-word k-word--body sx-sw-verb" data-verb="stow-hold"${stowHoldEnabled ? '' : ` disabled aria-label="${escapeHtml(holdWhy || 'Your hold is empty')}"`}>${stationControlLabel('stow-hold')}</button></li>`
             : '') +
         `</ul>` +
       `</div>` +
@@ -3242,14 +3354,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         );
       }).join('') : `<p class="k-sentence sx-muted">No ships owned.</p>`;
     } else {
+      // FB-062 — the rail is this yard's ledger, not the whole catalog: a hull another yard
+      // builds exclusively is absent here, and a yard offer price is the price on the row.
+      const yardStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
       railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
+        const yard = shipyardHullInfo(s.id, yardStationId);
+        if (!yard.listed) return '';
         const on = s.id === buyId ? ' is-active' : '';
         const roleLabel = describeHullRole(s.id)?.roleLabel || s.role || 'ship';
+        const price = yard.price;
+        const priceWord = price > 0 ? fmt(price) + ' credits' : 'owned';
         return (
-          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(roleLabel)}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
-              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${s.tier}</span></span>` +
-            `<span class="k-row__num sx-sw-row__price">${s.price > 0 ? fmt(s.price) : 'Owned'}</span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${s.tier}${yard.offer ? ' · yard offer' : ''}</span></span>` +
+            `<span class="k-row__num sx-sw-row__price">${price > 0 ? fmt(price) : 'Owned'}</span>` +
           `</button>`
         );
       }).join('');
@@ -3312,12 +3431,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}×\u00a0${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
       const facts = catalogHullFacts(def.id);
-      const afford = facts.price <= credits;
+      // FB-062 — the chit reads this yard's price, and a hull another yard builds exclusively
+      // is not buyable here at all.
+      const yardStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
+      const yard = shipyardHullInfo(def.id, yardStationId);
+      const price = yard.price;
+      const afford = price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
       const availability = shipworksActionAvailability(ctx.state);
-      const canBuy = afford && availability.hullEnabled;
+      const canBuy = afford && availability.hullEnabled && yard.listed;
       // a key that cannot be pressed still says what it would do; why it cannot stands under it as a label
-      const whyNot = !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(facts.price - credits)} cr short`);
+      const whyNot = !yard.listed
+        ? 'Not built at this yard'
+        : !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(price - credits)} cr short`);
       const buyAria = canBuy ? 'Buy ship' : `Buy ship, ${whyNot}`;
       // The stage-right column: the hull's name and class, its price as the hero number, then the hull as
       // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
@@ -3337,7 +3463,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       sideEl.innerHTML =
         `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(def.name))}</h3>` +
         `<p class="sx-sw-side__class">${escapeHtml(def.role || 'ship')} \u00b7 T${def.tier}</p>` +
-        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${facts.price > 0 ? fmt(facts.price) : 'Starter'}</span><span class="k-hero__w">${facts.price > 0 ? 'credits' : 'hull'}</span></div>` +
+        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${price > 0 ? fmt(price) : 'Starter'}</span><span class="k-hero__w">${price > 0 ? (yard.offer ? 'credits · yard offer' : 'credits') : 'hull'}</span></div>` +
         `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
           reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
           reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
@@ -3348,13 +3474,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(facts.price)} cr</small>` : ''}</button></li>` +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(price)} cr</small>` : ''}</button></li>` +
               (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
         `</ul>`;
       dressSide();
       drawBuyRim();
       const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
-      if (priceN && facts.price > 0) rollTo(priceN, facts.price);
+      if (priceN && price > 0) rollTo(priceN, price);
       return;
     }
     // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
@@ -3703,26 +3829,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // the defect class this section exists to close, so they are skipped.
     const inventory = (ctx.state.player && Array.isArray(ctx.state.player.moduleInventory))
       ? ctx.state.player.moduleInventory : [];
+    // NXI-127 — a provenance/condition-tagged instance keeps its own row: two identical catalog
+    // units with different identities never collapse into one pristine-looking count, and the
+    // Fit verb still carries the identity group's own instanceId. Pristine units share the
+    // empty signature and collapse exactly as before.
     const holdByDef = new Map();
     const holdRefusedByDef = new Map();
     for (const item of inventory) {
       const d = item && FITTABLE_BY_ID.get(item.defId);
       if (!d || d.slotType !== slot.type) continue;
+      const instText = instanceIdentityText(item);
+      const key = d.id + '|' + instText;
       if (fits(slot, d)) {
         if (typeof item.instanceId !== 'string' || !item.instanceId) continue;
-        const row = holdByDef.get(d.id) || { d, count: 0, instanceId: item.instanceId };
+        const row = holdByDef.get(key) || { d, count: 0, instanceId: item.instanceId, instText };
         row.count += 1;
-        holdByDef.set(d.id, row);
+        holdByDef.set(key, row);
       } else if (slot.type === 'weapon' && sizeFits(slot, d)) {
         // Right size, wrong mount — the buy list refuses these in words; the hold must too.
-        const row = holdRefusedByDef.get(d.id) || { d, count: 0 };
+        const row = holdRefusedByDef.get(key) || { d, count: 0, instText };
         row.count += 1;
-        holdRefusedByDef.set(d.id, row);
+        holdRefusedByDef.set(key, row);
       }
     }
     const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
       ? ctx.state.player.researchedNodes : [];
-    const holdRowHtml = ({ d, count, instanceId, mountBlock }) => {
+    const holdRowHtml = ({ d, count, instanceId, instText, mountBlock }) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const prospective = fittings.slice();
       prospective[slotIndex] = d.id;
@@ -3747,6 +3879,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
+            (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
+            (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
         `</li>`
@@ -3759,6 +3893,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const list = compat.map((d) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const equipped = d.id === fittedId;
+      // NXI-127 — the fitted occupancy's instance record names THIS unit (recovered/worn) so the
+      // selected instance does not read as a generic pristine catalog unit.
+      const equippedInstText = equipped
+        ? instanceIdentityText((s.fittedInstances || {})[slotIndex])
+        : '';
       const shopDelta = presentShopModuleDelta({
         defId: def.id,
         fittings,
@@ -3798,7 +3937,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : ''}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
+            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
+            (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
         `</li>`
@@ -4503,6 +4643,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell);
   });
 
+  // FB-057 — the nameplate input commits on change (Enter blurs, which fires change). The field
+  // only emits ui:setShipName; ships writes the record, then refresh re-reads the resolved name.
+  nameplateEl.addEventListener('keydown', (ev) => {
+    const input = ev.target.closest('input[data-ship-name]');
+    if (!input) return;
+    ev.stopPropagation(); // typing must never reach canvas or station hotkeys
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+  });
+  nameplateEl.addEventListener('change', (ev) => {
+    const input = ev.target.closest('input[data-ship-name]');
+    if (!input || !ctx.bus) return;
+    ctx.bus.emit('ui:setShipName', { shipIndex: viewIdx, name: input.value });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 40);
+  });
+
   statsEl.addEventListener('click', async (ev) => {
     const band = ev.target.closest('[data-band]');
     if (band) {
@@ -4604,6 +4760,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         return true;
       }
       openPaintChooser(verb);
+      return true;
+    }
+    if (action === 'load-hold' || action === 'stow-hold') {
+      // FB-061 — the deck verb emits an intent; cargo decides what moves.
+      if (host !== 'dock' || mode !== 'fleet' || !ctx.bus) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return true;
+      }
+      ctx.bus.emit('ui:transferParkedCargo', {
+        shipIndex: viewIdx,
+        direction: action === 'load-hold' ? 'load' : 'stow',
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      setTimeout(refresh, 60);
       return true;
     }
     return false;

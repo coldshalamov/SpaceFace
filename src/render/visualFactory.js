@@ -16,6 +16,9 @@
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { buildMorrowVisual } from './characters/morrowModel.js';
+import { buildVesperVisual } from './characters/vesperModel.js';
+import { buildBracketVisual } from './characters/bracketModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
@@ -62,10 +65,12 @@ import {
   AUTHORED_ADMISSION_RETRY_MAX,
   authoredReadmissionStatus,
   boundaryLiveEntity,
+  carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
+  staleAuthoredRunVerdict,
   waitForOpeningGraphPublicationRelease,
   wholeShipVisualForEntity,
 } from './partsLibrary.js';
@@ -2645,6 +2650,128 @@ function gateLensMaterial(isWormhole) {
   });
 }
 
+// EVENT HORIZON face — a structured, time-driven construction, not a painted card. The old face
+// was a static radial-gradient canvas (the soft-card read VFX_TECHNIQUE_STANDARD bans for
+// objects); this one carries internal structure AND travelling motion:
+//   - a 3-armed log-spiral fold rosette whose radial phase advances with uTime, so every crest
+//     travels INWARD toward the throat (the mesh swirl infrastructureMotion applies cannot
+//     express radial infall — the two motions compose, and the disc counter-rotates against the
+//     lens disc above for parallax);
+//   - differential rotation: the fold field runs prograde, the dark channel field slow
+//     retrograde, so the combined rosette shears over time instead of spinning as one decal;
+//   - fine counter-drifting filaments and dark channels that cut the glow into arms, so the
+//     face reads as infalling matter, never as a filled soft square.
+// Seam safety: every angular frequency is an integer multiple of theta, so the atan(±π) branch
+// cut is invisible — same guarantee as the lens shader. Instruction set is exactly the lens
+// family (atan/sin/exp/pow/smoothstep/log), which this project already runs on the software
+// rasterizer; `setFactoryPortalRenderMode('canvas')` restores the legacy gradient card if a
+// rasterizer ever refuses the program.
+const GATE_PORTAL_FRAGMENT = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColorCore;   // hot throat tone (was the gradient's centre stop)
+  uniform vec3 uColorArm;    // fold / filament mid tone (was the gradient's mid stop)
+  uniform vec3 uColorDeep;   // deep body tone between the folds (was the gradient's outer stop)
+  uniform float uOpacity;    // legacy additive envelope: 0.55 gate / 0.7 wormhole
+  uniform float uIntensity;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float theta = atan(p.y, p.x);
+
+    // Differential rotation: folds prograde, channels slow retrograde.
+    float angF = theta - uTime * 0.50;
+    float angC = theta + uTime * 0.13;
+
+    // Infall: adding uTime to the radial phase moves every crest toward r=0 over time.
+    float fall = uTime * 0.34;
+    float radial = r + fall;
+
+    // Log-spiral fold coordinate (integer angular multiplier keeps the atan seam hidden).
+    float spiralF = angF * 3.0 - 4.6 * log(r + 0.14) + radial * 3.1;
+    // Quasi-organic wobble from two incommensurate seam-safe terms — no hash noise needed.
+    float wob = sin(angF * 2.0 + r * 7.0 - uTime * 0.7) * 0.5
+              + sin(angC * 3.0 - r * 4.0 + uTime * 0.4) * 0.5;
+    float folds = smoothstep(0.10, 0.95, sin(spiralF + wob * 1.4));
+
+    // Fine counter-drifting filaments, strongest mid-disc where the folds read.
+    float fil = smoothstep(0.55, 1.0, sin(angF * 9.0 - 12.6 * log(r + 0.14) + radial * 6.2 - wob * 1.9));
+    float midWeight = smoothstep(0.05, 0.28, r) * smoothstep(1.0, 0.60, r);
+
+    // Dark channels cut the glow into arms so the face never reads as a filled card.
+    float channels = smoothstep(0.40, 0.88, sin(angC * 5.0 + 2.4 * log(r + 0.14) + wob));
+    float channelDark = mix(1.0, 0.20, channels * midWeight);
+
+    // Hot throat keeps the established bright-centre silhouette; slow breath, no strobe.
+    float core = exp(-r * r * 6.0) * (0.86 + 0.14 * sin(uTime * 1.3));
+    float rim = exp(-pow((r - 0.94) * 9.5, 2.0));
+    float rimFade = smoothstep(1.0, 0.80, r);
+
+    float structure = (folds * 0.62 + fil * 0.38) * midWeight * channelDark;
+    vec3 col = mix(uColorDeep, uColorArm, clamp(structure * 1.4, 0.0, 1.0));
+    col = mix(col, uColorCore, clamp(core + rim * 0.5, 0.0, 1.0));
+
+    float a = clamp(core * 0.92 + structure * 0.85 + rim * 0.34, 0.0, 1.0) * rimFade * uOpacity;
+    gl_FragColor = vec4(col * uIntensity, a);
+  }
+`;
+
+// Bench/CI escape hatch: 'shader' (default) builds the animated construction; 'canvas' builds the
+// legacy gradient-card material. Must be set before the first gate is built (the material cache
+// is per type, so a mid-session flip only affects not-yet-built gate types).
+let _portalRenderMode = 'shader';
+export function setFactoryPortalRenderMode(mode) {
+  if (mode === 'shader' || mode === 'canvas') _portalRenderMode = mode;
+}
+
+// One material per portal TYPE (never per gate instance) — the pre-existing cache keys.
+function gatePortalMaterial(isWormhole) {
+  if (_portalRenderMode === 'canvas') return gatePortalFallbackMaterial(isWormhole);
+  return getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
+    const material = new THREE.ShaderMaterial({
+      name: isWormhole ? 'GatePortalWormhole' : 'GatePortal',
+      uniforms: {
+        uTime: { value: 0 },
+        uColorCore: { value: new THREE.Color(isWormhole ? '#f0c0ff' : '#bff4ff') },
+        uColorArm: { value: new THREE.Color(isWormhole ? '#9030ff' : '#39d0ff') },
+        uColorDeep: { value: new THREE.Color(isWormhole ? '#3a0a4a' : '#0a1830') },
+        uOpacity: { value: isWormhole ? 0.7 : 0.55 },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: GATE_LENS_VERTEX,
+      fragmentShader: GATE_PORTAL_FRAGMENT,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
+// Sane fallback: the legacy radial-gradient card, kept verbatim (texture cache keys included) so
+// the gate still renders a full portal face if the shader program is ever unavailable.
+function gatePortalFallbackMaterial(isWormhole) {
+  return getMaterial(isWormhole ? 'gate:portal:wh:canvas' : 'gate:portal:canvas', () => {
+    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
+      type: 'radial',
+      stops: isWormhole
+        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
+        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
+    }));
+    const material = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -2693,25 +2820,22 @@ function buildGate(e, pal) {
   innerRing.scale.setScalar(R);
   orient.add(innerRing);
 
-  // EVENT HORIZON — swirling additive disc filling the opening.
-  const portalMat = getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
-    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
-      type: 'radial',
-      stops: isWormhole
-        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
-        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
-    }));
-    const material = new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
-    configurePlanarAdditiveMaterial(material);
-    return material;
-  });
+  // EVENT HORIZON — structured additive disc filling the opening (see GATE_PORTAL_FRAGMENT):
+  // an infalling fold rosette cut by dark channels, time-driven, not a static gradient card.
+  const portalMat = gatePortalMaterial(isWormhole);
   const portal = new THREE.Mesh(
     getGeometry('gate:disc', () => new THREE.CircleGeometry(0.78, 48)),
     portalMat,
   );
+  // Shared-material clock: every gate of a type writes the same uTime (idempotent — the boltMesh
+  // pattern). nowSec() is the presentation sim clock, so the face holds still with the world on
+  // pause/hit-stop. infrastructureMotion owns the reduced-motion decision and maintains
+  // userData.motionScale (same 0.25 convention as the lens). Guarded so the canvas fallback
+  // material (no uniforms) is left untouched.
+  portal.onBeforeRender = () => {
+    const u = portalMat.uniforms;
+    if (u && u.uTime) u.uTime.value = nowSec() * (portalMat.userData.motionScale || 1);
+  };
   portal.scale.setScalar(R);
   orient.add(portal);
 
@@ -3263,6 +3387,20 @@ export function fractureFragmentFileForEntity(e) {
   return (spec && spec.file) || null;
 }
 
+/** Every authored fragment file a hull of this def can tear into — the warm lane's list. */
+export function fractureFragmentFilesForDef(defId) {
+  const table = defId && WRECK_FRAGMENT_FILES[defId];
+  if (!table) return null;
+  const files = [];
+  for (const entry of Object.values(table.seam || {})) {
+    if (entry && entry.file) files.push(entry.file);
+  }
+  for (const entry of Object.values(table.remainder || {})) {
+    if (entry && entry.file) files.push(entry.file);
+  }
+  return files.length ? files : null;
+}
+
 // The fragment GLBs are authored in intact-hull coordinates: fit each piece to its authored
 // share of the victim's envelope (victimRadius x share), not the mass-derived collision
 // radius — otherwise a 0.34-mass bow renders ~1.4x its true share of hull.
@@ -3661,9 +3799,12 @@ export function fitPackagedGroup(group, targetRadius) {
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const envelope = Math.max(size.x, size.y, size.z, 1e-6);
-  group.position.sub(center);
   const radius = Number(targetRadius);
-  if (Number.isFinite(radius) && radius > 0) group.scale.setScalar((radius * 2) / envelope);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  // The recenter composes with the scale: a child at authored point v lands at
+  // position + s·v, so the measured center reaches origin only at position = -s·c.
+  group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
 }
 
 function hideProceduralChildren(root) {
@@ -3808,8 +3949,36 @@ export function deadenPackagedHulk(group, options = {}) {
   return [...clones.values()];
 }
 
+// A detached packaged group the admission run still owns: its primitives were minted fresh for
+// this mount, so geometry and material instances die with it. Shared-asset geometries keep
+// their pool pin; texture maps ride the packaged cache and are left alone.
+function disposeDetachedPackagedGroup(group) {
+  if (!group || typeof group.traverse !== 'function') return;
+  group.traverse((object) => {
+    if (!object) return;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+  });
+}
+
 function attachPackagedBody(root, relativeFile, entity) {
-  if (!root || !relativeFile) return root;
+  if (!root || !relativeFile) {
+    // No packaged file resolved — stamp the terminal identity so the root never sits
+    // 'missing' in front of the readiness gate (same wedge class as buildFallback).
+    if (root) {
+      root.userData.authoredAssetState = 'unavailable';
+      root.userData.authoredVisualRoot = 'none-build-failed';
+    }
+    return root;
+  }
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
@@ -3834,7 +4003,20 @@ function attachPackagedBody(root, relativeFile, entity) {
     const existing = root.userData.authoredUpgradePromise;
     // An orphaned admission settles its promise while the kept boundary stays mounted —
     // honouring it would suppress the restored owner's re-admission forever.
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      // A glass-visible re-request joins the in-flight packaged decode at the visible class —
+      // loadAuthoredPart's deadlineJoin re-grades the shared task's remaining posts without
+      // queuing a second decode.
+      if (renderer && requestOptions && requestOptions.admissionVisible === true) {
+        const joiner = typeof requestOptions.loadAuthoredPart === 'function'
+          ? requestOptions.loadAuthoredPart
+          : loadAuthoredPart;
+        Promise.resolve(joiner(url, {
+          renderer, slot: 'place', optional: true, admissionVisible: true,
+        })).catch(() => {});
+      }
+      return existing;
+    }
     if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer) return null;
     if (state === 'authored') return Promise.resolve(true);
@@ -3847,6 +4029,10 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...residencyOptionsForBoundary(liveEntity, root, renderer),
       ...requestOptions,
     });
+    // Mint once at request: residencyOptionsForBoundary bumps the boundary epoch on every call,
+    // so every verdict write and the commit guard below compare this run's own epoch — including
+    // the pre-mint legs and the outer catch, which a .then-scoped mint could not reach.
+    const mintedAdmissionOptions = admissionOptions();
     // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
     // is compiled and its buffers uploaded while still detached, and publication waits on the
     // opening-graph release. Attaching straight to the live root linked the packaged materials
@@ -3862,6 +4048,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
+        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
         return false;
@@ -3909,6 +4096,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       }
       if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
@@ -3941,15 +4129,16 @@ function attachPackagedBody(root, relativeFile, entity) {
       freezeStaticChildMatrices(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
-        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed');
+        releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
         // visual to publish — a breadcrumb, not a composition defect.
         const causes = error && Array.isArray(error.errors) && error.errors.length
           ? error.errors
           : [error];
-        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+        const ownerInactive = admissionOwnerInactive(mintedAdmissionOptions, liveEntity, error)
           || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
         if (ownerInactive) {
           if (root.parent) {
@@ -3965,7 +4154,7 @@ function attachPackagedBody(root, relativeFile, entity) {
         return false;
       }
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile');
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -3974,14 +4163,25 @@ function attachPackagedBody(root, relativeFile, entity) {
       });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication');
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      // Same stale-run guard the cargo/place/ship commits carry: a run parked at the
+      // publication wait while its boundary re-admitted under a newer epoch must not mount
+      // its packaged root over the replacement's — the live epoch owns the boundary.
+      if ((mintedAdmissionOptions.admissionEpoch != null && root.userData.admissionEpoch != null
+            && root.userData.admissionEpoch !== mintedAdmissionOptions.admissionEpoch)
+          || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
+          || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
+        disposeDetachedPackagedGroup(packaged);
         return false;
       }
       // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
       // procedural children while this admission was mid-flight.
       hideProceduralChildren(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       canonicalizeObjectSurfaceProgramKeys(packaged);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
@@ -3989,6 +4189,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
     }).catch((error) => {
+      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
       } else {
@@ -5239,6 +5440,11 @@ function buildFallback(e) {
   root.visible = false;
   root.userData.visualBuildFailed = true;
   root.userData.failedEntityType = e && e.type || 'unknown';
+  // A builder throw on a gate-bound contact would otherwise sit 'missing' forever and
+  // hold flight-ready hostage; stamp the terminal fail-closed identity like
+  // unavailableVisual so the readiness scan releases it.
+  root.userData.authoredAssetState = 'unavailable';
+  root.userData.authoredVisualRoot = 'none-build-failed';
   return root;
 }
 
@@ -5402,13 +5608,14 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
           case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(buildDrone(e));
+          case 'drone': return stampBuiltVisual(e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
           case 'payload': return stampBuiltVisual(buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));

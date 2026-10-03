@@ -7,7 +7,7 @@
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 /** Bench A/B: production default ON. Quiet latch skips the 4-tick shipLike flee-scan
  * when no unrecalled flee candidates remain. Wakes on kill/flee/disable/surrender /
@@ -24,6 +24,9 @@ export function getCombatOutcomeQuietLatchForBench() {
 /** Rescan while latched (0.5 s). Sim-time based so scripted tests that advance
  * simTime without matching tick cadence still re-evaluate forceFlee stamps. */
 const COMBAT_OUTCOME_QUIET_RESCAN_S = 0.5;
+
+/** Membership lanes for the quiet latch — the flee census reads shipLike only. */
+const COMBAT_OUTCOME_QUIET_LANES = ['shipLike'];
 
 function publishCombatOutcomeQuiet(state, latched) {
   if (!state) return;
@@ -198,7 +201,8 @@ export const combatOutcome = {
     if (COMBAT_OUTCOME_QUIET_LATCH !== false) {
       const quiet = this._combatOutcomeQuiet;
       if (quiet) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, COMBAT_OUTCOME_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         const wakeSeq = this._combatOutcomeWakeSeq | 0;
         const nowS = Number(state && state.simTime) || 0;
         if (membership != null
@@ -230,7 +234,8 @@ export const combatOutcome = {
     }
 
     if (COMBAT_OUTCOME_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, COMBAT_OUTCOME_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       if (membership != null && recorded === 0) {
         this._combatOutcomeQuiet = {
           membership,

@@ -8,11 +8,13 @@ import {
   authoredPrefetchRadius,
   glassCornerWu,
   isCriticalStartingHub,
+  TABLE_DECODE_RUNWAY_SECONDS,
+  TABLE_PROMOTE_HORIZON_SECONDS,
   tableLookAtDelta,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
-import { entityPresenceRadius } from '../world/activityClassification.js';
 import { isPresentationLedgerRow } from '../world/presentationSources.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 import { itineraryVelocityInto } from '../world/worldCatchup.js';
 
 const _authoredLookDelta = { x: 0, z: 0 };
@@ -21,7 +23,7 @@ const _rowSchedVel = { x: 0, z: 0 };
 // Ledger rows carry their motion in the itinerary schedule — advanceWorldRecord zeroes the
 // stored vel — so the closing-speed clause must read the cruise velocity there, else inbound
 // traffic predicts as static and the runway fires ~2-4 s late.
-function closingVelocity(entity, state) {
+export function closingVelocity(entity, state) {
   if (isPresentationLedgerRow(entity) && entity.intent && Number.isFinite(entity.lastExactT)) {
     const simTime = Number.isFinite(state && state.simTime)
       ? state.simTime
@@ -37,10 +39,38 @@ export const AUTHORED_ASSET_IMMEDIATE_RADIUS = authoredImmediateRadius();
 export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = authoredLookaheadSeconds();
 export { isCriticalStartingHub };
 
+
+// One ladder for "how far out is inbound" — stations ride the longer decode runway while
+// hulls ride the promote horizon. The renderer's isInboundDecodeHull, the hold-exempt
+// ladder, and the serial-release/bypass predicates in partsLibrary all grade through this
+// so no consumer can call an entity inbound on one horizon while another holds it to the
+// wrong one.
+export function authoredRunwayHorizonSeconds(entity) {
+  return entity && entity.type === 'station' ? TABLE_DECODE_RUNWAY_SECONDS : TABLE_PROMOTE_HORIZON_SECONDS;
+}
+
+// Declared drawn footprint — the single read for both stamp slots: live writers go through
+// entity.data.placeTargetRadius while makeEntity spec keys land top-level. Reading only one
+// under-covers whichever carrier carries the other; top-level wins when both stamp.
+export function declaredPlaceTargetRadius(entity) {
+  const top = Number(entity && entity.placeTargetRadius);
+  if (Number.isFinite(top) && top > 0) return top;
+  const bag = Number(entity && entity.data && entity.data.placeTargetRadius);
+  if (Number.isFinite(bag) && bag > 0) return bag;
+  return NaN;
+}
+
 /**
  * True when an entity is already eligible for authored admission, or will become eligible inside
  * a bounded observation horizon. The renderer passes a zero horizon; performance capture passes
  * its upcoming sample duration so an inbound boundary cannot begin decoding inside measurement.
+ *
+ * This is the grade-side predicate and is deliberately the tighter one: it requires the
+ * projected position to reach BOTH the prefetch radius by the horizon and the smaller
+ * immediate radius by horizon+lookahead (two-point closing-speed gate below). The request
+ * side (renderer.js entityTimeToGlassSeconds, feeding isInboundDecodeHull) is the superset —
+ * any crossing of glassR+visual inside the horizon requests the work. Request broad, grade
+ * tight: the queue only re-ranks work the request already committed.
  */
 export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   radius = null,
@@ -71,7 +101,15 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const dz = Number(look.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  const visual = entityPresenceRadius(entity);
+  // Grade the stamped drawn envelope, not the collider: a pending boundary whose authored
+  // body draws 2-8x its presence radius enters the runway while its envelope is on-glass,
+  // and unstamped entities classify at presence exactly as before. An authored place row
+  // declares its drawn footprint up front (placeTargetRadius), matching the renderer's
+  // admissionVisualRadiusWu union — a pending prop with no mesh yet must not under-grade.
+  const declaredRadius = declaredPlaceTargetRadius(entity);
+  const visual = Number.isFinite(declaredRadius) && declaredRadius > 0
+    ? Math.max(entityVisualCullRadius(entity, entity.mesh), declaredRadius * Math.SQRT2)
+    : entityVisualCullRadius(entity, entity.mesh);
   const surface = Math.max(0, distance - visual);
   if (surface <= immediate) return true;
   const camera = state && state.camera || {};

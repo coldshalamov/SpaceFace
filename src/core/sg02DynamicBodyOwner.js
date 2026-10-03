@@ -30,6 +30,7 @@ import { combatFlag } from '../data/featureFlags.js';
 import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
+export const SG02_WORLD_SNAPSHOT_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // Contact-force receipts are gameplay signals, not solver inputs. A zero threshold makes every
@@ -277,6 +278,7 @@ export class Sg02DynamicBodyOwner {
     this._reboundEntityIds = new Set();
     this._sleepHeld = new Set();
     this._sleepReeled = new Set();
+    this._adoptedJointPairs = null;
     this._staticLayerVersion = null;
     this._frameOrigin = {
       x: finite(options.frameOrigin && options.frameOrigin.x),
@@ -378,6 +380,255 @@ export class Sg02DynamicBodyOwner {
     this._reboundEntityIds.add(entity.id);
     if (entity.flags) entity.flags.noInterp = false;
     return true;
+  }
+
+  /**
+   * Full-fidelity world capture for save envelopes. Entity-level saves carry each body's
+   * position/velocity scalars, but a world rebuilt from them loses the solver's private state —
+   * contact-manifold warm starts, island sleep verdicts, activation energy — and the first
+   * rebuilt step answers a marginal resting contact up to an f32 ulp differently, which then
+   * grows downstream. `World.takeSnapshot()` preserves that state bit-for-bit; the record side
+   * (entity ↔ body handles) is stored alongside so the restore can rebind without `userData`.
+   */
+  exportWorldSnapshot() {
+    const world = this.world;
+    if (!world || typeof world.takeSnapshot !== 'function') return null;
+    let bytes;
+    try { bytes = world.takeSnapshot(); }
+    catch (err) { return null; }
+    if (!(bytes instanceof Uint8Array) || !bytes.length) return null;
+    const bodies = {};
+    for (const [id, rec] of this.records) {
+      // Rapier handles are f64-encoded arena keys; stringify keeps them JSON-exact (denormal
+      // handles serialize as e-notation that parses back to the identical bits).
+      if (rec && rec.body && Number.isFinite(rec.body.handle)) bodies[id] = String(rec.body.handle);
+    }
+    return {
+      schema: SG02_WORLD_SNAPSHOT_SCHEMA_VERSION,
+      backend: 'rapier-dynamic',
+      snapshot: encodeSnapshotBytes(bytes),
+      bodies,
+      tick: this.tick,
+      accumulator: finite(this.accumulator),
+      frameOrigin: { x: this._frameOrigin.x, z: this._frameOrigin.z },
+      frameOriginSeq: this._frameOriginSeq,
+    };
+  }
+
+  /**
+   * Adopt a snapshot-restored world in place of this owner's freshly created empty one.
+   * Entities must already be respawned: every saved handle maps to a live entity or its body
+   * is dropped (that covers entities the restore did not re-materialize and retired
+   * ghost-pool bodies, which have no record and are swept the same way).
+   *
+   * The adopted records rejoin the ordinary sync paths: `spec`/`revision` come from the
+   * respawned entity, so a record whose spec drifted while it was saved out simply rebuilds
+   * through `_syncRecord` like any other stale record — the snapshot only guarantees bodies
+   * that DID round-trip keep their solver continuity.
+   */
+  adoptWorldSnapshot(payload, entities = []) {
+    const R = this.RAPIER;
+    if (!payload || payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION
+        || typeof payload.snapshot !== 'string' || !payload.snapshot
+        || !payload.bodies || typeof payload.bodies !== 'object'
+        || !R || !R.World || typeof R.World.restoreSnapshot !== 'function') {
+      return false;
+    }
+    const bytes = decodeSnapshotBytes(payload.snapshot);
+    if (!bytes || !bytes.length) return false;
+    const world = R.World.restoreSnapshot(bytes);
+    if (!world) return false;
+
+    const stale = this.world;
+    this.world = world;
+    world.timestep = this.fixedDt;
+    if (world.integrationParameters) {
+      world.integrationParameters.maxCcdSubsteps = 4;
+      world.integrationParameters.numSolverIterations = 12;
+      world.integrationParameters.normalizedPredictionDistance = 3.5;
+      world.integrationParameters.contact_natural_frequency = 240;
+    }
+
+    const adoptedHandles = new Set();
+    try {
+      this.records.clear();
+      this.dynamicRecords.clear();
+      this.attachments.clear();
+      this._colliderOwners.clear();
+      this._ghostProjectilePool.clear();
+      this._reboundEntityIds.clear();
+      this._sleepHeld.clear();
+      this._sleepReeled.clear();
+      this._liveEntityIds.clear();
+      this._liveStaticEntityIds.clear();
+      this._liveDynamicEntityIds.clear();
+      this._staticLayerVersion = null;
+      this._adoptedJointPairs = null;
+      this._contactImpacts.length = 0;
+      for (const byB of this._impactMergeRows.values()) {
+        byB.clear();
+        this._impactByBPool.push(byB);
+      }
+      this._impactMergeRows.clear();
+      this._impactReceipts.length = 0;
+      this._stepContactReceipts = null;
+
+      const byId = new Map();
+      for (const entity of entities) {
+        if (entity && entity.id != null) byId.set(String(entity.id), entity);
+      }
+      for (const [idKey, handleText] of Object.entries(payload.bodies)) {
+        const handle = Number(handleText);
+        if (!Number.isFinite(handle)) continue;
+        const body = world.getRigidBody(handle);
+        if (!body) continue;
+        const entity = byId.get(idKey);
+        if (!entity || entity.alive === false) {
+          world.removeRigidBody(body);
+          continue;
+        }
+        const spec = resolvePhysicsBodySpec(entity);
+        if (!spec || !(spec.radius > 0)) {
+          world.removeRigidBody(body);
+          continue;
+        }
+        const colliders = [];
+        const colliderCount = typeof body.numColliders === 'function' ? body.numColliders() : 0;
+        for (let i = 0; i < colliderCount; i++) colliders.push(body.collider(i));
+        this._adoptRecord(entity, spec, body, colliders);
+        adoptedHandles.add(handle);
+      }
+    } catch (err) {
+      // A half-populated adoption must not leak: put the untouched fresh world back and let
+      // the ordinary entity rebuild run on it — exactly the no-snapshot path.
+      this.records.clear();
+      this.dynamicRecords.clear();
+      this.attachments.clear();
+      this._colliderOwners.clear();
+      this._adoptedJointPairs = null;
+      this.world = stale;
+      if (typeof world.free === 'function') world.free();
+      return false;
+    }
+
+    this.tick = Math.max(0, Math.trunc(finite(payload.tick)));
+    this.accumulator = Math.max(0, finite(payload.accumulator));
+    this._frameOrigin = {
+      x: finite(payload.frameOrigin && payload.frameOrigin.x),
+      z: finite(payload.frameOrigin && payload.frameOrigin.z),
+    };
+    this._frameOriginSeq = normalizeFrameOriginSeq(payload.frameOriginSeq);
+    this._diagnostics.frameOriginSeq = this._frameOriginSeq;
+    // Any body the entity round-trip did not claim has no record — remove it or it stays in
+    // the world as an orphaned collider (retired ghost-pool bodies land here too).
+    const orphans = [];
+    if (typeof world.forEachRigidBody === 'function') {
+      world.forEachRigidBody((body) => {
+        if (body && !adoptedHandles.has(body.handle)) orphans.push(body);
+      });
+      for (const body of orphans) world.removeRigidBody(body);
+    }
+
+    // Legacy-rope attachments keep a real impulse joint in the world. The combat layer
+    // re-creates its attachment records after a restore; index the surviving joints by body
+    // pair so `_createAttachmentJoints` rebinds them instead of stacking a second constraint.
+    if (world.impulseJoints && typeof world.impulseJoints.getAll === 'function') {
+      const pairs = new Map();
+      for (const joint of world.impulseJoints.getAll()) {
+        const a = typeof joint.body1 === 'function' ? joint.body1() : null;
+        const b = typeof joint.body2 === 'function' ? joint.body2() : null;
+        if (!a || !b) continue;
+        pairs.set(jointPairKey(a.handle, b.handle), joint);
+      }
+      if (pairs.size) this._adoptedJointPairs = pairs;
+    }
+
+    if (stale && stale !== world && typeof stale.free === 'function') stale.free();
+    return true;
+  }
+
+  /**
+   * Record assembly for a snapshot-restored body — the `_createRecord` tail with the WASM
+   * objects supplied instead of built. Kinematics are read back from the body (the snapshot
+   * is the authority), so every record mirror starts bit-identical to solver state.
+   */
+  _adoptRecord(entity, spec, body, colliders) {
+    const material = contactMaterialFor(entity, spec);
+    const proxyManifest = proxyManifestForBody(entity, spec);
+    const translation = body.translation();
+    const linvel = body.linvel();
+    const angvel = body.angvel();
+    const yaw = wrapAngle(yawFromQuat(body.rotation()));
+    const posX = translation.x;
+    const posZ = translation.z;
+    const global = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
+    const wy = -finite(angvel.y);
+    const ghostPoolKey = spec.dynamic && material.ghost && spec.material === 'projectile'
+      ? ghostProjectilePoolKey(spec)
+      : null;
+    const record = {
+      entity,
+      spec,
+      revision: spec.revision,
+      body,
+      collider: colliders[0],
+      colliders,
+      ccdEnabled: typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd,
+      coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
+      _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
+      _postStepSleepSkip: false,
+      _postStepReadTick: -1,
+      proxyId: proxyManifest ? proxyManifest.id : null,
+      ghostPoolKey,
+      appliedForce: zero3(),
+      appliedTorque: zero3(),
+      controlForce: zero3(),
+      controlTorque: zero3(),
+      // Rapier's user_force/user_torque accumulators persist across world.step() and are
+      // captured by takeSnapshot(): the restored body can carry the last step's stale force,
+      // which the baseline clears via resetBodyForces at the top of the next _stepFixed.
+      // Marking dirty makes the first post-restore step run that same reset instead of
+      // integrating the stale force a second time alongside the new command.
+      _forcesDirty: true,
+      expected: { vx: 0, vz: 0, wy: 0, yaw: 0, x: 0, z: 0 },
+      _bodyPoseX: Math.fround(posX),
+      _bodyPoseZ: Math.fround(posZ),
+      kinematics: {
+        x: posX,
+        z: posZ,
+        vx: linvel.x,
+        vz: linvel.z,
+        yaw,
+        wy,
+      },
+      maxSpeed: Infinity,
+      effectiveMass: spec.mass,
+      effectiveInertiaY: spec.inertiaY,
+      bodyResponseMassScale: 1,
+      bodyResponseInertiaScale: 1,
+      snapshot: {
+        id: entity.id,
+        x: quantize(global.x, this.quantum),
+        z: quantize(global.z, this.quantum),
+        yaw: quantize(yaw, this.quantum),
+        vx: quantize(linvel.x, this.quantum),
+        vz: quantize(linvel.z, this.quantum),
+        wy: quantize(wy, this.quantum),
+        revision: spec.revision,
+      },
+    };
+    for (const owned of colliders) this._colliderOwners.set(owned.handle, { rec: record, collider: owned });
+    this.records.set(entity.id, record);
+    if (spec.dynamic) this.dynamicRecords.add(record);
+    // Same contract as rebindEntity: the restored body already holds the entity's saved
+    // scalars, so the next sync must not force a scalar pose write over solver state.
+    this._reboundEntityIds.add(entity.id);
+    // The restored WASM sleep verdict is authoritative; keep the entity mirror honest so
+    // sleep-skip and serialize paths read the same answer the solver holds.
+    entity.physicsSleeping = spec.dynamic === true && typeof body.isSleeping === 'function'
+      ? body.isSleeping() === true
+      : false;
+    return record;
   }
 
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
@@ -544,7 +795,21 @@ export class Sg02DynamicBodyOwner {
     // The LINEAR impulse is passed through in full: nothing is scaled, damped or clamped. Only the
     // torque arm is dropped, and only for the player.
     if (recordTakesOffCentreImpulse(rec) && input.point && typeof rec.body.applyImpulseAtPoint === 'function') {
-      rec.body.applyImpulseAtPoint(impulse, this._globalPointToFrameLocal(input.point, rec.body.translation(), _vecWriteScratch), true);
+      const localPoint = this._globalPointToFrameLocal(input.point, rec.body.translation(), _vecWriteScratch);
+      const maxTorque = Number.isFinite(input.maxTorque) ? Math.max(0, input.maxTorque) : null;
+      if (maxTorque != null) {
+        const trans = rec.body.translation();
+        const rx = localPoint.x - trans.x;
+        const rz = localPoint.z - trans.z;
+        const torqueY = rx * impulse.z - rz * impulse.x;
+        const clampedTorqueY = Math.max(-maxTorque, Math.min(maxTorque, torqueY));
+        rec.body.applyImpulse(impulse, true);
+        if (clampedTorqueY !== 0) {
+          applyYawTorqueImpulse(rec, { y: clampedTorqueY }, input);
+        }
+      } else {
+        rec.body.applyImpulseAtPoint(impulse, localPoint, true);
+      }
     } else {
       if (input.point) rec._playerOffCentreImpulsesCentred = (rec._playerOffCentreImpulsesCentred || 0) + 1;
       rec.body.applyImpulse(impulse, true);
@@ -794,6 +1059,13 @@ export class Sg02DynamicBodyOwner {
       }
     }
     for (const rec of this.dynamicRecords) {
+      // The post-step sleep verdict is authoritative for the rest of the step: world.step is
+      // the only sleeper (a body Rapier reports asleep here cannot wake until the next step
+      // except via an explicit wake path, and _wakeSleepingBody clears this flag). A sleeping
+      // island's kinematics did not move, so neither the WASM readback nor the give pass — which
+      // would only compare that frozen pose against a stale prediction — has anything to do.
+      rec._postStepSleepSkip = this._sleepingRecordSkipsCpu(rec, true);
+      if (rec._postStepSleepSkip) continue;
       this._readPostStepKinematics(rec);
       this._applyStructuralGive(rec);
     }
@@ -824,12 +1096,16 @@ export class Sg02DynamicBodyOwner {
     }
 
     for (const rec of this.dynamicRecords) {
-      if (this._sleepingRecordSkipsCpu(rec, true)) {
+      if (rec._postStepSleepSkip === true) {
         rec._skippedSleepKinematics = true;
         this._stampIslandSleep(rec, true);
         continue;
       }
       rec._skippedSleepKinematics = false;
+      // A body woken after the verdict was cached (a receipt endpoint roused by
+      // _wakeSleepingBody) skipped the post-step read; its scratch must be fresh before
+      // _enforcePlane/_clampSpeed consult it, not residue from an earlier step.
+      if (rec._postStepReadTick !== this.tick) this._readPostStepKinematics(rec);
       const kinematics = this._enforcePlane(rec);
       this._clampSpeed(rec, kinematics);
       if (this._sleepReeled.has(rec)) this._canonicalizeManualSpringBody(rec, kinematics);
@@ -850,6 +1126,8 @@ export class Sg02DynamicBodyOwner {
 
   _wakeSleepingBody(rec) {
     if (!rec || !rec.body) return;
+    // Explicit wakes between the post-step passes invalidate the cached skip verdict.
+    rec._postStepSleepSkip = false;
     if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
     if (typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(false);
     if (rec.entity) rec.entity.physicsSleeping = false;
@@ -1010,6 +1288,7 @@ export class Sg02DynamicBodyOwner {
   // per-record object absorbs the per-tick allocation; dirty flags mark components a give pass
   // rewrote so _enforcePlane re-reads the authoritative WASM value.
   _readPostStepKinematics(rec) {
+    rec._postStepReadTick = this.tick;
     const post = rec.postStep || (rec.postStep = {
       v: { x: 0, y: 0, z: 0 },
       w: { x: 0, y: 0, z: 0 },
@@ -1069,19 +1348,64 @@ export class Sg02DynamicBodyOwner {
 
   _playerContactClosingFraction(rec) {
     const receipts = this._stepContactReceipts;
-    if (!receipts || !receipts.length) return 0;
+    if (!receipts || !receipts.length) return null;
     const own = rec.entity && rec.entity.id;
     let maxClosing = 0;
+    let involved = false;
     for (let i = 0; i < receipts.length; i++) {
       const r = receipts[i];
       if (r.aId === own || r.bId === own) {
-        if (Number.isFinite(r.preSolveClosingSpeed) && r.preSolveClosingSpeed > maxClosing) {
-          maxClosing = r.preSolveClosingSpeed;
+        involved = true;
+        let closing = r.preSolveClosingSpeed;
+        if (!Number.isFinite(closing)) {
+          const other = this.records.get(r.aId === own ? r.bId : r.aId);
+          const e = rec.expected;
+          const oe = other && other.expected;
+          const at = rec.kinematics;
+          const from = other && other.kinematics;
+          // Older/custom receipts can omit the measurement; use the same pre-solve
+          // relative motion and body positions as the native contact recorder.
+          closing = other ? preSolveRadialClosingSpeed(
+            finite(e && e.vx), finite(e && e.vz),
+            finite(oe && oe.vx), finite(oe && oe.vz),
+            finite(from && from.x) - finite(at && at.x),
+            finite(from && from.z) - finite(at && at.z),
+          ) : 0;
         }
+        if (closing > maxClosing) maxClosing = closing;
       }
     }
+    if (!involved) return null;
     const incomingSpeed = Math.hypot(finite(rec.expected && rec.expected.vx), finite(rec.expected && rec.expected.vz));
     return incomingSpeed > 1e-3 ? maxClosing / incomingSpeed : 0;
+  }
+
+  // Authoritative "is the player's hull actually touching anything" answer, straight from the
+  // narrow phase. Contact-force receipts are a gameplay signal gated by a per-pair force
+  // threshold; a light grind or a scrape distributed over compound colliders does contact
+  // work without ever earning one. Pairs between the record's own colliders (a compound
+  // hull's primitives pack tightly enough to neighbour each other) are self-contact, not
+  // contact work. Only consulted on unexplained, receiptless delta-V, so the ordinary
+  // no-contact tick costs nothing.
+  _playerInLiveContact(rec) {
+    const colliders = rec && rec.colliders;
+    const world = this.world;
+    if (!Array.isArray(colliders) || colliders.length === 0
+        || !world || typeof world.contactPairsWith !== 'function') return false;
+    for (let i = 0; i < colliders.length; i++) {
+      let touching = false;
+      try {
+        world.contactPairsWith(colliders[i], (other) => {
+          if (touching) return;
+          const owned = this._colliderOwners.get(other.handle);
+          if (!owned || owned.rec !== rec) touching = true;
+        });
+      } catch (_) {
+        touching = false;
+      }
+      if (touching) return true;
+    }
+    return false;
   }
 
   // PQ-137.11: player contact structural give.
@@ -1118,7 +1442,17 @@ export class Sg02DynamicBodyOwner {
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
 
-    const isActive = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const closingFraction = this._playerContactClosingFraction(rec);
+    const unexplained = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    // A contact-force receipt only exists for collider pairs that crossed the gameplay
+    // threshold (SG02_CONTACT_FORCE_EVENT_THRESHOLD_N): a sustained light grind, or a
+    // scrape spread across the primitives of compound colliders, stays receiptless while
+    // still doing real contact work. Genuinely uncoupled delta-V — rope/joint constraint
+    // work, island noise — leaves no receipt AND no live contact pair; only that carries
+    // solver momentum the give pass must not rewrite.
+    const receiptlessContact = closingFraction == null && unexplained
+      && this._playerInLiveContact(rec);
+    const isActive = unexplained && (closingFraction != null || receiptlessContact);
     const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
     if (isActive) {
       const lastTick = rec._playerContactLastTick;
@@ -1130,9 +1464,12 @@ export class Sg02DynamicBodyOwner {
     }
 
     const cumulative = rec._playerContactCumulativeDeltaV || 0;
-    const isDirectSlam = rec._tumbling === true || this._playerContactClosingFraction(rec) > 0.55;
+    const preservesSolverResponse = rec._tumbling === true
+      || this._sleepHeld.has(rec)
+      || closingFraction > 0.55
+      || (closingFraction == null && !receiptlessContact);
     let contactDvBudget;
-    if (isDirectSlam) {
+    if (preservesSolverResponse) {
       contactDvBudget = (!Number.isFinite(rawDv)
           || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
         ? this._contactResponseDvBudget(rec)
@@ -1176,21 +1513,15 @@ export class Sg02DynamicBodyOwner {
       if (post) post.vDirty = true;
     }
 
-    // There is no episode budget to clock on the sim tick: the admitted linear response IS the
-    // solver's planar velocity — sliding, deflection, and mass transfer are real physics — and
-    // the recorded delta-V is the measured solver-vs-prediction gap rather than a shaped
-    // allowance. No setLinvel runs on this path at all: the solver's velocity stands. THE ROPE
-    // IS A ROPE still holds: a live line already couples the player to an anchor, and traffic
-    // brushing the hull while the player is swinging is ordinary solid contact — the velocity
-    // answer is never rewritten, tethered or not, so a live line never turns traffic into a
-    // phase-through surface. The contact record is physics-owner runtime: a save/load rebuild
-    // starts from the body's live pose and keeps solving, and a serialized
-    // entity.playerContactGive episode on an old save is ignored — harmless metadata that caps
-    // nothing. The episode bookkeeping is gone with the budget: no cumulative counter, no
-    // last-contact tick, and no tethered-traffic scan survive on the record — contact is just
-    // contact now.
+    // Only contact work draws on the cruise budget: receipted ordinary contact, and
+    // receiptless pushes while a live pair proves the hull is touching. Uncoupled delta-V
+    // carries earned solver momentum, not contact work. A live rope deliberately transfers
+    // momentum through its constraint, including solid hull contact; keep that solver
+    // response subject to the same numerical safety bound as a direct slam. The existing
+    // attachment cache is refreshed before every solve, so no contact-time scan or
+    // serialized entity metadata decides whether the player is physically coupled.
     const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
-    if (isActive && !isDirectSlam) {
+    if (isActive && !preservesSolverResponse) {
       rec._playerContactCumulativeDeltaV = cumulative + actualPlayerDeltaV;
     }
 
@@ -1488,6 +1819,26 @@ export class Sg02DynamicBodyOwner {
         colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts, entity)];
       }
       colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
+      // Colliders are all density-0: the body's whole mass is the additional properties on the
+      // creation desc. rapier-compat defers computing those into effective mass until the first
+      // world.step() — a body created mid-run reports mass()=0 and silently drops impulses
+      // applied to it (inv_mass not yet computed). A save/reload rebuild creates every body
+      // inside the same step that may already carry a queued impulse, so force the deferred
+      // recompute now; the live-body re-assert guards builds where the desc value is dropped.
+      if (spec.dynamic) {
+        if (typeof body.setAdditionalMassProperties === 'function') {
+          body.setAdditionalMassProperties(
+            spec.mass,
+            vector3(spec.centerOfMass),
+            { x: 1, y: spec.inertiaY, z: 1 },
+            { x: 0, y: 0, z: 0, w: 1 },
+            true,
+          );
+        }
+        if (typeof body.recomputeMassPropertiesFromColliders === 'function') {
+          body.recomputeMassPropertiesFromColliders();
+        }
+      }
     }
     if (mayRapierIslandSleep(entity, spec) && entity.physicsSleeping === true
       && typeof body.sleep === 'function') {
@@ -1508,6 +1859,8 @@ export class Sg02DynamicBodyOwner {
       // collider-local offsets and axes never change on a live record.
       coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
+      _postStepSleepSkip: false,
+      _postStepReadTick: -1,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
       appliedForce: zero3(),
@@ -2484,6 +2837,17 @@ export class Sg02DynamicBodyOwner {
   _createAttachmentJoints(attachment) {
     attachment.contactJoint = null;
     if (usesLegacyRopeSpring(attachment.spring)) {
+      // A snapshot-restored world already carries this attachment's joint between the same
+      // bodies; rebind it rather than stacking a second constraint on the pair.
+      if (this._adoptedJointPairs && attachment.owner.body && attachment.target.body) {
+        const key = jointPairKey(attachment.owner.body.handle, attachment.target.body.handle);
+        const restored = this._adoptedJointPairs.get(key);
+        if (restored) {
+          this._adoptedJointPairs.delete(key);
+          attachment.contactJoint = restored;
+          return;
+        }
+      }
       if (!this.RAPIER.JointData.rope) return;
       attachment.contactJoint = this.world.createImpulseJoint(
         this.RAPIER.JointData.rope(attachment.restLength, attachment.anchorA, attachment.anchorB),
@@ -2979,6 +3343,42 @@ function quatFromYaw(yaw) {
 
 function yawFromQuat(q) {
   return -Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z));
+}
+
+// Deterministic pair key for restored impulse joints — f64 handles print in whatever notation
+// JS picks; both sides feed the same handles so the key matches on a lookup.
+function jointPairKey(a, b) {
+  return a <= b ? a + '|' + b : b + '|' + a;
+}
+
+// Base64 is the envelope's binary channel. btoa/atob exist in browsers and modern Node;
+// Buffer covers any older host without dragging in a dependency.
+function encodeSnapshotBytes(bytes) {
+  if (typeof Buffer === 'function' && typeof Buffer.from === 'function') {
+    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+  }
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function decodeSnapshotBytes(text) {
+  if (typeof text !== 'string' || !text) return null;
+  try {
+    if (typeof Buffer === 'function' && typeof Buffer.from === 'function') {
+      const buf = Buffer.from(text, 'base64');
+      return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    }
+    const binary = atob(text);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+  } catch (err) {
+    return null;
+  }
 }
 
 function quantize(value, quantum) {

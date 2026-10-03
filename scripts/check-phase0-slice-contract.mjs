@@ -6,6 +6,7 @@ import { join, relative, resolve } from 'node:path';
 
 import { drawSeeded, hash32 } from '../src/core/rng.js';
 import { DEFAULT_TRACE_EVENTS } from '../src/core/eventTrace.js';
+import { ALLOWED_WALL_TIME_FILES, unclassifiedWallTimeSites } from './lib/wallTimeGuard.mjs';
 import {
   validateEvidenceCorpus,
   validateEvidenceDocument,
@@ -96,6 +97,23 @@ for (const site of randomSites) {
 }
 for (const rel of allowedRandomFiles.keys()) {
   assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify ${rel}`);
+}
+
+// FB-095 — wall-clock guard. performance.now()/Date.now() are the same determinism failure class
+// as a Math.random draw: a host-dependent value. Simulation-owner directories must not invoke
+// them directly. Diagnostics that genuinely need wall time read it through perfNow() in
+// src/core/perfRuntime.js — the single classified instrumentation seam. Every classified file
+// carries its written rationale in docs/Spec/PHASE0_AUTHORITY_AUDIT.md (Wall-Clock Catalogue).
+// The scan engine lives in scripts/lib/wallTimeGuard.mjs so the guard is unit-testable.
+const wallTimeSites = unclassifiedWallTimeSites(ROOT);
+for (const site of wallTimeSites) {
+  assert.fail(
+    `Unclassified wall-clock read in simulation owner: ${site.rel}:${site.line} — ` +
+    'use dt/state.simTime, or route diagnostics through perfNow() in src/core/perfRuntime.js',
+  );
+}
+for (const rel of ALLOWED_WALL_TIME_FILES.keys()) {
+  assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify wall-clock owner ${rel}`);
 }
 
 const a = { rngSeed: hash32(47, 'phase0') };
@@ -650,6 +668,10 @@ function assertRejectsMalformedEvidence() {
 }
 
 function activeMathRandomSites(relDir) {
+  return activePatternSites(relDir, MATH_RANDOM_INVOCATION);
+}
+
+function activePatternSites(relDir, pattern) {
   const root = resolve(ROOT, relDir);
   const out = [];
   walk(root, (abs) => {
@@ -660,7 +682,7 @@ function activeMathRandomSites(relDir) {
       const trimmed = lines[i].trim();
       if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) continue;
       const code = lines[i].replace(/\/\/.*$/, '');
-      if (MATH_RANDOM_INVOCATION.test(code)) out.push({ rel, line: i + 1 });
+      if (pattern.test(code)) out.push({ rel, line: i + 1 });
     }
   });
   return out;

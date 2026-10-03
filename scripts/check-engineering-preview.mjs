@@ -13,6 +13,7 @@ import {
   fittingsFromDefaultModules,
   getDerivedStats,
 } from '../src/systems/ships.js';
+import { forwardAccelFor } from '../src/systems/shipCapabilities.js';
 import {
   ENGINEERING_PREVIEW_SCHEMA,
   formatPreviewDelta,
@@ -81,7 +82,9 @@ const gauges = presentGaugePacket('ship_kestrel', starterFit, null);
 assert.equal(gauges.ok, true);
 assert.equal(gauges.shieldMax, live.shieldMax);
 assert.equal(gauges.cargoCap, live.cargoCap);
-assert.equal(gauges.maxSpeed, live.maxSpeed);
+// NXB-030: the 'Thrust' gauge quotes the live forward accel the kernel commands, not the
+// legacy maxSpeed spec field the key used to read.
+assert.equal(gauges.thrust, forwardAccelFor(live));
 assert.equal(gauges.mass, live.mass);
 assert.equal(gauges.continuousDrain, live.continuousDrain);
 ok('gauge packet matches getDerivedStats');
@@ -136,6 +139,23 @@ const afterLive = getDerivedStats('ship_mule', afterFit, null);
 assert.equal(cargoRow.before, beforeLive.cargoCap);
 assert.equal(cargoRow.after, afterLive.cargoCap);
 ok('loadout delta rows are live getDerivedStats before/after');
+
+// ---- NXI-118: worse-is-lower stats never tone 'better' when they rise ----
+const massRow = delta.rows.find((r) => r.higherIsBetter === false && r.delta > 0);
+assert.ok(massRow, 'fitting a cargo pod must raise a lower-is-better stat (mass or draw)');
+assert.equal(massRow.tone, 'worse',
+  `rising ${massRow.key} must read worse, got ${massRow.tone}`);
+assert.equal(cargoRow.tone, 'better', 'rising cargo cap is the neighboring legitimate gain');
+ok('lower-is-better stats tone worse when they rise');
+
+// ---- NXI-222: a signed delta never wraps its sign or unit ----
+const neg = formatPreviewDelta({ delta: -3.2, label: 'Max speed' });
+assert.equal(neg.replace(/\u00A0/g, ' '), '−3.2 max speed');
+assert.ok(!neg.includes(' '), 'signed delta must carry no breakable space');
+assert.ok(!neg.includes('-'), 'signed delta must carry no breakable hyphen-minus');
+const pos = formatPreviewDelta({ delta: 12, label: 'Shield' });
+assert.equal(pos.replace(/\u00A0/g, ' '), '+12 shield');
+ok('signed deltas glue amount and unit (NBSP, unbreakable)');
 
 // ---- module fit preview: install, replace, unavailable reasons ----
 const install = presentModuleFitPreview({

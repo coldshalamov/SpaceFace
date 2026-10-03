@@ -8,6 +8,11 @@
 // `src/data/flavor/040-band.js` already speaks the name. Later hulls draw a name from an authored
 // bank, seeded by the run seed and the berth index, so the same save always says the same word.
 //
+// FB-057 — the owner can overrule the banked word. `ownedShip.name` is a hand-typed name the ships
+// system writes (cleaned, capped). When present it outranks both canon and the bank, and every
+// reader funnels through `hullNameForOwnedShip`, so the ledger, the barks, and the shipworks crest
+// all say the renamed word.
+//
 // Pure data + pure functions. No state writes, no bus, no imports outside data/core.
 import { SHIP as NARRATIVE_SHIP } from './narrative.js';
 import { NEW_GAME } from './newGameDefaults.js';
@@ -26,6 +31,25 @@ export const HULL_NAME_BANK = Object.freeze([
 
 /** The registry code the Concord ping reads out for the starting hull. */
 export const STARTER_HULL_REGISTRATION = NARRATIVE_SHIP.registration;
+
+/** FB-057: the longest name the ships owner will write onto an ownedShip record. */
+export const SHIP_NAME_MAX = 32;
+
+/**
+ * Owner-given hull name, cleaned for the record: trimmed, whitespace collapsed, control
+ * characters dropped, capped at SHIP_NAME_MAX. Returns '' for no usable name — an empty
+ * string is never a name, so the banked name answers instead (nothing is fabricated).
+ */
+export function cleanShipName(value) {
+  if (typeof value !== 'string') return '';
+  const cleaned = value
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, SHIP_NAME_MAX)
+    .trim();
+  return cleaned;
+}
 
 function positiveIndex(value) {
   const number = Number(value);
@@ -49,8 +73,13 @@ export function isStarterHull(ownedShip, index) {
     && ownedShip.starterHull !== false;
 }
 
-/** The spoken name of one owned hull. Deterministic for a given seed + berth. */
+/**
+ * The spoken name of one owned hull. An owner-given name wins; then the starter's canon name; then
+ * a deterministic pick from the bank for the given seed + berth.
+ */
 export function hullNameForOwnedShip(ownedShip, index = 0, seed = 0) {
+  const given = ownedShip && typeof ownedShip.name === 'string' ? cleanShipName(ownedShip.name) : '';
+  if (given) return given;
   if (isStarterHull(ownedShip, index)) return NARRATIVE_SHIP.name;
   const defId = ownedShip && ownedShip.defId ? String(ownedShip.defId) : 'ship_unknown';
   const pick = hash32(seed >>> 0, 'hullName', defId, positiveIndex(index)) % HULL_NAME_BANK.length;

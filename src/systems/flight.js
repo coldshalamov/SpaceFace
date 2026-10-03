@@ -19,8 +19,12 @@ import {
   stepPlayerFlight,
 } from '../core/flightDynamics.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+// FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
+// (perfNow in perfRuntime) so this compatibility owner never touches wall time itself.
+import { perfNow } from '../core/perfRuntime.js';
 import { wrapAngle } from '../core/rng.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
 const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
@@ -91,7 +95,7 @@ export const flight = {
   },
 
   update(dt, state) {
-    const t0 = nowMs();
+    const t0 = perfNow();
     const player = state.entities.get(state.playerId);
     const dynamicAuthority = usesSg02DynamicAuthority(state);
     if (player && playerFlightSimActive(state, player)) {
@@ -119,7 +123,7 @@ export const flight = {
       if (intent) this.applyIntent(e, intent, dt, { physicsAuthority: dynamicAuthority });
       else this.applyDrag(e, dt, { physicsAuthority: dynamicAuthority });
     }
-    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
     if (player) this._publishDiagnostics(player);
   },
 
@@ -432,10 +436,6 @@ export const flight = {
   },
 };
 
-function nowMs() {
-  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-}
-
 function flightCraftCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.shipLike) return index.shipLike;
@@ -530,10 +530,38 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
   return { x: steerX / len, z: steerZ / len, avoiding };
 }
 
+// Obstacle candidacy is filtered in two stages: a version-latched candidate list drops the
+// projectile/fx/pickup churn once per index version (those types are spawn-fixed, so a member
+// can never become obstacle-relevant without a version bump), then the full predicate re-runs
+// per call over the survivors. Consumer reads the result synchronously, so a shared scratch
+// array is safe — mirrors flightV3's AUTOPILOT_OBSTACLE_SCRATCH pattern.
+const _autopilotObstacleCandidates = { version: null, source: null, list: [] };
+const _autopilotObstacleOut = [];
+
 function autopilotObstacles(state, player, target) {
-  const out = [];
+  const out = _autopilotObstacleOut;
+  out.length = 0;
+  // The candidate set excludes projectiles/pickups (fx too, but they carry no counter lane) —
+  // so the cache key is `version - projectile - pickup` bumps: a volley or a cargo drop can no
+  // longer rebuild the whole candidate list mid-flight. The remainder can only under-shoot a
+  // real change on a lane-less type, which still bumps it — never a false match.
+  let version = entityIndexVersion(state);
+  if (version != null) {
+    const laneVersions = state.entityIndex && state.entityIndex.laneVersions;
+    if (laneVersions) version -= (laneVersions.projectiles || 0) + (laneVersions.pickups || 0);
+  }
   const list = state && state.entityList ? state.entityList : [];
-  for (const e of list) {
+  const cache = _autopilotObstacleCandidates;
+  if (version == null || cache.version !== version || cache.source !== list) {
+    cache.version = version;
+    cache.source = list;
+    cache.list.length = 0;
+    for (const e of list) {
+      if (!e || !e.pos || e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+      cache.list.push(e);
+    }
+  }
+  for (const e of cache.list) {
     if (!e || e === player || e === target.entity || e.alive === false || !e.pos) continue;
     if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
     const radius = Number.isFinite(e.radius) ? e.radius : 0;

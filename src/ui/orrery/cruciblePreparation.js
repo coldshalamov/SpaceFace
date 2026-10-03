@@ -86,7 +86,10 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   extras.appendChild(extraRows);
   const rows = [...settings.children];
   for (const row of rows) {
-    const first = row.matches('.sf-crd-row--mode,.sf-crd-row--stake,.sf-crd-row--arena');
+    // The Zone row rides the Encounter rail under Arena: the checkpoint pick is the ladder's
+    // entry point — which part of the authored climb this run starts from — not a side door
+    // like the seed field (SWARM-04).
+    const first = row.matches('.sf-crd-row--mode,.sf-crd-row--stake,.sf-crd-row--arena,.sf-crd-row--zone');
     const second = row.matches('.sf-crd-row--hull,.sf-crd-row--modifiers');
     (first ? panels[0].list : second ? panels[1].list : extraRows).appendChild(row);
   }

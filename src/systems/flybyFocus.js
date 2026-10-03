@@ -14,7 +14,7 @@
 import { createTimeEffects } from '../core/timeEffects.js';
 import { handoffFlybyFocusToFollow } from '../render/cameraDirector.js';
 import { isHostileToPlayer } from './scanner.js';
-import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const FOCUS_DURATION_S = 3.0;
 const FOCUS_SCALE = 0.5;
@@ -57,6 +57,9 @@ export function getFlybyFocusEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FLYBY_FOCUS_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the flyby census reads shipLike only. */
+const FLYBY_FOCUS_QUIET_LANES = ['shipLike'];
 
 function publishFlybyFocusQuiet(state, latched) {
   if (!state) return;
@@ -301,7 +304,7 @@ export const flybyFocus = {
     this._pickWakeSeq = 0;
     ensureFocus(this.state);
     if (this.bus && typeof this.bus.on === 'function') {
-      this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
+      this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p), { presentation: true }));
     }
     const resetOn = (event, reason) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
@@ -443,7 +446,8 @@ export const flybyFocus = {
     // Latch when pick stays empty; wake on membership, hostile spawn/tag, or
     // 0.5 s rescan. Soft-GPU fps not claimed.
     if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(st);
+      const laneVersion = entityIndexLaneVersion(st, FLYBY_FOCUS_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(st) : laneVersion;
       const tick = st.tick | 0;
       const wakeSeq = this._pickWakeSeq | 0;
       const quiet = this._pickQuiet;
@@ -465,7 +469,8 @@ export const flybyFocus = {
     const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
     if (!pick) {
       if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
-        const membership = entityIndexVersion(st);
+        const laneVersion = entityIndexLaneVersion(st, FLYBY_FOCUS_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(st) : laneVersion;
         if (membership != null) {
           this._pickQuiet = {
             membership,

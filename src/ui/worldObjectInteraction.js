@@ -1,6 +1,7 @@
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
@@ -57,6 +58,9 @@ export function applyWorldObjectSelection(state, entity, source) {
     targetId: entity.id,
     source: source || 'pointer',
     stableKey: entity.stableKey != null ? entity.stableKey : entity.id,
+    // The pick binds the occupant, not the number: when the id recycles, a recorded token that
+    // no longer matches the resolved subject tells the sweep the picked body is gone.
+    occupantGeneration: occupantGenerationOf(entity),
   };
   if (state.input) state.input.targetAssistDisabled = false;
   return true;
@@ -107,6 +111,13 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   let hoverRootPublished = null;
   let insideCanvas = false;
   let lastPoint = null;
+  // A motionless cursor does not need a full scene re-raycast every frame — the pick walks every
+  // presented leaf (~0.6 ms on the iGPU floor, pure CPU). Repick immediately when the pointer
+  // moved; while it sits still the world under it is re-sampled at ~8 Hz, an imperceptible lag
+  // for hover feedback. Click/gesture picks stay synchronous and are untouched.
+  let repickIdleS = Infinity;
+  let lastRepickX = null;
+  let lastRepickY = null;
   let previewTextKey = '';
 
   let tag = null;
@@ -263,6 +274,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   function markViewportDirty() {
     if (destroyed) return;
     viewportDirty = true;
+    // A layout change can move the body under a motionless cursor — bypass the idle
+    // repick cadence so the next tick re-measures and raycasts fresh.
+    repickIdleS = Infinity;
   }
 
   function pickAt(pt) {
@@ -370,9 +384,18 @@ export function createWorldObjectInteraction(ctx, screenManager) {
 
   function sweepDeadSubjects() {
     const sel = state.ui && state.ui.objectSelection;
-    if (sel && sel.targetId != null && !presentableSubject(state, sel.targetId)) {
-      state.ui.objectSelection = null;
-      if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+    if (sel && sel.targetId != null) {
+      const subject = presentableSubject(state, sel.targetId);
+      // Recycled id: the pick recorded one occupant token and the resolved body carries a
+      // different one — the picked body is dead even though the id still presents. Only a
+      // present-vs-present mismatch proves that; a ledger row without a token stays honest.
+      const generation = subject ? occupantGenerationOf(subject) : null;
+      const recycled = !!(subject && sel.occupantGeneration != null && generation != null
+        && generation !== sel.occupantGeneration);
+      if (!subject || recycled) {
+        state.ui.objectSelection = null;
+        if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+      }
     }
     if (hoverId != null && !presentableSubject(state, hoverId)) setHover(null);
     if (gestureTargetId != null && !presentableSubject(state, gestureTargetId)) {
@@ -450,7 +473,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     tag.el.hidden = false;
   }
 
-  function tick() {
+  function tick(dt) {
     if (destroyed) return;
     hoverPresentation.update();
     if (!acceptingInput()) {
@@ -476,10 +499,24 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const inp = state.input;
       const ps = inp && inp.pointerScreen;
       if (!pt || !ps || !ps.active) {
+        repickIdleS = Infinity;
+        lastRepickX = null;
+        lastRepickY = null;
         setHover(null);
       } else {
-        const hit = pickAt(pt);
-        setHover(hit && hit.entity ? hit.entity : null);
+        repickIdleS += Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
+        const moved = lastRepickX == null
+          || Math.abs(pt.x - lastRepickX) > 0.5
+          || Math.abs(pt.y - lastRepickY) > 0.5;
+        // Without a ResizeObserver the cached bounds can lie at any time; only the
+        // observed path may sit out a repick.
+        if (moved || !viewportObserved || repickIdleS >= 0.125) {
+          repickIdleS = 0;
+          lastRepickX = pt.x;
+          lastRepickY = pt.y;
+          const hit = pickAt(pt);
+          setHover(hit && hit.entity ? hit.entity : null);
+        }
       }
     }
     publishHover();

@@ -4,6 +4,10 @@
 // cargo interactables). Asteroids and dressing FX never enter those loops. Type buckets on
 // entityIndex are the source when present; otherwise the master list is filtered.
 
+// Lane counters can never reach this in a session (one bump per indexed append/remove), so
+// epoch*STRIDE + sum stays a collision-free ordering key well inside float precision.
+const LANE_EPOCH_STRIDE = 1e9;
+
 export function isDressingEntity(entity) {
   return !!(entity && entity.type === 'fx');
 }
@@ -37,7 +41,11 @@ function visitArray(list, fn) {
 }
 
 function hasEntityIndex(state) {
-  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1);
+  // Marker+ready, same gate the strict accessors use: repairEntityIndex can reset ready
+  // mid-run, and serving the emptied buckets then would diverge from the entityList domain
+  // the unready readers fall back to.
+  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+    && state.entityIndex.ready === true);
 }
 
 const EMPTY_SHIP_LIKE = [];
@@ -90,12 +98,40 @@ export function indexedTypeScan(state, bucket) {
   return (state && state.entityList) || EMPTY_TYPE_SCAN;
 }
 
+/**
+ * Post-spawn `collides` flips never touch the index — they happen on already-live entities, so
+ * no lane or version bump fires. Caches whose membership predicate includes `collides` need
+ * this epoch folded into their key; every flip site bumps it. In-memory only: it invalidates
+ * caches, it never feeds sim output, so determinism is untouched.
+ */
+let _collidesFlipEpoch = 0;
+export function bumpCollidesFlipEpoch() { _collidesFlipEpoch++; }
+export function collidesFlipEpoch() { return _collidesFlipEpoch; }
+
 /** Incremented on every indexed spawn/remove; a cheap "membership changed" watch for caches. */
 export function entityIndexVersion(state) {
   const index = state && state.entityIndex;
-  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+  return index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/**
+ * Membership version summed over a fixed lane set — survives churn on lanes outside it
+ * (projectile volleys, pickup drops) where the global entityIndexVersion dies. -1 when the
+ * index is unusable, same contract as entityIndexVersion's null.
+ */
+export function entityIndexLaneVersion(state, lanes) {
+  const index = state && state.entityIndex;
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return -1;
+  const laneVersions = index.laneVersions;
+  if (!laneVersions) return -1;
+  let sum = 0;
+  for (let i = 0; i < lanes.length; i++) sum += laneVersions[lanes[i]] || 0;
+  // The lane counters reset on clear and can re-accrue to the identical sum while membership
+  // differs — folding the clear epoch keeps a sum-latched cache from false-matching "unchanged".
+  return sum + (Number.isFinite(index.laneEpoch) ? index.laneEpoch : 0) * LANE_EPOCH_STRIDE;
 }
 
 /**
@@ -104,7 +140,58 @@ export function entityIndexVersion(state) {
  * unready, a carrier stamped with its record id after spawn, or a duplicate keeper that
  * outlived the first holder — falls back to the same entity walk callers ran before, so no
  * record-holder is ever dropped (PERF-93). A walk hit reseeds the map; the next lookup is O(1).
+ *
+ * Post-spawn `data.worldRecordId` stamps (traffic's durable freight, mission target identity,
+ * activityRuntime's captured dematerializations) register through
+ * `registerEntityWorldRecordId` — each bumps the `worldRecordIds` lane, so a miss-memo keyed
+ * on that lane is sound for per-tick callers polling possibly-absent ids: the memo only
+ * serves a negative while the carrier set is bit-identical to what the fallback walk would
+ * see, and any registration/append/remove invalidates it. An unregistered raw stamp keeps
+ * the historical trap — a memo cannot see it — so every new stamp site must register.
  */
+export function registerEntityWorldRecordId(index, entity) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || !(index.byWorldRecordId instanceof Map)) return;
+  if (!entity || !entity.data) return;
+  const id = entity.data.worldRecordId;
+  // _-prefixed stamp — shouldSkipEntitySaveKey drops it from serialized entities, and it
+  // never enters `data`. It records which id this entity is COUNTED under, making repeat
+  // stamps no-ops and an id swap decrement the stale lane exactly once.
+  const counted = entity._wrIndexStamp;
+  if (counted === id) return;
+  if (counted != null) {
+    if (index.byWorldRecordIdCount instanceof Map) {
+      const n = (index.byWorldRecordIdCount.get(counted) || 0) - 1;
+      if (n > 0) index.byWorldRecordIdCount.set(counted, n);
+      else index.byWorldRecordIdCount.delete(counted);
+    }
+    if (index.byWorldRecordId.get(counted) === entity) {
+      index.byWorldRecordId.delete(counted);
+      // A duplicate carrier survives — remap the slot like removeEntityIndex does so a
+      // wholesale-map reader never loses the id while the walk would still find a holder.
+      const source = index._sourceList;
+      if (Array.isArray(source)) {
+        for (const survivor of source) {
+          if (survivor && survivor !== entity && survivor.alive !== false
+            && survivor.data && survivor.data.worldRecordId === counted) {
+            index.byWorldRecordId.set(counted, survivor);
+            break;
+          }
+        }
+      }
+    }
+    if (index.laneVersions) index.laneVersions.worldRecordIds = (index.laneVersions.worldRecordIds || 0) + 1;
+  }
+  entity._wrIndexStamp = id != null ? id : undefined;
+  if (id != null) {
+    // First holder wins — the same semantics appendEntityIndex uses, so map answers match the
+    // entity walk every caller ran before the index existed.
+    if (!index.byWorldRecordId.has(id)) index.byWorldRecordId.set(id, entity);
+    if (index.byWorldRecordIdCount instanceof Map) {
+      index.byWorldRecordIdCount.set(id, (index.byWorldRecordIdCount.get(id) || 0) + 1);
+    }
+    if (index.laneVersions) index.laneVersions.worldRecordIds = (index.laneVersions.worldRecordIds || 0) + 1;
+  }
+}
 export function indexedWorldRecordEntity(state, worldRecordId) {
   if (!state || worldRecordId == null || worldRecordId === '') return null;
   const index = state.entityIndex;
@@ -121,7 +208,10 @@ export function indexedWorldRecordEntity(state, worldRecordId) {
     for (const entity of entities.values()) {
       if (entity && entity.alive !== false && entity.data
         && entity.data.worldRecordId === worldRecordId) {
-        if (map) map.set(worldRecordId, entity);
+        // A bare map.set would diverge the bookkeeping — the reseed registers instead so the
+        // count, marker, and lane all advance as if append had stamped it (an unregistered
+        // carrier's marker is unset, so this is a real registration, not a no-op).
+        if (map) registerEntityWorldRecordId(index, entity);
         return entity;
       }
     }
@@ -132,7 +222,7 @@ export function indexedWorldRecordEntity(state, worldRecordId) {
     const entity = list[i];
     if (entity && entity.alive !== false && entity.data
       && entity.data.worldRecordId === worldRecordId) {
-      if (map) map.set(worldRecordId, entity);
+      if (map) registerEntityWorldRecordId(index, entity);
       return entity;
     }
   }

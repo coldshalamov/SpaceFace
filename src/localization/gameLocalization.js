@@ -8,7 +8,7 @@ import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBr
 import { STORE_COPY } from './storeCopy.js';
 import { barkMessagesFor } from './barks.js';
 import { IS_DEV } from '../core/devMode.js';
-import { SHIPPED_LOCALES, translateMessage } from './pipeline.js';
+import { localeReadiness, SHIPPED_LOCALES, translateMessage } from './pipeline.js';
 
 const englishMessages = Object.freeze({
   ...englishExtracted,
@@ -24,13 +24,23 @@ for (const [key, entry] of Object.entries(englishMessages).sort(([a], [b]) => a.
   if (typeof message === 'string' && !keyByEnglishMessage.has(message)) keyByEnglishMessage.set(message, key);
 }
 
-/** The five languages a player can pick. English is first: it is the default unless chosen. */
+/** The five languages a player can pick. English is first: it is the default unless chosen.
+ * FB-107: a machine-filled locale is labelled honestly — the "(machine preview)" suffix is
+ * measured (pipeline.js localeReadiness), so a reviewed batch that passes the gate drops the
+ * label with no code change. English, the source locale, never carries it. */
+const MACHINE_PREVIEW_LABEL_SUFFIX = ' (machine preview)';
+
+function honestLocaleLabel(localeId, label) {
+  if (localeId === DEFAULT_LOCALE) return label;
+  return localeReadiness(localeId).preview ? `${label}${MACHINE_PREVIEW_LABEL_SUFFIX}` : label;
+}
+
 const SHIPPED_LANGUAGE_ROWS = Object.freeze([
   Object.freeze({ id: DEFAULT_LOCALE, label: 'English' }),
-  Object.freeze({ id: 'es-ES', label: 'Español' }),
-  Object.freeze({ id: 'fr-FR', label: 'Français' }),
-  Object.freeze({ id: 'de-DE', label: 'Deutsch' }),
-  Object.freeze({ id: 'pt-BR', label: 'Português (Brasil)' }),
+  Object.freeze({ id: 'es-ES', label: honestLocaleLabel('es-ES', 'Español') }),
+  Object.freeze({ id: 'fr-FR', label: honestLocaleLabel('fr-FR', 'Français') }),
+  Object.freeze({ id: 'de-DE', label: honestLocaleLabel('de-DE', 'Deutsch') }),
+  Object.freeze({ id: 'pt-BR', label: honestLocaleLabel('pt-BR', 'Português (Brasil)') }),
 ]);
 
 const PSEUDO_LANGUAGE_OPTION = Object.freeze({
@@ -48,6 +58,9 @@ export function languageOptionsFor(isDev) {
 export const LANGUAGE_OPTIONS = languageOptionsFor(IS_DEV);
 
 export { SHIPPED_LOCALES };
+
+/** Measured reviewed coverage per locale (FB-107) — the data the labels are read from. */
+export { localeReadiness };
 
 export const CATALOGS = Object.freeze({
   [DEFAULT_LOCALE]: englishMessages,

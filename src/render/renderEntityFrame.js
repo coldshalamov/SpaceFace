@@ -4,6 +4,8 @@
 // render pools consume the compact category arrays instead of rescanning state.entityList. Records and
 // arrays are retained across frames; no simulation state or Three.js objects are owned here.
 
+import { occluderDuckCandidate } from './cameraOccluders.js';
+
 export function createRenderEntityFrame() {
   return {
     frameId: 0,
@@ -11,10 +13,12 @@ export function createRenderEntityFrame() {
     entitiesVisited: 0,
     byId: new Map(),
     records: [],
+    seenCount: 0,
     contactShadows: [],
     shipAux: [],
     authored: [],
     asteroids: [],
+    occluderCandidates: [],
   };
 }
 
@@ -24,11 +28,13 @@ export function beginRenderEntityFrame(frame) {
   if (frame.frameId === 0) frame.frameId = 1;
   frame.traversals = 1;
   frame.entitiesVisited = 0;
+  frame.seenCount = 0;
   frame.records.length = 0;
   frame.contactShadows.length = 0;
   frame.shipAux.length = 0;
   frame.authored.length = 0;
   frame.asteroids.length = 0;
+  frame.occluderCandidates.length = 0;
   return frame;
 }
 
@@ -59,6 +65,7 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
 
   record.entity = entity;
   record.mesh = mesh;
+  if (record.seenFrame !== frame.frameId) frame.seenCount++;
   record.seenFrame = frame.frameId;
   record.viewCulled = nextViewCulled;
   record.visible = visible;
@@ -84,6 +91,7 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
     || typeof userData.requestAuthoredUpgrade === 'function'
   );
   record.asteroidInstance = entity.type === 'asteroid' && !!userData.asteroidInstanceBody;
+  record.occluderCandidate = visible && !nextViewCulled && occluderDuckCandidate(entity);
 
   frame.entitiesVisited++;
   frame.records.push(record);
@@ -91,6 +99,7 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
   if (record.shipAuxiliary) frame.shipAux.push(record);
   if (record.authored) frame.authored.push(record);
   if (record.asteroidInstance) frame.asteroids.push(record);
+  if (record.occluderCandidate) frame.occluderCandidates.push(record);
   return record;
 }
 
@@ -140,8 +149,12 @@ export function projectRenderEntityFrame(frame, snapshot, archetypeOf, visibleFl
 
 export function endRenderEntityFrame(frame) {
   if (!frame) return null;
-  for (const [id, record] of frame.byId) {
-    if (record.seenFrame !== frame.frameId) frame.byId.delete(id);
+  // Seen ids ⊆ byId, so equality means nothing went stale this frame — the O(map)
+  // eviction walk only runs when the map actually outgrew the frame's distinct set.
+  if (frame.byId.size > frame.seenCount) {
+    for (const [id, record] of frame.byId) {
+      if (record.seenFrame !== frame.frameId) frame.byId.delete(id);
+    }
   }
   return frame;
 }
@@ -164,6 +177,7 @@ function createRecord(id) {
     shipAuxiliary: false,
     authored: false,
     asteroidInstance: false,
+    occluderCandidate: false,
     x: 0, y: 0, z: 0,
     rx: 0, ry: 0, rz: 0,
     sx: 1, sy: 1, sz: 1,

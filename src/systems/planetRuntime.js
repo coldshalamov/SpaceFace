@@ -137,6 +137,7 @@ export const planetRuntime = {
     if (state.mode !== 'flight' || dt <= 0) return;
     this._tickShips(dt, state, rt, site);
     this._tickHarvest(dt, state, rt, site);
+    this._tickWorkerHarvest(dt, state, rt, site);
     this._expireAftermath(state, rt);
   },
 
@@ -199,6 +200,12 @@ export const planetRuntime = {
   },
 
   _spawnSlingWitness(state, spawnEntity, center) {
+    // Traffic adopts the original witness slot. It owns the worker's durable identity,
+    // movement and finite manifest; curated hosts without traffic retain the coast witness.
+    const traffic = this.registry?.get?.('traffic');
+    if (typeof traffic?.ensureAnvilWorker === 'function') {
+      return traffic.ensureAnvilWorker(state, spawnEntity, center);
+    }
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const existing = list[i];
@@ -252,7 +259,9 @@ export const planetRuntime = {
       const entity = state.entities && state.entities.get ? state.entities.get(rt.entityId) : null;
       if (entity && entity.alive !== false) entity.alive = false;
       const witness = state.entities && state.entities.get ? state.entities.get(rt.witnessId) : null;
-      if (witness && witness.alive !== false) witness.alive = false;
+      if (witness?.data) witness.data.stormshiftCollectorOn = false;
+      if (witness && witness.alive !== false
+        && witness.data?.itinerary?.kind !== 'anvil_work') witness.alive = false;
       this.bus && this.bus.emit && this.bus.emit('planet:unregistered', { siteId: rt.siteId, why });
     }
     state.planet = defaultRuntime();
@@ -262,6 +271,7 @@ export const planetRuntime = {
 
   _tickShips(dt, state, rt, site) {
     const now = nowOf(state);
+    for (const rec of Object.values(rt.ships)) rec.collectorOn = false;
     const tel = rt.telemetry;
     tel.tracked = 0; tel.inBands = 0;
 
@@ -282,7 +292,7 @@ export const planetRuntime = {
     let tracked = 0;
     for (let i = 0; i < candidates.length && tracked < MAX_TRACKED_SHIPS - 1; i++) {
       const e = candidates[i];
-      if (!e || e.alive === false || e === player) continue;
+      if (!e || e.alive === false || e === player || state.entities.get(e.id) !== e) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;
       if (!isDynamicPhysicsBodyEntity(e)) continue;
       const rec = rt.ships[e.id] || (rt.ships[e.id] = newShipRecord());
@@ -528,6 +538,46 @@ export const planetRuntime = {
     this._settle(rt, rec, cargoSys, 'pendingRich', site.harvest.commodityRich);
   },
 
+  // One admitted worker uses the SAME physical band and density law as the player.
+  // Fractions are transient atmospheric exposure, not a second cargo ledger. Traffic alone
+  // accepts whole units into the current finite manifest. A ship outside the thermal budget
+  // cannot collect for free, and a stopped/interrupted worker cannot bank a timed yield.
+  _tickWorkerHarvest(dt, state, rt, site) {
+    if (!(Number.isFinite(dt) && dt > 0)) return;
+    const worker = state.entities.get(rt.witnessId);
+    if (worker?.data) worker.data.stormshiftCollectorOn = false;
+    if (!worker || worker.alive === false || !(worker.hull > 0)
+      || worker.data?.anvilSlingWitness !== true
+      || worker.data?.itinerary?.kind !== 'anvil_work'
+      || worker.data.itinerary.phase !== 'collect') return;
+    const rec = rt.ships[worker.id];
+    if (!rec || !this._scratchIds.includes(worker.id)) return;
+    const traffic = this.registry?.get?.('traffic');
+    if (typeof traffic?.acceptAnvilHarvest !== 'function') return;
+    const region = rec.region;
+    if (region !== 'skim' && region !== 'danger') return;
+    const speed = Math.hypot(finite(worker.vel?.x), finite(worker.vel?.z));
+    if (speed < site.harvest.minSpeed) return;
+    rec.collectorOn = true;
+    worker.data.stormshiftCollectorOn = true;
+    const rich = region === 'danger';
+    const key = rich ? 'pendingRich' : 'pendingShallow';
+    const commodityId = rich ? site.harvest.commodityRich : site.harvest.commodityShallow;
+    rec[key] = finite(rec[key]) + speed * dt
+      * (rich ? site.harvest.densityDanger : site.harvest.densitySkim);
+    const whole = Math.floor(rec[key]);
+    if (whole < 1) return;
+    // Discard refused whole units, as the player collector does. No hidden reserve can
+    // appear after unloading or while the intake is closed.
+    rec[key] -= whole;
+    const accepted = traffic.acceptAnvilHarvest(worker, { siteId: site.id, commodityId, qty: whole });
+    const qty = Number.isFinite(accepted) ? Math.max(0, Math.min(whole, Math.floor(accepted))) : 0;
+    if (!qty) return;
+    rec.harvestedUnits = finite(rec.harvestedUnits) + qty;
+    this.bus.emit('planet:npcHarvest', { entityId: worker.id, siteId: site.id, commodityId, qty });
+    this._emitHarvestMotes(rt, rec, commodityId, qty, worker);
+  },
+
   _settle(rt, rec, cargoSys, key, commodityId) {
     const whole = Math.floor(rec[key]);
     if (whole < 1) return;
@@ -548,9 +598,9 @@ export const planetRuntime = {
   // Harvest motes (bible §7.1: yield = path × density MADE VISIBLE — bright flecks drifting from
   // the band into the collector). One directional cue per settled batch through the shipped
   // presentation lane (pooled, bounded, flash-reduced automatically) — mote rate IS the yield rate.
-  _emitHarvestMotes(rt, rec, commodityId, qty) {
+  _emitHarvestMotes(rt, rec, commodityId, qty, actor = null) {
     const state = this.state;
-    const player = state.entities.get(state.playerId);
+    const player = actor || state.entities.get(state.playerId);
     if (!player) return;
     const vx = finite(player.vel && player.vel.x), vz = finite(player.vel && player.vel.z);
     const sp = Math.hypot(vx, vz) || 1;

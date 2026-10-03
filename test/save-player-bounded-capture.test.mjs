@@ -3,7 +3,11 @@ import test from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import { save } from '../src/save/saveSystem.js';
-import { encodeSavePayload, handleSaveWorkerRequest } from '../src/save/saveWorker.js';
+import {
+  decodeSaveEnvelopeText,
+  encodeSavePayload,
+  handleSaveWorkerRequest,
+} from '../src/save/saveWorker.js';
 import { retryToClean } from './helpers/retryToClean.mjs';
 
 const HARD_SLICE_MS = 12;
@@ -333,8 +337,14 @@ test('production Blob worker source reconstructs chunked player arrays in the v1
       ] },
     });
     send({ id: 81, type: 'encode_finish' });
+    // FB-093 — the bundled encoder bounds + compresses asynchronously now; await its postMessage.
+    for (let turn = 0; turn < 500 && response === null; turn += 1) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
     assert.equal(response.type, 'encoded');
-    const player = JSON.parse(response.json).data.player;
+    const decoded = await decodeSaveEnvelopeText(response.json);
+    assert.equal(decoded.ok, true);
+    const player = JSON.parse(decoded.text).data.player;
     assert.deepEqual(player, {
       credits: 44,
       ownedShips: [{ defId: 'ship_kestrel' }, { defId: 'ship_bastion' }],

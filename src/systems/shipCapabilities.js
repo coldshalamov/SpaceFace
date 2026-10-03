@@ -91,6 +91,74 @@ export function driveForceFor(derived) {
   return Math.max(0, accel * mass);
 }
 
+// ---------------------------------------------------------------------------------------------
+// LIVE PROFILE READS — the numbers the flight kernel actually obeys.
+//
+// The derived block still publishes legacy spec fields (`turnRate`, `maxSpeed`, `thrust`) for
+// compatibility consumers, but they are not what the tick runs: `computeYawControl` commands
+// `propulsion.maxYawRate`, the governor caps fight speed at `propulsion.combatSpeed`, and full
+// throttle commands `propulsion.mainAccel` — each already carrying the drive, the thruster bay
+// and the mass law. Comparison surfaces must quote THESE, so a row can never advertise a turn,
+// speed or thrust advantage the kernel would not produce (NXB-030). The flight model stays the
+// fallback for a hull with no propulsion profile, exactly as handlingProfile.js reads it.
+// ---------------------------------------------------------------------------------------------
+
+/** The yaw-rate ceiling the kernel commands at full helm, in rad/s (governed — cargo does not move it). */
+export function governedYawRateFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.maxYawRate, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.maxYawRate, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.turnRate, 0);
+}
+
+/** The turn response the thruster bay delivers at this mass, in rad/s² (the part loading the hold does move). */
+export function yawResponseFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.yawAccel, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.angularAccel, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.turnRate, 0);
+}
+
+/** The governed fight-speed cap in WU/s — what `combatSpeed` means when the governor is on. */
+export function governedFightSpeedFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.combatSpeed, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  const alt = finite(profile && profile.maxSpeed, NaN);
+  if (Number.isFinite(alt) && alt > 0) return alt;
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.maxSpeed, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.maxSpeed, 0);
+}
+
+/** The travel-burn ceiling in WU/s — the fastest this fit can actually run between fights. */
+export function travelSpeedFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.travelCeiling, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  return governedFightSpeedFor(derived);
+}
+
+/** Forward acceleration at this fit's printed mass, in WU/s² — what full throttle commands. */
+export function forwardAccelFor(derived) {
+  const profile = derived && derived.propulsion;
+  for (const key of ['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']) {
+    const live = finite(profile && profile[key], NaN);
+    if (Number.isFinite(live) && live > 0) return live;
+  }
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.mainAccel, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.thrust, 0);
+}
+
 /** The heaviest partner mass this fit can put under way, in tonnes. Zero means "nothing". */
 export function towClassMassFor(derived) {
   const force = driveForceFor(derived);
@@ -374,7 +442,8 @@ function cargoBasisName(derived, basis) {
 
 /**
  * Name the cargo the derived block was computed for, and read the turn the
- * propulsion profile already publishes. Tow, slam and line are copied from
+ * propulsion profile already publishes — the SAME governed yaw cap and fight
+ * speed the radius is divided out of. Tow, slam and line are copied from
  * the verbs for this same block. Mass is not a cargo cap.
  *
  * @param {object} args
@@ -390,8 +459,8 @@ export function estimateAtCargoBasis({ derived, basis, fittings = [] } = {}) {
   const named = cargoBasisName(derived, basis);
   const verbs = shipCapabilityVerbs({ derived, fittings });
   const propulsion = derived.propulsion || {};
-  const fightSpeed = finite(propulsion.combatSpeed, finite(propulsion.maxSpeed, NaN));
-  const yawCap = finite(propulsion.maxYawRate, NaN);
+  const fightSpeed = governedFightSpeedFor(derived);
+  const yawCap = governedYawRateFor(derived);
   const turnRadiusWu = fightSpeed > 0 && yawCap > 0 ? fightSpeed / yawCap : null;
   const meters = turnRadiusWu == null ? null : Math.round(turnRadiusWu);
   const sentence = named === 'specified'
@@ -404,7 +473,9 @@ export function estimateAtCargoBasis({ derived, basis, fittings = [] } = {}) {
     cargoMass,
     fullHold: named === 'specified',
     turnRadiusWu,
-    turnRate: finite(derived.turnRate, 0),
+    // The rate the sentence's radius is divided out of — the kernel's yaw ceiling, not the
+    // legacy `turnRate` spec field (which keeps scaling with mass the live law does not apply).
+    turnRate: yawCap > 0 ? yawCap : 0,
     tow: verbs.tow,
     slam: verbs.slam,
     line: verbs.line,
@@ -412,9 +483,15 @@ export function estimateAtCargoBasis({ derived, basis, fittings = [] } = {}) {
   };
 }
 
-/** The Shipworks turn row: the published rate, named by the hold it was computed for. */
+/**
+ * The Shipworks turn row: the governed yaw ceiling the kernel commands at full helm
+ * (`propulsion.maxYawRate`), named by the hold it was computed for. Loading the hold moves the
+ * turn RESPONSE (yawAccel) and the operational mass, not this cap — NXB-030: the row used to
+ * print the legacy `turnRate` field, which kept mass-scaling after the live law stopped, so the
+ * Kestrel advertised a 60% turn advantage over the Pelican that the flight kernel never produced.
+ */
 export function turnRecordText(derived) {
-  const rate = Math.round(finite(derived && derived.turnRate, 0) * 100) / 100;
+  const rate = Math.round(governedYawRateFor(derived) * 100) / 100;
   const named = cargoBasisName(derived, finite(derived && derived.cargoMass, 0) > 0 ? 'current' : 'empty');
   const word = named === 'empty' ? 'empty hold' : named === 'specified' ? 'loaded hold' : 'cargo aboard';
   return `${rate} · ${word}`;

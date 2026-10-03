@@ -281,6 +281,15 @@ async function sampleVisualStability(page, options) {
       });
     }
 
+    // A transient pop event floods ~200 entries and the 80-entry report cap then masks the
+    // ship-never-resolved tail entirely (the perennial ~5-8 ships hiding behind pop runs).
+    // Report never-resolved verdicts first — a real pop already red-verdicts on entry count.
+    const neverResolvedFailures = failures.filter(
+      (entry) => entry && entry.reason === 'ship-never-resolved-past-window',
+    );
+    const transientFailures = failures.filter(
+      (entry) => !entry || entry.reason !== 'ship-never-resolved-past-window',
+    );
     return {
       ok: failures.length === 0,
       frameCount: frames,
@@ -291,7 +300,7 @@ async function sampleVisualStability(page, options) {
       frameCap,
       maxShipCount,
       failureCount: failures.length,
-      failures: failures.slice(0, 80),
+      failures: [...neverResolvedFailures, ...transientFailures].slice(0, 80),
       trackedShips: Array.from(tracks.values()).map((track) => summarizeTrack(track)),
       finalShips: finalShips.map((ship) => summarizeShip(ship)),
     };
@@ -762,6 +771,7 @@ async function sampleVisualStability(page, options) {
       let instanceProxyCount = 0;
       let boundsBad = false;
       let maxWorldPrimitiveRadius = 0;
+      let firstHiddenAncestor = null;
       const largePrimitives = [];
 
       root.traverse((object) => {
@@ -772,6 +782,27 @@ async function sampleVisualStability(page, options) {
         const materialVisible = materialIsVisible(object.material);
         const worldVisible = visibleThroughRoot(object, root);
         if (worldVisible && materialVisible) visibleRenderableCount++;
+        if (!worldVisible && !firstHiddenAncestor) {
+          const chain = [];
+          for (let current = object; current && current !== root; current = current.parent) {
+            if (current.visible === false) {
+              chain.push({
+                name: current.name || null,
+                type: current.type || null,
+                isMesh: !!current.isMesh,
+                partUrl: current.userData && (current.userData.spacefacePartUrl
+                  || (Array.isArray(current.userData.spacefacePartUrls) ? current.userData.spacefacePartUrls[0] : null)),
+                lodTag: current.userData && current.userData.lod ? current.userData.lod.level : null,
+                authoredReadableFallbackLayer: !!(current.userData && current.userData.authoredReadableFallbackLayer),
+                authoredSuppressedByReadableFallback: !!(current.userData && current.userData.authoredSuppressedByReadableFallback),
+                authoredReadableSilhouetteSuppressed: !!(current.userData && current.userData.authoredReadableSilhouetteSuppressed),
+                rosterPrewarm: current.userData && current.userData.rosterPrewarm || null,
+              });
+            }
+          }
+          if (root.visible === false) chain.push({ name: root.name || null, type: root.type || null, isRoot: true });
+          firstHiddenAncestor = chain;
+        }
 
         const isAuthoredSurface = !!(object.userData && (
           object.userData.spacefacePartUrl
@@ -880,6 +911,15 @@ async function sampleVisualStability(page, options) {
         screenRadiusPx,
         meshCount,
         visibleRenderableCount,
+        firstHiddenAncestor,
+        pipelinesPending: data.pipelinesPending === true,
+        pipelinesPendingBy: data.pipelinesPendingBy || null,
+        pipelinesPendingHolds: Number.isFinite(data.pipelinesPendingHolds) ? data.pipelinesPendingHolds : null,
+        authoredPreparePhase: data.authoredPreparePhase || null,
+        geometryPending: data.geometryPending === true,
+        authoredUpgradePromiseActive: data.authoredUpgradePromise != null,
+        authoredResolvingMarker: data.authoredResolvingMarker === true,
+        presentationTier: entity && entity.activity && entity.activity.presentationTier || null,
         authoredSurfaceCount,
         visibleAuthoredSurfaceCount,
         authoredBodySurfaceCount,
@@ -1002,6 +1042,15 @@ async function sampleVisualStability(page, options) {
         inView: ship.inView,
         meshCount: ship.meshCount,
         visibleRenderableCount: ship.visibleRenderableCount,
+        firstHiddenAncestor: ship.firstHiddenAncestor || null,
+        pipelinesPending: ship.pipelinesPending === true,
+        pipelinesPendingBy: ship.pipelinesPendingBy || null,
+        pipelinesPendingHolds: Number.isFinite(ship.pipelinesPendingHolds) ? ship.pipelinesPendingHolds : null,
+        authoredPreparePhase: ship.authoredPreparePhase || null,
+        geometryPending: ship.geometryPending === true,
+        authoredUpgradePromiseActive: ship.authoredUpgradePromiseActive === true,
+        authoredResolvingMarker: ship.authoredResolvingMarker === true,
+        presentationTier: ship.presentationTier || null,
         authoredSurfaceCount: ship.authoredSurfaceCount,
         visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
         authoredBodySurfaceCount: ship.authoredBodySurfaceCount,

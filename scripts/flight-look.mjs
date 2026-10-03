@@ -32,14 +32,20 @@ const browser = await chromium.launch({
       '--disable-background-timer-throttling'],
 });
 
-async function clickButton(page, label) {
-  return page.evaluate((wanted) => {
-    const buttons = [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && !b.disabled);
-    const match = buttons.find((b) => b.textContent.trim() === wanted) || buttons.find((b) => b.textContent.includes(wanted));
-    if (!match) return false;
-    match.click();
-    return true;
-  }, label);
+async function clickButton(page, label, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const clicked = await page.evaluate((wanted) => {
+      const buttons = [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && !b.disabled);
+      const match = buttons.find((b) => b.textContent.trim() === wanted) || buttons.find((b) => b.textContent.includes(wanted));
+      if (!match) return false;
+      match.click();
+      return true;
+    }, label);
+    if (clicked) return true;
+    await page.waitForTimeout(100);
+  }
+  return false;
 }
 
 try {
@@ -51,9 +57,8 @@ try {
   await page.goto(`http://127.0.0.1:${server.address().port}/`, { waitUntil: 'commit', timeout: 180000 });
   await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 240000 });
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('New Game')), null, { timeout: 120000 });
-  await clickButton(page, 'New Game');
-  await page.waitForTimeout(600);
-  await clickButton(page, 'Launch');
+  if (!(await clickButton(page, 'New Game', 30000))) throw new Error('New Game button not clickable');
+  if (!(await clickButton(page, 'Launch', 60000))) throw new Error('Launch button not clickable');
   await page.waitForFunction(() => {
     const s = window.SF?.state;
     return s?.mode === 'flight' && !!s.entities?.get(s.playerId) && !document.body.classList.contains('ui-modal-open');
@@ -347,17 +352,20 @@ try {
   async function drainQueue() {
     const queueWait = Number(args.queueWait ?? 240);
     if (!(queueWait > 0)) return;
-    // Actively pump: waitForAuthoredUpgradeQueueIdle calls pumpAuthoredUpgradeQueue every
-    // tick, so queued compiles admit even when the rAF-driven pump stalls under software GL.
-    const res = await page.evaluate(async (timeoutMs) => {
-      const lib = await import('/src/render/partsLibrary.js');
-      if (typeof lib.waitForAuthoredUpgradeQueueIdle === 'function') {
-        return lib.waitForAuthoredUpgradeQueueIdle(window.SF.state.render.scene, { timeoutMs });
-      }
-      return { idle: true, fallback: true };
-    }, queueWait * 1000);
-    if (res && res.idle) console.log('queue drained');
-    else console.log('queue drain TIMEOUT — capture proceeds', JSON.stringify(res || {}).slice(0, 200));
+    try {
+      await page.waitForFunction(async () => {
+        const lib = await import('/src/render/partsLibrary.js');
+        const s = window.SF?.state?.render?.scene;
+        if (!s) return true;
+        try { lib.pumpAuthoredUpgradeQueue(s); } catch (_) {}
+        const q = lib.describeAuthoredUpgradeQueue(s);
+        if (!q) return true;
+        return q.pending === 0 && q.inFlight === 0 && !q.running && !q.compiling;
+      }, null, { timeout: queueWait * 1000, polling: 500 });
+      console.log('queue drained');
+    } catch {
+      console.log('queue drain TIMEOUT — capture proceeds');
+    }
   }
 
   if (args.aim) {

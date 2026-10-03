@@ -143,6 +143,7 @@ import {
 } from '../missions/heistMissionRuntime.js';
 import { priceProceduralOffer, offerMixForTier, economicRiskTier, standingWorkTier } from '../economy/economyMissionTerms.js';
 import { actionById as salvageActionById } from '../data/salvageActions.js';
+import { towClassMassFor } from './shipCapabilities.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
@@ -150,7 +151,9 @@ import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -177,12 +180,19 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
+import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
-import { addCargo, releasableContractUnits, removeCargo } from './cargo.js';
+import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
+// NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
+// the posting used (pure exported read; economy stays the sole stock/market writer).
+import { starvedIndustryNeedFor } from './economy.js';
+// NXI-171 — the shared starvation-row prose builder, so a board refresh re-quotes a live
+// deficit in the exact voice the emit-only producer posted it (no second wording authority).
+import { starvedOfferProse } from '../data/economyContractTemplates.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -753,6 +763,36 @@ export function mutationPartialSettlement(have, need, rewardCr) {
     payCr: Math.max(0, Math.round((Number(rewardCr) || 0) * deliverQty / needQty)),
   };
 }
+
+/**
+ * NXB-028: a damaged/short freight delivery settles on the contract's recorded terms — the
+ * accepted reward divided by the contracted units — never a live market price. Only units that
+ * are actually deliverable count: loose cargo is limited by `sellableCargoQuantity` (sealed
+ * siblings are not spendable), a sealed manifest by `releasableContractUnits` (only this
+ * contract's own reservation). Returns null when nothing aboard can settle, so the caller keeps
+ * the ordinary "not carrying" path.
+ */
+export function partialDeliverySettlement(m, state) {
+  if (!m || m.status !== 'active' || m.type !== 'cargo_delivery' || !m.params || !m.params.cmdtyId) return null;
+  if (m.storyTag === CONTRACT_47A_B0_TAG || m.storyTag === CONTRACT_47A_B1_TAG) return null;
+  const tracked = m.preloadedCargo === true;
+  const need = tracked
+    ? Math.max(0, Math.floor(Number(m.params.sealedRemaining != null ? m.params.sealedRemaining : m.params.qty) || 0))
+    : Math.max(1, Math.floor(Number(m.params.qty) || 1));
+  if (need <= 0) return null;
+  const have = tracked
+    ? Math.max(0, Math.floor(Number(releasableContractUnits(state, m)) || 0))
+    : Math.max(0, Math.floor(Number(sellableCargoQuantity(state, m.params.cmdtyId)) || 0));
+  const deliverQty = Math.min(have, need);
+  if (deliverQty <= 0 || deliverQty >= need) return null;
+  return {
+    needQty: need,
+    deliverQty,
+    shortfallUnits: need - deliverQty,
+    payCr: Math.max(0, Math.round((Number(m.reward_cr) || 0) * deliverQty / need)),
+    tracked,
+  };
+}
 const LONG_READ_RUMOR_EVENT = Object.freeze({
   news: 'news:headline',
   comms_intercept: 'comms:popup',
@@ -974,6 +1014,16 @@ function isFingerprintBoardSource(source) {
     || source === SET_PIECE_FOLLOW_ON_SOURCE;
 }
 
+/**
+ * NXB-043 — a competing feedstock bid is TWO rows for ONE shortage: a rival-tagged starvation
+ * row may board beside the other member of its pair (a different starving yard), while the
+ * same yard can never double-post. Anything else keeps the one-row-per-source guard.
+ */
+function isCompetingStarvedRow(offer) {
+  return !!(offer && offer.source === 'economyContract' && offer.type === 'cargo_delivery'
+    && offer.cause && offer.cause.tag === 'industry_starved' && offer.cause.rivalStationId);
+}
+
 function isZeroPayLandmarkMission(mission, rewardCr) {
   return !!(mission
     && mission.source === LANDMARK_QUEST_SOURCE
@@ -1098,7 +1148,7 @@ function missionNavReason(m, station, sector) {
       : `Find the bounty near ${sectorName}`;
     case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
     case 'recon_scan': return `Scan sites in ${sectorName}`;
-    case 'tow_recovery': return `Tow the slag core to ${stationName}, or sling it into the yard`;
+    case 'tow_recovery': return `Tow the ${p.massU} t slag core to ${stationName}, or sling it into the yard`;
     case 'demolition': return `Knock down the marked tower in ${sectorName}`;
     case 'rescue_under_fire': return `Pull the life pods out of ${sectorName}`;
     case AUTHORED_SET_PIECE_TYPE: return m.title || `Finish the physical job in ${sectorName}`;
@@ -1251,10 +1301,37 @@ export const missions = {
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
+    // NXB-043/NXI-171 — a real stock write (mission freight, a market sale, or a relieved
+    // starvation threshold) changes the hopper the board's shortage rows quote. Re-derive
+    // those rows from the same read that planned them so no board replays a resolved
+    // emergency; a competing bid admits when its rival's line was fed.
+    const refreshShortageBoards = () => {
+      const boards = this.state.missions && this.state.missions.boards;
+      if (!boards) return;
+      for (const [stId, b] of Object.entries(boards)) {
+        if (this._syncShortageOffers(b)) {
+          this.bus.emit('mission:updated', { missionId: null, stationId: stId });
+        }
+      }
+    };
+    bus.on('economy:freightAccepted', refreshShortageBoards);
+    bus.on('economy:shortageRelieved', refreshShortageBoards);
+    bus.on('economy:tradeCompleted', refreshShortageBoards);
     // A sold cargo-ship salvage becomes one board opportunity. Not a fine, a lock, or a failed job.
     bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
     // mining_quota: aggregate mined units of the target commodity.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
+    // Deep-core ore is already accepted into the player's hold. Its event uses tile coordinates;
+    // use the live rock's world position so sample/recon contracts retain their source checks.
+    bus.on('drill:yield', (p) => {
+      const rock = state.drill && state.entities && state.entities.get(state.drill.asteroidId);
+      if (!p || !rock || !rock.pos) return;
+      this._onMiningYield({
+        ...p,
+        minerId: state.playerId,
+        pos: { x: rock.pos.x, z: rock.pos.z },
+      });
+    });
     // The Investigation Chain's black-box stage consumes the native mining-owned wreck salvage
     // receipt. It has no synthetic cargo or destination dock: the physical wreck recovery is the
     // objective, and missions remains the settlement authority.
@@ -1290,6 +1367,9 @@ export const missions = {
     // durable discovery record via the bounded researchFirsts dedup. Missions stays the sole
     // positive researchPoints writer; this loop only widens which events feed it.
     for (const grantEvent of Object.keys(RESEARCH_GRANTS)) {
+      // Repeatable rows are settlement faucets, not discovery firsts. Subscribing
+      // them here would let a bus emit enter the dedupe ledger.
+      if (RESEARCH_GRANTS[grantEvent] && RESEARCH_GRANTS[grantEvent].repeatable === true) continue;
       bus.on(grantEvent, (p) => this._grantResearchFirst(grantEvent, p || {}));
     }
     bus.on('tether:reel', (p) => {
@@ -1364,6 +1444,15 @@ export const missions = {
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
+    // Census arm: mission-target spawns land inside the sector cook deterministically. The
+    // cook drives the chunked twin across its slice clock; the emit listener drains the same
+    // steps synchronously, so both paths mint the identical cohort.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
+      sectorId: (sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
 
     // ── WF-08 claim-stake salvage: the contested wreck's own listeners. Every row below is a
     // strict no-op unless an active contract owns the touched entity, so ordinary wrecks,
@@ -1650,8 +1739,9 @@ export const missions = {
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
+      const shortageChanged = this._syncShortageOffers(board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || authoredChanged || megaHeistChanged || capitalChanged) {
+        || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -1763,6 +1853,7 @@ export const missions = {
         ...retainedSetPieceFollowOns,
       ],
     };
+    this._guaranteeRecoveryOffer(info, board, epoch);
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
@@ -1773,6 +1864,48 @@ export const missions = {
     this._syncCapitalBossOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /**
+   * SF-119 — a pilot with no cash and a battered hold still needs one job they can fly tonight.
+   * Every board carries at least one zero-capital offer: no collateral, no upfront fee, no hold
+   * requirement the current cargo cap fails, no standing gate the current rep misses. The row is
+   * ordinary work at ordinary terms — a tow, a sweep, a quota — never a payout for being poor.
+   * When the epoch roll already produced one, nothing is added.
+   */
+  _guaranteeRecoveryOffer(info, board, epoch) {
+    const slots = board && board.slots;
+    if (!Array.isArray(slots)) return;
+    if (slots.some((o) => o && this._zeroCapitalFlyable(o))) return;
+    const seed = hash32(this.state.meta.seed, info.id, epoch, 'recovery');
+    const rng = (this.helpers && this.helpers.mulberry32)
+      ? this.helpers.mulberry32(seed) : mulberryLocal(seed);
+    for (const typeId of ['recon_scan', 'tow_recovery', 'mining_quota']) {
+      const offer = this._rollOffer(typeId, info, rng, epoch, 'recovery', { attachConditions: false });
+      if (offer && this._zeroCapitalFlyable(offer)) {
+        slots.push(offer);
+        return;
+      }
+    }
+    // A guarantee that cannot fire is worth hearing about — e.g. every reachable destination is
+    // rep-gated for this pilot — rather than failing the row silently.
+    console.warn(`[missions] recovery slot rolled nothing flyable at ${info && info.id} epoch ${epoch}`);
+  },
+
+  /** True when the current fit can accept this offer with zero credits and zero hold room. */
+  _zeroCapitalFlyable(offer) {
+    if (!offer) return false;
+    if ((Number(offer.collateral_cr) || 0) > 0) return false;
+    if (setPieceUpfrontCost(offer, this.state) > 0) return false;
+    if (offer.factionId
+      && this._repOf(offer.factionId) < missionOfferMinRep(offer, this.state)) return false;
+    if (ONE_LOAD_CARGO_TYPES.has(offer.type)) {
+      const need = cargoFootprint(offer);
+      const cargo = (this.state.player && this.state.player.cargo) || {};
+      const free = Math.max(0, (Number(cargo.capVolume) || 0) - (Number(cargo.usedVolume) || 0));
+      if (need > 0 && free < need) return false;
+    }
+    return true;
   },
 
   /**
@@ -2341,9 +2474,17 @@ export const missions = {
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
     // One row per source for ambient sources. Fingerprinted sources (salvage's stable
     // point-derived ids, set-piece chain causes, …) dedupe per identity above/below instead,
-    // so a second communicator in one sector still boards.
+    // so a second communicator in one sector still boards. NXB-043's exception: the two
+    // members of one competing feedstock bid are rival-tagged rows for DISTINCT starving
+    // yards — the board carries both so the player can read the tradeoff.
     if (!isFingerprintBoardSource(rawOffer.source)
-      && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
+      && board.slots.some((offer) => {
+        if (!offer || offer.source !== rawOffer.source) return false;
+        if (isCompetingStarvedRow(rawOffer) && isCompetingStarvedRow(offer)) {
+          return offer.destStationId === rawOffer.destStationId;
+        }
+        return true;
+      })) return false;
     if (isFingerprintBoardSource(rawOffer.source) && board.slots.some((offer) => (
       offer && offer.source === rawOffer.source && offer.cause && rawOffer.cause
       && offer.cause.fingerprint === rawOffer.cause.fingerprint
@@ -2636,6 +2777,10 @@ export const missions = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, duration_s:time_limit_s, collateral_cr, riskTier,
       economyTerms,
+      // SF-112/113: bind the premium to its named cause — a customs weir monitoring the lane in,
+      // or the destination sector's own thin patrol cover. Pure derived-from-inputs text, so a
+      // re-rolled offer reproduces the same note; the dossier prints it beside the risk band.
+      riskNote: this._riskNoteFor(typeId, destSectorId, sectorRisk),
       destStationId, destSectorId, distance,
       params,
       title: this._titleFor(typeId, params, dest),
@@ -2862,7 +3007,12 @@ export const missions = {
         return { scanTargets, progress: 0, fValue: 1 + scanTargets * 0.25, taskTime: scanTargets * 25 };
       }
       case 'tow_recovery': {
-        const massU = 28 + Math.floor(rng() * 18);
+        // SF-117 — the ceiling is the fit's real tow class: a stronger drive grows the heaviest
+        // core this board will post, and the extra pay comes through the real cargoValue terms
+        // (mass × price), never a multiplier. Under the standard band nothing changes, and a
+        // lighter fit is never refused — the mass law decides whether the load gets under way.
+        const towCeil = Math.max(45, Math.floor(this._playerTowClassMassT() * 1.15));
+        const massU = 28 + Math.floor(rng() * (towCeil - 27));
         const cargoValue = massU * 22;
         return {
           massU, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 40,
@@ -2891,6 +3041,40 @@ export const missions = {
     }
   },
 
+  /**
+   * SF-117 — the fit's real tow class in tonnes, read off the player entity's published derived
+   * block (the same block the fit screen and the tether law consume). 0 when no block exists —
+   * callers fall back to the standard band rather than guessing.
+   */
+  _playerTowClassMassT() {
+    const p = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+    const derived = p && p.data && p.data.derived;
+    return derived ? Math.max(0, Number(towClassMassFor(derived)) || 0) : 0;
+  },
+
+  /**
+   * SF-112/113 — name the complication the price is actually paying for. `sectorRisk` here is the
+   * destination sector's authored/live danger already fed into the quote — not a fresh signal — so
+   * the note and the premium can never disagree. A smuggling lane into a weir sector names the
+   * customs line (that jurisdiction scan is the priced threat); other elevated-risk destinations
+   * name the sector's own thin cover. Quiet destinations get no note rather than a label.
+   */
+  _riskNoteFor(typeId, destSectorId, sectorRisk) {
+    if (typeId === 'smuggling_run') {
+      const weir = customsWeirForSector(destSectorId);
+      if (weir) {
+        const weirSector = SECTOR_BY_ID.get(weir.sectorId);
+        return `the ${weirSector && weirSector.name || 'border'} customs weir scans this lane`;
+      }
+    }
+    const tier = Math.max(0, Math.round(Number(sectorRisk) || 0));
+    if (tier < 2) return null;
+    const destSector = SECTOR_BY_ID.get(destSectorId);
+    const name = destSector && destSector.name ? destSector.name : 'the destination sector';
+    const word = tier >= 4 ? 'lawless' : tier >= 3 ? 'contested' : 'patrol-thin';
+    return `${name} is ${word} — the premium pays for the crossing`;
+  },
+
   _titleFor(typeId, p, dest) {
     const destName = dest ? dest.name : 'destination';
     const cName = (id) => { const c = CMDTY_BY_ID.get(id); return c ? c.name : 'cargo'; };
@@ -2909,7 +3093,7 @@ export const missions = {
       case 'passenger_transport': return p.passenger
         ? `Take ${p.passenger.name} to ${destName}`
         : `Transport a passenger to ${destName}`;
-      case 'tow_recovery': return `Tow the slag core to ${destName}`;
+      case 'tow_recovery': return `Tow the ${p.massU} t slag core to ${destName}`;
       case 'demolition': return `Knock down the tower near ${destName}`;
       case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
       case AUTHORED_SET_PIECE_TYPE: return p.title || `Physical set piece at ${destName}`;
@@ -3020,6 +3204,24 @@ export const missions = {
       }
     }
     if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) return false;
+    // NXI-169 — a shortage-backed offer is only as live as the starvation that posted it. A row
+    // planned while the yard's hopper ran empty must not pay the scarcity premium for a delivery
+    // the station no longer requested: re-read the posted need at accept and retire the stale row.
+    // Only the unaccepted board offer retires here — an already-accepted contract keeps its
+    // recorded terms (the NXI-109 guarantee); nothing is cancelled retroactively.
+    if (this._shortageOfferStale(offer)) {
+      if (board && Array.isArray(board.slots)) {
+        board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+      }
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      const yard = stationInfoFor(this.state, offer.destStationId);
+      this.bus.emit('toast', {
+        text: `That relief run is stale — ${(yard && yard.name) || offer.destStationId} no longer needs the feedstock`,
+        kind: 'warn',
+        ttl: 4,
+      });
+      return false;
+    }
     if (offer.storyDisposition) {
       const choice = offer.storyDisposition;
       // Stage irreversible confirmation (story resolves only on ui:endgameConfirm / confirm:true).
@@ -3130,6 +3332,107 @@ export const missions = {
     this._startLongReadObjective(inst);
     this._startWreckBoundStageObjective(inst);
     return true;
+  },
+
+  /**
+   * NXI-169 — true when a shortage-backed economyContract offer's posted need is already
+   * satisfied: the destination yard's hungriest industry input leg is no longer the offered
+   * commodity (the same pure read, starvedIndustryNeedFor, that planned the posting). A blind
+   * read — no market row, unknown station/sector — keeps the offer rather than retiring it.
+   */
+  _shortageOfferStale(offer) {
+    if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery') return false;
+    if (!offer.cause || offer.cause.tag !== 'industry_starved') return false;
+    const cmdtyId = offer.params && offer.params.cmdtyId;
+    const stationId = offer.destStationId;
+    if (!cmdtyId || !stationId) return false;
+    const markets = this.state.economy && this.state.economy.markets;
+    const market = markets ? markets[stationId] : null;
+    const info = stationInfoFor(this.state, stationId);
+    if (!market || !info) return false;
+    const sector = SECTOR_BY_ID.get(offer.destSectorId || info.sectorId);
+    if (!sector) return false;
+    const need = starvedIndustryNeedFor(info.type, sector.tier || 0, market);
+    return !need || need.inputId !== cmdtyId;
+  },
+
+  /**
+   * NXB-043/NXI-171 — shortage-backed board rows track the live hopper that posted them.
+   * A delivery (or any real stock write) that feeds the destination yard retires its row;
+   * a partially fed yard re-quotes its quantity, payout and prose from the same read that
+   * planned the posting — the board reflects the new actual requirement instead of replaying
+   * the original emergency. Runs only on board reads and freight facts, never per frame.
+   * Returns true when any row changed so the caller can emit one mission:updated.
+   */
+  _syncShortageOffers(board) {
+    if (!board || !Array.isArray(board.slots)) return false;
+    const markets = this.state.economy && this.state.economy.markets;
+    if (!markets) return false;
+    let changed = false;
+    const kept = [];
+    for (const offer of board.slots) {
+      if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery'
+        || !offer.cause || offer.cause.tag !== 'industry_starved'
+        || !offer.params || !offer.params.cmdtyId || !offer.destStationId) {
+        kept.push(offer);
+        continue;
+      }
+      const market = markets[offer.destStationId];
+      const destInfo = stationInfoFor(this.state, offer.destStationId);
+      const destSector = destInfo && SECTOR_BY_ID.get(offer.destSectorId || destInfo.sectorId);
+      const need = destInfo && market && destSector
+        ? starvedIndustryNeedFor(destInfo.type, destSector.tier || 0, market)
+        : null;
+      if (!need || need.inputId !== offer.params.cmdtyId) {
+        changed = true; // the hopper is fed — the post comes down; it is not re-rolled
+        continue;
+      }
+      // Re-quote the live deficit under the same 20u posting bound. Reward and cargo value
+      // scale with the new quantity — the berth pays for what it still needs, not the memory.
+      const liveQty = Math.max(1, Math.min(20, need.deficitUnits));
+      const qtyBefore = offer.params.qty;
+      if (Number.isFinite(qtyBefore) && liveQty !== qtyBefore) {
+        const ratio = liveQty / Math.max(1, qtyBefore);
+        offer.params.qty = liveQty;
+        offer.params.cargoValue = Math.max(1, Math.round((offer.params.cargoValue || 0) * ratio));
+        offer.params.fValue = 1 + offer.params.cargoValue / 8000;
+        offer.reward_cr = Math.max(1, Math.round((offer.reward_cr || 0) * ratio));
+      }
+      // Prose rebuild is deterministic — for a competing bid it also admits when the rival
+      // yard's hopper filled and the duel collapsed to one berth.
+      const summaryBefore = offer.summary;
+      this._rewriteStarvedOfferText(offer, destInfo, markets);
+      if (offer.summary !== summaryBefore || offer.params.qty !== qtyBefore) changed = true;
+      kept.push(offer);
+    }
+    if (changed) board.slots = kept;
+    return changed;
+  },
+
+  /** Re-derive a starvation row's title/summary/cause line from live names + need. */
+  _rewriteStarvedOfferText(offer, destInfo, markets) {
+    if (!offer || !offer.params) return;
+    const destName = (destInfo && destInfo.name) || offer.destStationId;
+    const commodity = this._cmdtyName(offer.params.cmdtyId);
+    const rivalId = offer.cause && offer.cause.rivalStationId;
+    let rivalName = null;
+    let rivalStillHungry = true;
+    if (rivalId) {
+      const rivalInfo = stationInfoFor(this.state, rivalId);
+      rivalName = (rivalInfo && rivalInfo.name) || rivalId;
+      const rivalSector = rivalInfo && SECTOR_BY_ID.get(rivalInfo.sectorId);
+      const rivalMarket = markets && markets[rivalId];
+      const rivalNeed = rivalInfo && rivalSector && rivalMarket
+        ? starvedIndustryNeedFor(rivalInfo.type, rivalSector.tier || 0, rivalMarket)
+        : null;
+      rivalStillHungry = !!(rivalNeed && rivalNeed.inputId === offer.params.cmdtyId);
+    }
+    const prose = starvedOfferProse({
+      qty: offer.params.qty, commodity, destName, rivalName, rivalStillHungry,
+    });
+    offer.title = prose.title;
+    offer.summary = prose.line;
+    if (offer.cause) offer.cause.line = prose.line;
   },
 
   _withdrawSetPieceChoiceOffers(selectedOffer) {
@@ -4165,6 +4468,9 @@ export const missions = {
 
   _onMiningYield(p) {
     if (!p || !p.commodityId) return;
+    // Ambient cutters publish the same yield facts. Only the player earns their contracts;
+    // omitted identity remains compatible with legacy/headless player receipts.
+    if (p.minerId === null || (p.minerId != null && p.minerId !== this.state.playerId)) return;
     const b0 = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B0_TAG);
     let b0SampleRecovered = false;
     if (b0 && !(b0.params && b0.params.sampleRecovered) && p.minerId !== null
@@ -4501,6 +4807,8 @@ export const missions = {
     const spec = RESEARCH_GRANTS[eventName];
     const state = this.state;
     if (!spec || !state || !state.player) return 0;
+    // A repeatable contract row must not become a first, even if something emits it.
+    if (spec.repeatable === true) return 0;
     const rawId = payload ? payload[spec.field] : null;
     if (rawId == null || rawId === '') return 0;
     const firsts = this._ensureResearchFirsts(state);
@@ -4526,6 +4834,43 @@ export const missions = {
       source: `first:${eventName}`,
       scope: spec.scope,
       granted: rp,
+    });
+    return rp;
+  },
+
+  /**
+   * After the one-time firsts ledger is full, a completed research contract still
+   * pays the RESEARCH_GRANTS `research:contract` row, at most dailyCap times per
+   * sim-day. The day count is not a researchFirsts key, so dedupe and the 256 cap
+   * stay intact. Kills and bounty settlements are not this row.
+   */
+  _grantCappedResearchContract(mission) {
+    const spec = RESEARCH_GRANTS['research:contract'];
+    const state = this.state;
+    if (!spec || spec.repeatable !== true || !state || !state.player || !mission) return 0;
+    const types = spec.types;
+    if (!Array.isArray(types) || types.includes(mission.type) !== true) return 0;
+    const firsts = state.player.researchFirsts;
+    const filled = firsts && typeof firsts === 'object' ? Object.keys(firsts).length : 0;
+    if (filled < RESEARCH_FIRSTS_CAP) return 0;
+    const cap = Math.max(0, Math.round(Number(spec.dailyCap)) || 0);
+    if (!(cap > 0)) return 0;
+    const rp = Math.max(0, Math.round(Number(spec.rp)) || 0);
+    if (!(rp > 0)) return 0;
+    const dayKey = this._dayKey();
+    const ledger = state.player.researchContractDay;
+    const count = ledger && ledger.dayKey === dayKey ? (Number(ledger.count) || 0) : 0;
+    if (count >= cap) return 0;
+    state.player.researchContractDay = { dayKey, count: count + 1 };
+    state.player.researchPoints = (state.player.researchPoints || 0) + rp;
+    this.bus.emit('research:pointsChanged', {
+      researchPoints: state.player.researchPoints,
+      source: 'research:contract',
+      scope: spec.scope,
+      granted: rp,
+      dayKey,
+      dailyCount: count + 1,
+      dailyCap: cap,
     });
     return rp;
   },
@@ -5376,7 +5721,8 @@ export const missions = {
         hullMax: 160,
         collides: true,
         collisionMask: MISSION_WRECK_COLLISION_MASK,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: the named mass is the body's own mass, not a density re-derive.
+        physicsBody: { shape: 'capsule', mass: 180 },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.TOWER,
@@ -5404,7 +5750,7 @@ export const missions = {
           hullMax: 36,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: 10 },
           data: {
             missionTag: m.id,
             physicalRole: PHYSICAL_ROLE.POD,
@@ -5716,7 +6062,10 @@ export const missions = {
     const prefix = `${m.id}/`;
     const have = new Set(m.targetEntityIds || []);
     let reattached = 0;
-    for (const e of this.state.entityList || []) {
+    const castIndex = this.state.entityIndex;
+    const cast = castIndex && castIndex.__spacefaceEntityIndexV1 === true && castIndex.ready === true
+      && castIndex.capitalBossCast instanceof Set ? castIndex.capitalBossCast : this.state.entityList || [];
+    for (const e of cast) {
       if (!e || e.alive === false) continue;
       const key = e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
       if (!key || !String(key).startsWith(prefix) || have.has(e.id)) continue;
@@ -5746,7 +6095,10 @@ export const missions = {
     this._reattachCapitalBossCastTargets(m);
     let repointed = 0;
     const liveByKey = new Map();
-    for (const e of this.state.entityList || []) {
+    const castScanIndex = this.state.entityIndex;
+    const castScan = castScanIndex && castScanIndex.__spacefaceEntityIndexV1 === true && castScanIndex.ready === true
+      && castScanIndex.capitalBossCast instanceof Set ? castScanIndex.capitalBossCast : this.state.entityList || [];
+    for (const e of castScan) {
       const key = e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
       if (key && e.alive !== false) liveByKey.set(String(key), e);
     }
@@ -6344,8 +6696,9 @@ export const missions = {
         // and every other type keep the legacy all-or-nothing path below.
         if (t === 'salvage_retrieval' && isMutationRecovery(m) && m.params && m.params.cmdtyId) {
           const need = Math.max(1, m.params.qty || 1);
-          const cargo = this.state.player && this.state.player.cargo;
-          const have = Number((cargo && cargo.items && cargo.items[m.params.cmdtyId]) || 0);
+          const have = m.preloadedCargo === true
+            ? releasableContractUnits(this.state, m)
+            : sellableCargoQuantity(this.state, m.params.cmdtyId);
           if (have > 0 && have < need) {
             const deal = mutationPartialSettlement(have, need, m.reward_cr);
             if (deal && deal.partial) {
@@ -6398,6 +6751,42 @@ export const missions = {
             this.bus.emit('mission:updated', { missionId: m.id, recovery: true });
             this.bus.emit('toast', { text: 'Sealed cargo missing. Return to Helios.', kind: 'warn', ttl: 4 });
             continue;
+          }
+          // NXB-028: a freight contract that arrives short settles the delivered fraction on its
+          // recorded terms instead of reporting a binary "not carrying". Sealed-manifest
+          // deliveries release only this contract's own remaining units; loose cargo draws only
+          // unsealed stock, so ineligible units are never paid as delivered. The mission still
+          // terminates once — _completeMission removes it, so reload/retry cannot recollect.
+          const partial = t === 'cargo_delivery' ? partialDeliverySettlement(m, this.state) : null;
+          if (partial) {
+            const removed = partial.tracked
+              ? this._drawSealedUnits(m, partial.deliverQty)
+              : removeCargo(this.state, m.params.cmdtyId, partial.deliverQty);
+            if (removed > 0) {
+              const paid = removed === partial.deliverQty
+                ? partial
+                : {
+                  ...partial,
+                  deliverQty: removed,
+                  shortfallUnits: Math.max(0, partial.needQty - removed),
+                  payCr: Math.max(0, Math.round((Number(m.reward_cr) || 0) * removed / partial.needQty)),
+                };
+              m.reward_cr = paid.payCr;
+              m.params.completionMethod = 'partial_delivery';
+              m.params.deliveredUnits = removed;
+              m.params.shortfallUnits = paid.shortfallUnits;
+              this.bus.emit('cargo:delivered', {
+                commodityId: m.params.cmdtyId, qty: removed,
+                missionId: m.id, stationId: m.destStationId,
+              });
+              this.bus.emit('toast', {
+                text: `Short delivery: ${removed}/${partial.needQty}u signed for — ${paid.shortfallUnits}u written off. Paid ${paid.payCr.toLocaleString('en-US')} cr on delivered units.`,
+                kind: 'warn',
+                ttl: 4,
+              });
+              this._completeMission(m, i);
+              continue;
+            }
           }
           const need = m.params && m.params.cmdtyId ? this._cmdtyName(m.params.cmdtyId) : 'the cargo';
           this.bus.emit('toast', { text: `Delivery: you are not carrying ${need}`, kind: 'warn', ttl: 3 });
@@ -6466,6 +6855,10 @@ export const missions = {
     const have = (cargo && cargo.items && cargo.items[p.cmdtyId]) || 0;
     if (have < need) return false;
     if (tracked && releasableContractUnits(this.state, m) < need) return false;
+    // An ordinary haul may consume only loose goods, just like a market sale. B0 owns its
+    // persistent assay sample and unlocks that specific story lot for its authorized turn-in.
+    if (!tracked && m.storyTag !== CONTRACT_47A_B0_TAG
+      && sellableCargoQuantity(this.state, p.cmdtyId) < need) return false;
     if (m.storyTag === CONTRACT_47A_B0_TAG && Array.isArray(this.state.story && this.state.story.persistentCargo)) {
       this.state.story.persistentCargo = this.state.story.persistentCargo.filter((id) => id !== CONTRACT_47A_SAMPLE_ID);
     }
@@ -6581,7 +6974,9 @@ export const missions = {
     }
     switch (m && m.type) {
       case 'cargo_delivery':
-        return 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
+        return p.completionMethod === 'partial_delivery'
+          ? `Short manifest signed at ${dest} — ${p.deliveredUnits || 0}u accepted, ${p.shortfallUnits || 0}u written off the bill. The client paid on what arrived.`
+          : 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
       case 'bulk_trade':
         return 'The shortage at ' + dest + ' is covered for now. Your sale moved the board and the client noticed.';
       case BULK_HAUL_TYPE:
@@ -6867,6 +7262,8 @@ export const missions = {
         granted: rp,
       });
     }
+    const contractRp = this._grantCappedResearchContract(m);
+    if (contractRp > 0) researchPoints += contractRp;
     // Honored contract terms pay fieldwork RP — a settlement-time grant, not a researchFirsts
     // entry, because a mission's clauses can honor exactly once when it completes.
     if (clauseSettlement.honored.length) {
@@ -7406,13 +7803,29 @@ export const missions = {
   /**
    * Enemy-catalog archetypes a target-spawning mission can roll at its destination. The exact
    * roster is rolled at spawn, but the POOL is fixed at accept — warming the pool (≤4 unique
-   * hulls) covers every roll, plus the escort/claim hauler and ghost-pack nest ids.
+   * hulls) covers every roll, plus the escort/claim hauler, claim-site/rescue wasp crews,
+   * ghost-pack nest ids, and set-piece/capital encounter actors.
    */
   _missionTargetArchetypes(m) {
     const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
     if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
     if (m && (m.type === 'escort' || m.type === 'salvage_retrieval')) archetypes.add('mule_trader');
     if (m && m.params && m.params.ghostConvoy) { archetypes.add('reaver_pirate'); archetypes.add('wasp_swarmer'); }
+    // The restore stub covers these crews' hulls; the live jump projection must name them
+    // too or claim-site/rescue spawns decode at the glass.
+    if (contractClaimSiteMission(m)) archetypes.add('wasp_swarmer');
+    if (m && m.type === 'rescue_under_fire') archetypes.add('wasp_swarmer');
+    // Set pieces and capital contracts spawn their encounter's ship actors — same
+    // archetype-or-fallback pick as the spawn sites and the restore stub.
+    if (m && (m.type === 'authored_set_piece' || m.type === 'capital_boss')) {
+      const encounter = m.type === 'capital_boss'
+        ? capitalBossEncounter(m.params && m.params.encounterId)
+        : authoredEncounterOf(authoredDefinitionOf(m));
+      const fallback = m.type === 'capital_boss' ? 'bruiser_brawler' : 'wasp_swarmer';
+      for (const actor of (encounter && encounter.actors) || []) {
+        if (actor && actor.kind === 'ship') archetypes.add(actor.archetype || fallback);
+      }
+    }
     return [...archetypes];
   },
 
@@ -7444,11 +7857,8 @@ export const missions = {
       const entity = this.state.entities.get(id);
       return entity && entity.alive !== false;
     });
-    // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
-    this._adoptLiveMissionTargets(m);
-    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key.
-    this._reattachCapitalBossCastTargets(m);
-    // _spawnTargetsFor computes the exact remaining quota, so partial cap grants can top up later.
+    // _spawnTargetsFor leads with the same adopt + capital-cast reattach pair — calling them
+    // here too paid a second living-actor scan per ensure for identical, idempotent output.
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
   },
@@ -7531,7 +7941,14 @@ export const missions = {
     ent.team = 2;
     ent.factionId = null;
     ent.type = follow.targetType;
+    if (ent.collides !== false) bumpCollidesFlipEpoch();
     ent.collides = false;
+    // The flip leaves a permanent stale member otherwise: the entity stays alive as the scan
+    // objective, so the collidables/spatial buckets it was appended under carry it forever.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the rebadged anomaly/wreck keeps shipLike/damageables
+    // membership and never joins wrecks/mineables readers without this re-key.
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
     ent.data = ent.data || {};
     ent.data.poiType = follow.targetType;
     ent.data.kind = follow.targetType;
@@ -7607,6 +8024,9 @@ export const missions = {
     ent.data.identityKey = key;
     ent.data.durable = true;
     ent.data.recordCreatedTick = this.state.tick | 0;
+    // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) (the contender path
+    // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
   },
 
   /**
@@ -8226,9 +8646,43 @@ export const missions = {
   _contractClaimCrew(m) {
     const out = [];
     if (!m) return out;
-    forEachLivingWorldActor(this.state, (e) => {
-      if (e && e.data && String(e.data.contractClaimCrewOf) === String(m.id)) out.push(e);
-    });
+    const stamp = String(m.id);
+    const entities = this.state && this.state.entities;
+    // Cached ids resolve O(1) each and self-prune on re-verify (a dead, released,
+    // recycled, or stamp-cleared row fails the stamp check). The first resolution scans
+    // once to seed it; the spawn path below appends — callers only read membership
+    // (find/some/filter/iterate), never order.
+    let justScanned = false;
+    if (!Array.isArray(m._crewEntityIds)) {
+      m._crewEntityIds = [];
+      justScanned = true;
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && String(e.data.contractClaimCrewOf) === stamp) m._crewEntityIds.push(e.id);
+      });
+    }
+    if (m._crewEntityIds.length) {
+      const kept = [];
+      for (const id of m._crewEntityIds) {
+        const e = entities && entities.get ? entities.get(id) : null;
+        if (!e || e.alive === false || !e.data || String(e.data.contractClaimCrewOf) !== stamp) continue;
+        kept.push(id);
+        out.push(e);
+      }
+      if (kept.length !== m._crewEntityIds.length) m._crewEntityIds = kept;
+    }
+    // An empty resolve can't distinguish "all released" from ids reminted by a restore —
+    // one rescan covers it, tombstoned on this runtime (transient: a deserialized mission
+    // is a fresh key, so post-load always rescans) so a persistent empty stays O(1).
+    const tomb = this._claimCrewEmptyTomb || (this._claimCrewEmptyTomb = new WeakMap());
+    if (out.length === 0 && !justScanned && !tomb.has(m)) {
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && String(e.data.contractClaimCrewOf) === stamp) {
+          m._crewEntityIds.push(e.id);
+          out.push(e);
+        }
+      });
+      if (out.length === 0) tomb.set(m, true);
+    }
     return out;
   },
 
@@ -8326,7 +8780,7 @@ export const missions = {
           hullMax: 150,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: 160 },
           data: {
             contractClaimSiteOf: m.id,
             proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -8411,6 +8865,9 @@ export const missions = {
       }
       if (ent) {
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        if (!Array.isArray(m._crewEntityIds)) m._crewEntityIds = [];
+        m._crewEntityIds.push(ent.id);
+        if (this._claimCrewEmptyTomb) this._claimCrewEmptyTomb.delete(m);
         spawned++;
         crewIndex++;
       }
@@ -8710,8 +9167,36 @@ export const missions = {
     }
     const targetIds = new Set(m.targetEntityIds || []);
     if (follow) {
+      // O(1) holder arm under a proven single count — the walk predicate pins the same
+      // recordId plus living-actor membership, so a counted unique holder is the only
+      // possible match. Ambiguous/absent counts keep the lane walk (multi-carrier rows).
+      const wrIndex = this.state && this.state.entityIndex;
+      const holder = wrIndex && wrIndex.__spacefaceEntityIndexV1 === true && wrIndex.ready === true
+        && wrIndex.byWorldRecordId instanceof Map && wrIndex.byWorldRecordIdCount instanceof Map
+        && wrIndex.byWorldRecordIdCount.get(follow.targetRecordId) === 1
+        ? wrIndex.byWorldRecordId.get(follow.targetRecordId)
+        : null;
+      if (holder) {
+        if (isLivingWorldActor(holder)) targetIds.add(holder.id);
+      } else {
+        forEachLivingWorldActor(this.state, (e) => {
+          if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
+        });
+      }
+    }
+    // NXI-145: a shared subject belongs to every live contract chasing it — settling this one
+    // releases this mission's claim but must not sweep a body the other contract still needs.
+    const sharedIds = new Set();
+    const sharedRecordIds = new Set();
+    for (const other of this.state.missions.active) {
+      if (other === m || other.status !== 'active') continue;
+      for (const id of other.targetEntityIds || []) sharedIds.add(id);
+      const otherFollow = other.params && other.params.poiSignalFollowup;
+      if (otherFollow && otherFollow.targetRecordId != null) sharedRecordIds.add(otherFollow.targetRecordId);
+    }
+    if (sharedRecordIds.size) {
       forEachLivingWorldActor(this.state, (e) => {
-        if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
+        if (e && e.data && sharedRecordIds.has(e.data.worldRecordId)) sharedIds.add(e.id);
       });
     }
     // Spring-wing raiders are not objective targets: settlement RELEASES them to ordinary lane
@@ -8750,6 +9235,7 @@ export const missions = {
       }
     });
     for (const id of targetIds) {
+      if (sharedIds.has(id)) continue; // another live contract still owns this subject
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
         e.alive = false; // swept end-of-step
@@ -8763,9 +9249,24 @@ export const missions = {
   },
 
   _onSectorEnter(p) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains this same body under its slice clock in listener order.
+    if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
+  },
+
+  *_onSectorEnterSteps(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
-    this.spawnTargetsForSector(sectorId);
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — spawning
+    // its mission targets mints bodies keyed to the departed sector. Synthetic payloads
+    // carry no epoch and always run.
+    if (p && p.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null
+        && p.enterEpoch !== this.state.world.enterSerial) return;
+    yield* this.spawnTargetsForSectorChunked(sectorId);
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
     this._onPassengerSectorEnter(sectorId);
@@ -8873,6 +9374,11 @@ export const missions = {
   },
 
   spawnTargetsForSector(sectorId) {
+    for (const _ of this.spawnTargetsForSectorChunked(sectorId)) { /* sync lane: inline */ }
+  },
+
+  // Generator twin: each mission's adopt/spawn is atomic, so yields sit only between missions.
+  *spawnTargetsForSectorChunked(sectorId) {
     if (!sectorId) return;
     // Continue runs this pass twice — restore step 13 and the save:loaded navigation refresh —
     // each O(missions × living-actors) via _adoptLiveMissionTargets. When the mission fields the
@@ -8900,7 +9406,9 @@ export const missions = {
           && prev.sig === passKey.sig && prev.version === passKey.version) {
         return;
       }
-      this._spawnTargetsPassKey = passKey;
+      // Not stored yet: a superseded cook pass (iterator.return mid-loop) must not leave a
+      // key that reads like a completed pass — the next invocation would skip on the stale
+      // latch while missions this pass never reached stay unevaluated.
     }
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     // Continue order: world rematerializes mission_target records first; adopt those live IDs
@@ -8911,12 +9419,17 @@ export const missions = {
       m.targetEntityIds = m.targetEntityIds.filter((id) => {
         const e = this.state.entities.get(id); return e && e.alive;
       });
-      this._adoptLiveMissionTargets(m);
+      // _spawnTargetsFor re-runs the adopt + cast-reattach itself — the explicit adopt
+      // here duplicated its living-actor scan for identical output.
       if (m.objectiveProgress < m.objectiveTarget) {
         this._spawnTargetsFor(m);
       }
+      yield 'mission-targets';
     }
-    if (passKey) passKey.version = entityIndexVersion(this.state);
+    if (passKey) {
+      passKey.version = entityIndexVersion(this.state);
+      this._spawnTargetsPassKey = passKey;
+    }
   },
 
   _onSectorExit(p) {
@@ -9516,7 +10029,7 @@ export const missions = {
     const m = this.state.missions;
     // Strip transient runtime fields (entity ids) from active missions.
     const active = (m.active || []).map((a) => {
-      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, ...rest } = a;
+      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema
@@ -9543,6 +10056,14 @@ export const missions = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between boards/active sections — a
+  // long campaign's boards + active list is the heaviest ledger left on this stretch. Yields
+  // sit only at section boundaries; per-row heist restore keeps the sync lane's order, so the
+  // run stays bit-identical.
+  *deserializeChunked(data) {
     if (!data) return;
     const state = this.state;
     state.missions.boards = data.boards || {};
@@ -9565,9 +10086,11 @@ export const missions = {
     } else {
       delete state.missions.postEndingReplay;
     }
+    yield 'missions-scalars';
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
     const heistRestoreTick = state.tick | 0;
-    state.missions.active = (data.active || []).map((a) => {
+    const restoredActive = [];
+    for (const a of data.active || []) {
       const row = {
         ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
         status: a.status || 'active',
@@ -9579,8 +10102,10 @@ export const missions = {
       // decided receipt, re-request a never-launched schedule, and otherwise reach
       // `unresolved_absent`. Never fabricate a capsule and never fabricate a payout.
       if (a && a.heist) row.heist = heistMissionRuntime.restore(a.heist, { tick: heistRestoreTick });
-      return row;
-    });
+      restoredActive.push(row);
+      if (restoredActive.length % 8 === 0) yield 'missions-active-batch';
+    }
+    state.missions.active = restoredActive;
     if (data.story) state.story = data.story;
     // Sidecar lives inside already-serialized state.story — migrate/init without save schema change.
     ensureCampaign47aState(state);
@@ -9956,7 +10481,11 @@ function capitalBossPlacementClear(state, pos, radius) {
     const pad = radius + (player.radius || 10) + 150;
     if (distSq(pos, player.pos) < pad * pad) return false;
   }
-  const list = state.entityList;
+  const index = state.entityIndex;
+  const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables)
+    ? index.collidables
+    : state.entityList;
   if (Array.isArray(list)) {
     for (const other of list) {
       if (!other || other.alive === false || !other.pos || other.collides === false) continue;

@@ -229,6 +229,13 @@ export function createInfrastructureMotionTracker() {
         if (portal.scale && typeof portal.scale.setScalar === 'function') {
           portal.scale.setScalar(rec.portalBase * rec.portalScale);
         }
+        // The face's internal drift (event-horizon shader) rides the same reduced-motion
+        // convention as the lens: the mesh's onBeforeRender multiplies its clock by this.
+        // Named motionScale — the cosmetic shader clock is not the sim's audited timeScale.
+        const portalMat = portal.material;
+        if (portalMat && portalMat.userData && portalMat.uniforms && portalMat.uniforms.uTime) {
+          portalMat.userData.motionScale = reducedMotion ? 0.25 : 1.0;
+        }
       }
       if (hubGlow) {
         if (rec.hubGlowBase < 0) {

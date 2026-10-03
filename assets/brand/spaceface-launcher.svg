@@ -12,10 +12,6 @@
       <stop offset=".42" stop-color="#332B23"/>
       <stop offset="1" stop-color="#201A15"/>
     </linearGradient>
-  </defs>
-  <rect x="4" y="4" width="504" height="504" rx="108" fill="url(#sf-ground)"/>
-  <rect x="5" y="5" width="502" height="502" rx="107" fill="none" stroke="url(#sf-perimeter)" stroke-width="2"/>
-  <defs>
     <linearGradient id="sf-shell" x1="112" y1="101" x2="302" y2="430" gradientUnits="userSpaceOnUse">
       <stop stop-color="#F8F0DF"/>
       <stop offset=".34" stop-color="#E5D8C0"/>
@@ -38,6 +34,8 @@
     </linearGradient>
     <clipPath id="sf-silhouette"><path d="M303 40C158 56 69 172 85 301C94 381 153 438 224 459C169 416 151 361 165 311C179 257 225 227 293 197C358 168 386 111 363 68L336 116C307 157 277 170 234 185C219 135 246 83 303 40Z M389 98C450 174 452 285 399 365C361 423 304 454 247 458L272 393C325 368 358 326 362 277C364 244 350 214 330 198L369 163Z M231 276C248 245 277 232 305 235C290 259 266 278 231 276Z"/></clipPath>
   </defs>
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="url(#sf-ground)"/>
+  <rect x="5" y="5" width="502" height="502" rx="107" fill="none" stroke="url(#sf-perimeter)" stroke-width="2"/>
   <g transform="translate(25 22) scale(.89)">
   <g id="sf-emblem">
     <path id="sf-shell-contour" fill="url(#sf-shell)" d="M303 40C158 56 69 172 85 301C94 381 153 438 224 459C169 416 151 361 165 311C179 257 225 227 293 197C358 168 386 111 363 68L336 116C307 157 277 170 234 185C219 135 246 83 303 40Z"/>

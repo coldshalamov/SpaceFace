@@ -1,7 +1,8 @@
 import { createActionService } from './actions.js';
-import { createAttachmentService } from './attachments.js';
+import { attachmentBindsOccupant, createAttachmentService } from './attachments.js';
 import { createDamageRouter } from './damage.js';
 import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { createStatusService } from './statuses.js';
 import { applyMomentumSink } from './momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -9,7 +10,7 @@ import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSu
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
 import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 const KERNELS = new WeakMap();
 
@@ -168,12 +169,21 @@ export function createCombatKernel(ctx, options = {}) {
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
     subscriptions.push(bus.on('entity:spawned', (payload) => {
-      invalidateSortedCache();
+      // The sorted roster only holds living-world actors — a projectile volley or pickup
+      // drop changes none of its membership, so the revision survives their churn.
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      // Untyped payloads invalidate anyway — an unknown spawn might still join the roster.
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
       const entity = payload && (payload.entity || getEntity(payload.id));
       if (entity) initializeEntity(entity);
     }));
     subscriptions.push(bus.on('entity:destroyed', (payload) => {
-      invalidateSortedCache();
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
       onEntityGone(payload);
     }));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
@@ -353,14 +363,18 @@ export function createCombatKernel(ctx, options = {}) {
     const entityId = payload && payload.id;
     if (entityId == null) return;
     if (payload && payload.reason === 'save_restore') return;
-    // entity:destroyed is queue-flushed after removal and ids recycle immediately: if a new
-    // occupant already holds the id, this receipt is stale — breakOrphans owns the dead side,
-    // and breaking here would sever the new entity's lines and wipe its combat runtime.
+    // entity:destroyed is queue-flushed after removal and ids recycle immediately: when a new
+    // occupant already holds the id the receipt is stale *for the id*, but the dead body's own
+    // lines still have to break — an early return would leave them welded to the replacement.
+    // Generation stamps separate records bound to the corpse from lines the replacement
+    // legitimately created after taking the id; only the runtime wipe stays skipped.
     const occupant = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(entityId) : null;
-    if (payload && payload.entity && occupant && occupant !== payload.entity) return;
+    const identityTaken = !!(payload && payload.entity && occupant && occupant !== payload.entity);
+    const deadGeneration = payload && payload.entity ? occupantGenerationOf(payload.entity) : null;
     const brokenIds = new Set();
     for (const attachment of attachments.listForEntity(entityId, true)) {
+      if (identityTaken && !attachmentBindsOccupant(attachment, entityId, deadGeneration)) continue;
       attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
       brokenIds.add(attachment.id);
     }
@@ -369,9 +383,13 @@ export function createCombatKernel(ctx, options = {}) {
     if (typeof attachments.listControlledBy === 'function') {
       for (const attachment of attachments.listControlledBy(entityId, true)) {
         if (brokenIds.has(attachment.id)) continue;
+        if (identityTaken && !attachmentBindsOccupant(attachment, entityId, deadGeneration)) continue;
         attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
       }
     }
+    // The replacement owns this id's combat runtime and trace slot now — they were never the
+    // dead occupant's to wipe.
+    if (identityTaken) return;
     removeCombatantRuntime(state, entityId);
     appendCombatTrace(state.combat, state.tick, 'combat.entityRemoved', { targetId: entityId });
   }
@@ -449,11 +467,24 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function sortedEntitiesForTick() {
+    const indexVersion = combatTickIndexVersion(state);
+    // With the V1 index live, the tick + revision + version triple already pins the living
+    // set — every membership mutation bumps index.version and spawn/destroy emits bump the
+    // revision — so a hit can return before the O(living actors) walk that only feeds the
+    // length check and the sort input.
+    if (
+      indexVersion >= 0 &&
+      sortedCache &&
+      sortedCacheTick === state.tick &&
+      sortedCacheSeenRevision === sortedCacheRevision &&
+      sortedCacheIndexVersion === indexVersion
+    ) {
+      return sortedCache;
+    }
     sourceScratch.length = 0;
     forEachLivingWorldActor(state, pushSourceEntity);
     const source = sourceScratch;
     const length = source.length;
-    const indexVersion = combatTickIndexVersion(state);
     if (
       sortedCache &&
       sortedCacheTick === state.tick &&
@@ -484,9 +515,14 @@ export function createCombatKernel(ctx, options = {}) {
   }
 }
 
+// The tick roster walks shipLike + stations + wrecks, so its latches only need those lane
+// versions — projectile/pickup/fx churn outside them no longer starves the sorted cache.
+const ROSTER_LANES = ['shipLike', 'stations', 'wrecks'];
+
 function combatTickIndexVersion(state) {
-  const index = state && state.entityIndex;
-  return index && index.__spacefaceEntityIndexV1 ? (Number(index.version) || 0) : -1;
+  // -1 reports the index unusable (mid-rebuild, unready, or lane counters absent) — readers
+  // then skip the index-version leg rather than scan a partial domain entityList covers.
+  return entityIndexLaneVersion(state, ROSTER_LANES);
 }
 
 /**

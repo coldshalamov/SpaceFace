@@ -91,6 +91,9 @@ function wreck(spec) {
     encounterRefs: [],
     salvagePool: { cmdty_scrap_metal: 1 },
     bonusCargo: [],
+    // Optional like every other list field: a wreck entry with no unique-drop table must not
+    // crash the module-load drop index. validateUniqueWreckRegistry still flags the absence.
+    uniqueDrops: [],
     reactor: null,
     ...spec,
   };
@@ -587,7 +590,72 @@ const RAW_UNIQUE_WRECKS = [
   }),
 ];
 
+// FB-038 — the Ceres seam tender. It is not a D1–D16 reservation slot. The closed program stays
+// sixteen; this wreck is still findable by id and by its bar source, and the salvage system pays
+// exactly one choice.
+const CERES_REFINERY_TENDER = wreck({
+    id: 'wreck_dmc_refinery_tender', programSlot: 'D17', name: 'Ceres Refinery Tender', victimLabel: 'Refinery Tender',
+    wreckChainId: 'refinery_shift',
+    wreckClass: 'fresh', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc',
+    scanLabel: 'CERES REFINERY TENDER · MANIFEST STILL ABOARD',
+    bearingSourceRef: 'bar.station_ceres.refinery_tender',
+    rumorSources: [{ id: 'ceres_dock_tender_rumour', sourceRef: 'bar.station_ceres.refinery_tender', channelId: 'bar', stationId: 'station_ceres' }],
+    bearings: [
+      { id: 'bearing_refinery_seam_a', zoneId: 'zone_ceres_belt' },
+      { id: 'bearing_refinery_seam_b', zoneId: 'zone_ceres_refinery' },
+    ],
+    provenance: { lossId: 'loss_dmc_refinery_tender', incidentId: 'incident_ceres_tender_dark', sourceRef: 'bar.station_ceres.refinery_tender', recordType: 'shift_loss' },
+    hazardContext: { label: 'Ceres refinery seam', anchorType: 'zone', anchorId: 'zone_ceres_belt', zoneId: 'zone_ceres_belt', hazardTypes: [], placementRule: 'inside_working_seam', approachGate: null },
+    salvagePool: { cmdty_scrap_metal: 1 },
+    placement: { anchorLocal: { x: 180, z: -40 }, minRadius: 140, maxRadius: 360, bearingRadiusMin: 200, bearingRadiusMax: 420 },
+    decision: {
+      headline: 'REFINERY TENDER MANIFEST',
+      prompt: 'The tender is dark on the seam. Return the manifest, or strip the hull.',
+      choices: [
+        {
+          id: 'return_manifest',
+          label: 'RETURN THE MANIFEST',
+          consequence: 'File the manifest. The tender job resumes. The yard pays nothing.',
+          outcome: 'returned',
+          uniqueDrop: false,
+          bonusCargo: false,
+          credits: 0,
+          repDelta: 8,
+          receiptTitle: 'MANIFEST RETURNED',
+          receiptDetail: 'Drift logged the tender manifest. The shift goes back to work.',
+          siteStamp: 'MANIFEST FILED WITH DRIFT',
+        },
+        {
+          id: 'strip',
+          label: 'STRIP THE TENDER',
+          consequence: 'Take the credits. The salvor pocket goes quiet for a day.',
+          outcome: 'stripped',
+          uniqueDrop: false,
+          bonusCargo: false,
+          credits: 4200,
+          repDelta: 0,
+          receiptTitle: 'TENDER STRIPPED',
+          receiptDetail: 'The tender paid out in credits. The seam salvors stay quiet until tomorrow.',
+          siteStamp: 'STRIPPED ON THE SEAM',
+        },
+      ],
+    },
+    followup: { id: 'refinery_tender_settled', text: 'REFINERY TENDER SETTLED; THE SEAM EITHER WORKS AGAIN OR STAYS QUIET FOR A DAY.' },
+});
+
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
+
+// The bearing phases the system's _materialize gate accepts — a unique wreck only mounts
+// once its bearing is minted into one of these. Kept beside the registry so non-system
+// enumerators (the sector decode warms) can grade the same gate without importing the
+// system module.
+export const UNIQUE_WRECK_MATERIALIZE_PHASES = Object.freeze(new Set([
+  'rumored',
+  'fixed',
+  'decision',
+  'salvaged',
+]));
+export const CERES_ACTIVITY_WRECKS = Object.freeze([deepFreeze(CERES_REFINERY_TENDER)]);
 
 // PQ-133.11 — reserved uniques that never ride a wreck: artifacts recovered at authored sites.
 // The Mirrorjaw Pulse is the Forge's own salvage relic (zone_vesta_forge): the ricochet room's
@@ -604,6 +672,10 @@ const UNIQUE_WRECK_BY_DROP = new Map();
 for (const def of UNIQUE_WRECKS) {
   for (const source of def.rumorSources) UNIQUE_WRECK_BY_SOURCE.set(source.sourceRef, def);
   for (const drop of def.uniqueDrops) UNIQUE_WRECK_BY_DROP.set(drop.id, def);
+}
+for (const def of CERES_ACTIVITY_WRECKS) {
+  UNIQUE_WRECK_BY_ID.set(def.id, def);
+  for (const source of def.rumorSources) UNIQUE_WRECK_BY_SOURCE.set(source.sourceRef, def);
 }
 
 export function uniqueWreckById(id) {

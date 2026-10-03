@@ -20,6 +20,7 @@ import {
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+import { itineraryPositionInto } from './worldCatchup.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 
 const _farPromoteScratch = [];
@@ -46,6 +47,26 @@ export function isPresentationLedgerRow(entity) {
   ));
 }
 
+// Shelf-time pos for dormant ledger rows freezes at shelf; the sim's own freshness sweep
+// catches them up the same way — itinerary when the row carries an intent, ballistic
+// otherwise. Returns a shared scratch — callers must consume it before the next call.
+const _ledgerPredPos = { x: 0, z: 0 };
+export function ledgerAwarePos(entity, state) {
+  if (!isPresentationLedgerRow(entity) || !Number.isFinite(entity.lastExactT)) return entity.pos;
+  const simTime = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : ((state && state.tick) | 0) / 60;
+  const drift = Math.max(0, simTime - entity.lastExactT);
+  if (!(drift > 0)) return entity.pos;
+  if (entity.intent) {
+    const along = itineraryPositionInto(entity.intent, simTime, _ledgerPredPos);
+    if (along) return along;
+  }
+  _ledgerPredPos.x = (Number(entity.pos.x) || 0) + (Number(entity.vel && entity.vel.x) || 0) * drift;
+  _ledgerPredPos.z = (Number(entity.pos.z) || 0) + (Number(entity.vel && entity.vel.z) || 0) * drift;
+  return _ledgerPredPos;
+}
+
 export function resolveWorldPresentationEntity(state, id) {
   if (id == null || !state) return null;
   const live = state.entities && typeof state.entities.get === 'function'
@@ -59,6 +80,15 @@ export function resolveWorldPresentationEntity(state, id) {
   const far = getFarActor(state, id);
   if (far && far.alive !== false) return far;
   return live && live.alive !== false ? live : null;
+}
+
+// Single source for journal writer-side eligibility — every lane that produces journal
+// records (main runner, whole-sim worker) must share this predicate or a mesh-less lane
+// journals a spawn the collect set can never republish (the once-per-tick rebuild storm
+// class). Mirrors pushAlive's mesh test; `alive` is per-record data, not eligibility.
+export function entityIsJournaled(e) {
+  return !!(e && e._noMesh !== true
+    && !(e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)));
 }
 
 function pushAlive(out, row) {
@@ -150,6 +180,15 @@ function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
   _meshSpatialKey.radius = walkRadius;
   _meshSpatialKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
+  // The collect disc the scratch set answers for. catchUpFarRecord reads it to stamp a
+  // version bump when a within-cell advance moves a row across its rim — the only motion
+  // class that can silently enter the memoized scratch's coverage.
+  if (far && typeof far === 'object') {
+    const disc = far.collectDisc || (far.collectDisc = { x: 0, z: 0, r: 0 });
+    disc.x = walkX;
+    disc.z = walkZ;
+    disc.r = walkRadius;
+  }
 }
 
 const _meshWalkOrigin = { x: 0, z: 0 };
@@ -167,6 +206,14 @@ function appendNearbyLedgerRows(state, out) {
   // dropped and skips rows it still holds — the leading-edge pop the on-glass-disposals
   // counter exists to prove is gone.
   const origin = tableLookAtOrigin(state, player.pos, _ledgerCollectOrigin);
+  // After a relocate the frame-local focus can trail the player by thousands of WU while
+  // it crawls over (the same class admissionAnchorPos's lead cap exists for): a disc
+  // anchored only on the focus gives the destination cohort zero decode runway until the
+  // glass lands. The collect disc therefore unions the player leg — dormant rows near the
+  // player enter `out` and kick their decode during the crawl — while the per-row
+  // keep/evict-anchored tests below still measure from the exact focus origin.
+  const playerX = finite(player.pos.x);
+  const playerZ = finite(player.pos.z);
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
   // The scan disc must hold every row that can still reach the glass inside the
@@ -183,10 +230,13 @@ function appendNearbyLedgerRows(state, out) {
   // cell is covered by the same superset, and the per-row tests below still filter
   // against the exact origin on every call. The walk radius is bucketed the same way
   // so small speed changes do not churn the key either.
-  const walkX = (Math.floor(origin.x / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
-  const walkZ = (Math.floor(origin.z / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const legSpan = Math.hypot(origin.x - playerX, origin.z - playerZ);
+  const unionX = (origin.x + playerX) * 0.5;
+  const unionZ = (origin.z + playerZ) * 0.5;
+  const walkX = (Math.floor(unionX / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
-  const walkRadius = Math.ceil((scanRadius + radiusPad) / 500) * 500;
+  const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
   if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)) {
     _meshWalkOrigin.x = walkX;
     _meshWalkOrigin.z = walkZ;
@@ -210,16 +260,26 @@ function appendNearbyLedgerRows(state, out) {
     const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
     const relX = eff.x - origin.x;
     const relZ = eff.z - origin.z;
-    if (relX * relX + relZ * relZ <= radius2) {
+    const relPx = eff.x - playerX;
+    const relPz = eff.z - playerZ;
+    if (relX * relX + relZ * relZ <= radius2
+      || relPx * relPx + relPz * relPz <= radius2) {
       out.push(rec);
       continue;
     }
     const relVx = finite(rec.vel && rec.vel.x) - pvx;
     const relVz = finite(rec.vel && rec.vel.z) - pvz;
-    const tEnter = timeToEnterRadiusSeconds(
-      relX, relZ, relVx, relVz,
-      glassR + finite(rec.radius),
-      TABLE_COLLECT_HORIZON_SECONDS,
+    const tEnter = Math.min(
+      timeToEnterRadiusSeconds(
+        relX, relZ, relVx, relVz,
+        glassR + finite(rec.radius),
+        TABLE_COLLECT_HORIZON_SECONDS,
+      ),
+      timeToEnterRadiusSeconds(
+        relPx, relPz, relVx, relVz,
+        glassR + finite(rec.radius),
+        TABLE_COLLECT_HORIZON_SECONDS,
+      ),
     );
     if (tEnter <= TABLE_COLLECT_HORIZON_SECONDS) out.push(rec);
   }
@@ -231,7 +291,10 @@ function appendNearbyLedgerRows(state, out) {
     const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
     const relX = eff.x - origin.x;
     const relZ = eff.z - origin.z;
-    if (relX * relX + relZ * relZ <= radius2) {
+    const relPx = eff.x - playerX;
+    const relPz = eff.z - playerZ;
+    if (relX * relX + relZ * relZ <= radius2
+      || relPx * relPx + relPz * relPz <= radius2) {
       out.push(rec);
       continue;
     }
@@ -240,11 +303,20 @@ function appendNearbyLedgerRows(state, out) {
     // Ship-like rows ride the decode runway: their authored GLB decode is the long
     // pole, so the collect must surface them early enough for the prefetch kick to
     // finish before contact. Boundary builds still gate on the tighter promote
-    // horizon inside isEntityRenderRelevant.
-    const tEnter = timeToEnterRadiusSeconds(
-      relX, relZ, relVx, relVz,
-      glassR + finite(rec.radius, 8),
-      TABLE_DECODE_RUNWAY_SECONDS,
+    // horizon inside isEntityRenderRelevant. The player leg mirrors the static disc:
+    // an inbound hull closing on the player during a focus lag would otherwise read
+    // as receding from the stale corner and stay off the runway.
+    const tEnter = Math.min(
+      timeToEnterRadiusSeconds(
+        relX, relZ, relVx, relVz,
+        glassR + finite(rec.radius, 8),
+        TABLE_DECODE_RUNWAY_SECONDS,
+      ),
+      timeToEnterRadiusSeconds(
+        relPx, relPz, relVx, relVz,
+        glassR + finite(rec.radius, 8),
+        TABLE_DECODE_RUNWAY_SECONDS,
+      ),
     );
     if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) out.push(rec);
   }
@@ -323,34 +395,71 @@ const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
  * schedule/packages/swarm roster only (no dummy catalog). Silhouette matters:
  * wasp_swarmer decodes ashline_dart, not wasp_production.
  */
-export function enemyHullDecodeKey(enemyId) {
+export function enemyHullDecodeKey(enemyId, factionId = null, trafficRole = null) {
   if (typeof enemyId !== 'string' || enemyId.length === 0) return null;
   const def = ENEMY_BY_ID.get(enemyId);
   if (!def || typeof def.shipId !== 'string' || !def.shipId) return null;
   const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
-  const token = `${def.shipId}|${silhouette}`;
+  const faction = typeof factionId === 'string' && factionId ? factionId : null;
+  const role = typeof trafficRole === 'string' && trafficRole ? trafficRole : null;
+  // Faction kits swap the resolved whole-ship file (applyFactionWholeShipKit), and wasp kits
+  // additionally gate on the traffic role — both axes must separate the decode key or one
+  // squad's warm silently covers a different livery.
+  const token = `${def.shipId}|${silhouette}`
+    + (faction ? `|f:${faction}` : '')
+    + (role ? `|r:${role}` : '');
   return Object.freeze({
     defId: def.shipId,
     silhouette,
     enemyId,
+    factionId: faction,
+    trafficRole: role,
     key: token,
+  });
+}
+
+/**
+ * Faction an enemy-catalog spawn resolves when the caller leaves factionId unset — caller
+ * override > archetype's own faction > lawful/hostile fallback (mirrors makeEnemySpawnSpec).
+ * Warm keys must carry the same faction or they decode the un-kitted file.
+ */
+export function enemySpawnFactionId(enemyId, explicit = null) {
+  const def = ENEMY_BY_ID.get(enemyId) || null;
+  return (typeof explicit === 'string' && explicit) || (def && def.factionId)
+    || (def && def.factionLawful ? 'faction_scn' : 'faction_reach');
+}
+
+/**
+ * Same decode key for a squad row that already carries a complete ship spec: the spec's own
+ * defId selects the hull (no enemy-id indirection), faction still separates kitted files.
+ */
+export function shipDefHullDecodeKey(defId, factionId = null) {
+  if (typeof defId !== 'string' || !defId) return null;
+  const faction = typeof factionId === 'string' && factionId ? factionId : null;
+  return Object.freeze({
+    defId,
+    silhouette: '',
+    enemyId: null,
+    factionId: faction,
+    trafficRole: null,
+    key: `${defId}|` + (faction ? `|f:${faction}` : ''),
   });
 }
 
 export function collectWaveHullDecodeKeys(plan) {
   const keys = new Map();
-  const takeEnemy = (enemyId) => {
-    const key = enemyHullDecodeKey(enemyId);
+  const takeEnemy = (entry) => {
+    const key = entry && enemyHullDecodeKey(entry.enemyId, entry.factionId, entry.trafficRole);
     if (!key || keys.has(key.key)) return;
     keys.set(key.key, key);
   };
   if (!plan || plan.ok === false) return [];
   const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];
-  for (const entry of schedule) takeEnemy(entry && entry.enemyId);
+  for (const entry of schedule) takeEnemy(entry);
   const packages = Array.isArray(plan.packages) ? plan.packages : [];
-  for (const pkg of packages) takeEnemy(pkg && pkg.enemyId);
+  for (const pkg of packages) takeEnemy(pkg);
   const swarmRoster = plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
-  for (const entry of swarmRoster) takeEnemy(entry && entry.enemyId);
+  for (const entry of swarmRoster) takeEnemy(entry);
   return [...keys.values()];
 }
 
@@ -360,10 +469,20 @@ export function makeWaveHullDecodeStub(hullKey) {
   const silhouette = typeof hullKey.silhouette === 'string' ? hullKey.silhouette : '';
   const data = { defId: hullKey.defId };
   if (silhouette) data.silhouette = silhouette;
+  // Live spawns resolve whole ships by lootTableId before silhouette — carry the enemy id so
+  // the stub's authoredPreloadPlan follows the same selection.
+  if (typeof hullKey.enemyId === 'string' && hullKey.enemyId) data.lootTableId = hullKey.enemyId;
+  // Faction kits swap both the hull file and the 'place'-slot kill hulk
+  // (applyFactionWholeShipKit / hulkPackagedFileForEntity) — the stub must carry the squad's
+  // faction and traffic role or every warm resolves the un-kitted file.
+  if (typeof hullKey.factionId === 'string' && hullKey.factionId) data.factionId = hullKey.factionId;
+  if (typeof hullKey.trafficRole === 'string' && hullKey.trafficRole) data.trafficRole = hullKey.trafficRole;
   return {
     id: `wave-hull-decode:${hullKey.key || hullKey.defId}`,
     type: 'ship',
     alive: true,
+    factionId: typeof hullKey.factionId === 'string' && hullKey.factionId
+      ? hullKey.factionId : null,
     pos: { x: 0, z: 0 },
     data,
   };

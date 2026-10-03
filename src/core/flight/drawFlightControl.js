@@ -53,3 +53,39 @@ export function drawFlightAcceleration(body, command, profile, dt, boosting = fa
   return { x, z, heading: nextHeading, targetHeading: target, turnRate: step > 0 ? delta / step : 0,
     speed, nextSpeed, cap };
 }
+
+// ── FB-007 — stroke grading. The follower measures; this file owns the numbers→band law, pure
+// and deterministic, using the same band names as the release rating (razor/clean/good/messy).
+// The grade is the cross-track error the follower already computes implicitly (the ahead-window
+// projection), averaged over time on the stroke.
+export const DRAW_STROKE_MAX_POINTS = 256;
+export function emptyStrokeGrader() {
+  return { samples: 0, timeOnPathS: 0, errorSumWu: 0, errorPeakWu: 0, peakSpeed: 0, distanceWu: 0 };
+}
+export function gradeStrokeSample(grader, crossTrackWu, speed, dt) {
+  const err = Number.isFinite(crossTrackWu) && crossTrackWu >= 0 ? crossTrackWu : 0;
+  grader.samples += 1;
+  grader.timeOnPathS += finite(dt);
+  grader.errorSumWu += err * finite(dt);
+  grader.errorPeakWu = Math.max(grader.errorPeakWu, err);
+  grader.peakSpeed = Math.max(grader.peakSpeed, finite(speed));
+  return grader;
+}
+// Bands are absolute wu of MEAN cross-track error — the ink is a world path, so a razor stroke
+// hugs it within a hull or two regardless of speed. The record rounds for display only.
+export const STROKE_BAND_MEAN_WU = Object.freeze({ razor: 6, clean: 14, good: 30 });
+export function gradeStroke(grader) {
+  const g = grader || emptyStrokeGrader();
+  const mean = g.timeOnPathS > 1e-6 ? g.errorSumWu / g.timeOnPathS : 0;
+  const band = mean <= STROKE_BAND_MEAN_WU.razor ? 'razor'
+    : mean <= STROKE_BAND_MEAN_WU.clean ? 'clean'
+      : mean <= STROKE_BAND_MEAN_WU.good ? 'good' : 'messy';
+  return {
+    band,
+    meanErrorWu: Math.round(mean * 10) / 10,
+    peakErrorWu: Math.round(g.errorPeakWu * 10) / 10,
+    distanceWu: Math.round(g.distanceWu * 10) / 10,
+    peakSpeed: Math.round(g.peakSpeed * 10) / 10,
+    timeOnPathS: Math.round(g.timeOnPathS * 100) / 100,
+  };
+}

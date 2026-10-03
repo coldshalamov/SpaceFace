@@ -258,6 +258,10 @@ test('docking at a lawful station clears scan-tier heat for a real fine', () => 
 
   run.bus.emit('dock:docked', { stationId: 'station_tethys_customs' });
 
+  // FB-039 — the berth assesses an offer first; the pilot's answer carries the charge.
+  assert.equal(run.charges.length, 0, 'the dock alone no longer charges');
+  run.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys_customs' });
+
   assert.equal(run.charges.length, 1, 'the economy owner is asked for the fine');
   const fine = run.charges[0].amount;
   assert.equal(fine, 150 + 100 * 1, 'level-1 fine = base + per-level');
@@ -288,6 +292,10 @@ test('an unpaid fine keeps the heat', () => {
   run.bus.emit('dock:docked', { stationId: 'station_tethys_customs' });
 
   assert.equal(run.charges.length, 0, 'economy is never asked for credits the pilot lacks');
+  // FB-039 — the offer stands; answering PAY with a short account is the unpaid outcome.
+  run.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys_customs' });
+
+  assert.equal(run.charges.length, 0, 'a refused pay attempt is still free');
   assert.equal(run.clears.length, 0, 'the sheet stands — escaping consequences is never free');
   const denied = run.lawResponses.find((r) => r.action === 'fine_unpaid');
   assert.ok(denied);

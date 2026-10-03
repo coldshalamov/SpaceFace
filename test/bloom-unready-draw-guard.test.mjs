@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
 
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 
@@ -42,6 +43,34 @@ function rendererHarness() {
 function canonStampedMaterial() {
   return { userData: { spacefaceProgramCanon: 1 } };
 }
+
+test('readiness scan skips hidden subtrees that the scene pass cannot draw', async () => {
+  const { renderer, admissions } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = new THREE.Scene();
+  const hidden = new THREE.Group();
+  hidden.visible = false;
+  const hiddenLeaf = new THREE.Mesh();
+  hiddenLeaf.material.userData.spacefaceProgramCanon = 1;
+  hidden.add(hiddenLeaf);
+  const visibleLeaf = new THREE.Mesh();
+  visibleLeaf.material.userData.spacefaceProgramCanon = 1;
+  scene.add(hidden, visibleLeaf);
+
+  guard.hide(scene);
+  try {
+    assert.deepEqual(admissions, [visibleLeaf], 'only a drawable subtree needs readiness work');
+    assert.equal(hiddenLeaf.visible, true, 'the hidden parent already excludes its descendants');
+    assert.equal(visibleLeaf.visible, false, 'a cold visible leaf still waits for admission');
+  } finally {
+    guard.restore();
+    hiddenLeaf.geometry.dispose();
+    hiddenLeaf.material.dispose();
+    visibleLeaf.geometry.dispose();
+    visibleLeaf.material.dispose();
+  }
+  await Promise.resolve();
+});
 
 test('guard skips a stamped never-compiled material during the pass and queues its mesh once', async () => {
   const { renderer, draws, admissions } = rendererHarness();

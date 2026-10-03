@@ -5,7 +5,11 @@
 // sim kept running. Cosmetic lanes must not strand the HUD or hit-stop clock.
 
 import { updateBombPresentation, releaseBombPresentation } from '../render/bombPresentation.js';
+import { vfx as liveVfx } from '../render/vfx.js';
+import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js';
 import { shouldFreezeFlightSubmit, shouldSkipFlightDraw } from './presentationFreeze.js';
+
+installNpcJobLiveSignatureDraw(liveVfx);
 import {
   presentUiStage,
   releaseUiStage,

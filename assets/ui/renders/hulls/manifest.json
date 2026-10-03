@@ -3,7 +3,7 @@
  "purpose": "Produced hull renders for the interface (design/frontend/ONE_PHOTOGRAPH.md section 9, asset 1): new-game and load stage posters, shipworks elevation.",
  "classification": "project-original",
  "license": "Rendered from project-original SpaceFace ship GLBs; no third-party payload.",
- "renderer": "Blender Cycles (CPU), the Look restated for Cycles (clear coat, warm key / cyan rim, lamp gain, game reflection env), AgX High Contrast, exposure 0.8, transparent film, 24 samples + denoise, saturation x1.2",
+ "renderer": "Blender Cycles (CPU), the Look restated for Cycles (clear coat, warm key / cyan rim, lamp gain, game reflection env), AgX High Contrast, exposure 0.8, transparent film, 64 samples + denoise, saturation x1.2",
  "lighting": "warm key upper-left front, cold rim behind right, low fill, top soft; the world background at 0.35",
  "hidden": "COLLISION_HULL and any helper/proxy/collision mesh (the game never draws them)",
  "script": "tools/art/render_hull_posters.mjs (render_hull.py, render_jig.py, jig_glyph.py, holo_glyph.py)",
@@ -20,12 +20,12 @@
  "hulls": {
   "ship_kestrel": {
    "sourceGlb": "assets/ships/parts/wholeships/kestrel.glb",
-   "sourceGlbSha256": "894B68AE6504E5C3FE3EB37544256C35F086B08FD415441D0B1B2464CA9FF3FE",
+   "sourceGlbSha256": "E538F48B11BD5E7EEABB31E785F0D179112C102D478D7082AA3FB7C6085CDED5",
    "hero": {
     "file": "ship_kestrel.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 117418,
+    "bytes": 129162,
     "hullSize": [
      27.52,
      13.261,
@@ -37,6 +37,96 @@
       0.4944,
       0.5217,
       71.429
+     ],
+     "MOTION_KESTREL_ARMOR_CAP": [
+      0.537,
+      0.5727,
+      67.711
+     ],
+     "MOTION_KESTREL_CANOPY": [
+      0.452,
+      0.4917,
+      68.824
+     ],
+     "MOTION_KESTREL_DISH": [
+      0.5085,
+      0.352,
+      72.387
+     ],
+     "MOTION_KESTREL_DISH_STEM": [
+      0.5085,
+      0.352,
+      72.387
+     ],
+     "MOTION_KESTREL_DISH_FEED": [
+      0.5141,
+      0.3144,
+      72.36
+     ],
+     "MOTION_KESTREL_IRIS_0": [
+      0.7126,
+      0.3063,
+      80.432
+     ],
+     "MOTION_KESTREL_IRIS_1": [
+      0.6819,
+      0.2586,
+      80.865
+     ],
+     "MOTION_KESTREL_IRIS_2": [
+      0.6503,
+      0.2805,
+      82.002
+     ],
+     "MOTION_KESTREL_IRIS_3": [
+      0.649,
+      0.3484,
+      82.705
+     ],
+     "MOTION_KESTREL_IRIS_4": [
+      0.6788,
+      0.3955,
+      82.272
+     ],
+     "MOTION_KESTREL_IRIS_5": [
+      0.7107,
+      0.3753,
+      81.135
+     ],
+     "MOTION_KESTREL_MINING": [
+      0.2787,
+      0.7994,
+      62.801
+     ],
+     "MOTION_KESTREL_POD_ARM_SHOULDER": [
+      0.6207,
+      0.4743,
+      69.791
+     ],
+     "MOTION_KESTREL_POD_ARM_ELBOW": [
+      0.6381,
+      0.455,
+      70.689
+     ],
+     "MOTION_KESTREL_POD_HATCH": [
+      0.618,
+      0.4606,
+      69.491
+     ],
+     "MOTION_KESTREL_STRUT_F": [
+      0.4195,
+      0.6868,
+      68.759
+     ],
+     "MOTION_KESTREL_STRUT_P": [
+      0.5887,
+      0.5674,
+      74.458
+     ],
+     "MOTION_KESTREL_STRUT_S": [
+      0.5198,
+      0.5321,
+      76.135
      ],
      "SOCKET_Camera_Focus": [
       0.4944,
@@ -89,7 +179,7 @@
     "file": "ship_kestrel.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 65492,
+    "bytes": 68416,
     "hullSize": [
      27.52,
      13.261,
@@ -101,6 +191,96 @@
       0.5111,
       0.5241,
       82.56
+     ],
+     "MOTION_KESTREL_ARMOR_CAP": [
+      0.5804,
+      0.4825,
+      85.96
+     ],
+     "MOTION_KESTREL_CANOPY": [
+      0.5912,
+      0.4153,
+      82.56
+     ],
+     "MOTION_KESTREL_DISH": [
+      0.4433,
+      0.3326,
+      81.66
+     ],
+     "MOTION_KESTREL_DISH_STEM": [
+      0.4433,
+      0.3326,
+      81.66
+     ],
+     "MOTION_KESTREL_DISH_FEED": [
+      0.4323,
+      0.2836,
+      81.66
+     ],
+     "MOTION_KESTREL_IRIS_0": [
+      0.0938,
+      0.466,
+      84.058
+     ],
+     "MOTION_KESTREL_IRIS_1": [
+      0.0938,
+      0.4079,
+      82.56
+     ],
+     "MOTION_KESTREL_IRIS_2": [
+      0.0938,
+      0.466,
+      81.062
+     ],
+     "MOTION_KESTREL_IRIS_3": [
+      0.0938,
+      0.5822,
+      81.062
+     ],
+     "MOTION_KESTREL_IRIS_4": [
+      0.0938,
+      0.6404,
+      82.56
+     ],
+     "MOTION_KESTREL_IRIS_5": [
+      0.0938,
+      0.5822,
+      84.058
+     ],
+     "MOTION_KESTREL_MINING": [
+      0.8837,
+      0.5947,
+      82.56
+     ],
+     "MOTION_KESTREL_POD_ARM_SHOULDER": [
+      0.4587,
+      0.42,
+      86.91
+     ],
+     "MOTION_KESTREL_POD_ARM_ELBOW": [
+      0.4218,
+      0.42,
+      86.91
+     ],
+     "MOTION_KESTREL_POD_HATCH": [
+      0.4649,
+      0.3951,
+      86.91
+     ],
+     "MOTION_KESTREL_STRUT_F": [
+      0.6527,
+      0.6518,
+      82.56
+     ],
+     "MOTION_KESTREL_STRUT_P": [
+      0.3879,
+      0.6686,
+      84.16
+     ],
+     "MOTION_KESTREL_STRUT_S": [
+      0.3879,
+      0.6686,
+      80.96
      ],
      "SOCKET_Camera_Focus": [
       0.5111,
@@ -153,7 +333,7 @@
     "file": "ship_kestrel.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 44110,
+    "bytes": 48012,
     "hullSize": [
      27.52,
      13.261,
@@ -165,6 +345,96 @@
       0.5,
       0.4889,
       82.919
+     ],
+     "MOTION_KESTREL_ARMOR_CAP": [
+      0.3953,
+      0.4196,
+      82.299
+     ],
+     "MOTION_KESTREL_CANOPY": [
+      0.5,
+      0.4088,
+      81.299
+     ],
+     "MOTION_KESTREL_DISH": [
+      0.5277,
+      0.5567,
+      80.069
+     ],
+     "MOTION_KESTREL_DISH_STEM": [
+      0.5277,
+      0.5567,
+      80.069
+     ],
+     "MOTION_KESTREL_DISH_FEED": [
+      0.5277,
+      0.5677,
+      79.339
+     ],
+     "MOTION_KESTREL_IRIS_0": [
+      0.4539,
+      0.9062,
+      82.054
+     ],
+     "MOTION_KESTREL_IRIS_1": [
+      0.5,
+      0.9062,
+      81.189
+     ],
+     "MOTION_KESTREL_IRIS_2": [
+      0.5461,
+      0.9062,
+      82.054
+     ],
+     "MOTION_KESTREL_IRIS_3": [
+      0.5461,
+      0.9062,
+      83.784
+     ],
+     "MOTION_KESTREL_IRIS_4": [
+      0.5,
+      0.9062,
+      84.649
+     ],
+     "MOTION_KESTREL_IRIS_5": [
+      0.4539,
+      0.9062,
+      83.784
+     ],
+     "MOTION_KESTREL_MINING": [
+      0.5,
+      0.1163,
+      83.969
+     ],
+     "MOTION_KESTREL_POD_ARM_SHOULDER": [
+      0.366,
+      0.5413,
+      81.369
+     ],
+     "MOTION_KESTREL_POD_ARM_ELBOW": [
+      0.366,
+      0.5782,
+      81.369
+     ],
+     "MOTION_KESTREL_POD_HATCH": [
+      0.366,
+      0.5351,
+      80.999
+     ],
+     "MOTION_KESTREL_STRUT_F": [
+      0.5,
+      0.3473,
+      84.819
+     ],
+     "MOTION_KESTREL_STRUT_P": [
+      0.4507,
+      0.6121,
+      85.069
+     ],
+     "MOTION_KESTREL_STRUT_S": [
+      0.5493,
+      0.6121,
+      85.069
      ],
      "SOCKET_Camera_Focus": [
       0.5,
@@ -216,12 +486,12 @@
   },
   "ship_pelican": {
    "sourceGlb": "assets/ships/parts/wholeships/pelican_production_v1.glb",
-   "sourceGlbSha256": "BF1055E0F460654AEF6E210459506872258141C7B9237CFB689B6F85690150EC",
+   "sourceGlbSha256": "D824B6C2338B5D7709D77F50949F46B911E6A8F020DD6B507326156D1CF7A836",
    "hero": {
     "file": "ship_pelican.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 98580,
+    "bytes": 109392,
     "hullSize": [
      14.71,
      6.26,
@@ -230,6 +500,11 @@
     "longAxis": 0,
     "marks": {
      "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.501,
+      0.516,
+      38.356
+     ],
+     "MOTION_HULL_CORE": [
       0.501,
       0.516,
       38.356
@@ -300,7 +575,7 @@
     "file": "ship_pelican.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 56958,
+    "bytes": 59458,
     "hullSize": [
      14.71,
      6.26,
@@ -309,6 +584,11 @@
     "longAxis": 0,
     "marks": {
      "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.498,
+      0.5261,
+      44.13
+     ],
+     "MOTION_HULL_CORE": [
       0.498,
       0.5261,
       44.13
@@ -379,7 +659,7 @@
     "file": "ship_pelican.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 36080,
+    "bytes": 40058,
     "hullSize": [
      14.71,
      6.26,
@@ -388,6 +668,11 @@
     "longAxis": 0,
     "marks": {
      "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.5,
+      0.502,
+      44.337
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.502,
       44.337
@@ -457,12 +742,12 @@
   },
   "ship_wasp": {
    "sourceGlb": "assets/ships/parts/wholeships/wasp_production_v1.glb",
-   "sourceGlbSha256": "FDE6C4EE272785D3A4AD57038CE0F14574C125312605635C3EA2CE8DEA6C6C6F",
+   "sourceGlbSha256": "23F1F312B699A523158A26EB86C5E161BD80CAE58EE0F8C0A2384DC3ED16FD1A",
    "hero": {
     "file": "ship_wasp.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 118520,
+    "bytes": 118514,
     "hullSize": [
      21.62,
      16.16,
@@ -474,6 +759,21 @@
       0.5018,
       0.5219,
       56.452
+     ],
+     "MOTION_WASP_GUNS": [
+      0.4356,
+      0.5592,
+      53.834
+     ],
+     "MOTION_WASP_WINGLET_P": [
+      0.7844,
+      0.4234,
+      59.738
+     ],
+     "MOTION_WASP_WINGLET_S": [
+      0.5163,
+      0.3055,
+      64.977
      ],
      "SOCKET_Camera_Focus": [
       0.4649,
@@ -554,6 +854,21 @@
       0.5363,
       64.86
      ],
+     "MOTION_WASP_GUNS": [
+      0.6219,
+      0.4893,
+      64.86
+     ],
+     "MOTION_WASP_WINGLET_P": [
+      0.1829,
+      0.5192,
+      69.86
+     ],
+     "MOTION_WASP_WINGLET_S": [
+      0.1829,
+      0.5192,
+      59.86
+     ],
      "SOCKET_Camera_Focus": [
       0.5678,
       0.5,
@@ -620,7 +935,7 @@
     "file": "ship_wasp.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 51864,
+    "bytes": 51906,
     "hullSize": [
      21.62,
      16.16,
@@ -632,6 +947,21 @@
       0.5,
       0.5035,
       65.285
+     ],
+     "MOTION_WASP_GUNS": [
+      0.5,
+      0.3781,
+      64.735
+     ],
+     "MOTION_WASP_WINGLET_P": [
+      0.304,
+      0.8171,
+      65.085
+     ],
+     "MOTION_WASP_WINGLET_S": [
+      0.696,
+      0.8171,
+      65.085
      ],
      "SOCKET_Camera_Focus": [
       0.5,
@@ -698,23 +1028,53 @@
   },
   "ship_hornet": {
    "sourceGlb": "assets/ships/parts/wholeships/hornet_production_v1.glb",
-   "sourceGlbSha256": "431ACC18B70F20771648D55E9BFE56317EDA15B7DEB5C0ACCD2A178DB24E74D9",
+   "sourceGlbSha256": "602C73827C0D729C87D264F729C6F7F7642F53D0F8BCEE0898CFC9710D8C37EC",
    "hero": {
     "file": "ship_hornet.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 107636,
+    "bytes": 125878,
     "hullSize": [
      9.84,
      8.8,
-     1.427
+     1.455
     ],
     "longAxis": 0,
     "marks": {
      "HORNET_LOD0_ROOT": [
       0.4869,
-      0.5413,
-      25.45
+      0.5431,
+      25.456
+     ],
+     "MOTION_HORNET_CANARD_P": [
+      0.4387,
+      0.707,
+      23.152
+     ],
+     "MOTION_HORNET_CANARD_S": [
+      0.3098,
+      0.6314,
+      24.2
+     ],
+     "MOTION_HORNET_FLAP_P": [
+      0.7853,
+      0.4608,
+      27.079
+     ],
+     "MOTION_HORNET_FLAP_S": [
+      0.5027,
+      0.3334,
+      29.594
+     ],
+     "MOTION_HORNET_TIPPOD_P": [
+      0.8898,
+      0.5204,
+      25.826
+     ],
+     "MOTION_HORNET_TIPPOD_S": [
+      0.3955,
+      0.2956,
+      30.175
      ],
      "SOCKET_Camera_Focus": [
       0.4649,
@@ -723,13 +1083,13 @@
      ],
      "SOCKET_Cargo_Ventral": [
       0.5,
-      0.5811,
-      25.854
+      0.5828,
+      25.86
      ],
      "SOCKET_Engine_Main": [
-      0.678,
-      0.3361,
-      29.138
+      0.6779,
+      0.3377,
+      29.144
      ],
      "SOCKET_Mining_Front": [
       0.2793,
@@ -753,23 +1113,23 @@
      ],
      "SOCKET_Trail_Main": [
       0.6903,
-      0.3232,
-      29.415
+      0.3247,
+      29.421
      ],
      "SOCKET_Trail_Port": [
-      0.7549,
-      0.3504,
-      28.839
+      0.7548,
+      0.352,
+      28.845
      ],
      "SOCKET_Trail_Starboard": [
-      0.6283,
-      0.297,
-      29.992
+      0.6282,
+      0.2985,
+      29.997
      ],
      "SOCKET_Utility_Dorsal": [
       0.5,
-      0.4172,
-      25.314
+      0.4154,
+      25.308
      ],
      "SOCKET_Weapon_Front": [
       0.2729,
@@ -782,18 +1142,48 @@
     "file": "ship_hornet.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 45636,
+    "bytes": 49506,
     "hullSize": [
      9.84,
      8.8,
-     1.427
+     1.455
     ],
     "longAxis": 0,
     "marks": {
      "HORNET_LOD0_ROOT": [
       0.5258,
-      0.542,
+      0.5447,
       29.52
+     ],
+     "MOTION_HORNET_CANARD_P": [
+      0.7325,
+      0.5522,
+      30.52
+     ],
+     "MOTION_HORNET_CANARD_S": [
+      0.7325,
+      0.5522,
+      28.52
+     ],
+     "MOTION_HORNET_FLAP_P": [
+      0.1986,
+      0.5616,
+      31.92
+     ],
+     "MOTION_HORNET_FLAP_S": [
+      0.1986,
+      0.5616,
+      27.12
+     ],
+     "MOTION_HORNET_TIPPOD_P": [
+      0.233,
+      0.5447,
+      33.67
+     ],
+     "MOTION_HORNET_TIPPOD_S": [
+      0.233,
+      0.5447,
+      25.37
      ],
      "SOCKET_Camera_Focus": [
       0.5678,
@@ -802,12 +1192,12 @@
      ],
      "SOCKET_Cargo_Ventral": [
       0.5,
-      0.6247,
+      0.6273,
       29.52
      ],
      "SOCKET_Engine_Main": [
       0.0995,
-      0.5345,
+      0.5371,
       29.52
      ],
      "SOCKET_Mining_Front": [
@@ -832,22 +1222,22 @@
      ],
      "SOCKET_Trail_Main": [
       0.0677,
-      0.5345,
+      0.5371,
       29.52
      ],
      "SOCKET_Trail_Port": [
       0.0677,
-      0.5345,
+      0.5371,
       30.62
      ],
      "SOCKET_Trail_Starboard": [
       0.0677,
-      0.5345,
+      0.5371,
       28.42
      ],
      "SOCKET_Utility_Dorsal": [
       0.5,
-      0.3753,
+      0.3727,
       29.52
      ],
      "SOCKET_Weapon_Front": [
@@ -861,18 +1251,48 @@
     "file": "ship_hornet.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 62338,
+    "bytes": 67176,
     "hullSize": [
      9.84,
      8.8,
-     1.427
+     1.455
     ],
     "longAxis": 0,
     "marks": {
      "HORNET_LOD0_ROOT": [
       0.5,
       0.4742,
-      29.744
+      29.758
+     ],
+     "MOTION_HORNET_CANARD_P": [
+      0.4139,
+      0.2675,
+      29.798
+     ],
+     "MOTION_HORNET_CANARD_S": [
+      0.5861,
+      0.2675,
+      29.798
+     ],
+     "MOTION_HORNET_FLAP_P": [
+      0.2933,
+      0.8014,
+      29.848
+     ],
+     "MOTION_HORNET_FLAP_S": [
+      0.7067,
+      0.8014,
+      29.848
+     ],
+     "MOTION_HORNET_TIPPOD_P": [
+      0.1426,
+      0.767,
+      29.758
+     ],
+     "MOTION_HORNET_TIPPOD_S": [
+      0.8574,
+      0.767,
+      29.758
      ],
      "SOCKET_Camera_Focus": [
       0.5,
@@ -882,12 +1302,12 @@
      "SOCKET_Cargo_Ventral": [
       0.5,
       0.5,
-      30.184
+      30.198
      ],
      "SOCKET_Engine_Main": [
       0.5,
       0.9005,
-      29.704
+      29.718
      ],
      "SOCKET_Mining_Front": [
       0.5,
@@ -912,22 +1332,22 @@
      "SOCKET_Trail_Main": [
       0.5,
       0.9323,
-      29.704
+      29.718
      ],
      "SOCKET_Trail_Port": [
       0.4053,
       0.9323,
-      29.704
+      29.718
      ],
      "SOCKET_Trail_Starboard": [
       0.5947,
       0.9323,
-      29.704
+      29.718
      ],
      "SOCKET_Utility_Dorsal": [
       0.5,
       0.5,
-      28.856
+      28.842
      ],
      "SOCKET_Weapon_Front": [
       0.5,
@@ -939,12 +1359,12 @@
   },
   "ship_mule": {
    "sourceGlb": "assets/ships/parts/wholeships/mule_production_v1.glb",
-   "sourceGlbSha256": "5E743DED2D2573347CBFABBBADB13B86E49EC17FB8591DFA84ECBB5E3D0F7CEB",
+   "sourceGlbSha256": "1A9789F3DA83CD77D27D571101B265B32D4222BE4589A6FE911A9147089C45F2",
    "hero": {
     "file": "ship_mule.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 115334,
+    "bytes": 127650,
     "hullSize": [
      16.15,
      6.925,
@@ -953,6 +1373,11 @@
     "longAxis": 0,
     "marks": {
      "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.4988,
+      0.547,
+      42.205
+     ],
+     "MOTION_HULL_CORE": [
       0.4988,
       0.547,
       42.205
@@ -1023,7 +1448,7 @@
     "file": "ship_mule.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 49208,
+    "bytes": 52538,
     "hullSize": [
      16.15,
      6.925,
@@ -1032,6 +1457,11 @@
     "longAxis": 0,
     "marks": {
      "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.5024,
+      0.5701,
+      48.45
+     ],
+     "MOTION_HULL_CORE": [
       0.5024,
       0.5701,
       48.45
@@ -1102,7 +1532,7 @@
     "file": "ship_mule.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 43326,
+    "bytes": 48384,
     "hullSize": [
      16.15,
      6.925,
@@ -1111,6 +1541,11 @@
     "longAxis": 0,
     "marks": {
      "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.5,
+      0.4976,
+      49.062
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4976,
       49.062
@@ -1180,12 +1615,12 @@
   },
   "ship_drifter": {
    "sourceGlb": "assets/ships/parts/wholeships/drifter_production_v1.glb",
-   "sourceGlbSha256": "3853F1DCCAAEDE86E37A1811DD62524CE59D27C21A2EE9BB0F0707ADD487086E",
+   "sourceGlbSha256": "1E088387BDA49503A58EA2A2621F4B1FDEAFD385D192EDC031FC22475BD79AB6",
    "hero": {
     "file": "ship_drifter.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 91436,
+    "bytes": 100630,
     "hullSize": [
      18.62,
      7.11,
@@ -1194,6 +1629,11 @@
     "longAxis": 0,
     "marks": {
      "DRIFTER_LOD0_ROOT": [
+      0.5055,
+      0.5405,
+      48.949
+     ],
+     "MOTION_HULL_CORE": [
       0.5055,
       0.5405,
       48.949
@@ -1264,7 +1704,7 @@
     "file": "ship_drifter.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 51526,
+    "bytes": 56652,
     "hullSize": [
      18.62,
      7.11,
@@ -1273,6 +1713,11 @@
     "longAxis": 0,
     "marks": {
      "DRIFTER_LOD0_ROOT": [
+      0.4868,
+      0.5737,
+      55.825
+     ],
+     "MOTION_HULL_CORE": [
       0.4868,
       0.5737,
       55.825
@@ -1343,7 +1788,7 @@
     "file": "ship_drifter.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 35336,
+    "bytes": 40374,
     "hullSize": [
      18.62,
      7.11,
@@ -1352,6 +1797,11 @@
     "longAxis": 0,
     "marks": {
      "DRIFTER_LOD0_ROOT": [
+      0.5016,
+      0.5132,
+      56.602
+     ],
+     "MOTION_HULL_CORE": [
       0.5016,
       0.5132,
       56.602
@@ -1421,12 +1871,12 @@
   },
   "ship_ironback": {
    "sourceGlb": "assets/ships/parts/wholeships/ironback_production_v1.glb",
-   "sourceGlbSha256": "102427C496A210A1C7F021AA492C6906364257389635A4FE04AE82EE5784BA72",
+   "sourceGlbSha256": "60F36486FED2CB896E319DB857F7D2B6EDC6CB88812D9433FF08B07FEA53749A",
    "hero": {
     "file": "ship_ironback.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 104340,
+    "bytes": 109566,
     "hullSize": [
      19.916,
      6.78,
@@ -1435,6 +1885,11 @@
     "longAxis": 0,
     "marks": {
      "IRONBACK_LOD0_ROOT": [
+      0.4997,
+      0.5525,
+      52.124
+     ],
+     "MOTION_HULL_CORE": [
       0.4997,
       0.5525,
       52.124
@@ -1505,7 +1960,7 @@
     "file": "ship_ironback.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 48018,
+    "bytes": 50294,
     "hullSize": [
      19.916,
      6.78,
@@ -1514,6 +1969,11 @@
     "longAxis": 0,
     "marks": {
      "IRONBACK_LOD0_ROOT": [
+      0.5005,
+      0.5801,
+      59.749
+     ],
+     "MOTION_HULL_CORE": [
       0.5005,
       0.5801,
       59.749
@@ -1584,7 +2044,7 @@
     "file": "ship_ironback.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 41350,
+    "bytes": 43884,
     "hullSize": [
      19.916,
      6.78,
@@ -1593,6 +2053,11 @@
     "longAxis": 0,
     "marks": {
      "IRONBACK_LOD0_ROOT": [
+      0.5,
+      0.4995,
+      60.611
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4995,
       60.611
@@ -1662,12 +2127,12 @@
   },
   "ship_hawser": {
    "sourceGlb": "assets/ships/parts/wholeships/yard_tug.glb",
-   "sourceGlbSha256": "3AA01310CB56E2EA64B553598FEC5FE04C3E4ECDEDB210C7F10755B5E3C13DA1",
+   "sourceGlbSha256": "4CEAC593D5489242577FDE8F0C1157C390C289BE179832CB28BB5D5D63C383FA",
    "hero": {
     "file": "ship_hawser.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 117842,
+    "bytes": 123998,
     "hullSize": [
      26.292,
      7.82,
@@ -1679,6 +2144,21 @@
       0.5028,
       0.5714,
       69.153
+     ],
+     "MOTION_YARD_TUG_FAIRLEAD": [
+      0.6542,
+      0.3316,
+      76.146
+     ],
+     "MOTION_YARD_TUG_HOOK": [
+      0.6618,
+      0.3341,
+      76.697
+     ],
+     "MOTION_YARD_TUG_WINCH": [
+      0.6174,
+      0.3435,
+      73.844
      ],
      "SOCKET_Camera_Focus": [
       0.4649,
@@ -1746,7 +2226,7 @@
     "file": "ship_hawser.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 72168,
+    "bytes": 72658,
     "hullSize": [
      26.292,
      7.82,
@@ -1757,6 +2237,21 @@
      "SF_NPCWORK_YARD_TUG_ROOT": [
       0.4943,
       0.6144,
+      78.877
+     ],
+     "MOTION_YARD_TUG_FAIRLEAD": [
+      0.1607,
+      0.4843,
+      78.877
+     ],
+     "MOTION_YARD_TUG_HOOK": [
+      0.1414,
+      0.5019,
+      78.877
+     ],
+     "MOTION_YARD_TUG_WINCH": [
+      0.2494,
+      0.4421,
       78.877
      ],
      "SOCKET_Camera_Focus": [
@@ -1825,7 +2320,7 @@
     "file": "ship_hawser.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 47230,
+    "bytes": 48572,
     "hullSize": [
      26.292,
      7.82,
@@ -1837,6 +2332,21 @@
       0.5,
       0.5057,
       80.504
+     ],
+     "MOTION_YARD_TUG_FAIRLEAD": [
+      0.5,
+      0.8393,
+      78.654
+     ],
+     "MOTION_YARD_TUG_HOOK": [
+      0.5,
+      0.8586,
+      78.904
+     ],
+     "MOTION_YARD_TUG_WINCH": [
+      0.5,
+      0.7506,
+      78.054
      ],
      "SOCKET_Camera_Focus": [
       0.5,
@@ -1903,12 +2413,12 @@
   },
   "ship_bastion": {
    "sourceGlb": "assets/ships/parts/wholeships/bastion_production_v1.glb",
-   "sourceGlbSha256": "002BAFF1C8C501F0DC68CD1B702F37D9BEBC653886757D3C1E1D372E52BDF56F",
+   "sourceGlbSha256": "F51AB92E03AFD678B21FB25CB1706A1AFF85C996119D9CC6927898101747F86D",
    "hero": {
     "file": "ship_bastion.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 101308,
+    "bytes": 108092,
     "hullSize": [
      21.104,
      8.6,
@@ -1917,6 +2427,11 @@
     "longAxis": 0,
     "marks": {
      "BASTION_LOD0_ROOT": [
+      0.4926,
+      0.5901,
+      55.181
+     ],
+     "MOTION_HULL_CORE": [
       0.4926,
       0.5901,
       55.181
@@ -1987,7 +2502,7 @@
     "file": "ship_bastion.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 51854,
+    "bytes": 55192,
     "hullSize": [
      21.104,
      8.6,
@@ -1996,6 +2511,11 @@
     "longAxis": 0,
     "marks": {
      "BASTION_LOD0_ROOT": [
+      0.5148,
+      0.6261,
+      63.312
+     ],
+     "MOTION_HULL_CORE": [
       0.5148,
       0.6261,
       63.312
@@ -2066,7 +2586,7 @@
     "file": "ship_bastion.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 39110,
+    "bytes": 42258,
     "hullSize": [
      21.104,
      8.6,
@@ -2075,6 +2595,11 @@
     "longAxis": 0,
     "marks": {
      "BASTION_LOD0_ROOT": [
+      0.5,
+      0.4852,
+      64.752
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4852,
       64.752
@@ -2144,12 +2669,12 @@
   },
   "ship_atlas": {
    "sourceGlb": "assets/ships/parts/wholeships/atlas_production_v1.glb",
-   "sourceGlbSha256": "1F63A165DE53036F94574AE2FBB3E17AF642B7FFCCE9B7AFF8DA772BB12D3574",
+   "sourceGlbSha256": "2EDB848D43D5CE2901791089C0A49CF09017442BD8661F00ECFE1CA107448D9B",
    "hero": {
     "file": "ship_atlas.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 122580,
+    "bytes": 134726,
     "hullSize": [
      23.72,
      7.58,
@@ -2158,6 +2683,11 @@
     "longAxis": 0,
     "marks": {
      "ATLAS_LOD0_ROOT": [
+      0.4971,
+      0.5409,
+      61.854
+     ],
+     "MOTION_HULL_CORE": [
       0.4971,
       0.5409,
       61.854
@@ -2228,7 +2758,7 @@
     "file": "ship_atlas.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 59698,
+    "bytes": 61210,
     "hullSize": [
      23.72,
      7.58,
@@ -2237,6 +2767,11 @@
     "longAxis": 0,
     "marks": {
      "ATLAS_LOD0_ROOT": [
+      0.5057,
+      0.5579,
+      71.16
+     ],
+     "MOTION_HULL_CORE": [
       0.5057,
       0.5579,
       71.16
@@ -2307,7 +2842,7 @@
     "file": "ship_atlas.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 40630,
+    "bytes": 46554,
     "hullSize": [
      23.72,
      7.58,
@@ -2316,6 +2851,11 @@
     "longAxis": 0,
     "marks": {
      "ATLAS_LOD0_ROOT": [
+      0.5,
+      0.4943,
+      71.903
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4943,
       71.903
@@ -2385,12 +2925,12 @@
   },
   "ship_ranger": {
    "sourceGlb": "assets/ships/parts/wholeships/ranger_production_v1.glb",
-   "sourceGlbSha256": "63D8757F65D12D8213C0C80941DEC1DEC37B44AA61D7955151F74B92B1FF03CD",
+   "sourceGlbSha256": "A931523A8B82A61BD3584187240EB982CF276DE2B5AC06B11C75BEF94A6552FE",
    "hero": {
     "file": "ship_ranger.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 69442,
+    "bytes": 78006,
     "hullSize": [
      17.73,
      7.541,
@@ -2399,6 +2939,11 @@
     "longAxis": 0,
     "marks": {
      "RANGER_LOD0_ROOT": [
+      0.513,
+      0.557,
+      46.932
+     ],
+     "MOTION_HULL_CORE": [
       0.513,
       0.557,
       46.932
@@ -2469,7 +3014,7 @@
     "file": "ship_ranger.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 46726,
+    "bytes": 49364,
     "hullSize": [
      17.73,
      7.541,
@@ -2478,6 +3023,11 @@
     "longAxis": 0,
     "marks": {
      "RANGER_LOD0_ROOT": [
+      0.474,
+      0.6091,
+      53.19
+     ],
+     "MOTION_HULL_CORE": [
       0.474,
       0.6091,
       53.19
@@ -2548,7 +3098,7 @@
     "file": "ship_ranger.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 34364,
+    "bytes": 39028,
     "hullSize": [
      17.73,
      7.541,
@@ -2557,6 +3107,11 @@
     "longAxis": 0,
     "marks": {
      "RANGER_LOD0_ROOT": [
+      0.5,
+      0.526,
+      54.237
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.526,
       54.237
@@ -2626,12 +3181,12 @@
   },
   "ship_warden": {
    "sourceGlb": "assets/ships/parts/wholeships/warden_production_v1.glb",
-   "sourceGlbSha256": "98D902751565BC4D31BF3A49BD9D24D1301BF81A1BAB02A293B4AB4FCEACCAFE",
+   "sourceGlbSha256": "9700E1CEE5A14F05B833819CE14C8F215DDF8D6735F7D2C8278B1D6EE420C715",
    "hero": {
     "file": "ship_warden.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 117594,
+    "bytes": 123038,
     "hullSize": [
      42.126,
      12.5,
@@ -2640,6 +3195,11 @@
     "longAxis": 0,
     "marks": {
      "WARDEN_LOD0_ROOT": [
+      0.4944,
+      0.6065,
+      110.546
+     ],
+     "MOTION_HULL_CORE": [
       0.4944,
       0.6065,
       110.546
@@ -2710,7 +3270,7 @@
     "file": "ship_warden.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 78878,
+    "bytes": 82542,
     "hullSize": [
      42.126,
      12.5,
@@ -2719,6 +3279,11 @@
     "longAxis": 0,
     "marks": {
      "WARDEN_LOD0_ROOT": [
+      0.5112,
+      0.6547,
+      126.379
+     ],
+     "MOTION_HULL_CORE": [
       0.5112,
       0.6547,
       126.379
@@ -2789,7 +3354,7 @@
     "file": "ship_warden.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 45418,
+    "bytes": 46966,
     "hullSize": [
      42.126,
      12.5,
@@ -2798,6 +3363,11 @@
     "longAxis": 0,
     "marks": {
      "WARDEN_LOD0_ROOT": [
+      0.5,
+      0.4888,
+      129.904
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4888,
       129.904
@@ -2867,12 +3437,12 @@
   },
   "ship_colossus": {
    "sourceGlb": "assets/ships/parts/wholeships/colossus_production_v1.glb",
-   "sourceGlbSha256": "E04FCE61D7DB6BEB9F5EB51AD5683FAC91F6E3C2FB444C4B68E24745E1F2F499",
+   "sourceGlbSha256": "15A89FDB446B14356BC3DC1D9649788F5BDEE6776757688F7CD3A1CDB8D09F8F",
    "hero": {
     "file": "ship_colossus.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 133236,
+    "bytes": 141384,
     "hullSize": [
      53.5,
      26.216,
@@ -2881,6 +3451,11 @@
     "longAxis": 0,
     "marks": {
      "COLOSSUS_LOD0_ROOT": [
+      0.4987,
+      0.585,
+      140.486
+     ],
+     "MOTION_HULL_CORE": [
       0.4987,
       0.585,
       140.486
@@ -2951,7 +3526,7 @@
     "file": "ship_colossus.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 63774,
+    "bytes": 66648,
     "hullSize": [
      53.5,
      26.216,
@@ -2960,6 +3535,11 @@
     "longAxis": 0,
     "marks": {
      "COLOSSUS_LOD0_ROOT": [
+      0.5027,
+      0.6285,
+      160.5
+     ],
+     "MOTION_HULL_CORE": [
       0.5027,
       0.6285,
       160.5
@@ -3030,7 +3610,7 @@
     "file": "ship_colossus.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 51796,
+    "bytes": 55536,
     "hullSize": [
      53.5,
      26.216,
@@ -3039,6 +3619,11 @@
     "longAxis": 0,
     "marks": {
      "COLOSSUS_LOD0_ROOT": [
+      0.5,
+      0.4973,
+      164.219
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4973,
       164.219
@@ -3108,12 +3693,12 @@
   },
   "ship_leviathan": {
    "sourceGlb": "assets/ships/parts/wholeships/leviathan_production_v1.glb",
-   "sourceGlbSha256": "C25E0E1A340E53B4A8F776A88792DDF8314C005E9133C53407CD7559FECD28F7",
+   "sourceGlbSha256": "6018D1F95B9183567B12908713D3956D4FC69327CAA7A7593F247C15EE0ACD76",
    "hero": {
     "file": "ship_leviathan.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 131202,
+    "bytes": 140488,
     "hullSize": [
      61.1,
      33.12,
@@ -3122,6 +3707,11 @@
     "longAxis": 0,
     "marks": {
      "LEVIATHAN_LOD0_ROOT": [
+      0.4976,
+      0.6164,
+      160.959
+     ],
+     "MOTION_HULL_CORE": [
       0.4976,
       0.6164,
       160.959
@@ -3192,7 +3782,7 @@
     "file": "ship_leviathan.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 73600,
+    "bytes": 76310,
     "hullSize": [
      61.1,
      33.12,
@@ -3201,6 +3791,11 @@
     "longAxis": 0,
     "marks": {
      "LEVIATHAN_LOD0_ROOT": [
+      0.5049,
+      0.6756,
+      183.301
+     ],
+     "MOTION_HULL_CORE": [
       0.5049,
       0.6756,
       183.301
@@ -3271,7 +3866,7 @@
     "file": "ship_leviathan.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 57784,
+    "bytes": 60548,
     "hullSize": [
      61.1,
      33.12,
@@ -3280,6 +3875,11 @@
     "longAxis": 0,
     "marks": {
      "LEVIATHAN_LOD0_ROOT": [
+      0.5,
+      0.4951,
+      189.104
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4951,
       189.104
@@ -3349,12 +3949,12 @@
   },
   "ship_saucer": {
    "sourceGlb": "assets/ships/parts/wholeships/saucer_production_v1.glb",
-   "sourceGlbSha256": "A4DDD9DB4FBCFA39C9E55A43A96F90A3C1AD012C0696EC13B0E9C17DED5DEEF4",
+   "sourceGlbSha256": "658F17F4ACB8F815BB84ABB341FC03D8ABD99AE6CA3025ADBE82592A1C668A7D",
    "hero": {
     "file": "ship_saucer.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 133534,
+    "bytes": 138650,
     "hullSize": [
      20.962,
      22.06,
@@ -3363,6 +3963,11 @@
     "longAxis": 1,
     "marks": {
      "SAUCER_LOD0_ROOT": [
+      0.5205,
+      0.4984,
+      56.885
+     ],
+     "MOTION_HULL_CORE": [
       0.5205,
       0.4984,
       56.885
@@ -3443,7 +4048,7 @@
     "file": "ship_saucer.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 74150,
+    "bytes": 76166,
     "hullSize": [
      20.962,
      22.06,
@@ -3452,6 +4057,11 @@
     "longAxis": 1,
     "marks": {
      "SAUCER_LOD0_ROOT": [
+      0.5,
+      0.4819,
+      66.911
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.4819,
       66.911
@@ -3532,7 +4142,7 @@
     "file": "ship_saucer.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 58934,
+    "bytes": 63032,
     "hullSize": [
      20.962,
      22.06,
@@ -3541,6 +4151,11 @@
     "longAxis": 1,
     "marks": {
      "SAUCER_LOD0_ROOT": [
+      0.5,
+      0.5281,
+      65.964
+     ],
+     "MOTION_HULL_CORE": [
       0.5,
       0.5281,
       65.964

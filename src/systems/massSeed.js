@@ -256,7 +256,8 @@ export const massSeed = {
       activeAt,
       expireAt,
     });
-    this.bus.emit('audio:cue', { id: 'confirm' });
+    // FB-010: the deploy voice is the authored sfx_massseed_deploy, routed in audioSystem from
+    // the event above — the generic menu-register 'confirm' blip is retired, not doubled.
   },
 
   // ── lifecycle tick ───────────────────────────────────────────────────────────────────────
@@ -308,7 +309,8 @@ export const massSeed = {
             pos: { x: entity.pos.x, z: entity.pos.z },
             expireAt: ms.expireAt,
           });
-          this.bus.emit('audio:cue', { id: 'lock_acquired' });
+          // FB-010: the lock lands as the authored sfx_massseed_lock_chord (audioSystem routing);
+          // the generic 'lock_acquired' cue is retired so the chord is heard once.
           this.bus.emit('presentation:vfxCue', {
             id: 'massSeed.frameLock',
             lane: 'utility',
@@ -335,7 +337,8 @@ export const massSeed = {
             remainingS: ms.expireAt - now,
           });
           this.bus.emit('toast', { text: 'Anchor seed destabilizing', kind: 'warn', ttl: 2.5 });
-          this.bus.emit('audio:cue', { id: 'alert' });
+          // FB-010: the warning voice is the authored quickening sfx_massseed_warning
+          // (audioSystem routing); the generic 'alert' menu blip is retired.
         }
         break;
       }

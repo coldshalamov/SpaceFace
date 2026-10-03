@@ -264,6 +264,51 @@ test('ignored or unreachable warning falls back once, never double-resolves or d
   assert.equal(emitted(h, 'claim:defenseResolved').length, 1);
 });
 
+test('an empty store cannot be raided for invented goods (NXI-137)', () => {
+  const h = boot();
+  h.body.spec.store = { input: {}, output: {} };
+  assert.equal(h.sys.beginRaidDefense(h.body.id), false,
+    'no defense contract on an empty site');
+  assert.equal(h.body.spec.defense, null);
+  assert.equal(h.body.spec.totals.lostU, 0, 'nothing was ever there to lose');
+  assert.equal(emitted(h, 'claim:defenseStarted').length, 0, 'no raid is announced for empty stores');
+
+  // A store emptied mid-defense settles the raid with zero loss — the receipt stays honest.
+  const h2 = boot();
+  h2.sys.beginRaidDefense(h2.body.id);
+  h2.body.spec.store = { input: {}, output: {} };
+  h2.body.spec.defense.phase = 'engaged';
+  h2.bus.emit('encounter:resolved', {
+    encounterId: h2.body.spec.defense.encounterId,
+    shape: 'claim_threat', outcome: 'timeout', sectorId: FRONTIER,
+  });
+  assert.equal(h2.body.spec.totals.lostU, 0, 'a timeout on an empty store invents no quantity');
+  assert.equal(emitted(h2, 'claim:defenseResolved').at(-1).payload.lostU, 0,
+    'the settlement receipt reports the real loss: none');
+});
+
+test('a settled raid cannot be re-offered or re-resolved on late arrival (NXI-138)', () => {
+  const h = boot();
+  h.sys.beginRaidDefense(h.body.id);
+  const defense = h.body.spec.defense;
+  defense.phase = 'engaged';
+  const resolved = {
+    encounterId: defense.encounterId, shape: 'claim_threat', outcome: 'timeout', sectorId: FRONTIER,
+  };
+  h.bus.emit('encounter:resolved', resolved);
+  assert.equal(emitted(h, 'claim:defenseResolved').length, 1);
+  assert.equal(h.body.spec.status, 'raided', 'the settled result is what a late arrival sees');
+
+  // The same encounter receipt replayed — late arrival must not re-settle.
+  h.bus.emit('encounter:resolved', resolved);
+  assert.equal(emitted(h, 'claim:defenseResolved').length, 1, 'the settled raid cannot resolve twice');
+  assert.equal(h.body.spec.totals.lostU, 70, 'losses are not re-applied');
+
+  // And the site does not re-invite the same raid while it sits frozen.
+  assert.equal(h.sys.beginRaidDefense(h.body.id), false,
+    'a raided site is not a fresh invitation to the same raid');
+});
+
 test('the live director materializes the requested claim set piece at the exact anchor with readable ROE', () => {
   const sim = createSimulation({ seed: 47, systems: [spawnBudget, encounterDirector] });
   const { state } = sim;

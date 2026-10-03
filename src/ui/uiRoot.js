@@ -32,6 +32,7 @@ import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -74,6 +75,7 @@ import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
+import { restoredDefeatIntent } from './screens/gameOver.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -137,6 +139,12 @@ const BOOT_SCREEN_EXPORTS = new Set([
   'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
   'crucibleScreen', 'crucibleResultsScreen', 'demoEndScreen',
 ]);
+
+// Screens whose mounts stay deferred even during menu dwell: 'station' is a whole app whose
+// open is already masked by the dock ceremony, and 'ship' mounts the shared stage (the second
+// GL context) which is itself shared with the dock shipworks host. 'achievements' mounts eager
+// medal-art fetches that page-error preflight checks when generated art is absent.
+const SCREEN_PREWARM_DEFER = new Set(['station', 'ship', 'achievements']);
 
 function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
@@ -322,7 +330,18 @@ function saveErrorText(payload = {}) {
 
 function saveErrorReasonText(payload = {}) {
   const slot = saveSlotLabel(payload.slot);
-  switch (payload.reason) {
+  // Write-path receipts pack the verify sub-reason after a colon
+  // ('write_verify_failed:save_size_limit(…)'); match the outer reason first, then let a
+  // known inner reason carry its own actionable message.
+  const rawReason = String(payload.reason || '');
+  const reason = rawReason.split(':', 1)[0];
+  const innerReason = rawReason.indexOf(':') >= 0
+    ? rawReason.slice(rawReason.indexOf(':') + 1).split('(', 1)[0]
+    : '';
+  // _saveTiming receipts carry `trigger` — it separates "the write failed" from
+  // "the file on disk failed to load" for the shared reason names below.
+  const writeAttempt = payload.trigger != null;
+  switch (reason) {
     case 'no_player': return 'Start or load a game before saving';
     case 'no_save': return 'No save found for ' + slot;
     case 'read_failed': return 'Could not read ' + slot;
@@ -342,11 +361,43 @@ function saveErrorReasonText(payload = {}) {
     case 'backup_quota':
     case 'write_failed':
     case 'backup_write_failed':
+      return 'Save storage is full; export a backup';
     case 'write_verify_parse':
     case 'write_verify_failed':
-      return 'Save storage is full; export a backup';
+      if (innerReason === 'save_size_limit' || innerReason === 'import_too_large') {
+        return slot + ' is too large to store — previous save kept';
+      }
+      if (innerReason === 'quota' || innerReason === 'backup_quota') {
+        return 'Save storage is full; export a backup';
+      }
+      return 'Could not verify the ' + slot + ' write — previous save kept';
+    // SF-281 — the write bound refuses rather than truncates, and the refused write leaves
+    // the previous slot generation intact; name both facts so the receipt is actionable.
+    case 'save_size_limit':
+    case 'import_too_large':
+      return writeAttempt
+        ? slot + ' is too large to store — previous save kept'
+        : slot + ' is too large to load';
+    case 'import_depth_limit':
+    case 'import_node_limit':
+    case 'import_collection_limit':
+    case 'import_cycle':
+    case 'import_persistent_entity_limit':
+      return writeAttempt
+        ? 'Save data exceeds storage bounds — previous save kept'
+        : slot + ' is too complex to load';
+    case 'restoring': return 'Could not save ' + slot + ' — a load is in progress';
+    case 'schedule_failed':
+    case 'save_worker_failed':
+    case 'save_worker_timeout':
+    case 'player_capture_churn':
+    case 'save_failed':
+    case 'rollback_failed':
+      return 'Could not finish saving ' + slot + ' — previous save kept';
+    case 'settings_write_failed': return 'Could not save settings';
     case 'export_failed': return 'Export failed for ' + slot;
     case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
+    case 'deferred_transition_failed': return 'Could not finish the sector switch';
     case 'load_failed':
     default:
       return 'Save/load failed for ' + slot;
@@ -386,6 +437,10 @@ function wireSaveFeedback(bus) {
     });
   });
   bus.on('save:error', (payload = {}) => {
+    // A superseded autosave is a cancellation receipt, not a lost save: the slot keeps its
+    // previous generation and a newer route owns the next write. Warning the player here
+    // would cry failure over a deliberate replacement (New Game / Continue boundaries).
+    if (payload && payload.reason === 'superseded') return;
     bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: 3200 });
   });
 }
@@ -472,6 +527,7 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
+    this._screenPrewarmQueue = [];
 
     // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
     // door onto that entity's dossier. Mounted after the screen manager because it reads which
@@ -626,20 +682,20 @@ export const ui = {
         if (payload.targetId === this.state?.playerId) return;
         const isShield = !!(payload.shieldHit && payload.shieldDamage > 0);
         triggerHitTick(isShield ? 'shield' : 'hull');
-      });
+      }, { presentation: true });
 
       this.bus.on('entity:killed', (payload) => {
         if (!payload || payload.killerId !== this.state?.playerId) return;
         if (payload.id === this.state?.playerId) return;
         triggerHitTick('kill');
-      });
+      }, { presentation: true });
 
       // INF-053: when the LOCKED target dies, say DESTROYED in the lock's own voice, whatever
       // else the kill pays. Any killer counts — the lock's subject is a corpse either way.
       this.bus.on('entity:killed', (payload) => {
         const toast = destroyedLockToast(this.state, payload);
         if (toast) this.bus.emit('toast', toast);
-      });
+      }, { presentation: true });
     }
     const autoTargetFlightStick = document.createElement('div');
     autoTargetFlightStick.id = 'auto-target-flight-stick';
@@ -765,14 +821,19 @@ export const ui = {
         for (let i = startIndex; i < flightPath.points.length; i++) {
           projectedPoints.push(flightPath.points[i]);
         }
+        // MACH-05 — one reused in/out pair for the whole polyline: per-point literal + result
+        // objects allocated two records for every path point on this overlay refresh.
+        const fpIn = this._flightPathProjIn || (this._flightPathProjIn = { x: 0, y: 0, z: 0 });
+        const fpOut = this._flightPathProjOut || (this._flightPathProjOut = { x: 0, y: 0, onScreen: false });
         const screenPoints = [];
         for (const point of projectedPoints) {
-          const projected = this.helpers.worldToScreen({ x: point.x, y: 0, z: point.z });
+          fpIn.x = point.x; fpIn.y = 0; fpIn.z = point.z;
+          const projected = this.helpers.worldToScreen(fpIn, fpOut);
           if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
-            screenPoints.push(projected);
+            screenPoints.push(`${projected.x.toFixed(1)},${projected.y.toFixed(1)}`);
           }
         }
-        const pointsValue = screenPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+        const pointsValue = screenPoints.join(' ');
         if (pointsValue !== lastFlightPathPoints) {
           autoTargetRouteLine.setAttribute('points', pointsValue);
           lastFlightPathPoints = pointsValue;
@@ -1168,6 +1229,12 @@ export const ui = {
       // Phase 1: fade to dark
       showDockFade('dock');
 
+      // The station hub mounts under the veil: build + one style/layout pass now so the
+      // Phase-2 swap flips visibility instead of paying a whole-app mount inside it.
+      if (this._registeredScreens && this._registeredScreens.has('station')) {
+        try { this._warmScreen('station'); } catch (e) { console.error(e); }
+      }
+
       // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
       // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
       // pushZoom widens the view ~25% over the fade so the approach reads as a committed fly-in,
@@ -1308,12 +1375,22 @@ export const ui = {
       this.state.ui.docked = false;
       this.state.ui.dockedStationId = null;
       this.screenManager.closeAll();
+      // closeAll does not emit game:over:dismissed, so the one-shot latch must reset here — a stale
+      // 'already shown' would otherwise swallow the next death's after-action surface.
+      this._gameOverShown = false;
       // Same release as game:started — the Load screen's stage hull is the other Launch-path leak.
       this.screenManager.releaseScreen('newGame');
       this.screenManager.releaseScreen('saveLoad');
       this.screenManager.syncVisibility();
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
+      // SF-285: a save written mid-defeat restores the wreck with its durable defeat intact — the
+      // after-action surface is the only recovery affordance for that hull. Re-present it AFTER
+      // closeAll so the same boundary cannot immediately unmount it.
+      if (restoredDefeatIntent(this.state) && !this._survivalRunLive()) {
+        this._gameOverShown = true;
+        this._pushScreenWhenRegistered('gameOver', 60);
+      }
     });
 
     // register all modal screens (dynamic + per-screen guarded). The Main Menu is shown by the
@@ -1346,6 +1423,15 @@ export const ui = {
         }
         if (!this._registeredScreens) this._registeredScreens = new Set();
         this._registeredScreens.add(def.id);
+        // Mount + paint-warm on the serialized drain — one screen per yielded frame, in
+        // menu dwell AND on flight-idle slices (a fast embark used to strand the whole
+        // rest-wave behind the mode==='menu' gate). station (a whole app — it warms under
+        // the dock veil instead) and ship (the shared stage owns the second GL context)
+        // keep their owner-scheduled mounts.
+        if (!SCREEN_PREWARM_DEFER.has(def.id)) {
+          (this._screenPrewarmQueue || (this._screenPrewarmQueue = [])).push(def.id);
+          this._drainScreenPrewarmQueue(registrationCycle);
+        }
         if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
           try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
         }
@@ -1383,6 +1469,61 @@ export const ui = {
       }
     });
     return this._screenRegistrationPromise;
+  },
+
+  _warmScreen(id) {
+    if (this.screenManager && typeof this.screenManager.prewarm === 'function') {
+      this.screenManager.prewarm(id);
+    }
+    if (this.screenManager && typeof this.screenManager.paintWarm === 'function') {
+      this.screenManager.paintWarm(id);
+    }
+  },
+
+  // One queued screen mount+paint-warm per yielded frame; exits early if the registration
+  // cycle that populated the queue is superseded (the next cycle re-fills it).
+  _drainScreenPrewarmQueue(registrationCycle) {
+    if (this._screenPrewarmDraining) return;
+    const queue = this._screenPrewarmQueue;
+    if (!queue || !queue.length) return;
+    this._screenPrewarmDraining = true;
+    (async () => {
+      try {
+        while (queue.length) {
+          const id = queue.shift();
+          try {
+            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.prewarm(id); }
+            catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+            // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
+            // its own frame before the hidden layout pass — the two costs never share a
+            // flight-idle frame even when the mount alone exceeds the budget.
+            const mountedMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - t0 : 0;
+            if (mountedMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
+            const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.paintWarm(id); }
+            catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
+            // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
+            // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
+            // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
+            const paintMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - tp : 0;
+            if (paintMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
+          }
+          catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+          await yieldPresentationFrame();
+          if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        }
+      } finally {
+        this._screenPrewarmDraining = false;
+        if (queue.length) this._drainScreenPrewarmQueue(registrationCycle);
+      }
+    })();
   },
 
   // Push a screen that may still be in a deferred registration wave: retry until it registers or
@@ -1627,7 +1768,14 @@ function explicitObjectSelectionAlive(state, targetId) {
   const sel = state.ui && state.ui.objectSelection;
   if (!sel || sel.targetId !== targetId) return false;
   const subject = resolveWorldPresentationEntity(state, targetId);
-  return !!(subject && subject.alive !== false);
+  if (!subject || subject.alive === false) return false;
+  // A recorded pick token that no longer matches the resolved occupant is a recycled id: the
+  // selection named the dead body, not the heir holding its number.
+  const generation = occupantGenerationOf(subject);
+  if (sel.occupantGeneration != null && generation != null && generation !== sel.occupantGeneration) {
+    return false;
+  }
+  return true;
 }
 
 // The hostile the Massline is physically holding, if it is a legal scanner lock. Whenever this
@@ -1649,6 +1797,12 @@ function tetheredHostileLock(player, state) {
 // the entire job of the quiet refresh.
 function isDeliberateNonHostilePick(player, state, entity) {
   if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  // A deliberate pick bound to an occupant token the live body no longer carries is a recycled
+  // id — the player selected the dead body, and the heir does not inherit the pick.
+  const sel = state.ui && state.ui.objectSelection;
+  const generation = occupantGenerationOf(entity);
+  if (sel && sel.targetId === entity.id && sel.occupantGeneration != null && generation != null
+      && generation !== sel.occupantGeneration) return false;
   return !isHostileToPlayer(entity, player.team, state);
 }
 

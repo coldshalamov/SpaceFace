@@ -98,6 +98,15 @@ export function bombInteractionState(bomb) {
       hint: null,
     };
   }
+  if (data.phase === 'field') {
+    return {
+      state: 'field',
+      label: 'Drift field',
+      interactable: false,
+      lockable: false,
+      hint: null,
+    };
+  }
   if (data.armed === true && (data.phase === 'drift' || data.phase === 'warning')) {
     return {
       state: 'armed',

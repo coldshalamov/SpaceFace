@@ -490,6 +490,12 @@ function ensureEntityIndex(state) {
   state.entityIndex = {
     __spacefaceEntityIndexV1: true,
     version: 0,
+    // Per-lane membership counters: the global version dies on every projectile/fx churn,
+    // so readers whose domain is a fixed lane set latch the laneVersions sum instead.
+    laneVersions: Object.create(null),
+    // Bumped on every clear: lane counters reset to zero and can re-accrue to the identical
+    // sum while membership differs — the epoch fold keeps lane-version latches honest.
+    laneEpoch: 0,
     ready: false,
     ships: [],
     drones: [],
@@ -504,6 +510,7 @@ function ensureEntityIndex(state) {
     asteroids: [],
     mineables: [],
     wrecks: [],
+    fauna: [],
     fx: [],
     mines: [],
     vectorMines: [],
@@ -518,6 +525,7 @@ function ensureEntityIndex(state) {
     spatialStatics: [],
     spatialDynamics: [],
     spatialStaticVersion: 0,
+    spatialDynamicsVersion: 0,
     physicsBodies: [],
     physicsStatics: [],
     physicsDynamics: [],
@@ -525,7 +533,17 @@ function ensureEntityIndex(state) {
     radarContacts: [],
     radarAsteroids: [],
     byStationId: new Map(),
+    byWorldSiteId: new Map(),
+    // Ceres activity slot ids: slotId -> Set<entity>. Spawn literals carry them, and the
+    // durable-identity stamp helpers write them post-append via
+    // syncEntityActivitySlotMembership — the same coverage contract byWorldRecordId keeps.
+    byActivityObjectSlotId: new Map(),
+    byActivityActorSlotId: new Map(),
+    capitalBossCast: new Set(),
     byWorldRecordId: new Map(),
+    // Parallel carrier count for byWorldRecordId: O(1) "exactly one carrier" answers — any
+    // ambiguity (0, ≥2, or a missing count) keeps the entityList walk callers already run.
+    byWorldRecordIdCount: new Map(),
     _indexedIds: new Set(),
     _sourceList: null,
     _sourceLength: -1,
@@ -561,6 +579,7 @@ function repairEntityIndex(index) {
     index.ready = false;
   }
   if (!Array.isArray(index.snares)) index.snares = [];
+  if (!Array.isArray(index.fauna)) index.fauna = [];
   if (!Array.isArray(index.charges)) {
     index.charges = [];
     index.ready = false;
@@ -573,12 +592,15 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.damageables)) index.damageables = [];
   // Repairing a volatile lane leaves it valid-but-empty; force the next refresh
   // to rebuild rather than wait out the cadence on a corrupt index.
+  if (!index.laneVersions) index.laneVersions = Object.create(null);
+  if (!Number.isFinite(index.laneEpoch)) index.laneEpoch = 0;
   if (!Array.isArray(index.aiShips)) { index.aiShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.weaponShips)) { index.weaponShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.collidables)) index.collidables = [];
   if (!Array.isArray(index.spatialStatics)) index.spatialStatics = [];
   if (!Array.isArray(index.spatialDynamics)) index.spatialDynamics = [];
   if (!Number.isFinite(index.spatialStaticVersion)) index.spatialStaticVersion = 0;
+  if (!Number.isFinite(index.spatialDynamicsVersion)) index.spatialDynamicsVersion = 0;
   if (!Array.isArray(index.physicsBodies)) index.physicsBodies = [];
   if (!Array.isArray(index.physicsStatics)) index.physicsStatics = [];
   if (!Array.isArray(index.physicsDynamics)) index.physicsDynamics = [];
@@ -586,8 +608,16 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.radarContacts)) index.radarContacts = [];
   if (!Array.isArray(index.radarAsteroids)) index.radarAsteroids = [];
   if (!(index.byStationId instanceof Map)) index.byStationId = new Map();
+  if (!(index.byWorldSiteId instanceof Map)) index.byWorldSiteId = new Map();
+  if (!(index.byActivityObjectSlotId instanceof Map)) index.byActivityObjectSlotId = new Map();
+  if (!(index.byActivityActorSlotId instanceof Map)) index.byActivityActorSlotId = new Map();
+  if (!(index.capitalBossCast instanceof Set)) index.capitalBossCast = new Set();
   if (!(index.byWorldRecordId instanceof Map)) {
     index.byWorldRecordId = new Map();
+    index.ready = false;
+  }
+  if (!(index.byWorldRecordIdCount instanceof Map)) {
+    index.byWorldRecordIdCount = new Map();
     index.ready = false;
   }
   if (!(index._indexedIds instanceof Set)) {
@@ -619,6 +649,7 @@ function clearEntityIndex(index) {
   index.asteroids.length = 0;
   index.mineables.length = 0;
   index.wrecks.length = 0;
+  index.fauna.length = 0;
   index.fx.length = 0;
   index.mines.length = 0;
   index.vectorMines.length = 0;
@@ -632,14 +663,22 @@ function clearEntityIndex(index) {
   index.collidables.length = 0;
   index.spatialStatics.length = 0;
   index.spatialDynamics.length = 0;
+  index.spatialDynamicsVersion++;
   index.physicsBodies.length = 0;
   index.physicsStatics.length = 0;
   index.physicsDynamics.length = 0;
   index.radarContacts.length = 0;
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
+  index.byWorldSiteId.clear();
+  index.byActivityObjectSlotId.clear();
+  index.byActivityActorSlotId.clear();
+  index.capitalBossCast.clear();
   index.byWorldRecordId.clear();
+  index.byWorldRecordIdCount.clear();
   index._indexedIds.clear();
+  index.laneEpoch = (Number.isFinite(index.laneEpoch) ? index.laneEpoch : 0) + 1;
+  index.laneVersions = Object.create(null);
   index._volatileReady = false;
 }
 
@@ -652,8 +691,10 @@ function appendEntityIndex(index, e) {
   const movable = isMovableEntity(e);
   if (e.collides) {
     index.collidables.push(e);
+    bumpLaneVersion(index, 'collidables');
     if (movable) {
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
@@ -674,16 +715,76 @@ function appendEntityIndex(index, e) {
     if (e.type === 'asteroid') index.radarAsteroids.push(e);
     else index.radarContacts.push(e);
   }
+  // Freighters carry no dedicated bucket (radarContacts only) — a counter-only lane lets
+  // remote-engine-type readers latch shipLike+freighters instead of the whole version.
+  if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
+  // Machines stay counter-only — their member sets are data predicates readers latch on
+  // (fauna graduated to a member lane in appendTypedLaneMembership).
+  if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
+  // Band-landmark carriers stamp flavor refs in their spawn-time data literal — append-time
+  // decidable, so a counter-only lane lets the proximity sampler ignore projectile churn.
+  if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
+    bumpLaneVersion(index, 'flavorCarriers');
+  }
+  // world_site_root entities carry their role in the spawn literal — append-time decidable,
+  // so the markerless-POI carrier lookup latches this lane instead of the whole version.
+  if (e.data && e.data.role === 'world_site_root') bumpLaneVersion(index, 'worldSiteRoots');
   // First holder wins, matching the entities-map walk every worldRecordId lookup used to run.
   const worldRecordId = e.data && e.data.worldRecordId;
-  if (worldRecordId != null && !index.byWorldRecordId.has(worldRecordId)) {
-    index.byWorldRecordId.set(worldRecordId, e);
+  if (worldRecordId != null) {
+    if (!index.byWorldRecordId.has(worldRecordId)) {
+      index.byWorldRecordId.set(worldRecordId, e);
+    }
+    if (index.byWorldRecordIdCount instanceof Map) {
+      index.byWorldRecordIdCount.set(worldRecordId, (index.byWorldRecordIdCount.get(worldRecordId) || 0) + 1);
+    }
+    // Same stamp registerEntityWorldRecordId reads: the id this entity is counted under, so a
+    // post-spawn re-stamp decrements the right lane and remove decrements what was incremented.
+    e._wrIndexStamp = worldRecordId;
+    bumpLaneVersion(index, 'worldRecordIds');
+  }
+  // worldSiteId lives only in the spawn literal — append-time decidable, so site
+  // materialization syncs read one bucket instead of walking the whole entity map.
+  const worldSiteId = e.data && e.data.worldSiteId;
+  if (worldSiteId != null) {
+    let bucket = index.byWorldSiteId.get(worldSiteId);
+    if (!bucket) { bucket = new Set(); index.byWorldSiteId.set(worldSiteId, bucket); }
+    if (!bucket.has(e)) { bucket.add(e); bumpLaneVersion(index, 'worldSites'); }
+  }
+  // Capital-boss cast keys are also spawn-literal only; the reconcile event walks
+  // this handful instead of the whole entity map per boss fight.
+  if (e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)) {
+    if (!index.capitalBossCast.has(e)) { index.capitalBossCast.add(e); bumpLaneVersion(index, 'capitalBossCast'); }
+  }
+  // Ceres activity slot ids — spawn-literal carriers index here; post-append writers
+  // (durable-identity stamps, ore-carrier reclassify, faction presence, helios starters)
+  // sync through syncEntityActivitySlotMembership. The stamp on the entity records the
+  // indexed key so removal vacates the same slot a later re-stamp moved it out of.
+  const activityObjectSlotId = e.data && e.data.activityObjectSlotId;
+  if (activityObjectSlotId != null) {
+    indexSlotMember(index.byActivityObjectSlotId, activityObjectSlotId, e);
+    e._indexActivityObjectSlotId = activityObjectSlotId;
+  }
+  const activityActorSlotId = e.data && e.data.activityActorSlotId;
+  if (activityActorSlotId != null) {
+    indexSlotMember(index.byActivityActorSlotId, activityActorSlotId, e);
+    e._indexActivityActorSlotId = activityActorSlotId;
   }
 
+  appendTypedLaneMembership(index, e);
+  index.version++;
+}
+
+// Type-keyed lane membership for appendEntityIndex — extracted so post-spawn type flips
+// (syncEntityTypeLaneMembership) re-derive it without duplicating the switch. Every append
+// records the type it was indexed under as _indexType; removal keys on that stamp so a
+// drifted entity still vacates the lanes it actually occupies.
+function appendTypedLaneMembership(index, e) {
   switch (e.type) {
     case 'ship':
       index.ships.push(e);
       index.shipLike.push(e);
+      bumpLaneVersion(index, 'shipLike');
       index.damageables.push(e);
       if (e.data && e.data.ai) index.aiShips.push(e);
       if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
@@ -691,19 +792,24 @@ function appendEntityIndex(index, e) {
     case 'drone':
       index.drones.push(e);
       index.shipLike.push(e);
+      bumpLaneVersion(index, 'shipLike');
       index.damageables.push(e);
       break;
     case 'projectile':
       index.projectiles.push(e);
+      bumpLaneVersion(index, 'projectiles');
       break;
     case 'pickup':
       index.pickups.push(e);
+      bumpLaneVersion(index, 'pickups');
       break;
     case 'payload':
       index.payloads.push(e);
+      bumpLaneVersion(index, 'payloads');
       break;
     case 'station': {
       index.stations.push(e);
+      bumpLaneVersion(index, 'stations');
       index.statics.push(e);
       index.damageables.push(e);
       const data = e.data || {};
@@ -714,12 +820,18 @@ function appendEntityIndex(index, e) {
     }
     case 'asteroid':
       index.asteroids.push(e);
+      bumpLaneVersion(index, 'asteroids');
       index.statics.push(e);
       if (!(e.data && e.data.respawnAt != null)) index.mineables.push(e);
       break;
     case 'wreck':
       index.wrecks.push(e);
+      bumpLaneVersion(index, 'wrecks');
       index.mineables.push(e);
+      break;
+    case 'fauna':
+      index.fauna.push(e);
+      bumpLaneVersion(index, 'fauna');
       break;
     case 'fx':
       index.fx.push(e);
@@ -743,6 +855,7 @@ function appendEntityIndex(index, e) {
       // while physicsBody stays false — bombs own their pose. Not a combat damageable;
       // projectile:hit is retired by the bombs owner exactly once.
       index.bombs.push(e);
+      bumpLaneVersion(index, 'bombs');
       break;
     case 'massSeed':
       // PQ-011 anchor seeds: damageable in every phase (counterplay — hostile fire and stray
@@ -760,7 +873,7 @@ function appendEntityIndex(index, e) {
       index.damageables.push(e);
       break;
   }
-  index.version++;
+  e._indexType = e.type;
 }
 
 function removeEntityIndex(index, e) {
@@ -768,38 +881,135 @@ function removeEntityIndex(index, e) {
   repairEntityIndex(index);
   if (e.id != null && !index._indexedIds.has(e.id)) return;
   if (e.id != null) index._indexedIds.delete(e.id);
-  removeFromIndexArray(index.collidables, e);
+  if (removeFromIndexArray(index.collidables, e)) bumpLaneVersion(index, 'collidables');
   const removedSpatialStatic = removeFromIndexArray(index.spatialStatics, e);
-  removeFromIndexArray(index.spatialDynamics, e);
+  if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   removeFromIndexArray(index.physicsBodies, e);
   const removedPhysicsStatic = removeFromIndexArray(index.physicsStatics, e);
   removeFromIndexArray(index.physicsDynamics, e);
   removeFromIndexArray(index.movables, e);
   removeFromIndexArray(index.radarContacts, e);
   removeFromIndexArray(index.radarAsteroids, e);
+  removeTypedLaneMembership(index, e);
+  if (e.data && e.data.machine) bumpLaneVersion(index, 'machines');
+  if (e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
+    bumpLaneVersion(index, 'flavorCarriers');
+  }
+  if (e.data && e.data.role === 'world_site_root') bumpLaneVersion(index, 'worldSiteRoots');
+  const removedWorldSiteId = e.data && e.data.worldSiteId;
+  if (removedWorldSiteId != null) {
+    const bucket = index.byWorldSiteId.get(removedWorldSiteId);
+    if (bucket && bucket.delete(e)) {
+      if (bucket.size === 0) index.byWorldSiteId.delete(removedWorldSiteId);
+      bumpLaneVersion(index, 'worldSites');
+    }
+  }
+  if (e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)
+      && index.capitalBossCast.delete(e)) {
+    bumpLaneVersion(index, 'capitalBossCast');
+  }
+  if (e._indexActivityObjectSlotId !== undefined) {
+    unindexSlotMember(index.byActivityObjectSlotId, e._indexActivityObjectSlotId, e);
+    e._indexActivityObjectSlotId = undefined;
+  }
+  if (e._indexActivityActorSlotId !== undefined) {
+    unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
+    e._indexActivityActorSlotId = undefined;
+  }
+  // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
+  // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
+  // Decrement the id the entity was COUNTED under — a post-spawn re-stamp can leave
+  // data.worldRecordId pointing at a later id than the one the count incremented.
+  const worldRecordId = e.data && e.data.worldRecordId;
+  const countedWorldRecordId = e && e._wrIndexStamp !== undefined ? e._wrIndexStamp : worldRecordId;
+  if (countedWorldRecordId != null && index.byWorldRecordIdCount instanceof Map) {
+    const n = (index.byWorldRecordIdCount.get(countedWorldRecordId) || 0) - 1;
+    if (n > 0) index.byWorldRecordIdCount.set(countedWorldRecordId, n);
+    else index.byWorldRecordIdCount.delete(countedWorldRecordId);
+  }
+  if (countedWorldRecordId != null) {
+    bumpLaneVersion(index, 'worldRecordIds');
+    e._wrIndexStamp = undefined;
+  }
+  e._indexType = undefined;
+  if (countedWorldRecordId != null && index.byWorldRecordId.get(countedWorldRecordId) === e) {
+    index.byWorldRecordId.delete(countedWorldRecordId);
+    const source = index._sourceList;
+    if (Array.isArray(source)) {
+      for (const survivor of source) {
+        if (survivor && survivor !== e && survivor.alive !== false
+          && survivor.data && survivor.data.worldRecordId === countedWorldRecordId) {
+          index.byWorldRecordId.set(countedWorldRecordId, survivor);
+          break;
+        }
+      }
+    }
+  }
+  if (removedSpatialStatic) index.spatialStaticVersion++;
+  if (removedPhysicsStatic) index.physicsStaticVersion++;
+  index.version++;
+}
+
+function bumpLaneVersion(index, lane) {
+  const laneVersions = index.laneVersions;
+  if (laneVersions) laneVersions[lane] = (laneVersions[lane] || 0) + 1;
+}
+
+// Multi-member keyed maps (slotId -> Set<entity>) — the ceres activity predicates require
+// an exactly-one answer, so a key keeps every carrier, not just the first holder.
+function indexSlotMember(map, key, e) {
+  let bucket = map.get(key);
+  if (!bucket) { bucket = new Set(); map.set(key, bucket); }
+  bucket.add(e);
+}
+
+function unindexSlotMember(map, key, e) {
+  const bucket = map.get(key);
+  if (!bucket) return;
+  bucket.delete(e);
+  if (bucket.size === 0) map.delete(key);
+}
+
+function removeFromIndexArray(list, e) {
+  if (!Array.isArray(list)) return;
+  const i = list.indexOf(e);
+  if (i >= 0) {
+    list.splice(i, 1);
+    return true;
+  }
+  return false;
+}
+
+// Inverse of appendTypedLaneMembership for the removal paths — unconditional indexOf splices
+// mean the live e.type is irrelevant here; only the counter-only lanes and the byStationId
+// remap need the type the entity was actually indexed under (its _indexType stamp).
+function removeTypedLaneMembership(index, e) {
+  const stamped = e._indexType !== undefined ? e._indexType : e.type;
   removeFromIndexArray(index.ships, e);
   removeFromIndexArray(index.drones, e);
-  removeFromIndexArray(index.shipLike, e);
-  removeFromIndexArray(index.projectiles, e);
-  removeFromIndexArray(index.pickups, e);
-  removeFromIndexArray(index.payloads, e);
-  removeFromIndexArray(index.stations, e);
+  if (removeFromIndexArray(index.shipLike, e)) bumpLaneVersion(index, 'shipLike');
+  if (removeFromIndexArray(index.projectiles, e)) bumpLaneVersion(index, 'projectiles');
+  if (removeFromIndexArray(index.pickups, e)) bumpLaneVersion(index, 'pickups');
+  if (removeFromIndexArray(index.payloads, e)) bumpLaneVersion(index, 'payloads');
+  if (removeFromIndexArray(index.stations, e)) bumpLaneVersion(index, 'stations');
   removeFromIndexArray(index.dockStations, e);
   removeFromIndexArray(index.gates, e);
-  removeFromIndexArray(index.asteroids, e);
+  if (removeFromIndexArray(index.asteroids, e)) bumpLaneVersion(index, 'asteroids');
+  if (removeFromIndexArray(index.fauna, e)) bumpLaneVersion(index, 'fauna');
+  if (stamped === 'freighter') bumpLaneVersion(index, 'freighters');
   removeFromIndexArray(index.mineables, e);
-  removeFromIndexArray(index.wrecks, e);
+  if (removeFromIndexArray(index.wrecks, e)) bumpLaneVersion(index, 'wrecks');
   removeFromIndexArray(index.fx, e);
   removeFromIndexArray(index.mines, e);
   removeFromIndexArray(index.vectorMines, e);
   removeFromIndexArray(index.snares, e);
   removeFromIndexArray(index.charges, e);
-  removeFromIndexArray(index.bombs, e);
+  if (removeFromIndexArray(index.bombs, e)) bumpLaneVersion(index, 'bombs');
   removeFromIndexArray(index.statics, e);
   removeFromIndexArray(index.damageables, e);
   removeFromIndexArray(index.aiShips, e);
   removeFromIndexArray(index.weaponShips, e);
-  if (e.type === 'station') {
+  if (stamped === 'station') {
     const stationId = e.data && e.data.stationId;
     if (stationId && index.byStationId.get(stationId) === e) {
       index.byStationId.delete(stationId);
@@ -811,35 +1021,161 @@ function removeEntityIndex(index, e) {
       }
     }
   }
-  // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
-  // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
-  const worldRecordId = e.data && e.data.worldRecordId;
-  if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
-    index.byWorldRecordId.delete(worldRecordId);
-    const source = index._sourceList;
-    if (Array.isArray(source)) {
-      for (const survivor of source) {
-        if (survivor && survivor !== e && survivor.alive !== false
-          && survivor.data && survivor.data.worldRecordId === worldRecordId) {
-          index.byWorldRecordId.set(worldRecordId, survivor);
-          break;
-        }
-      }
+}
+
+/**
+ * Post-spawn type flips. appendTypedLaneMembership runs the type switch exactly once at
+ * spawn and flips never re-key, so a ship rebadged 'wreck'/'anomaly' keeps shipLike and
+ * damageables membership while wrecks/mineables readers never see it. Re-keys just the
+ * type-derived slice to match e.type — the typed switch plus the verdict lanes it feeds
+ * (movables, radar split, spatial/physics static-dynamic tiers); data-keyed buckets and
+ * the collidables set itself are untouched.
+ */
+export function syncEntityTypeLaneMembership(index, e) {
+  if (!index || !index.__spacefaceEntityIndexV1 || !e || e.alive === false) return;
+  repairEntityIndex(index);
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
+  const prev = e._indexType;
+  if (prev === e.type) return;
+  // Verdict lanes outside the typed switch key on type too (movables, the radar split, the
+  // spatial/physics static-dynamic tiers). Evaluate the append predicates under the stamped
+  // type, then the live one — the readers are pure functions of the entity.
+  const next = e.type;
+  e.type = prev;
+  const wasMovable = isMovableEntity(e);
+  const wasPhysicsSynced = shouldSyncPhysicsBodyEntity(e);
+  const wasPhysicsDynamic = wasPhysicsSynced && isDynamicPhysicsBodyEntity(e);
+  const wasRadar = radarLaneForEntity(e);
+  e.type = next;
+  const isMovable = isMovableEntity(e);
+  const isPhysicsSynced = shouldSyncPhysicsBodyEntity(e);
+  const isPhysicsDynamic = isPhysicsSynced && isDynamicPhysicsBodyEntity(e);
+  const isRadar = radarLaneForEntity(e);
+  removeTypedLaneMembership(index, e);
+  appendTypedLaneMembership(index, e);
+  // Counter-only lanes sit outside the switch — mirror the append-time bumps for the new type.
+  if (e.type === 'freighter') bumpLaneVersion(index, 'freighters');
+  if (wasMovable !== isMovable) {
+    if (isMovable) index.movables.push(e);
+    else removeFromIndexArray(index.movables, e);
+  }
+  if (wasRadar !== isRadar) {
+    if (wasRadar === 'asteroids') removeFromIndexArray(index.radarAsteroids, e);
+    else if (wasRadar === 'contacts') removeFromIndexArray(index.radarContacts, e);
+    if (isRadar === 'asteroids') index.radarAsteroids.push(e);
+    else if (isRadar === 'contacts') index.radarContacts.push(e);
+  }
+  if (e.collides && wasMovable !== isMovable) {
+    if (isMovable) {
+      if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
+      index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
+    } else {
+      if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
+      index.spatialStatics.push(e);
+      index.spatialStaticVersion++;
     }
   }
-  if (removedSpatialStatic) index.spatialStaticVersion++;
-  if (removedPhysicsStatic) index.physicsStaticVersion++;
+  if (wasPhysicsSynced !== isPhysicsSynced) {
+    if (isPhysicsSynced) {
+      index.physicsBodies.push(e);
+      if (isPhysicsDynamic) index.physicsDynamics.push(e);
+      else {
+        index.physicsStatics.push(e);
+        index.physicsStaticVersion++;
+      }
+    } else {
+      removeFromIndexArray(index.physicsBodies, e);
+      removeFromIndexArray(index.physicsDynamics, e);
+      if (removeFromIndexArray(index.physicsStatics, e)) index.physicsStaticVersion++;
+    }
+  } else if (isPhysicsSynced && wasPhysicsDynamic !== isPhysicsDynamic) {
+    if (isPhysicsDynamic) {
+      if (removeFromIndexArray(index.physicsStatics, e)) index.physicsStaticVersion++;
+      index.physicsDynamics.push(e);
+    } else {
+      removeFromIndexArray(index.physicsDynamics, e);
+      index.physicsStatics.push(e);
+      index.physicsStaticVersion++;
+    }
+  }
   index.version++;
 }
 
-function removeFromIndexArray(list, e) {
-  if (!Array.isArray(list)) return;
-  const i = list.indexOf(e);
-  if (i >= 0) {
-    list.splice(i, 1);
-    return true;
+/**
+ * Post-spawn activity slot-id writes. data.activityObjectSlotId / data.activityActorSlotId
+ * arrive in spawn literals (append-covered) and in the durable-identity stamp helpers that
+ * mutate live entity.data — those call sites run this so the keyed maps re-key exactly like
+ * the type-lane sync does for type flips. Keys are compared against the indexed stamp the
+ * same way removal is, so an entity stamped twice vacates the slot it actually occupies.
+ */
+export function syncEntityActivitySlotMembership(index, e) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || !e) return;
+  repairEntityIndex(index);
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
+  const data = e.data;
+  const objectSlotId = data ? data.activityObjectSlotId : undefined;
+  if (e._indexActivityObjectSlotId !== objectSlotId) {
+    if (e._indexActivityObjectSlotId !== undefined) {
+      unindexSlotMember(index.byActivityObjectSlotId, e._indexActivityObjectSlotId, e);
+    }
+    e._indexActivityObjectSlotId = objectSlotId != null ? objectSlotId : undefined;
+    if (objectSlotId != null) indexSlotMember(index.byActivityObjectSlotId, objectSlotId, e);
   }
-  return false;
+  const actorSlotId = data ? data.activityActorSlotId : undefined;
+  if (e._indexActivityActorSlotId !== actorSlotId) {
+    if (e._indexActivityActorSlotId !== undefined) {
+      unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
+    }
+    e._indexActivityActorSlotId = actorSlotId != null ? actorSlotId : undefined;
+    if (actorSlotId != null) indexSlotMember(index.byActivityActorSlotId, actorSlotId, e);
+  }
+}
+
+// Radar split at append (excluded types, then asteroid vs everything else) — evaluated under
+// whatever type the caller needs so the type-flip sync can diff old vs new membership.
+function radarLaneForEntity(e) {
+  const t = e && e.type;
+  if (t === 'projectile' || t === 'fx' || t === 'masslineSnare' || t === 'masslineSnareAnchor') {
+    return null;
+  }
+  return t === 'asteroid' ? 'asteroids' : 'contacts';
+}
+
+/**
+ * Post-spawn collides flips. append ran `if (e.collides)` exactly once at spawn and flips
+ * never re-key, so an F→T body keeps real Rapier collision (physics syncs entityList) while
+ * every bucket consumer — projectile broadphase (spatialStatics/spatialDynamics), autopilot
+ * obstacles, optic-lane bodies, framing and spawn clearance �� treats it as absent. The flip
+ * sites bump collidesFlipEpoch for the epoch-keyed caches; this re-keys just the collision
+ * slice to match e.collides. Direction-agnostic, though today only F→T sites call it:
+ * T→F stale presence is the separate, conservative over-inclusion caveat.
+ */
+export function syncEntityCollisionIndexMembership(index, e) {
+  if (!index || !index.__spacefaceEntityIndexV1 || !e || e.alive === false) return;
+  repairEntityIndex(index);
+  // An entity the index never tracked must not enter a bucket here — removeEntityIndex
+  // early-returns on unindexed ids, which would strand the row permanently.
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
+  const present = index.collidables.indexOf(e) !== -1;
+  const want = !!e.collides;
+  if (want === present) return;
+  bumpLaneVersion(index, 'collidables');
+  if (want) {
+    index.collidables.push(e);
+    if (isMovableEntity(e)) {
+      index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
+    } else {
+      index.spatialStatics.push(e);
+      index.spatialStaticVersion++;
+    }
+  } else {
+    removeFromIndexArray(index.collidables, e);
+    if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
+    if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
+  }
+  index.version++;
 }
 
 // Batch counterpart of removeEntityIndex for multi-corpse ticks (sweep, sector despawn). One
@@ -861,9 +1197,10 @@ function removeEntitiesFromIndex(index, corpses) {
     indexed++;
   }
   if (indexed === 0) return;
-  removeCorpsesFromIndexArray(index.collidables, removed);
+  index.laneVersions.collidables = (index.laneVersions.collidables || 0)
+    + removeCorpsesFromIndexArray(index.collidables, removed);
   index.spatialStaticVersion += removeCorpsesFromIndexArray(index.spatialStatics, removed);
-  removeCorpsesFromIndexArray(index.spatialDynamics, removed);
+  index.spatialDynamicsVersion += removeCorpsesFromIndexArray(index.spatialDynamics, removed);
   removeCorpsesFromIndexArray(index.physicsBodies, removed);
   index.physicsStaticVersion += removeCorpsesFromIndexArray(index.physicsStatics, removed);
   removeCorpsesFromIndexArray(index.physicsDynamics, removed);
@@ -872,22 +1209,68 @@ function removeEntitiesFromIndex(index, corpses) {
   removeCorpsesFromIndexArray(index.radarAsteroids, removed);
   removeCorpsesFromIndexArray(index.ships, removed);
   removeCorpsesFromIndexArray(index.drones, removed);
-  removeCorpsesFromIndexArray(index.shipLike, removed);
-  removeCorpsesFromIndexArray(index.projectiles, removed);
-  removeCorpsesFromIndexArray(index.pickups, removed);
-  removeCorpsesFromIndexArray(index.payloads, removed);
-  removeCorpsesFromIndexArray(index.stations, removed);
+  index.laneVersions.shipLike = (index.laneVersions.shipLike || 0)
+    + removeCorpsesFromIndexArray(index.shipLike, removed);
+  index.laneVersions.projectiles = (index.laneVersions.projectiles || 0)
+    + removeCorpsesFromIndexArray(index.projectiles, removed);
+  index.laneVersions.pickups = (index.laneVersions.pickups || 0)
+    + removeCorpsesFromIndexArray(index.pickups, removed);
+  index.laneVersions.payloads = (index.laneVersions.payloads || 0)
+    + removeCorpsesFromIndexArray(index.payloads, removed);
+  index.laneVersions.stations = (index.laneVersions.stations || 0)
+    + removeCorpsesFromIndexArray(index.stations, removed);
   removeCorpsesFromIndexArray(index.dockStations, removed);
   removeCorpsesFromIndexArray(index.gates, removed);
-  removeCorpsesFromIndexArray(index.asteroids, removed);
+  index.laneVersions.asteroids = (index.laneVersions.asteroids || 0)
+    + removeCorpsesFromIndexArray(index.asteroids, removed);
+  index.laneVersions.fauna = (index.laneVersions.fauna || 0)
+    + removeCorpsesFromIndexArray(index.fauna, removed);
+  for (const e of removed) {
+    // Counter/remap lanes key on the stamped type the entity was indexed under — the live
+    // type can have flipped (syncEntityTypeLaneMembership leaves the stamp as truth).
+    const stampedType = e && e._indexType !== undefined ? e._indexType : (e && e.type);
+    if (stampedType === 'freighter') {
+      index.laneVersions.freighters = (index.laneVersions.freighters || 0) + 1;
+    }
+    if (e && e.data && e.data.machine) {
+      index.laneVersions.machines = (index.laneVersions.machines || 0) + 1;
+    }
+    if (e && e.data && (e.data.flavorTargetRef != null || e.data.flavorSourceId != null)) {
+      index.laneVersions.flavorCarriers = (index.laneVersions.flavorCarriers || 0) + 1;
+    }
+    if (e && e.data && e.data.role === 'world_site_root') {
+      index.laneVersions.worldSiteRoots = (index.laneVersions.worldSiteRoots || 0) + 1;
+    }
+    if (e && e.data && e.data.worldSiteId != null) {
+      const bucket = index.byWorldSiteId.get(e.data.worldSiteId);
+      if (bucket && bucket.delete(e)) {
+        if (bucket.size === 0) index.byWorldSiteId.delete(e.data.worldSiteId);
+        index.laneVersions.worldSites = (index.laneVersions.worldSites || 0) + 1;
+      }
+    }
+    if (e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey)
+        && index.capitalBossCast.delete(e)) {
+      index.laneVersions.capitalBossCast = (index.laneVersions.capitalBossCast || 0) + 1;
+    }
+    if (e && e._indexActivityObjectSlotId !== undefined) {
+      unindexSlotMember(index.byActivityObjectSlotId, e._indexActivityObjectSlotId, e);
+      e._indexActivityObjectSlotId = undefined;
+    }
+    if (e && e._indexActivityActorSlotId !== undefined) {
+      unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
+      e._indexActivityActorSlotId = undefined;
+    }
+  }
   removeCorpsesFromIndexArray(index.mineables, removed);
-  removeCorpsesFromIndexArray(index.wrecks, removed);
+  index.laneVersions.wrecks = (index.laneVersions.wrecks || 0)
+    + removeCorpsesFromIndexArray(index.wrecks, removed);
   removeCorpsesFromIndexArray(index.fx, removed);
   removeCorpsesFromIndexArray(index.mines, removed);
   removeCorpsesFromIndexArray(index.vectorMines, removed);
   removeCorpsesFromIndexArray(index.snares, removed);
   removeCorpsesFromIndexArray(index.charges, removed);
-  removeCorpsesFromIndexArray(index.bombs, removed);
+  index.laneVersions.bombs = (index.laneVersions.bombs || 0)
+    + removeCorpsesFromIndexArray(index.bombs, removed);
   removeCorpsesFromIndexArray(index.statics, removed);
   removeCorpsesFromIndexArray(index.damageables, removed);
   removeCorpsesFromIndexArray(index.aiShips, removed);
@@ -896,7 +1279,8 @@ function removeEntitiesFromIndex(index, corpses) {
   // the sequential rescans also skipped dead stations, so the outcome is identical.
   for (let i = 0; i < corpses.length; i++) {
     const e = corpses[i];
-    if (!e || e.type !== 'station' || !removed.has(e)) continue;
+    const stampedType = e && e._indexType !== undefined ? e._indexType : (e && e.type);
+    if (!e || stampedType !== 'station' || !removed.has(e)) continue;
     const stationId = e.data && e.data.stationId;
     if (stationId && index.byStationId.get(stationId) === e) {
       index.byStationId.delete(stationId);
@@ -909,15 +1293,27 @@ function removeEntitiesFromIndex(index, corpses) {
     }
   }
   // Same remap for worldRecordId slots, one shared rescan for the whole corpse set — the
-  // sequential path re-scanned the list per vacated key, the batch scans it once.
+  // sequential path re-scanned the list per vacated key, the batch scans it once. Decrement
+  // the id each corpse was counted under (the _wrIndexStamp lane), not its current stamp.
   let vacatedWorldRecordIds = null;
   for (let i = 0; i < corpses.length; i++) {
     const e = corpses[i];
     if (!e || !removed.has(e)) continue;
     const worldRecordId = e.data && e.data.worldRecordId;
-    if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
-      index.byWorldRecordId.delete(worldRecordId);
-      (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(worldRecordId);
+    const countedId = e._wrIndexStamp !== undefined ? e._wrIndexStamp : worldRecordId;
+    if (countedId != null && index.byWorldRecordIdCount instanceof Map) {
+      const n = (index.byWorldRecordIdCount.get(countedId) || 0) - 1;
+      if (n > 0) index.byWorldRecordIdCount.set(countedId, n);
+      else index.byWorldRecordIdCount.delete(countedId);
+    }
+    if (countedId != null) {
+      bumpLaneVersion(index, 'worldRecordIds');
+      e._wrIndexStamp = undefined;
+    }
+    e._indexType = undefined;
+    if (countedId != null && index.byWorldRecordId.get(countedId) === e) {
+      index.byWorldRecordId.delete(countedId);
+      (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(countedId);
     }
   }
   if (vacatedWorldRecordIds && Array.isArray(index._sourceList)) {

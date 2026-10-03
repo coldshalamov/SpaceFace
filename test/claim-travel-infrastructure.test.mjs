@@ -273,6 +273,24 @@ test('Throughline surveys the whole physical tube and never spends into an obstr
   assert.match(blocked.bus.of('toast').at(-1).payload.text, /No clear Throughline corridor/);
 });
 
+test('a close endpoint pair is refused before any ring is built (NXI-142)', () => {
+  // Station moved inside the minimum route window — the throughline must refuse up front
+  // rather than fabricate a ring whose corridor runs through the station hull.
+  const h = bootClaims();
+  const nearX = h.body.x + 400; // < SLING_MIN_ROUTE_WU (520)
+  h.station.pos.x = nearX;
+  h.station.pos.z = h.body.z;
+  loadSlingMaterials(h.state);
+  const creditsBefore = h.state.player.credits;
+  const materialsBefore = { ...h.state.player.cargo.items };
+  assert.equal(h.sys.buildModule(h.body.id, 'mod_throughline_sling'), false,
+    'a close endpoint pair must be refused');
+  assert.equal(h.body.infrastructure, undefined, 'no ring is built through the station hull');
+  assert.equal(h.state.player.credits, creditsBefore, 'refusal charges no credits');
+  assert.deepEqual(h.state.player.cargo.items, materialsBefore, 'refusal consumes no materials');
+  assert.match(h.bus.of('toast').at(-1).payload.text, /too close for a safe acceleration corridor/);
+});
+
 test('claim construction and commissioning stay behind an explicit player confirmation', async () => {
   const module = BODY_MODULE_BY_ID.get('mod_throughline_sling');
   const specialization = BODY_SPECIALIZATION_BY_ID.get('spec_refinery');

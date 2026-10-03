@@ -13,7 +13,7 @@ import { activityAllowsOffense, authoritativeAssignmentTargetId, effectiveActivi
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
-import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
+import { authorizeAIEngagement, isHostileForAI, isOffensiveActionDef } from '../ai/engagementAuthority.js';
 import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -158,6 +158,8 @@ export const aiPorts = {
     this.helpers.aiEncounter = Object.freeze({
       issue: (command) => this._issueEncounterCommand(command),
     });
+    this.helpers.reauthorizeAICombatAction = (request, actor, def) =>
+      reauthorizeQueuedAICombatAction(this.state, request, actor, def);
     this.helpers.inspectAIPorts = () => this.inspect();
   },
 
@@ -703,6 +705,29 @@ export function clearIneligibleAIFiringIntents(state, helpers = null) {
         ? state.entities.values()
         : EMPTY_ATTACHMENTS));
   return clearIneligibleAIFiringSource(state, helpers, source);
+}
+
+// NXI-053: SG-03 authorization at request time is advisory — the request can sit queued behind
+// notBeforeTick while compliance changes (hold-fire order, motive satisfied, target drifting into
+// station protection). The combat kernel calls this hook at the final commit gate so the queued
+// shot re-runs the same engagement authority on live state. Response-window and jurisdiction
+// checks are not bypassed: they re-evaluate at the commit tick.
+export function reauthorizeQueuedAICombatAction(state, request, actor, def) {
+  if (!actor || actor.alive === false) return { ok: false, reason: 'actor_missing' };
+  if (!isOffensiveActionDef(def)) return { ok: true, reason: 'not_offensive' };
+  const entityTargetId = request && request.target && request.target.kind === 'entity'
+    ? request.target.entityId
+    : null;
+  const target = entityTargetId == null ? null : getEntity(state, entityTargetId);
+  const authorization = authorizeAIEngagement({
+    state,
+    self: actor,
+    target,
+    tick: state && state.tick,
+    objectiveReason: request && request.metadata && request.metadata.objectiveReason || null,
+  });
+  if (!authorization.ok) return { ok: false, reason: `engagement:${authorization.reason}` };
+  return { ok: true };
 }
 
 function authorizedCeresLawJobResponse(state, entity, ai, helpers) {

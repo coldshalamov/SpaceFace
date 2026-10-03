@@ -15,6 +15,7 @@ export function ensureDressingTable(state) {
   let table = world.dressing;
   if (table && table.schema === DRESSING_TABLE_SCHEMA && Array.isArray(table.rows)) {
     if (!(table.byId instanceof Map)) table.byId = new Map(table.rows.map((row) => [row.id, row]));
+    if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
     return table;
   }
   table = {
@@ -22,6 +23,7 @@ export function ensureDressingTable(state) {
     version: 0,
     rows: [],
     byId: new Map(),
+    dirtyPoseIds: new Set(),
   };
   world.dressing = table;
   return table;
@@ -71,6 +73,7 @@ export function insertDressingRow(state, spec = {}) {
   initializePresentationAdmission(row);
   table.rows.push(row);
   table.byId.set(id, row);
+  table.dirtyPoseIds.add(id);
   table.version++;
   return row;
 }
@@ -79,6 +82,16 @@ export function getDressingRow(state, id) {
   const table = state && state.world && state.world.dressing;
   if (!table || !table.byId) return null;
   return table.byId.get(id) || null;
+}
+
+/** Journal a pose-affecting write to a live row; the version bump fires the renderer pose gate. */
+export function markDressingRowPoseDirty(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || !table.byId || !table.byId.has(id)) return false;
+  if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
+  table.dirtyPoseIds.add(id);
+  table.version++;
+  return true;
 }
 
 export function dropDressingRow(state, id) {

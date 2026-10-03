@@ -5,7 +5,7 @@
 // only short-lived morale intent flags on those same AI records.
 
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
-import { THUNDERCHILD, THUNDERCHILD_TITLE_ID } from '../data/titles.js';
+import { AURA_TITLES, isPlayerTitleHolder } from '../data/titles.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const STATE_VERSION = 1;
@@ -142,25 +142,48 @@ function wardFor(state, escort, payload) {
   return null;
 }
 
-function thunderchildHolder(state) {
-  const title = state && state.story && state.story.titles && state.story.titles.byId
-    && state.story.titles.byId[THUNDERCHILD_TITLE_ID];
-  if (!title || title.status !== 'held' || !title.holderKey) return null;
+function titleHolderEntity(state, rec) {
+  if (!rec || !rec.holderKey) return null;
+  // The player holds by the 'player' key — the persistent ship, not a world-record hull.
+  if (isPlayerTitleHolder(rec)) {
+    const entities = state && state.entities;
+    const player = entities && typeof entities.get === 'function' ? entities.get(state.playerId) : null;
+    return player && player.alive !== false ? player : null;
+  }
   for (const entity of indexedShipLikeScan(state)) {
-    if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === title.holderKey) {
+    if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === rec.holderKey) {
       return entity;
     }
   }
   return null;
 }
 
-function thunderchildAuraApplies(state, entity) {
-  const holder = thunderchildHolder(state);
-  if (!holder || !entity || holder.id === entity.id || holder.team == null || holder.team !== entity.team
-    || !holder.pos || !entity.pos) return false;
-  const dx = holder.pos.x - entity.pos.x;
-  const dz = holder.pos.z - entity.pos.z;
-  return dx * dx + dz * dz <= THUNDERCHILD.aura.radius * THUNDERCHILD.aura.radius;
+/**
+ * FB-060 — the aura law, generalized: every held aura title (the thunderchild hold and the
+ * counter titles) steadies its holder's wing inside its radius. Auras never stack — a wingman
+ * takes the single strongest applicable aura, so two titles near one wing cannot multiply.
+ * Returns { def, holder } or null.
+ */
+export function titleAuraForWingmate(state, entity) {
+  const byId = state && state.story && state.story.titles && state.story.titles.byId;
+  if (!byId || !entity || entity.type !== 'ship' || entity.alive === false
+    || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return null;
+  let best = null;
+  for (const def of AURA_TITLES) {
+    const rec = byId[def.id];
+    if (!rec || rec.status !== 'held' || !rec.holderKey || !def.aura) continue;
+    const holder = titleHolderEntity(state, rec);
+    if (!holder || holder.id === entity.id || holder.team == null || holder.team !== entity.team
+      || !holder.pos) continue;
+    const dx = holder.pos.x - entity.pos.x;
+    const dz = holder.pos.z - entity.pos.z;
+    if (dx * dx + dz * dz > def.aura.radius * def.aura.radius) continue;
+    if (!best || def.aura.morale > best.def.aura.morale
+      || (def.aura.morale === best.def.aura.morale && def.id < best.def.id)) {
+      best = { def, holder };
+    }
+  }
+  return best;
 }
 
 export const wingMorale = {
@@ -270,9 +293,9 @@ export const wingMorale = {
     const data = entity.data || (entity.data = {});
     const ai = data.ai || (data.ai = {});
     const intent = data.intent || (data.intent = {});
-    const auraActive = thunderchildAuraApplies(state, entity);
+    const aura = titleAuraForWingmate(state, entity);
     const duration = Number.isFinite(rec.duration) && rec.duration > 0 ? rec.duration : SCATTER_S;
-    const until = rec.t + duration * (auraActive ? 1 - THUNDERCHILD.aura.morale : 1);
+    const until = rec.t + duration * (aura ? 1 - aura.def.aura.morale : 1);
     ai.forceFlee = true;
     ai.fsm = 'flee';
     ai._wingMoraleUntil = until;
@@ -285,7 +308,7 @@ export const wingMorale = {
       until,
       destructionCause: rec.destruction && rec.destruction.cause || 'generic',
       shockMultiplier: rec.shockMultiplier || 1,
-      auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
+      auraTitleId: aura ? aura.def.id : null,
     };
     data.morale = 'scattered';
     intent.fire = false;
@@ -297,7 +320,7 @@ export const wingMorale = {
       until,
       destructionCause: rec.destruction && rec.destruction.cause || 'generic',
       shockMultiplier: rec.shockMultiplier || 1,
-      auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
+      auraTitleId: aura ? aura.def.id : null,
     };
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ai:flee', {
@@ -307,7 +330,7 @@ export const wingMorale = {
         until,
         destructionCause: rec.destruction && rec.destruction.cause || 'generic',
         shockMultiplier: rec.shockMultiplier || 1,
-        auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
+        auraTitleId: aura ? aura.def.id : null,
       });
     }
   },

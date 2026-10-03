@@ -1,21 +1,24 @@
-// Pure player-damage and recovery receipts. Combat owns the transition; UI consumes these models.
-// No wall clock, RNG, DOM, or mutation lives here, so the same lethal hit always produces the same
-// after-action account in browser, Electron, saves, and headless verification.
+// Player-damage and recovery receipts. Combat owns the transition; UI consumes these models.
+// No wall clock, RNG, or DOM lives here. A massline snap offers the swing rung once.
+// The cause lines stay with the existing formatter.
 
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { FACTION_META } from '../data/factions.js';
 import { MODULES } from '../data/modules.js';
 import { SECTORS } from '../data/sectors.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { formatNumber, resolveNumberLocale } from '../ui/numberFormat.js';
 import { INSURANCE_DEFAULTS } from '../systems/economy.js';
+import { RANGE_RAIL_ROWS, rangeRungIndex, sentenceCase } from '../ui/screens/range.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
 const MODULE_BY_ID = new Map(MODULES.map((entry) => [entry.id, entry]));
 const SHIP_BY_ID = new Map(SHIPS.map((entry) => [entry.id, entry]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((entry) => [entry.id, entry]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((entry) => [entry && entry.id, entry]));
 const STATION_BY_ID = new Map();
 
 for (const sector of SECTORS) {
@@ -207,7 +210,9 @@ function liveStationPosition(state, stationId) {
   return entity && entity.pos ? { x: Number(entity.pos.x) || 0, z: Number(entity.pos.z) || 0 } : null;
 }
 
-function chooseLawfulStation(state) {
+// Exported for the stuck-tow offer (FB-111): a wedged hull is towed to the same lawful dock a
+// defeat recovery would choose — the chooser stays one authority.
+export function chooseLawfulStation(state) {
   const remembered = state.player && state.player.insurance && state.player.insurance.lastStationId;
   const rememberedDef = STATION_BY_ID.get(remembered);
   if (rememberedDef && stationIsLawful(rememberedDef)) return rememberedDef;
@@ -283,12 +288,32 @@ export function buildRecoveryPlan(state, playerEntity) {
     if (qty > 0) cargoLosses.push({ commodityId, qty });
   }
 
+  // FB-124 — a live cargo policy pays its covered fraction of the manifest value actually
+  // destroyed, capped by the insured amount. The claim is priced into the plan here so the
+  // recovery berth's grant is one-shot: the policy expires at the dock either way.
+  const policy = state.player && state.player.cargoPolicy;
+  let cargoPayoutCr = 0;
+  let cargoPolicyName = null;
+  if (policy && Number(policy.coverFrac) > 0 && Number(policy.coverCr) > 0) {
+    let lostValueCr = 0;
+    for (const loss of cargoLosses) {
+      const def = COMMODITY_BY_ID.get(loss.commodityId);
+      lostValueCr += loss.qty * (def && Number(def.basePrice) || 0);
+    }
+    cargoPayoutCr = Math.min(
+      Math.round(policy.coverCr),
+      Math.round(lostValueCr * Number(policy.coverFrac)),
+    );
+    if (cargoPayoutCr > 0) cargoPolicyName = 'cargo policy';
+  }
+
   const insuranceStatus = (ship && ship.tier === 0
     ? `STARTER RECOVERY · ${formatCredits(deductible, locale)} CR DEDUCTIBLE`
     : insured
       ? `INSURED · COVERED ${formatCredits(quote.coveredCostCr, locale)} CR`
       : `UNINSURED · ${Math.round((1 - rate) * 100)}% HULL SHARE`)
-    + (hardshipCoveredCr > 0 ? ` · ${formatCredits(hardshipCoveredCr, locale)} CR RECOVERY FUND` : '');
+    + (hardshipCoveredCr > 0 ? ` · ${formatCredits(hardshipCoveredCr, locale)} CR RECOVERY FUND` : '')
+    + (cargoPayoutCr > 0 ? ` · CARGO POLICY +${formatCredits(cargoPayoutCr, locale)} CR` : '');
   const coverageNote = insured
     ? `${formatCredits(deductibleCr, locale)} cr deductible`
     : `${insuranceStatus} · ${HULL_POLICY_NAME} · ${formatCredits(premiumCr, locale)} cr premium`;
@@ -312,7 +337,59 @@ export function buildRecoveryPlan(state, playerEntity) {
     coverageNote,
     cargoLosses,
     cargoLostQty: cargoLosses.reduce((total, loss) => total + loss.qty, 0),
+    cargoPayoutCr,
+    cargoPolicyName,
     persistentCargoProtected,
+  };
+}
+
+const MASSLINE_SNAP_KINDS = new Set([
+  'massline_whip',
+  'massline_whip_recoil',
+  'massline_tumble_impact',
+]);
+const SWING_RUNG_ID = 'swing_do_not_pull';
+
+function swingRangeRow() {
+  const rows = Array.isArray(RANGE_RAIL_ROWS) ? RANGE_RAIL_ROWS : [];
+  const row = rows.find((entry) => entry && entry.id === SWING_RUNG_ID);
+  if (!row || rangeRungIndex(row.id) < 0) return null;
+  return row;
+}
+
+function kindOf(record) {
+  return record && typeof record.kind === 'string' ? record.kind : '';
+}
+
+function isSnapCut(record) {
+  if (!record || typeof record !== 'object') return false;
+  return record.cutReason === 'snap' || record.reason === 'snap';
+}
+
+/** A massline whip or a recorded line snap. A weapon kill stays a combat death. */
+export function isSlackLineSnapDeath(lethal) {
+  if (!lethal || typeof lethal !== 'object') return false;
+  const origin = lethal.origin && typeof lethal.origin === 'object' ? lethal.origin : null;
+  const source = lethal.packet && lethal.packet.source && typeof lethal.packet.source === 'object'
+    ? lethal.packet.source
+    : null;
+  if (kindOf(origin) === 'weapon' || kindOf(source) === 'weapon') return false;
+  if (MASSLINE_SNAP_KINDS.has(kindOf(origin)) || MASSLINE_SNAP_KINDS.has(kindOf(source))) return true;
+  if (MASSLINE_SNAP_KINDS.has(lethal.context)) return true;
+  if (isSnapCut(lethal) || isSnapCut(origin) || isSnapCut(source)) return true;
+  return false;
+}
+
+export function defeatRangeOffer(state, lethal) {
+  if (!isSlackLineSnapDeath(lethal)) return null;
+  const ui = state && state.ui;
+  if (ui && ui.deathRangeOfferedRung) return null;
+  const row = swingRangeRow();
+  if (!row) return null;
+  return {
+    rungId: row.id,
+    once: true,
+    line: `The Range can teach ${sentenceCase(row.rule)}.`,
   };
 }
 
@@ -334,7 +411,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: lethal.packet && lethal.packet.hit && lethal.packet.hit.pos || null,
   });
   const recovery = buildRecoveryPlan(state, playerEntity);
-  return {
+  const receipt = {
     schemaVersion: 1,
     tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
     simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
@@ -359,4 +436,11 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
+  const offer = defeatRangeOffer(state, lethal);
+  if (offer) {
+    receipt.rangeOffer = offer;
+    if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+    state.ui.deathRangeOfferedRung = offer.rungId;
+  }
+  return receipt;
 }

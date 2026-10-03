@@ -13,6 +13,14 @@ export const DYNAMIC_FLIGHT_STICK_TUNING = Object.freeze({
   minRadiusPx: 118,
   maxRadiusPx: 176,
   deadzonePx: 10,
+  // SFQ-B011 (board row 219): while the knob sits inside the deadzone, this fraction of its
+  // displacement bleeds back toward the neutral center per accepted packet. A resting palm
+  // emits small BIASED packets that used to random-walk the knob across the deadzone and pin
+  // thrust while the pilot is at rest (reproduced: 0.4 px/packet bias saturated the knob
+  // within ~1200 packets). Noise re-centers instead of accumulating; a deliberate swipe
+  // (>= ~4 px/packet) still crosses the deadzone in a handful of packets. The deadzone,
+  // travel and response families themselves stay authored.
+  deadzoneRecenter: 1 / 3,
   responseExponent: 1.16,
   corruptPacketViewportMult: 4,
 });
@@ -86,8 +94,20 @@ export function recordDynamicFlightStick(host, dx, dy, width, height) {
     const scale = radiusPx / length;
     stick.xPx *= scale;
     stick.yPx *= scale;
+  } else if (length > 1e-9 && length <= effectiveDeadzonePx(radiusPx)) {
+    // SFQ-B011 deadzone re-centering (see DYNAMIC_FLIGHT_STICK_TUNING.deadzoneRecenter):
+    // sub-deadzone displacement is palm noise until a packet family proves otherwise, so it
+    // bleeds toward neutral instead of random-walking into a command.
+    const kept = 1 - DYNAMIC_FLIGHT_STICK_TUNING.deadzoneRecenter;
+    stick.xPx *= kept;
+    stick.yPx *= kept;
   }
   return true;
+}
+
+/** The deadzone as px at the live radius — the same fraction project() shapes against. */
+function effectiveDeadzonePx(radiusPx) {
+  return Math.min(DYNAMIC_FLIGHT_STICK_TUNING.deadzonePx, radiusPx * 0.35);
 }
 
 function shapedMagnitude(rawMagnitude, deadzoneFraction) {
@@ -117,7 +137,7 @@ export function projectDynamicFlightStick(host, width, height) {
   const sx = clamp(finite(stick.xPx) / radiusPx, -1, 1);
   const sy = clamp(finite(stick.yPx) / radiusPx, -1, 1);
   const rawMagnitude = Math.min(1, Math.hypot(sx, sy));
-  const deadzoneFraction = Math.min(0.35, DYNAMIC_FLIGHT_STICK_TUNING.deadzonePx / radiusPx);
+  const deadzoneFraction = effectiveDeadzonePx(radiusPx) / radiusPx;
   const magnitude = shapedMagnitude(rawMagnitude, deadzoneFraction);
   if (!(magnitude > 0)) {
     return { active: false, screenX: sx, screenY: sy, worldX: 0, worldZ: 0, magnitude: 0 };

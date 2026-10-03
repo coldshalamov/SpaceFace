@@ -137,6 +137,128 @@ export function evaluateArrivalCue(body, profile = {}, arrival = null) {
   };
 }
 
+// SF-012 (PB-HAND-A) swept-hull advisory defaults. Numeric targets are proposed tuning, not
+// measured canon: the horizon is deliberately short (a "what will my slide hit" glance, not a
+// route plan — autopilot owns route-length lookahead), and the graze gap is what reads as
+// "sliding along that hull" at top-down scale rather than "clear of it".
+export const SWEPT_HULL_DEFAULTS = Object.freeze({
+  horizonS: 3,
+  grazeGapWU: 12,
+  slideMinLateralWU: 6,
+});
+
+/**
+ * Swept-hull slide advisory (SF-012): report where the hull's CURRENT velocity will carry it
+ * against nearby collidable contacts over a short horizon.
+ *
+ * Pure and advisory: it reports, it never commands. Nothing in the return value may feed an
+ * avoidance force — the caller publishes it as telemetry, and the pilot keeps every bit of
+ * control (the packet's whole point is warn-rather-than-steer). Untargeted: no nav target is
+ * read or implied; contacts are whatever collidables the caller's spatial query returned.
+ *
+ * Geometry, honestly:
+ *  - the contact test is a swept circle — hull radius + contact radius — along the relative
+ *    motion (contacts carry their own velocity; a static rock reduces to the plain sweep);
+ *  - `timeToContactS` is the first intersection time, null when the pass never intersects
+ *    within the horizon (an Infinity would lie about "no contact" being a time);
+ *  - a parallel slide that never intersects but passes within `grazeGapWU` surface gap is
+ *    still active — the slide-along-a-hull case the packet names — with the closest-approach
+ *    numbers filled in instead;
+ *  - contacts behind the travel vector are filtered: flying away from a wall never warns;
+ *  - ONE obstruction is reported, the earliest meaningful one: actual hits rank by contact
+ *    time, grazers by closest-approach gap, hits outrank grazers. Every nearby rock would be
+ *    an alarm, not an advisory;
+ *  - `canStopBeforeContact` compares the ship's own braking solution (estimateBrakingSolution,
+ *    same denominator the braking HUD uses) to the current surface gap. When no contact is
+ *    predicted there is nothing to stop before, so it is true by construction, not flattery.
+ */
+export function computeSweptHullAdvisory(body, profile = {}, contacts = [], options = {}) {
+  const b = normalizeBody(body);
+  const horizonS = Math.max(0, finite(options.horizonS, SWEPT_HULL_DEFAULTS.horizonS));
+  const grazeGapWU = Math.max(0, finite(options.grazeGapWU, SWEPT_HULL_DEFAULTS.grazeGapWU));
+  const slideMinLateralWU = Math.max(0, finite(options.slideMinLateralWU, SWEPT_HULL_DEFAULTS.slideMinLateralWU));
+  const speed = Math.hypot(b.vel.x, b.vel.z);
+  const axes = localAxes(b.rot);
+  const forwardSpeed = b.vel.x * axes.fx + b.vel.z * axes.fz;
+  const lateralSpeed = b.vel.x * axes.rx + b.vel.z * axes.rz;
+  const braking = estimateBrakingSolution(b, profile);
+  const stopDistance = Math.min(braking.directDistance, braking.flipBurnDistance);
+  const advisory = {
+    active: false,
+    sliding: Math.abs(lateralSpeed) >= slideMinLateralWU,
+    speed,
+    forwardSpeed,
+    lateralSpeed,
+    driftAngle: speed > EPS ? wrapAngle(Math.atan2(b.vel.z, b.vel.x) - b.rot) : 0,
+    contactId: null,
+    contactType: null,
+    contactRadius: 0,
+    timeToContactS: null,
+    contactDistance: INF,
+    closestGapWU: INF,
+    closestTimeS: 0,
+    contactPoint: null,
+    canStopBeforeContact: true,
+    stopDistanceWU: Number.isFinite(stopDistance) ? stopDistance : INF,
+  };
+  if (!(speed > EPS) || !Array.isArray(contacts) || contacts.length === 0 || horizonS <= 0) {
+    return advisory;
+  }
+  let best = null;
+  for (const contact of contacts) {
+    if (!contact || contact === body || contact.alive === false || !contact.pos) continue;
+    const radius = positive(contact.radius, 0);
+    if (!(radius > 0)) continue;
+    const relX = finite(contact.pos.x) - b.pos.x;
+    const relZ = finite(contact.pos.z) - b.pos.z;
+    // Behind the travel vector: the slide will never carry the hull there.
+    if (relX * b.vel.x + relZ * b.vel.z <= 0) continue;
+    const relVelX = finite(contact.vel && contact.vel.x) - b.vel.x;
+    const relVelZ = finite(contact.vel && contact.vel.z) - b.vel.z;
+    const sumR = b.radius + radius;
+    const hitRaw = solveCircleContact({ x: relX, z: relZ }, { x: relVelX, z: relVelZ }, sumR);
+    const hit = Number.isFinite(hitRaw) && hitRaw <= horizonS ? hitRaw : null;
+    const relSpeed2 = relVelX * relVelX + relVelZ * relVelZ;
+    const tClosest = clamp(
+      relSpeed2 > EPS ? -(relX * relVelX + relZ * relVelZ) / relSpeed2 : 0,
+      0,
+      horizonS,
+    );
+    const closestGap = Math.hypot(relX + relVelX * tClosest, relZ + relVelZ * tClosest) - sumR;
+    if (hit == null && closestGap > grazeGapWU) continue;
+    const candidate = {
+      contact,
+      radius,
+      hit,
+      closestGap,
+      tClosest,
+      contactDistance: Math.max(0, Math.hypot(relX, relZ) - sumR),
+    };
+    if (!best
+      || (hit != null && (best.hit == null || hit < best.hit))
+      || (hit == null && best.hit == null && closestGap < best.closestGap)) {
+      best = candidate;
+    }
+  }
+  if (!best) return advisory;
+  const t = best.hit != null ? best.hit : best.tClosest;
+  advisory.active = true;
+  advisory.contactId = best.contact.id != null ? best.contact.id : null;
+  advisory.contactType = typeof best.contact.type === 'string' ? best.contact.type : null;
+  advisory.contactRadius = best.radius;
+  advisory.timeToContactS = best.hit;
+  advisory.contactDistance = best.contactDistance;
+  advisory.closestGapWU = Math.max(0, best.closestGap);
+  advisory.closestTimeS = best.tClosest;
+  advisory.contactPoint = {
+    x: finite(best.contact.pos.x) + finite(best.contact.vel && best.contact.vel.x) * t,
+    z: finite(best.contact.pos.z) + finite(best.contact.vel && best.contact.vel.z) * t,
+  };
+  advisory.canStopBeforeContact = best.hit == null
+    || (Number.isFinite(advisory.stopDistanceWU) && advisory.stopDistanceWU < best.contactDistance);
+  return advisory;
+}
+
 /**
  * Estimate the fastest stop available without inventing drag.
  *

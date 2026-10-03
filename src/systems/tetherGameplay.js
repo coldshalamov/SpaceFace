@@ -15,6 +15,7 @@ import {
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { modelTruthRopeEnd } from '../data/modelTruth.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
@@ -28,6 +29,9 @@ import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
 
 import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
+// FB-013 — the copy owner for first-use lines. Pure data (no DOM, no Three.js), the same module
+// onboarding's _showHint speaks through, so a head's line and a rail line share one vocabulary.
+import { firstUseLine } from '../ui/hudAttention.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
@@ -49,6 +53,21 @@ export const ELASTIC_WHIP_SPRING_ZETA = 0.28;
 export const ELASTIC_WHIP_MAX_STRETCH_RATIO = 1.44;
 export const ELASTIC_WHIP_GLOW_STRETCH_RATIO = 0.28;
 const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
+// FB-013 — every head announces itself: one hud:firstUse line per silent head, keyed to the
+// head's defining event (tractor capture, coupler lock, sweep cut, whip snap). Copy lives in
+// hudAttention.FIRST_USE_LINE; once-only bookkeeping rides state.player.hints like _showHint.
+const HEAD_FIRST_USE_KEYS = Object.freeze({
+  tractor: 'masslineTractor',
+  frame_coupler: 'masslineCoupler',
+  [MONOFILAMENT_HEAD_ID]: 'masslineSweep',
+  [ELASTIC_WHIP_HEAD_ID]: 'masslineWhip',
+});
+// FB-006 — hitchhiking is a named state, not a traffic flag: a taut line to an anchor that
+// outpaces the player by RIDE_SPEED_MARGIN_WU_S for RIDE_ENTER_S continuously IS a ride. The
+// margin is absolute (a liner two hulls over is not a ride) and the window is sim-time, so a
+// fixed seed reproduces it exactly.
+export const RIDE_SPEED_MARGIN_WU_S = 6;
+export const RIDE_ENTER_S = 0.5;
 // One taut cut spends the winch's own integrity. Slack never reaches this spend.
 export const MONOFILAMENT_CUT_INTEGRITY_COST = 0.2;
 // Full reduced-mass coupling: the blade dumps its transverse momentum into what it cuts.
@@ -358,7 +377,14 @@ export const tetherGameplay = {
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
       const target = state.entities.get(this._active.targetId);
-      if (!target || target.alive === false || !target.pos
+      // Id-recycle guard on top of the alive checks: the bound attachment's recorded target
+      // generation proves which body this line named; a live occupant with a different token
+      // is a replacement, so the line is target_lost even though the id still resolves.
+      const boundAttachment = attachments && typeof attachments.get === 'function'
+        ? attachments.get(this._active.attachmentId) : null;
+      const targetRecycled = !!(boundAttachment && boundAttachment.targetGeneration != null
+        && occupantGenerationOf(target) !== boundAttachment.targetGeneration);
+      if (!target || target.alive === false || !target.pos || targetRecycled
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) {
         this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
@@ -567,6 +593,18 @@ export const tetherGameplay = {
         && (publishedTargetId == null || publishedTargetId === target.id),
     });
     this.bus.emit('camera:shake', { amount: 0.06 });
+    // FB-013 — the tractor's defining moment is the capture: one distinct receipt naming the
+    // pull, and the head's first-use line once. Other heads announce on their own events.
+    const captureHeadId = player && player.data && player.data.derived
+      && player.data.derived.masslineHeadId;
+    if (captureHeadId === 'tractor') {
+      this.bus.emit('tether:tractorCapture', {
+        sourceId: player.id,
+        targetId: target.id,
+        attachmentId: this._active && this._active.attachmentId,
+      });
+      this._announceHead(state, 'tractor', target.id);
+    }
     // The consumed receipt deliberately SURVIVES this tick. state.player.tether was mirrored
     // inactive earlier in this same tick, so neither the cable nor a stale preview is drawn yet —
     // the latch completes visually on the next frame, where the _active branch above clears the
@@ -930,6 +968,7 @@ export const tetherGameplay = {
     mirror.targetShare = shares.target;
     mirror.shareSourceId = source.id;
     mirror.shareTargetId = target.id;
+    if (!emit || !this.bus || typeof this.bus.emit !== 'function') return null;
     const payload = {
       schemaVersion: 1,
       kind: 'twin_bridle',
@@ -944,9 +983,7 @@ export const tetherGameplay = {
       share: shares.source,
       tick: state.tick | 0,
     };
-    if (emit && this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('chain:tetherShare', payload);
-    }
+    this.bus.emit('chain:tetherShare', payload);
     return payload;
   },
 
@@ -1076,7 +1113,11 @@ export const tetherGameplay = {
     }
 
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
-    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    // A published pick whose occupant token no longer matches means the id recycled between
+    // preview and press — the latch must name the dead pick as lost, not weld onto its heir.
+    const denial = (selected.occupantGeneration != null && occupantGenerationOf(target) !== selected.occupantGeneration)
+      ? 'target-lost'
+      : validateAcquisitionTarget(this, player, target, def, state);
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
       invalidateAcquisitionReceipt(state, denial);
@@ -1179,6 +1220,10 @@ export const tetherGameplay = {
         : null;
       if (!target || target.alive === false || !target.pos
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) continue;
+      // A record whose stored target generation no longer matches the occupant binds the dead
+      // body, not the replacement holding the id — never adopt it as the live line.
+      if (attachment.targetGeneration != null
+          && occupantGenerationOf(target) !== attachment.targetGeneration) continue;
       this._active = {
         attachmentId: attachment.id,
         targetId: attachment.targetId,
@@ -1650,6 +1695,8 @@ export const tetherGameplay = {
             integrity,
             contact,
           });
+          // FB-013 — the sweep's defining moment is its one-pass cut: announce the head once.
+          this._announceHead(state, MONOFILAMENT_HEAD_ID, other.ownerId);
         }
       }
     }
@@ -1841,6 +1888,94 @@ export const tetherGameplay = {
     t.slingshot = t.slingshotT > 0;
   },
 
+  // FB-013 — every head announces itself: one first-use line per Massline head, spoken on the
+  // head's first defining event through the hud:firstUse presentation path onboarding's _showHint
+  // already uses. state.player.hints is the same once-only store, so a head line and a rail line
+  // can never both queue behind one key.
+  _announceHead(state, headId, entityId) {
+    const key = headId && HEAD_FIRST_USE_KEYS[headId];
+    if (!key || !state || !state.player || !this.bus || typeof this.bus.emit !== 'function') {
+      return false;
+    }
+    if (!state.player.hints) state.player.hints = {};
+    if (state.player.hints[key]) return false;
+    state.player.hints[key] = true;
+    this.bus.emit('hud:firstUse', { verbId: key, text: firstUseLine(key), entityId: entityId ?? null });
+    return true;
+  },
+
+  // FB-006 — the ride derivation. Taut (loaded/overload) plus an anchor outpacing the player by
+  // RIDE_SPEED_MARGIN_WU_S for RIDE_ENTER_S continuously names a ride on the tether mirror. The
+  // anchor is never assumed to be a liner: express traffic merely owes its speed to this physics.
+  // Once earned, a ride stays named until the line ends — the chip's numbers keep measuring, and
+  // the release grade reads the truth at the cut.
+  _updateRide(state, t, targetId) {
+    const now = finite(state && state.simTime, 0);
+    const dt = this._rideClock != null ? Math.max(0, now - this._rideClock) : 0;
+    this._rideClock = now;
+    if (!t || !t.active || targetId == null
+      || (t.phase !== 'loaded' && t.phase !== 'overload')) {
+      this._rideTautS = 0;
+      if (t) t.ride = null;
+      return;
+    }
+    const get = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get.bind(state.entities) : null;
+    const anchor = get ? get(targetId) : null;
+    const player = get ? get(state.playerId) : null;
+    const speedOf = (e) => Math.hypot(finite(e && e.vel && e.vel.x), finite(e && e.vel && e.vel.z));
+    const anchorSpeed = speedOf(anchor);
+    const playerSpeed = speedOf(player);
+    const faster = anchorSpeed > playerSpeed + RIDE_SPEED_MARGIN_WU_S;
+    this._rideTautS = faster ? this._rideTautS + dt : 0;
+    if (!t.ride || t.ride.active !== true) {
+      if (this._rideTautS < RIDE_ENTER_S) {
+        t.ride = null;
+        return;
+      }
+      t.ride = {
+        active: true,
+        anchorId: targetId,
+        since: now,
+        startPlayerSpeed: playerSpeed,
+        anchorSpeed,
+        playerSpeed,
+        speedGained: 0,
+        heldS: 0,
+      };
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('massline:rideStarted', {
+          sourceId: state.playerId,
+          targetId,
+          attachmentId: t.attachmentId,
+          anchorSpeed,
+          tick: state.tick,
+        });
+      }
+      this._announceRide(state, targetId);
+      return;
+    }
+    t.ride.anchorSpeed = anchorSpeed;
+    t.ride.playerSpeed = playerSpeed;
+    t.ride.speedGained = Math.max(0, playerSpeed - finite(t.ride.startPlayerSpeed));
+    t.ride.heldS = Math.max(0, now - finite(t.ride.since));
+  },
+
+  // FB-006 — the ride speaks the existing hitchhiking line once, through the same hud:firstUse
+  // presentation path and the same once-only state.player.hints store onboarding's latch lesson
+  // uses, so a ride and a latch can never double-speak one line.
+  _announceRide(state, entityId) {
+    const key = 'masslineHitchhiking';
+    if (!state || !state.player) return false;
+    if (!state.player.hints) state.player.hints = {};
+    if (state.player.hints[key]) return false;
+    state.player.hints[key] = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('hud:firstUse', { verbId: key, text: firstUseLine(key), entityId: entityId ?? null });
+    }
+    return true;
+  },
+
   _emitWhipSnapIfStored(state, targetId) {
     const t = state && state.player && state.player.tether;
     if (!t || t.headId !== ELASTIC_WHIP_HEAD_ID) return false;
@@ -1853,6 +1988,8 @@ export const tetherGameplay = {
         strainGlow: finite(t.strainGlow, 0),
       });
     }
+    // FB-013 — the whip's defining moment is the snap: announce the head once.
+    this._announceHead(state, ELASTIC_WHIP_HEAD_ID, targetId);
     return true;
   },
 
@@ -2327,9 +2464,30 @@ export const tetherGameplay = {
       this.bus.emit('massline:cadenceChanged', { sourceId: state.playerId, targetId,
         attachmentId: t.attachmentId, phase: view.phase, tick: state.tick });
     }
+    // FB-013 — the frame coupler's defining moment is its rigid lock: the first taut phase of a
+    // latch under that head. One distinct receipt, one first-use line, once per latch.
+    if (t.active && t.headId === 'frame_coupler' && (t.phase === 'loaded' || t.phase === 'overload')) {
+      if (this._couplerLockLatchedId !== t.attachmentId) {
+        this._couplerLockLatchedId = t.attachmentId;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('tether:couplerLock', {
+            sourceId: state.playerId,
+            targetId,
+            attachmentId: t.attachmentId,
+          });
+        }
+        this._announceHead(state, 'frame_coupler', targetId);
+      }
+    } else if (!t.active) {
+      this._couplerLockLatchedId = null;
+    }
     if (t.active && t.headId === ELASTIC_WHIP_HEAD_ID) {
       t.load = Math.max(t.load, strainGlow);
     }
+    // FB-006 — the ride derivation runs where the live pair is already in hand, after every
+    // other mirror field is final. Publishes t.ride for the HUD chip, the release grade and the
+    // first-ride line; a slack/inactive line clears it.
+    this._updateRide(state, t, targetId);
   },
 };
 
@@ -2762,6 +2920,9 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
   const seedPreview = target && target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
   const entry = {
     targetId: record.id,
+    // The receipt is consumed after publication; if the id recycled in between, this token is
+    // the proof the picked body is still the one the preview named.
+    occupantGeneration: occupantGenerationOf(target),
     targetType: target && target.type || 'unknown',
     targetLabel: masslineTargetLabel(target),
     context: snapshot.context.id,
@@ -3080,6 +3241,19 @@ export function rateRelease(state, targetId, opts) {
   const rating = rateCadenceTechnique(pair, { phase: tether && tether.phase });
   const apexOmega = finite(telemetry && telemetry.maxAngularSpeedSinceLatch);
   const omegaNow = Math.abs(finite(pair.omega));
+  const playerSpeed = Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z));
+  // FB-006 — a release out of a ride grades the ride: how much of the anchor's speed the pilot
+  // kept at the cut. The ride mirror is still live here (the emitters rate before clearing it).
+  const ride = tether && tether.ride && tether.ride.active === true ? tether.ride : null;
+  const rideGrade = ride
+    ? {
+      anchorSpeed: finite(ride.anchorSpeed),
+      speedGained: finite(ride.speedGained),
+      keptFraction: finite(ride.anchorSpeed) > 0.5
+        ? clamp01(playerSpeed / finite(ride.anchorSpeed))
+        : 0,
+    }
+    : null;
   return {
     targetId, sourceId: state && state.playerId != null ? state.playerId : null,
     // CV-THROW-1: deliberate marks a player release — the grade verdict teaches only
@@ -3089,10 +3263,12 @@ export function rateRelease(state, targetId, opts) {
     radialSpeed: pair.radialSpeed, tangentialSpeed: pair.tangentialSpeed,
     angularSpeed: pair.omega, distance: pair.distance, restLength,
     strain: finite(tether && tether.strain, finite(telemetry && telemetry.strain)),
-    playerSpeed: Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z)),
+    playerSpeed,
     maxStrainSinceLatch: finite(telemetry && telemetry.maxStrainSinceLatch),
     maxTangentialSpeedSinceLatch: finite(telemetry && telemetry.maxTangentialSpeedSinceLatch),
     maxAngularSpeedSinceLatch: apexOmega,
+    // FB-006 — the ride's kept-speed receipt, present only when the release ended a ride.
+    ride: rideGrade,
     // True only on a deliberate cut released at the crest of a real swing. Breaks and target
     // loss emit this rating too; they are never an apex.
     releasedAtApex: !!(opts && opts.deliberate === true)

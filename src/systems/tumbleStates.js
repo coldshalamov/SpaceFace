@@ -35,7 +35,7 @@ import {
   resolveHitstunLaw,
   signedHitSide,
 } from '../combat/impulseKernel.js';
-import { entityIndexVersion, indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
@@ -53,6 +53,9 @@ const TUMBLE_RECOVERY_S = 0.9;
 const TUMBLE_RECOVERY_THRUST_SCALE = 0.35;
 /** Rescan while quiet-latched (0.5 s @ 60 Hz) — catches drive-disabled drift without impulse. */
 const TUMBLE_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the tumble/rcs census reads shipLike only. */
+const TUMBLE_QUIET_LANES = ['shipLike'];
 
 /** Bench A/B: production default ON. Skip tumbleStates.update when no tumble/rcs/recovery/drift. */
 let TUMBLE_STATES_QUIET_LATCH = true;
@@ -138,7 +141,8 @@ export const tumbleStates = {
       return;
     }
     const tick = state.tick | 0;
-    const membership = entityIndexVersion(state);
+    const laneVersion = entityIndexLaneVersion(state, TUMBLE_QUIET_LANES);
+    const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
     const impulseGen = impulseProvenanceGeneration();
     // Quiet latch: no tumble / rcs / recovery / drift on the last full walk → skip shipLike
     // walk + RCS provenance scan. Wake on membership, new impulse provenance (RCS discovery),

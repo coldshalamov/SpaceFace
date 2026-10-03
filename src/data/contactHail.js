@@ -13,6 +13,30 @@ import {
 } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { buildSlotList, fits } from '../systems/ships.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+
+// Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
+// to walk the whole entity map per call. The subset preserves entities.values() order and
+// every volatile gate (slot stamps, opportunity state) still re-runs per candidate.
+const _hailAsteroids = { version: null, source: null, list: [] };
+// Members are asteroids only — latch the asteroids lane so ship/payload/projectile churn
+// can't rebuild the subset. -1 (index unready) falls back to the whole-version contract.
+const HAIL_ASTEROID_LANES = ['asteroids'];
+function hailAsteroidsOf(state) {
+  const laneVersion = entityIndexLaneVersion(state, HAIL_ASTEROID_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  const cache = _hailAsteroids;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    const entities = state.entities && typeof state.entities.values === 'function'
+      ? state.entities.values()
+      : Array.isArray(state.entityList) ? state.entityList : [];
+    for (const e of entities) if (e && e.type === 'asteroid') cache.list.push(e);
+  }
+  return cache.list;
+}
 
 export const CONTACT_HAIL_RANGE = 5200;
 export const CONTACT_HAIL_REQUEST_TTL_S = 8;
@@ -204,13 +228,8 @@ function richSeamHelpAvailable(state, entity, kind) {
     || (state.world && state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID
     || typeof data.worldRecordId !== 'string' || !data.worldRecordId
     || data.jobId !== `job:${data.worldRecordId}`) return false;
-  const entities = state.entities && typeof state.entities.values === 'function'
-    ? state.entities.values()
-    : Array.isArray(state.entityList) ? state.entityList : [];
-  for (const candidate of entities) {
-    const opportunity = candidate && candidate.type === 'asteroid'
-      ? richSeamOpportunityForEntity(state, candidate)
-      : null;
+  for (const candidate of hailAsteroidsOf(state)) {
+    const opportunity = richSeamOpportunityForEntity(state, candidate);
     const candidateData = candidate && candidate.data || {};
     if (candidateData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
       || candidateData.sectorId !== CERES_ACTIVITY_SECTOR_ID
@@ -345,6 +364,46 @@ function callsign(entity) {
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+// ── NXB-042 rescued-worker memory ─────────────────────────────────────────────────────────────
+// A worker who was pulled out of a survivor pod and returned to their real job remembers the
+// player — once, in their own voice. This read is pure: the durable person record lives in the
+// uniqueWrecks owner bag (rescuedWorkerReturn.js) and the live hull carries the person stamp.
+// The line is earned only when the record proves the SAME person (personKey + worldRecordId)
+// actually returned to work and the one-time acknowledgment has not already played. A lost,
+// ransomed, abandoned, or stale-stamped hull never gets the line (NXI-168).
+const RESCUED_WORKER_VOICE = Object.freeze({
+  miner: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SEAM — WHAT DO YOU NEED?',
+  hauler: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE LANE — WHAT DO YOU NEED?',
+  ore_carrier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE ORE RUN — WHAT DO YOU NEED?',
+  salvor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE WRECKS — WHAT DO YOU NEED?',
+  tender: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON TENDER DUTY — WHAT DO YOU NEED?',
+  courier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE MAIL RUN — WHAT DO YOU NEED?',
+  patrol: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON WATCH — WHAT DO YOU NEED?',
+  surveyor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SURVEY — WHAT DO YOU NEED?',
+});
+const RESCUED_WORKER_VOICE_DEFAULT = 'YOU PULLED MY POD OUT OF THE DARK. BACK AT WORK — WHAT DO YOU NEED?';
+
+export function rescuedWorkerMemoryFor(state, entity) {
+  const data = entity && entity.data || {};
+  const personKey = typeof data.rescuedWorkerPerson === 'string' && data.rescuedWorkerPerson
+    ? data.rescuedWorkerPerson : null;
+  if (!personKey) return null;
+  const record = state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.rescuedWorkers
+    && state.player.uniqueWrecks.rescuedWorkers.people
+    && state.player.uniqueWrecks.rescuedWorkers.people[personKey];
+  if (!record || record.personKey !== personKey) return null;
+  if (record.outcome !== 'returned') return null; // dead, ransomed or adrift people never answer
+  if (typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || record.worldRecordId !== data.worldRecordId) return null; // same durable hull only
+  if (record.hailAcknowledgedAtS != null) return null; // the memory is named exactly once
+  return record;
+}
+
+function rescuedWorkerVoiceLine(record) {
+  return RESCUED_WORKER_VOICE[record && record.role] || RESCUED_WORKER_VOICE_DEFAULT;
+}
+
 function priorityCourierItinerary(state, entity) {
   const itinerary = entity && entity.data && entity.data.itinerary;
   if (!isPriorityCourierItinerary(itinerary)) return null;
@@ -460,6 +519,7 @@ export function contactHailAvailability(state) {
       && playerHasFittedCargoScanner(state)
       && !!traderManifestForTarget(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
+    rescuedWorkerMemory: rescuedWorkerMemoryFor(state, target),
   };
 }
 
@@ -774,9 +834,10 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     if (availability.heaveToAvailable && actions.length < 3) {
       actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     }
+    const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: [`${name} · WORKING TRAFFIC`, voice],
+      lines: [`${name} · WORKING TRAFFIC`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
       actions,
     };
   }
@@ -811,9 +872,10 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   const actions = [{ id: 'route', label: 'ROUTE' }];
   if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+  const remembered = availability.rescuedWorkerMemory;
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: [`${name} · CIVILIAN FREIGHT`, voice],
+    lines: [`${name} · CIVILIAN FREIGHT`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
     actions,
   };
 }
@@ -918,6 +980,16 @@ function manifestText(state, target, manifestOverride = undefined) {
 
 function liveEntityForWorldRecord(state, worldRecordId) {
   if (!state || typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const index = state.entityIndex;
+  // A proven-unique live carrier resolves O(1) — the count gate reproduces the fail-closed
+  // ambiguity rule below: any second carrier keeps the walk (which then returns null).
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) return holder;
+  }
   const entities = state.entities && typeof state.entities.values === 'function'
     ? state.entities.values()
     : state.entityList || [];
@@ -1100,17 +1172,18 @@ function workerStatusText(target, state = null) {
   const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
   if (handoffStatus) return `STATUS · ${handoffStatus}`;
   if (state && richSeamHelpAvailable(state, target, 'worker')) {
-    const entities = state.entities && typeof state.entities.values === 'function'
-      ? state.entities.values() : [];
-    const richOpportunity = [...entities]
-      .map((entity) => {
-        const data = entity && entity.data || {};
-        if (!entity || entity.type !== 'asteroid' || data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
-          || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
-        return richSeamOpportunityForEntity(state, entity);
-      })
-      .find((opportunity) => opportunity && opportunity.sectorId === CERES_ACTIVITY_SECTOR_ID
-        && opportunity.state === 'open' && !opportunity.reservationId);
+    let richOpportunity = null;
+    for (const entity of hailAsteroidsOf(state)) {
+      const data = entity && entity.data || {};
+      if (data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+        || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+      const opportunity = richSeamOpportunityForEntity(state, entity);
+      if (opportunity && opportunity.sectorId === CERES_ACTIVITY_SECTOR_ID
+        && opportunity.state === 'open' && !opportunity.reservationId) {
+        richOpportunity = opportunity;
+        break;
+      }
+    }
     return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8}u · HOT CUT · HOLD OFF`;
   }
   const phase = data.ceresCausalPhase || data.jobPhase || null;

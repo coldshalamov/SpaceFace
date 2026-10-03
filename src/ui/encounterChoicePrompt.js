@@ -72,9 +72,65 @@ export function createEncounterChoicePrompt(ctx = {}) {
     });
   };
 
+  // ── FB-132: a claim raid alarm is a decision, not only a headline ──────────────────────────
+  // claims.js owns the warning, the waypoint, the patrol ledger and the settlement; this
+  // adapter normalizes `claim:defenseWarning` into ONE deck decision — go (the waypoint the
+  // alarm already set stays up), ignore (`claim:defenseIgnore`, the LAW-09 settle), delegate
+  // (`claim:defenseDelegate`, engine-validated against a supported depot's patrol rotation) —
+  // and retires the card when the defense leaves its warning window for any reason.
+  const warnedDefenseIds = new Set();
+
+  const defenseWarning = (payload) => {
+    const claimId = payload && (payload.claimId || payload.bodyId);
+    const defenseId = payload && payload.defenseId;
+    if (!claimId || !defenseId) return false;
+    if (warnedDefenseIds.has(defenseId)) return false; // one prompt per warning
+    const deck = getPromptDeck();
+    if (!deck) return false;
+    const id = 'claim-defense:' + defenseId;
+    const count = Number.isFinite(Number(payload.attackerCount)) ? Number(payload.attackerCount) : null;
+    warnedDefenseIds.add(defenseId);
+    return deck.offerDecision({
+      id,
+      kind: 'danger',
+      sender: 'CLAIM DEFENSE',
+      headline: `${payload.attackerName || 'Raiders'} — ${count != null ? count + ' ships' : 'ships'} inbound`,
+      detail: payload.motive || null,
+      deadlineAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
+      ttlAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
+      choices: [
+        { id: 'go', label: 'Go — fly the defense' },
+        { id: 'ignore', label: 'Ignore — write off the stores' },
+        { id: 'delegate', label: 'Delegate — spend a depot patrol' },
+      ],
+      onChoose: (choiceId) => {
+        deck.resolveDecision(id);
+        warnedDefenseIds.delete(defenseId);
+        const event = choiceId === 'go' ? 'claim:defenseGo'
+          : choiceId === 'ignore' ? 'claim:defenseIgnore'
+          : choiceId === 'delegate' ? 'claim:defenseDelegate'
+          : null;
+        if (event) bus.emit(event, { claimId, defenseId });
+      },
+    });
+  };
+
+  const defenseSettled = (payload) => {
+    const defenseId = payload && payload.defenseId;
+    if (!defenseId) return false;
+    warnedDefenseIds.delete(defenseId);
+    const deck = getPromptDeck();
+    return !!(deck && deck.resolveDecision('claim-defense:' + defenseId));
+  };
+
   bus.on('encounter:choiceOffered', offered);
   bus.on('encounter:resolved', resolved);
   bus.on('encounter:waitStarted', waitStarted);
+  bus.on('claim:defenseWarning', defenseWarning);
+  // Engaged (the player arrived) or settled (ignored/timeout/victory) — either way the warning
+  // window is over and the card retires.
+  bus.on('claim:defenseStarted', defenseSettled);
+  bus.on('claim:defenseResolved', defenseSettled);
   // Sector/run transitions are the deck's own subscriptions now; the old per-card
   // hide-on-sector:exit / game:new / game:load sets are retired with the cards.
 
@@ -86,9 +142,13 @@ export function createEncounterChoicePrompt(ctx = {}) {
     choose: () => false,
     tick: () => {},
     destroy: () => {
+      warnedDefenseIds.clear();
       try { bus.off && bus.off('encounter:choiceOffered', offered); } catch (_) {}
       try { bus.off && bus.off('encounter:resolved', resolved); } catch (_) {}
       try { bus.off && bus.off('encounter:waitStarted', waitStarted); } catch (_) {}
+      try { bus.off && bus.off('claim:defenseWarning', defenseWarning); } catch (_) {}
+      try { bus.off && bus.off('claim:defenseStarted', defenseSettled); } catch (_) {}
+      try { bus.off && bus.off('claim:defenseResolved', defenseSettled); } catch (_) {}
     },
   };
 }

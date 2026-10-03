@@ -301,6 +301,9 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   const neighbor = makeLaw({ heat: 0.2, credits: 5000 });
   add(neighbor, { ...station });
   neighbor.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  assert.equal(events(neighbor.bus, 'economy:chargeCredits').length, 0, 'FB-039: the berth assesses, it does not charge');
+  assert.equal(events(neighbor.bus, 'law:fineAssessed').filter((row) => row.payload.offer === true).length, 1);
+  neighbor.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys' });
   assert.equal(events(neighbor.bus, 'economy:chargeCredits').length, 1);
   assert.equal(events(neighbor.bus, 'heat:clear').length, 1);
   const paid = events(neighbor.bus, 'law:response').find((row) => row.payload.action === 'fine_paid');
@@ -310,6 +313,9 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   add(broke, { ...station });
   broke.bus.emit('dock:docked', { stationId: 'station_tethys' });
   assert.equal(events(broke.bus, 'economy:chargeCredits').length, 0);
+  assert.ok(events(broke.bus, 'law:fineAssessed').some((row) => row.payload.offer === true), 'a broke pilot still gets the offer');
+  broke.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys' });
+  assert.equal(events(broke.bus, 'economy:chargeCredits').length, 0, 'a short answer is refused, never charged');
   assert.ok(events(broke.bus, 'law:response').some((row) => row.payload.action === 'fine_unpaid'));
   assert.equal(broke.state.player.heat, 0.2);
 
@@ -318,19 +324,24 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   const refused = scan.bus.emit('law:playerSurrender', {}) || scan.law._beginPlayerSurrender();
   assert.equal(refused.reason || events(scan.bus, 'law:surrenderRefused')[0].payload.reason, 'not_in_custody_tier');
   scan.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  scan.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys' });
   assert.equal(events(scan.bus, 'economy:chargeCredits').length, 1, 'a refused surrender still leaves the fine payable');
 
   const held = makeLaw({ heat: 0.65, credits: 5000 });
   add(held, {
-    id: 'player', type: 'ship', alive: true, pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {},
+    id: 'player', type: 'ship', alive: true, pos: { x: 40, z: 5000 }, vel: { x: 0, z: 0 }, rot: 0, data: {},
   });
   const patrol = add(held, {
-    id: 'patrol', type: 'ship', alive: true, pos: { x: 0, z: 0 }, rot: 0, factionId: 'faction_scn',
+    id: 'patrol', type: 'ship', alive: true, pos: { x: 0, z: 5000 }, rot: 0, factionId: 'faction_scn',
     data: { ai: { lawful: true }, intent: { fire: true }, combat: { targetId: 'player' } },
   });
   const bystander = add(held, {
-    id: 'far-patrol', type: 'ship', alive: true, pos: { x: 0, z: 400 }, rot: 0, factionId: 'faction_scn',
+    id: 'far-patrol', type: 'ship', alive: true, pos: { x: 0, z: 5400 }, rot: 0, factionId: 'faction_scn',
     data: { ai: { lawful: true }, intent: { fire: true }, combat: { targetId: 'player' } },
+  });
+  const raider = add(held, {
+    id: 'raider', type: 'ship', alive: true, pos: { x: 0, z: 5600 }, rot: 0, factionId: 'faction_reach',
+    data: { ai: { lawful: false }, intent: { fire: true }, combat: { targetId: 'player' } },
   });
   held.law.noteComposedObligation({ kind: 'toll', causeId: 'passage:keep', amountCr: 120, label: 'passage toll' });
   const started = held.law._beginPlayerSurrender();
@@ -344,7 +355,8 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   assert.equal(held.state.player.heat, 0.65);
   assert.equal(events(held.bus, 'heat:clear').length, 0);
   assert.equal(patrol.data.intent.fire, false);
-  assert.equal(bystander.data.intent.fire, true);
+  assert.equal(bystander.data.intent.fire, false, 'an accepted surrender stands down every lawful engager, not only the cone responder');
+  assert.equal(raider.data.intent.fire, true, 'a surrender to the law does not disarm an unlawful attacker');
   const surrenderBill = held.law.composedDisposition().find((row) => row.causeId === started.causeId);
   assert.equal(surrenderBill.advertisePay, true);
   assert.equal(surrenderBill.amountCr, started.priceCr);
