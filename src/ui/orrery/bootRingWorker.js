@@ -23,7 +23,7 @@ export function bootRingWorkerRuntime(makeModel) {
         ctx.beginPath(); ctx.arc(88, 88, 60, start, end); ctx.stroke();
       }
       ctx.fillStyle = '#dfeeff'; ctx.beginPath();
-      ctx.arc(88 + 60 * Math.cos(end), 88 + 60 * Math.sin(end), 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.arc(88 + 64 * Math.cos(end), 88 + 64 * Math.sin(end), 2.2, 0, Math.PI * 2); ctx.fill();
     }
     ctx.strokeStyle = 'rgba(236,230,216,.8)'; ctx.lineWidth = 1;
     for (const mark of marks) {

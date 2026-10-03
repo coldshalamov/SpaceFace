@@ -56,17 +56,13 @@ function injectStyle() {
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
   .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
-  /* The stage must be the scroller, with a void fade at the bottom so items do not collide with the docked Launch key */
   .sf-sandbox .sf-stage {
-    overflow-y: auto; overflow-x: hidden; padding-right: 6px;
-    padding-bottom: 96px;
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 64px), transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 64px), transparent 100%);
+    padding-right: 6px;
+    padding-bottom: 24px;
   }
   .sf-sandbox .sf-apron {
-    position: sticky; bottom: 0; z-index: 20;
-    background: linear-gradient(to top, rgb(5 7 10 / .96) 80%, transparent);
-    padding: 16px 20px 20px;
+    position: relative;
+    padding: 16px 0 32px;
     border-top: 1px solid rgb(236 230 216 / .14);
   }
   .sf-sandbox .sf-section-h {

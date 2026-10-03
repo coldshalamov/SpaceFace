@@ -51,8 +51,10 @@ const CSS = `
    a tight halo of the void, so a label stays legible over a bright foundry floor or a sunlit hull */
 .orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
   text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
-/* small type gets its own pool of shadow, sized to the words, not the block */
-.orr-cluster__keytag::before, .orr-cluster__speedfoot > .orr-label::before { content:""; position:absolute; inset:-9px -16px; z-index:-1; pointer-events:none;
+/* small type gets its own pool of shadow, sized to the words, not the block — hugging the text */
+.orr-cluster__keytag::before { content:""; position:absolute; inset:-4px -8px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(3 4 7 / .75), rgb(3 4 7 / .45) 60%, transparent); }
+.orr-cluster__speedfoot > .orr-label::before { content:""; position:absolute; inset:-6px -12px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .7), rgb(3 4 7 / .5) 72%, transparent); }
 .orr-cluster__speedfoot > .orr-label { position:relative; }
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
@@ -62,7 +64,7 @@ const CSS = `
 .orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
 .orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
 .orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
-.orr-cluster__legend .orr-label { font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
+.orr-cluster__legend .orr-label { font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
@@ -82,10 +84,13 @@ const CSS = `
      the press is the key — so the click still falls through to the flight input underneath. */
   pointer-events:auto; }
 .orr-cluster__key svg { position:absolute; inset:0; width:48px; height:48px; overflow:visible; }
-.orr-cluster__icon { position:absolute; left:50%; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; background:currentColor;
-  -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:.9; }
+.orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
+  -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:1.0; }
 .orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
+/* Verbs that feel loaded: armed key exhales a slow transform-only breath */
+.orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; }
+@keyframes orr-key-armed-breath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 /* SWARM-03: a tactically-live verb breathes — the key warms and exhales so "why now"
    reads at a glance (latch in reach, ordnance armed, a pack inside the well). */
 .orr-cluster__key.is-live .orr-cluster__icon { color:var(--dp-hand, #f2b950); animation:orr-key-live 1.15s ease-in-out infinite; }
@@ -93,14 +98,20 @@ const CSS = `
 @keyframes orr-key-live { 0%,100% { opacity:1; } 50% { opacity:.5; } }
 .orr-cluster__key.is-cooldown .orr-cluster__icon { opacity:.5; }
 .orr-cluster__key.is-locked .orr-cluster__icon, .orr-cluster__key.is-empty .orr-cluster__icon { opacity:.24; }
-/* labels hold a 10 px floor on screen whatever the cluster's scale */
-.orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
-.orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; }
-.orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:var(--dp-ink-dim, #b7b4a6); }
+/* labels hold a 12 px floor on screen whatever the cluster's scale */
+.orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); font-weight:500; }
+.orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; color:rgb(232 226 212 / .88); }
+.orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:rgb(232 226 212 / .92); }
 .orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:6px; letter-spacing:.08em; }
-.orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); }
-.orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
+.orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .70); }
+.orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
+.orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); font-weight:700; }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
+@media (max-width: 1400px) {
+  .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 6}px; }
+  .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 5}px; }
+  .orr-cluster__keytag::before { inset:-2px -5px; }
+}
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
@@ -112,7 +123,7 @@ const CSS = `
 .orr-cluster.is-arriving .orr-cluster__glyph { animation:orr-glyph-in 900ms var(--dp-ease-out) both; }
 @keyframes orr-glyph-in { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:none; } }
 .orr-cluster.is-arriving .orr-cluster__fade, .orr-cluster.is-arriving .orr-cluster__key { animation:orr-rise 460ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
-html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse { animation:none !important; }
+html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse, html.sf-reduce-motion .orr-cluster__key.is-armed { animation:none !important; }
 `;
 
 function injectStyle(doc = globalThis.document) {
@@ -358,11 +369,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     k.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${label}${sub ? `, key ${sub}` : ''}`);
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
     const r0 = node ? NODE_R : KEY_R;
-    ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1, fill: 'rgb(5 7 10 / .34)' }));
+    const bloomTwin = svg('circle', { r: r0, class: 'orr-bloom orr-bone', 'stroke-width': 5, opacity: '.20', fill: 'none' });
+    const coreCircle = svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1.5, fill: 'rgb(5 7 10 / .34)' });
     const cd = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 360), class: 'orr-core orr-phos', 'stroke-width': node ? 1.6 : 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt', opacity: '.8' });
     const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 6, fill: 'none', opacity: 0 });
     const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
-    ks.append(cd, armedB, armed);
+    ks.append(bloomTwin, coreCircle, cd, armedB, armed);
     k.appendChild(ks);
     const ic = el('span', 'orr-cluster__icon');
     ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);

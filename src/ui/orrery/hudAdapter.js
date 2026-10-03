@@ -145,6 +145,7 @@ const HOST_CSS = `
 #hud .orr-hud-cluster { position:absolute; left:18px; bottom:24px; z-index:5; pointer-events:none; }
 #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:1; }
 @media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.82; } }
+@media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
 @media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; } }
 /* ORRERY owns the bottom-left and the ordnance: the old chassis and rail stay mounted, hidden. */
 #hud[data-hud="orrery"] .sf-leftstack, #hud[data-hud="orrery"] .sf-prail { visibility:hidden !important; pointer-events:none !important; }

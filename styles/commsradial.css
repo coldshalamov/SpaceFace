@@ -301,7 +301,8 @@
 #sf-commsfan .sf-commsfan__hub {
   border:5px solid transparent; border-radius:0;
   border-image:none;
-  background:var(--dp-glass-solid), var(--dp-metal-2);
+  background-color:var(--bg);
+  background-image:var(--dp-glass-solid), var(--dp-metal-2);
   box-shadow:var(--dp-glass-depth);
   color:var(--dp-ink);
 }
@@ -337,7 +338,9 @@
 #sf-commsfan .sf-commsfan__wedge {
   position:relative; box-sizing:border-box; height:38px; min-height:0; transform:translateX(var(--bow, 0px));
   border:0; border-radius:2px; padding:0 12px 0 10px; gap:10px; color:var(--dp-ink-dim);
-  background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  background-color:var(--bg);
+  background-image:var(--dp-glass-solid);
+  box-shadow:var(--dp-glass-depth);
   transition:color var(--dp-d-cut, .1s) var(--dp-ease-lamp, ease), box-shadow var(--dp-d-cut, .1s) var(--dp-ease-lamp, ease);
 }
 #sf-commsfan .sf-commsfan__wedge::before {
@@ -360,6 +363,17 @@
 #sf-commsfan .sf-commsfan__glyph { color:inherit; }
 #sf-commsfan .sf-commsfan__glyph .accent { fill:var(--dp-ink-mute); }
 #sf-commsfan .sf-commsfan__wedge:is(:hover, :focus-visible):not(.is-dim) .sf-commsfan__glyph .accent { fill:var(--dp-lamp); }
+#sf-commsfan .sf-commsfan__keychip {
+  display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 4px;
+  box-sizing:border-box; background:var(--dp-metal-3, #232833);
+  font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 800, "wdth" 75;
+  font-size:12px; line-height:1; letter-spacing:.04em; color:var(--dp-phos, var(--dp-ink, #e8e2d4));
+  border-radius:2px; border:1px solid rgb(232 226 212 / .15);
+}
+#sf-commsfan .sf-commsfan__wedge:is(:hover, :focus-visible):not(.is-dim) .sf-commsfan__keychip {
+  color:var(--dp-lamp-hot, #ffd98c); background:var(--dp-metal-2, #2f3542);
+  border-color:var(--dp-lamp, #f2b950);
+}
 #sf-commsfan .sf-commsfan__verb {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 75;
   font-size:13px; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap;

@@ -28,12 +28,12 @@ const OPTIONS = [
 // The dial's geometry, in its own 400-unit box (the overlay is 400px square).
 const DIAL = 400;
 const C = DIAL / 2;
-const R_IN = 74;
-const R_OUT = 166;
+const R_IN = 68;
+const R_OUT = 150;
 const HALF_SPAN = (44 * Math.PI) / 180;   // 88-degree keys, 2-degree hairline seams
-const R_FACE = 120;                       // where each key's legend sits
-const R_LAMP = 178;                       // the bezel lamps, one per key
-const R_RECEIPT = 70;                     // the receipt word, between hub rim and key inner edge
+const R_FACE = 110;                       // where each key's legend sits
+const R_LAMP = 160;                       // the bezel lamps, one per key
+const R_RECEIPT = 65;                     // the receipt word, between hub rim and key inner edge
 const POS_ANGLE = { top: -Math.PI / 2, right: 0, bottom: Math.PI / 2, left: Math.PI };
 
 function polarX(r, a) { return C + r * Math.cos(a); }
@@ -50,7 +50,7 @@ function graticulePath() {
   let d = '';
   for (let i = 0; i < 60; i++) {
     const a = (i / 60) * Math.PI * 2;
-    d += `M${pt(i % 15 === 0 ? 185 : 189, a)}L${pt(194, a)}`;
+    d += `M${pt(i % 15 === 0 ? 166 : 170, a)}L${pt(175, a)}`;
   }
   return d;
 }
@@ -58,7 +58,7 @@ const DIAL_SVG = '<svg class="sf-wradial__dial" viewBox="0 0 400 400" aria-hidde
   // The dial is printed (owner, 2026-09-22: no CSS or SVG imitating a material). It used to wear a
   // brushed-steel ring -- a metal gradient, a lit chamfer and a 512px brushed-texture pattern --
   // around smoked-glass wedges. Now: a flat bed, one hairline ring, flat wedges.
-  + `<circle class="sf-wradial__bed" cx="${C}" cy="${C}" r="171"/>`
+  + `<circle class="sf-wradial__bed" cx="${C}" cy="${C}" r="152"/>`
   + `<circle class="sf-wradial__bezel-edge" cx="${C}" cy="${C}" r="${R_LAMP}"/>`
   + `<path class="sf-wradial__graticule" d="${graticulePath()}"/>`
   + '</svg>';
@@ -362,14 +362,16 @@ function injectCss() {
      four smoked-glass arc keys seated in a machined ring, a lamp set into the bezel over each key,
      and a glass hub that names the scope. The selection language is the kit's: the key's lamp
      lights, its legend goes amber, and its inner edge takes an amber rim. Legends are bone. */
-  .sf-wradial { position:fixed; left:50%; top:50%; width:400px; height:400px; transform:translate(-50%,-50%);
+  .sf-wradial { position:fixed; left:50%; top:69%; width:400px; height:400px; transform:translate(-50%,-50%);
     z-index:1800; pointer-events:none; opacity:0; transition:opacity .14s ease; --wr-type:12px; }
   .sf-wradial::before { content:""; position:absolute; inset:-60px; border-radius:50%; pointer-events:none;
-    background:radial-gradient(circle, rgb(5 7 10 / .7) 0%, rgb(5 7 10 / .45) 52%, transparent 71%); }
+    background:radial-gradient(circle, rgb(5 7 10 / .55) 0%, rgb(5 7 10 / .35) 50%, transparent 70%);
+    -webkit-mask-image:radial-gradient(circle, #000 60%, transparent 100%);
+    mask-image:radial-gradient(circle, #000 60%, transparent 100%); }
   .sf-wradial[hidden] { display:none; }
   .sf-wradial.sf-wradial--in { opacity:1; }
   .sf-wradial__dial { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-  .sf-wradial__bed { fill:rgb(8 10 14 / .78); stroke:none; }
+  .sf-wradial__bed { fill:rgb(8 10 14 / .55); stroke:none; }
   .sf-wradial__bezel-edge { fill:none; stroke:rgb(232 226 212 / .22); stroke-width:1.5; }
   .sf-wradial__graticule { fill:none; stroke:rgb(232 226 212 / .3); stroke-width:1.2; stroke-linecap:round; }
 
@@ -384,7 +386,7 @@ function injectCss() {
   .sf-wradial__wedge--left { --wr-delay:75ms; }
   .sf-wradial--in .sf-wradial__wedge { transform:none; opacity:1; }
   .sf-wradial__seg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-  .sf-wradial__seg path { fill:rgb(12 15 20 / .78); stroke:rgb(232 226 212 / .12); stroke-width:1.5; transition:stroke .12s, fill .12s; }
+  .sf-wradial__seg path { fill:rgb(12 15 20 / .55); stroke:rgb(232 226 212 / .35); stroke-width:1px; transition:stroke .12s, fill .12s; }
   /* one sheet of glass, one reflection: a crisp-edged plane across the upper dial, so the top key
      catches most of it, the side keys its lower edge, the bottom key none; plus an inner shadow
      where the key seats into the ring */
@@ -408,14 +410,20 @@ function injectCss() {
   /* the bezel lamps: dark lenses at rest, lit over the key under the pilot's hand */
   .sf-wradial__lamp { position:absolute; width:9px; height:9px; margin:-4.5px 0 0 -4.5px; border-radius:50%; pointer-events:none;
     background:linear-gradient(var(--dp-rule-hi) 0 0);
-    box-shadow:0 1px 0 1.5px rgb(255 236 204 / .1); }
+    box-shadow:0 0 8px rgb(242 185 80 / .25), 0 1px 0 1.5px rgb(255 236 204 / .1); }
 
   /* selection: lamp lit, legend amber, amber inner edge - one language with every deckplate row */
   .sf-wradial__wedge:is(:hover, :focus-visible) { color:var(--dp-lamp-hot, #ffd98c); }
-  .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__label { text-shadow:0 0 10px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
+  .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__label {
+    color:rgb(255 244 214);
+    text-shadow:0 0 12px var(--dp-lamp-bloom, rgb(242 185 80 / .4));
+  }
   .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__glyph { color:var(--dp-lamp-hot, #ffd98c); }
   .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__glyph .accent { fill:var(--dp-lamp, #f2b950); }
-  .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__key { color:var(--dp-lamp-hot, #ffd98c); }
+  .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__key {
+    color:var(--dp-phos, rgb(205 222 255));
+    font-size:12px;
+  }
   .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path {
     stroke:var(--dp-lamp, #f2b950); stroke-width:4; filter:drop-shadow(0 0 6px rgb(242 185 80 / .45)); }
   .sf-wradial:has(.sf-wradial__wedge--top:is(:hover, :focus-visible)) .sf-wradial__lamp--top,
@@ -423,7 +431,7 @@ function injectCss() {
   .sf-wradial:has(.sf-wradial__wedge--bottom:is(:hover, :focus-visible)) .sf-wradial__lamp--bottom,
   .sf-wradial:has(.sf-wradial__wedge--left:is(:hover, :focus-visible)) .sf-wradial__lamp--left {
     background:linear-gradient(var(--dp-lamp) 0 0);
-    box-shadow:0 0 7px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), 0 0 16px var(--dp-lamp-bloom-soft, rgb(242 185 80 / .16)); }
+    box-shadow:0 0 7px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), 0 0 16px var(--dp-lamp-bloom-soft, rgb(242 185 80 / .16)), 0 0 8px rgb(242 185 80 / .25); }
   /* the order receipt: a word seated between hub rim and key inner edge on the slot it names */
   .sf-wradial__receipt { position:absolute; transform:translate(-50%,-50%); max-width:120px; pointer-events:none;
     font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 800, "wdth" 72; font-size:var(--wr-type);
@@ -446,7 +454,7 @@ function injectCss() {
       radial-gradient(circle, #121925, #0a0e14) padding-box,
       radial-gradient(circle at 38% 30%, #6b7384, #2d333e 55%, #14171d) border-box;
     box-shadow:none;
-    transition:transform .16s ease; color:var(--dp-ink, #e8e2d4); cursor:pointer; padding:0; pointer-events:auto; }
+    transition:transform .16s ease; color:var(--dp-ink, #e8e2d4); cursor:pointer; padding:12px 0 0 0; pointer-events:auto; }
   .sf-wradial--in .sf-wradial__hub { transform:translate(-50%,-50%) scale(1); }
   .sf-wradial__hub:focus-visible { outline:2px solid var(--dp-lamp, #f2b950); outline-offset:3px; }
   .sf-wradial__hub-title { font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 760, "wdth" 66;
@@ -460,6 +468,23 @@ function injectCss() {
   .sf-wradial__hub-pips i.is-on { background:linear-gradient(var(--dp-ink) 0 0);
     box-shadow:0 0 5px rgb(232 226 212 / .3); }
   .sf-wradial__hub:hover .sf-wradial__hub-scope, .sf-wradial__hub:focus-visible .sf-wradial__hub-scope { color:var(--dp-lamp-hot, #ffd98c); }
+
+  @media (max-width:1400px) {
+    .sf-wradial { transform:translate(-50%,-50%) scale(.8); }
+  }
+
+  @media (prefers-reduced-motion:reduce) { .sf-wradial, .sf-wradial__hub, .sf-wradial__wedge { transition:none; } }
+  html.sf-reduce-motion .sf-wradial, html.sf-reduce-motion .sf-wradial__hub, html.sf-reduce-motion .sf-wradial__wedge { transition:none; }
+  html.sf-high-contrast .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { stroke:#fff; }
+  @media (forced-colors:active) {
+    .sf-wradial__bed, .sf-wradial__seg path { fill:Canvas; stroke:CanvasText; filter:none; }
+    .sf-wradial__bezel-edge, .sf-wradial__graticule { stroke:CanvasText; }
+    .sf-wradial__wedge { color:ButtonText; }
+    .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { stroke:Highlight; }
+    .sf-wradial__hub { border:1px solid ButtonText; background:ButtonFace; color:ButtonText; box-shadow:none; }
+    .sf-wradial__key, .sf-wradial__hub-scope { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
+    .sf-wradial__lamp { forced-color-adjust:none; background:Canvas; box-shadow:0 0 0 1px CanvasText; }
+  }
 
   @media (prefers-reduced-motion:reduce) { .sf-wradial, .sf-wradial__hub, .sf-wradial__wedge { transition:none; } }
   html.sf-reduce-motion .sf-wradial, html.sf-reduce-motion .sf-wradial__hub, html.sf-reduce-motion .sf-wradial__wedge { transition:none; }
