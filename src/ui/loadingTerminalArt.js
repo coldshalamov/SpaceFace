@@ -141,8 +141,8 @@ function createEngine(host) {
   // ─────────────────────────────────────────────────────────────────────────
   // Engine state
   // ─────────────────────────────────────────────────────────────────────────
-  let ctx = null, waveCtx = null;
-  let W = 640, H = 380, WW = 200, WH = 48;
+  let ctx = null;
+  let W = 640, H = 380;
   let running = false, rafId = null;
   let T = 0;
   let lastNow = 0;
@@ -150,7 +150,6 @@ function createEngine(host) {
   let gx = 0, gy = 0, gxT = 0, gyT = 0, lastPointerAt = -10;
   let reduced = false;
   let energy = 0.3;
-  const energyHist = new Float32Array(64).fill(0.1); let energyIdx = 0;
   let frameCostAvg = 10;
   let skipScene = false;
   let frameCounter = 0;
@@ -530,24 +529,6 @@ function createEngine(host) {
     }
   }
 
-  function drawWaveform() {
-    if (!waveCtx) return;
-    waveCtx.fillStyle = '#02070a';
-    waveCtx.fillRect(0, 0, WW, WH);
-    waveCtx.strokeStyle = 'rgba(90,220,242,0.9)';
-    waveCtx.lineWidth = 1.2;
-    waveCtx.beginPath();
-    for (let i = 0; i < 64; i++) {
-      const v = energyHist[(energyIdx + i) % 64];
-      const x = (i / 63) * WW;
-      const y = WH * 0.62 - v * WH * 0.52 + Math.sin(i * 0.7 + T * 9) * v * 2.4;
-      if (i === 0) waveCtx.moveTo(x, y); else waveCtx.lineTo(x, y);
-    }
-    waveCtx.stroke();
-    waveCtx.fillStyle = 'rgba(90,220,242,0.25)';
-    for (let i = 0; i < 16; i++) waveCtx.fillRect((i / 16) * WW, WH - 2, 1, 2);
-  }
-
   function frame(now) {
     rafId = null;
     if (!running) return;
@@ -620,11 +601,6 @@ function createEngine(host) {
     }
     if (vignette) ctx.drawImage(vignette, 0, 0, W, H);
 
-    drawWaveform();
-
-    energyHist[energyIdx] = energy;
-    energyIdx = (energyIdx + 1) % 64;
-
     frameCostAvg = frameCostAvg * 0.92 + (Date.now() - t0) * 0.08;
     frameCounter++;
     needsPaint = false;
@@ -639,15 +615,6 @@ function createEngine(host) {
     } catch {}
     ctx = msg.canvas.getContext('2d');
     if (ctx && 'imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
-    if (msg.waveformCanvas) {
-      try {
-        msg.waveformCanvas.width = msg.waveWidth || 200;
-        msg.waveformCanvas.height = msg.waveHeight || 48;
-      } catch {}
-      waveCtx = msg.waveformCanvas.getContext('2d');
-      if (waveCtx && 'imageSmoothingEnabled' in waveCtx) waveCtx.imageSmoothingEnabled = false;
-      WW = msg.waveWidth || 200; WH = msg.waveHeight || 48;
-    }
     reduced = !!msg.reducedMotion;
     buildOverlays();
     ctx.fillStyle = PALETTES[0].bg;
@@ -668,7 +635,7 @@ function createEngine(host) {
           lastPointerAt = T;
           break;
         case 'destroy':
-          if (tableau) tableau.dispose();ctx=null;waveCtx=null;
+          if (tableau) tableau.dispose();ctx=null;
           // fall through: a normal stop retains the resources needed for resume
         case 'stop':
           running = false;
@@ -1248,8 +1215,8 @@ function createEngineGL(host) {
   }
 
   // ── live state ──────────────────────────────────────────────────────────
-  let gl = null, canvas = null, ctx2dWave = null;
-  let W = 640, H = 380, WW = 200, WH = 48;
+  let gl = null, canvas = null;
+  let W = 640, H = 380;
   let progScene = null, progPost = null, progBloom = null, quadBuf = null;
   let texA = null, texB = null, fbA = null, fbB = null, atlasTex = null;
   let bloomTex = null, bloomFb = null, bloomBlack = null;
@@ -1265,8 +1232,6 @@ function createEngineGL(host) {
   let labAct = -1, labFreeze = false, needsPaint = true;
   let frameCounter = 0, frameCostAvg = 10;
   let energy = 0.3;
-  const energyHist = new Float32Array(64).fill(0.1);
-  let energyIdx = 0;
 
   function compile(gl2, type, src) {
     const sh = gl2.createShader(type);
@@ -1377,15 +1342,6 @@ function createEngineGL(host) {
     if (!gl) throw new Error('real-context-failed');
     if(canvas.addEventListener)canvas.addEventListener('webglcontextlost',onContextLost);
     try { hdrOK = !!gl.getExtension('EXT_color_buffer_float'); } catch { hdrOK = false; }
-    if (msg.waveformCanvas) {
-      try {
-        msg.waveformCanvas.width = msg.waveWidth || 200;
-        msg.waveformCanvas.height = msg.waveHeight || 48;
-      } catch {}
-      ctx2dWave = msg.waveformCanvas.getContext('2d');
-      if (ctx2dWave && 'imageSmoothingEnabled' in ctx2dWave) ctx2dWave.imageSmoothingEnabled = false;
-      WW = msg.waveWidth || 200; WH = msg.waveHeight || 48;
-    }
     reduced = !!msg.reducedMotion;
     progScene = link(gl, SRC.vert, sceneSrc);
     progPost = link(gl, SRC.vert, postSrc);
@@ -1487,24 +1443,6 @@ function createEngineGL(host) {
     const loc = prog===progScene ? attribScene : prog===progBloom ? attribBloom : attribPost;
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  }
-
-  function drawWaveform() {
-    if (!ctx2dWave) return;
-    ctx2dWave.fillStyle = '#02070a';
-    ctx2dWave.fillRect(0, 0, WW, WH);
-    ctx2dWave.strokeStyle = 'rgba(90,220,242,0.9)';
-    ctx2dWave.lineWidth = 1.2;
-    ctx2dWave.beginPath();
-    for (let i = 0; i < 64; i++) {
-      const v = energyHist[(energyIdx + i) % 64];
-      const x = (i / 63) * WW;
-      const y = WH * 0.62 - v * WH * 0.52 + Math.sin(i * 0.7 + T * 9) * v * 2.4;
-      if (i === 0) ctx2dWave.moveTo(x, y); else ctx2dWave.lineTo(x, y);
-    }
-    ctx2dWave.stroke();
-    ctx2dWave.fillStyle = 'rgba(90,220,242,0.25)';
-    for (let i = 0; i < 16; i++) ctx2dWave.fillRect((i / 16) * WW, WH - 2, 1, 2);
   }
 
   function frame(now) {
@@ -1664,9 +1602,6 @@ function createEngineGL(host) {
       return;
     }
 
-    drawWaveform();
-    energyHist[energyIdx] = energy;
-    energyIdx = (energyIdx + 1) % 64;
     energy *= 0.96;
 
     frameCostAvg = frameCostAvg * 0.92 + (Date.now() - t0) * 0.08;
@@ -1742,7 +1677,6 @@ let activeTerminalInstance = null;
 
 export function createTerminalArtwork({
   canvas,
-  waveformCanvas,
   overlay,
   force2D = false,
   document: doc = globalThis.document,
@@ -1808,20 +1742,11 @@ export function createTerminalArtwork({
     w = Math.max(2, Math.round(w * scaleDown));
     h = Math.max(2, Math.round(h * scaleDown));
   }
-  const waveScale = Math.min(3, Math.max(1, dpr * 1.2));
-  const waveWidth = Math.max(120, Math.round(200 * waveScale));
-  const waveHeight = Math.max(40, Math.round(48 * waveScale));
   const reducedAtInit = isReducedMotion();
   try {
     canvas.width = w;
     canvas.height = h;
   } catch {}
-  if (waveformCanvas) {
-    try {
-      waveformCanvas.width = waveWidth;
-      waveformCanvas.height = waveHeight;
-    } catch {}
-  }
 
   // ── host selection ──────────────────────────────────────────────────────
   // transferControlToOffscreen is IRREVERSIBLE. After a successful transfer
@@ -1829,7 +1754,6 @@ export function createTerminalArtwork({
   // transferred OffscreenCanvas and drive the SAME engine on the main thread.
   // Pinned by test/loading-boot-resilience.test.mjs.
   let offscreen = null;
-  let offscreenWave = null;
   // Engine health visibility: the worker posts glFallback / glInitError /
   // glRuntimeError when the artwork degrades. Nobody must ACT on these (the
   // artwork is decoration), but they should not vanish either — the dev lab
@@ -1854,14 +1778,6 @@ export function createTerminalArtwork({
         offscreen.width = w;
         offscreen.height = h;
       } catch {}
-      if (waveformCanvas && typeof waveformCanvas.transferControlToOffscreen === 'function') {
-        offscreenWave = waveformCanvas.transferControlToOffscreen();
-        waveformCanvas.__sfTransferred = true;
-        try {
-          offscreenWave.width = waveWidth;
-          offscreenWave.height = waveHeight;
-        } catch {}
-      }
       const blob = new Blob([WORKER_BOOTSTRAP(force2D)], { type: 'application/javascript' });
       workerUrl = URL.createObjectURL(blob);
       worker = new Worker(workerUrl);
@@ -1870,14 +1786,11 @@ export function createTerminalArtwork({
         {
           type: 'init',
           canvas: offscreen,
-          waveformCanvas: offscreenWave,
           width: w,
           height: h,
-          waveWidth,
-          waveHeight,
           reducedMotion: reducedAtInit,
         },
-        offscreenWave ? [offscreen, offscreenWave] : [offscreen]
+        [offscreen]
       );
     }
   } catch (err) {
@@ -1891,19 +1804,12 @@ export function createTerminalArtwork({
   const canUse2d = (el) => !!el && !el.__sfTransferred && typeof el.getContext === 'function';
   if (!worker) {
     const target = offscreen || (canUse2d(canvas) ? canvas : null);
-    const targetWave = offscreenWave || (canUse2d(waveformCanvas) ? waveformCanvas : null);
     if (target && target.getContext) {
       try {
         try {
           target.width = w;
           target.height = h;
         } catch {}
-        if (targetWave) {
-          try {
-            targetWave.width = waveWidth;
-            targetWave.height = waveHeight;
-          } catch {}
-        }
         if (target === canvas) { canvas.width = w; canvas.height = h; }
         const hostMain = {
           post: () => {},
@@ -1924,11 +1830,8 @@ export function createTerminalArtwork({
         mainEngine.receive({
           type: 'init',
           canvas: target,
-          waveformCanvas: targetWave,
           width: w,
           height: h,
-          waveWidth,
-          waveHeight,
           reducedMotion: reducedAtInit,
         });
       } catch (err) {
@@ -2043,7 +1946,7 @@ export function createTerminalArtwork({
       // orphaned render surface for the rest of the session — boot-terminal-canvas stayed
       // connected with live GL programs through whole flights (2026-09-10 canvas census). Detach
       // the dead elements; ensureBootTerminalCanvas rebuilds them the next time loading is shown.
-      for (const dead of [canvas, waveformCanvas]) {
+      for (const dead of [canvas]) {
         if (!dead) continue;
         try { delete dead.__sfTerminalArt; } catch { dead.__sfTerminalArt = null; }
         if (dead.parentNode && typeof dead.parentNode.removeChild === 'function') {
@@ -2223,13 +2126,12 @@ export function bootstrapLoadingTerminal(document = globalThis.document) {
   if (activeTerminalInstance) return activeTerminalInstance;
 
   const canvas = ensureBootTerminalCanvas(document);
-  const waveformCanvas = document.getElementById('boot-waveform-canvas');
   const overlay = document.getElementById('boot-overlay');
 
   if (!canvas) return null;
 
   const startLiveArt = () => {
-    const inst = createTerminalArtwork({ canvas, waveformCanvas, overlay, document });
+    const inst = createTerminalArtwork({ canvas, overlay, document });
     try { inst.start(); } catch (err) {
       try { console.warn('[boot] loading artwork start failed; continuing without it', err); } catch (_) {}
     }
