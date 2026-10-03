@@ -80,6 +80,7 @@ import { cloak } from '../systems/cloak.js';
 import { lootShards } from '../systems/lootShards.js';
 import { terrainAnchors } from '../systems/terrainAnchors.js';
 import { jettisonImpulse } from '../systems/jettisonImpulse.js';
+import { volatileExposure } from '../systems/volatileExposure.js';
 import { masslineHud } from '../ui/masslineHud.js';
 import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
@@ -262,6 +263,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['lootShards', lootShards],
     ['terrainAnchors', terrainAnchors],
     ['jettisonImpulse', jettisonImpulse],
+    ['volatileExposure', volatileExposure],
     ['mining', mining],
     ['fieldDepletion', fieldDepletion],
     ['cargo', cargo],

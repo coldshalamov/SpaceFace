@@ -38,7 +38,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // memorialThief is a uniqueWrecks sub-object (no id, no clock). Do not add it here.
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
-  'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
+  'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
   'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector',
@@ -95,7 +95,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
-  'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
+  // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
+  // so it runs on the full-rate table clock beside lootShards/fragileCargo.
+  'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
@@ -330,6 +332,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   // Debris/damage owners with live bodies or timed expiry.
   'lootShards', 'mining', 'fieldDepletion', 'fragileCargo',
+  // NXB-008 volatile cargo exposure: table clock; the system's own tick%15 gate limits the pass.
+  'volatileExposure',
   // Survival/Crucible phase machines and per-tick recorders.
   'survivalArena', 'swarmArena', 'survivalWave', 'survivalRun', 'swarmChain',
   'killReplay', 'killcamRecorder',
