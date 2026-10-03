@@ -137,7 +137,7 @@ ${A} .orr-armory-reading__act { font:400 13px/1.5 var(--dp-face-body,'Instrument
 ${A} .orr-armory-reading__compare { margin:14px 0 !important; }
 ${A} .orr-armory-reading__budget { margin:20px 0 !important; }
 ${A} .orr-armory-reading__buy { margin:18px 0 12px !important; }
-${A} .orr-armory-purchase { display:block; width:100%; min-height:50px; padding:12px 16px; background:var(--dp-hand); color:var(--dp-void); border:0; border-radius:0; font:650 16px/1.25 var(--dp-face-label); cursor:pointer; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%); }
+${A} .orr-armory-purchase { display:block; width:100%; min-height:50px; padding:12px 16px; position:sticky; bottom:6px; z-index:2; background:var(--dp-hand); color:var(--dp-void); border:0; border-radius:0; font:650 16px/1.25 var(--dp-face-label); cursor:pointer; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%); }
 ${A} .orr-armory-purchase:disabled { background:var(--dp-line); color:var(--dp-ink-dim); cursor:default; }
 ${A} .orr-armory-refusal { margin:8px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
 ${A} .orr-armory-reading__demo-word { font:500 13px var(--dp-face-label) !important; min-height:40px; padding:8px 0; color:var(--dp-ink-dim) !important; border:0; border-bottom:1px solid var(--dp-line); background:none; cursor:pointer; }
@@ -309,8 +309,6 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act { line-height:1.38 !important; }
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
  ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
- /* keep the buy CTA pinned at the pane's bottom edge while the column scrolls */
- ${A} .orr-armory-purchase { position:sticky; bottom:6px; z-index:2; }
 }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }

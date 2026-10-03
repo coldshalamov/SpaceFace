@@ -790,7 +790,7 @@ export function massLoadFactor(shipDefOrId, operationalMass) {
  * and the engine's travelCeilingMult moves Travel Burn V-MAX. The governed cap (combatSpeed/maxSpeed)
  * and the drive's identity/family are never for sale; the ship's operational mass is the one thing
  * that moves its accelerations after fitting (MASS_LOAD_LAW). */
-function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped) {
+function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped, boostSpeedMult = 1) {
   const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
   const derived = {
@@ -810,6 +810,13 @@ function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equippe
   scaleProfileKeys(derived, base, THRUSTER_RATE_KEYS, Math.sqrt(thruster.turn));
   scaleProfileKeys(derived, base, THRUSTER_STRAFE_KEYS, thruster.strafe);
   scaleProfileKeys(derived, base, THRUSTER_BRAKE_KEYS, thruster.brake);
+
+  // A fitted afterburner raises only the boost ceiling — the authored boostMaxSpeed where the
+  // profile carries one, and the reaction-family boostSpeedMult fallback where it does not.
+  if (boostSpeedMult !== 1) {
+    if (Number.isFinite(derived.boostMaxSpeed)) derived.boostMaxSpeed *= boostSpeedMult;
+    if (Number.isFinite(derived.boostSpeedMult)) derived.boostSpeedMult *= boostSpeedMult;
+  }
 
   const load = massLoadFactor(shipDef, totalMass);
   if (load < 1) {
@@ -841,7 +848,7 @@ function flightClassForShip(shipDef) {
   return flightClassForHull(shipDef);
 }
 
-function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
+function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor, boostSpeedMult = 1 }) {
   const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
   const inertia = Math.max(1, (totalMass / Math.max(0.3, handling)) * t.inertia);
   const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
@@ -862,7 +869,7 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
     maxSpeed,
     boostMult: 2.2,
     normalMaxSpeedMult: 1.15,
-    boostMaxSpeedMult: 2.0,
+    boostMaxSpeedMult: 2.0 * boostSpeedMult,
     bankMax: 0.68,
     bankFactor,
     role: shipDef.role || 'ship',
@@ -1001,6 +1008,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
+  // Afterburner tuning: an ordinary stat modifier — only a compatible fitted slot contributes,
+  // and the strongest fitted unit wins rather than stacking burn/cooldown twice per slot.
+  let boostTopSpeedPct = 0, boostDurS = 0, boostCdS = 0;
   const miningSlotsTotal = slots.reduce((count, slot) => count + (slot.type === 'mining' ? 1 : 0), 0);
   let miningSlotsFilled = 0;
   for (let index = 0, length = equipped.length; index < length; index += 1) {
@@ -1055,6 +1065,16 @@ function computeDerivedStats(defId, fittings = [], player = null) {
       const countermeasureKind = mods && mods.countermeasure && mods.countermeasure.kind;
       if (countermeasureKind === 'chaff') chaffCount += 1;
       else if (countermeasureKind === 'ecm') ecmCount += 1;
+      // Afterburner drives: like the other capability rows, strongest fitted unit wins.
+      if (Number.isFinite(mods.boostTopSpeedPct) && mods.boostTopSpeedPct > 0) {
+        boostTopSpeedPct = Math.max(boostTopSpeedPct, mods.boostTopSpeedPct);
+      }
+      if (Number.isFinite(mods.boostDurS) && mods.boostDurS > 0) {
+        boostDurS = Math.max(boostDurS, mods.boostDurS);
+      }
+      if (Number.isFinite(mods.boostCdS) && mods.boostCdS > 0) {
+        boostCdS = Math.max(boostCdS, mods.boostCdS);
+      }
     }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
       tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
@@ -1181,8 +1201,15 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   // A doubled reservoir should not double the wait between runs. Preserve each hull's authored
   // recovery time by scaling recharge with the larger meter.
   const boostRegen = (bdef.regenRate || 18) * 2 * energyRegenMult;
+  // A fitted afterburner lengthens the burn itself: the pool grows to cover the module's authored
+  // burn seconds at the hull's drain rate, and the module's authored cooldown becomes the pool's
+  // full-recharge time — a hotter burn paid back as a slower refill.
+  const boostPoolMax = boostDurS > 0
+    ? Math.max(bdef.max || 0, (bdef.drainRate || 40) * boostDurS)
+    : (bdef.max || 0);
+  const boostRegenFinal = boostCdS > 0 && boostPoolMax > 0 ? boostPoolMax / boostCdS : boostRegen;
   const flightClass = flightClassForShip(shipDef);
-  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped);
+  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped, 1 + boostTopSpeedPct);
   const flightModel = buildFlightModel({
     shipDef,
     flightClass,
@@ -1194,6 +1221,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     maxSpeed: legacyMaxSpeed,
     drag,
     bankFactor,
+    boostSpeedMult: 1 + boostTopSpeedPct,
   });
 
   const roleIdentity = lattice
@@ -1249,9 +1277,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     miningSlotsFilled,
     miningSlotsTotal,
     boost: {
-      max: bdef.max || 0,
+      max: boostPoolMax,
       drainRate: bdef.drainRate || 40,
-      regenRate: boostRegen,
+      regenRate: boostRegenFinal,
       dashImpulse: bdef.dashImpulse || 0,
       dashCooldown: bdef.dashCooldown || 3,
     },

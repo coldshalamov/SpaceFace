@@ -809,8 +809,7 @@ function mergeUserModules(base) {
 }
 
 // One plain line per module: what it does in the air. Not a price, a mass, or a stat.
-// The fit screen already prints `sentence` on the row. Unwired promises are not claimed —
-// an afterburner and a market uplink do not move the ship or the prices the sim reads.
+// The fit screen already prints `sentence` on the row. Unwired promises are not claimed.
 const MODULE_AIR_SENTENCE = Object.freeze({
   mod_shield_booster_s: 'A thicker shield that keeps rebuilding while you fly.',
   mod_shield_capacitor_m: 'A much thicker shield, and it comes back faster.',
@@ -839,7 +838,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_market_data_s: 'Streams live exchange quotes from every station in this sector while you fly it.',
   mod_triangulation_suite_s: 'Closes an anomaly fix in two scans instead of three.',
   mod_shield_hardener_m: 'The same hit takes less out of the hull.',
-  mod_afterburner_m: 'You carry its mass. It does not change the boost you fly.',
+  mod_afterburner_m: 'A hotter burn while you hold it — faster, longer, and slower to come back.',
   mod_repair_nanobots_m: 'The hull knits itself back together between fights.',
   unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots.',
   mod_tractor_beam_m: 'Picks up ore and wrecks without stopping on them.',

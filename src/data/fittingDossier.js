@@ -659,6 +659,7 @@ function moduleStats(def) {
   push('Mining range', def.range != null && def.slotType === 'mining' ? num(def.range) : null);
   push('Rare ore', def.rareOreChance != null ? pct(def.rareOreChance) : null);
   push('Ore flow', def.directToCargo === true ? 'straight to cargo' : null);
+  push('Mass', num(def.mass));
   push('Energy draw', def.energyDraw != null ? `${num(def.energyDraw)}/s` : null);
   push('Charge rack', m.impulseChargeCapacity != null ? `${m.impulseChargeCapacity} charges` : null);
   push('Loot range', m.lootMagnetRange != null ? num(m.lootMagnetRange) : null);
