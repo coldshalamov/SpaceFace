@@ -27,6 +27,8 @@ export const IMPACT_MIN_WIDTH_PX = 12, IMPACT_MIN_LENGTH_PX = 46;
 export const SOURCE_HEAT = 0.82;
 export const IMPACT_HEAT = 0.92;
 export const IMPACT_RING_HEAT = 0.58;
+/** Muzzles that are not the player's own run this much cooler so a crowded fight cannot stack its bloom. */
+export const BYSTANDER_SOURCE_HEAT_SCALE = 0.72;
 
 /**
  * §22 A7 — a steady travel speed for the whole flash, then nothing.
@@ -102,7 +104,7 @@ export class WeaponDischargePool {
       source:null,variant:null,ownerId:null,targetId:null,attached:false,slant:0,
       tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,pxw:0,
       // Retained target-local anchor of an attached impact. x/y/z/angle/pitch hold the DRAWN world pose.
-      lx:0,ly:0,lz:0,langle:0,lpitch:0,
+      lx:0,ly:0,lz:0,langle:0,lpitch:0,heatScale:1,
     }));
     this.descriptor=new Float32Array(36);
     this.heat=IMPACT_HEAT;
@@ -144,6 +146,7 @@ export class WeaponDischargePool {
     slot.source=source;slot.variant=recipe.variant;
     slot.ownerId=ownerId;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
     slot.pxw=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.heatScale=priority>=0.9?1:BYSTANDER_SOURCE_HEAT_SCALE;
     return true;
   }
   /**
@@ -180,6 +183,7 @@ export class WeaponDischargePool {
     slot.beat=0;slot.cadence=Infinity;
     slot.pxw=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
     slot.lx=slot.x;slot.ly=slot.y;slot.lz=slot.z;slot.langle=slot.angle;slot.lpitch=slot.pitch;
+    slot.heatScale=1;
     return true;
   }
   _strip(s,a0,a1,r0,r1,width,type=1,offset=0,lift=0,frontMode=0,phase=-1,axial=0){
@@ -222,7 +226,7 @@ export class WeaponDischargePool {
    * bloom-off frame. Nothing here is drawn at or beyond the contact point.
    */
   _sourceStrips(s,w,length){
-    this.style=3;this.color=BRASS;this.heat=SOURCE_HEAT;
+    this.style=3;this.color=BRASS;this.heat=SOURCE_HEAT*s.heatScale;
     const t=Math.min(1,s.age/Math.max(.001,s.life));
     const hand=(s.beat&1)?-1:1;
     if(s.source==='machined-burst'){

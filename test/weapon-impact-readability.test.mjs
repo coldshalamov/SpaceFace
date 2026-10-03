@@ -14,6 +14,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
+  BYSTANDER_SOURCE_HEAT_SCALE,
   IMPACT_HEAT,
   IMPACT_KIND,
   IMPACT_MIN_STRIP_PX,
@@ -79,6 +80,14 @@ test('contact and muzzle strips carry working heat so the hit has a hot seat abo
   source.pool.update(1 / 60);
   assert.ok(source.rows.length > 0);
   assert.ok(source.rows.every((row) => row[35] === Math.fround(SOURCE_HEAT)), 'every muzzle strip carries source heat');
+
+  // A muzzle that is not the player's own is cooler, so a crowded fight cannot stack its bloom.
+  const npc = recordedPool();
+  npc.pool.spawn({ variant: 'pulse-bolt' }, { x: 0, y: 0.4, z: 0, ax: 1, ay: 0, az: 0 }, 9, { ...SOURCE_FLASH }, 0.45);
+  npc.pool.update(1 / 60);
+  assert.ok(npc.rows.length > 0);
+  assert.ok(npc.rows.every((row) => row[35] === Math.fround(SOURCE_HEAT * BYSTANDER_SOURCE_HEAT_SCALE)), 'NPC muzzles run cooler than the player muzzle');
+  assert.ok(BYSTANDER_SOURCE_HEAT_SCALE < 1 && BYSTANDER_SOURCE_HEAT_SCALE > 0.5, 'cooler, not dark');
 });
 
 test('strip thickness never falls under the pixel floor at the camera it was spawned for, and never shrinks authored size', () => {
