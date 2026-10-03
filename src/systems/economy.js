@@ -1342,6 +1342,7 @@ export const economy = {
     this._lastDockedStation = null;
     this._stationServiceBerth = null;
     this._syntheticHistoryKeys = new Set();
+    this._restoredQuoteKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
     const state = this.state, bus = this.bus;
@@ -1852,12 +1853,20 @@ export const economy = {
     const market = state && state.economy && state.economy.markets && state.economy.markets[stationId];
     if (!market) return false;
     const frontier = this.frontierPenaltyFor(state, stationId);
+    const restoredQuotes = this._restoredQuoteKeys instanceof Set ? this._restoredQuoteKeys : null;
     let changed = false;
     for (const cid in market) {
       const entry = market[cid];
       const def = commodityDef(state, cid);
       if (!entry || !def) continue;
       const listingChanged = this.refreshListingDemand(entry, def, stationId);
+      // A quote carried verbatim from the save still belongs to the pulse that stamped it; the
+      // load-time rebuild refreshes demand fields only and the next repricing event resumes
+      // the curve on its normal cadence.
+      if (restoredQuotes && restoredQuotes.delete(`${stationId}\u001f${cid}`)) {
+        changed = listingChanged || changed;
+        continue;
+      }
       const cycle = getCycleCore(state, stationId, cid, () => this._rng(), state.simTime || 0);
       this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
       if (listingChanged && recordHistory) {
@@ -4035,6 +4044,7 @@ export const economy = {
     this._nextEventId = 1;
     this._eventAccumulator = 0;
     this._syntheticHistoryKeys = new Set();
+    this._restoredQuoteKeys = new Set();
     this._offlineSummaryRefresh = null;
     // warm the home sector's markets so prices exist before first dock
     const home = (state.world && state.world.currentSectorId) || 'sector_helios_prime';
@@ -4123,6 +4133,7 @@ export const economy = {
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;
     this._syntheticHistoryKeys = new Set();
+    this._restoredQuoteKeys = new Set();
     // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.
     deserializeCycles(this.state, data.cycles);
     econ.markets = {};
@@ -4154,6 +4165,7 @@ export const economy = {
             entry.lastMid = e.lastMid;
             entry.lastBuy = e.lastBuy;
             entry.lastSell = e.lastSell;
+            this._restoredQuoteKeys.add(`${sid}\u001f${cid}`);
           } else this.recomputeLivePrices(entry, def, sid, cid);
           const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
           const restoredHistory = sanitizeHistory(e.history);
