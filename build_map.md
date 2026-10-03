@@ -392,30 +392,30 @@ Ship them or mark them already true inside that row. They are not an alternate q
 
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
-| picture | free | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
-| camera | free | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
-| boot | free | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
-| audio | free | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
+| picture | grok-build20 | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
+| camera | zai-board20 | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
+| boot | grok-build20 | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
+| audio | grok-board-20 | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
-| economy | free | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
-| effects | free | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
+| economy | devin-sweep-oct2 | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
+| effects | grok-build20 | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
-| fields | free | fields | 94, 162 |
+| fields | grok-board-20 | fields | 94, 162 |
 | law | devin-oct2-batch | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
-| discovery | free | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
-| industry | free | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
-| people | free | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
+| discovery | grok-board-20 | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
+| industry | grok-board-20 | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
+| people | zai-board20 | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
 | ship | devin-oct2-batch | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
-| hand | free | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
-| missions | free | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
-| world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
+| hand | zai-board20 | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
+| missions | devin-sweep-oct2 | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
+| world | grok-board-20 | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
 | story | devin-oct2-batch | story | 192, 215, 216, 253 |
 | input | devin-oct2-batch | gamepad, input, settings behavior | 196, 237, 260, 262 |
-| ui-sim | free | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
+| ui-sim | zai-board20 | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
 | physics | devin-oct2-batch | physics clocks, manifest | 258 |
-| accept | free | judge work that is already built | 60, 63, 64 |
-| imports | free | doc imports only, after code seams | 30 |
+| accept | devin-sweep-oct2 | judge work that is already built | 60, 63, 64 |
+| imports | devin-sweep-oct2 | doc imports only, after code seams | 30 |
 | art | free | one visible asset defect; skip if the graphics lane is live | 223 |
 
 `node scripts/board-chunks.mjs` prints which of those rows are still open, which seams are
@@ -622,7 +622,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 114 | PB-IND-C | SF-102+103 site power-priority choice + inbound repair-parts convoy | PB | OPEN |
 | 115 | PB-IND-D | SF-095+111 lot lineage/provenance legibility at scan | PB | OPEN — custody pair |
 | 116 | PB-IND-E | SF-098+099+104+116 capacity-stall redirect, outage→shortage→remedy contract, kill-machine collateral law | PB | OPEN — CHECK cluster |
-| 117 | PB-BUILD-A | SF-122+123+124+125+133 synergy proof quintet: rammer-truck, control-tug, survey-control, bulk-miner, stale-clear | PB | OPEN — identical 5-file write-set |
+| 117 | PB-BUILD-A | SF-122+123+124+125+133 synergy proof quintet: rammer-truck, control-tug, survey-control, bulk-miner, stale-clear | PB | SHIPPED devin-oct2-batch — module-scaled reveal bands + cargo-scanner hold read + dated confirmed basis |
 | 118 | PB-BUILD-B | SF-129+134+135 tech-ladder trio: unlock→new physical question, rare capability two homes, first-earned delay trace | PB | OPEN |
 | 119 | PB-BUILD-C | SF-121+127+130+132 starter-identity proofs, charge-after-fit race verify, route-geometry upgrade, drawback management | PB | OPEN |
 | 120 | PB-CONS-A | SF-151+159 witness-validated intake legibility + verdict escalation windows | PB | OPEN — law pair; reproduce first |
