@@ -34,6 +34,12 @@ import { evaluateUnlocks } from './survivalUnlocks.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
 import { applyBank, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
+import {
+  applySwarmLadderResult,
+  emptySwarmLadder,
+  isSwarmLadderRun,
+  migrateSwarmLadder,
+} from '../data/swarmLadder.js';
 
 export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
 export const CRUCIBLE_META_SCHEMA_VERSION = 1;
@@ -607,6 +613,9 @@ export function emptyCrucibleProfile() {
     ghosts: emptyGhosts(),
     bestLines: [],
     hangar: emptyHangar(),
+    // SWARM-04: the curated ladder — per-arena zones (stars + best chain), the deepest wave
+    // seen, and the checkpoint a cleared zone boss unlocked. Empty until the first ladder run.
+    ladder: emptySwarmLadder(),
   };
 }
 
@@ -654,6 +663,7 @@ function migrateProfile(raw) {
     bestLines: Array.isArray(src.bestLines) ? src.bestLines.map(normalizeBestLine).filter(Boolean).slice(0, BEST_LINE_RETAIN_CAP) : [],
     // Schema stays at 1. Unknown-key copy runs only above that, so the hangar has to be named here.
     hangar: migrateHangar(src.hangar),
+    ladder: migrateSwarmLadder(src.ladder),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -666,6 +676,7 @@ function migrateProfile(raw) {
         || key === 'ghosts'
         || key === 'bestLines'
         || key === 'hangar'
+        || key === 'ladder'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -1246,6 +1257,14 @@ export function compactRunResult(result, run, newly) {
     trialId: challenge.trialId,
     mutators: challenge.mutators.slice(),
     wave: result && Number.isInteger(result.wave) ? result.wave : 0,
+    // SWARM-04: the round the run began at — 1 for a fresh ladder attempt, the checkpoint's
+    // first wave for a head start. Without it a 10-round clear from Round 11 would read as
+    // rounds 1–10 cleared and pay the wrong zone's stars.
+    startWave: Number.isInteger(result && result.startWave) && result.startWave > 0
+      ? result.startWave
+      : (run && run.telemetry && Number.isInteger(run.telemetry.startWave)
+        ? run.telemetry.startWave
+        : 1),
     deepestWave: result && Number.isInteger(result.deepestWave) ? result.deepestWave : 0,
     wavesCleared: result && Number.isInteger(result.wavesCleared) ? result.wavesCleared : 0,
     kills: result && Number.isInteger(result.kills) ? result.kills : 0,
@@ -1360,10 +1379,28 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   compact.bankedBounty = bank.banked;
   compact.hangarBounty = bank.hangarBounty;
   compact.cashOut = bank.cashOut;
+  // SWARM-04: settle the run onto the curated ladder — stars per cleared zone, best wave,
+  // and the checkpoint a zone boss unlocks. Only the arena's own seed counts: a Daily or a
+  // typed Custom seed is honest play that simply does not pay stars (isSwarmLadderRun).
+  const ladderEval = isSwarmLadderRun(compact)
+    ? applySwarmLadderResult(loaded.ladder, {
+      arenaId: compact.arenaId,
+      startWave: Number.isInteger(compact.startWave) && compact.startWave > 0 ? compact.startWave : 1,
+      lastClearedWave: (Number.isInteger(compact.startWave) && compact.startWave > 0 ? compact.startWave : 1)
+        + (Number.isInteger(compact.wavesCleared) ? compact.wavesCleared : 0) - 1,
+      deepestWave: compact.deepestWave,
+      zoneChains: result && result.zoneChains,
+      zoneDeaths: result && result.zoneDeaths,
+    })
+    : null;
+  if (ladderEval && (ladderEval.delta.newStars > 0 || ladderEval.delta.newCheckpoint)) {
+    compact.ladderDelta = ladderEval.delta;
+  }
   const next = {
     ...loaded,
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
     unlocks: evaluated.unlocks,
+    ladder: ladderEval ? ladderEval.ladder : loaded.ladder,
     records: {
       byKey,
       lifetime: applyLifetime(records.lifetime, compact),

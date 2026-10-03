@@ -95,6 +95,16 @@ export const runSession = {
     const next = createRunState({ kind, ruleset, seed });
     next.phase = 'loadout';
     if (request && request.arenaId != null) next.arenaId = request.arenaId;
+    // SWARM-04: a checkpoint start. The phase machine plans `run.wave + 1`, so the run's
+    // counter parks on the wave BEFORE the bought entry point — a start at Round 11 means
+    // wave sits at 10 until the first plan lands. Swarm only: the arc, the block and the
+    // circuit always open at their authored first wave.
+    const startWave = Number.isInteger(request && request.startWave) ? request.startWave : 0;
+    if (isSwarmRuleset(ruleset) && startWave > 1) {
+      next.wave = startWave - 1;
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      next.telemetry.startWave = startWave;
+    }
     // The swarm stake rides telemetry (schema-free, run-lifelong, never serialized): the wave
     // planner reads it to scale pressure, and the results surface reads it to say what the
     // run cost. Absent means the tuned baseline — the door only sends it for swarm runs.
