@@ -392,7 +392,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
 | picture | devin-oct3-40 | renderer, admission, residency | 140, 141, 259 |
-| camera | grok-oct3 | camera, tabletop, hull readability | 218 |
+| camera | done | camera, tabletop, hull readability | 218 |
 | boot | devin-oct3-40 | boot time, hitch leaves, not the renderer seam | 57 |
 | audio | done | audio system, combat verb cues | 143, 194, 228 |
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
@@ -518,7 +518,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 30 | VM-REPORTS | Reports/stills/doc packages (~20: quiet-witness-baseline, cpu/alloc profiles, boot-times, contact sheets — docs-only imports, lowest production value; do after code batches) | IMPORT | OPEN |
+| 30 | VM-REPORTS | Reports/stills/doc packages (~20: quiet-witness-baseline, cpu/alloc profiles, boot-times, contact sheets — docs-only imports, lowest production value; do after code batches) | IMPORT | DONE — every named package verified present via the wholesale vm-drop sync (quiet-witness-baseline, cpu-profile-flight + refresh, alloc-profile-flight, boot-times + boot-stage-profile, live-ship-contact-sheet, everyday-kit-stills and the still-layer jobs); IMPORT_DIGEST carries no pending doc package; four no-DONE folders (a-list-convergence, bloom-cost, playtest-audit, sg02-rapier-call-diet-hold) are unfinished jobs, not pending imports — devin-sweep-oct2 |
 
 ### D. Build — measured-gap rows (§22 wave D), campaign remainders (§23/§24), seams
 
@@ -544,7 +544,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | DONE 2026-09-29 — bank planner + gimbal-cone slew gate, 9/9 focused incl. swept-bolt proof, 42/42 AI-fire, 97/97 optic adjacent (`receipts/OPTIC-OFFENSE-BANK-SHOT.md`) |
 | 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`, team-1 hostile) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 9/9 focused + 76/76 encounter batch) |
 | 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
-| 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | OPEN |
+| 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | DONE 2026-10-03 — .15/.16/.17 already shipped w/ receipts (activity-scheduler 8/8 + tactical-ai cadence 5/5 green; autosave off rAF); .14 LOD mechanism live (138/286 pkgs), wasp hull LOD asset is Forge work; .11–.13 legally deferred on headed-census gate |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
 
@@ -702,7 +702,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 215 | BUILD | [NXB-047](design/program/next-wave-2026-09-28/build/NXB-047.md) | An existing ending changes a continuing working universe across three return visits | Existing owners; SF-149, SF-158, SF-294, PQ-032 | SHIPPED already true — ending-A station response + job access + return visit pinned by infer-story-rows; FB-129 archive-count repaired |
 | 216 | BUILD | [NXB-048](design/program/next-wave-2026-09-28/build/NXB-048.md) | New Game Plus carries declared knowledge but does not duplicate physical possessions | Existing owners; SF-131, SF-180, SF-280, PQ-032 | SHIPPED — residual children NXI-189/190/191/192 closed 2026-10-01 |
 | 217 | BUILD | [NXB-050](design/program/next-wave-2026-09-28/build/NXB-050.md) | A chain reaction can be followed across camera scale without commandeering the camera | Existing owners; SF-202, SF-208, SF-218, SF-219 | SHIPPED implemented/route-unproven 2026-10-02 devin-demo5 — masslineChainReadout.js bounded world-anchored release→contact→kill trace in vfx.js; NXI-197..200 all SHIPPED |
-| 218 | BUILD | [NXB-051](design/program/next-wave-2026-09-28/build/NXB-051.md) | Damage marks stay attached to the real hull through rotation, LOD and refit | Existing owners; SF-211, SF-213, SF-223, SF-224 | OPEN |
+| 218 | BUILD | [NXB-051](design/program/next-wave-2026-09-28/build/NXB-051.md) | Damage marks stay attached to the real hull through rotation, LOD and refit | Existing owners; SF-211, SF-213, SF-223, SF-224 | SHIPPED — hull-child frame, LOD/refit, pool non-transfer; test/next-wave-nxb-051.test.mjs |
 
 This section does not change existing rows, foreign claims or the legacy PQ schema. When finishing, use the current board/done-log convention; update dependent INFERENCE rows before retiring the parent. A finding outside the chosen scope uses the existing `DEMO_READINESS_2026-09-20.md` §6 ledger, not a new defect list.
 
