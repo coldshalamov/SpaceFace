@@ -492,7 +492,7 @@ test('the first-frame pool census seal is not gated on KHR or the prepare budget
   assert.ok(sealIndex > barrierIndex,
     'the seal must run after the barrier decision, not inside it');
   const between = body.slice(barrierIndex, sealIndex)
-    .split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
+    .split('\n').map((line) => line.replace(/\/\/.*/, '')).join('\n');
   assert.doesNotMatch(between, /PREPARE_BUDGET_MS/,
     'no prepare-budget gate may sit between the barrier decision and the seal');
 });
@@ -677,7 +677,7 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
   assert.match(between, /tGlass\(a\) - tGlass\(b\)/,
     'each tier must be sorted by predicted time-to-glass before enqueue');
-  const reconcileStart = RENDERER_SOURCE.indexOf('enqueueMissingMeshBuilds(\n      presentationList');
+  const reconcileStart = RENDERER_SOURCE.search(/enqueueMissingMeshBuilds\(\r?\n\s+presentationList/);
   assert.ok(reconcileStart >= 0, 'the full reconcile enqueue must exist');
   const reconcileCall = RENDERER_SOURCE.slice(reconcileStart, reconcileStart + 900);
   assert.match(reconcileCall, /\(entity\) => tGlass\(entity\),\s*\)/,
