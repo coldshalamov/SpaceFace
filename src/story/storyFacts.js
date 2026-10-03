@@ -124,5 +124,45 @@ export function recordCareerDecision(story, kind, payload, simTime, beat) {
       citation: `career:${careerId}:${stepId}@${Math.floor(atS)}`,
     }, atS);
   }
+  if (kind === 'abandoned') {
+    // Taken up, then let go — the ledger keeps that too.
+    return recordStoryFact(story, {
+      id: `career:${careerId}:abandoned`,
+      kind: 'career',
+      beat: beatN,
+      text: `${careerId} was taken up and later let go`,
+      citation: `career:${careerId}:abandoned@${Math.floor(atS)}`,
+    }, atS);
+  }
+  if (kind === 'completed') {
+    return recordStoryFact(story, {
+      id: `career:${careerId}:complete`,
+      kind: 'career',
+      beat: beatN,
+      text: `${careerId} ladder was finished`,
+      citation: `career:${careerId}:complete@${Math.floor(atS)}`,
+    }, atS);
+  }
+  if (kind === 'recovered') {
+    if (!stepId) return null;
+    return recordStoryFact(story, {
+      id: `career:${careerId}:${stepId}:recovered`,
+      kind: 'career',
+      beat: beatN,
+      text: `${careerId} recovered ${stepId} after a failure`,
+      citation: `career:${careerId}:${stepId}:recovered@${Math.floor(atS)}`,
+    }, atS);
+  }
+  if (kind === 'choice') {
+    const choiceId = clean(payload && (payload.choiceId || payload.choice)).slice(0, 48);
+    if (!stepId && !choiceId) return null;
+    return recordStoryFact(story, {
+      id: `career:${careerId}:${stepId || 'run'}:${choiceId || 'choice'}`,
+      kind: 'career',
+      beat: beatN,
+      text: `${careerId} chose ${choiceId || 'a path'}${stepId ? ` in ${stepId}` : ''}`,
+      citation: `career:${careerId}:choice:${choiceId || stepId}@${Math.floor(atS)}`,
+    }, atS);
+  }
   return null;
 }

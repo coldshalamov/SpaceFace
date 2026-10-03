@@ -29,6 +29,9 @@ export const SHIP_LEDGER_ENTRY_TYPES = Object.freeze([
   'patch',
   'renown',
   'stunt',
+  // FB-127 — career origin and ladder decisions. {record} is the story owner's fact text
+  // ("hauler was offered and declined"), {career} the career's name; {citation} the fact's cite.
+  'career',
 ]);
 
 export const SHIP_LEDGER_TEMPLATES = deepFreeze({
@@ -108,6 +111,12 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     '{trick} at {sector}: {ship} {account}. Outcome: {outcome}. Evidence: {evidence}.',
     'Black box: {ship} {account}. Filed as {trick}; outcome: {outcome}. Evidence: {evidence}.',
     'Filed aboard {ship}: {trick}. The pilot {account}. Outcome: {outcome}. Evidence: {evidence}.',
+  ]),
+  career: variants('career', [
+    'Career record: {record}.',
+    'The hull keeps the {career} file: {record}.',
+    'A decision on the road file: {record}.',
+    'Page for {career}: {record}. Filed, not celebrated.',
   ]),
 });
 
