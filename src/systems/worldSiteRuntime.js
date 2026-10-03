@@ -1203,8 +1203,10 @@ export function projectIndustrySiteResult(ledger, contact = null, lot = null) {
       status: repair.status,
       received: repair.received,
       qty: repair.qty,
-      spawned: false,
-      ownerNotCalled: 'src/systems/traffic.js',
+      spawned: repair.spawned === true,
+      ownerNotCalled: repair.spawned === true
+        ? ((repair.trafficIntent && repair.trafficIntent.ownerNotCalled) || null)
+        : 'src/systems/traffic.js',
     } : null,
     sortingJob: ledger && ledger.sorting || null,
     worker: ledger && ledger.worker || null,

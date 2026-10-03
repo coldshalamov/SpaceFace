@@ -160,12 +160,27 @@ export const intervention = {
         yield;
         const rec = pendings[i];
         if (!rec || rec.sectorId !== current) continue;
-        if ((state.interventions || []).length >= MAX_ACTIVE) return;
+        if ((state.interventions || []).length >= MAX_ACTIVE) {
+          this._noteInterventionCap(rec);
+          return;
+        }
         const spawned = this._spawnSite({ ...rec, arrived: true });
         if (spawned) { pendings.splice(i, 1); progressed = true; }
         else return; // no player/spawner in this harness — keep the log, don't spin
       }
       if (!progressed) return;
+    }
+  },
+
+  _noteInterventionCap(rec) {
+    if (!rec || rec.capTold) return;
+    rec.capTold = true;
+    if (this.bus) {
+      this.bus.emit('toast', {
+        text: 'Recovery sites are full — finish one before the next wreck appears',
+        kind: 'warn',
+        ttl: 4,
+      });
     }
   },
 

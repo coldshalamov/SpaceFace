@@ -365,7 +365,11 @@ export const heistMissionRuntime = {
       // A denial is a real, visible outcome — another schedule already owns the launcher. The run
       // cannot start, so it resolves as absent rather than hanging on a capsule that never comes.
       record.scheduleDenied = receipt.reason || 'denied';
-      sayHeistCue(ctx, record, 'denied');
+      // The facility receipt stays silent. This denied cue is the only spoken refusal, and a
+      // launcher that is already booked says so instead of the generic "no run" line.
+      sayHeistCue(ctx, record, 'denied', receipt.reason === 'active_schedule'
+        ? 'Launcher is already committed — wait for this throw'
+        : null);
       submitHeistCandidate(record, {
         kind: 'unresolved_absent',
         causalTick: intTick(ctx?.state?.tick),
