@@ -15,7 +15,8 @@ import { BLUEPRINTS, BLUEPRINT_BY_ID } from '../data/blueprints.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { techDisplayName } from '../data/tech.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
+import { getDerivedStats } from './ships.js';
 import { instanceIdentityText } from './shipLedger.js';
 
 // Sensible build durations by category when a blueprint doesn't specify one (the data ships with
@@ -89,6 +90,52 @@ function cargoCanFitBlueprintSwap(state, bp) {
   }
   used += (Number(out.qty) || 0) * commodityVolume(out.id);
   return used <= (Number(cargo.capVolume) || 0) + 1e-9;
+}
+
+/** Where consumeOneModule(p, defId) would take the unit from, mirrored read-only: any loose
+ *  inventory instance answers first (its default pick is a plain duplicate), else the first
+ *  owned ship carrying the def fitted, in ownedShips order. Returns the FITTED pick as
+ *  { owned, shipIndex, slotIndex }, or null when a loose instance (or nothing) would go. */
+function fittedSourcePick(p, defId) {
+  for (const m of (p && p.moduleInventory) || []) {
+    if (m && m.defId === defId) return null;
+  }
+  const ships = Array.isArray(p && p.ownedShips) ? p.ownedShips : [];
+  for (let shipIndex = 0; shipIndex < ships.length; shipIndex++) {
+    const owned = ships[shipIndex];
+    if (!owned || !Array.isArray(owned.fittings)) continue;
+    const slotIndex = owned.fittings.indexOf(defId);
+    if (slotIndex >= 0) return { owned, shipIndex, slotIndex };
+  }
+  return null;
+}
+
+/** P03 — an augment can consume its source OFF A FITTED SLOT; when that slot rides on the
+ *  flown hull, a capacity-bearing source (a cargo pod) shrinks the hold the moment it is eaten.
+ *  The canonical post-consumption capacity is getDerivedStats on the fittings the consume would
+ *  leave; the load it must carry is the hold minus the inputs eaten up front. Returns the
+ *  refusal sentence when that load overflows, else null. Read-only — build() gates on it
+ *  before any mutation. */
+function fittedSourceOverflowText(state, bp) {
+  const p = state && state.player;
+  if (!p || !bp || bp.category !== 'augment' || !bp.fromModule) return null;
+  const pick = fittedSourcePick(p, bp.fromModule);
+  if (!pick) return null;
+  // Only the flown ship's hold is player cargo (same seam unfitModule's overflow guard uses).
+  const activeOwned = (Array.isArray(p.ownedShips) ? p.ownedShips : [])[p.activeShipIndex];
+  if (!activeOwned || pick.owned !== activeOwned) return null;
+  const cargo = p.cargo;
+  if (!cargo) return null;
+  const afterFittings = pick.owned.fittings.slice();
+  afterFittings[pick.slotIndex] = null;
+  const capAfter = getDerivedStats(pick.owned.defId, afterFittings, p).cargoCap;
+  let usedAfter = Number(cargo.usedVolume) || 0;
+  for (const id of Object.keys(bp.inputs || {})) {
+    usedAfter -= (Number(bp.inputs[id]) || 0) * commodityVolume(id);
+  }
+  if (usedAfter <= capAfter + 1e-9) return null;
+  return 'Consuming the fitted ' + moduleName(bp.fromModule)
+    + ' would overflow the hold — free cargo space first';
 }
 
 function normalizeQueues(raw) {
@@ -225,11 +272,13 @@ export const crafting = {
     return { techOk, matsOk, sourceOk, canBuild: techOk && matsOk && sourceOk, materials: mats };
   },
 
-  /** Material breakdown with have/need for display + gating. */
+  /** Material breakdown with have/need for display + gating. P02 — `have` is the cargo-owned
+   *  FREE quantity: sealed contract freight and persistent story cargo stay reserved for their
+   *  owners even while they ride in the same hold, so they can never feed a fabricator. */
   haveMaterials(bp, p) {
     p = p || this.state.player;
-    const items = p.cargo.items || {};
-    return Object.keys(bp.inputs).map((id) => ({ id, need: bp.inputs[id], have: items[id] || 0 }));
+    const state = (this.state && this.state.player === p) ? this.state : { player: p };
+    return Object.keys(bp.inputs).map((id) => ({ id, need: bp.inputs[id], have: sellableCargoQuantity(state, id) }));
   },
 
   /** Consume inputs + enqueue (or grant instantly if timeS=0). Returns true on success.
@@ -259,6 +308,13 @@ export const crafting = {
     }
     if (bp.outputs && bp.outputs.kind === 'commodity' && !cargoCanFitBlueprintSwap(this.state, bp)) {
       this.bus.emit('toast', { text: 'Cargo hold cannot take the finished goods', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // P03 — before consuming an exact fitted source, gate on the canonical post-input-consumption
+    // capacity: a cargo pod eaten off the flown hull shrinks the hold under the load it carried.
+    const sourceOverflow = fittedSourceOverflowText(this.state, bp);
+    if (sourceOverflow) {
+      this.bus.emit('toast', { text: sourceOverflow, kind: 'error', ttl: 3 });
       return false;
     }
 
