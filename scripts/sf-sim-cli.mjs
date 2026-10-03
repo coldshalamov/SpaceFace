@@ -78,6 +78,7 @@ const reloadAt = readOptionalInt('--reload-at', null);
 if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
   throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
 }
+const canonicalizeAt = readOptionalInt('--canonicalize-at', null);
 // Opt-in fork for checks that share a long deterministic prefix. Absent on every golden run.
 const writeEnvelopePath = argValue('--write-envelope', null);
 const loadEnvelopePath = argValue('--load-envelope', null);
@@ -103,7 +104,7 @@ const scenarioContractPath = argValue('--scenario-contract', 'src/data/scenarios
 const scenarioContract = loadScenarioContract(scenarioContractPath);
 
 if (command === 'inspect') {
-  const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
+  const inspected = await run47a({ seed, ticks, tape, reloadAt, canonicalizeAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   const result = {
     schema: 'spaceface.sfSimInspectResult.v1',
     deterministic: true,
@@ -185,7 +186,7 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
   if (reloadAt == null) usage(1, 'compare requires --reload-at');
-  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
+  const baseline = await run47a({ seed, ticks, tape, canonicalizeAt: reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
   const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(candidate.metrics, { physicsBackend, reloadAt, counterTetherProbe });
@@ -226,7 +227,7 @@ if (command === 'inspect') {
     seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem,
     writeEnvelopePath, loadEnvelopePath,
   };
-  const baseline = await run47a(runOptions);
+  const baseline = await run47a({ ...runOptions, canonicalizeAt: reloadAt });
   if (!loadEnvelopePath) assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
   const first = reloadAt == null ? baseline : await run47a({ ...runOptions, reloadAt });
   if (!loadEnvelopePath) assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt, counterTetherProbe });
@@ -293,6 +294,7 @@ async function run47a({
   ticks,
   tape,
   reloadAt = null,
+  canonicalizeAt = null,
   traceEvents = null,
   traceLimit = null,
   includeTrace = false,
@@ -544,8 +546,18 @@ async function run47a({
     if (reloadAt != null && state.tick === reloadAt) {
       await reloadThroughSave(registry, state, metrics, reloadAt, {
         physicsBackend,
+        tacticalAI,
         flightBackend: flightSlot === flightV3 ? 'v3' : 'legacy',
       });
+    }
+    // Baseline parity: serialize at the same tick so the physics owner canonicalizes its
+    // world exactly once, matching what the reload run's save already does. The reloaded
+    // world layout is canonical w.r.t. snapshot bytes; the never-saved organic layout is
+    // not reproducible, so comparing against an uncanonicalized baseline is an unwinnable
+    // race (dimforge/rapier#910).
+    if (canonicalizeAt != null && state.tick === canonicalizeAt) {
+      const saveSys = registry.get('save');
+      if (saveSys && typeof saveSys.serialize === 'function') saveSys.serialize('sf-sim-canonicalize');
     }
   }
 
@@ -629,6 +641,13 @@ async function reloadThroughSave(registry, state, metrics, reloadAt, options = {
   // with the controller the harness already registered. This avoids a legacy-flight/V3-attachment
   // hybrid after load.
   state.settings.gameplay.flightBackend = options.flightBackend === 'v3' ? 'v3' : 'legacy';
+  // sanitizeRestoredSettings forces the live defaults on every load. Put back the controllers
+  // this process already booted — the same contract resumeLoadedEnvelope honors — or the
+  // post-reload run continues on a different AI/physics backend than the fresh boot and the
+  // run hash silently diverges (first seen as the 47-A reload-at-60 mismatch).
+  state.settings.gameplay.physicsBackend = options.physicsBackend || 'rapier-dynamic';
+  state.settings.gameplay.aiBackend = options.tacticalAI ? 'sg06-tactical' : 'legacy';
+  state.settings.gameplay.runtimeProfile = 'legacy47a';
   const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
   assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
@@ -914,6 +933,7 @@ async function findFirstDivergentTick(options) {
       seed: options.seed,
       ticks: mid,
       tape: options.tape,
+      canonicalizeAt: options.reloadAt <= mid ? options.reloadAt : null,
       physicsBackend: options.physicsBackend,
       tacticalAI: options.tacticalAI,
       counterTetherProbe: options.counterTetherProbe,

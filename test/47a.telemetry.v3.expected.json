@@ -69,7 +69,7 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "57068fab36025c81a2ae03830e5a79b72dae3c84ddfc85531ee82eeafe4e539b",
+    "authoritativeHash": "0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
