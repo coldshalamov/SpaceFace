@@ -93,6 +93,9 @@ function defaultSettings() {
       // vestibular and deliberately does NOT silence it; a calmer screen often wants more haptic
       // feedback, not less. Profile-scoped (never inside a save slot).
       haptics: 'full',
+      // FB-113: per-verb set of hold verbs that toggle on press instead of requiring a sustained
+      // hold — boost, brake, bulletTime, tether (Massline hold), reelIn, reelOut. Empty = off.
+      holdToToggle: {},
     },
   };
 }

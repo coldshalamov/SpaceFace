@@ -599,6 +599,40 @@ function freshGamepadLifecycleQuarantine() {
   return q;
 }
 
+// FB-113: hold verbs a player may opt into press-to-toggle latches for. `massline` is the
+// tether/Massline hold; reelIn/reelOut are the dedicated winch keys. Defaults are all off —
+// accessibility.holdToToggle[verb] flips one on. A latch survives until the next press edge or
+// a context change (dock, death, any screen/modal, lifecycle reset).
+export const HOLD_TO_TOGGLE_ACTIONS = Object.freeze([
+  'boost', 'brake', 'bulletTime', 'massline', 'reelIn', 'reelOut',
+]);
+
+function holdToToggleEnabled(state) {
+  const map = state && state.settings && state.settings.accessibility
+    && state.settings.accessibility.holdToToggle;
+  return (verb) => !!(map && map[verb] === true);
+}
+
+/**
+ * FB-113: merge a physical hold with its opt-in latch. `held` is the merged physical sample this
+ * tick; `prev` tracks the previous physical sample so a fresh press edge flips the latch; `latch`
+ * owns the toggled state. A verb not enabled never latches (returns the physical value).
+ */
+function applyHoldToggle(latches, edges, verb, held, enabled) {
+  const prev = !!edges[verb];
+  edges[verb] = !!held;
+  if (!enabled) {
+    latches[verb] = false;
+    return !!held;
+  }
+  if (held && !prev) latches[verb] = !latches[verb];
+  return !!held || latches[verb] === true;
+}
+
+function resetHoldToggleLatches(latches, edges) {
+  if (latches) for (const verb of HOLD_TO_TOGGLE_ACTIONS) latches[verb] = false;
+  if (edges) for (const verb of HOLD_TO_TOGGLE_ACTIONS) edges[verb] = false;
+}
 const KEY_EDGE_CAP = 64;
 
 function flightEdgeQueue(host) {
@@ -844,6 +878,8 @@ export const input = {
     this._m2TimerTarget = null;
     this._cmHeld = false;
     this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
+    this._holdToggleLatches = Object.create(null);
+    this._holdToggleEdges = Object.create(null);
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -1098,6 +1134,7 @@ export const input = {
     // Keyboard transitions remain event-owned after restore. Only polled gamepad actions need a
     // connected neutral sample before a hold can become authoritative again.
     this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
+    resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
     }
@@ -1295,6 +1332,26 @@ export const input = {
       this._travelEdge = false;
       if (this._travel) this._travel = neutralTravelDrive();
       if (inp.travelDrive) inp.travelDrive = this._travel || undefined;
+      // FB-113: a hold-to-toggle latch is a flight context, not a player preference — leaving
+      // flight (dock, death, any screen or modal) drops every latch outright. The pilot did not
+      // release it; the context did.
+      resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
+      // A key still physically held through the context change is held, not a fresh press —
+      // the same convention _edgePrev follows two lines up. Pin the toggle edges to the live
+      // physical sample so a held-through-dock key cannot re-latch itself on the way back.
+      const htEdges = this._holdToggleEdges;
+      if (htEdges) {
+        const padHeld = (action) => !!(gp && gp.isConnected()
+          && gp.actions && gp.actions[action] && gp.actions[action].held);
+        const tpHeld = (action) => !!(tp && tp.actions && tp.actions[action] && tp.actions[action].held);
+        htEdges.boost = this._held(state, 'boost') || padHeld('boost') || tpHeld('boost');
+        htEdges.brake = this._held(state, 'brake') || this._held(state, 'reverse')
+          || padHeld('brake') || tpHeld('brake');
+        htEdges.bulletTime = this._held(state, 'bulletTime') || padHeld('bulletTime');
+        htEdges.massline = masslineHeldThroughModal;
+        htEdges.reelIn = this._held(state, 'reelIn');
+        htEdges.reelOut = this._held(state, 'reelOut');
+      }
       return;
     }
 
@@ -1464,8 +1521,24 @@ export const input = {
     // velocity below rather than forcing a flat reverse, and hard stick-down is a legit
     // drive direction, not the drive scheme's brake gesture.
     inp.moveZ = kbdMoveZ || (gpBrake && padScheme !== 'twinstick' ? -1 : gpMoveZ) || tpMoveZ;
-    inp.boost = kbdBoost || gpBoost || tpBoost;
-    inp.brake = keyboardBrake || gpBrake
+    // FB-113: opt-in press-to-toggle latches for the hold verbs. The raw samples above are
+    // untouched — the latch only adds an alternative "held" after a fresh press edge, until the
+    // next press or a context change (the neutralize branch drops every latch outright).
+    const toggleFor = holdToToggleEnabled(state);
+    const holdLatches = this._holdToggleLatches || (this._holdToggleLatches = Object.create(null));
+    const holdEdges = this._holdToggleEdges || (this._holdToggleEdges = Object.create(null));
+    // FB-113: death is a context change even in the frames before the death screen mounts —
+    // a dead pilot's latch is off the table and a still-held key reads as held, never as a
+    // fresh toggle edge. applyHoldToggle(disabled) both clears the latch and records the
+    // physical sample, which is exactly the suppression a dead ship needs.
+    const holdToggleDead = !!(state.player && state.player.alive === false);
+    const toggleLive = (verb) => toggleFor(verb) && !holdToggleDead;
+    const boostHeld = applyHoldToggle(holdLatches, holdEdges, 'boost',
+      kbdBoost || gpBoost || tpBoost, toggleLive('boost'));
+    const brakeHeld = applyHoldToggle(holdLatches, holdEdges, 'brake',
+      keyboardBrake || gpBrake, toggleLive('brake'));
+    inp.boost = boostHeld;
+    inp.brake = brakeHeld
       || (this._movementSource === 'gamepad' && padScheme !== 'twinstick' && gpMoveZ < -0.55)
       || (this._movementSource === 'touch' && tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
@@ -1600,12 +1673,20 @@ export const input = {
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
       && gpMassline && gpMassline.held);
-    const masslineHeld = tetherHeld || gpMasslineHeld;
+    // FB-113: the Massline hold is itself a toggleable verb — press once to stay on the line,
+    // press again to come off. The grammar still sees honest held/release edges on the merged
+    // value, so tap-to-cut physics never changes for players who leave the toggle off.
+    const masslineHeld = applyHoldToggle(holdLatches, holdEdges, 'massline',
+      tetherHeld || gpMasslineHeld, toggleLive('massline'));
     const tetherActive = !!(state.player && (
       (state.player.tether && state.player.tether.active)
       || (state.player.remoteMassline && state.player.remoteMassline.active)
     ));
-    const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
+    const reelInHeld = applyHoldToggle(holdLatches, holdEdges, 'reelIn',
+      this._held(state, 'reelIn'), toggleLive('reelIn'));
+    const reelOutHeld = applyHoldToggle(holdLatches, holdEdges, 'reelOut',
+      this._held(state, 'reelOut'), toggleLive('reelOut'));
+    const dedicatedLineLength = (reelOutHeld ? 1 : 0) - (reelInHeld ? 1 : 0);
     const rawLineLength = dedicatedLineLength || -inp.moveZ;
     // In twin-stick, strafe is the orbit direction analog of the drive scheme's yaw stick.
     const rawOrbitDirection = kbdLineOrbit || gpTurn || gpMoveX || tpTurn;
@@ -1615,8 +1696,8 @@ export const input = {
         lineLength: rawLineLength,
         orbitDirection: rawOrbitDirection,
         pump: inp.boost,
-        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : null),
-        silentRelease: !!(gp && gp.deviceLostThisFrame) && !tetherHeld,
+        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
+        silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
       });
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.massline = masslineCommand;
@@ -1655,8 +1736,10 @@ export const input = {
       && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
-    // beam routing is decided (single owner for the RMB arbitration).
-    acts.bulletTime = this._held(state, 'bulletTime');
+    // beam routing is decided (single owner for the RMB arbitration). FB-003: RB+D-pad-down is the
+    // pad cloak edge; FB-113: bulletTime joins the hold-to-toggle verbs.
+    acts.bulletTime = applyHoldToggle(holdLatches, holdEdges, 'bulletTime',
+      this._held(state, 'bulletTime') || this._padHeld(gp, 'bulletTime'), toggleLive('bulletTime'));
     acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a

@@ -36,6 +36,7 @@ import {
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
 import { ORBIT_ASSIST_STRENGTH } from '../core/flight/orbitAssist.js';
+import { HOLD_TO_TOGGLE_ACTIONS } from '../systems/input.js';
 import {
   SAVE_JOURNAL_EVENT,
   acknowledgeSaveSnapshotBoundary,
@@ -5529,6 +5530,14 @@ function sanitizeRestoredSettings(settings) {
   // FB-005: rumble is its own accessibility axis, never tied to reduce-motion. Profile-scoped.
   const haptics = s.accessibility.haptics;
   if (haptics !== 'off' && haptics !== 'low' && haptics !== 'full') s.accessibility.haptics = 'full';
+  // FB-113: hold-to-toggle is a per-verb boolean set; unknown verbs and non-true values drop out.
+  // The verb list is the one input.js publishes — keep this gate in step with it.
+  const htt = s.accessibility.holdToToggle;
+  const httClean = {};
+  if (htt && typeof htt === 'object' && !Array.isArray(htt)) {
+    for (const verb of HOLD_TO_TOGGLE_ACTIONS) if (htt[verb] === true) httClean[verb] = true;
+  }
+  s.accessibility.holdToToggle = httClean;
   // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
   if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
     s.controls.touch = { enabled: null };

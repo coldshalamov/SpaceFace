@@ -766,6 +766,22 @@ export const settingsScreen = {
       rowSelect('Controller rumble', () => ac.haptics || 'full',
         [['off', 'Off'], ['low', 'Low'], ['full', 'Full']],
         (v) => this._set(ctx, 'accessibility', 'haptics', v));
+      // FB-113: press-to-toggle latches for the hold verbs — a hand that cannot hold a button
+      // still flies the whole ship. Defaults stay off; each verb opts in on its own row.
+      build.header('Hold-to-toggle (press once to hold)');
+      const HOLD_TOGGLE_ROWS = [
+        ['boost', 'Boost / dash'],
+        ['brake', 'Brake / reverse'],
+        ['bulletTime', 'Bullet time'],
+        ['massline', 'Massline hold'],
+        ['reelIn', 'Tether reel in'],
+        ['reelOut', 'Tether reel out'],
+      ];
+      if (!ac.holdToToggle || typeof ac.holdToToggle !== 'object') ac.holdToToggle = {};
+      for (const [verb, label] of HOLD_TOGGLE_ROWS) {
+        rowToggle(label, () => ac.holdToToggle[verb] === true,
+          (v) => this._set(ctx, 'accessibility', 'holdToToggle', { ...ac.holdToToggle, [verb]: v }));
+      }
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
       const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
