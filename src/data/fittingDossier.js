@@ -128,7 +128,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Seeding your own wake punishes pursuers; the blast is honest about who\'s standing in it.',
   },
   wpn_gravity_well_m: {
-    detail: 'Deploys a sustained gravity sink that drags every nearby hull toward the pocket — a slow pull that owns the fight.',
+    detail: 'A deployed sink, not a beam — it plants where you drop it, pulls the pack inward for six seconds, and two can be live at once.',
     tip: 'Drop it mid-pack and fly the edge: the swarm bunches up where your guns want them.',
   },
   wpn_rcs_disruptor_m: {
@@ -198,7 +198,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Keep it if the credits buy a better gun instead.',
   },
   mod_engine_fusion_m: {
-    detail: 'More push under the keel and a higher cruising ceiling — the whole fight runs faster.',
+    detail: 'Ninety-five flat out and thirty percent more push — the engine that makes the whole map feel closer.',
     tip: 'Speed is its own defense; a hull that outruns the pack never gets swarmed.',
   },
   mod_engine_warp_l: {
@@ -211,11 +211,11 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Save the slot money and live with the drift; or pay up if you need the answer.',
   },
   mod_thruster_vernier_m: {
-    detail: 'A proper vernier set — the nose comes around measurably harder, and the brake bites instead of drifting.',
+    detail: 'Forty-two percent harder turn, half the strafe again, a third more brake — the measured set between the yard cluster and the gimbals.',
     tip: 'How a gun platform keeps its aim inside a swarm — the turn is the targeting.',
   },
   mod_thruster_gimbal_l: {
-    detail: 'The strongest manoeuvring set on the shelf. Turn, strafe and brake all answer harder than stock.',
+    detail: 'Seventy percent harder turn, near double the strafe, half-again the brake — the numbers that make a capital hull answer like a corvette.',
     tip: 'On a capital hull, this is what makes the difference between a wall and a fighter.',
   },
   // ---- cargo ------------------------------------------------------------------
@@ -232,7 +232,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Best on a hull that already carries a lot — the percentage scales with the base.',
   },
   mod_smuggler_hold: {
-    detail: 'A compartmented hold — a little more room, and part of the manifest reads as empty space to a routine scan.',
+    detail: 'Eight more crates on the manifest, and a fifth of the hold reads as empty space when the inspection runs.',
     tip: 'For runs where the manifest is nobody\'s business.',
   },
   mod_smuggler_hold_m: {
@@ -241,7 +241,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   // ---- mining -----------------------------------------------------------------
   mod_mining_laser_s: {
-    detail: 'A small extraction beam that bites ore from a rock — hold it on the seam until it vents.',
+    detail: 'Eighteen a second at two-forty range — the starter beam that pays for itself off the first belt.',
     tip: 'The starter prospecting tool; cheap, light, and always paying for itself.',
   },
   mod_mining_beam_m: {
@@ -253,12 +253,12 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the mining barge that lives on the rock belt.',
   },
   mod_mining_industrial_l: {
-    detail: 'The extractor head that skips the haul step — ore vents straight into the hold while the cut runs.',
+    detail: 'Seventy a second at four-twenty meters, plumbed straight into the hold — the extractor that turns a trip into an operation.',
     tip: 'Fit it once and the run becomes a mining operation, not a mining trip.',
   },
   // ---- countermeasures / defense utility --------------------------------------
   mod_chaff_dispenser_m: {
-    detail: 'A radar-chaff burst that breaks every missile lock on you and diverts the shots in flight.',
+    detail: 'A three-eighty chaff cloud for three and a half seconds — locks on you drop outright and shots already in flight scatter off course.',
     tip: 'Fire it the second a missile lights up — a split-second early beats a second late.',
   },
   mod_ecm_jammer_l: {
@@ -291,7 +291,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Ram things with the catch, then key it again to let go.',
   },
   mod_gravity_bumper_s_mk2: {
-    detail: 'The second-rank bumper — the burst holds longer, reaches farther, and throws harder.',
+    detail: 'The boost wedge that hurls whatever the nose meets — rank two holds the cone open longer, reaches farther, and lands the throw harder.',
     tip: 'Same play — get there faster, stay longer, throw harder.',
   },
   mod_fire_lance_s_mk2: {
@@ -299,20 +299,20 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'A bigger window to run the prow through the pack.',
   },
   mod_grip_bumper_s_mk2: {
-    detail: 'The second-rank catch — the grip reaches farther and holds longer.',
+    detail: 'The catch wedge — the first light hull inside the cone sticks to the prow until the boost lets go; rank two reaches farther and holds on longer.',
     tip: 'Catch a hull early and carry it through the whole pack.',
   },
   // ---- massline / tether --------------------------------------------------------
   mod_tractor_beam_m: {
-    detail: 'A graviton line that grabs ore, cargo and wrecks without stopping on them — and works on light hulls too.',
+    detail: 'Twelve hundred meters of pull and a head that grips light hulls as easily as ore — the salvage comes to you while you keep flying.',
     tip: 'Latch with the tether key; the line does the hauling while you keep flying.',
   },
   mod_elastic_whip_m: {
-    detail: 'An elastic tether — stretch it under load, then cut at full tension to spend the stored snap.',
+    detail: 'The springiest head on the board — extension you earn becomes real tension, and the cut releases you at whatever speed the return stroke built.',
     tip: 'Latch, swing wide, and cut at the top of the arc — the snap is the punch.',
   },
   mod_frame_coupler_m: {
-    detail: 'A rigid frame hitch — a heavy tow turns with the hull instead of dragging it sideways.',
+    detail: 'The rigid hitch — a towed load exchanges momentum with the hull while the line is taut instead of levering it sideways.',
     tip: 'For hauling big salvage: the load becomes part of the ship\'s frame.',
   },
   mod_monofilament_sweep_m: {
@@ -320,7 +320,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Swing through the pack\'s lanes; anything that crosses the line pays for it.',
   },
   mod_transverse_snare_m: {
-    detail: 'A cross-lane snare — a fast hull that runs into the line gets snatched and tumbled.',
+    detail: 'Area denial, not an aimed grapnel — the head fires on anything fast that crosses the line, so the lane you close is the one the swarm was already using.',
     tip: 'Lay it in their path; the swarm runs into its own tripwire.',
   },
   mod_twin_bridle_m: {
@@ -332,15 +332,15 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'More rope means more arc; the speed lives in the swing, not the motor.',
   },
   mod_massline_spool_l: {
-    detail: 'The longest spool on the shelf — swings start from far outside the fight.',
+    detail: 'Six times the stock line on the drum — the swing arc starts so far out the fight is still a dot on the scope.',
     tip: 'On a big hull it turns the tether into a long-range tool, not a close one.',
   },
   mod_winch_hd: {
-    detail: 'A heavy winch — the line reels in faster and reaches farther before it snaps tight.',
+    detail: 'Nearly double the reel speed and half-again the line on the drum — the catch lands sooner and the swing starts farther out.',
     tip: 'When a heavy hostile is closing and you cannot out-turn it — reel the fight to your range.',
   },
   mod_swing_drive_m: {
-    detail: 'A massline dash drive — boosting on a taut line swings the ship around the anchor instead of off it.',
+    detail: 'With a tether latched the drive bends the whole dash onto the line\'s tangent and uprates it — same boost key, same energy cost, a completely different verb.',
     tip: 'Latch a heavy mass, boost, and the whole ship slingshots around it.',
   },
   mod_swing_drive_s: {
@@ -348,7 +348,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The cheap way to make a light hull do the massline trick.',
   },
   mod_mass_flail_rig_m: {
-    detail: 'A flail coupling — while the line tows something heavier than the ship, rams hit with the load\'s mass.',
+    detail: 'Every contact while you tow a real load carries the load\'s mass — the wreck on the line is the weapon and your hull is only the handle.',
     tip: 'Tow a wreck, swing it through the pack, and let the physics do the damage.',
   },
   // ---- cloak / stealth ----------------------------------------------------------
@@ -362,7 +362,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   // ---- ordnance racks -----------------------------------------------------------
   mod_charge_rack: {
-    detail: 'A rack of impulse charges you can throw and set off — a shove in a can.',
+    detail: 'Eight remote charges ride the rack and none of them go off until you call it — the shove waits for the swarm to be inside it.',
     tip: 'Throw one into the pack and detonate when they cluster; or drop one behind you to break a pursuit.',
   },
   mod_charge_vector_rack: {
@@ -375,27 +375,27 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the pirate\'s calculus: know the manifest before you commit.',
   },
   mod_market_data_s: {
-    detail: 'A live exchange feed — station quotes stream to the console while the bay is fitted.',
+    detail: 'Every station you pass files its live quotes to the map — route planning stops guessing what the next berth pays.',
     tip: 'Fit it when you are buying or hauling; the market intel pays for the slot.',
   },
   mod_sensor_array_l: {
-    detail: 'A deep-scan array — sees contacts much farther out and earns bonus research on a survey.',
+    detail: 'The survey investment — contacts resolve sixty percent farther out, and every charted site pays two extra research on the way home.',
     tip: 'The explorer\'s eye; the sector opens up around you.',
   },
   mod_survey_suite: {
-    detail: 'A survey package — the scan ring sweeps wider and a ping persists on the chart.',
+    detail: 'The prospector\'s package — a third more radar reach, half-again the scan radius, and pings that hold twice as long while you run them down.',
     tip: 'For the long-range prospector: the anomaly fix comes faster.',
   },
   mod_drill_amp: {
-    detail: 'A resonance amp that holds a seam\'s rich-core window open longer.',
+    detail: 'Four percent more rich-core window on every seam — a small bonus on one rock, a second fortune across a whole belt.',
     tip: 'For the miner who wants the seam to last, not just the bite.',
   },
   mod_sensor_scrambler_s: {
-    detail: 'A return damper — your hull reads quieter on a scan than the ship you actually fly.',
+    detail: 'A quarter off the signature a patrol inspection resolves — the borderline scan rolls start landing in your favor.',
     tip: 'A smaller signature means you slip a scan that would otherwise flag you.',
   },
   mod_sensor_scrambler_m: {
-    detail: 'A much stronger return damper — a scan has to get uncomfortably close to read you at all.',
+    detail: 'Half off the signature a patrol inspection resolves — the check that would flag a loaded hold comes back clean at knife range.',
     tip: 'For the hull that wants to be a ghost on other people\'s instruments.',
   },
   mod_filter_stack_s: {
@@ -443,7 +443,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The legal-way-out for a contaminated cargo run.',
   },
   mod_filament_contrast_s: {
-    detail: 'A contrast filter that lets phantom contacts read false — the scanner stops lying to itself.',
+    detail: 'False-fauna sites mint pings the scanner believes; the contrast pass tags the phantoms so only real contacts hold a lock.',
     tip: 'For sectors where the pings lie more than they tell.',
   },
   mod_host_cartography_s: {
@@ -476,7 +476,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The way out of a closing ring, or the way into a kill you are chasing.',
   },
   mod_repair_nanobots_m: {
-    detail: 'A hull-knitting swarm — the plates repair themselves between fights.',
+    detail: 'Four hull a second knits itself while you are out of the fight — the damage you limped out with is gone before the next swarm forms.',
     tip: 'For the long run: the hull comes back to the fight instead of staying gone.',
   },
   mod_targeting_computer_m: {
@@ -492,7 +492,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the surveyor — anomalies resolve a pulse sooner, out of harm\'s way.',
   },
   mod_thermal_sink_s: {
-    detail: 'A heatsink loop on the gun lines — mounted weapons shed heat faster, so a burst lasts longer.',
+    detail: 'A quarter more heat shed every second on each mounted gun — the overheat lockout arrives a full burst later than they expect.',
     tip: 'For the trigger-happy build: the guns stay hot less.',
   },
   mod_thermal_sink_m: {
@@ -504,7 +504,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The drone fights its own fight; you get a wing that never tires.',
   },
   mod_jump_drive_m: {
-    detail: 'A jump booster that lets the hull fold farther than its own drive allows.',
+    detail: 'The T2 fold — the jump charges in five and a half seconds instead of eight, sips fifteen percent less fuel, and lights a quieter signature getting out.',
     tip: 'For the long-jump run: a bigger step between fights.',
   },
   mod_ram_plate: {
@@ -512,7 +512,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'When the pack chases tight enough to bump — every collision they start becomes damage they take.',
   },
   mod_loot_magnet_s: {
-    detail: 'A capture ring that reels pods and debris into the hold while you fly through the wreck field.',
+    detail: 'Everything salvageable inside four-twenty meters drifts home unaided — pods and shards board themselves while you keep flying.',
     tip: 'For the cleanup pass: the field feeds itself.',
   },
   // ---- weapon trait rigs --------------------------------------------------------
@@ -553,15 +553,15 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'For the well-and-bank build: paint first, then drop the field.',
   },
   mod_ion_payload: {
-    detail: 'A hit leaves the target ionized — follow-on systems damage bleeds through.',
+    detail: 'Ion stacks choke the target\'s capacitor regen to seventy percent and prime every conductive follow-up — the opener the arc weapons are built for.',
     tip: 'For the setup gun: prime the target, then let the second shot do more than it should.',
   },
   mod_incendiary_payload: {
-    detail: 'A hit sets the target burning — damage continues after the shot has gone.',
+    detail: 'Burning stacks to three and keeps ticking while your sights are already on the next hull — the damage that pays for walking away.',
     tip: 'For the long hold: the hit keeps paying after the trigger lets go.',
   },
   mod_cryo_payload: {
-    detail: 'A hit locks the target in cryo — the next blow lands on something that cannot yield.',
+    detail: 'Each cryo stack saps the locked hull\'s control — it cannot juke, so the finishing blow is aimed at a fixed point.',
     tip: 'For the one-two punch: freeze first, then finish.',
   },
   mod_cryo_gyros: {

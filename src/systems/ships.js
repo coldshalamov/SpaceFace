@@ -889,7 +889,7 @@ export function massLoadFactor(shipDefOrId, operationalMass) {
  * and the engine's travelCeilingMult moves Travel Burn V-MAX. The governed cap (combatSpeed/maxSpeed)
  * and the drive's identity/family are never for sale; the ship's operational mass is the one thing
  * that moves its accelerations after fitting (MASS_LOAD_LAW). */
-function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped, boostSpeedMult = 1) {
+function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped) {
   const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
   const derived = {
@@ -909,13 +909,6 @@ function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equippe
   scaleProfileKeys(derived, base, THRUSTER_RATE_KEYS, Math.sqrt(thruster.turn));
   scaleProfileKeys(derived, base, THRUSTER_STRAFE_KEYS, thruster.strafe);
   scaleProfileKeys(derived, base, THRUSTER_BRAKE_KEYS, thruster.brake);
-
-  // A fitted afterburner raises only the boost ceiling — the authored boostMaxSpeed where the
-  // profile carries one, and the reaction-family boostSpeedMult fallback where it does not.
-  if (boostSpeedMult !== 1) {
-    if (Number.isFinite(derived.boostMaxSpeed)) derived.boostMaxSpeed *= boostSpeedMult;
-    if (Number.isFinite(derived.boostSpeedMult)) derived.boostSpeedMult *= boostSpeedMult;
-  }
 
   const load = massLoadFactor(shipDef, totalMass);
   if (load < 1) {
@@ -947,7 +940,7 @@ function flightClassForShip(shipDef) {
   return flightClassForHull(shipDef);
 }
 
-function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor, boostSpeedMult = 1 }) {
+function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
   const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
   const inertia = Math.max(1, (totalMass / Math.max(0.3, handling)) * t.inertia);
   const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
@@ -968,7 +961,7 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
     maxSpeed,
     boostMult: 2.2,
     normalMaxSpeedMult: 1.15,
-    boostMaxSpeedMult: 2.0 * boostSpeedMult,
+    boostMaxSpeedMult: 2.0,
     bankMax: 0.68,
     bankFactor,
     role: shipDef.role || 'ship',
@@ -1301,15 +1294,8 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   // A doubled reservoir should not double the wait between runs. Preserve each hull's authored
   // recovery time by scaling recharge with the larger meter.
   const boostRegen = (bdef.regenRate || 18) * 2 * energyRegenMult;
-  // A fitted afterburner lengthens the burn itself: the pool grows to cover the module's authored
-  // burn seconds at the hull's drain rate, and the module's authored cooldown becomes the pool's
-  // full-recharge time — a hotter burn paid back as a slower refill.
-  const boostPoolMax = boostDurS > 0
-    ? Math.max(bdef.max || 0, (bdef.drainRate || 40) * boostDurS)
-    : (bdef.max || 0);
-  const boostRegenFinal = boostCdS > 0 && boostPoolMax > 0 ? boostPoolMax / boostCdS : boostRegen;
   const flightClass = flightClassForShip(shipDef);
-  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped, 1 + boostTopSpeedPct);
+  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped);
   const flightModel = buildFlightModel({
     shipDef,
     flightClass,
@@ -1321,7 +1307,6 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     maxSpeed: legacyMaxSpeed,
     drag,
     bankFactor,
-    boostSpeedMult: 1 + boostTopSpeedPct,
   });
 
   const roleIdentity = lattice
@@ -1377,9 +1362,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     miningSlotsFilled,
     miningSlotsTotal,
     boost: {
-      max: boostPoolMax,
+      max: bdef.max || 0,
       drainRate: bdef.drainRate || 40,
-      regenRate: boostRegenFinal,
+      regenRate: boostRegen,
       dashImpulse: bdef.dashImpulse || 0,
       dashCooldown: bdef.dashCooldown || 3,
       // FB-054 afterburner envelope (zero without a fitted burner): topSpeedPct scales the boost

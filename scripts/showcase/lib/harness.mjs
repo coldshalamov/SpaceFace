@@ -467,6 +467,8 @@ async function installShowcaseApi(page) {
           boostMult: d.flightModel?.boostMult,
           boostMaxSpeedMult: d.flightModel?.boostMaxSpeedMult,
           boostPoolMax: d.boost?.max, boostRegenRate: d.boost?.regenRate,
+          boostTopSpeedPct: d.boost?.topSpeedPct, boostBurnDurS: d.boost?.burnDurS,
+          boostBurnCdS: d.boost?.burnCdS,
           propBoostMaxSpeed: d.propulsion?.boostMaxSpeed,
           propBoostSpeedMult: d.propulsion?.boostSpeedMult,
           weaponRangeMult: d.weaponRangeMult,
