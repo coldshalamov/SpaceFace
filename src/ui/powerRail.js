@@ -50,6 +50,7 @@ import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
+export const BAND_DRIVE = 'DRIVE';
 export const BAND_ORDNANCE = 'ORDNANCE';
 export const BAND_FIELDWORK = 'FIELDWORK';
 export const BAND_RIG = 'RIG';
@@ -75,6 +76,11 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // one write site, and read verbatim by every surface that explains a verb (tier-2 `[data-why]` tips,
 // the ORRERY Cluster's ordnance keys, the rail's own aria/title) — no surface composes its own prose.
 export const RAIL_SLOTS = Object.freeze([
+  // FB-002 slot 0 — the travel-drive latch. It owns no digit (Num Lock/H is the verb, never a
+  // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
+  // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
+  { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
+    description: 'latch the travel drive — a long burn that holds your speed' },
   // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
   { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'munitions',
@@ -105,7 +111,7 @@ export function slotDescription(index) {
   return (slot && slot.description) || '';
 }
 
-const BANDS = [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
+const BANDS = [BAND_DRIVE, BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
 
 // Sweep ring geometry. r=13 in a 32-box leaves room for the 1.6 stroke without clipping.
 //
@@ -224,8 +230,9 @@ export function applyClaims(slotState, claims, now) {
     mode = claim.mode || CLAIM_PARTIAL;
     const answers = Array.isArray(claim.answers) ? claim.answers : [];
     const targets = claim.mode === CLAIM_FULL
-      ? out.map((s) => s.index)
-      : (Array.isArray(claim.slots) ? claim.slots : []);
+      // Slot 0 is the drive's state lamp — it owns no answer key and no prompt may borrow it.
+      ? out.map((s) => s.index).filter((i) => i !== 0)
+      : (Array.isArray(claim.slots) ? claim.slots : []).filter((i) => i !== 0);
     targets.forEach((slotIndex, i) => {
       const slot = out.find((s) => s.index === slotIndex);
       if (!slot) return;
@@ -397,11 +404,26 @@ export function readRailModel(state, nowS) {
   // how this paints; this model only makes the numbers reachable on the default route.
   const cruiseProgress = cruiseChargeProgress(s);
   const cruiseState = isCruising(s) ? 'cruising' : (isCharging(s) ? 'charging' : 'off');
+  // FB-002 slot 0 — the travel-drive latch reads its own published kernel record
+  // (state.input.travelDrive, one address, systems/input.js owns the write). The socket is a
+  // state lamp, not an ordnance key: engaged/spooling read armed, the cooldown reads cooling,
+  // and an absent record reads ready like every inert verb.
+  const travelDrive = (s.input && s.input.travelDrive && typeof s.input.travelDrive === 'object')
+    ? s.input.travelDrive : null;
+  const driveState = travelDrive && typeof travelDrive.state === 'string' ? travelDrive.state : 'off';
   return {
     cruiseChargeProgress: cruiseProgress,
     cruiseEngaged: cruiseState === 'cruising',
     cruiseCharging: cruiseState === 'charging',
     cruiseState,
+    0: {
+      state: driveState === 'engaged' || driveState === 'spooling' ? 'armed'
+        : driveState === 'cooldown' ? 'cooling' : 'ready',
+      why: driveState === 'engaged' ? 'Burn engaged — the drive holds your speed'
+        : driveState === 'spooling' ? 'Drive spooling'
+          : driveState === 'cooldown' ? 'Drive cooling'
+            : 'Drive latched off',
+    },
     // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
     // empty state ("CHARGE 0" read as a broken label, not as "none left").
     1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,

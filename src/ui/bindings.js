@@ -6,7 +6,13 @@
 // out of sync with the actual handler. This is the lightweight "live binding registry" the spec asks
 // for: prompts render from this registry, not from literal key names.
 
-import { GAMEPAD_BUTTON_LABELS, GAMEPAD_DEFAULT_BINDINGS } from '../systems/gamepad.js';
+import {
+  GAMEPAD_BUTTON_LABELS,
+  GAMEPAD_DEFAULT_BINDINGS,
+  GAMEPAD_VERB_ALIASES,
+  gamepadFaceButtonLabel,
+  normalizeGamepadGlyphSet,
+} from '../systems/gamepad.js';
 
 export const BINDINGS = Object.freeze({
   // Default interact/dock action is `E` (spec §15.4 / INTEGRATION_MAP §5). The input handler in
@@ -96,6 +102,7 @@ const TOUCH_LABEL_FOR = Object.freeze({
 
 let _promptDevice = 'kbm';
 let _padMap = null;            // resolved gamepad action -> [std button names]
+let _padGlyphSet = 'xb';       // settings.controls.gamepad.glyphSet, pushed by the device arbiter
 let _padCaptureHandler = null; // Settings pad-remap capture (one at a time)
 
 export function setPromptDevice(device) {
@@ -107,6 +114,12 @@ export function getPromptDevice() {
 export function setGamepadPromptBindings(map) {
   _padMap = map || null;
 }
+export function setGamepadGlyphSet(set) {
+  _padGlyphSet = normalizeGamepadGlyphSet(set);
+}
+export function getGamepadGlyphSet() {
+  return _padGlyphSet;
+}
 export function setGamepadCaptureHandler(fn) {
   _padCaptureHandler = typeof fn === 'function' ? fn : null;
 }
@@ -114,11 +127,14 @@ export function getGamepadCaptureHandler() {
   return _padCaptureHandler;
 }
 
-/** Glyph for the first button bound to a gamepad action under the live (or given) map. */
+/** Glyph for the first button bound to a gamepad action under the live (or given) map.
+ *  Keyboard-verb names resolve through GAMEPAD_VERB_ALIASES so 'tether' prints the
+ *  Massline button, never a blank; the face label honors the player's glyph set. */
 export function gamepadGlyphForAction(action, map) {
   const src = map || _padMap || GAMEPAD_DEFAULT_BINDINGS;
-  const name = src && src[action] && src[action][0];
-  return (name && GAMEPAD_BUTTON_LABELS[name]) || '';
+  const padAction = GAMEPAD_VERB_ALIASES[action] || action;
+  const name = src && src[padAction] && src[padAction][0];
+  return (name && (gamepadFaceButtonLabel(name, _padGlyphSet) || GAMEPAD_BUTTON_LABELS[name])) || '';
 }
 
 // Render a bracketed prompt label, e.g. "[ E ] DOCK AT STATION" — or "[ A ]" on a gamepad.

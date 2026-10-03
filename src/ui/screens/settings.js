@@ -858,6 +858,14 @@ export const settingsScreen = {
     build.slider('Aim stick sensitivity', () => gp().sensitivityAim ?? 1,
       0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
       (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityAim: v }, persist));
+    // FB-002/B117: the face-button register prompts and speech print — the same set the
+    // rebind rows below render, so a switch re-labels both at once.
+    build.select('Button glyphs', () => {
+      const v = gp().glyphSet;
+      return (v === 'ds' || v === 'fh') ? v : 'xb';
+    },
+      [['xb', 'Xbox — A B X Y'], ['ds', 'DualShock — ✕ ◯ □ △'], ['fh', 'Field Hardware — Ⓐ Ⓑ Ⓧ Ⓨ']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), glyphSet: v }));
     // FB-004: pointer aim gets the same two axes — a sensitivity multiplier on the derived
     // cursor channel and a Y inversion, both independent of the sticks.
     if (!s.controls.mouse || typeof s.controls.mouse !== 'object') {
@@ -883,7 +891,7 @@ export const settingsScreen = {
     GAMEPAD_REBINDABLE.forEach((action) => {
       // Chord names render both halves ('LB + D-Pad Up') through the same label vocabulary the
       // Help sheet uses — the row must never print a raw 'l1+dUp' at a player.
-      const keyText = gamepadButtonLabels(action, padMap).join(' / ') || '—';
+      const keyText = gamepadButtonLabels(action, padMap, { glyphSet: gp().glyphSet }).join(' / ') || '—';
       build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
         (btn) => this._capturePad(ctx, btn, action, padMap));
     });

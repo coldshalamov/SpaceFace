@@ -15,6 +15,7 @@ import {
   BINDINGS,
   setPromptDevice,
   setGamepadPromptBindings,
+  setGamepadGlyphSet,
   getGamepadCaptureHandler,
 } from './bindings.js';
 import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
@@ -130,6 +131,7 @@ export function createUiInput(ctx, screenManager) {
   let _seenTouchSeq = -1;
   let _lastPromptDevice = 'kbm';
   let _seenPadBindings;
+  let _seenPadGlyphSet;
   function noteDevice(d) {
     _deviceOrder[d] = ++_deviceCounter;
   }
@@ -144,6 +146,14 @@ export function createUiInput(ctx, screenManager) {
     if (custom !== _seenPadBindings) {
       _seenPadBindings = custom;
       setGamepadPromptBindings(resolveGamepadBindings(state && state.settings));
+    }
+    // The face-button register follows the settings address, so a glyph-set switch re-labels
+    // live prompt chips and pad speech the same tick.
+    const glyphSet = state && state.settings && state.settings.controls
+      && state.settings.controls.gamepad ? state.settings.controls.gamepad.glyphSet : undefined;
+    if (glyphSet !== _seenPadGlyphSet) {
+      _seenPadGlyphSet = glyphSet;
+      setGamepadGlyphSet(glyphSet);
     }
     if (dev !== _lastPromptDevice) {
       _lastPromptDevice = dev;

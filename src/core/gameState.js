@@ -81,6 +81,10 @@ function defaultSettings() {
       gamepad: {
         enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false,
         curve: 'linear', deadzoneRight: 0.12, sensitivityAim: 1, sensitivityFly: 1,
+        // FB-002/B117: which face-button vocabulary prompts print — 'xb' A/B/X/Y, 'ds'
+        // DualShock shapes, 'fh' Field Hardware circled letters. Speech and prompt chips
+        // both read this one address.
+        glyphSet: 'xb',
       },
       // FB-004: pointer aim gets the same tuning maturity — a sensitivity multiplier on the
       // normalized cursor axis and an invert for players who read screen-up as world-down.

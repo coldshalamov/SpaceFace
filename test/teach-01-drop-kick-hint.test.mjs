@@ -107,13 +107,19 @@ test('TEACH-01: jettisoning above the drop-kick bar speaks the line once per pro
     try {
       h.jettison();
       const shown = h.hints();
+      // FB-002: the verb-shelf line defers when the kick lesson lands — one dump, one voice.
       assert.equal(shown.length, 1, 'the first at-speed dump earns exactly one hint');
       assert.equal(shown[0].payload.verbId, 'masslineJettisonImpulse');
       assert.match(shown[0].payload.text, /Dump aft to push/i);
       h.jettison();
       h.jettison();
-      assert.equal(h.hints().length, 1, 'once per profile — later dumps stay silent');
+      // The kick stays silent (once per profile); the shelf's jettisonLot names the verb's
+      // binding once — the two lessons never share a moment.
+      const later = h.hints();
+      assert.equal(later.length, 2, 'the shelf verb speaks once on a later dump');
+      assert.equal(later[1].payload.verbId, 'shelf:jettisonLot');
       assert.equal(h.state.player.hints.masslineJettisonImpulse, true, 'the profile flag persists');
+      assert.equal(h.state.player.hints['shelf:jettisonLot'], true, 'the shelf stamp persists');
     } finally { h.restore(); }
   });
 });
@@ -123,18 +129,23 @@ test('TEACH-01: a parked dump teaches nothing and does not spend the flag', () =
     const h = drive(0);
     try {
       h.jettison();
-      assert.equal(h.hints().length, 0, 'no hint at rest');
+      // FB-002: the kick lesson is unearned at rest — but the shelf verb still names the
+      // binding the player just used. Scope every assertion to the kick verb.
+      const atRest = h.hints().filter((e) => e.payload.verbId === 'masslineJettisonImpulse');
+      assert.equal(atRest.length, 0, 'no kick hint at rest');
       assert.equal(h.state.player.hints.masslineJettisonImpulse, undefined, 'the flag is unspent');
+      assert.equal(h.hints()[0].payload.verbId, 'shelf:jettisonLot', 'the shelf names the verb');
       // Just under the bar is still not the drop-kick.
       h.setSpeed(DROP_KICK_CRUISE_SPEED - 1);
       h.jettison();
-      assert.equal(h.hints().length, 0, 'below cruise is still not the lesson');
+      const belowBar = h.hints().filter((e) => e.payload.verbId === 'masslineJettisonImpulse');
+      assert.equal(belowBar.length, 0, 'below cruise is still not the lesson');
       // When the pilot actually reaches cruise the lesson lands — the earlier dumps
       // did not silently consume it.
       h.setSpeed(DROP_KICK_CRUISE_SPEED + 40);
       h.jettison();
-      assert.equal(h.hints().length, 1, 'the first real drop-kick still earns the line');
-      assert.equal(h.hints()[0].payload.verbId, 'masslineJettisonImpulse');
+      const kick = h.hints().filter((e) => e.payload.verbId === 'masslineJettisonImpulse');
+      assert.equal(kick.length, 1, 'the first real drop-kick still earns the line');
     } finally { h.restore(); }
   });
 });
@@ -143,6 +154,8 @@ test('TEACH-01: the kick impulse itself is untouched — flag-off emits nothing'
   const h = drive(DROP_KICK_CRUISE_SPEED + 10);
   try {
     h.jettison();
-    assert.equal(h.hints().length, 0, 'flag-off sessions never see the line');
+    const kick = h.hints().filter((e) => e.payload.verbId === 'masslineJettisonImpulse');
+    assert.equal(kick.length, 0, 'flag-off sessions never see the kick line');
+    assert.equal(h.state.player.hints.masslineJettisonImpulse, undefined, 'the flag is unspent');
   } finally { h.restore(); }
 });

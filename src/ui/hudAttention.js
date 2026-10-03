@@ -284,6 +284,30 @@ export function missingThreeBeatLine(verbId) {
   return MISSING_THREE_BEAT_LINES[verbId] || '';
 }
 
+// Verb-shelf lines (FB-002 / FB-116). The verbs with no staged beat still get spoken — once each,
+// in the player's own device vocabulary, on the moment the verb matters. Copy lives here; trigger
+// specs live in src/onboarding/verbSpeech.js; systems/onboarding.js owns the moments. Each line
+// embeds the LIVE binding label (keyboard code, pad chord, or nothing on touch) so a rebind can
+// never strand the words. ≤12-word drill budget, binding excluded.
+export const SHELF_VERB_LINES = Object.freeze({
+  travelBurn: 'The burn keeps the speed',
+  chargeThrow: 'A charge is racked',
+  bulletTime: 'The clock widens',
+  cloak: 'The shroud is fitted',
+  deployBeacon: 'The beacon marks the spot',
+  toggleSkimCollector: 'The scoop harvests a band',
+  jettisonLot: 'The lot goes out the back',
+});
+
+export function shelfVerbLine(verbId, bindingLabel) {
+  const what = SHELF_VERB_LINES[verbId];
+  if (!what) return '';
+  const key = String(bindingLabel || '').trim();
+  // A binding that is itself punctuation (Period → '.') must not print a double full stop.
+  if (!key) return `${what}.`;
+  return /[.!?]$/.test(key) ? `${what} — ${key}` : `${what} — ${key}.`;
+}
+
 export function firstUseAttachKind(verbId) {
   const key = String(verbId || '');
   if (key === 'firstStation' || key === 'firstHub' || key === 'firstGate') return 'station';

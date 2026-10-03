@@ -24,7 +24,7 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { IS_DEMO } from '../core/demoMode.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
-import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
+import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -106,6 +106,20 @@ import {
   freshStoreSentenceState,
   stampStoreClause,
 } from '../onboarding/storeSentence.js';
+// FB-002/FB-116 — the verb shelf: every bound verb is spoken exactly once, in the player's own
+// device vocabulary, on a real trigger. The five-verb rail teaches by doing; these seven teach
+// by the moment the verb matters. Table + pure trigger checks live in src/onboarding/verbSpeech.js.
+import {
+  SHELF_LONG_STRAIGHT_S,
+  SHELF_VERBS,
+  shelfHintKey,
+  shelfHostileChargeReady,
+  shelfLongStraightActive,
+  shelfVerbEnabled,
+  verbBindingLabel,
+} from '../onboarding/verbSpeech.js';
+import { isHostileToPlayer } from './scanner.js';
+import { fittedCloakModule } from './cloak.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -714,7 +728,12 @@ export const onboarding = {
         Number(player && player.vel && player.vel.z) || 0,
       );
       if (!(speed >= DROP_KICK_CRUISE_SPEED)) return;
+      // FB-002: the shelf's jettisonLot listener runs after this one on the same emit — flag
+      // when the kick line actually lands so one dump never speaks two lessons.
+      const before = !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
       this._showHint('masslineJettisonImpulse', firstUseLine('masslineJettisonImpulse'), p);
+      this._dropKickJustSpoke = !before
+        && !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
     });
     bus.on('bulletTime:start', (p) => {
       if (!massline2Flag('bulletTime')) return;
@@ -736,7 +755,88 @@ export const onboarding = {
       this._showHint('massSeedDeploy', firstUseLine('massSeedDeploy'), p);
     });
 
+    // ── Verb shelf (FB-002/FB-116): every bound verb is spoken once, in the player's own
+    // device vocabulary, on the moment the verb matters. The five-verb rail already teaches
+    // by doing; these seven have no authored beat, so a real context fires them instead.
+    // Each line is built at fire time so it names the LIVE binding — a rebind mid-career
+    // can never strand the words — and player.hints keeps every line once-per-profile.
+    // A trigger that lands while the staged rail owns the voice is NOT lost: it parks in
+    // _shelfPending and the cadence tick re-tries until the hint actually speaks.
+    this._shelfPending = null;
+    this._shelfStraightS = 0;
+
+    bus.on('module:equipped', (p) => {
+      if (!p || !this.state || p.shipId !== this.state.playerId) return;
+      // bulletTime rides the first fit of any kind — the moment the hull stops being stock.
+      this._speakShelfVerb('bulletTime');
+      // cloak speaks only when the fit actually grants a shroud — teaching a verb with no
+      // hardware behind it is the lie the trigger exists to prevent.
+      if (fittedCloakModule(this.state)) this._speakShelfVerb('cloak');
+    });
+
+    // First-use verbs speak on their own receipts — the player already did the thing, and the
+    // line names the binding that did it.
+    bus.on('beacon:deployed', (p) => this._speakShelfVerb('deployBeacon', p));
+    bus.on('planet:collector', (p) => {
+      if (!p || p.on !== true) return; // toggling off is not the lesson
+      this._speakShelfVerb('toggleSkimCollector', p);
+    });
+    bus.on('cargo:jettisoned', (p) => {
+      // The drop-kick line owns an at-speed first dump; the shelf defers so the moment
+      // never speaks two lessons. At rest, flag-off, or any later dump the shelf names
+      // the verb itself — jettisonLot stays a bound verb the player used.
+      const deferredToKick = this._dropKickJustSpoke === true;
+      this._dropKickJustSpoke = false;
+      if (deferredToKick) return;
+      this._speakShelfVerb('jettisonLot', p);
+    });
+
     this._lastControlMode = null;
+  },
+
+  // Speak one shelf verb once. When the staged rail owns the voice the moment parks in
+  // _shelfPending and _tickShelfVerbs retries on the cadence tick until the hint lands —
+  // a trigger suppressed by silence is deferred, never spent. Returns true when the line
+  // actually fired (its player.hints stamp is set).
+  _speakShelfVerb(verbId, payload) {
+    const st = this.state;
+    const verb = SHELF_VERBS.find((v) => v.key === verbId);
+    if (!verb || !st) return false;
+    const hints = st.player && st.player.hints;
+    if (hints && hints[shelfHintKey(verbId)]) return false;
+    if (!shelfVerbEnabled(verb, st)) return false;
+    if (this._tutorialRailOwnsVoice()) {
+      if (!this._shelfPending) this._shelfPending = new Map();
+      this._shelfPending.set(verbId, payload || null);
+      return false;
+    }
+    const label = verbBindingLabel(st, verb.action);
+    this._showHint(shelfHintKey(verbId), shelfVerbLine(verbId, label), payload);
+    return !!(st.player.hints && st.player.hints[shelfHintKey(verbId)]);
+  },
+
+  // Cadence-tick the context triggers (same 0.2 s gate as the field-escape teacher):
+  // travelBurn's long-straight timer, chargeThrow's first-hostile-with-a-racked-charge,
+  // and any parked shelf lines retrying past the rail's voice.
+  _tickShelfVerbs(dt, state) {
+    if (!state || state.mode !== 'flight') { this._shelfStraightS = 0; return; }
+    const playerEntity = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const playerTeam = playerEntity && playerEntity.team;
+    const isHostile = (e) => isHostileToPlayer(e, playerTeam, state);
+    if (shelfLongStraightActive(state, isHostile)) {
+      this._shelfStraightS = (this._shelfStraightS || 0) + dt;
+      if (this._shelfStraightS >= SHELF_LONG_STRAIGHT_S) this._speakShelfVerb('travelBurn');
+    } else {
+      this._shelfStraightS = 0;
+    }
+    if (shelfHostileChargeReady(state, isHostile)) this._speakShelfVerb('chargeThrow');
+    if (this._shelfPending && this._shelfPending.size) {
+      for (const [verbId, payload] of Array.from(this._shelfPending.entries())) {
+        if (this._speakShelfVerb(verbId, payload)) this._shelfPending.delete(verbId);
+        else if (!this._tutorialRailOwnsVoice()) this._shelfPending.delete(verbId); // spent or gated off
+      }
+      if (!this._shelfPending.size) this._shelfPending = null;
+    }
   },
 
   // Show a one-time contextual hint via the toast system. The hint key corresponds to a flag in
@@ -796,6 +896,8 @@ export const onboarding = {
     this._gateControlInRange = false;
     this._lastControlMode = null;
     this._latchDenialStreak = 0;
+    this._shelfPending = null;
+    this._shelfStraightS = 0;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });
@@ -1420,12 +1522,14 @@ export const onboarding = {
     try {
       this._accum = (this._accum || 0) + dt;
       if (this._accum < 0.2) return;
+      const intervalS = this._accum;
       this._accum = 0;
       this._noteMissingThreeUses();
       this._teachFieldEscapes();
       this._teachCadencePump();
+      this._tickShelfVerbs(intervalS, state);
       if (!ob.active || ob.finished) return;
-            this._tryAdvanceBeat();
+      this._tryAdvanceBeat();
       this._resolveProximityDone();
       this._resolveRescueDone();
       this._resolveRaidDone();
