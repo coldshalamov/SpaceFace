@@ -1,0 +1,2645 @@
+{
+  "method": "Exact point-to-projected-triangle-union distance on exposed convex edge samples, no runtime interpretation",
+  "edgeMaxStepWU": 0.005,
+  "edgeSamplingAllowanceWU": 0.0025,
+  "rasterCullLimitWU": 0.075,
+  "rasterCullAllowanceWU": 0.022627416997969524,
+  "sampleCount": 17467,
+  "source": "cold combined candidate-m7/brood_mite_v01.glb",
+  "lods": [
+    {
+      "lod": 0,
+      "maxBoundWU": 0.09762741699796952,
+      "passedFinitePoseSamples": true,
+      "samples": [
+        {
+          "foldFraction": 0.0,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.0011062500000000198,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.003259259259259259,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.004349999999999987,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.009618749999999964,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.012740740740740742,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.016800000000000013,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.02578125,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.028000000000000004,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.036450000000000045,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.0485925925925926,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.04869375000000002,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.06239999999999992,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.07407407407407407,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.07745624999999993,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.09375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.09999999999999998,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.1,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.10400000000000002,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.11116874999999997,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.121484375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.12960000000000005,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.13792592592592592,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.138671875,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.14893124999999996,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.16904999999999995,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.17540740740740743,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.178125,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.18984375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.21119999999999997,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.216,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.23300625000000005,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.24062499999999998,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.25514999999999993,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.258203125,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.25925925925925924,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.27751875,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.3,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.3047407407407407,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.32248125,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.34484999999999993,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.35,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.3520000000000001,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.36699375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.384765625,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.3887999999999999,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.4005925925925926,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.41015625,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.43095,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.441796875,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.45007407407407407,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.45106874999999996,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.4704,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.48883124999999994,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.5,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 119
+        },
+        {
+          "foldFraction": 0.50625,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 123
+        },
+        {
+          "foldFraction": 0.521875,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 123
+        },
+        {
+          "foldFraction": 0.52254375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 123
+        },
+        {
+          "foldFraction": 0.5376,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 123
+        },
+        {
+          "foldFraction": 0.5499259259259259,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.55,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.55130625,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.56355,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.57421875,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.578515625,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.5831999999999999,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.59038125,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.59565,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.59889375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.5994074074074074,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.6,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.648,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.6952592592592592,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.715234375,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.7407407407407407,
+          "exactMeasuredMaxWU": 0.08123661780540369,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            2.659527135446686,
+            2.0881856714697404
+          ],
+          "exactSampleCount": 128
+        },
+        {
+          "foldFraction": 0.7839999999999999,
+          "exactMeasuredMaxWU": 0.08126575085353094,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5554796258992805,
+            -2.48118445323741
+          ],
+          "exactSampleCount": 138
+        },
+        {
+          "foldFraction": 0.8245925925925925,
+          "exactMeasuredMaxWU": 0.08193568188994221,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5588749496402878,
+            -2.484824618705036
+          ],
+          "exactSampleCount": 138
+        },
+        {
+          "foldFraction": 0.859375,
+          "exactMeasuredMaxWU": 0.08280242173596396,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5588749496402878,
+            -2.484824618705036
+          ],
+          "exactSampleCount": 138
+        },
+        {
+          "foldFraction": 0.8620740740740741,
+          "exactMeasuredMaxWU": 0.08287153290724929,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5588749496402878,
+            -2.484824618705036
+          ],
+          "exactSampleCount": 138
+        },
+        {
+          "foldFraction": 0.8960000000000001,
+          "exactMeasuredMaxWU": 0.08359264310240515,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5588749496402878,
+            -2.484824618705036
+          ],
+          "exactSampleCount": 138
+        },
+        {
+          "foldFraction": 0.925925925925926,
+          "exactMeasuredMaxWU": 0.08373534068912863,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.562270273381295,
+            -2.4884647841726615
+          ],
+          "exactSampleCount": 187
+        },
+        {
+          "foldFraction": 0.9514074074074075,
+          "exactMeasuredMaxWU": 0.08446568578839649,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.562270273381295,
+            -2.4884647841726615
+          ],
+          "exactSampleCount": 228
+        },
+        {
+          "foldFraction": 0.961328125,
+          "exactMeasuredMaxWU": 0.08475663809465475,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.562270273381295,
+            -2.4884647841726615
+          ],
+          "exactSampleCount": 245
+        },
+        {
+          "foldFraction": 0.972,
+          "exactMeasuredMaxWU": 0.08540204197455702,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -4.676857752941176,
+            -4.0197097294117645
+          ],
+          "exactSampleCount": 320
+        },
+        {
+          "foldFraction": 0.9872592592592593,
+          "exactMeasuredMaxWU": 0.08862054958123888,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -4.676857752941176,
+            -4.0197097294117645
+          ],
+          "exactSampleCount": 324
+        },
+        {
+          "foldFraction": 0.9967407407407407,
+          "exactMeasuredMaxWU": 0.09062131718916888,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -4.676857752941176,
+            -4.0197097294117645
+          ],
+          "exactSampleCount": 357
+        },
+        {
+          "foldFraction": 1.0,
+          "exactMeasuredMaxWU": 0.09129959282819532,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -4.676857752941176,
+            -4.0197097294117645
+          ],
+          "exactSampleCount": 358
+        }
+      ]
+    },
+    {
+      "lod": 1,
+      "maxBoundWU": 0.09762741699796952,
+      "passedFinitePoseSamples": true,
+      "samples": [
+        {
+          "foldFraction": 0.0,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.0011062500000000198,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.003259259259259259,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.004349999999999987,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.009618749999999964,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.012740740740740742,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.016800000000000013,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.02578125,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.028000000000000004,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.036450000000000045,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.0485925925925926,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.04869375000000002,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.06239999999999992,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.07407407407407407,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.07745624999999993,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.09375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.09999999999999998,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.1,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.10400000000000002,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.11116874999999997,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.121484375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.12960000000000005,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.13792592592592592,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.138671875,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.14893124999999996,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.16904999999999995,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.17540740740740743,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.178125,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.18984375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.21119999999999997,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.216,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.23300625000000005,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.24062499999999998,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.25514999999999993,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.258203125,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.25925925925925924,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.27751875,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.3,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.3047407407407407,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.32248125,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.34484999999999993,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.35,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.3520000000000001,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.36699375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.384765625,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.3887999999999999,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.4005925925925926,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.41015625,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.43095,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.441796875,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.45007407407407407,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.45106874999999996,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.4704,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.48883124999999994,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.5,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 274
+        },
+        {
+          "foldFraction": 0.50625,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 275
+        },
+        {
+          "foldFraction": 0.521875,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.52254375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.5376,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.5499259259259259,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.55,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.55130625,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.56355,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.57421875,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.578515625,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.5831999999999999,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.59038125,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.59565,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.59889375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.5994074074074074,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.6,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.648,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.6952592592592592,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 277
+        },
+        {
+          "foldFraction": 0.715234375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 280
+        },
+        {
+          "foldFraction": 0.7407407407407407,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 283
+        },
+        {
+          "foldFraction": 0.7839999999999999,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 283
+        },
+        {
+          "foldFraction": 0.8245925925925925,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 280
+        },
+        {
+          "foldFraction": 0.859375,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.8620740740740741,
+          "exactMeasuredMaxWU": 0.09321820143373767,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -0.43377049180327865,
+            -1.4733073770491805
+          ],
+          "exactSampleCount": 285
+        },
+        {
+          "foldFraction": 0.8960000000000001,
+          "exactMeasuredMaxWU": 0.09327557456230459,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5500931485714287,
+            2.4731588457142855
+          ],
+          "exactSampleCount": 293
+        },
+        {
+          "foldFraction": 0.925925925925926,
+          "exactMeasuredMaxWU": 0.0938468857464727,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5500931485714287,
+            2.4731588457142855
+          ],
+          "exactSampleCount": 336
+        },
+        {
+          "foldFraction": 0.9514074074074075,
+          "exactMeasuredMaxWU": 0.09388437063303608,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5500931485714287,
+            2.4731588457142855
+          ],
+          "exactSampleCount": 415
+        },
+        {
+          "foldFraction": 0.961328125,
+          "exactMeasuredMaxWU": 0.09388437063303608,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5500931485714287,
+            2.4731588457142855
+          ],
+          "exactSampleCount": 424
+        },
+        {
+          "foldFraction": 0.972,
+          "exactMeasuredMaxWU": 0.09388437063303608,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5500931485714287,
+            2.4731588457142855
+          ],
+          "exactSampleCount": 454
+        },
+        {
+          "foldFraction": 0.9872592592592593,
+          "exactMeasuredMaxWU": 0.09388437063303608,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5500931485714287,
+            2.4731588457142855
+          ],
+          "exactSampleCount": 534
+        },
+        {
+          "foldFraction": 0.9967407407407407,
+          "exactMeasuredMaxWU": 0.09399443532014452,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5535264228571428,
+            2.4767788685714285
+          ],
+          "exactSampleCount": 561
+        },
+        {
+          "foldFraction": 1.0,
+          "exactMeasuredMaxWU": 0.09406615802430758,
+          "maximumGuaranteedBoundWU": 0.09762741699796952,
+          "witnessXZ": [
+            -1.5535264228571428,
+            2.4767788685714285
+          ],
+          "exactSampleCount": 561
+        }
+      ]
+    },
+    {
+      "lod": 2,
+      "maxBoundWU": 0.11560205649404433,
+      "passedFinitePoseSamples": true,
+      "samples": [
+        {
+          "foldFraction": 0.0,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.0011062500000000198,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.003259259259259259,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.004349999999999987,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.009618749999999964,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.012740740740740742,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.016800000000000013,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.02578125,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.028000000000000004,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.036450000000000045,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.0485925925925926,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.04869375000000002,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.06239999999999992,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.07407407407407407,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.07745624999999993,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.09375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.09999999999999998,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.1,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.10400000000000002,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.11116874999999997,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.121484375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.12960000000000005,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.13792592592592592,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.138671875,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.14893124999999996,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 378
+        },
+        {
+          "foldFraction": 0.16904999999999995,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.17540740740740743,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.178125,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.18984375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.21119999999999997,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.216,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.23300625000000005,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.24062499999999998,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.25514999999999993,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.258203125,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.25925925925925924,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.27751875,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.3,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.3047407407407407,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.32248125,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.34484999999999993,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.35,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.3520000000000001,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.36699375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.384765625,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.3887999999999999,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.4005925925925926,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 389
+        },
+        {
+          "foldFraction": 0.41015625,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 392
+        },
+        {
+          "foldFraction": 0.43095,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 392
+        },
+        {
+          "foldFraction": 0.441796875,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.45007407407407407,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.45106874999999996,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.4704,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.48883124999999994,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.5,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 381
+        },
+        {
+          "foldFraction": 0.50625,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.521875,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.52254375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.5376,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.5499259259259259,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.55,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.55130625,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.56355,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.57421875,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.578515625,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.5831999999999999,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.59038125,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.59565,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.59889375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.5994074074074074,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.6,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.648,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.6952592592592592,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.715234375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 384
+        },
+        {
+          "foldFraction": 0.7407407407407407,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 387
+        },
+        {
+          "foldFraction": 0.7839999999999999,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 426
+        },
+        {
+          "foldFraction": 0.8245925925925925,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 425
+        },
+        {
+          "foldFraction": 0.859375,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 479
+        },
+        {
+          "foldFraction": 0.8620740740740741,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 479
+        },
+        {
+          "foldFraction": 0.8960000000000001,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 499
+        },
+        {
+          "foldFraction": 0.925925925925926,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 554
+        },
+        {
+          "foldFraction": 0.9514074074074075,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 593
+        },
+        {
+          "foldFraction": 0.961328125,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 635
+        },
+        {
+          "foldFraction": 0.972,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 648
+        },
+        {
+          "foldFraction": 0.9872592592592593,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 786
+        },
+        {
+          "foldFraction": 0.9967407407407407,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 826
+        },
+        {
+          "foldFraction": 1.0,
+          "exactMeasuredMaxWU": 0.11310205649404433,
+          "maximumGuaranteedBoundWU": 0.11560205649404433,
+          "witnessXZ": [
+            -0.46131147540983597,
+            1.461466131147541
+          ],
+          "exactSampleCount": 826
+        }
+      ]
+    }
+  ],
+  "poseEnumeration": "Every distinct fixed-tick fold fraction from unchanged 30/48/48 profile, including reduced-motion endpoints",
+  "uniqueFoldFractions": 87,
+  "sourceGlbSha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28"
+}

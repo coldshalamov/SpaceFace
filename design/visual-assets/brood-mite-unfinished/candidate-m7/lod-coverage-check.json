@@ -1,0 +1,2381 @@
+{
+  "kind": "finite cold-GLB projected silhouette check",
+  "stepWU": 0.008,
+  "quantizationAllowanceWU": 0.022627416997969524,
+  "lods": [
+    {
+      "lod": 0,
+      "maxErrorWU": 0.093637599285757,
+      "passesWithRasterAllowance": true,
+      "samples": [
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.0,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.0011062500000000198,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.003259259259259259,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.004349999999999987,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.009618749999999964,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.012740740740740742,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.016800000000000013,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.02578125,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.028000000000000004,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.036450000000000045,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.0485925925925926,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.04869375000000002,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.06239999999999992,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.07407407407407407,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.07745624999999993,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.09375,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.09999999999999998,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.1,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.10400000000000002,
+          "visibleToProxyMaxWU": 0.07200000000000001,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.11116874999999997,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.121484375,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.12960000000000005,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.13792592592592592,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.138671875,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.14893124999999996,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.16904999999999995,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.17540740740740743,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.178125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.18984375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.21119999999999997,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.216,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.23300625000000005,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.24062499999999998,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.25514999999999993,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.258203125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.25925925925925924,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.27751875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.3,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.3047407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.32248125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.34484999999999993,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.35,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.3520000000000001,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.36699375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.384765625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.3887999999999999,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.4005925925925926,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.41015625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.43095,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.441796875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.45007407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.45106874999999996,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.4704,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.48883124999999994,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            2.6639999999999997,
+            -2.0959999999999996
+          ],
+          "foldFraction": 0.5,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.50625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.521875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.52254375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.5376,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.5499259259259259,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.55,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.55130625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.56355,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.57421875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.578515625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.5831999999999999,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.59038125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.59565,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.59889375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.5994074074074074,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.6,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.648,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.6952592592592592,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.715234375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            -2.48
+          ],
+          "foldFraction": 0.7407407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.7839999999999999,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08236504112789601
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.8245925925925925,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08236504112789601
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.859375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08236504112789601
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.8620740740740741,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08236504112789601
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.8960000000000001,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08236504112789601
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.925925925925926,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08236504112789601
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.9514074074074075,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08616263691415206
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5599999999999996,
+            -2.488
+          ],
+          "foldFraction": 0.961328125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.08616263691415206
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -4.672,
+            -4.024
+          ],
+          "foldFraction": 0.972,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.088
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -4.672,
+            -4.024
+          ],
+          "foldFraction": 0.9872592592592593,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.088
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -4.736,
+            4.024
+          ],
+          "foldFraction": 0.9967407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.093637599285757
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -4.736,
+            4.024
+          ],
+          "foldFraction": 1.0,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.093637599285757
+        }
+      ]
+    },
+    {
+      "lod": 1,
+      "maxErrorWU": 0.09666436778875657,
+      "passesWithRasterAllowance": true,
+      "samples": [
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.0,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.0011062500000000198,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.003259259259259259,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.004349999999999987,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.009618749999999964,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.012740740740740742,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.016800000000000013,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.02578125,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.028000000000000004,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.036450000000000045,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.0485925925925926,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.04869375000000002,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.06239999999999992,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.07407407407407407,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.07745624999999993,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.09375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.09999999999999998,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.1,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.10400000000000002,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.11116874999999997,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.121484375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.12960000000000005,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.13792592592592592,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.138671875,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.14893124999999996,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.16904999999999995,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.17540740740740743,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.178125,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.18984375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.21119999999999997,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.216,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.23300625000000005,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.24062499999999998,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.25514999999999993,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.258203125,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.25925925925925924,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.27751875,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.3,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.3047407407407407,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.32248125,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.34484999999999993,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.35,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.3520000000000001,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.36699375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.384765625,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.3887999999999999,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.4005925925925926,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.41015625,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.43095,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.441796875,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.45007407407407407,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.45106874999999996,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.4704,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.48883124999999994,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.5,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.50625,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.521875,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.52254375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.5376,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.5499259259259259,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.55,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.55130625,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.56355,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.57421875,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.578515625,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.5831999999999999,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.59038125,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.59565,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.59889375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.5994074074074074,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.6,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.648,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.6952592592592592,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5439999999999996,
+            2.4640000000000004
+          ],
+          "foldFraction": 0.715234375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09329523031752482
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.7407407407407407,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.7839999999999999,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.8245925925925925,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.859375,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.8620740740740741,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.8960000000000001,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.925925925925926,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.9514074074074075,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.961328125,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.972,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -1.5519999999999996,
+            2.4720000000000004
+          ],
+          "foldFraction": 0.9872592592592593,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -3.056,
+            -3.752
+          ],
+          "foldFraction": 0.9967407407407407,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -3.056,
+            -3.752
+          ],
+          "foldFraction": 1.0,
+          "visibleToProxyMaxWU": 0.0737563556583431,
+          "proxyToVisibleMaxWU": 0.09666436778875657
+        }
+      ]
+    },
+    {
+      "lod": 2,
+      "maxErrorWU": 0.11113955191559843,
+      "passesWithRasterAllowance": false,
+      "samples": [
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.0,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.0011062500000000198,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.003259259259259259,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.004349999999999987,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.009618749999999964,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.012740740740740742,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.016800000000000013,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.02578125,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.028000000000000004,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.036450000000000045,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.0485925925925926,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.04869375000000002,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.06239999999999992,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.07407407407407407,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.07745624999999993,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.09375,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.09999999999999998,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.1,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.10400000000000002,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.11116874999999997,
+          "visibleToProxyMaxWU": 0.093637599285757,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.121484375,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.12960000000000005,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.13792592592592592,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.138671875,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.14893124999999996,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.16904999999999995,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.17540740740740743,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.178125,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.18984375,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.21119999999999997,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.216,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.23300625000000005,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.24062499999999998,
+          "visibleToProxyMaxWU": 0.08616263691415206,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.25514999999999993,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.258203125,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.25925925925925924,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.27751875,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.3,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.3047407407407407,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.32248125,
+          "visibleToProxyMaxWU": 0.07879086241436883,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.34484999999999993,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.35,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.3520000000000001,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.36699375,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.384765625,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.3887999999999999,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.4005925925925926,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.41015625,
+          "visibleToProxyMaxWU": 0.07155417527999328,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.43095,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.441796875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.45007407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.45106874999999996,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.4704,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.48883124999999994,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.5,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.50625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.521875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.52254375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.5376,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.5499259259259259,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.55,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.55130625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.56355,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.57421875,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.578515625,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.5831999999999999,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.59038125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.59565,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.59889375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.5994074074074074,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.6,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.648,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.6952592592592592,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.715234375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.7407407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.7839999999999999,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.8245925925925925,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.859375,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.8620740740740741,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.8960000000000001,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.925925925925926,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.9514074074074075,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.961328125,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.972,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.9872592592592593,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 0.9967407407407407,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        },
+        {
+          "proxyToVisibleWitnessXZ": [
+            -0.4639999999999995,
+            1.4560000000000004
+          ],
+          "foldFraction": 1.0,
+          "visibleToProxyMaxWU": 0.06788225099390856,
+          "proxyToVisibleMaxWU": 0.11113955191559843
+        }
+      ]
+    }
+  ],
+  "noRuntimeClaim": true,
+  "uniqueFoldFractions": 87,
+  "poseEnumeration": "All distinct fixed-tick fractions of original action profile and reduced-motion endpoints",
+  "sourceGlbSha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28"
+}
