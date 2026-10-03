@@ -361,6 +361,8 @@ export function formatCombatActionRejectLine(reason) {
   if (raw.startsWith('cooldown:')) return 'Not ready yet';
   if (raw.startsWith('busy:')) return 'Still busy';
   if (raw.startsWith('disabled:')) {
+    const named = disabledActionLine(raw.slice('disabled:'.length));
+    if (named) return named;
     const part = raw.slice('disabled:'.length).replace(/_/g, ' ');
     return part ? `${part} disabled` : 'System disabled';
   }
@@ -393,8 +395,31 @@ export function combatDenialToastSpec(payload) {
     && !reason.startsWith('busy:') && !reason.startsWith('disabled:') && !reason.startsWith('physics_')) {
     return null;
   }
-  const hint = REJECT_HINT[reason] || '';
+  const hint = REJECT_HINT[reason] || disabledActionHint(reason) || '';
   return { text, kind: 'error', ttl: 3.5, hint };
+}
+
+/** A dead part refuses the verb in words, not as `capability:tether disabled`. */
+function disabledActionLine(rest) {
+  const split = String(rest || '').split(':');
+  const kind = split[0];
+  const name = String(split[1] || '').toLowerCase();
+  if (kind !== 'capability' && kind !== 'tag') return '';
+  if (name === 'tether' || name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+  if (name === 'transport_clamp' || name === 'clamp') return 'Clamp out — the load is no longer held';
+  if (name === 'drive' || name === 'dash') return 'Drive out — the ship is not pushing';
+  if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+  if (name === 'weapon' || name === 'burst') return 'Guns out — the battery is dark';
+  if (name === 'sensor' || name === 'lock') return 'Sensors out — the board is blind';
+  if (name === 'power') return 'Reactor out — the ship is starving';
+  return '';
+}
+
+function disabledActionHint(reason) {
+  if (!String(reason || '').startsWith('disabled:')) return '';
+  return disabledActionLine(String(reason).slice('disabled:'.length))
+    ? 'Repair it, or wait for the part to come back'
+    : '';
 }
 
 /**

@@ -391,31 +391,31 @@ Ship them or mark them already true inside that row. They are not an alternate q
 
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
-| picture | devin-oct3-40 | renderer, admission, residency | 140, 141, 259 |
+| picture | done (devin-oct3-40) | renderer, admission, residency | 140, 141, 259 |
 | camera | done | camera, tabletop, hull readability | 218 |
-| boot | devin-oct3-40 | boot time, hitch leaves, not the renderer seam | 57 |
+| boot | done (devin-oct3-40) | boot time, hitch leaves, not the renderer seam | 57 |
 | audio | done | audio system, combat verb cues | 143, 194, 228 |
-| save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
-| economy | devin-sweep-oct2 | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250, 274 |
+| save | done (devin-oct2-batch) | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
+| economy | done (devin-sweep-oct2) | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250, 274 |
 | effects | done | vfx, profiles, cues | 230, 255 |
-| swarm | devin-sweep-oct2 | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
+| swarm | done (devin-sweep-oct2) | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | done | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | done | fields | 162 |
-| law | devin-oct2-batch | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
+| law | done (devin-oct2-batch) | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | done | scanner, scan reveal | 214 |
 | industry | done | world sites, machinery, mining commitment | 206 |
-| people | devin-sweep-oct2 | jobs, aftermath, convoys | 201, 209, 212, 213 |
-| ship | devin-oct2-batch | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
+| people | done (devin-sweep-oct2) | jobs, aftermath, convoys | 201, 209, 212, 213 |
+| ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
 | hand | done | flight, tether, massline, onboarding | 106, 220, 238, 275 |
-| missions | devin-sweep-oct2 | missions | 83, 84, 85, 86, 188, 189, 211, 222, 254 |
+| missions | done (devin-sweep-oct2) | missions | 83, 84, 85, 86, 188, 189, 211, 222, 254 |
 | world | done | sectors, traffic, factions, news | 243, 244, 245, 248 |
-| story | devin-oct2-batch | story | 192, 215, 216, 253 |
-| input | devin-oct2-batch | gamepad, input, settings behavior | 196, 237, 260, 262 |
-| ui-sim | devin-sweep-oct2 | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
-| physics | devin-oct2-batch | physics clocks, manifest | 258 |
-| accept | devin-sweep-oct2 | judge work that is already built | 60, 63, 64 |
-| imports | devin-sweep-oct2 | doc imports only, after code seams | 30 |
-| art | devin-oct3-40 | one visible asset defect; skip if the graphics lane is live | 223 |
+| story | done (devin-oct2-batch) | story | 192, 215, 216, 253 |
+| input | done (devin-oct2-batch) | gamepad, input, settings behavior | 196, 237, 260, 262 |
+| ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
+| physics | done (devin-oct2-batch) | physics clocks, manifest | 258 |
+| accept | done (devin-sweep-oct2) | judge work that is already built | 60, 63, 64 |
+| imports | done (devin-sweep-oct2) | doc imports only, after code seams | 30 |
+| art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | 223 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)

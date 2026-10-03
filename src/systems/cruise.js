@@ -191,6 +191,11 @@ export const cruise = {
     }
     if (reason === DROP_REASONS.SNARED) this.bus.emit('cruise:snared', { sourceId, playerId: this.state.playerId });
     this.bus.emit('cruise:dropped', { reason, was, playerId: this.state.playerId, snare: reason === DROP_REASONS.SNARED });
+    // A manual cut is the pilot's own verb. Mass lock is the one that kills cruise
+    // with no shot and no button, so it has to say why.
+    if (reason === DROP_REASONS.MASSLOCK && this.bus) {
+      this.bus.emit('toast', { text: 'Cruise dropped — mass lock', kind: 'warn', ttl: 1.6 });
+    }
   },
 
   _cancelIfCharging(reason) {

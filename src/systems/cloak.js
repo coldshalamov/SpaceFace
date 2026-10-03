@@ -206,6 +206,11 @@ export const cloak = {
     if (this.bus && reason) {
       this.bus.emit('cloak:dropped', { reason, energy: runtime.energy });
       this.bus.emit('audio:cue', { id: 'massline.cloakOff' });
+      // A toggle is the pilot's own verb. Running the charge out is the drop
+      // that happens with no button.
+      if (reason === 'depleted') {
+        this.bus.emit('toast', { text: 'Cloak depleted', kind: 'warn', ttl: 1.6 });
+      }
     }
   },
 

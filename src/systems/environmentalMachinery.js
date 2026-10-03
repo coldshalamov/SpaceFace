@@ -132,6 +132,25 @@ function simTimeOf(state) {
     : Math.max(0, Number(state && state.tick) || 0) / 60;
 }
 
+function acknowledgeRedirectWorker(ledger) {
+  const worker = ledger && ledger.worker;
+  if (!worker || worker.stage !== 'redirect' || !worker.ownerNotCalled) return ledger;
+  const next = { ...worker };
+  delete next.ownerNotCalled;
+  return { ...ledger, worker: next };
+}
+
+function acknowledgeRepairOrder(ledger) {
+  const repair = ledger && ledger.repair;
+  if (!repair || repair.spawned === true) return ledger;
+  const trafficIntent = { ...(repair.trafficIntent || {}) };
+  delete trafficIntent.ownerNotCalled;
+  return {
+    ...ledger,
+    repair: { ...repair, spawned: true, trafficIntent },
+  };
+}
+
 export const environmentalMachinery = {
   name: 'environmentalMachinery',
 
@@ -735,6 +754,30 @@ export const environmentalMachinery = {
     });
   },
 
+  // One haul request for a new redirect or a new unspawned repair. Traffic fills `receipt`
+  // only after a hauler job and its actor exist; a missed dispatch leaves the ledger marker.
+  _emitIndustryHaul(spec) {
+    if (!this.bus || typeof this.bus.emit !== 'function' || !spec) return null;
+    const sourceId = typeof spec.sourceId === 'string' ? spec.sourceId : '';
+    const destinationId = typeof spec.destinationId === 'string' ? spec.destinationId : '';
+    const commodityId = typeof spec.commodityId === 'string' ? spec.commodityId : '';
+    const qty = Math.floor(Number(spec.qty));
+    if (!sourceId || !destinationId || !commodityId || !Number.isSafeInteger(qty) || qty <= 0) return null;
+    const receipt = { jobId: null, entityId: null };
+    this.bus.emit('industry:haulRequested', {
+      kind: spec.kind,
+      sourceId,
+      destinationId,
+      commodityId,
+      qty,
+      orderId: typeof spec.orderId === 'string' ? spec.orderId : null,
+      workerId: typeof spec.workerId === 'string' ? spec.workerId : null,
+      receipt,
+    });
+    if (typeof receipt.jobId !== 'string' || !receipt.jobId || receipt.entityId == null) return null;
+    return receipt;
+  },
+
   // Site-side receiver result for the hangar mouth. A jam records a repair-parts offer and a
   // sorting job; it does not spawn a hull. traffic.js remains the only convoy writer.
   _publishApertureIndustry(state, phase) {
@@ -800,7 +843,19 @@ export const environmentalMachinery = {
       }
     }
     if (contact.redirect && (!ledger.worker || ledger.worker.stage !== 'redirect')) {
-      ledger = redirectFullDepot(ledger, contact).ledger;
+      const redirected = redirectFullDepot(ledger, contact);
+      ledger = redirected.ledger;
+      if (redirected.redirected && redirected.worker) {
+        const assigned = this._emitIndustryHaul({
+          kind: 'redirect',
+          sourceId: APERTURE_ID,
+          destinationId: redirected.worker.destinationId,
+          commodityId: redirected.worker.commodityId,
+          qty: redirected.worker.qty,
+          workerId: redirected.worker.id,
+        });
+        if (assigned) ledger = acknowledgeRedirectWorker(ledger);
+      }
     }
     if (!jammed && ledger.sorting && ledger.sorting.status === 'open' && !this._apertureLastOccupant) {
       const resolved = resolveSortingJob(ledger, {
@@ -812,14 +867,26 @@ export const environmentalMachinery = {
     }
     if (jammed) {
       if (!ledger.repair) {
-        ledger = reserveRepairOrder(ledger, {
+        const reserved = reserveRepairOrder(ledger, {
           orderId: 'aperture-repair',
           commodityId: APERTURE_RECEIVER.repairCommodityId,
           qty: APERTURE_RECEIVER.repairQty,
           sourceId: APERTURE_RECEIVER.repairSourceId,
           destId: APERTURE_ID,
           simTime: simTimeOf(state),
-        }).ledger;
+        });
+        ledger = reserved.ledger;
+        if (!reserved.duplicate && reserved.order && reserved.order.spawned !== true) {
+          const assigned = this._emitIndustryHaul({
+            kind: 'repair-parts',
+            sourceId: reserved.order.sourceId,
+            destinationId: reserved.order.destId,
+            commodityId: reserved.order.commodityId,
+            qty: reserved.order.qty,
+            orderId: reserved.order.orderId,
+          });
+          if (assigned) ledger = acknowledgeRepairOrder(ledger);
+        }
       }
       if (!ledger.sorting) {
         ledger = offerSortingJob(ledger, {

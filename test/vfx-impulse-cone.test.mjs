@@ -320,8 +320,10 @@ test('reduced-motion keeps causal axes for concussion, rail, and impulse charge'
 });
 
 test('ordinary collision consequences stay bilateral with no invented signed departure', () => {
+  // The shipped presentation is the CombatContactVfx seat family: opposed shoulder pieces at
+  // the contact angle and angle+PI. Capture the composer calls the seat's draw emits.
   const run = (normalX) => {
-    const { system } = makeVfxHarness();
+    const { system, state } = makeVfxHarness();
     const admitted = system._onCollisionConsequence({
       tick: 40,
       targetId: PLAYER_ID,
@@ -334,13 +336,24 @@ test('ordinary collision consequences stay bilateral with no invented signed dep
       surface: 'terrain',
     });
     assert.equal(admitted, true);
-    const streaks = liveStreaks(system).map((streak) => [streak.ax, streak.az]);
+    const seat = system._combatContactVfx;
+    assert.ok(seat, 'a real scene seats the consequence on the contact family');
+    const headings = [];
+    const composer = seat.composer;
+    const original = composer._piece;
+    composer._piece = function (kind, x, z, angle, ...rest) {
+      headings.push({ kind, angle });
+      return original.call(this, kind, x, z, angle, ...rest);
+    };
+    seat.update(state);
+    composer._piece = original;
     system.destroy();
-    return streaks;
+    return headings;
   };
   const positive = run(1);
   const negative = run(-1);
   assert.deepEqual(negative, positive, 'unoriented contact cannot pick a signed departure');
-  assert.ok(positive.some(([x]) => x > 0.9) && positive.some(([x]) => x < -0.9),
+  const cosines = positive.map((piece) => Math.cos(piece.angle));
+  assert.ok(cosines.some((c) => c > 0.9) && cosines.some((c) => c < -0.9),
     'medium collision retains both contact-axis halves');
 });

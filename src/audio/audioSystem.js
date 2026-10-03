@@ -248,6 +248,11 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.RANGED_DISENGAGER]: Object.freeze({
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.94, fireGain: 0.84, fireDetune: -2,
   }),
+  [CombatDoctrineId.RANGED_STALKER]: Object.freeze({
+    // The stalker's charge reads patient: slower and lower than the disengager's kiter voice,
+    // a watcher settling onto a new bearing rather than a kite backing off.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.82, fireGain: 0.8, fireDetune: -14,
+  }),
   [CombatDoctrineId.SHIELD_BREAKER]: Object.freeze({
     // The lance telegraph is a charge-up into an ion burst: brighter and faster than the
     // kiter's standoff charge, so the peel window is heard.

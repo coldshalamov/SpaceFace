@@ -205,10 +205,13 @@ function installMiniDom() {
   globalThis.document = { body, documentElement: body, head: new Mini('head'), activeElement: body, createElement: (tag) => new Mini(tag), getElementById: () => null };
   globalThis.window = { addEventListener() {}, removeEventListener() {}, innerWidth: 1280, innerHeight: 720 };
   globalThis.requestAnimationFrame = (fn) => { fn(0); return 1; };
+  globalThis.cancelAnimationFrame = () => {};
   globalThis.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   return { restore() {
     globalThis.document = previous.document; globalThis.window = previous.window;
     globalThis.requestAnimationFrame = previous.requestAnimationFrame; globalThis.matchMedia = previous.matchMedia;
+    if ('cancelAnimationFrame' in previous) globalThis.cancelAnimationFrame = previous.cancelAnimationFrame;
+    else delete globalThis.cancelAnimationFrame;
   } };
 }
 
@@ -262,6 +265,39 @@ test('pause hides Ending Archive until an ending exists', () => {
   assert.equal(byLabel(withoutEnding, ENDING_ARCHIVE_LABEL), undefined,
     'no Ending Archive entry before the story files an ending');
   assert.ok(byLabel(withoutEnding, 'Photo'), 'the rest of the menu is untouched');
+});
+
+test('a finale filed after mount opens the row on the next pause show (the mounted sheet re-gates)', () => {
+  const dom = installMiniDom();
+  try {
+    const emitted = [];
+    const root = globalThis.document.createElement('div');
+    const state = {
+      mode: 'paused',
+      story: { writtenFinale: null },
+      missions: { active: [] }, nav: {}, save: {}, meta: {}, ui: {}, run: { phase: 'inactive' },
+    };
+    const ctx = {
+      state,
+      bus: { emit(event, payload) { emitted.push({ event, payload }); }, on() { return () => {}; } },
+      screenManager: { pushScreen() {}, popScreen() {}, hasScreen() { return true; } },
+    };
+    pauseScreen.mount(root, ctx);
+    assert.equal(byLabel({ buttons: root.querySelectorAll('button') }, ENDING_ARCHIVE_LABEL), undefined,
+      'mounted without a finale, the row is absent');
+
+    state.story.writtenFinale = filedEndingRecord();
+    pauseScreen.onShow(ctx);
+    const entry = byLabel({ buttons: root.querySelectorAll('button') }, ENDING_ARCHIVE_LABEL);
+    assert.ok(entry, 'the next show re-gates the mounted sheet and the row appears');
+    entry.dispatch('click');
+    assert.equal(emitted.filter((e) => e.event === 'ui:endingArchiveOpen').length, 1,
+      'the late row works like a mounted one');
+
+    pauseScreen.onHide(ctx);
+  } finally {
+    dom.restore();
+  }
 });
 
 test('the entry deep-links the codex onto its Archive tab (source anchor: requestCodexTab has no exported reader)', () => {

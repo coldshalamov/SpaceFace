@@ -165,7 +165,12 @@ export const massSeed = {
     // Deterministic replacement: deploying while a seed is live retires it into a bounded
     // collapse beat (the mirror is about to be handed to the new seed, so the old one's beat
     // is tracked in ms.dying — never orphaned).
-    if (ms.phase !== 'idle') this._retireLiveSeed(state, ms, MASS_SEED_CUT_REASONS.replaced);
+    if (ms.phase !== 'idle') {
+      this._retireLiveSeed(state, ms, MASS_SEED_CUT_REASONS.replaced);
+      if (this.bus) {
+        this.bus.emit('toast', { text: 'Previous mass seed replaced', kind: 'warn', ttl: 1.6 });
+      }
+    }
 
     const dir = deployDirection(player, state);
     const spawnDistance = finite(player.radius, 6) + MASS_SEED_DEF.radius + MASS_SEED_DEF.spawnGap;
