@@ -13383,7 +13383,16 @@ export const render = {
       // the first collection minted too early (attach jobs, decoded exemplar subtrees,
       // pool chunks landing mid-pass). Re-collect the delta, compile + depth it once,
       // then stamp — looping because a join can land during the rescan's own awaits.
-      while (this._postOpeningRescanRequested === true) {
+      // Bounded: each re-arm is a caller join, so the loop needs a cap (a trickling
+      // caller must not starve the released stamp behind the loading shell), and a
+      // join landing on a superseded epoch must not burn a full rescan on the dead
+      // scene — the next epoch's pass re-collects everything anyway.
+      let rescanPasses = 0;
+      while (this._postOpeningRescanRequested === true
+          && rescanPasses < 3
+          && passEpoch === (state.world && state.world.enterSerial != null
+            ? state.world.enterSerial : null)) {
+        rescanPasses += 1;
         this._postOpeningRescanRequested = false;
         const rescanRoots = [
           ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
