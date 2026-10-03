@@ -1448,7 +1448,13 @@ export const presentationOrchestrator = {
 
   _onMasslineReleaseValidated(payload) {
     if (payload && payload.schema !== 'spaceface.masslineReleaseValidation.v1') return false;
-    if (!payload || !payload.prediction || payload.prediction.onSolution !== false) return false;
+    // RELEASE-TRUTH C1: Missed names a missed WINDOW, so a valid attempted solution must have
+    // existed. An untargeted throw or cut is a lawful neutral release — the producer already
+    // reports it as prediction.valid=false — not a failed aim, and it must not wear the
+    // missed-window mark. A deliberately aimed release whose valid solution was off-window
+    // still speaks; an on-solution release obviously stays silent too.
+    const prediction = payload && payload.prediction;
+    if (!prediction || prediction.valid !== true || prediction.onSolution !== false) return false;
     if (typeof payload.releaseId !== 'string' || !payload.releaseId.trim()) return false;
     if (payload.kind !== 'throw' && payload.kind !== 'self-sling') return false;
 

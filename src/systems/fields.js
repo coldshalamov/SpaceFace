@@ -379,6 +379,45 @@ export function fieldBodyProfile(entity, state, out = null) {
   return profile;
 }
 
+/**
+ * RELEASE-TRUTH C2 — the velocity-sampling gate production applies before
+ * sampleFieldAcceleration. The well's damping/velocity term only reads ship+drone bodies,
+ * and a primed light gets no convergence term at all (the inbound fall is the slam). Any
+ * predictor that samples field acceleration must hand the kernel velocity through this same
+ * gate or the preview damps bodies production never damps.
+ */
+export function fieldVelocityTermApplies(entity, profile) {
+  return !!(entity && FIELD_VELOCITY_TERM_TYPES.has(entity.type) && wellUsesVelocityTerm(profile));
+}
+
+/**
+ * RELEASE-TRUTH C2 — the shared "primed light" observation. Extracted from
+ * fields._isPrimedLight so a preview can ask the same question the force loop asks without
+ * owning the answer. Read-only: it observes impulseCharges (the single primed writer) plus
+ * the armed-charge scan; it never writes primed state.
+ */
+export function fieldEntityIsPrimed(registry, state, entity) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (state && entity.id === state.playerId) return false;
+  const charges = registry && registry.get && registry.get('impulseCharges');
+  if (charges && typeof charges.isPrimed === 'function' && charges.isPrimed(entity, state)) {
+    return true;
+  }
+  if (charges && typeof charges._armedChargeOn === 'function') {
+    if (charges._armedChargeOn(state, entity.id)) return true;
+  }
+  const list = indexedTypeScan(state, 'charges');
+  if (!list.length) return false;
+  for (let i = 0; i < list.length; i++) {
+    const charge = list[i];
+    if (!charge || charge.alive === false || charge.type !== 'charge') continue;
+    const data = charge.data;
+    if (data && data.armed && data.hostId === entity.id) return true;
+  }
+  return false;
+}
+
 export const fields = {
   name: 'fields',
 
@@ -1758,9 +1797,7 @@ export const fields = {
       const massStateField = this._massStateFields.get(e);
       if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
-      const velSample = (FIELD_VELOCITY_TERM_TYPES.has(e.type) && wellUsesVelocityTerm(profile))
-        ? e.vel
-        : null;
+      const velSample = fieldVelocityTermApplies(e, profile) ? e.vel : null;
       sampleFieldAcceleration(e.pos, velSample, fieldsList, now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
@@ -1984,25 +2021,9 @@ export const fields = {
   // ── PQ-147.03 cluster and detonate (observe the 137.09 primed-light seam) ────────────────────
 
   _isPrimedLight(entity, state) {
-    if (!entity || entity.alive === false) return false;
-    if (entity.type !== 'ship' && entity.type !== 'drone') return false;
-    if (state && entity.id === state.playerId) return false;
-    const charges = this.registry && this.registry.get && this.registry.get('impulseCharges');
-    if (charges && typeof charges.isPrimed === 'function' && charges.isPrimed(entity, state || this.state)) {
-      return true;
-    }
-    if (charges && typeof charges._armedChargeOn === 'function') {
-      if (charges._armedChargeOn(state || this.state, entity.id)) return true;
-    }
-    const list = indexedTypeScan(state, 'charges');
-    if (!list.length) return false;
-    for (let i = 0; i < list.length; i++) {
-      const charge = list[i];
-      if (!charge || charge.alive === false || charge.type !== 'charge') continue;
-      const data = charge.data;
-      if (data && data.armed && data.hostId === entity.id) return true;
-    }
-    return false;
+    // One implementation: the exported helper IS the observation; this method only supplies
+    // the system's own registry/state defaults.
+    return fieldEntityIsPrimed(this.registry, state || this.state, entity);
   },
 
   _onWellDeployed(payload) {
