@@ -277,7 +277,8 @@ const saveAst = parse(saveSource, { sourceType: 'module' });
 const saveMethods = {};
 function findSaveMethods(node) {
   if (!node || typeof node !== 'object') return;
-  if (node.type === 'ObjectMethod' && ['_openRestoreSession', '_restoreAsync', '_beginRestoreSequence'].includes(node.key?.name)) {
+  if (node.type === 'ObjectMethod' && ['_openRestoreSession', '_restoreAsync', '_beginRestoreSequence',
+    '_cancelCeresEntityReferenceRestore', '_cancelCeresAttachmentRestore'].includes(node.key?.name)) {
     saveMethods[node.key.name] = (node.async ? 'async function ' : 'function ') + saveSource.slice(node.start, node.end).replace(/^async /, '');
   }
   for (const value of Object.values(node)) {
