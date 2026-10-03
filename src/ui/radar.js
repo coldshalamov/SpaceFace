@@ -1134,8 +1134,13 @@ function drawRadarSweep(g, center, radius, angle) {
   g.moveTo(center, center);
   g.arc(center, center, radius, angle - SWEEP_TRAIL_ANGLE, angle);
   g.closePath();
+  // Guard on the RETURNED gradient, not just the API: headless canvas stubs answer every
+  // property with a no-op function, so an existence check alone still yields undefined here.
+  let gradient = null;
   if (typeof g.createConicGradient === 'function') {
-    const gradient = g.createConicGradient(angle - SWEEP_TRAIL_ANGLE, center, center);
+    gradient = g.createConicGradient(angle - SWEEP_TRAIL_ANGLE, center, center);
+  }
+  if (gradient) {
     gradient.addColorStop(0, 'rgba(232,226,212,0)');
     gradient.addColorStop(SWEEP_TRAIL_ANGLE / (Math.PI * 2), 'rgba(232,226,212,0.09)');
     gradient.addColorStop(1, 'rgba(232,226,212,0)');
