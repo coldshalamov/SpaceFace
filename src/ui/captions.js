@@ -115,6 +115,65 @@ export function captionMasslineEvent(eventName, payload, captionsOn) {
   return { text, hidden: false, channel: 'massline' };
 }
 
+const UI_BLIP_IDS = new Set([
+  'sfx_ui_open', 'sfx_ui_back', 'sfx_ui_tab', 'sfx_ui_confirm', 'sfx_ui_error', 'sfx_ui_hover',
+]);
+
+const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
+  sfx_refusal_empty: Object.freeze({ text: 'No ammunition.', urgency: 'high', event: 'refusal.ammo' }),
+  sfx_refusal_target: Object.freeze({ text: 'No valid target.', urgency: 'high', event: 'refusal.target' }),
+  sfx_massline_deny: Object.freeze({ text: 'Action refused.', urgency: 'high', event: 'refusal' }),
+  sfx_fuel_reserve: Object.freeze({ text: 'Fuel reserve.', urgency: 'warn', event: 'fuel.reserve' }),
+  sfx_fuel_empty: Object.freeze({ text: 'Fuel empty.', urgency: 'high', event: 'fuel.empty' }),
+  sfx_work_motor: Object.freeze({ text: 'Machine working.', urgency: 'normal', event: 'work.running' }),
+  sfx_work_jam: Object.freeze({ text: 'Machine jammed.', urgency: 'warn', event: 'work.jam' }),
+  sfx_anomaly_swell: Object.freeze({ text: 'Anomaly evidence.', urgency: 'normal', event: 'anomaly.evidence' }),
+  sfx_kill_sine: Object.freeze({ text: 'Light kill.', urgency: 'high', event: 'kill.light' }),
+  sfx_kill_noise: Object.freeze({ text: 'Heavy kill.', urgency: 'high', event: 'kill.heavy' }),
+  'sfx.killSmall': Object.freeze({ text: 'Kill.', urgency: 'high', event: 'kill' }),
+  sfx_kill_confirm: Object.freeze({ text: 'Kill confirmed.', urgency: 'high', event: 'kill.confirm' }),
+  'sfx.killConfirmed': Object.freeze({ text: 'Kill confirmed.', urgency: 'high', event: 'kill.confirm' }),
+  'sfx.killCapital': Object.freeze({ text: 'Capital destroyed.', urgency: 'high', event: 'kill.capital' }),
+  sfx_massline_release: Object.freeze({ text: 'Massline release.', urgency: 'normal', event: 'massline.release' }),
+  'sfx.tetherSnap': Object.freeze({ text: 'Massline break.', urgency: 'high', event: 'massline.break' }),
+  sfx_cash_register: Object.freeze({ text: 'Credits received.', urgency: 'normal', event: 'money.register' }),
+  sfx_mission_accept: Object.freeze({ text: 'Mission accepted.', urgency: 'normal', event: 'mission.accept' }),
+  sfx_mission_complete: Object.freeze({ text: 'Mission complete.', urgency: 'normal', event: 'mission.complete' }),
+  'sfx.cruiseEngaged': Object.freeze({ text: 'Cruise engaged.', urgency: 'normal', event: 'cruise' }),
+  sfx_field_loop_well: Object.freeze({ text: 'Gravity well holding.', urgency: 'normal', event: 'field.well' }),
+  sfx_field_loop_repulsor: Object.freeze({ text: 'Repulsor holding.', urgency: 'normal', event: 'field.repulsor' }),
+  sfx_field_loop_cone: Object.freeze({ text: 'Cone holding.', urgency: 'normal', event: 'field.cone' }),
+});
+
+export function isUiBlipRecipe(recipeId) {
+  return UI_BLIP_IDS.has(String(recipeId || ''));
+}
+
+function familyCaption(recipeId, recipe) {
+  const family = (recipe && recipe.category) || 'cue';
+  const words = String(recipeId || '')
+    .replace(/^sfx[._]/, '')
+    .replace(/[._]/g, ' ')
+    .trim();
+  const text = words ? `${words.charAt(0).toUpperCase()}${words.slice(1)}.` : 'Cue.';
+  const urgency = family === 'explosion' || family === 'weapon' ? 'high'
+    : family === 'comms' ? 'speech' : 'normal';
+  return { text, urgency, event: family };
+}
+
+/** FB-123 — every non-blip recipe resolves to a caption. Missing rows fall back to the family. */
+export function captionForGameplayRecipe(recipeId, recipe) {
+  if (!recipeId || isUiBlipRecipe(recipeId)) return null;
+  const explicit = EXPLICIT_RECIPE_CAPTIONS[recipeId];
+  const family = explicit || familyCaption(recipeId, recipe);
+  return Object.freeze({
+    recipeId,
+    text: family.text,
+    urgency: family.urgency,
+    event: family.event,
+  });
+}
+
 export function fieldDeployCaption(kind, flagOrSettings) {
   if (flagOrSettings) {
     const ac = flagOrSettings.accessibility || flagOrSettings;

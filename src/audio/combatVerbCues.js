@@ -6,8 +6,41 @@ const SILENT = (reason) => Object.freeze({ recipe: 'SILENT', reason });
 // One refusal voice and one withdrawal shape. The deny recipe is already a short
 // falling tick (186 → 124 Hz); every refusal row points at that same voice.
 export const REFUSAL_VOICE = 'sfx_massline_deny';
+export const REFUSAL_AMMO_VOICE = 'sfx_refusal_empty';
+export const REFUSAL_TARGET_VOICE = 'sfx_refusal_target';
 export const REFUSAL_SHAPE = 'withdrawal';
 export const REFUSAL_ADMIT_MS = 40;
+
+const AMMO_REASONS = new Set([
+  'ammo', 'no_ammo', 'no_stock', 'nostock', 'not_loaded', 'empty_rack', 'empty',
+  'spent', 'dry', 'out_of_ammo', 'outofammo',
+]);
+const TARGET_REASONS = new Set([
+  'target', 'no_target', 'invalid_target', 'bad_target', 'bad_lock', 'not_a_target',
+]);
+
+/** SF-235 — ammo and invalid-target refusals do not share the generic deny tick. */
+export function refusalReasonClass(reason) {
+  const text = String(reason || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (!text) return 'generic';
+  if (AMMO_REASONS.has(text)) return 'ammo';
+  if (TARGET_REASONS.has(text)) return 'target';
+  return 'generic';
+}
+
+export function resolveRefusalRecipe(reason) {
+  const klass = refusalReasonClass(reason);
+  if (klass === 'ammo') return REFUSAL_AMMO_VOICE;
+  if (klass === 'target') return REFUSAL_TARGET_VOICE;
+  return REFUSAL_VOICE;
+}
+
+export function refusalCaption(reason) {
+  const klass = refusalReasonClass(reason);
+  if (klass === 'ammo') return 'No ammunition.';
+  if (klass === 'target') return 'No valid target.';
+  return 'Action refused.';
+}
 const REFUSAL_ROW = Object.freeze({
   recipe: REFUSAL_VOICE,
   shape: REFUSAL_SHAPE,
@@ -51,7 +84,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'mining:richCoreExposed': 'sfx_mining_impact',
   'mining:richCoreFizzle': 'sfx_hull_scrape',
   'mining:podSplit': SILENT('Pod split is a cargo bookkeeping split.'),
-  'mining:bulkHaulDelivered': 'sfx_ui_confirm',
+  'mining:bulkHaulDelivered': 'sfx_cash_register',
   'mining:bulkRequiresTether': SILENT('The refusal is the missing line, already shown.'),
   'mining:npcExtraction': SILENT('NPC extraction is bookkeeping, not the player\'s tool.'),
 
@@ -74,8 +107,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'world:requestUnfiledJump': SILENT('The request is UI copy, not a world sting.'),
 
   alarm: SILENT('The wanted alarm is the existing heat voice, not a new siren.'),
-  'credits:changed': 'sfx_ui_confirm',
-  payout: 'sfx_ui_confirm',
+  'credits:changed': 'sfx_cash_register',
+  payout: 'sfx_cash_register',
 
   'contactHail:offer': SILENT('The hail is the comms voice line, not a second sting.'),
   'contactHail:response': SILENT('The reply is the comms voice line.'),
@@ -142,7 +175,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'salvage:cutComplete': 'sfx_mining_impact',
   'salvage:actionRead': SILENT('Reading a salvage action is UI.'),
   'salvage:communicatorFound': SILENT('The find is the comms voice.'),
-  'salvage:completed': 'sfx_ui_confirm',
+  'salvage:completed': 'sfx_cash_register',
   'salvage:fieldVulture': SILENT('An NPC vulture is not the player\'s tool.'),
   'salvage:npcExtraction': SILENT('NPC extraction is bookkeeping.'),
   'salvage:npcUnload': SILENT('NPC unload is bookkeeping.'),
@@ -327,13 +360,23 @@ export function playAuthoredVerbCue(host, id, payload) {
   }
   if (typeof host.play !== 'function') return null;
   const pos = payload && payload.pos;
-  return host.play(row.recipe, {
+  const recipe = row.shape === REFUSAL_SHAPE
+    ? resolveRefusalRecipe(payload && payload.reason)
+    : row.recipe;
+  const played = host.play(recipe, {
     gain: row.shape === REFUSAL_SHAPE ? 0.62 : 0.55,
     refusalSource: row.shape === REFUSAL_SHAPE ? id : undefined,
     reason: payload && payload.reason,
     shape: row.shape || '',
     position: pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null,
   });
+  if (played && row.shape === REFUSAL_SHAPE && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(refusalCaption(payload && payload.reason), {
+      assertive: true,
+      channel: 'refusal',
+    });
+  }
+  return played;
 }
 
 /** Subscribe every row the table itself authors. Owned rows keep their one existing writer. */

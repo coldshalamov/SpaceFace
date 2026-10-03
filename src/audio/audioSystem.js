@@ -18,7 +18,7 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { WEAPONS } from '../data/weapons.js';
-import { CUE_GAIN, engineIdleCue } from '../presentation/throttleAnswer.js';
+import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
@@ -41,6 +41,7 @@ import {
 } from './elementaryVoices.js';
 import {
   resolveThemeMatrix,
+  wantedMotifRate,
   TRAVEL_MOTIF,
   COMBAT_MOTIF,
   STATION_MOTIF,
@@ -52,6 +53,7 @@ import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue, fieldDeployCaption } from '../ui/captions.js';
+import { fuelReserveWarning, FUEL_LOW_FRACTION } from '../ui/fuelReserveWarning.js';
 import { pointInsideWantedSearch, readWantedSearchVolume, stepWantedSearchEdge } from '../presentation/wantedSearchVolume.js';
 import {
   createEnvironmentMixRuntime,
@@ -85,6 +87,7 @@ import { createBandBedRuntime } from './bandBeds.js';
 import {
   createCuePriorityBus,
   isPriorityCue,
+  isPriorityDuckTarget,
   PRIORITY_DUCK_THRESHOLD,
 } from './cuePriorityBus.js';
 import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
@@ -543,9 +546,281 @@ export function pressureBedGainForThreat(threat) {
 export function mixCueStaysReadable(recipeId, opts) {
   if (opts && (opts.primary || opts.refusalSource || opts.warning)) return true;
   const id = String(recipeId || '');
-  if (id === 'sfx_massline_deny') return true;
+  if (id === 'sfx_massline_deny' || id === 'sfx_refusal_empty' || id === 'sfx_refusal_target') return true;
   if (id.includes('alert') || id.includes('_hull') || id === 'sfx_hull_stress_groan') return true;
   return false;
+}
+
+export const KILL_ADMIT_MS = 40;
+export const STUNT_HUSH_GAP_MS = 6000;
+export const ENCOUNTER_ARC_HOLD_S = 1.5;
+export const FUEL_THIN_GAIN = 0.62;
+export const ORIGIN_SHIFT_PAN = PAN_SPAN;
+
+const IMMEDIATE_COMMS = new Set(['warn', 'attack', 'demand-cargo', 'distress', 'flee']);
+const CHATTER_COMMS = new Set(['scan', 'patrol-greeting', 'taunt', 'reinforce']);
+const WORK_RUNNING = new Set(['running', 'building', 'staged']);
+const WORK_JAMMED = new Set(['no-power', 'starved', 'backlogged', 'no-pods', 'throttled', 'no-geology', 'no-network']);
+
+/** FB-078 — mass picks the kill body. Capital hushes; a light hull does not. */
+export function resolveKillMassVoice(input = {}) {
+  const victimClass = input.victimClass;
+  const type = input.type;
+  const capital = victimClass === 'capital' || victimClass === 'large' || type === 'station';
+  const killedByPlayer = input.killedByPlayer === true;
+  if (capital) {
+    return Object.freeze({
+      play: true,
+      hush: 'capital',
+      recipeId: 'sfx.killCapital',
+      confirmRecipeId: killedByPlayer ? 'sfx_kill_confirm' : null,
+      rate: 1,
+      gain: 1,
+      band: 'capital',
+      admitMs: KILL_ADMIT_MS,
+    });
+  }
+  const mass = Number.isFinite(input.mass) ? input.mass : 48;
+  const collision = resolveCollisionCue({
+    massA: mass, typeA: 'ship', massB: 16, typeB: 'ship', dp: 800,
+  });
+  let recipeId = 'sfx.killSmall';
+  let band = 'medium';
+  if (mass <= 24) { recipeId = 'sfx_kill_sine'; band = 'light'; }
+  else if (mass >= 160) { recipeId = 'sfx_kill_noise'; band = 'heavy'; }
+  return Object.freeze({
+    play: true,
+    hush: null,
+    recipeId,
+    confirmRecipeId: killedByPlayer ? 'sfx_kill_confirm' : null,
+    rate: collision.rate,
+    gain: killedByPlayer ? 0.9 : 0.72,
+    band,
+    admitMs: KILL_ADMIT_MS,
+  });
+}
+
+export function killVoiceAdmitted(book, targetId, nowMs) {
+  if (targetId == null) return true;
+  const key = String(targetId);
+  const now = Number(nowMs) || 0;
+  const last = book && book[key];
+  if (Number.isFinite(last) && now - last < KILL_ADMIT_MS) return false;
+  if (book) book[key] = now;
+  return true;
+}
+
+/** SF-232 — the machine's phase is the rhythm. Idle is silence. */
+export function resolveMachineWorkCycle(stateName) {
+  const state = String(stateName || 'idle');
+  if (WORK_RUNNING.has(state)) {
+    return Object.freeze({
+      play: true, phase: 'running', recipeId: 'sfx_work_motor',
+      rate: 1, gain: 0.42, transfer: true, caption: 'Machine working.',
+    });
+  }
+  if (WORK_JAMMED.has(state)) {
+    return Object.freeze({
+      play: true, phase: 'jam', recipeId: 'sfx_work_jam',
+      rate: 0.7, gain: 0.3, transfer: false, caption: 'Machine jammed.',
+    });
+  }
+  return Object.freeze({
+    play: false, phase: 'idle', recipeId: null, rate: 1, gain: 0, transfer: false, caption: null,
+  });
+}
+
+/** SF-233 — a swell is evidence, not a timer on the anomaly palette. */
+export function resolveAnomalyEvidenceCue(input = {}) {
+  const type = String(input.type || input.poiType || input.kind || '').toLowerCase();
+  const anomaly = type === 'anomaly' || input.anomaly === true;
+  const evidence = input.scanned === true || input.perceived === true;
+  if (!anomaly || !evidence || input.hostile === true && !evidence) {
+    return Object.freeze({ play: false, recipeId: null, caption: null });
+  }
+  if (!anomaly || !evidence) return Object.freeze({ play: false, recipeId: null, caption: null });
+  return Object.freeze({
+    play: true,
+    recipeId: 'sfx_anomaly_swell',
+    gain: 0.22,
+    caption: 'Anomaly evidence.',
+  });
+}
+
+/**
+ * SF-234 — travel, telegraph, fight, release. Neutrals are not a fight.
+ * A flicker inside the hold does not restart the phrase. Recovery is not combat.
+ */
+export function resolveEncounterArc(input = {}) {
+  const holdS = Number.isFinite(input.holdS) ? input.holdS : ENCOUNTER_ARC_HOLD_S;
+  const now = Number(input.nowS) || 0;
+  const context = input.context || {};
+  const committed = (context.committedHostiles || 0) > 0;
+  const fighting = committed || context.recentDamage === true || context.activeEncounter === true || context.doctrineThreat === true;
+  const telegraph = !fighting && (input.telegraph === true || (context.nearbyHostiles || 0) > 0);
+  let phase = 'travel';
+  if (input.neutrals === true && !fighting) phase = 'travel';
+  else if (fighting) phase = 'combat';
+  else if (telegraph) phase = 'tense';
+  else if (input.docked) phase = 'docked';
+  const prev = input.previousPhase || null;
+  let committedPhase = phase;
+  let pendingPhase = null;
+  let pendingSince = null;
+  let restart = false;
+  if (prev && prev !== phase && phase !== 'docked' && prev !== 'docked') {
+    const pending = input.pendingPhase;
+    const since = Number(input.pendingSince);
+    if (pending !== phase || !Number.isFinite(since)) {
+      committedPhase = prev;
+      pendingPhase = phase;
+      pendingSince = now;
+    } else if (now - since < holdS) {
+      committedPhase = prev;
+      pendingPhase = phase;
+      pendingSince = since;
+    } else {
+      committedPhase = phase;
+      restart = false;
+    }
+  } else if (prev && prev !== phase) {
+    restart = phase === 'docked' || prev === 'docked';
+  }
+  const inCombat = committedPhase === 'combat';
+  const desired = committedPhase === 'docked' ? 'docked'
+    : committedPhase === 'combat' ? 'combat'
+      : committedPhase === 'tense' ? 'tense'
+        : 'travel';
+  return Object.freeze({
+    phase: committedPhase,
+    desired,
+    inCombat,
+    restart,
+    pendingPhase,
+    pendingSince,
+    recovery: input.recovery === true && !inCombat,
+  });
+}
+
+/** FB-082 — razor release and the slingshot apex hush. A clean let-go does not. */
+export function admitStuntHush(input = {}) {
+  const klass = String(input.classification || '').toLowerCase();
+  const apex = input.apex === true || input.cueId === 'massline.slingshotApex';
+  const razor = klass === 'razor';
+  if (!razor && !apex) return Object.freeze({ play: false, kind: null });
+  const now = Number(input.nowMs) || 0;
+  const last = Number(input.lastMs);
+  if (Number.isFinite(last) && now - last < STUNT_HUSH_GAP_MS) {
+    return Object.freeze({ play: false, kind: 'stunt', reason: 'gap' });
+  }
+  return Object.freeze({ play: true, kind: 'stunt', gapMs: STUNT_HUSH_GAP_MS });
+}
+
+export function originShiftReset(prevSeq, nextSeq) {
+  const next = Number(nextSeq);
+  if (!Number.isFinite(next) || !Number.isFinite(Number(prevSeq))) return false;
+  return next !== Number(prevSeq);
+}
+
+export function voiceInheritsOwner(voice, entity) {
+  if (!voice || voice._trackEntity == null) return true;
+  return entity != null && voice._trackEntity === entity;
+}
+
+/** SF-237 — player verb, warning, and refusal stay. A distant redundant loop goes first. */
+export function rankVoiceForBudget(voice) {
+  if (!voice) return 0;
+  if (voice.primary || voice.critical || voice.warning || voice.refusalSource) return 1000;
+  const dist = Number(voice.dist);
+  if (voice.loop && Number.isFinite(dist) && dist > 800) return 1;
+  if (voice.loop) return 40;
+  return 10;
+}
+
+export function voiceBudgetDisposable(voice) {
+  if (!voice) return false;
+  if (voice.primary || voice.critical || voice.warning || voice.refusalSource) return false;
+  if (voice.loop) return Number(voice.dist) > 800;
+  return true;
+}
+
+/** FB-079 — cruise is a loop that ends on the drop, not a fade standing in for the end. */
+export function resolveCruiseLoopEdge(input = {}) {
+  if (input.dropped === true || input.snared === true) {
+    return Object.freeze({ active: false, stop: true, recipeId: 'sfx.cruiseEngaged' });
+  }
+  if (input.engaged === true) {
+    return Object.freeze({ active: true, stop: false, recipeId: 'sfx.cruiseEngaged' });
+  }
+  return Object.freeze({
+    active: input.held === true, stop: false, recipeId: 'sfx.cruiseEngaged',
+  });
+}
+
+/** SF-231 — an immediate problem owns the ear. Chatter waits. A context change drops the stale line. */
+export function arbitrateCommsLine(input = {}) {
+  const situation = String(input.situation || '');
+  const importance = Number(input.importance) || 0;
+  const immediate = IMMEDIATE_COMMS.has(situation) || importance >= 0.8 || input.mechanic === true;
+  const chatter = !immediate && (CHATTER_COMMS.has(situation) || input.chatter === true);
+  if (input.lineContext && input.context && input.lineContext !== input.context) {
+    return Object.freeze({ play: false, caption: false, reason: 'stale', yield: true, immediate: false });
+  }
+  if (chatter && (input.immediateHeld === true || input.criticalEar === true)) {
+    return Object.freeze({ play: false, caption: false, reason: 'yield', yield: true, immediate: false });
+  }
+  return Object.freeze({
+    play: true,
+    caption: true,
+    reason: immediate ? 'immediate' : 'line',
+    yield: false,
+    immediate,
+  });
+}
+
+/**
+ * SF-240 — one family, heard while the work is live, quiet when the room is quiet,
+ * gone when the operation stops, and never loud enough to cover a critical voice.
+ */
+/** FB-081 — income rings the register. A purchase stays the quiet confirm. A trade sell is not both. */
+export function incomeVoices(event, payload) {
+  if (event === 'credits:changed') {
+    if (!payload || !(Number(payload.delta) > 0)) return [];
+    if (String(payload.reason || '').startsWith('trade')) return [];
+    return ['sfx_cash_register'];
+  }
+  if (event === 'economy:tradeCompleted') {
+    if (payload && payload.side === 'sell') return [];
+    return ['sfx_ui_confirm'];
+  }
+  return [];
+}
+
+export function sellRegisterVoice(payload) {
+  if (!payload || payload.side !== 'sell') return null;
+  const profitable = Number(payload.profit) > 0;
+  return Object.freeze({
+    id: 'sfx_cash_register',
+    gain: profitable ? 0.85 : 0.6,
+    rate: profitable ? 1.06 : 0.96,
+  });
+}
+
+export function acceptAudioFamily(input = {}) {
+  const voices = Array.isArray(input.voices) ? input.voices : [];
+  const cap = Number.isFinite(input.cap) ? input.cap : 12;
+  const live = voices.filter((v) => v && v.play !== false && Number(v.gain) > 0.001);
+  const critical = live.some((v) => v.critical);
+  const masking = live.some((v) => !v.critical && Number(v.gain) > 0.85 && critical);
+  const bounded = voices.length <= cap;
+  const quiet = input.quiet === true || input.muted === true;
+  const stopped = input.operationStopped === true;
+  const audible = live.length > 0 && !quiet && !stopped;
+  const silent = live.length === 0;
+  const ok = bounded && !masking && ((quiet || stopped) ? silent : audible || voices.length === 0);
+  return Object.freeze({
+    ok, audible, bounded, maskingCritical: masking, silentWhenQuiet: quiet ? silent : true, stopped: stopped ? silent : true,
+  });
 }
 
 // Build a fast id->recipe lookup over the data array. Prototype-less on purpose: `{}` inherits
@@ -840,6 +1115,8 @@ export const HUSH = Object.freeze({
   // Player death drains the world out slowly — the death explosion plays THROUGH the sink,
   // then the silence holds while the wreck tumbles.
   death:     Object.freeze({ depth: 0.05, attackS: 0.55,  holdS: 1.40, releaseS: 2.40 }),
+  // FB-082 — the best moment. Same floor as a capital kill, a slower open, a steep return.
+  stunt:     Object.freeze({ depth: 0.07, attackS: 0.35,  holdS: 0.28, releaseS: 0.45 }),
   fullWu: 420,   // inside this the hush is full strength
   farWu: 0,      // 0 -> fall back to D_FAR (world-hearing edge)
 });
@@ -1386,6 +1663,9 @@ export function fieldDeployRecipe(kind) {
 
 export function alertCueOwnsAudio(payload) {
   if (payload && payload.audioOwnedByPresentation) return false;
+  const key = payload && (payload.key || payload.id);
+  // FB-135 — the gauge's fuel lamp stays visual. The reserve bed and the empty sting own the ear.
+  if (key === 'fuel-low' || key === 'fuel' || key === 'fuel-empty') return false;
   // Presentation emits both a semantic audio lane and a visual `alert` for these receipts. The
   // alert remains visible, but its generic beep must not double or blur the authored signature.
   return !(payload && FIRST_HOUR_SIGNATURE_BY_PRESENTATION_CUE_ID[payload.cueId]);
@@ -1993,6 +2273,8 @@ export const audio = {
     this.rt = rt;
 
     const bus = this.bus;
+    bus.on('scan:shipRevealed', (p) => this._noteAnomalyCandidate(p));
+    bus.on('scan:wreckRevealed', (p) => this._noteAnomalyCandidate(p));
 
     // --- lazy AudioContext on first user gesture (autoplay policy) ---
     this._gestureHandler = () => {
@@ -2099,8 +2381,12 @@ export const audio = {
         ? this.state.entities.get(p.payloadId) : null;
       this.play('sfx_salvage_plate', { position: ent && ent.pos ? ent.pos : (p && p.pos), gain: 0.85 });
     });
-    bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
-    bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
+    bus.on('credits:changed', (p) => {
+      for (const id of incomeVoices('credits:changed', p)) this.play(id, { gain: 0.72 });
+    });
+    bus.on('economy:tradeCompleted', (p) => {
+      for (const id of incomeVoices('economy:tradeCompleted', p)) this.play(id, { gain: 0.6 });
+    });
     // ECON-03 — a refused trade answers in the station's voice: one comms line naming the
     // reason, captioned by the voice pipeline. Deliberately not ui_deny — the menu blip is
     // the wrong register for a counter that declines you.
@@ -2165,7 +2451,7 @@ export const audio = {
     });
     // Low-fuel alarm: fuel:empty fired with no sound (no warning before you're stranded). A short
     // alert cue surfaces the emergency. (The continuous low-health alarm is a separate poller.)
-    bus.on('fuel:empty', () => this._onCue({ id: 'alert', importance: 0.9, duck: true }));
+    bus.on('fuel:empty', () => this._onFuelEmpty());
     // WANTED heat escalation: heat:changed drove VFX/telemetry but was silent — the player could
     // become hunted with no sound. The authoritative packet keys the whole family (see handler).
     bus.on('heat:changed', (p) => this._onHeatChanged(p));
@@ -2176,9 +2462,9 @@ export const audio = {
     // Feature 16 — the ka-ching. Settled sales ring the register; buys stay a quiet confirm.
     // A profitable lot rings a shade brighter so the good deal is audible, not just green.
     bus.on('economy:tradeCompleted', (p) => {
-      if (!p || p.side !== 'sell') return;
-      const profitable = Number(p.profit) > 0;
-      this.play('sfx_cash_register', { gain: profitable ? 0.85 : 0.6, rate: profitable ? 1.06 : 0.96 });
+      const voice = sellRegisterVoice(p);
+      if (!voice) return;
+      this.play(voice.id, { gain: voice.gain, rate: voice.rate });
     });
     bus.on('sector:enter', (p) => {
       rt._activeCombatEncounters.clear();
@@ -2201,7 +2487,17 @@ export const audio = {
     });
     // Sustained cruise is still the engine-hum 'cruise' tier (65 Hz fifth). Presentation owns
     // finite charge/lock accents so a second continuous oscillator can never leak into the pool.
+    bus.on('cruise:engaged', () => {
+      if (this.rt) this.rt._wantCruise = true;
+      this._syncCruiseLoop();
+    });
+    bus.on('cruise:dropped', () => {
+      if (this.rt) this.rt._wantCruise = false;
+      this._stopCruiseLoop();
+    });
     bus.on('cruise:snared', () => {
+      if (this.rt) this.rt._wantCruise = false;
+      this._stopCruiseLoop();
       this._applyPriorityCue({ id: 'cruise.snared', importance: 0.88, playerRelevance: 1 });
       this.play('sfx.cruiseSnared', { gain: 0.75, critical: true });
     });
@@ -2372,6 +2668,7 @@ export const audio = {
       const prev = rt._mineMachineState[p.machineId];
       rt._mineMachineState[p.machineId] = starved;
       if (starved && prev !== true) this._onMineCue('machineStarved', p); // once per transition
+      this._syncMachineWork(p);
     });
 
     // UI namespaced cue events (DOM UI may emit these directly).
@@ -3135,7 +3432,8 @@ export const audio = {
     const ambientDuck = rt._weightDuckEnvelope
       ? weightDuckGainForTarget('ambient', rt._weightDuckEnvelope, nowMs)
       : 1;
-    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck * hush * commsDuck;
+    const fuelThin = rt._fuelThin == null ? 1 : rt._fuelThin;
+    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck * hush * commsDuck * fuelThin;
     ramp('ambient', rt.ambientBus.gain, ambientTarget);
 
     const combatVal = a.combat == null ? 0.7 : a.combat;
@@ -3160,7 +3458,7 @@ export const audio = {
     const weightDuck = rt._weightDuckEnvelope
       ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, nowMs)
       : 1;
-    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck * hush * musicPressure * commsDuck;
+    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck * hush * musicPressure * commsDuck * fuelThin;
     ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
     // The mine bus is NOT ramped here: its envelope is the law's enter/retract fade (§9, ≤600 ms
     // in), owned by `_updateMine`. It still inherits master + sfx/ambient sliders through
@@ -3259,10 +3557,12 @@ export const audio = {
     let att = 1, pan = 0, rate = opts.rate || 1;
     let lockRate = opts.lockRate === true;
     let occluded = false;
+    let heardDist = 0;
     if (opts.position) {
       if (!Number.isFinite(opts.position.x) || !Number.isFinite(opts.position.z)) return null;
       const p = this._playerPos();
       const d = Math.hypot(opts.position.x - p.x, opts.position.z - p.z);
+      heardDist = d;
       if (d > D_FAR) return null; // cull distant sounds
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((opts.position.x - p.x) / PAN_SPAN, -1, 1);
@@ -3336,6 +3636,12 @@ export const audio = {
       startTime: opts.startTime,
     }, rt._caches);
     voice.busName = busName;
+    voice.recipeId = recipeId;
+    voice.dist = heardDist;
+    voice.primary = !!opts.primary;
+    voice.critical = !!opts.critical;
+    voice.warning = !!opts.warning;
+    voice.refusalSource = opts.refusalSource || null;
     voice._panner = panner;
     voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
     voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
@@ -3390,15 +3696,16 @@ export const audio = {
     const oldestDisposable = () => {
       const now = rt.ctx ? rt.ctx.currentTime : 0;
       let worstIdx = -1;
-      let maxPriority = -Infinity;
+      let worstRank = Infinity;
+      let maxAge = -Infinity;
       for (let i = 0; i < rt.voices.length; i++) {
         const v = rt.voices[i];
-        if (v.loop) continue;
+        if (!voiceBudgetDisposable(v)) continue;
+        const rank = rankVoiceForBudget(v);
         const age = now - (v.startedAt || 0);
-        const quietness = 1 - Math.min(1, Math.max(0, v.callGain || 1));
-        const priority = age * (quietness + 0.1);
-        if (priority > maxPriority) {
-          maxPriority = priority;
+        if (rank < worstRank || (rank === worstRank && age > maxAge)) {
+          worstRank = rank;
+          maxAge = age;
           worstIdx = i;
         }
       }
@@ -3760,6 +4067,8 @@ export const audio = {
     // player:death owns the player's defeat sound. entity:killed is also emitted for NPC-vs-NPC
     // combat, which should remain physically audible but must never masquerade as player reward.
     if (p.id === this.state.playerId) return;
+    const nowMs = (Number(this.state && this.state.simTime) || 0) * 1000;
+    if (rt && !killVoiceAdmitted(rt._killAdmit || (rt._killAdmit = Object.create(null)), p.id, nowMs)) return;
     const killedByPlayer = p.killerId === this.state.playerId;
     const signature = FIRST_HOUR_AUDIO_SIGNATURES.enemyKill;
     if (killedByPlayer) {
@@ -3811,16 +4120,31 @@ export const audio = {
         });
       }
     } else {
-      this.play(killedByPlayer ? signature.recipeId : 'sfx.killSmall', {
-        position: p.pos,
-        // Delayed onto the detonation beat so the whine resolves into the boom, matching the VFX
-        // overload window. Without an audio clock there is no delay to schedule — play through.
-        startTime: ctx ? ctx.currentTime + overloadDelayS : undefined,
-        gain: killedByPlayer ? 0.9 : 0.72,
-        // The presentation priority receipt arrives before this raw physical handler. Marking the
-        // reward voice critical prevents the cue's own squelch window from suppressing it.
-        critical: killedByPlayer,
+      const entities = this.state && this.state.entities;
+      const victim = entities && typeof entities.get === 'function' ? entities.get(p.id) : null;
+      const mass = Number.isFinite(p.mass) ? p.mass
+        : Number.isFinite(p.victimMass) ? p.victimMass
+          : victim && Number(victim.mass);
+      const body = resolveKillMassVoice({
+        mass, type: p.type, victimClass: p.victimClass, killedByPlayer,
       });
+      this.play(body.recipeId, {
+        position: p.pos,
+        startTime: ctx ? ctx.currentTime + overloadDelayS : undefined,
+        gain: body.gain,
+        rate: body.rate,
+        critical: killedByPlayer,
+        primary: killedByPlayer,
+      });
+      if (body.confirmRecipeId) {
+        this.play(body.confirmRecipeId, {
+          position: p.pos,
+          startTime: ctx ? ctx.currentTime + overloadDelayS + 0.02 : undefined,
+          gain: 0.72,
+          critical: true,
+          primary: true,
+        });
+      }
     }
   },
 
@@ -4895,7 +5219,10 @@ export const audio = {
     v._panner = panner;
     v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
     v.busName = busName;
+    v.recipeId = recipeId;
     v.loop = true;
+    if (entity) v._trackEntity = entity;
+    if (position) v.dist = Math.hypot(position.x - this._playerPos().x, position.z - this._playerPos().z);
     if (options.trackId != null) v.trackId = options.trackId;
     v.role = busName === 'engine'
       ? 'engineLoop'
@@ -5142,7 +5469,7 @@ export const audio = {
     this._onCue({
       id: 'wanted_escalate',
       gain: clamp(0.55 + band * 0.06, 0.55, 0.9),
-      rate: clamp(1 + (band - 1) * 0.12, 1, 1.6),
+      rate: clamp(wantedMotifRate(band), 1, 1.6),
       // The flip owns the ear (duck, like fuel:empty). Climbs speak at 0.75 — and either way the
       // recipe's 'alert' id already grants squelch immunity (see _isPriorityVoice).
       importance: p.wantedCrossed ? 0.9 : 0.75,
@@ -5204,6 +5531,173 @@ export const audio = {
     });
   },
 
+  _maybeStuntHush(input = {}) {
+    const rt = this.rt;
+    if (!rt) return null;
+    const nowMs = (Number(this.state && this.state.simTime) || 0) * 1000;
+    const verdict = admitStuntHush({ ...input, nowMs, lastMs: rt._stuntHushMs });
+    if (!verdict.play) return verdict;
+    rt._stuntHushMs = nowMs;
+    this._triggerHush({ kind: 'stunt' });
+    return verdict;
+  },
+
+  _syncCruiseLoop() {
+    const rt = this.rt;
+    if (!rt || !rt.loops || !rt._wantCruise || rt.loops.cruise) return;
+    const edge = resolveCruiseLoopEdge({ engaged: true });
+    const voice = this._startLoopVoice(edge.recipeId, null, 0.35);
+    if (!voice) return;
+    rt.loops.cruise = voice;
+    rt._cruiseGain = voice._baseGain || 0.35;
+  },
+
+  _stopCruiseLoop() {
+    const rt = this.rt;
+    const voice = rt && rt.loops && rt.loops.cruise;
+    if (!voice) return;
+    this._endLoopVoice(voice);
+    delete rt.loops.cruise;
+    rt._cruiseGain = 0;
+  },
+
+  _updateCruiseLoop(dt) {
+    const rt = this.rt;
+    const voice = rt && rt.loops && rt.loops.cruise;
+    if (!voice || !voice.gain || !rt.ctx) return;
+    const entities = this.state && this.state.entities;
+    const player = entities && typeof entities.get === 'function' ? entities.get(this.state.playerId) : null;
+    const input = (this.state && this.state.input) || {};
+    const throttle = readPublishedThrottle({
+      frame: player && player._flightFrame,
+      moveZ: input.moveZ,
+      moveX: input.moveX,
+    });
+    const stepped = stepCueGain(rt._cruiseGain == null ? 0 : rt._cruiseGain, throttle, dt);
+    rt._cruiseGain = stepped.gain;
+    const loud = CUE_GAIN.loud || 1;
+    const scale = loud > 0 ? stepped.gain / loud : 0;
+    const base = voice._baseGain != null ? voice._baseGain : 0.35;
+    this._setParam(voice.gain.gain, Math.max(0.0001, base * scale), rt.ctx.currentTime, 0.05);
+  },
+
+  _onFuelEmpty() {
+    const rt = this.rt;
+    if (!rt || rt._fuelEmptyStung) return;
+    rt._fuelEmptyStung = true;
+    rt._fuelThin = FUEL_THIN_GAIN;
+    const voice = this.play('sfx_fuel_empty', { gain: 0.8, critical: true, warning: true });
+    if (voice) this._emitPresentationCaption('Fuel empty.', { assertive: true, channel: 'fuel' });
+  },
+
+  _updateFuelVoice() {
+    const rt = this.rt;
+    const fuel = this.state && this.state.fuel;
+    if (!rt || !fuel) return;
+    const max = Number(fuel.max) || 0;
+    const current = Number(fuel.current);
+    const fraction = max > 0 && Number.isFinite(current) ? current / max : 1;
+    const armed = rt._fuelVoiceArmed === true;
+    const edge = fuelReserveWarning(rt._fuelPrevWarn, fraction, armed);
+    rt._fuelPrevWarn = edge;
+    rt._fuelVoiceArmed = true;
+    if (edge.speak) this._startFuelReserve();
+    if (edge.clear || (rt._fuelThin != null && rt._fuelThin < 1 && fraction >= FUEL_LOW_FRACTION)) {
+      this._stopFuelReserve();
+      rt._fuelThin = 1;
+      rt._fuelEmptyStung = false;
+    }
+  },
+
+  _startFuelReserve() {
+    const rt = this.rt;
+    if (!rt || !rt.loops || rt.loops.fuelReserve) return;
+    const voice = this._startLoopVoice('sfx_fuel_reserve', null, 0.4);
+    if (!voice) return;
+    rt.loops.fuelReserve = voice;
+    this._emitPresentationCaption('Fuel reserve.', { channel: 'fuel' });
+  },
+
+  _stopFuelReserve() {
+    const rt = this.rt;
+    const voice = rt && rt.loops && rt.loops.fuelReserve;
+    if (!voice) return;
+    this._endLoopVoice(voice);
+    delete rt.loops.fuelReserve;
+  },
+
+  _syncMachineWork(p) {
+    const rt = this.rt;
+    if (!rt || !rt.loops || !p || p.machineId == null) return;
+    const voice = resolveMachineWorkCycle(p.state);
+    const key = `work:${p.machineId}`;
+    const current = rt.loops[key];
+    if (!voice.play) {
+      if (current) {
+        this._endLoopVoice(current);
+        delete rt.loops[key];
+      }
+      return;
+    }
+    if (current && current.recipeId === voice.recipeId) return;
+    if (current) {
+      this._endLoopVoice(current);
+      delete rt.loops[key];
+    }
+    const started = this._startLoopVoice(voice.recipeId, p.pos || null, voice.gain, { rate: voice.rate });
+    if (!started) return;
+    rt.loops[key] = started;
+  },
+
+  _noteAnomalyCandidate(payload) {
+    const id = payload && payload.entityId;
+    if (id == null || !this.rt) return;
+    const ring = this.rt._anomalyCandidates || (this.rt._anomalyCandidates = []);
+    if (ring.indexOf(id) !== -1) return;
+    ring.push(id);
+    if (ring.length > 8) ring.shift();
+  },
+
+  _updateAnomalyEvidence() {
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const rt = this.rt;
+    const simTime = Number(state.simTime) || 0;
+    const book = rt._anomalyHeard || (rt._anomalyHeard = Object.create(null));
+    const heardIds = Object.keys(book);
+    for (let i = 0; i < heardIds.length; i++) {
+      const key = heardIds[i];
+      const numeric = Number(key);
+      const ent = entities.get(key) || (Number.isFinite(numeric) ? entities.get(numeric) : null);
+      if (!ent || ent.alive === false) delete book[key];
+    }
+    const ring = rt._anomalyCandidates;
+    if (!ring || ring.length === 0) return;
+    let played = false;
+    for (let i = 0; i < ring.length; i++) {
+      if (played) break;
+      const ent = entities.get(ring[i]);
+      if (!ent || ent.alive === false) continue;
+      const data = ent.data || {};
+      const cue = resolveAnomalyEvidenceCue({
+        type: ent.type,
+        poiType: data.poiType,
+        scanned: data.scanned === true,
+        perceived: data.perceived === true || data.contacted === true,
+        hostile: !!(data.ai && data.ai.combatant) && data.scanned !== true && data.perceived !== true,
+      });
+      if (!cue.play) continue;
+      const id = ent.id;
+      const last = Number(book[id]) || 0;
+      if (simTime - last < 12) continue;
+      book[id] = simTime;
+      const voice = this.play(cue.recipeId, { gain: cue.gain, position: ent.pos || null });
+      if (voice) this._emitPresentationCaption(cue.caption, { channel: 'cue' });
+      played = true;
+    }
+  },
+
   _onMasslineInstrument(event, payload) {
     const tether = this.state && this.state.player && this.state.player.tether;
     const voice = resolveMasslineInstrument({
@@ -5223,6 +5717,9 @@ export const audio = {
       if (Number.isFinite(tick) && Number.isFinite(last) && tick - last < 12) return;
       if (this.rt && Number.isFinite(tick)) this.rt._masslineReelLastTick = tick;
     }
+    if (event === 'release') {
+      this._maybeStuntHush({ classification: payload && payload.classification });
+    }
     if (voice.play) {
       this.play(voice.recipeId, {
         gain: voice.gain,
@@ -5238,6 +5735,21 @@ export const audio = {
 
   _onBarkVoice(payload) {
     if (!payload) return;
+    const rt0 = this.rt;
+    const sectorId = (this.state && this.state.world && this.state.world.currentSectorId) || '';
+    const combat = rt0 && (rt0.musicState === 'combat' || (rt0._encounterArc && rt0._encounterArc.inCombat));
+    const context = `${sectorId}|${combat ? 'combat' : 'flight'}`;
+    const nowS = rt0 && rt0.ctx ? rt0.ctx.currentTime : (Number(this.state && this.state.simTime) || 0);
+    const verdict = arbitrateCommsLine({
+      situation: payload.situation,
+      importance: payload.importance,
+      mechanic: payload.mechanic || payload.kind === 'mechanic',
+      context,
+      lineContext: payload.context || null,
+      immediateHeld: !!(rt0 && Number.isFinite(rt0._commsImmediateUntilS) && nowS < rt0._commsImmediateUntilS),
+      criticalEar: typeof this._isCriticalSquelchActive === 'function' && this._isCriticalSquelchActive(),
+    });
+    if (!verdict.play) return;
     const resolved = resolveBarkVoice({
       factionId: payload.factionId,
       situation: payload.situation,
@@ -5251,7 +5763,7 @@ export const audio = {
     // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
     // squelch tail collapses it. Scheduled starts keep the gap tight and sample-accurate.
     this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0 });
-    this.play(resolved.recipeId, {
+    const body = this.play(resolved.recipeId, {
       gain: resolved.gain,
       rate: resolved.speech.rate,
       barkSampleId: resolved.sampleId,
@@ -5263,10 +5775,16 @@ export const audio = {
       gain: BARK_PUNCT.tailGain,
       startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
     });
-    this._emitPresentationCaption(resolved.caption, {
-      assertive: resolved.assertive,
-      shape: 'radio',
-    });
+    if (rt0) {
+      rt0._commsContext = context;
+      if (verdict.immediate) rt0._commsImmediateUntilS = nowS + speechDur + 0.35;
+    }
+    if (body) {
+      this._emitPresentationCaption(resolved.caption, {
+        assertive: resolved.assertive,
+        shape: 'radio',
+      });
+    }
     if (resolved.factionId) {
       this.rt._themeFactionId = resolved.factionId;
       const theme = resolveThemeMatrix({
@@ -5446,6 +5964,7 @@ export const audio = {
   _onCue(cue) {
     const id = typeof cue === 'string' ? cue : cue && cue.id;
     if (!id) return;
+    if (id === 'massline.slingshotApex') this._maybeStuntHush({ apex: true, cueId: id });
     // Juice emits presentation:vfxCue then audio:cue with the same id. Unmapped juice ids used
     // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
     if (resolveVisualEventCue(id) && !Object.hasOwn(AUDIO_CUE_TO_RECIPE, id) && !Object.hasOwn(AUDIO_RECIPE_BY_ID, id)) return;
@@ -6000,7 +6519,7 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
     rt.musicState = stateName;
-    const w = (rt._themeMatrix && rt._themeMatrix.stemWeights)
+    const w = (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))
       || STEM_WEIGHTS[stateName]
       || STEM_WEIGHTS.calm;
     rt._musicFeed = (w.A || 0) + (w.B || 0) + (w.C || 0) + (w.D || 0);
@@ -6029,12 +6548,31 @@ export const audio = {
     const wanted = !!(player && player.flags && player.flags.wanted)
       || !!(state.player && state.player.wanted)
       || !!(state.heat && state.heat.wanted);
+    if (!rt._themeSectorId && state.world && state.world.currentSectorId) {
+      rt._themeSectorId = state.world.currentSectorId;
+    }
+    const arc = resolveEncounterArc({
+      context,
+      docked,
+      telegraph: context.doctrineThreat === true && !context.engaged,
+      neutrals: (context.committedHostiles || 0) === 0 && (context.nearbyHostiles || 0) === 0 && !context.engaged,
+      nowS: Number(state.simTime) || 0,
+      previousPhase: rt._encounterPhase || null,
+      pendingPhase: rt._encounterPending || null,
+      pendingSince: rt._encounterPendingSince,
+      holdS: STATE_HOLD_S,
+      recovery: rt._committedArmed === true && (context.committedHostiles || 0) === 0,
+    });
+    rt._encounterArc = arc;
+    rt._encounterPhase = arc.phase;
+    rt._encounterPending = arc.pendingPhase;
+    rt._encounterPendingSince = arc.pendingSince;
     const theme = resolveThemeMatrix({
       docked,
       wanted,
       inCombat: threat >= 0.6,
       threat,
-      sectorId: (state.world && state.world.currentSectorId) || rt._themeSectorId,
+      sectorId: rt._themeSectorId,
       factionId: rt._themeFactionId,
     });
     rt._themeMatrix = theme;
@@ -6206,6 +6744,9 @@ export const audio = {
         if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId), null, null, rt._wantBeam[ownerId]);
       }
       if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
+      if (rt._wantCruise && !rt.loops.cruise) this._syncCruiseLoop();
+      this._updateCruiseLoop(dt);
+      this._updateFuelVoice();
     }
 
     // Sidechaining logic (spec §1): combat ducks ambient & music buses by 6 dB (120ms attack / 900ms release)
@@ -6456,6 +6997,16 @@ export const audio = {
     const rt = this.rt;
     const entities = this.state && this.state.entities;
     if (!entities || typeof entities.get !== 'function') return;
+    const seq = this.state.world && this.state.world.frameOriginSeq;
+    if (originShiftReset(rt._audioOriginSeq, seq)) {
+      for (const k in rt.loops) {
+        const shifted = rt.loops[k];
+        if (!shifted) continue;
+        shifted._audioGainTarget = undefined;
+        shifted._audioPanTarget = undefined;
+      }
+    }
+    if (Number.isFinite(Number(seq))) rt._audioOriginSeq = Number(seq);
     const pp = this._playerPos();
     _exactAudioOpts.playerId = this.state && this.state.playerId;
     for (const k in rt.loops) this._applyLoopPosition(rt.loops[k], rt, entities, pp, now);
@@ -6464,6 +7015,15 @@ export const audio = {
   _applyLoopPosition(v, rt, entities, pp, now) {
       if (!v || v.trackId == null) return;
       const e = entities.get(v.trackId);
+      if (e && !voiceInheritsOwner(v, e)) {
+        for (const k in rt.loops) {
+          if (rt.loops[k] !== v) continue;
+          this._endLoopVoice(v);
+          delete rt.loops[k];
+        }
+        return;
+      }
+      if (e && v._trackEntity == null) v._trackEntity = e;
       if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) {
         // The tracked entity is gone (destroyed or despawned across a boundary): a positional
         // loop that can never be re-anchored would drone at its frozen gain forever. Release it,
@@ -7224,7 +7784,8 @@ export const audio = {
       && this.state.settings.video.motionReduce);
     const tone = resolveTetherTone({ tether, motionReduce, duck: rt.sidechainDuck });
     const targetFreq = tone.hz;
-    const targetGain = tone.gain;
+    const priorityDuck = rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon;
+    const targetGain = tone.gain * priorityDuck;
     const rampS = tone.rampS;
 
     const slowPitch = rt._bulletTimePitch || 1;
@@ -7308,6 +7869,18 @@ export const audio = {
         const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
         this._setParam(v.gain.gain, Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
       }
+      for (const key in rt.loops) {
+        const v = rt.loops[key];
+        if (!v || !v.gain || !v.gain.gain || v.trackId != null || v.critical) continue;
+        const isWeaponLoop = key.startsWith('beam_') || v.role === 'weaponLoop'
+          || (v.busName === 'combat' && v.loop);
+        if (isWeaponLoop) continue;
+        if (!isPriorityDuckTarget({
+          busName: v.busName, role: v.role, loop: true, category: v.category, critical: v.critical,
+        })) continue;
+        const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
+        this._setParam(v.gain.gain, Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
+      }
     }
   },
 
@@ -7336,12 +7909,8 @@ export const audio = {
           rt._nextRadioTickTime = ctx.currentTime + 2.0 + Math.random() * 4.0;
           this.play('sfx_fringe_tick', { gain: 0.15 });
         }
-      } else if (targetClass === 'anomaly') {
-        if (ctx.currentTime - (rt._lastAnomalySwellTime || 0) >= 8 + Math.random() * 7) {
-          rt._lastAnomalySwellTime = ctx.currentTime;
-          this.play('sfx_anomaly_swell', { gain: 0.2 });
-        }
       }
+      this._updateAnomalyEvidence();
     }
   },
 
