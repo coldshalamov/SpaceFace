@@ -85,10 +85,12 @@ import {
   TABLE_LOOT_MAGNET_CAP_WU,
   tableDoctrineTellCueWu,
   tableLookAtDelta,
+  tableLookAtOrigin,
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
   projectileOnReadableFrame,
 } from './tabletopPolicy.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { presetFor, scalePreset } from './vfxColorLightDirector.js';
@@ -357,6 +359,15 @@ export function initNpcJobContactScratch(slot) {
     }
   };
   return slot;
+}
+
+// SF-266 — deterministic order for spatial-hash candidate lists. EntityList/index order is
+// not guaranteed inside a radius result, so seam-marker iteration sorts by stable id.
+function compareSeamCandidateIds(left, right) {
+  const a = left && left.id, b = right && right.id;
+  if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
+  const sa = String(a), sb = String(b);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
 }
 
 // Release-side counterpart: a recycled slot drops its target and sampled surface without
@@ -10105,7 +10116,7 @@ export const vfx = {
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
-    const list = indexedTypeScan(state, 'asteroids');
+    const list = this._seamMarkerCandidates(state, player, drawWu);
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -13084,6 +13095,24 @@ export const vfx = {
     const sm = this._seamMarkers;
     if (!sm || !sm.mesh) return;
     if (!commitDynamicBufferOwner(sm.dynamicBufferOwner, 0) && sm.mesh.count) sm.mesh.count = 0;
+  },
+
+  // SF-266 — seam markers only ever draw inside the live table disc, but the candidate walk
+  // used to visit every asteroid in the universe each beat. With a live spatial hash the
+  // disc's colliders are the candidate set: queryRadius returns a conservative cell-level
+  // superset, the loop's shouldDrawTableVfx predicate re-filters exactly, and iteration is
+  // sorted by entity id so the emitted markers stay deterministic. Without a live hash the
+  // lane falls back to the indexed type scan, unchanged.
+  _seamMarkerCandidates(state, player, drawWu) {
+    const hash = state && state.spatialHash;
+    if (!hasActiveSpatialHash(hash)) return indexedTypeScan(state, 'asteroids');
+    const candidates = this._seamMarkerCandidateList || (this._seamMarkerCandidateList = []);
+    candidates.length = 0;
+    const origin = tableLookAtOrigin(state, player.pos,
+      this._seamMarkerOrigin || (this._seamMarkerOrigin = { x: 0, z: 0 }));
+    hash.queryRadius(origin.x, origin.z, drawWu, candidates, { countDiagnostics: false });
+    candidates.sort(compareSeamCandidateIds);
+    return candidates;
   },
 
   _energyMaterialsEnabled() {
