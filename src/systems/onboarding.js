@@ -108,6 +108,60 @@ const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
 const TAU = Math.PI * 2;
 
+// ── Save/load helpers (FB-114) ────────────────────────────────────────────────
+// Rail records are plain JSON-shaped data (beats, flags, actor id slots). Actor ids
+// are session-local and dead after any restore, so a persisted record always
+// serializes with empty id slots and restores them empty.
+function plainClone(v) {
+  if (v == null || typeof v !== 'object') return v == null ? null : v;
+  try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; }
+}
+
+function emptyIdSlots(ids) {
+  const out = {};
+  if (ids && typeof ids === 'object') {
+    for (const k in ids) out[k] = Array.isArray(ids[k]) ? [] : null;
+  }
+  return out;
+}
+
+function railRecord(rec) {
+  const copy = plainClone(rec);
+  if (!copy || typeof copy !== 'object') return null;
+  copy.ids = emptyIdSlots(rec && rec.ids);
+  return copy;
+}
+
+function restoreRescueRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  const fresh = freshRescueState();
+  const saved = plainClone(d);
+  const out = Object.assign(fresh, saved);
+  out.ids = fresh.ids; // actor ids never survive a restore
+  out.beats = {};
+  for (const key of RESCUE_ORDER) {
+    // Newer rail beats appear pending on old saves; unknown saved beats drop.
+    out.beats[key] = Object.assign({ state: 'pending', fails: 0, doneAt: null },
+      saved.beats && saved.beats[key]);
+  }
+  return out;
+}
+
+function restoreMissingThreeRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  const fresh = freshMissingThreeState();
+  const saved = plainClone(d);
+  const out = Object.assign(fresh, saved);
+  out.ids = fresh.ids;
+  for (const key of MISSING_THREE_ORDER) {
+    out.beats[key] = Object.assign({ state: 'pending', fails: 0, doneAt: null },
+      saved.beats && saved.beats[key]);
+    out.used[key] = Object.assign({ count: 0, firstAt: null, prompted: false, unprompted: false },
+      saved.used && saved.used[key]);
+  }
+  return normalizeMissingThreeState(out) || out;
+}
+
 // ── FIRST-HOUR PACING (spec2/03, reworked 2026-09-18: the thesis-first route) ────
 // The fix for "the open teaches five things at once" is PACING, not deletion: one beat → one verb
 // → ≥4 s of silence → next beat. This BEATS table is the single source of truth for the first 15
@@ -367,6 +421,9 @@ export const onboarding = {
       this._demoFittedThisDock = null;
       this._gateControlInRange = false;
       this._lastControlMode = null;
+      // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
+      // the returning-pilot path (story tracker + recap) is for finished rails only.
+      if (this._resumeSavedRail()) return;
       this._beginStoryMode();
       this._speakContinueRecap(p);
     });
@@ -801,6 +858,124 @@ export const onboarding = {
         ttl: 10,
       });
     } catch (_) { /* never let onboarding break the bus */ }
+  },
+
+  // ── Save/load (FB-114) ─────────────────────────────────────────────────────
+  // The first-hour rail is durable run state: a save written mid-rail resumes at the
+  // saved beat instead of stranding a pilot who was never taught the bound verbs.
+  // Staged props are transient entities (flags.persistent unset) and never serialize,
+  // so the record carries beat progress only — resume re-stages whatever the current
+  // beat needs next to the restored player.
+
+  serialize() {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || typeof ob !== 'object') return null;
+    const rail = ob.missingThree && typeof ob.missingThree === 'object' ? ob.missingThree : null;
+    const rescue = ob.rescue && typeof ob.rescue === 'object' ? ob.rescue : null;
+    const railDone = !rail || rail.completed === true || ob.finished === true;
+    const rescueDone = !rescue || rescue.completed === true;
+    // A finished or never-started first hour carries nothing durable; writing it would
+    // risk a mature save re-firing the tutorial on load.
+    if (railDone && rescueDone) return null;
+    return {
+      version: 1,
+      active: ob.active === true,
+      finished: ob.finished === true,
+      currentBeat: typeof ob.currentBeat === 'number' ? ob.currentBeat : -1,
+      beatDoneAt: plainClone(ob.beatDoneAt),
+      firedFollowups: plainClone(ob.firedFollowups),
+      oreCollected: ob.oreCollected | 0,
+      trainingOre: ob.trainingOre | 0,
+      tetherReeled: ob.tetherReeled === true,
+      tetherBreaks: ob.tetherBreaks | 0,
+      beatAction: typeof ob.beatAction === 'string' ? ob.beatAction : '',
+      rescue: rescue ? railRecord(rescue) : null,
+      raid: ob.raid && typeof ob.raid === 'object' ? railRecord(ob.raid) : null,
+      claimed: ob.claimed && typeof ob.claimed === 'object' ? railRecord(ob.claimed) : null,
+      missingThree: rail ? railRecord(rail) : null,
+      storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
+    };
+  },
+
+  deserialize(d) {
+    const st = this.state;
+    if (!st) return;
+    const ob = st.onboarding && typeof st.onboarding === 'object' ? st.onboarding : {};
+    if (!d || typeof d !== 'object') {
+      // Pre-rail saves carry no slice: reset to the pre-begin baseline so a live
+      // session's rail cannot bleed into the loaded game.
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
+    ob.active = d.active === true;
+    ob.finished = d.finished === true;
+    ob.currentBeat = typeof d.currentBeat === 'number' ? d.currentBeat : -1;
+    ob.beatDoneAt = plainClone(d.beatDoneAt) || {};
+    ob.firedFollowups = plainClone(d.firedFollowups) || {};
+    ob.oreCollected = d.oreCollected | 0;
+    ob.trainingOre = d.trainingOre | 0;
+    ob.tetherReeled = d.tetherReeled === true;
+    ob.tetherBreaks = d.tetherBreaks | 0;
+    ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
+    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence);
+    ob.rescue = restoreRescueRecord(d.rescue);
+    ob.raid = plainClone(d.raid);
+    ob.claimed = plainClone(d.claimed);
+    ob.missingThree = restoreMissingThreeRecord(d.missingThree);
+    st.onboarding = ob;
+  },
+
+  // Re-enter an unfinished rail after save:loaded tore the live tutorial down.
+  // Sub-rails run in order (rescue → raid → claimed → missingThree); the earliest
+  // incomplete one owns the resume — later rails restage when their turn comes.
+  _resumeSavedRail() {
+    const st = this.state;
+    const ob = st && st.onboarding;
+    // save:loaded runs this AFTER _teardown(), which clears ob.active and the
+    // raid/claimed active flags — the resume gate is the rail records' completion
+    // state, not flags the teardown just rewrote.
+    if (!ob || ob.finished === true) return false;
+    const rescue = ob.rescue;
+    if (rescue && rescue.active === true && rescue.completed !== true) {
+      ob.active = true;
+      this._spawnRescueCast();
+      const cur = rescue.current;
+      if (cur && rescue.beats[cur] && rescue.beats[cur].state === 'current') {
+        const line = rescueBeatLine(cur);
+        ob.beatAction = line;
+        this._sayTutorial(line);
+      }
+      return true;
+    }
+    const raid = ob.raid;
+    if (raid && ob.beatDoneAt.raid == null) {
+      ob.active = true;
+      raid.active = true;
+      this._spawnRaidCast();
+      return true;
+    }
+    const claimed = ob.claimed;
+    if (claimed && claimed.resolved !== true) {
+      ob.active = true;
+      claimed.active = true;
+      this._spawnClaimedCast();
+      return true;
+    }
+    const three = ob.missingThree;
+    if (three && three.active === true && three.completed !== true) {
+      ob.active = true;
+      const cur = three.current;
+      if (cur && three.beats[cur] && three.beats[cur].state === 'current') {
+        // Rewind the current beat to pending so the normal start path re-fires the
+        // line, restages its props, and re-arms the waypoint — a saved-step resume,
+        // never a completed-beat replay.
+        three.current = null;
+        three.beats[cur].state = 'pending';
+        this._startMissingThreeBeat(cur);
+      }
+      return true;
+    }
+    return false;
   },
 
   _retireTutorialPanel() {
