@@ -223,7 +223,7 @@ export function makeEntity(spec = {}) {
     bank: 0, prevBank: 0, bankVel: 0,
     pitch: 0, prevPitch: 0,
     radius: 1, mass: defaultEntityMass(spec.type),
-    hull: 1, hullMax: 1, armorHp: 0, armorMax: 0, armorFlat: 0,
+    hull: defaultEntityHull(spec.type), hullMax: defaultEntityHull(spec.type), armorHp: 0, armorMax: 0, armorFlat: 0,
     shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1e9,
     cap: 0, capMax: 0, capRegen: 0,
     thrust: 0, turnRate: 0, maxSpeed: 0, drag: 0,
@@ -252,5 +252,12 @@ export function makeEntity(spec = {}) {
 }
 
 function defaultEntityMass(type) {
-  return type === 'pickup' ? 0.1 : 1;
+  if (type === 'pickup') return 0.1;
+  if (type === 'station' || type === 'planet') return 1e6;
+  return 1;
+}
+
+function defaultEntityHull(type) {
+  if (type === 'station' || type === 'planet') return 1e6;
+  return 1;
 }
