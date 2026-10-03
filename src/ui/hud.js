@@ -4846,9 +4846,13 @@ export function createHud(ctx, alerts) {
       return;
     }
 
-    const rShield = targetPixelRadius(tgtAnchor, tgt.radius + 12, center);
-    const rArmor = targetPixelRadius(tgtAnchor, tgt.radius + 9, center);
-    const rHull = targetPixelRadius(tgtAnchor, tgt.radius + 6, center);
+    // The ring set quantizes to whole px (all three projections still run every frame —
+    // they feed the shared lag record; the arcSig contract below counts on it): raw
+    // projected radii write float `r`/viewBox records (`25.80000000000001`) that no
+    // fixture can pin, for a sub-visible gain.
+    const rShield = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 12, center));
+    const rArmor = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 9, center));
+    const rHull = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 6, center));
     
     if (rShield <= 0) {
       setDisplay(targetArcs, false);
