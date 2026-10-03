@@ -150,6 +150,7 @@ import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
@@ -2680,6 +2681,10 @@ export const missions = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, duration_s:time_limit_s, collateral_cr, riskTier,
       economyTerms,
+      // SF-112/113: bind the premium to its named cause — a customs weir monitoring the lane in,
+      // or the destination sector's own thin patrol cover. Pure derived-from-inputs text, so a
+      // re-rolled offer reproduces the same note; the dossier prints it beside the risk band.
+      riskNote: this._riskNoteFor(typeId, destSectorId, sectorRisk),
       destStationId, destSectorId, distance,
       params,
       title: this._titleFor(typeId, params, dest),
@@ -2933,6 +2938,29 @@ export const missions = {
       default:
         return { fValue: 1, taskTime: 30 };
     }
+  },
+
+  /**
+   * SF-112/113 — name the complication the price is actually paying for. `sectorRisk` here is the
+   * destination sector's authored/live danger already fed into the quote — not a fresh signal — so
+   * the note and the premium can never disagree. A smuggling lane into a weir sector names the
+   * customs line (that jurisdiction scan is the priced threat); other elevated-risk destinations
+   * name the sector's own thin cover. Quiet destinations get no note rather than a label.
+   */
+  _riskNoteFor(typeId, destSectorId, sectorRisk) {
+    if (typeId === 'smuggling_run') {
+      const weir = customsWeirForSector(destSectorId);
+      if (weir) {
+        const weirSector = SECTOR_BY_ID.get(weir.sectorId);
+        return `the ${weirSector && weirSector.name || 'border'} customs weir scans this lane`;
+      }
+    }
+    const tier = Math.max(0, Math.round(Number(sectorRisk) || 0));
+    if (tier < 2) return null;
+    const destSector = SECTOR_BY_ID.get(destSectorId);
+    const name = destSector && destSector.name ? destSector.name : 'the destination sector';
+    const word = tier >= 4 ? 'lawless' : tier >= 3 ? 'contested' : 'patrol-thin';
+    return `${name} is ${word} — the premium pays for the crossing`;
   },
 
   _titleFor(typeId, p, dest) {
