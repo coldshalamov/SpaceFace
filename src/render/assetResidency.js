@@ -540,7 +540,13 @@ export function createAssetResidencyRegistry(options = {}) {
     candidates.sort((a, b) => (
       softEvictionLeaseWeight(a) - softEvictionLeaseWeight(b)
         || entryCorridorRank(a) - entryCorridorRank(b)
-        || a.lastReleaseAtMs - b.lastReleaseAtMs
+        // Within the warm lease class (weight 1) cohort release order tracks request
+        // order — the earliest-requested, highest-priority warm releases first, so
+        // oldest-first eviction drops the best pick. Warm leases therefore evict
+        // newest-release-first; every other class keeps the oldest-idle LRU.
+        || (softEvictionLeaseWeight(a) === 1
+          ? b.lastReleaseAtMs - a.lastReleaseAtMs
+          : a.lastReleaseAtMs - b.lastReleaseAtMs)
     ));
   }
 

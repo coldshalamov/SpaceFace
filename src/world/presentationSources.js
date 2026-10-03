@@ -122,25 +122,27 @@ export function* collectJournalPresentationEntitiesChunked(state, out = []) {
   const liveList = state && state.entityList;
   if (liveList && list) {
     const seen = new Set(list);
+    let scanned = 0;
     for (let i = 0; i < liveList.length; i++) {
       const row = liveList[i];
       if ((i >= list.length || list[i] !== row) && !seen.has(row)) {
         seen.add(row);
         pushAlive(out, row);
         yield;
-      }
+      } else if ((scanned += 1) % 64 === 0) yield;
     }
   }
   const liveRows = dressing && Array.isArray(dressing.rows) ? dressing.rows : null;
   if (liveRows && rows) {
     const seen = new Set(rows);
+    let scanned = 0;
     for (let i = 0; i < liveRows.length; i++) {
       const row = liveRows[i];
       if ((i >= rows.length || rows[i] !== row) && !seen.has(row)) {
         seen.add(row);
         pushAlive(out, row);
         yield;
-      }
+      } else if ((scanned += 1) % 64 === 0) yield;
     }
   }
   return out;

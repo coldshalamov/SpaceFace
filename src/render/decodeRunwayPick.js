@@ -70,3 +70,50 @@ function topIndexOf(top, entity) {
   }
   return -1;
 }
+
+// Chunked twin: identical selection semantics to pickDecodeRunwayCandidates, but the
+// per-row evaluate runs inside a generator so a sliced driver (residency poll,
+// reconcile, sector reheat) can interleave the walk with presented frames. The list
+// is snapshotted at mint and the claims/top scratch is per-call — a suspended walk
+// must not observe splices or have its scratch clobbered by a synchronous pick
+// call running in between. Dead rows still filter through the evaluate's alive
+// check at evaluation time.
+export function* pickDecodeRunwayCandidatesSteps(list, evaluate, maxPicks = 2) {
+  const picks = [];
+  if (!Array.isArray(list) || list.length === 0 || !(maxPicks > 0)) return picks;
+  const rows = list.slice();
+  const claims = new Map();
+  const top = [];
+  const cap = Math.floor(maxPicks);
+  for (let i = 0; i < rows.length; i++) {
+    const entity = rows[i];
+    if (!evaluate(entity, _key)) { yield; continue; }
+    const w = _key.wave;
+    const d = _key.seconds;
+    const claim = claims.get(entity.id);
+    if (claim) {
+      const earlier = w < claim.w || (w === claim.w && d < claim.d);
+      if (!earlier) { yield; continue; }
+      const held = topIndexOf(top, claim.entity);
+      if (held !== -1) top.splice(held, 1);
+      claim.entity = entity;
+      claim.w = w;
+      claim.d = d;
+    } else {
+      claims.set(entity.id, { entity, w, d });
+    }
+    let pos = top.length;
+    while (pos > 0) {
+      const t = top[pos - 1];
+      if (w < t.w || (w === t.w && d < t.d)) pos -= 1;
+      else break;
+    }
+    if (pos < cap) {
+      top.splice(pos, 0, { entity, w, d });
+      if (top.length > cap) top.length = cap;
+    }
+    yield;
+  }
+  for (let i = 0; i < top.length; i++) picks.push(top[i].entity);
+  return picks;
+}

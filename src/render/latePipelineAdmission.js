@@ -18,8 +18,22 @@ function isDrawable(object) {
  * LOD buckets and zero-count pools sit at visible === false until approach/activation, and their
  * first reveal used to be the first draw that linked their program.
  */
+// The rescan calls the collectors below several times per iteration with the same
+// openingSubjects array — memoize the membership Set per array instead of minting
+// an identical one on every call.
+const _openingSetMemo = new WeakMap();
+function openingSetFor(openingSubjects) {
+  if (!Array.isArray(openingSubjects)) return new Set();
+  let set = _openingSetMemo.get(openingSubjects);
+  if (!set) {
+    set = new Set(openingSubjects.filter(Boolean));
+    _openingSetMemo.set(openingSubjects, set);
+  }
+  return set;
+}
+
 export function collectUncompiledSceneDrawables(scene, openingSubjects = []) {
-  const opening = new Set(Array.isArray(openingSubjects) ? openingSubjects.filter(Boolean) : []);
+  const opening = openingSetFor(openingSubjects);
   const late = [];
   if (!scene || typeof scene.traverse !== 'function') return late;
   scene.traverse((object) => {
@@ -30,7 +44,7 @@ export function collectUncompiledSceneDrawables(scene, openingSubjects = []) {
 }
 
 export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
-  const opening = new Set(Array.isArray(openingSubjects) ? openingSubjects.filter(Boolean) : []);
+  const opening = openingSetFor(openingSubjects);
   const late = [];
   if (!meshes || typeof meshes.values !== 'function') return late;
   for (const root of meshes.values()) {

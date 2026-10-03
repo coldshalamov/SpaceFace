@@ -206,18 +206,6 @@ export function compileShadowDepthPipelines(options = {}) {
   const restoreObjectHome = options.restoreObjectHome;
   const shadowMap = renderer && renderer.shadowMap;
   const casting = collectPotentialShadowCastSubjects(subjects);
-  // three bakes the rendered scene's light counts (numDirLights/numPointLights/…) and fog flags
-  // into EVERY program key — including depth variants. The live scene runs 3 directional + 8
-  // pooled point lights under FogExp2; a staging scene holding only the key light produces keys
-  // no live draw can ever hit (the +21s LivingHull/StaticGroup/pool NOVELs). Stage the real
-  // scene's full light set + fog so the linked keys are identical to live.
-  const lightingScene = options.lightingScene || null;
-  const stagedLights = [];
-  if (lightingScene && typeof lightingScene.traverse === 'function') {
-    lightingScene.traverse((object) => {
-      if (object && object.isLight === true && object !== light) stagedLights.push(object);
-    });
-  }
   const forceEnable = options.forceEnable === true;
   if (!shadowMap || !light) {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
@@ -229,8 +217,23 @@ export function compileShadowDepthPipelines(options = {}) {
   if (!forceEnable && (previousEnabled !== true || previousCastShadow !== true)) {
     return { skipped: true, reason: 'directional shadows inactive', subjects: 0 };
   }
-  if (casting.length === 0 && !forceEnable) {
+  // Zero casters means zero depth programs to link — the staging ceremony (whole-scene
+  // light traverse, reparenting, census render) is net-zero work then, even under
+  // forceEnable whose enabled flag restores in finally anyway.
+  if (casting.length === 0) {
     return { skipped: true, reason: 'no shadow-casting subjects', subjects: 0 };
+  }
+  // three bakes the rendered scene's light counts (numDirLights/numPointLights/…) and fog flags
+  // into EVERY program key — including depth variants. The live scene runs 3 directional + 8
+  // pooled point lights under FogExp2; a staging scene holding only the key light produces keys
+  // no live draw can ever hit (the +21s LivingHull/StaticGroup/pool NOVELs). Stage the real
+  // scene's full light set + fog so the linked keys are identical to live.
+  const lightingScene = options.lightingScene || null;
+  const stagedLights = [];
+  if (lightingScene && typeof lightingScene.traverse === 'function') {
+    lightingScene.traverse((object) => {
+      if (object && object.isLight === true && object !== light) stagedLights.push(object);
+    });
   }
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {

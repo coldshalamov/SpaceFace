@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
-import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
+import { pickDecodeRunwayCandidates, pickDecodeRunwayCandidatesSteps } from './decodeRunwayPick.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import {
   clearPooledTransientMarks,
@@ -2000,6 +2000,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   // A chunked hold-exempt collect suspended at hold release must close — its
   // snapshotted scratch rows belong to a window that no longer drives beats.
   abandonHoldExemptCollect(owner);
+  abandonHoldExemptCommit(owner);
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
   const pollCamera = owner.state && owner.state.camera || {};
@@ -2368,6 +2369,25 @@ function abandonHoldExemptCollect(owner) {
   owner._holdExemptCollectEpoch = null;
 }
 
+// Drop an in-flight enqueue/kick commit — its iterators belong to a completed
+// collect's rows, which a sector flip or hold release now owns differently.
+function abandonHoldExemptCommit(owner) {
+  const enqIter = owner && owner._holdExemptEnqueueIter;
+  if (enqIter && typeof enqIter.return === 'function') {
+    try { enqIter.return(); } catch { /* abandon proceeds regardless */ }
+  }
+  const kickIter = owner && owner._holdExemptKickIter;
+  if (kickIter && typeof kickIter.return === 'function') {
+    try { kickIter.return(); } catch { /* abandon proceeds regardless */ }
+  }
+  owner._holdExemptEnqueueIter = null;
+  owner._holdExemptKickIter = null;
+  owner._holdExemptCommitList = null;
+  owner._holdExemptCommitEpoch = null;
+  owner._holdExemptCommitExempt = null;
+  owner._holdExemptEnqueueBefore = 0;
+}
+
 // Close any in-flight sliced residency poll — its collected rows belong to a
 // window a sector flip or the dirty reconcile's superset pass now owns.
 function abandonResidencyPoll(owner) {
@@ -2426,12 +2446,15 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const state = owner && owner.state;
   if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
   const liveEpoch = state.world && state.world.enterSerial != null ? state.world.enterSerial : null;
+  if (owner._holdExemptCommitEpoch != null && owner._holdExemptCommitEpoch !== liveEpoch) {
+    abandonHoldExemptCommit(owner);
+  }
   let iterator = owner._holdExemptCollectIter || null;
   if (iterator && owner._holdExemptCollectEpoch !== liveEpoch) {
     abandonHoldExemptCollect(owner);
     iterator = null;
   }
-  if (!iterator) {
+  if (!iterator && !owner._holdExemptCommitList) {
     // The spatial refill inside the ctx is the collect's biggest single step —
     // run it as this beat's own step before minting the iterator.
     warmNearbyLedgerRows(state);
@@ -2445,40 +2468,67 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const started = now();
   let enqueued = 0;
   for (;;) {
-    let done = false;
-    for (;;) {
-      let step;
-      try {
-        step = iterator.next();
-      } catch (err) {
-        // A throwing walk used to leave the closed iterator parked on the owner:
-        // the next beat read done and committed the partial out as if complete.
-        abandonHoldExemptCollect(owner);
-        throw err;
+    if (iterator) {
+      let done = false;
+      for (;;) {
+        let step;
+        try {
+          step = iterator.next();
+        } catch (err) {
+          // A throwing walk used to leave the closed iterator parked on the owner:
+          // the next beat read done and committed the partial out as if complete.
+          abandonHoldExemptCollect(owner);
+          throw err;
+        }
+        if (step.done) { done = true; break; }
+        if (now() - started >= sliceMs) break;
       }
-      if (step.done) { done = true; break; }
-      if (now() - started >= sliceMs) break;
+      if (!done) break;
     }
-    if (!done) break;
-    const out = owner._holdExemptCollectOut || [];
-    abandonHoldExemptCollect(owner);
-    const scratch = owner._presentationMeshScratch || (owner._presentationMeshScratch = []);
-    scratch.length = 0;
-    for (let i = 0; i < out.length; i++) scratch.push(out[i]);
-    const frame = owner._activityFrame;
-    const glassIds = frame && frame.renderGlassIds;
-    const exempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
-    const before = owner._meshBuildQueue.length;
-    enqueueMissingMeshBuilds(
-      scratch,
-      owner._meshes,
-      owner._meshBuildQueuedIds,
-      owner._meshBuildQueue,
-      (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
-        && exempt(entity),
-    );
-    kickDecodeRunwayAssets(owner, scratch);
-    enqueued += owner._meshBuildQueue.length - before;
+    // The commit (enqueue + decode kick) used to run synchronously on the beat that
+    // completed the collect — two more whole-list walks paid inside one presented
+    // frame. Both phases now drive chunked iterators persisted on the owner, so the
+    // commit itself rides the same beat clock the collect does.
+    if (!owner._holdExemptCommitList) {
+      const out = owner._holdExemptCollectOut || [];
+      abandonHoldExemptCollect(owner);
+      // Own array, not the shared presentation scratch — the commit's iterators
+      // suspend across beats and must not observe another walk's scratch reuse.
+      owner._holdExemptCommitList = out.slice();
+      owner._holdExemptCommitEpoch = liveEpoch;
+      const frame = owner._activityFrame;
+      const glassIds = frame && frame.renderGlassIds;
+      owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
+      owner._holdExemptEnqueueBefore = owner._meshBuildQueue.length;
+      const commitExempt = owner._holdExemptCommitExempt;
+      owner._holdExemptEnqueueIter = enqueueMissingMeshBuildsSteps(
+        owner._holdExemptCommitList,
+        owner._meshes,
+        owner._meshBuildQueuedIds,
+        owner._meshBuildQueue,
+        (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
+          && commitExempt(entity),
+      );
+    }
+    while (owner._holdExemptEnqueueIter) {
+      if (now() - started >= sliceMs) break;
+      const step = owner._holdExemptEnqueueIter.next();
+      if (step.done) owner._holdExemptEnqueueIter = null;
+    }
+    if (owner._holdExemptEnqueueIter) break;
+    if (!owner._holdExemptKickIter) {
+      owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
+    }
+    while (owner._holdExemptKickIter) {
+      if (now() - started >= sliceMs) break;
+      const step = owner._holdExemptKickIter.next();
+      if (step.done) owner._holdExemptKickIter = null;
+    }
+    if (owner._holdExemptKickIter) break;
+    enqueued += owner._meshBuildQueue.length - owner._holdExemptEnqueueBefore;
+    owner._holdExemptCommitList = null;
+    owner._holdExemptCommitEpoch = null;
+    owner._holdExemptCommitExempt = null;
     if (now() - started >= sliceMs) break;
     // Remint the next collect inside this beat's remaining slice: without it a row
     // becoming exempt just after a commit waits a full beat plus a walk before its
@@ -2741,10 +2791,12 @@ function noteOnGlassResidencyEviction(state, entity) {
   renderState.onGlassDisposals = (renderState.onGlassDisposals | 0) + 1;
 }
 
-function meshNeedsAuthoredDecode(owner, entity) {
-  const mesh = owner && owner._meshes && entity ? owner._meshes.get(entity.id) : null;
-  if (!mesh) return true;
-  const data = mesh.userData || {};
+function meshNeedsAuthoredDecode(owner, entity, mesh) {
+  const resolvedMesh = mesh !== undefined
+    ? mesh
+    : (owner && owner._meshes && entity ? owner._meshes.get(entity.id) : null);
+  if (!resolvedMesh) return true;
+  const data = resolvedMesh.userData || {};
   if (data.authoredAdmissionSubstrate === true) return true;
   if (data.geometryPending === true) return true;
   if (isAuthoredPendingStatus(data.authoredAssetState)) return true;
@@ -3336,7 +3388,7 @@ function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole, runwayEnv = n
   }
 }
 
-function kickDecodeRunwayAssets(owner, entities) {
+function* kickDecodeRunwayAssetsSteps(owner, entities) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return 0;
@@ -3403,19 +3455,19 @@ function kickDecodeRunwayAssets(owner, entities) {
     ? navigator.hardwareConcurrency
     : 4;
   const decodeCap = beltTailDecodeConcurrency(decodeCores, resolveDecodeTaskBudgetLimit(decodeCores));
-  const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
+  const ordered = yield* pickDecodeRunwayCandidatesSteps(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
     if (entityHomeSectorMismatch(entity, state)) return false;
     // Cheap O(1) guards first — the packaged-file resolver chain below is the
     // expensive step and only rows that clear these ever pay it.
-    if (!meshNeedsAuthoredDecode(owner, entity)) return false;
+    const bd0 = owner._meshes && entity ? owner._meshes.get(entity.id) : null;
+    if (!meshNeedsAuthoredDecode(owner, entity, bd0)) return false;
     if (pending.has(entity.id)) return false;
     // A prep-pinned entity decodes through its own boundary record's lane — a runway
     // start here just joins the same task while burning one of the two pick slots.
     if (owner._sectorBoundaryPreparations && owner._sectorBoundaryPreparations.has(entity.id)) return false;
     // An in-flight boundary job already owns this entity's pipeline tail — re-picking
     // would burn a start slot on library-deduped no-ops every poll until it settles.
-    const bd0 = owner._meshes && owner._meshes.get(entity.id);
     if (bd0 && bd0.userData && bd0.userData.authoredUpgradePromise) return false;
     // The runway is not ship-only: wrecks/payloads/beacons carry the same GLB-decode
     // long pole on first contact (packagedPropSpec covers payload/beacon/assetRef-mapped
@@ -3499,8 +3551,18 @@ function kickDecodeRunwayAssets(owner, entities) {
         pending.delete(entity.id);
       });
     }
+    yield;
   }
   return started;
+}
+
+// Sync drain of the chunked twin: identical pick order, identical starts — the extra
+// yields are no-ops for an inline drain.
+function kickDecodeRunwayAssets(owner, entities) {
+  const it = kickDecodeRunwayAssetsSteps(owner, entities);
+  let step = it.next();
+  while (!step.done) step = it.next();
+  return step.value;
 }
 
 /**
@@ -13394,6 +13456,10 @@ export const render = {
             ? state.world.enterSerial : null)) {
         rescanPasses += 1;
         this._postOpeningRescanRequested = false;
+        // The re-collect walks the mesh registry and traverses the scene synchronously —
+        // yield once so a join landing during the awaits doesn't pay the whole re-derive
+        // inside the frame that armed it.
+        if (typeof yieldToBrowser === 'function') await yieldToBrowser();
         const rescanRoots = [
           ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
           ...collectInstancePoolCompileRoots(scene),
@@ -15771,6 +15837,7 @@ export const render = {
     };
     warm.track = track;
 
+    try {
     // Procedural spawnables: pickups (gem / credit chip / custody-pod canister), mines and
     // vector mines — the same exemplar spec table the dormant roster path used. Wreck
     // exemplars ride along too: every kill mints a wreck entity and its procedural shell
@@ -16020,6 +16087,22 @@ export const render = {
         sectorId,
         isResidencyOwnerActive: () => warm.building === true,
       }), `decode:${file}`));
+    }
+    } catch (error) {
+      // Mirror the deferred-warm sync-throw path: a stranded mounted root with
+      // warmBuilding stuck is skipped by every park sweep forever and its decode
+      // leases stay pinned live for the run.
+      console.warn('[render] crucible roster warm begin failed', error);
+      warm.building = false;
+      root.userData.warmBuilding = false;
+      const prewarmRoots = this._rosterPrewarmRoots;
+      const prewarmIndex = Array.isArray(prewarmRoots) ? prewarmRoots.indexOf(root) : -1;
+      if (prewarmIndex >= 0) prewarmRoots.splice(prewarmIndex, 1);
+      try {
+        if (root.parent) root.parent.remove(root);
+        if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
+      } catch (_) { /* teardown is best-effort */ }
+      return null;
     }
     return warm;
   },
@@ -17672,8 +17755,7 @@ export const render = {
     // stage's own step so a next() never pays it whole.
     warmNearbyLedgerRows(state);
     for (const _ of collectMeshPresentationEntitiesChunked(state, presentationList)) yield;
-    kickDecodeRunwayAssets(this, presentationList);
-    yield;
+    for (const _ of kickDecodeRunwayAssetsSteps(this, presentationList)) yield;
     const env = renderAdmissionEnv(state);
     // One time-to-glass value per entity for the whole pass: isUrgent plus every sort
     // comparison used to recompute it per call (O(n log n) recomputes on the sort).
@@ -17827,8 +17909,7 @@ export const render = {
         && residencyPruneSweepDue(this)) {
       this._pruneMotionTrackerRecords(presentationList);
     }
-    kickDecodeRunwayAssets(this, presentationList);
-    yield;
+    for (const _ of kickDecodeRunwayAssetsSteps(this, presentationList)) yield;
     updatePredictedSectorPrewarm(this);
     yield;
     warmEncounterPendingDecode(this);
