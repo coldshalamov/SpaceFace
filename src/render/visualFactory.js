@@ -3969,7 +3969,15 @@ function disposeDetachedPackagedGroup(group) {
 }
 
 function attachPackagedBody(root, relativeFile, entity) {
-  if (!root || !relativeFile) return root;
+  if (!root || !relativeFile) {
+    // No packaged file resolved — stamp the terminal identity so the root never sits
+    // 'missing' in front of the readiness gate (same wedge class as buildFallback).
+    if (root) {
+      root.userData.authoredAssetState = 'unavailable';
+      root.userData.authoredVisualRoot = 'none-build-failed';
+    }
+    return root;
+  }
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
