@@ -4375,7 +4375,6 @@ export const traffic = {
     ent.data.role = 'arclight';
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'HELIOS ARCLIGHT';
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     const target = this._nearestStationTo(stations, station) || station;
     const manifest = this._assignManifest(ent, 'arclight', target, sectorId);
     this._active.push(ent.id);
@@ -4429,7 +4428,6 @@ export const traffic = {
     ent.data.role = 'tanker';
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'VOLATILES TANKER';
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     const target = this._nearestStationTo(stations, station) || station;
     const manifest = this._assignManifest(ent, 'tanker', target, sectorId);
     this._active.push(ent.id);
@@ -4483,7 +4481,6 @@ export const traffic = {
     ent.data.role = 'customs';
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'INSPECTION CUTTER';
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     const target = this._nearestStationTo(stations, station) || station;
     this._active.push(ent.id);
     const rec = {
@@ -4604,7 +4601,6 @@ export const traffic = {
       ent.data.tourist = true;
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Sightseer';
     }
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     if (ent.data.worldRecordId) {
       this._indexWorldRecordId(ent);
       return;
@@ -7000,8 +6996,6 @@ export const traffic = {
     ent.data.role = 'salvor';
     ent.data.trafficLabel = def.label;
     ent.data.generalSalvor = true;
-    // Persist mid-job cutters + carried cargo across Continue (save only keeps flags.persistent).
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     // Empty hold on commission — value is claimed from the wreck/payload, never pre-rolled.
     const empty = this._emptySalvorManifest(ent, 0);
     this._setTrafficManifest(ent, null, empty);
@@ -7113,8 +7107,6 @@ export const traffic = {
     ent.data.role = 'tug';
     ent.data.trafficLabel = def.label;
     ent.data.yardTug = true;
-    // A tug mid-tow must survive Continue, exactly as a mid-job cutter does.
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     this._active.push(ent.id);
     const rec = {
       id: ent.id,

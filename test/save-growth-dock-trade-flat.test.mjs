@@ -31,10 +31,13 @@
 //     An unanchored row is legal for one FAR_ROW_ORPHAN_GRACE_S window after shelving (its
 //     record may still land); STALE orphans — unanchored past that window — must stay 0.
 //     That stale-orphan channel is the one grower with no plateau.
-//   • persistent entity count and npcJobs.byId key count stay under their early-run ceiling
-//     after cycle 5 (D28 regression guards). Literal non-increase would false-positive on
-//     normal job churn — the pre-fix soak oscillates persistent 3-8 and jobs 0-2 with no
-//     monotone growth — so the guard is a ceiling, not a ratchet.
+//   • persistent entity count and npcJobs.byId key count stay bounded after cycle 5 (D28
+//     regression guards). Literal non-increase would false-positive on normal job churn, and a
+//     strict early-5 ceiling is also too tight for the CURRENT honest churn: the Helios starter
+//     mining shift spills live ore pickups as flags.persistent items in batches up to ~9 while a
+//     beam holds (measured 2026-10; batches overlap the ~5-ship durable set and released convoy
+//     turnover), so the absolute bound rides the early-run ceiling plus measured churn slack and
+//     a flat warm-window slope keeps the +1.46/cycle monotonic-leak signature fatal.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -140,6 +143,15 @@ const TAIL_TO = 52;
 // route; 24 KB trips only if the ambient wave churn doubles.
 const FLAT_BAND_BYTES = 24 * 1024;
 const FLAT_SLOPE_B_PER_CYCLE = 300;
+// D28 count guards. The honest persistent set is ~5 durable ships; a live mining shift anchors
+// transient ore pickups (type 'pickup', up to ~9 measured) and convoy/job turnover adds ±3, so
+// the absolute bound carries churn slack on the early-run sample. The monotonic-leak signature
+// the D28 rows caught ran ~+1.46 persistent entities/cycle; measured honest churn slopes
+// ~0.00-0.06 (worst modeled ~0.16) — the warm slope bound sits ~2x off the churn side and ~5x
+// off the leak side.
+const PERSISTENT_CHURN_SLACK = 12;
+const JOBS_CHURN_SLACK = 3;
+const PERSISTENT_FLAT_SLOPE_PER_CYCLE = 0.3;
 
 // ── boot: the production manifest, exactly like scripts/run-actual-game-playthrough.mjs ─────
 async function bootSoakSim() {
@@ -332,18 +344,29 @@ test('dock/trade save-load soak: serialized payload is flat in the tail window',
       `cycle ${i + 1}: ${c.orphansStale} far rows have anchored nothing for more than `
       + `${FAR_ROW_ORPHAN_GRACE_S} s — the unbounded orphan channel (PQ-033.02 mechanism 2)`);
   }
-  // D28 guards: after cycle 5 the counts never exceed the early-run ceiling. Normal job churn
-  // oscillates (a new hauler takes a job as an old one completes), so the guard is a ceiling.
-  const persistentCeiling = Math.max(...persistentCounts.slice(0, 5));
-  const jobsCeiling = Math.max(...jobCounts.slice(0, 5));
+  // D28 guards: after cycle 5 the counts must stay bounded — the leak this caught grew
+  // monotonically to 87 (~+1.46/cycle). Job churn oscillates (a new hauler takes a job as an old
+  // one completes) and a live mining shift anchors batches of transient ore pickups as
+  // flags.persistent (up to ~9 measured), so the absolute bound keeps the early-run ceiling plus
+  // measured churn slack, and the warm-window slope guards the actual law: bounded, never
+  // monotonically increasing.
+  const persistentCeiling = Math.max(16, ...persistentCounts.slice(0, 5)) + PERSISTENT_CHURN_SLACK;
+  const jobsCeiling = Math.max(...jobCounts.slice(0, 5)) + JOBS_CHURN_SLACK;
   for (let i = 5; i < persistentCounts.length; i++) {
     assert.ok(persistentCounts[i] <= persistentCeiling,
-      `cycle ${i + 1}: persistent entity count ${persistentCounts[i]} passed the early-run `
+      `cycle ${i + 1}: persistent entity count ${persistentCounts[i]} passed the bounded `
       + `ceiling ${persistentCeiling} (D28 regression)`);
     assert.ok(jobCounts[i] <= jobsCeiling,
-      `cycle ${i + 1}: npcJobs.byId key count ${jobCounts[i]} passed the early-run `
+      `cycle ${i + 1}: npcJobs.byId key count ${jobCounts[i]} passed the bounded `
       + `ceiling ${jobsCeiling} (D28 regression)`);
   }
+  const persistentWarmPoints = [];
+  for (let c = 6; c <= CYCLES; c++) persistentWarmPoints.push([c, persistentCounts[c - 1]]);
+  const persistentWarmSlope = leastSquaresSlope(persistentWarmPoints);
+  console.log(`[save-growth] persistent warm slope=${persistentWarmSlope.toFixed(3)}/cycle`);
+  assert.ok(persistentWarmSlope <= PERSISTENT_FLAT_SLOPE_PER_CYCLE,
+    `persistent count warm slope ${persistentWarmSlope.toFixed(3)}/cycle > `
+    + `${PERSISTENT_FLAT_SLOPE_PER_CYCLE}/cycle — monotonic growth is the D28 leak signature`);
 
   // ── the flat criterion ────────────────────────────────────────────────────────────────────
   const tailPoints = [];

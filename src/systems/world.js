@@ -1764,6 +1764,7 @@ export const world = {
     const list = recordsForSector(bag, sectorId);
     const liveByRecordId = liveRecordEntityIndex(state);
     const farRecordIds = farActorRecordIdSet(state);
+    const deferredRecordIds = restoreEnvelopeRecordIds(state);
     let spawned = 0;
     let hadCombatHistory = false;
     let spawnedBoss = false;
@@ -1794,6 +1795,11 @@ export const world = {
       // A shelved far-actor row already carries this record's live state — respawning here would
       // double the actor (it promotes back to a live entity on approach via tickFarActors).
       if (farRecordIds.has(rec.recordId)) continue;
+      // The restore's persistent envelope already carries this record's live body — the saved
+      // hull respawns later in _restoreChunks and is authoritative. Materializing the record
+      // shell now stands a second hull beside every respawned copy (D136: +1 live carrier per
+      // record per save→load round-trip, each later stamped persistent and re-serialized).
+      if (deferredRecordIds && deferredRecordIds.has(rec.recordId)) continue;
       const ent = this._spawnFromDurableRecord(rec, sectorId);
       if (!ent) continue;
       spawned++;
@@ -7082,6 +7088,15 @@ function liveRecordEntityIndex(state) {
     if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
   }
   return map;
+}
+
+// During a save restore, saveSystem publishes the incoming persistent envelope's worldRecordIds
+// on state (null outside a restore). It is the third carrier class of the exactly-once law:
+// the saved live hull respawns at _restoreChunks step 10, so a record it names must not
+// materialize a shell twin here.
+function restoreEnvelopeRecordIds(state) {
+  const set = state && state.restoreEnvelopeRecordIds;
+  return set instanceof Set ? set : null;
 }
 
 // Far-actor shelved rows carrying a worldRecordId — the same batch surface as the live index.

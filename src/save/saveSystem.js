@@ -27,6 +27,7 @@ import { createTimeEffects } from '../core/timeEffects.js';
 import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
 import { stampIronmanLatch } from './ironmanChoice.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
@@ -4654,6 +4655,20 @@ export const save = {
     // Exposed on state so the renderer's keep-GPU reattach can translate its retained mesh set
     // (keyed by pre-restore ids) onto the freshly spawned ids instead of rebuilding every boundary.
     state.sessionEntityIdRemap = entityIdRemap;
+    // The persistent envelope is authoritative for the durable hulls it carries: publish their
+    // worldRecordIds for the sector regen's rematerialize pass, which would otherwise spawn a
+    // record-shell twin beside every envelope respawn (D136 — each twin then stamps persistent
+    // and the duplicate set re-serializes, compounding every save→load cycle). Cleared in
+    // _closeRestoreSession.
+    const envelopeRecordIds = new Set();
+    const savedPersistentList = data.entities && data.entities.persistent;
+    if (Array.isArray(savedPersistentList)) {
+      for (const saved of savedPersistentList) {
+        const recordId = saved && saved.data && saved.data.worldRecordId;
+        if (recordId != null) envelopeRecordIds.add(recordId);
+      }
+    }
+    state.restoreEnvelopeRecordIds = envelopeRecordIds.size ? envelopeRecordIds : null;
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
@@ -5093,6 +5108,11 @@ export const save = {
     hadPendingRunTransition = !!pendingRunTransition;
     this._pendingRunTransition = null;
     this._restoring = false;
+    // The envelope's record-id deferral is restore-scoped: every rematerialize that could see
+    // it ran inside _restoreChunks (membership enter + residency drain), and a drained newer
+    // route republishes its own set in _openRestoreSession. Clearing must precede the error
+    // paths or a failed restore would suppress record rematerialize for the rest of the run.
+    delete state.restoreEnvelopeRecordIds;
     this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
     this._lastAutosavePlaytime = state.meta.playtimeS;
     if (pendingRunTransition) {
@@ -5543,6 +5563,19 @@ export const save = {
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
       delete spec._isPlayer;
+      // One live hull per worldRecordId: an envelope written by a leaking build can hold
+      // several saved copies for one durable record — later copies collapse onto the first
+      // respawned carrier and their saved ids still remap for referents (combat targets,
+      // deployable owner/host refs). The record rematerialize is deferred separately via
+      // state.restoreEnvelopeRecordIds, so the only carrier met here is an earlier copy.
+      const recordId = spec.data && spec.data.worldRecordId;
+      if (recordId != null) {
+        const carrier = indexedWorldRecordEntity(state, recordId);
+        if (carrier && carrier.id !== state.playerId) {
+          if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), carrier.id);
+          continue;
+        }
+      }
       // Reclaim the saved id when it is still free. entityList order at save time is not id
       // order (dead bodies leave swap-removed holes), so sequential re-allocation silently
       // permutes survivor ids and breaks save→load→continue state parity. The spawn helper
