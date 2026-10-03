@@ -2,7 +2,7 @@ name: Import Ravel character
 on:
   push:
     branches: ['character/ravel-unraveller-20261003']
-    paths: ['.ravel-delivery/READY']
+    paths: ['.ravel-delivery/READY', '.github/workflows/ravel-import.yml']
 permissions:
   contents: write
 jobs:
@@ -32,16 +32,19 @@ jobs:
           python3 - <<'PY'
           import base64, gzip, hashlib, json, pathlib, subprocess
           encoded = ''.join(p.read_text() for p in sorted(pathlib.Path('.ravel-delivery').glob('part*.b64')))
-          # Correct the one transport substitution, then verify the complete original payload.
           encoded = encoded.replace('TKJ6p3Y3', 'TKJ6p0Y3', 1)
           raw = gzip.decompress(base64.b64decode(encoded, validate=True))
           assert hashlib.sha256(raw).hexdigest() == '9fc2355ca3dc03d732e9b68346319469b98d93dd349113f9c7429944d8312afe', 'Delivery hash mismatch'
           payload = json.loads(raw)
           patch = pathlib.Path('/tmp/ravel.patch')
           patch.write_text(payload['patch'])
-          subprocess.run(['git', 'apply', '--check', str(patch)], check=True)
-          subprocess.run(['git', 'apply', str(patch)], check=True)
-          subprocess.run(['git', 'add', '--', *payload['paths']], check=True)
+          # The workflow was already authored through the connected GitHub tool.
+          excluded = '--exclude=.github/workflows/ravel-character.yml'
+          subprocess.run(['git', 'apply', excluded, '--check', str(patch)], check=True)
+          subprocess.run(['git', 'apply', excluded, str(patch)], check=True)
+          subprocess.run(['git', 'apply', '--check', '.ravel-delivery/manifest.patch'], check=True)
+          subprocess.run(['git', 'apply', '.ravel-delivery/manifest.patch'], check=True)
+          subprocess.run(['git', 'add', '--', *payload['paths'], 'test/authoritative-manifest.test.mjs'], check=True)
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
