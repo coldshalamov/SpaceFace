@@ -1833,18 +1833,19 @@ export const missions = {
     const slots = board && board.slots;
     if (!Array.isArray(slots)) return;
     if (slots.some((o) => o && this._zeroCapitalFlyable(o))) return;
-    const seed = (this.helpers && this.helpers.hash32)
-      ? this.helpers.hash32(this.state.meta.seed, info.id, epoch, 'recovery')
-      : ((((this.state.meta && this.state.meta.seed) || 0) ^ epoch ^ 0x9e3779b9) >>> 0);
+    const seed = hash32(this.state.meta.seed, info.id, epoch, 'recovery');
     const rng = (this.helpers && this.helpers.mulberry32)
       ? this.helpers.mulberry32(seed) : mulberryLocal(seed);
-    for (const typeId of ['tow_recovery', 'recon_scan', 'mining_quota']) {
+    for (const typeId of ['recon_scan', 'tow_recovery', 'mining_quota']) {
       const offer = this._rollOffer(typeId, info, rng, epoch, 'recovery', { attachConditions: false });
       if (offer && this._zeroCapitalFlyable(offer)) {
         slots.push(offer);
         return;
       }
     }
+    // A guarantee that cannot fire is worth hearing about — e.g. every reachable destination is
+    // rep-gated for this pilot — rather than failing the row silently.
+    console.warn(`[missions] recovery slot rolled nothing flyable at ${info && info.id} epoch ${epoch}`);
   },
 
   /** True when the current fit can accept this offer with zero credits and zero hold room. */

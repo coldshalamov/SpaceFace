@@ -645,7 +645,14 @@ export const automation = {
     for (let i = a.drones.length - 1; i >= 0; i--) {
       const g = a.drones[i];
       const def = DRONE_BY_ID.get(g.defId) || g;
-      if (g.status === 'distressed') { this._parkDroneEntities(g, dt); continue; } // frozen until upkeep paid
+      if (g.status === 'distressed') {
+        this._parkDroneEntities(g, dt);
+        // A distressed drone is still billed upkeep — book it so the open cycle sees the charge.
+        if (g.operation) {
+          recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * dt });
+        }
+        continue;
+      } // frozen until upkeep paid
       if (isFuelStranded(g)) {
         this._strandForFuel(g, def, { toast: false, dt });
         continue;
@@ -1150,10 +1157,11 @@ export const automation = {
       // intact and park it until the logistics phase provides a program-aware averaged route model.
       if (g.program && TEMPLATES[g.program.templateId]) {
         g.status = 'program';
-        // Away-sector drones still pay upkeep every tick through _drainUpkeep — book it into the
-        // operation cycle so a parked-out-of-sector run reconciles the same as an in-sector one.
+        // Away-sector drones still pay upkeep for the settle window through the offline/upkeep
+        // charge — book it into the operation cycle so a parked-out-of-sector run reconciles the
+        // same as an in-sector one.
         if (g.operation) {
-          recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * dt });
+          recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * elapsed });
         }
         continue;
       }
