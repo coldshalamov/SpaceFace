@@ -1,8 +1,8 @@
 {
   "counts": {
-    "green": 6,
-    "red": 195,
-    "rows": 201
+    "rows": 208,
+    "red": 199,
+    "green": 9
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -15,7 +15,7 @@
     {
       "bounds": {
         "center": [
-          -0.000018,
+          -1.8e-05,
           0.316118,
           0
         ],
@@ -74,7 +74,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000018,
+        1.8e-05,
         0,
         0
       ],
@@ -181,7 +181,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000018,
+        -1.8e-05,
         0.316118,
         0
       ],
@@ -1766,6 +1766,1227 @@
         4.828689,
         9.046273,
         5.693013
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          2.444066,
+          0
+        ],
+        "max": [
+          45,
+          10.890016,
+          31.002323
+        ],
+        "min": [
+          -45,
+          -6.001885,
+          -31.002323
+        ],
+        "size": [
+          90,
+          16.891901,
+          62.004645
+        ]
+      },
+      "bytes": 1649376,
+      "collider": {
+        "authoredClearVolumesPreserved": true,
+        "compoundBoxesWU": [
+          {
+            "center": {
+              "x": -69,
+              "y": 0,
+              "z": -48.5
+            },
+            "id": "drive_port",
+            "size": {
+              "x": 42,
+              "y": 24,
+              "z": 27
+            }
+          },
+          {
+            "center": {
+              "x": -69,
+              "y": 0,
+              "z": 48.5
+            },
+            "id": "drive_starboard",
+            "size": {
+              "x": 42,
+              "y": 24,
+              "z": 27
+            }
+          },
+          {
+            "center": {
+              "x": -83,
+              "y": 0,
+              "z": 0
+            },
+            "id": "aft_service_spine",
+            "size": {
+              "x": 14,
+              "y": 24,
+              "z": 70
+            }
+          },
+          {
+            "center": {
+              "x": -61,
+              "y": 5,
+              "z": 0
+            },
+            "id": "cab_crossmember",
+            "size": {
+              "x": 30,
+              "y": 34,
+              "z": 70
+            }
+          },
+          {
+            "center": {
+              "x": -38,
+              "y": 0,
+              "z": 0
+            },
+            "id": "load_stop",
+            "size": {
+              "x": 20,
+              "y": 10,
+              "z": 20
+            }
+          },
+          {
+            "center": {
+              "x": 21,
+              "y": 0,
+              "z": -55
+            },
+            "id": "bridle_port",
+            "size": {
+              "x": 138,
+              "y": 16,
+              "z": 14
+            }
+          },
+          {
+            "center": {
+              "x": 21,
+              "y": 0,
+              "z": 55
+            },
+            "id": "bridle_starboard",
+            "size": {
+              "x": 138,
+              "y": 16,
+              "z": 14
+            }
+          },
+          {
+            "center": {
+              "x": 28,
+              "y": 0,
+              "z": -45
+            },
+            "id": "shoe_-1",
+            "size": {
+              "x": 112,
+              "y": 10,
+              "z": 10
+            }
+          },
+          {
+            "center": {
+              "x": -20,
+              "y": 0,
+              "z": -52
+            },
+            "id": "shoe_ram_-1_-20",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 74,
+              "y": 0,
+              "z": -52
+            },
+            "id": "shoe_ram_-1_74",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 28,
+              "y": 0,
+              "z": 45
+            },
+            "id": "shoe_1",
+            "size": {
+              "x": 112,
+              "y": 10,
+              "z": 10
+            }
+          },
+          {
+            "center": {
+              "x": -20,
+              "y": 0,
+              "z": 52
+            },
+            "id": "shoe_ram_1_-20",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 74,
+              "y": 0,
+              "z": 52
+            },
+            "id": "shoe_ram_1_74",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          }
+        ],
+        "coverageMetric": "all-visible-vertices-to-native-XZ-compound",
+        "coverageWu": 0.005079,
+        "gapWu": 0.005079,
+        "id": "ceres-workfleet:breaker",
+        "kind": "compound",
+        "outline": [
+          48.157871,
+          103.311089,
+          106.831362,
+          87.592626,
+          62.055358,
+          43.410324,
+          0,
+          46.008889,
+          87.592626,
+          106.72252,
+          96.795203,
+          0,
+          0,
+          96.795203,
+          106.72252,
+          87.592626,
+          46.008889,
+          0,
+          43.410324,
+          62.055358,
+          87.592626,
+          106.824922,
+          103.311089,
+          48.157871
+        ],
+        "overTolerance": false,
+        "referenceState": "open",
+        "sourceCompoundParity": true,
+        "stickWu": null,
+        "throatSealed": false,
+        "toleranceWu": 12.819763,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "ceres-workfleet",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "ceres-workfleet:breaker",
+        "colliderKind": "compound",
+        "dockRadius": null,
+        "entityRadius": 110,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "ceres_breaker",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 8.546509
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 118,
+      "nodes": 144,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 2380,
+        "inwardFaceFraction": 0.45475,
+        "silhouetteRadius": 106.831362,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Bridle_Port",
+          "position": [
+            -16,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Bridle_Starboard",
+          "position": [
+            -16,
+            0,
+            27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            -6,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_MAIN_PORT_INNER",
+          "position": [
+            -44.950001,
+            0,
+            -21.75
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_MAIN_PORT_OUTER",
+          "position": [
+            -44.950001,
+            0,
+            -26.75
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_MAIN_STARBOARD_INNER",
+          "position": [
+            -44.950001,
+            0,
+            21.75
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_MAIN_STARBOARD_OUTER",
+          "position": [
+            -44.950001,
+            0,
+            26.75
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_RCS_BOW_PORT",
+          "position": [
+            32,
+            0,
+            -30.950001
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_RCS_BOW_STARBOARD",
+          "position": [
+            32,
+            0,
+            30.950001
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_RCS_STERN_PORT",
+          "position": [
+            -32,
+            0,
+            -30.950001
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_RCS_STERN_STARBOARD",
+          "position": [
+            -32,
+            0,
+            30.950001
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_RETRO_PORT",
+          "position": [
+            44.950001,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_RETRO_STARBOARD",
+          "position": [
+            44.950001,
+            0,
+            27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Cutter_Dock",
+          "position": [
+            -23,
+            0,
+            15
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -45,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Load_Center",
+          "position": [
+            13.5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Shoe_Port",
+          "position": [
+            13.5,
+            0,
+            -22.5
+          ]
+        },
+        {
+          "name": "SOCKET_Shoe_Starboard",
+          "position": [
+            13.5,
+            0,
+            22.5
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -23,
+            0,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 74516,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
+      "worldSize": [
+        180,
+        33.783802,
+        124.009291
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          0.049941,
+          0
+        ],
+        "max": [
+          4,
+          2.000067,
+          2.999951
+        ],
+        "min": [
+          -4,
+          -1.900184,
+          -2.999951
+        ],
+        "size": [
+          8,
+          3.900251,
+          5.999902
+        ]
+      },
+      "bytes": 395804,
+      "collider": {
+        "authoredClearVolumesPreserved": true,
+        "compoundBoxesWU": [
+          {
+            "center": {
+              "x": -2,
+              "y": 0,
+              "z": 0
+            },
+            "id": "motor",
+            "size": {
+              "x": 12,
+              "y": 8,
+              "z": 12
+            }
+          },
+          {
+            "center": {
+              "x": 6,
+              "y": 0,
+              "z": -4
+            },
+            "id": "port_blade",
+            "size": {
+              "x": 4,
+              "y": 6,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 6,
+              "y": 0,
+              "z": 4
+            },
+            "id": "starboard_blade",
+            "size": {
+              "x": 4,
+              "y": 6,
+              "z": 4
+            }
+          }
+        ],
+        "coverageMetric": "all-visible-vertices-to-native-XZ-compound",
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "ceres-workfleet:cutterHead",
+        "kind": "compound",
+        "outline": [
+          8.242829,
+          8.491244,
+          8.104803,
+          7.735309,
+          6.624597,
+          6.149255,
+          6.149375,
+          6.055752,
+          7.147157,
+          9.435923,
+          8.825167,
+          8.212581,
+          8.212581,
+          8.825167,
+          9.433551,
+          7.147157,
+          6.056458,
+          6.149145,
+          6.149025,
+          6.624597,
+          7.735309,
+          8.104803,
+          8.491244,
+          8.243175
+        ],
+        "overTolerance": false,
+        "referenceState": "open",
+        "sourceCompoundParity": true,
+        "stickWu": null,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "ceres-workfleet",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "ceres-workfleet:cutterHead",
+        "colliderKind": "compound",
+        "dockRadius": null,
+        "entityRadius": 10,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_ceres_breaker_cutter_head",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 43,
+      "nodes": 52,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 268,
+        "inwardFaceFraction": 0.33575,
+        "silhouetteRadius": 9.435923,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+          "position": [
+            -2.65,
+            0,
+            -2.3
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+          "position": [
+            -2.65,
+            0,
+            2.3
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+          "position": [
+            -1.35,
+            0,
+            -2.3
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+          "position": [
+            -1.35,
+            0,
+            2.3
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+          "position": [
+            0,
+            0,
+            -2.925
+          ]
+        },
+        {
+          "name": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+          "position": [
+            0,
+            0,
+            2.925
+          ]
+        },
+        {
+          "name": "SOCKET_Cut",
+          "position": [
+            4,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mount",
+          "position": [
+            -4,
+            0,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 12372,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb",
+      "worldSize": [
+        16,
+        7.800502,
+        11.999804
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          2.394663,
+          -0.000963
+        ],
+        "max": [
+          42.5,
+          9.789105,
+          37.498627
+        ],
+        "min": [
+          -42.5,
+          -4.999779,
+          -37.500554
+        ],
+        "size": [
+          85,
+          14.788883,
+          74.999181
+        ]
+      },
+      "bytes": 1029972,
+      "collider": {
+        "authoredClearVolumesPreserved": true,
+        "compoundBoxesWU": [
+          {
+            "center": {
+              "x": 0,
+              "y": 2,
+              "z": 70
+            },
+            "id": "rear_spine",
+            "size": {
+              "x": 170,
+              "y": 24,
+              "z": 10
+            }
+          },
+          {
+            "center": {
+              "x": -7,
+              "y": 0,
+              "z": 60.75
+            },
+            "id": "depth_keeper_port",
+            "size": {
+              "x": 6,
+              "y": 10,
+              "z": 8.5
+            }
+          },
+          {
+            "center": {
+              "x": 7,
+              "y": 0,
+              "z": 60.75
+            },
+            "id": "depth_keeper_starboard",
+            "size": {
+              "x": 6,
+              "y": 10,
+              "z": 8.5
+            }
+          },
+          {
+            "center": {
+              "x": -77.5,
+              "y": 5,
+              "z": -5
+            },
+            "id": "port_rail",
+            "size": {
+              "x": 15,
+              "y": 30,
+              "z": 140
+            }
+          },
+          {
+            "center": {
+              "x": 77.5,
+              "y": 5,
+              "z": -5
+            },
+            "id": "starboard_rail",
+            "size": {
+              "x": 15,
+              "y": 30,
+              "z": 140
+            }
+          },
+          {
+            "center": {
+              "x": -75,
+              "y": 0,
+              "z": 0
+            },
+            "id": "retention_-1",
+            "size": {
+              "x": 10,
+              "y": 10,
+              "z": 108
+            }
+          },
+          {
+            "center": {
+              "x": -82,
+              "y": 0,
+              "z": -48
+            },
+            "id": "retention_ram_-1_-48",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": -82,
+              "y": 0,
+              "z": 48
+            },
+            "id": "retention_ram_-1_48",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 75,
+              "y": 0,
+              "z": 0
+            },
+            "id": "retention_1",
+            "size": {
+              "x": 10,
+              "y": 10,
+              "z": 108
+            }
+          },
+          {
+            "center": {
+              "x": 82,
+              "y": 0,
+              "z": -48
+            },
+            "id": "retention_ram_1_-48",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 82,
+              "y": 0,
+              "z": 48
+            },
+            "id": "retention_ram_1_48",
+            "size": {
+              "x": 4,
+              "y": 4,
+              "z": 4
+            }
+          }
+        ],
+        "coverageMetric": "all-visible-vertices-to-native-XZ-compound",
+        "coverageWu": 0.001107,
+        "gapWu": 0.001107,
+        "id": "ceres-workfleet:cradle",
+        "kind": "compound",
+        "outline": [
+          74.255063,
+          96.962465,
+          97.824786,
+          104.067424,
+          0,
+          0,
+          0,
+          0,
+          104.067424,
+          97.821203,
+          96.962465,
+          74.255063,
+          74.255063,
+          96.962465,
+          97.820802,
+          0,
+          0,
+          75.152567,
+          75.152567,
+          0,
+          0,
+          97.820802,
+          96.962465,
+          74.255063
+        ],
+        "overTolerance": false,
+        "referenceState": "open",
+        "sourceCompoundParity": true,
+        "stickWu": null,
+        "throatSealed": false,
+        "toleranceWu": 12.488091,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "ceres-workfleet",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "ceres-workfleet:cradle",
+        "colliderKind": "compound",
+        "dockRadius": null,
+        "entityRadius": 114,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_ceres_section_cradle",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 8.325394
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 89,
+      "nodes": 99,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 72,
+        "inwardFaceFraction": 0.46875,
+        "silhouetteRadius": 104.067424,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Section_Receiver",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Service_Head",
+          "position": [
+            0,
+            0,
+            31.5
+          ]
+        },
+        {
+          "name": "SOCKET_Structure_Core",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 46074,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_section_cradle.glb",
+      "worldSize": [
+        170,
+        29.577766,
+        149.998362
       ]
     },
     {
@@ -3717,7 +4938,7 @@
         "center": [
           0.939494,
           0.514771,
-          0.000007
+          7e-06
         ],
         "max": [
           10.599641,
@@ -3939,7 +5160,7 @@
       "pivot": [
         0.939494,
         0.514771,
-        0.000007
+        7e-06
       ],
       "proposedSkin": {
         "adopted": true,
@@ -20055,6 +21276,846 @@
     {
       "bounds": {
         "center": [
+          0,
+          0.897629,
+          7.841416
+        ],
+        "max": [
+          90,
+          13.997763,
+          49.504064
+        ],
+        "min": [
+          -90,
+          -12.202504,
+          -33.821232
+        ],
+        "size": [
+          180,
+          26.200268,
+          83.325295
+        ]
+      },
+      "bytes": 2314708,
+      "collider": {
+        "coverageWu": 200.672497,
+        "gapWu": 200.672497,
+        "id": null,
+        "kind": "none",
+        "outline": [
+          178.324857,
+          189.578823,
+          63.686,
+          79.771979,
+          72.032103,
+          69.413343,
+          69.638784,
+          72.03151,
+          79.767189,
+          63.686,
+          189.578823,
+          182.720665,
+          182.729576,
+          200.672497,
+          184.544036,
+          79.768045,
+          108.343541,
+          60.297946,
+          60.089474,
+          108.322624,
+          79.75167,
+          184.599429,
+          200.613633,
+          178.324532
+        ],
+        "overTolerance": true,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 24.0807,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "none",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_ceres_second_measure",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 16.0538
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 24,
+      "nodes": 32,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [
+        "collider-gap"
+      ],
+      "shell": {
+        "boundaryEdges": 716,
+        "inwardFaceFraction": 0.46225,
+        "silhouetteRadius": 200.672497,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Section_Crossbeam",
+          "position": [
+            40,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Section_Keel",
+          "position": [
+            0,
+            0,
+            35
+          ]
+        },
+        {
+          "name": "SOCKET_Section_LongPlate",
+          "position": [
+            -40,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Structure_Core",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Support_A",
+          "position": [
+            -59,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Support_B",
+          "position": [
+            59,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Support_C",
+          "position": [
+            20.25,
+            0,
+            47.5
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": null,
+      "triangles": 138628,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+      "worldSize": [
+        360,
+        52.400535,
+        166.65059
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          0,
+          0
+        ],
+        "max": [
+          17.00171,
+          3.00119,
+          27.5
+        ],
+        "min": [
+          -17.00171,
+          -3.00119,
+          -27.5
+        ],
+        "size": [
+          34.00342,
+          6.00238,
+          55
+        ]
+      },
+      "bytes": 337436,
+      "collider": {
+        "coverageWu": 54.011381,
+        "gapWu": 54.011381,
+        "id": null,
+        "kind": "none",
+        "outline": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          54.011381,
+          54.011381,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          54.011381,
+          54.011381,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "overTolerance": true,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.481366,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "none",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_ceres_second_measure_crossbeam",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.32091
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 20,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [
+        "collider-gap"
+      ],
+      "shell": {
+        "boundaryEdges": 96,
+        "inwardFaceFraction": 0.34375,
+        "silhouetteRadius": 54.011381,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Cut_A",
+          "position": [
+            0,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Cut_B",
+          "position": [
+            0,
+            0,
+            27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Recovery",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Tow",
+          "position": [
+            0,
+            3,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": null,
+      "triangles": 11692,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+      "worldSize": [
+        68.006839,
+        12.004761,
+        110
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          0.00023,
+          0
+        ],
+        "max": [
+          17.5,
+          2.999818,
+          4.999642
+        ],
+        "min": [
+          -17.5,
+          -2.999359,
+          -4.999642
+        ],
+        "size": [
+          35,
+          5.999177,
+          9.999283
+        ]
+      },
+      "bytes": 229808,
+      "collider": {
+        "coverageWu": 36.384089,
+        "gapWu": 36.384089,
+        "id": null,
+        "kind": "none",
+        "outline": [
+          35.267942,
+          36.38387,
+          0,
+          0,
+          10.34328,
+          9.036643,
+          9.036643,
+          10.34328,
+          0,
+          0,
+          36.38387,
+          35.267942,
+          35.267942,
+          36.384089,
+          0,
+          0,
+          10.34328,
+          9.036643,
+          9.036643,
+          10.34328,
+          0,
+          0,
+          36.384089,
+          35.267942
+        ],
+        "overTolerance": true,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 4.366091,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "none",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_ceres_second_measure_keel",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 20,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [
+        "collider-gap"
+      ],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.15675,
+        "silhouetteRadius": 36.384089,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Cut_A",
+          "position": [
+            -17.5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cut_B",
+          "position": [
+            17.5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Recovery",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Tow",
+          "position": [
+            0,
+            3,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": null,
+      "triangles": 4750,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+      "worldSize": [
+        70,
+        11.998355,
+        19.998566
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0,
+          -0.000226,
+          0
+        ],
+        "max": [
+          17.00171,
+          2.500793,
+          27.5
+        ],
+        "min": [
+          -17.00171,
+          -2.501246,
+          -27.5
+        ],
+        "size": [
+          34.00342,
+          5.00204,
+          55
+        ]
+      },
+      "bytes": 366992,
+      "collider": {
+        "coverageWu": 55.716968,
+        "gapWu": 55.716968,
+        "id": null,
+        "kind": "none",
+        "outline": [
+          7.261839,
+          9.52831,
+          0,
+          0,
+          33.558534,
+          55.716968,
+          55.716968,
+          33.558534,
+          0,
+          0,
+          9.52831,
+          7.261839,
+          7.261839,
+          9.52831,
+          0,
+          0,
+          33.558534,
+          55.716968,
+          55.716968,
+          33.558534,
+          0,
+          0,
+          9.52831,
+          7.261839
+        ],
+        "overTolerance": true,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 6.686036,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 2,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "none",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_ceres_second_measure_long_plate",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.457357
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 20,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [
+        "collider-gap"
+      ],
+      "shell": {
+        "boundaryEdges": 96,
+        "inwardFaceFraction": 0.35,
+        "silhouetteRadius": 55.716968,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Cut_A",
+          "position": [
+            0,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Cut_B",
+          "position": [
+            0,
+            0,
+            27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Recovery",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Tow",
+          "position": [
+            0,
+            2.5,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": null,
+      "triangles": 13770,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+      "worldSize": [
+        68.006839,
+        10.00408,
+        110
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
           0.199687,
           1.38117,
           -0.288758
@@ -20914,7 +22975,7 @@
       "bounds": {
         "center": [
           7.397417,
-          -0.000011,
+          -1.1e-05,
           -3.041215
         ],
         "max": [
@@ -21112,7 +23173,7 @@
       "opening": null,
       "pivot": [
         7.397417,
-        -0.000011,
+        -1.1e-05,
         -3.041215
       ],
       "proposedSkin": {
@@ -23587,7 +25648,7 @@
         ],
         "min": [
           -2.707303,
-          -0.000064,
+          -6.4e-05,
           -3
         ],
         "size": [
@@ -25386,7 +27447,7 @@
         ],
         "min": [
           -1.7,
-          -0.000067,
+          -6.7e-05,
           -1.7
         ],
         "size": [
@@ -31244,7 +33305,7 @@
         ],
         "min": [
           -3.143463,
-          -0.000061,
+          -6.1e-05,
           -3.15
         ],
         "size": [
@@ -36707,7 +38768,7 @@
         "center": [
           1.201832,
           6.63725,
-          0.000003
+          3e-06
         ],
         "max": [
           3.716428,
@@ -36766,7 +38827,7 @@
       "drawOffset": [
         -1.201832,
         0,
-        -0.000003
+        -3e-06
       ],
       "drawScale": 1,
       "family": "place",
@@ -36897,7 +38958,7 @@
       "pivot": [
         1.201832,
         6.63725,
-        0.000003
+        3e-06
       ],
       "proposedSkin": {
         "adopted": true,
@@ -38925,7 +40986,7 @@
         ],
         "min": [
           -1.8,
-          0.000037,
+          3.7e-05,
           -1.2
         ],
         "size": [
@@ -39221,7 +41282,7 @@
         "boundaryEdges": 0,
         "inwardFaceFraction": 0.351563,
         "silhouetteRadius": 2.417248,
-        "sliceY": 0.000037
+        "sliceY": 3.7e-05
       },
       "sockets": [
         {
@@ -42158,7 +44219,7 @@
         "center": [
           -0.367959,
           1.439763,
-          -0.000097
+          -9.7e-05
         ],
         "max": [
           10.184116,
@@ -42375,7 +44436,7 @@
       "pivot": [
         -0.367959,
         1.439763,
-        -0.000097
+        -9.7e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -42732,7 +44793,7 @@
         "center": [
           -0.169838,
           3.719527,
-          0.000032
+          3.2e-05
         ],
         "max": [
           26.580511,
@@ -42933,7 +44994,7 @@
       "pivot": [
         -0.169838,
         3.719527,
-        0.000032
+        3.2e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -59229,7 +61290,7 @@
         "center": [
           -2.050001,
           -0.491249,
-          0.000046
+          4.6e-05
         ],
         "max": [
           36.001521,
@@ -59459,7 +61520,7 @@
       "pivot": [
         -2.050001,
         -0.491249,
-        0.000046
+        4.6e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -61742,7 +63803,7 @@
         "center": [
           0.339666,
           2.465913,
-          0.000001
+          1e-06
         ],
         "max": [
           16.4,
@@ -61964,7 +64025,7 @@
       "pivot": [
         0.339666,
         2.465913,
-        0.000001
+        1e-06
       ],
       "proposedSkin": {
         "adopted": true,
@@ -62820,7 +64881,7 @@
         "center": [
           -0.035243,
           0.800124,
-          -0.000034
+          -3.4e-05
         ],
         "max": [
           11.300076,
@@ -63034,7 +65095,7 @@
       "pivot": [
         -0.035243,
         0.800124,
-        -0.000034
+        -3.4e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -72412,8 +74473,8 @@
       "bounds": {
         "center": [
           0,
-          -0.000002,
-          -0.00008
+          -2e-06,
+          -8e-05
         ],
         "max": [
           5.542346,
@@ -72472,7 +74533,7 @@
       "drawOffset": [
         0,
         0,
-        0.00008
+        8e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -72610,8 +74671,8 @@
       "opening": null,
       "pivot": [
         0,
-        -0.000002,
-        -0.00008
+        -2e-06,
+        -8e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -72876,7 +74937,7 @@
     {
       "bounds": {
         "center": [
-          0.000017,
+          1.7e-05,
           -0.000183,
           0
         ],
@@ -72935,7 +74996,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000017,
+        -1.7e-05,
         0,
         0
       ],
@@ -73042,7 +75103,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000017,
+        1.7e-05,
         -0.000183,
         0
       ],
@@ -73299,9 +75360,9 @@
     {
       "bounds": {
         "center": [
-          -0.000009,
-          -0.000013,
-          0.000036
+          -9e-06,
+          -1.3e-05,
+          3.6e-05
         ],
         "max": [
           3.460292,
@@ -73358,9 +75419,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000009,
+        9e-06,
         0,
-        -0.000036
+        -3.6e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -73449,9 +75510,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000009,
-        -0.000013,
-        0.000036
+        -9e-06,
+        -1.3e-05,
+        3.6e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -73536,8 +75597,8 @@
     {
       "bounds": {
         "center": [
-          -0.000042,
-          0.000016,
+          -4.2e-05,
+          1.6e-05,
           0
         ],
         "max": [
@@ -73595,7 +75656,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000042,
+        4.2e-05,
         0,
         0
       ],
@@ -73726,8 +75787,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000042,
-        0.000016,
+        -4.2e-05,
+        1.6e-05,
         0
       ],
       "proposedSkin": {
@@ -73956,9 +76017,9 @@
     {
       "bounds": {
         "center": [
-          0.000002,
+          2e-06,
           0.000143,
-          -0.000072
+          -7.2e-05
         ],
         "max": [
           8.5,
@@ -74015,9 +76076,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000002,
+        -2e-06,
         0,
-        0.000072
+        7.2e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -74082,9 +76143,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000002,
+        2e-06,
         0.000143,
-        -0.000072
+        -7.2e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -74232,8 +76293,8 @@
     {
       "bounds": {
         "center": [
-          0.000003,
-          -0.000008,
+          3e-06,
+          -8e-06,
           0
         ],
         "max": [
@@ -74291,7 +76352,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000003,
+        -3e-06,
         0,
         0
       ],
@@ -74342,8 +76403,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000003,
-        -0.000008,
+        3e-06,
+        -8e-06,
         0
       ],
       "proposedSkin": {
@@ -74502,7 +76563,7 @@
       "bounds": {
         "center": [
           0,
-          -0.000001,
+          -1e-06,
           0
         ],
         "max": [
@@ -74660,7 +76721,7 @@
       "opening": null,
       "pivot": [
         0,
-        -0.000001,
+        -1e-06,
         0
       ],
       "proposedSkin": {
@@ -74801,7 +76862,7 @@
       "bounds": {
         "center": [
           0,
-          -0.000023,
+          -2.3e-05,
           0
         ],
         "max": [
@@ -74927,7 +76988,7 @@
       "opening": null,
       "pivot": [
         0,
-        -0.000023,
+        -2.3e-05,
         0
       ],
       "proposedSkin": {
@@ -75148,8 +77209,8 @@
     {
       "bounds": {
         "center": [
-          0.000019,
-          0.000039,
+          1.9e-05,
+          3.9e-05,
           0
         ],
         "max": [
@@ -75207,7 +77268,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000019,
+        -1.9e-05,
         0,
         0
       ],
@@ -75282,8 +77343,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000019,
-        0.000039,
+        1.9e-05,
+        3.9e-05,
         0
       ],
       "proposedSkin": {
@@ -75540,7 +77601,7 @@
     {
       "bounds": {
         "center": [
-          -0.000055,
+          -5.5e-05,
           0,
           0
         ],
@@ -75599,7 +77660,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000055,
+        5.5e-05,
         0,
         0
       ],
@@ -75698,7 +77759,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000055,
+        -5.5e-05,
         0,
         0
       ],
@@ -76133,9 +78194,9 @@
     {
       "bounds": {
         "center": [
-          -0.000027,
-          -0.000004,
-          0.000009
+          -2.7e-05,
+          -4e-06,
+          9e-06
         ],
         "max": [
           4.093981,
@@ -76192,9 +78253,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000027,
+        2.7e-05,
         0,
-        -0.000009
+        -9e-06
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -76299,9 +78360,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000027,
-        -0.000004,
-        0.000009
+        -2.7e-05,
+        -4e-06,
+        9e-06
       ],
       "proposedSkin": {
         "adopted": true,
@@ -76854,7 +78915,7 @@
     {
       "bounds": {
         "center": [
-          -0.000039,
+          -3.9e-05,
           0.000732,
           0
         ],
@@ -76913,7 +78974,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000039,
+        3.9e-05,
         0,
         0
       ],
@@ -76964,7 +79025,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000039,
+        -3.9e-05,
         0.000732,
         0
       ],
@@ -77042,9 +79103,9 @@
     {
       "bounds": {
         "center": [
-          0.000009,
-          0.000015,
-          0.000043
+          9e-06,
+          1.5e-05,
+          4.3e-05
         ],
         "max": [
           4,
@@ -77101,9 +79162,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000009,
+        -9e-06,
         0,
-        -0.000043
+        -4.3e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -77152,9 +79213,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000009,
-        0.000015,
-        0.000043
+        9e-06,
+        1.5e-05,
+        4.3e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -77527,7 +79588,7 @@
       "bounds": {
         "center": [
           0,
-          -0.000037,
+          -3.7e-05,
           0
         ],
         "max": [
@@ -77637,7 +79698,7 @@
       "opening": null,
       "pivot": [
         0,
-        -0.000037,
+        -3.7e-05,
         0
       ],
       "proposedSkin": {
@@ -77849,8 +79910,8 @@
     {
       "bounds": {
         "center": [
-          0.000071,
-          -0.000052,
+          7.1e-05,
+          -5.2e-05,
           0
         ],
         "max": [
@@ -77908,7 +79969,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000071,
+        -7.1e-05,
         0,
         0
       ],
@@ -77959,8 +80020,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000071,
-        -0.000052,
+        7.1e-05,
+        -5.2e-05,
         0
       ],
       "proposedSkin": {
@@ -78101,8 +80162,8 @@
       "bounds": {
         "center": [
           0,
-          -0.000029,
-          -0.000002
+          -2.9e-05,
+          -2e-06
         ],
         "max": [
           2.410237,
@@ -78161,7 +80222,7 @@
       "drawOffset": [
         0,
         0,
-        0.000002
+        2e-06
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -78203,8 +80264,8 @@
       "opening": null,
       "pivot": [
         0,
-        -0.000029,
-        -0.000002
+        -2.9e-05,
+        -2e-06
       ],
       "proposedSkin": {
         "adopted": true,
@@ -78353,8 +80414,8 @@
       "bounds": {
         "center": [
           0,
-          0.000014,
-          -0.000018
+          1.4e-05,
+          -1.8e-05
         ],
         "max": [
           5.5,
@@ -78413,7 +80474,7 @@
       "drawOffset": [
         0,
         0,
-        0.000018
+        1.8e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -78455,8 +80516,8 @@
       "opening": null,
       "pivot": [
         0,
-        0.000014,
-        -0.000018
+        1.4e-05,
+        -1.8e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -78550,8 +80611,8 @@
     {
       "bounds": {
         "center": [
-          -0.000021,
-          -0.000073,
+          -2.1e-05,
+          -7.3e-05,
           0
         ],
         "max": [
@@ -78609,7 +80670,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000021,
+        2.1e-05,
         0,
         0
       ],
@@ -78740,8 +80801,8 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000021,
-        -0.000073,
+        -2.1e-05,
+        -7.3e-05,
         0
       ],
       "proposedSkin": {
@@ -79015,7 +81076,7 @@
     {
       "bounds": {
         "center": [
-          -0.000001,
+          -1e-06,
           -0.000109,
           0
         ],
@@ -79074,7 +81135,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000001,
+        1e-06,
         0,
         0
       ],
@@ -79189,7 +81250,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000001,
+        -1e-06,
         -0.000109,
         0
       ],
@@ -79462,7 +81523,7 @@
     {
       "bounds": {
         "center": [
-          -0.000001,
+          -1e-06,
           -0.000109,
           0
         ],
@@ -79521,7 +81582,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000001,
+        1e-06,
         0,
         0
       ],
@@ -79644,7 +81705,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000001,
+        -1e-06,
         -0.000109,
         0
       ],
@@ -79918,7 +81979,7 @@
       "bounds": {
         "center": [
           0,
-          0.00008,
+          8e-05,
           0
         ],
         "max": [
@@ -80092,7 +82153,7 @@
       "opening": null,
       "pivot": [
         0,
-        0.00008,
+        8e-05,
         0
       ],
       "proposedSkin": {
@@ -80338,8 +82399,8 @@
       "bounds": {
         "center": [
           0,
-          -0.000022,
-          0.000007
+          -2.2e-05,
+          7e-06
         ],
         "max": [
           8,
@@ -80398,7 +82459,7 @@
       "drawOffset": [
         0,
         0,
-        -0.000007
+        -7e-06
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -80480,8 +82541,8 @@
       "opening": null,
       "pivot": [
         0,
-        -0.000022,
-        0.000007
+        -2.2e-05,
+        7e-06
       ],
       "proposedSkin": {
         "adopted": true,
@@ -81341,7 +83402,7 @@
         "center": [
           0,
           0.000294,
-          -0.000024
+          -2.4e-05
         ],
         "max": [
           43.500001,
@@ -81400,7 +83461,7 @@
       "drawOffset": [
         0,
         0,
-        0.000024
+        2.4e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -81507,7 +83568,7 @@
       "pivot": [
         0,
         0.000294,
-        -0.000024
+        -2.4e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -81700,7 +83761,7 @@
         "center": [
           0,
           0.000294,
-          -0.000024
+          -2.4e-05
         ],
         "max": [
           43.500001,
@@ -81759,7 +83820,7 @@
       "drawOffset": [
         0,
         0,
-        0.000024
+        2.4e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -81866,7 +83927,7 @@
       "pivot": [
         0,
         0.000294,
-        -0.000024
+        -2.4e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -82057,9 +84118,9 @@
     {
       "bounds": {
         "center": [
-          -0.000001,
+          -1e-06,
           0.000276,
-          -0.000023
+          -2.3e-05
         ],
         "max": [
           39.812188,
@@ -82116,9 +84177,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000001,
+        1e-06,
         0,
-        0.000023
+        2.3e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -82231,9 +84292,9 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000001,
+        -1e-06,
         0.000276,
-        -0.000023
+        -2.3e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -82424,7 +84485,7 @@
     {
       "bounds": {
         "center": [
-          -0.000052,
+          -5.2e-05,
           0.000277,
           0
         ],
@@ -82483,7 +84544,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.000052,
+        5.2e-05,
         0,
         0
       ],
@@ -82654,7 +84715,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.000052,
+        -5.2e-05,
         0.000277,
         0
       ],
@@ -85073,8 +87134,8 @@
       "bounds": {
         "center": [
           -0.000107,
-          0.000062,
-          -0.000082
+          6.2e-05,
+          -8.2e-05
         ],
         "max": [
           72.5,
@@ -85133,7 +87194,7 @@
       "drawOffset": [
         0.000107,
         0,
-        0.000082
+        8.2e-05
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -85319,8 +87380,8 @@
       "opening": null,
       "pivot": [
         -0.000107,
-        0.000062,
-        -0.000082
+        6.2e-05,
+        -8.2e-05
       ],
       "proposedSkin": {
         "adopted": true,
@@ -86356,7 +88417,7 @@
     {
       "bounds": {
         "center": [
-          0.000011,
+          1.1e-05,
           1.224527,
           -0.184304
         ],
@@ -86415,7 +88476,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.000011,
+        -1.1e-05,
         0,
         0.184304
       ],
@@ -86546,7 +88607,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        0.000011,
+        1.1e-05,
         1.224527,
         -0.184304
       ],

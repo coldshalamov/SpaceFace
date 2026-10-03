@@ -4778,6 +4778,134 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 494,
       "contractNodeCount": 155
+    },
+    {
+      "id": "place_ceres_breaker_cutter_head",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_breaker_cutter_head.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb",
+      "sourceSha256": "7362f80796687d2f18fae5b42bb84dff6aca0a5b2a6c17e3e0d9dd20bb943f52",
+      "releaseSha256": "7deac548cdab9ce20dfcd36eb1af9d5d0b75731864a6018f123c69693e30454a",
+      "sourceBytes": 979980,
+      "releaseBytes": 395804,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 110,
+      "contractNodeCount": 48,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_ceres_second_measure",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_second_measure.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+      "sourceSha256": "b01f8132f1bea8aa58b984a5f3d373b282293aedd91ebadb196fb63e934657f8",
+      "releaseSha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+      "sourceBytes": 8031740,
+      "releaseBytes": 2314708,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 91,
+      "contractNodeCount": 31,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_ceres_second_measure_crossbeam",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_second_measure_crossbeam.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+      "sourceSha256": "7eab2b2e81cfdc023c3d60c3dd31309c88a0d0f1f36f6f1a4d6ff665c0e214c2",
+      "releaseSha256": "985bac61950a8ec8c1754ad444627e8aa7ffa8a083cee3dedb4cf0a5fbc24187",
+      "sourceBytes": 887356,
+      "releaseBytes": 337436,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 61,
+      "contractNodeCount": 19,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_ceres_second_measure_keel",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_second_measure_keel.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+      "sourceSha256": "027ca81e41c1f106fcc87fb723090ad968a0a2f12d8ed5d2ba8e9503712aeef2",
+      "releaseSha256": "b8b0cdd789cd4de83f5766554c7ec3f72c03ea31f26d641a2c625411161b2c33",
+      "sourceBytes": 500848,
+      "releaseBytes": 229808,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 61,
+      "contractNodeCount": 19,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_ceres_second_measure_long_plate",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_second_measure_long_plate.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+      "sourceSha256": "05aebdd9b8d70127a4476d0df32115ec859aa60949b5a7098faf29113529bf66",
+      "releaseSha256": "29625dac9588d3d9e44f8b88c46cd2fb679d0e3cb492ddafd4d3199562ebc61b",
+      "sourceBytes": 1006192,
+      "releaseBytes": 366992,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 61,
+      "contractNodeCount": 19,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_ceres_section_cradle",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_section_cradle.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_section_cradle.glb",
+      "sourceSha256": "0dba45cf17d6e5105f82718beb84be66e5fcef1841bf3270ae34fee6a480d60e",
+      "releaseSha256": "f4c8e303e9cbc32760adf0243334420379a7f8d7cae68627ca653f40f065bf19",
+      "sourceBytes": 3127044,
+      "releaseBytes": 1029972,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 295,
+      "contractNodeCount": 81,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "wholeship_ceres_breaker",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ceres_breaker.glb",
+      "release": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
+      "sourceSha256": "4308881fd08ea26d917f7e5cc37d1c68341ee5554f0c8226ddf1a631225e834b",
+      "releaseSha256": "0edc8c7a224226347a6a11b0cb2a704cd0ecafafe2c40c13ea884d3282b4a69b",
+      "sourceBytes": 4606960,
+      "releaseBytes": 1649376,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 322,
+      "contractNodeCount": 124
     }
   ]
 }

@@ -1,0 +1,2305 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.anchor.socket-cut-a",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -27.5,
+        1
+      ],
+      "nodeName": "SOCKET_Cut_A",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.ceres-second-measure-crossbeam.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -27.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.anchor.socket-cut-b",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        27.5,
+        1
+      ],
+      "nodeName": "SOCKET_Cut_B",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.ceres-second-measure-crossbeam.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        27.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.anchor.socket-recovery",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Recovery",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.ceres-second-measure-crossbeam.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.anchor.socket-tow",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tow",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.ceres-second-measure-crossbeam.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ceres-second-measure-crossbeam",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "124d562da92abfd836acbfbf19e42731402fa708062dfcec2794e78af6d351f3",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          17.000167846679688,
+          2.249622344970703,
+          27.25
+        ],
+        "min": [
+          -17.000167846679688,
+          -2.999622344970703,
+          -27.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5925b648e691482f9d64d3e653a831234da38e581b31df396fcb027efc37660",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-armor.primitive.0",
+      "indexCount": 6288,
+      "indexed": true,
+      "materialHash": "6be0662eb345820adaf1967bcc4aa501f04e1bc30006e9bf14a6301b218a95e1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1976
+    },
+    {
+      "bounds": {
+        "max": [
+          17.001708984375,
+          3.001190185546875,
+          27.5
+        ],
+        "min": [
+          -17.001708984375,
+          -3.001190185546875,
+          -27.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d66606bd5ec8bd09e017cf8c216124ed8dd3233a1077685308e5a0542bb5e229",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 12408,
+      "indexed": true,
+      "materialHash": "166b547d41e9b5293a0a261c60fffe4f391e29b76406592e5d89d8095d4c6862",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 4004
+    },
+    {
+      "bounds": {
+        "max": [
+          4.5007781982421875,
+          2.875692129135132,
+          27.25
+        ],
+        "min": [
+          -4.5007781982421875,
+          1.9243080615997314,
+          -27.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c7eaeda6a3dcd07e72c3c2a8c4ee804f813c734af600ad4dc57e4a1670ac3cf",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-hull.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "2023517dc9747ac136ed5006500b4fc3534a3d08304b2b8b402fef507ce1abf3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          14.500252723693848,
+          2.999032735824585,
+          25.983253479003906
+        ],
+        "min": [
+          -14.500252723693848,
+          1.4384673833847046,
+          -25.983253479003906
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed63605c8d72ae4eebafedbb4615c9be5f75e98718f870c3e11dbe7c42078833",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-livery.primitive.0",
+      "indexCount": 684,
+      "indexed": true,
+      "materialHash": "a8b0c1aad2d4f5d0d656019479c81075034ab0659042fda95aae33dd0322568c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 262
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7988831996917725,
+          2.049032688140869,
+          27.25
+        ],
+        "min": [
+          -3.7988831996917725,
+          -2.1490328311920166,
+          -27.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "024f1ddc29495cb32a5709d8e546151a10bfa0b4d3f9d0c458fdb5ac65558c4e",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 1692,
+      "indexed": true,
+      "materialHash": "0a0afc0b8de11df0082de9f9e9a8ccf97e7528f25d6b1d6e8d8a88ad31518362",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          17.000167846679688,
+          2.2482237815856934,
+          27.25
+        ],
+        "min": [
+          -17.000167846679688,
+          -3.001020908355713,
+          -27.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "302e29c7190b72191a17c1bd40a1ce18ce094ad47d9e9e8c1da400f77bc62c23",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-armor.primitive.0",
+      "indexCount": 3168,
+      "indexed": true,
+      "materialHash": "6be0662eb345820adaf1967bcc4aa501f04e1bc30006e9bf14a6301b218a95e1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1060
+    },
+    {
+      "bounds": {
+        "max": [
+          16.9964656829834,
+          2.996697425842285,
+          27.496950149536133
+        ],
+        "min": [
+          -16.9964656829834,
+          -2.9983043670654297,
+          -27.496950149536133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67aecfc45b6bb438b68eab9be52c296ccfc1818a5a967f4891176f29a4f59cb1",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 3762,
+      "indexed": true,
+      "materialHash": "166b547d41e9b5293a0a261c60fffe4f391e29b76406592e5d89d8095d4c6862",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1513
+    },
+    {
+      "bounds": {
+        "max": [
+          4.5007781982421875,
+          2.875692129135132,
+          27.25
+        ],
+        "min": [
+          -4.5007781982421875,
+          1.9243080615997314,
+          -27.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "762d936db72c3b1b866b1cd03d3cb78241f231b085d758f211620a3ff5e42e55",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-hull.primitive.0",
+      "indexCount": 966,
+      "indexed": true,
+      "materialHash": "2023517dc9747ac136ed5006500b4fc3534a3d08304b2b8b402fef507ce1abf3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 302
+    },
+    {
+      "bounds": {
+        "max": [
+          4.245265007019043,
+          2.994920253753662,
+          0.745267391204834
+        ],
+        "min": [
+          -4.245338439941406,
+          2.005079746246338,
+          -0.745194137096405
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52d41f4553d5168008385b77d1bffa0324bde8e564bbba5210165fb596e751d1",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-livery.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a8b0c1aad2d4f5d0d656019479c81075034ab0659042fda95aae33dd0322568c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 106
+    },
+    {
+      "bounds": {
+        "max": [
+          3.79512357711792,
+          2.045748233795166,
+          27.24689292907715
+        ],
+        "min": [
+          -3.79512357711792,
+          -2.145185708999634,
+          -27.24689292907715
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9455899892899ab284f2bba588d066cf03e2bc435b4e765ce4549ca02aa215f4",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": "0a0afc0b8de11df0082de9f9e9a8ccf97e7528f25d6b1d6e8d8a88ad31518362",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 266
+    },
+    {
+      "bounds": {
+        "max": [
+          16.992626190185547,
+          2.2429986000061035,
+          27.243244171142578
+        ],
+        "min": [
+          -16.992626190185547,
+          -2.9916419982910156,
+          -27.243244171142578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72cc53a80dbd7166443f0340987342ee9c81bc3f49242ed2980fa924ab2b9392",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-armor.primitive.0",
+      "indexCount": 1584,
+      "indexed": true,
+      "materialHash": "6be0662eb345820adaf1967bcc4aa501f04e1bc30006e9bf14a6301b218a95e1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 574
+    },
+    {
+      "bounds": {
+        "max": [
+          16.994346618652344,
+          2.992706775665283,
+          27.49352264404297
+        ],
+        "min": [
+          -16.994346618652344,
+          -2.9948346614837646,
+          -27.49352264404297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4640c336f1dba587e17e281ab26ca2be15e3adc5c2a26694fb26a673c34f2a07",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 1566,
+      "indexed": true,
+      "materialHash": "166b547d41e9b5293a0a261c60fffe4f391e29b76406592e5d89d8095d4c6862",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 768
+    },
+    {
+      "bounds": {
+        "max": [
+          4.486362934112549,
+          2.867917776107788,
+          27.24326515197754
+        ],
+        "min": [
+          -4.486362934112549,
+          1.9367231130599976,
+          -27.24326515197754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e582accf237925c5c4881a4d979a105f24a764cd9d4bf08f66619714e4d4d22e",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-hull.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "2023517dc9747ac136ed5006500b4fc3534a3d08304b2b8b402fef507ce1abf3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 138
+    },
+    {
+      "bounds": {
+        "max": [
+          4.239705562591553,
+          2.9911553859710693,
+          0.7396206259727478
+        ],
+        "min": [
+          -4.239757537841797,
+          2.0150349140167236,
+          -0.7395690679550171
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e7ec404038613dd078f190135fea5f4c700022f2895e89e0987116e8b587376",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-livery.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "a8b0c1aad2d4f5d0d656019479c81075034ab0659042fda95aae33dd0322568c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 55
+    },
+    {
+      "bounds": {
+        "max": [
+          3.793818235397339,
+          2.045746088027954,
+          27.24460220336914
+        ],
+        "min": [
+          -3.795790672302246,
+          -2.144835948944092,
+          -27.24460220336914
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18658cd2c26c47e58f80ba52c75eb97e1a498beecdc4cb06461018ef72a9328d",
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 354,
+      "indexed": true,
+      "materialHash": "0a0afc0b8de11df0082de9f9e9a8ccf97e7528f25d6b1d6e8d8a88ad31518362",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 139
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0a0afc0b8de11df0082de9f9e9a8ccf97e7528f25d6b1d6e8d8a88ad31518362",
+      "id": "material:0a0afc0b8de11df0082de9f9",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "166b547d41e9b5293a0a261c60fffe4f391e29b76406592e5d89d8095d4c6862",
+      "id": "material:166b547d41e9b5293a0a261c",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2023517dc9747ac136ed5006500b4fc3534a3d08304b2b8b402fef507ce1abf3",
+      "id": "material:2023517dc9747ac136ed5006",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6be0662eb345820adaf1967bcc4aa501f04e1bc30006e9bf14a6301b218a95e1",
+      "id": "material:6be0662eb345820adaf1967b",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a8b0c1aad2d4f5d0d656019479c81075034ab0659042fda95aae33dd0322568c",
+      "id": "material:a8b0c1aad2d4f5d0d6560194",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.ceres-second-measure-crossbeam.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-second-measure-crossbeam.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "11b9556c035ef8f1f28428f193c68c6781c27601e20bced01662f8bc78a9ac39"
+    },
+    "sourceGlb": {
+      "bytes": 337436,
+      "sha256": "985bac61950a8ec8c1754ad444627e8aa7ffa8a083cee3dedb4cf0a5fbc24187",
+      "uri": "place_ceres_second_measure_crossbeam.glb"
+    },
+    "sourceManifest": {
+      "bytes": 226002,
+      "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 579144,
+    "sha256": "2f1aecbeced74b1d02e681c2999ae65a162aa9c12069bc1ff413bd9723df638c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        17.001708984375,
+        3.001190185546875,
+        27.5
+      ],
+      "min": [
+        -17.001708984375,
+        -3.001190185546875,
+        -27.5
+      ],
+      "size": [
+        34.00341796875,
+        6.00238037109375,
+        55
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          -27.5,
+          1
+        ],
+        "name": "SOCKET_Cut_A",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Cut_A",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cut_A",
+            "recordIds": [
+              "sf.render.ceres-second-measure-crossbeam.anchor.socket-cut-a"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          27.5,
+          1
+        ],
+        "name": "SOCKET_Cut_B",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Cut_B",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cut_B",
+            "recordIds": [
+              "sf.render.ceres-second-measure-crossbeam.anchor.socket-cut-b"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Recovery",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Recovery",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Recovery",
+            "recordIds": [
+              "sf.render.ceres-second-measure-crossbeam.anchor.socket-recovery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          3,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tow",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tow",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tow",
+            "recordIds": [
+              "sf.render.ceres-second-measure-crossbeam.anchor.socket-tow"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "hull": 6,
+      "mechanical": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 21,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb"
+  },
+  "runtimeHash": "6c1d85bb96e083c2cbb7e82a6f5927586e475bda1fcf9661d6a9acd9d5abeb4d",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          17.001708984375,
+          3.001190185546875,
+          27.5
+        ],
+        "min": [
+          -17.001708984375,
+          -3.001190185546875,
+          -27.5
+        ]
+      },
+      "id": "sf.render.ceres-second-measure-crossbeam.body",
+      "nodeIds": [
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod0-armor",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod0-brushedmetal",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod0-hull",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod0-livery",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod0-mechanical",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod1-armor",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod1-brushedmetal",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod1-hull",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod1-livery",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod1-mechanical",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod2-armor",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod2-brushedmetal",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod2-hull",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod2-livery",
+        "sf.render.ceres-second-measure-crossbeam.mesh.lod2-mechanical",
+        "sf.render.ceres-second-measure-crossbeam.root"
+      ]
+    }
+  ]
+}

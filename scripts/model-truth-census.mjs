@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { hasUnclassifiedTextures } from './lib/modelTextureRoles.mjs';
+import { authoredCompoundMeasurement, authoredCompoundCoverage, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
 // Measure every live solid the loader resolves and write src/data/modelTruthCensus.json.
 // The game does not read this file until a later pass. Re-running with --check fails
 // when the committed census disagrees with a fresh measurement.
@@ -115,7 +117,7 @@ function quantKey(p) {
   return `${Math.round(p.x * 1000)},${Math.round(p.y * 1000)},${Math.round(p.z * 1000)}`;
 }
 
-async function measureGlb(absPath) {
+async function measureGlb(absPath, { excludeHelpers = false } = {}) {
   const bytes = statSync(absPath).size;
   const doc = await io.read(absPath);
   // KHR_mesh_quantization stores int16 positions. Reading them raw inflates a buoy to
@@ -143,6 +145,7 @@ async function measureGlb(absPath) {
   };
 
   for (const node of root.listNodes()) {
+    if (excludeHelpers && isAuthoredNonRenderHelper(node)) continue;
     const name = node.getName() || '';
     const mesh = node.getMesh();
     if (/^SOCKET_/i.test(name) && !mesh) {
@@ -186,7 +189,7 @@ async function measureGlb(absPath) {
         const i3 = index * 3;
         return transformPoint(matrix, array[i3], array[i3 + 1], array[i3 + 2]);
       };
-      const stride = Math.max(1, Math.floor((indices ? indices.length : array.length / 3) / 12000));
+      const stride = excludeHelpers ? 1 : Math.max(1, Math.floor((indices ? indices.length : array.length / 3) / 12000));
       for (let i = 0; i < (indices ? indices.length : array.length / 3); i += stride) {
         const point = at(indices ? indices[i] : i);
         // Every mesh in the file contributes to that file's outline. A LOD1 file whose
@@ -239,7 +242,8 @@ async function measureGlb(absPath) {
   materials.sort((a, b) => a.name.localeCompare(b.name) || a.role.localeCompare(b.role));
   const generator = String(root.getAsset?.()?.getGenerator?.() || '');
   const imageCount = typeof root.listTextures === 'function' ? root.listTextures().length : 0;
-  const legacyTextureRole = imageCount > 0 && !(root.listMaterials?.() || []).some((material) => {
+  const legacyTextureRole = excludeHelpers ? hasUnclassifiedTextures(root)
+    : imageCount > 0 && !(root.listMaterials?.() || []).some((material) => {
     const extras = material.getExtras?.() || {};
     return extras.textureRole || extras.spacefaceTextureRole || extras.textureRoleMode;
   });
@@ -259,6 +263,7 @@ async function measureGlb(absPath) {
     generator,
     imageCount,
     legacyTextureRole,
+    ...(excludeHelpers ? { authoredCompoundCertificate: root.getAsset().extras?.ceresWorkfleet } : {}),
   };
 }
 
@@ -289,14 +294,15 @@ function withTaste(row, measured, status) {
 }
 
 const glbCache = new Map();
-async function cachedGlb(file) {
+async function cachedGlb(file, options = {}) {
   const abs = releasePath(file);
   if (!abs || !existsSync(abs)) return { missing: true, abs };
-  if (glbCache.has(abs)) return glbCache.get(abs);
-  const measured = await measureGlb(abs);
+  const key = options.excludeHelpers ? `${abs}|visible` : abs;
+  if (glbCache.has(key)) return glbCache.get(key);
+  const measured = await measureGlb(abs, options);
   measured.abs = abs;
   measured.url = `assets/ships/release/parts/${String(file).replace(/\\/g, '/').replace(/^assets\/ships\/release\/parts\//, '')}`;
-  glbCache.set(abs, measured);
+  glbCache.set(key, measured);
   return measured;
 }
 
@@ -546,7 +552,9 @@ async function measureRow(row) {
     };
   }
 
-  const measured = await cachedGlb(row.file);
+  const authoredCompound = authoredCompoundMeasurement(row);
+  const authoredPlace = row.fit === 'authored-place-origin';
+  const measured = await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
   if (measured.missing) {
     const status = rowStatus(row, { missing: true, overTolerance: false, throatSealed: false, lod: null });
     return {
@@ -575,10 +583,12 @@ async function measureRow(row) {
       dockRadius: size?.dockRadius || row.dockRadius,
       placeScale: row.placeScale,
     };
-    const fit = drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec);
+    const fit = authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
+      : drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec));
     const world = applyFit(measured.points, fit);
-    const collider = colliderFor(row, fitSpec, proportions);
+    const collider = authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
     const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
+    if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, measured.authoredCompoundCertificate));
     if (!worst || evaluated.gapWu > worst.gapWu || evaluated.throatSealed) {
       worst = {
         gapWu: evaluated.gapWu,
@@ -632,7 +642,7 @@ async function measureRow(row) {
     ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
     : (worst.entityRadius || row.entityRadius || 1);
   let skin = null;
-  if (row.solid && worstEval.slice && worstEval.slice.length) {
+  if (row.solid && !authoredCompound && !authoredPlace && worstEval.slice && worstEval.slice.length) {
     skin = buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null });
     const fitted = scaleProxyPrimitives(skin.primitives, reference);
     const opening = skin.mouthBearingDeg == null ? null : {
@@ -674,7 +684,7 @@ async function measureRow(row) {
     triangles: measured.triangles,
     meshes: measured.meshes,
     nodes: measured.nodes,
-    pivot: stable(measured.bounds.center),
+    pivot: authoredCompound || authoredPlace ? [0, 0, 0] : stable(measured.bounds.center),
     forwardAxis: '+X',
     bounds: stable(measured.bounds),
     drawScale: roundWu(row.anchorFitScale ?? worstFit.scale),
@@ -705,6 +715,13 @@ async function measureRow(row) {
     collider: {
       kind: worstCollider.kind,
       id: worstCollider.id,
+      ...(authoredCompound ? {
+        referenceState: authoredCompound.referenceState,
+        compoundBoxesWU: stable(authoredCompound.compoundBoxesWU),
+        coverageMetric: worstEval.coverageMetric,
+        sourceCompoundParity: worstEval.sourceCompoundParity,
+        authoredClearVolumesPreserved: worstEval.authoredClearVolumesPreserved,
+      } : {}),
       gapWu: worstEval.gapWu,
       toleranceWu: worstEval.toleranceWu,
       coverageWu: worstEval.coverageWu,

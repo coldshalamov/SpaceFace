@@ -1,3 +1,5 @@
+import { isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
+import { isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Bespoke visual overrides for hero assets plus the authored-asset boundary.
 // Explicit authored identities fail closed. A load/build problem may leave an entity temporarily
 // absent and diagnostic, but it must never publish a visually unrelated procedural body first.
@@ -69,7 +71,7 @@ function requiresProductionWholeShip(entity) {
 
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
-  if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
+  if (hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }

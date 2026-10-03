@@ -1,0 +1,290 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "ceres_breaker_hydraulics",
+ "sourceAssetId": "SF_WHOLESHIP_CERES_BREAKER",
+ "sourceGlbSha256": "4308881fd08ea26d917f7e5cc37d1c68341ee5554f0c8226ddf1a631225e834b",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "shoe_port",
+   "node": "MOTION_SHOE_PORT",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     13.5,
+     0,
+     -22.5
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "shoe_ram_port_0",
+   "node": "MOTION_SHOE_RAM_PORT_0",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -10,
+     0,
+     -27
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "shoe_ram_port_1",
+   "node": "MOTION_SHOE_RAM_PORT_1",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     37,
+     0,
+     -27
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "shoe_starboard",
+   "node": "MOTION_SHOE_STARBOARD",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     13.5,
+     0,
+     22.5
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "shoe_ram_starboard_0",
+   "node": "MOTION_SHOE_RAM_STARBOARD_0",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -10,
+     0,
+     27
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "shoe_ram_starboard_1",
+   "node": "MOTION_SHOE_RAM_STARBOARD_1",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     37,
+     0,
+     27
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "source_open_pose",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "shoe_port",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "shoe_ram_port_0",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "shoe_ram_port_1",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "shoe_starboard",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "shoe_ram_starboard_0",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "shoe_ram_starboard_1",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    }
+   ]
+  }
+ ],
+ "simulationAuthority": "Ceres native actual slide fraction; renderer applies after bank update"
+}

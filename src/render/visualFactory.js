@@ -1,3 +1,5 @@
+import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
+import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
 // libraries that were fully decoded before flight admission. Contract: createVisualFactory() ->
 // { build(entity) }
@@ -3454,6 +3456,8 @@ function hulkPackagedFileForEntity(e) {
 }
 
 export function wreckPackagedFile(e) {
+  if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
+  if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
   const fragmentFile = fractureFragmentFileForEntity(e);
   if (fragmentFile) return fragmentFile;
   const hulkFile = hulkPackagedFileForEntity(e);

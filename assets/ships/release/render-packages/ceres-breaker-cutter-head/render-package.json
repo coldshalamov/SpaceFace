@@ -1,0 +1,6286 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-aft-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-aft-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-fore-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-fore-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-lateral-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -2.924999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -2.924999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-lateral-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        2.924999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        2.924999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-cut",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cut",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.anchor.socket-mount",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mount",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentNodeId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ceres-breaker-cutter-head",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "89b29a8a89196eec035676b59e9dc0d990ccbc1f7caa53e555c0dbb7a5f29bd6",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2,
+          2.0001220703125,
+          3
+        ],
+        "min": [
+          -4,
+          -2.0001220703125,
+          -3
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e75cdb88795fdb9f691d24df76acb715fd50efc0a0f9b7e81ff366df7493cfa1",
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-motor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_motor",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-motor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.00006103515625,
+          1.5,
+          -0.99993896484375
+        ],
+        "min": [
+          1.99993896484375,
+          -1.5,
+          -3.00006103515625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eedb2271243716a8b4fb80c5a01555f21f8a81af9bd4de395d7c0934dc3fc859",
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_port_blade",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.00006103515625,
+          1.5,
+          3.00006103515625
+        ],
+        "min": [
+          1.99993896484375,
+          -1.5,
+          0.99993896484375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "622f2fa2b68330fa45255bf83a1d516e4a84a590b77eb279b6b60cdaa40ae705",
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_starboard_blade",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.981077194213867,
+          1.150184154510498,
+          2.9947595596313477
+        ],
+        "min": [
+          -3.9585068225860596,
+          -1.900184154510498,
+          -2.9947595596313477
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2da1f0fc577f26a4686b3ba34c5cf90014a6d12268712c813d7c73483827daf2",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-armor.primitive.0",
+      "indexCount": 6036,
+      "indexed": true,
+      "materialHash": "7b20cf4ecaac9b61541a0e80a28c2df7302d7098a4f976a5fcb328dafa8684b8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1917
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9750213623046875,
+          0.7000564932823181,
+          1.125
+        ],
+        "min": [
+          1.9249787330627441,
+          -0.7000564932823181,
+          -1.125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28713f7a4f3acec3b6a443807e40a84e974612eb08dbce97274c64e4f93ac356",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 1404,
+      "indexed": true,
+      "materialHash": "e9db1df182ec82c03cd3f6d69981fc14e2e9f936baf82df5ff2d2f9f05f370ad",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 456
+    },
+    {
+      "bounds": {
+        "max": [
+          4,
+          1.850171685218811,
+          2.5750298500061035
+        ],
+        "min": [
+          -4,
+          -1.4001716375350952,
+          -2.5750298500061035
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5c4fcbf43bbec4af94d5e4ae5bb640a2fff5de09622633eaf8411a46234500e6",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-brushedmetal.primitive.0",
+      "indexCount": 6024,
+      "indexed": true,
+      "materialHash": "9adad21d9ce3f9f3cf352fb21320ad86d2e863d3a8dc6a5368cfadbe74205d45",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1896
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.610018918474742,
+          0.3099999725818634,
+          -1.9899999797344208
+        ],
+        "min": [
+          -2.6499810719885146,
+          -0.3099999725818634,
+          -2.6099999248981476
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e63056e418284d73bfa99b0a188ac5f06e7364d658db88103c15166a3c76952",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.610018918474742,
+          0.3099999725818634,
+          2.6099999248981476
+        ],
+        "min": [
+          -2.6499810719885146,
+          -0.3099999725818634,
+          1.9899999797344208
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03a544012c5ebbe2b38bf0e5a1e51d585e156ed7ed982447a13891b1847c4684",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3500189260905737,
+          0.3100000023841858,
+          -1.9899999499320984
+        ],
+        "min": [
+          -1.3899810834461694,
+          -0.3100000023841858,
+          -2.60999995470047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0954fc8c0d70cf680e84ea1889ac13f855976b44e34f2e0e06f716feebab27",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3500189260905737,
+          0.3100000023841858,
+          2.60999995470047
+        ],
+        "min": [
+          -1.3899810834461694,
+          -0.3100000023841858,
+          1.9899999499320984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad0d5b6d84e09330daf8b7e325a81dc29c22341865297eb14d7f01a129d11100",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18821430206298828,
+          0.18821429461240768,
+          -2.587499976158142
+        ],
+        "min": [
+          -0.1882142871618271,
+          -0.18821429461240768,
+          -2.587499976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34dfead048aae8dcc4d23e71ae4e05fcdcf33e12b3f68955a948580fa3fd1752",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive.primitive.0",
+      "indexCount": 42,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18821430206298828,
+          0.18821429461240768,
+          2.587499976158142
+        ],
+        "min": [
+          -0.1882142871618271,
+          -0.18821429461240768,
+          2.587499976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "509be330d18397d3c21b5873e18f6cbc9605fecf7564e81d43732e87f5e4c335",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive.primitive.0",
+      "indexCount": 42,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.899871826171875,
+          2.250229597091675
+        ],
+        "min": [
+          -3.959929943084717,
+          -1.5752838850021362,
+          -2.250229597091675
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4348f47c5286ed6a5ae0ae64bb8d4433ffef52e9ab65c0054489445bc7b0c6c5",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hull.primitive.0",
+      "indexCount": 2094,
+      "indexed": true,
+      "materialHash": "284234bc15445ac6b5141e8e44d7215a5025e77a950edadfdb8e5500024fe202",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 679
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.10999999195337296,
+          1.8399957418441772,
+          0.14000000059604645
+        ],
+        "min": [
+          -0.38999998569488525,
+          1.800004243850708,
+          -0.14000000059604645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cfc7ae0f4d2c5fb7bed11427cdd6f54924fa5eef7b15a8fe11920272ac590f98",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-lights-warm.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "2d715452376f54b28337484c84e8ed7ac5550fe7556fdad6b55e49a1fdcb8324",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.33981069922447205,
+          1.999990463256836,
+          2.944999933242798
+        ],
+        "min": [
+          -3.9998106956481934,
+          -1.1999905109405518,
+          -2.944999933242798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "490232fb2b2dfea1c08913231f5a360ad58ee87e946d9776123d4cbd956a5605",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanical.primitive.0",
+      "indexCount": 2484,
+      "indexed": true,
+      "materialHash": "b9c6ec993b62a6aad22374cff3c2a900e576e89f5d5433c6516ceeb6f6180dd9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 920
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.9625153541564941,
+          2.9450666904449463
+        ],
+        "min": [
+          -4,
+          -1.4173483848571777,
+          -2.9450666904449463
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06b02eec949591b6276c53349c50ddf56a49262fb36fb4c59a3fc81f7de1db96",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 3198,
+      "indexed": true,
+      "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1000
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5751115679740906,
+          1.899949550628662,
+          2.08168625831604
+        ],
+        "min": [
+          -1.4248883724212646,
+          1.3063256740570068,
+          -2.08168625831604
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6bd41053cab63afeca28b0a984fef9db75d829a6179d127240fa28bcc3c29489",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-warning.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "63ac2ebc058d746f649d8bc5084292594229cd8c778ac77123c1af12bf911911",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 22
+    },
+    {
+      "bounds": {
+        "max": [
+          3.984809637069702,
+          1.1498053073883057,
+          2.993265151977539
+        ],
+        "min": [
+          -3.947760581970215,
+          -1.8998053073883057,
+          -2.9928994178771973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "678c08be12fe8dfd917fc621de1aa213fce684ea9f19e6cbc7be1c80a29837e9",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-armor.primitive.0",
+      "indexCount": 2664,
+      "indexed": true,
+      "materialHash": "7b20cf4ecaac9b61541a0e80a28c2df7302d7098a4f976a5fcb328dafa8684b8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 897
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9724555015563965,
+          0.6962417364120483,
+          1.1211857795715332
+        ],
+        "min": [
+          1.9249836206436157,
+          -0.6974818110466003,
+          -1.1211857795715332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5fb632c7991195b8fbdfa050f947d03ccd605ddd60887a54f34eefc4d73d063d",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e9db1df182ec82c03cd3f6d69981fc14e2e9f936baf82df5ff2d2f9f05f370ad",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 143
+    },
+    {
+      "bounds": {
+        "max": [
+          4,
+          1.3961126804351807,
+          2.5701358318328857
+        ],
+        "min": [
+          -3.996927499771118,
+          -1.3961126804351807,
+          -2.5701358318328857
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9a5ca0b1a497908646032411a39768d4025480d70d1ef6dcc81a663e189167d8",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-brushedmetal.primitive.0",
+      "indexCount": 1374,
+      "indexed": true,
+      "materialHash": "9adad21d9ce3f9f3cf352fb21320ad86d2e863d3a8dc6a5368cfadbe74205d45",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 510
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.610018918474742,
+          0.3099999725818634,
+          -1.9899999797344208
+        ],
+        "min": [
+          -2.6499810719885146,
+          -0.3099999725818634,
+          -2.6099999248981476
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e63056e418284d73bfa99b0a188ac5f06e7364d658db88103c15166a3c76952",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.610018918474742,
+          0.3099999725818634,
+          2.6099999248981476
+        ],
+        "min": [
+          -2.6499810719885146,
+          -0.3099999725818634,
+          1.9899999797344208
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03a544012c5ebbe2b38bf0e5a1e51d585e156ed7ed982447a13891b1847c4684",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3500189260905737,
+          0.3100000023841858,
+          -1.9899999499320984
+        ],
+        "min": [
+          -1.3899810834461694,
+          -0.3100000023841858,
+          -2.60999995470047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0954fc8c0d70cf680e84ea1889ac13f855976b44e34f2e0e06f716feebab27",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3500189260905737,
+          0.3100000023841858,
+          2.60999995470047
+        ],
+        "min": [
+          -1.3899810834461694,
+          -0.3100000023841858,
+          1.9899999499320984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad0d5b6d84e09330daf8b7e325a81dc29c22341865297eb14d7f01a129d11100",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18821430206298828,
+          0.18821429461240768,
+          -2.587499976158142
+        ],
+        "min": [
+          -0.1882142871618271,
+          -0.18821429461240768,
+          -2.587499976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34dfead048aae8dcc4d23e71ae4e05fcdcf33e12b3f68955a948580fa3fd1752",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive.primitive.0",
+      "indexCount": 42,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18821430206298828,
+          0.18821429461240768,
+          2.587499976158142
+        ],
+        "min": [
+          -0.1882142871618271,
+          -0.18821429461240768,
+          2.587499976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "509be330d18397d3c21b5873e18f6cbc9605fecf7564e81d43732e87f5e4c335",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive.primitive.0",
+      "indexCount": 42,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9974273443222046,
+          1.9000730514526367,
+          2.250145196914673
+        ],
+        "min": [
+          -3.950740098953247,
+          -1.575485110282898,
+          -2.250145196914673
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c6b1588769c551108ae7cb720a885bea0364c968c7308de3f5085e3381d3eea",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hull.primitive.0",
+      "indexCount": 912,
+      "indexed": true,
+      "materialHash": "284234bc15445ac6b5141e8e44d7215a5025e77a950edadfdb8e5500024fe202",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 287
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.10999469459056854,
+          1.8399940729141235,
+          0.1404682844877243
+        ],
+        "min": [
+          -0.39000529050827026,
+          1.8000059127807617,
+          -0.1404682844877243
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "87def569a3d6d4ec12083ee16d644a0bc2e98ea94124f18cc720a3c33061720d",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-lights-warm.primitive.0",
+      "indexCount": 102,
+      "indexed": true,
+      "materialHash": "2d715452376f54b28337484c84e8ed7ac5550fe7556fdad6b55e49a1fdcb8324",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 46
+    },
+    {
+      "bounds": {
+        "max": [
+          0.33999496698379517,
+          2.0000669956207275,
+          2.944999933242798
+        ],
+        "min": [
+          -3.9981884956359863,
+          -1.1963189840316772,
+          -2.944999933242798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c9cfcdb5d2ff0781beec91a501285d0ade9d9b94e32576f91758d4dcd63b797",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanical.primitive.0",
+      "indexCount": 1908,
+      "indexed": true,
+      "materialHash": "b9c6ec993b62a6aad22374cff3c2a900e576e89f5d5433c6516ceeb6f6180dd9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 712
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9988690614700317,
+          1.9557690620422363,
+          2.9450976848602295
+        ],
+        "min": [
+          -3.998211145401001,
+          -1.432699203491211,
+          -2.9450976848602295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c35d10266b32d43a2936423d2e3b09ad95b66a580f6362e61a41ea2c8faab99",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1284,
+      "indexed": true,
+      "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 417
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9934816360473633,
+          1.1406774520874023,
+          2.999950885772705
+        ],
+        "min": [
+          -3.9869844913482666,
+          -1.8942229747772217,
+          -2.999950885772705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4268b61a1d3355209efb64f9a21466aa5df7fa39b357e807f5663817282b08d2",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-armor.primitive.0",
+      "indexCount": 1218,
+      "indexed": true,
+      "materialHash": "7b20cf4ecaac9b61541a0e80a28c2df7302d7098a4f976a5fcb328dafa8684b8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 482
+    },
+    {
+      "bounds": {
+        "max": [
+          3.967092514038086,
+          0.691882312297821,
+          1.11690354347229
+        ],
+        "min": [
+          1.9249863624572754,
+          -0.691882312297821,
+          -1.11690354347229
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8a3c54e4e6c27f5298f71d212fe1d7784f39502eabc0cf1007f0d2714251b44",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "e9db1df182ec82c03cd3f6d69981fc14e2e9f936baf82df5ff2d2f9f05f370ad",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.980801820755005,
+          1.3965035676956177,
+          2.568223714828491
+        ],
+        "min": [
+          -3.990495204925537,
+          -1.3965035676956177,
+          -2.568223714828491
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9d4bc5f6250b2aab65b00d5c3cc98b4cf80ec3c4183d503dae2814488a2ee1f6",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-brushedmetal.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "9adad21d9ce3f9f3cf352fb21320ad86d2e863d3a8dc6a5368cfadbe74205d45",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 249
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.610018918474742,
+          0.3099999725818634,
+          -1.9899999797344208
+        ],
+        "min": [
+          -2.6499810719885146,
+          -0.3099999725818634,
+          -2.6099999248981476
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e63056e418284d73bfa99b0a188ac5f06e7364d658db88103c15166a3c76952",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.610018918474742,
+          0.3099999725818634,
+          2.6099999248981476
+        ],
+        "min": [
+          -2.6499810719885146,
+          -0.3099999725818634,
+          1.9899999797344208
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03a544012c5ebbe2b38bf0e5a1e51d585e156ed7ed982447a13891b1847c4684",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3500189260905737,
+          0.3100000023841858,
+          -1.9899999499320984
+        ],
+        "min": [
+          -1.3899810834461694,
+          -0.3100000023841858,
+          -2.60999995470047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0954fc8c0d70cf680e84ea1889ac13f855976b44e34f2e0e06f716feebab27",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3500189260905737,
+          0.3100000023841858,
+          2.60999995470047
+        ],
+        "min": [
+          -1.3899810834461694,
+          -0.3100000023841858,
+          1.9899999499320984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad0d5b6d84e09330daf8b7e325a81dc29c22341865297eb14d7f01a129d11100",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18821430206298828,
+          0.18821429461240768,
+          -2.587499976158142
+        ],
+        "min": [
+          -0.1882142871618271,
+          -0.18821429461240768,
+          -2.587499976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34dfead048aae8dcc4d23e71ae4e05fcdcf33e12b3f68955a948580fa3fd1752",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive.primitive.0",
+      "indexCount": 42,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18821430206298828,
+          0.18821429461240768,
+          2.587499976158142
+        ],
+        "min": [
+          -0.1882142871618271,
+          -0.18821429461240768,
+          2.587499976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "509be330d18397d3c21b5873e18f6cbc9605fecf7564e81d43732e87f5e4c335",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive.primitive.0",
+      "indexCount": 42,
+      "indexed": true,
+      "materialHash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          1.996494174003601,
+          1.8944391012191772,
+          2.2500081062316895
+        ],
+        "min": [
+          -3.991891860961914,
+          -1.575378179550171,
+          -2.2500081062316895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7d39f08cde1d4e1d3d046c0327a813a01ebc76c7f3e4829c192490461446a27",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hull.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "284234bc15445ac6b5141e8e44d7215a5025e77a950edadfdb8e5500024fe202",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.09943946450948715,
+          1.8399969339370728,
+          0.15055371820926666
+        ],
+        "min": [
+          -0.40056055784225464,
+          1.8000030517578125,
+          -0.14619305729866028
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90af6b83f5790e02d6d6621c23be058d81fcb572bc5899e05f0578f8849b37c2",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-lights-warm.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "2d715452376f54b28337484c84e8ed7ac5550fe7556fdad6b55e49a1fdcb8324",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Warm",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 28
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3399093747138977,
+          1.9866364002227783,
+          2.944999933242798
+        ],
+        "min": [
+          -3.9918031692504883,
+          -1.1888980865478516,
+          -2.944999933242798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d91ebc0decd11a4d321f2bef6439d553a0b8e547e5e9d02e7fd0d4eca9c4d570",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanical.primitive.0",
+      "indexCount": 1452,
+      "indexed": true,
+      "materialHash": "b9c6ec993b62a6aad22374cff3c2a900e576e89f5d5433c6516ceeb6f6180dd9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 552
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9945958852767944,
+          1.945631742477417,
+          2.944831609725952
+        ],
+        "min": [
+          -3.997473955154419,
+          -1.4224504232406616,
+          -2.944831609725952
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6871f3c360a3d79e0420ed935c22946a6a884743ee32355d020cb3a75c842319",
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 738,
+      "indexed": true,
+      "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 278
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
+      "id": "material:18dac3bb8d403fa526e5f6aa",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "284234bc15445ac6b5141e8e44d7215a5025e77a950edadfdb8e5500024fe202",
+      "id": "material:284234bc15445ac6b5141e8e",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2d715452376f54b28337484c84e8ed7ac5550fe7556fdad6b55e49a1fdcb8324",
+      "id": "material:2d715452376f54b28337484c",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "63ac2ebc058d746f649d8bc5084292594229cd8c778ac77123c1af12bf911911",
+      "id": "material:63ac2ebc058d746f649d8bc5",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "729004ff8e46c94573d881390441f5ee841a2d596e632155592ccb4b43a562ae",
+      "id": "material:729004ff8e46c94573d88139",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7b20cf4ecaac9b61541a0e80a28c2df7302d7098a4f976a5fcb328dafa8684b8",
+      "id": "material:7b20cf4ecaac9b61541a0e80",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9adad21d9ce3f9f3cf352fb21320ad86d2e863d3a8dc6a5368cfadbe74205d45",
+      "id": "material:9adad21d9ce3f9f3cf352fb2",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b9c6ec993b62a6aad22374cff3c2a900e576e89f5d5433c6516ceeb6f6180dd9",
+      "id": "material:b9c6ec993b62a6aad22374cf",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e9db1df182ec82c03cd3f6d69981fc14e2e9f936baf82df5ff2d2f9f05f370ad",
+      "id": "material:e9db1df182ec82c03cd3f6d6",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-motor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_motor",
+      "nodeName": "COLLISION_motor",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_port_blade",
+      "nodeName": "COLLISION_port_blade",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_blade",
+      "nodeName": "COLLISION_starboard_blade",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive",
+      "localTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodeName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+      "localTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodeName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodeName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodeName": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive",
+      "localTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        -2.587499976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodeName": "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        -2.587499976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive",
+      "localTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        2.587499976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodeName": "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        2.587499976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive",
+      "localTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodeName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+      "localTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodeName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodeName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodeName": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive",
+      "localTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        -2.587499976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodeName": "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        -2.587499976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive",
+      "localTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        2.587499976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodeName": "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        2.587499976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive",
+      "localTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodeName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+      "localTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodeName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        0,
+        0,
+        0,
+        0.3099999725818634,
+        0,
+        -2.6299999952316284,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodeName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+      "localTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodeName": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.3100000023841858,
+        0,
+        -1.3700000047683716,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive",
+      "localTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        -2.587499976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodeName": "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        -2.587499976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive",
+      "localTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        2.587499976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodeName": "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        0,
+        0,
+        0,
+        0.18821429461240768,
+        0,
+        7.450580596923828e-9,
+        0,
+        2.587499976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Warm",
+      "nodeName": "LOD2_Lights_Warm",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD_ROOT",
+      "nodeName": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-aft-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-aft-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6500000953674316,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-fore-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-fore-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+      "nodeName": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.350000023841858,
+        0,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-lateral-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -2.924999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+      "nodeName": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -2.924999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-lateral-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        2.924999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+      "nodeName": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        2.924999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-cut",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cut",
+      "nodeName": "SOCKET_Cut",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.socket-mount",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mount",
+      "nodeName": "SOCKET_Mount",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d684363fb58da2a28536baf1f9f4cd90c27a4bdfb7b86729b308b9d2b3644f5c"
+    },
+    "sourceGlb": {
+      "bytes": 395804,
+      "sha256": "7deac548cdab9ce20dfcd36eb1af9d5d0b75731864a6018f123c69693e30454a",
+      "uri": "place_ceres_breaker_cutter_head.glb"
+    },
+    "sourceManifest": {
+      "bytes": 226002,
+      "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 651828,
+    "sha256": "c05eed66379a1fff3ef51f379843c35dba319aa4c8b0fe089079a4ba724bf038",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.000030517578125,
+        0,
+        0
+      ],
+      "max": [
+        4.00006103515625,
+        2.0001220703125,
+        3.00006103515625
+      ],
+      "min": [
+        -4,
+        -2.0001220703125,
+        -3.00006103515625
+      ],
+      "size": [
+        8.00006103515625,
+        4.000244140625,
+        6.0001220703125
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.6500000953674316,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+        "planIndex": 45,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "ceresThruster": {
+            "channel": "AXIAL_AFT_PORT",
+            "coreHook": "HOOK_CERES_THRUSTER_AXIAL_AFT_PORT",
+            "exhaustNormal": [
+              -1,
+              0,
+              0
+            ],
+            "mouthWU": [
+              -5.3,
+              0,
+              -4.6
+            ],
+            "socketNormal": [
+              -1,
+              0,
+              0
+            ],
+            "supportingSolid": "motor"
+          },
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-aft-port",
+              "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-aft-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.6500000953674316,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+        "planIndex": 46,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "ceresThruster": {
+            "channel": "AXIAL_AFT_STARBOARD",
+            "coreHook": "HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+            "exhaustNormal": [
+              -1,
+              0,
+              0
+            ],
+            "mouthWU": [
+              -5.3,
+              0,
+              4.6
+            ],
+            "socketNormal": [
+              -1,
+              0,
+              0
+            ],
+            "supportingSolid": "motor"
+          },
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-aft-starboard",
+              "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-aft-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.350000023841858,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+        "planIndex": 47,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "ceresThruster": {
+            "channel": "AXIAL_FORE_PORT",
+            "coreHook": "HOOK_CERES_THRUSTER_AXIAL_FORE_PORT",
+            "exhaustNormal": [
+              1,
+              0,
+              0
+            ],
+            "mouthWU": [
+              -2.7,
+              0,
+              -4.6
+            ],
+            "socketNormal": [
+              1,
+              0,
+              0
+            ],
+            "supportingSolid": "motor"
+          },
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-fore-port",
+              "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-fore-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.350000023841858,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+        "planIndex": 48,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "ceresThruster": {
+            "channel": "AXIAL_FORE_STARBOARD",
+            "coreHook": "HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+            "exhaustNormal": [
+              1,
+              0,
+              0
+            ],
+            "mouthWU": [
+              -2.7,
+              0,
+              4.6
+            ],
+            "socketNormal": [
+              1,
+              0,
+              0
+            ],
+            "supportingSolid": "motor"
+          },
+          "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-axial-fore-starboard",
+              "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-fore-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          -2.924999952316284,
+          1
+        ],
+        "name": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+        "planIndex": 49,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "ceresThruster": {
+            "channel": "LATERAL_PORT",
+            "coreHook": "HOOK_CERES_THRUSTER_LATERAL_PORT",
+            "exhaustNormal": [
+              0,
+              0,
+              -1
+            ],
+            "mouthWU": [
+              0,
+              0,
+              -5.85
+            ],
+            "socketNormal": [
+              0,
+              0,
+              -1
+            ],
+            "supportingSolid": "motor"
+          },
+          "name": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-lateral-port",
+              "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-lateral-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          2.924999952316284,
+          1
+        ],
+        "name": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+        "planIndex": 50,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "ceresThruster": {
+            "channel": "LATERAL_STARBOARD",
+            "coreHook": "HOOK_CERES_THRUSTER_LATERAL_STARBOARD",
+            "exhaustNormal": [
+              0,
+              0,
+              1
+            ],
+            "mouthWU": [
+              0,
+              0,
+              5.85
+            ],
+            "socketNormal": [
+              0,
+              0,
+              1
+            ],
+            "supportingSolid": "motor"
+          },
+          "name": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-ceres-thruster-lateral-starboard",
+              "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-lateral-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cut",
+        "planIndex": 51,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Cut",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cut",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-cut",
+              "sf.render.ceres-breaker-cutter-head.node.socket-cut"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mount",
+        "planIndex": 52,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Mount",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mount",
+            "recordIds": [
+              "sf.render.ceres-breaker-cutter-head.anchor.socket-mount",
+              "sf.render.ceres-breaker-cutter-head.node.socket-mount"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "drive": 18,
+      "hull": 6,
+      "mechanical": 12,
+      "signal": 6,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 53,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          -2.6299999952316284,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          -2.6299999952316284,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -1.3700000047683716,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -1.3700000047683716,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          7.450580596923828e-9,
+          0,
+          -2.587499976158142,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          7.450580596923828e-9,
+          0,
+          2.587499976158142,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          -2.6299999952316284,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          -2.6299999952316284,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -1.3700000047683716,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -1.3700000047683716,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          7.450580596923828e-9,
+          0,
+          -2.587499976158142,
+          1
+        ],
+        "name": "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          7.450580596923828e-9,
+          0,
+          2.587499976158142,
+          1
+        ],
+        "name": "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          -2.6299999952316284,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          0,
+          0,
+          0,
+          0.3099999725818634,
+          0,
+          -2.6299999952316284,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -1.3700000047683716,
+          0,
+          -2.299999952316284,
+          1
+        ],
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.3100000023841858,
+          0,
+          -1.3700000047683716,
+          0,
+          2.299999952316284,
+          1
+        ],
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          7.450580596923828e-9,
+          0,
+          -2.587499976158142,
+          1
+        ],
+        "name": "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          0,
+          0,
+          0,
+          0.18821429461240768,
+          0,
+          7.450580596923828e-9,
+          0,
+          2.587499976158142,
+          1
+        ],
+        "name": "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Warm",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb"
+  },
+  "runtimeHash": "903cb4cb7b0e38f66d03b2c1258568bf5a5533ee5e67f37ce83d83b1f55f2511",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.00006103515625,
+          2.0001220703125,
+          3.00006103515625
+        ],
+        "min": [
+          -4,
+          -2.0001220703125,
+          -3.00006103515625
+        ]
+      },
+      "id": "sf.render.ceres-breaker-cutter-head.body",
+      "nodeIds": [
+        "sf.render.ceres-breaker-cutter-head.node.collision-motor",
+        "sf.render.ceres-breaker-cutter-head.node.collision-port-blade",
+        "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-armor",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-beacon-amber",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-brushedmetal",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-hull",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-lights-warm",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-mechanical",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-mechanicaldark",
+        "sf.render.ceres-breaker-cutter-head.node.lod0-warning",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-armor",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-beacon-amber",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-brushedmetal",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-hull",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-lights-warm",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-mechanical",
+        "sf.render.ceres-breaker-cutter-head.node.lod1-mechanicaldark",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-armor",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-beacon-amber",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-brushedmetal",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-hull",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-lights-warm",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-mechanical",
+        "sf.render.ceres-breaker-cutter-head.node.lod2-mechanicaldark",
+        "sf.render.ceres-breaker-cutter-head.node.sf-place-ceres-breaker-cutter-head-root",
+        "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-aft-port",
+        "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-aft-starboard",
+        "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-fore-port",
+        "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-axial-fore-starboard",
+        "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-lateral-port",
+        "sf.render.ceres-breaker-cutter-head.node.socket-ceres-thruster-lateral-starboard",
+        "sf.render.ceres-breaker-cutter-head.node.socket-cut",
+        "sf.render.ceres-breaker-cutter-head.node.socket-mount"
+      ]
+    }
+  ]
+}
