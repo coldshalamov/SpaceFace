@@ -683,10 +683,13 @@ function ensurePlayerMarketMemory(player) {
 }
 
 function ensurePlayerTradeState(player) {
-  if (!player) return { ledger: [], lots: {} };
+  if (!player) return { ledger: [], lots: {}, margins: {} };
   if (!Array.isArray(player.tradeLedger)) player.tradeLedger = [];
   if (!player.tradeLots || typeof player.tradeLots !== 'object' || Array.isArray(player.tradeLots)) player.tradeLots = {};
-  return { ledger: player.tradeLedger, lots: player.tradeLots };
+  // FB-047: lifetime per-commodity margin roll-up — bounded by the commodity catalog, so the ten-
+  // receipt ledger cap no longer erases a pilot's session trading record.
+  if (!player.tradeMargins || typeof player.tradeMargins !== 'object' || Array.isArray(player.tradeMargins)) player.tradeMargins = {};
+  return { ledger: player.tradeLedger, lots: player.tradeLots, margins: player.tradeMargins };
 }
 
 function normalizeSalvageIntakeIds(raw) {
@@ -2572,7 +2575,7 @@ export const economy = {
   recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def) {
     const player = state && state.player;
     if (!player || !commodityId || qty <= 0) return null;
-    const { ledger, lots } = ensurePlayerTradeState(player);
+    const { ledger, lots, margins } = ensurePlayerTradeState(player);
     const cleanQty = Math.max(0, Math.floor(Number(qty) || 0));
     const cleanUnit = Number(unitAvg) || 0;
     let basisUnit = cleanUnit;
@@ -2585,6 +2588,17 @@ export const economy = {
       basisUnit = this.consumeTradeLots(lots, commodityId, cleanQty, def);
       marginPerUnit = cleanUnit - basisUnit;
       profitCr = Math.round(marginPerUnit * cleanQty);
+      // FB-047: roll the margin into the lifetime per-commodity bucket — the ten-receipt ledger
+      // forgets, the roll-up survives the whole career.
+      const margin = margins[commodityId] || (margins[commodityId] = {
+        sales: 0, units: 0, profitCr: 0, bestMarginUnit: null, worstMarginUnit: null,
+      });
+      margin.sales += 1;
+      margin.units += cleanQty;
+      margin.profitCr += profitCr;
+      const marginUnit = Math.round(marginPerUnit);
+      if (margin.bestMarginUnit == null || marginUnit > margin.bestMarginUnit) margin.bestMarginUnit = marginUnit;
+      if (margin.worstMarginUnit == null || marginUnit < margin.worstMarginUnit) margin.worstMarginUnit = marginUnit;
     }
     const tradeSequence = nextTradeSequence(player, ledger);
     const seed = (Number(state && state.meta && state.meta.seed) >>> 0) || 1;
@@ -3695,6 +3709,7 @@ export const economy = {
     state.player.marketMemory = {};
     state.player.tradeLedger = [];
     state.player.tradeLots = {};
+    state.player.tradeMargins = {};
     state.player.tradeReceiptSeq = 0;
     state.player.sessionSinks = [];
     state.player.sessionSinkSeq = 0;
