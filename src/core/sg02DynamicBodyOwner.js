@@ -387,7 +387,7 @@ export class Sg02DynamicBodyOwner {
     for (const [id, rec] of this.records) {
       if (!live.has(id)) this._removeRecord(id, rec);
     }
-    this._resumeSuspendedAttachments();
+    this._resumeSuspendedAttachments(live);
     this._staticLayerVersion = null;
     this._writeSyncDiagnostics('full', count, 0, 0, -1);
   }
@@ -771,6 +771,9 @@ export class Sg02DynamicBodyOwner {
     descriptors._contactManifoldCb.value = contactCallback;
     for (const key of Object.keys(this)) if (!(key in descriptors)) delete this[key];
     Object.defineProperties(this, descriptors);
+    for (const pending of previousFailures.values()) {
+      clearPhysicsBodyNativeFailure(pending.entity, this, pending.failureReceipt);
+    }
     // Publication succeeded. Cleanup is best-effort and MUST NOT escape into the staging
     // catch, which would otherwise free the world now installed on this owner.
     for (const cleanup of [
@@ -919,7 +922,7 @@ export class Sg02DynamicBodyOwner {
     for (const [id, rec] of this.records) {
       if (rec.spec.dynamic && !dynamicLive.has(id)) this._removeRecord(id, rec);
     }
-    this._resumeSuspendedAttachments();
+    this._resumeSuspendedAttachments(dynamicLive, this._liveStaticEntityIds);
 
     this._writeSyncDiagnostics('layered', 0, staticCount, dynamicCount, version);
   }
@@ -2328,12 +2331,13 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
-  _resumeSuspendedAttachments() {
+  _resumeSuspendedAttachments(liveIds, staticLiveIds = null) {
     // A failed static rebuild will not receive another static-version edge. Retry only these
     // explicit pending lives, rather than rescanning the world or reusing the obsolete body.
     for (const [id, pending] of this._pendingNativeRebuilds) {
       const entity=pending.entity;
-      if (entity.alive===false || entity.occupantGeneration!==pending.life) {
+      if (entity.alive===false || entity.physicsBody===false || entity.occupantGeneration!==pending.life
+        || !liveIds.has(id) && !staticLiveIds?.has(id)) {
         clearPhysicsBodyNativeFailure(entity,this,pending.failureReceipt);
         this._pendingNativeRebuilds.delete(id);continue;
       }
@@ -2417,9 +2421,9 @@ export class Sg02DynamicBodyOwner {
 
   _syncRecord(entity, spec) {
     const pending=this._pendingNativeRebuilds.get(entity.id);
-    if (pending?.entity === entity) {
-      if (pending.life===entity.occupantGeneration) return null;
-      clearPhysicsBodyNativeFailure(entity,this,pending.failureReceipt);
+    if (pending) {
+      if (pending.entity===entity && pending.life===entity.occupantGeneration) return null;
+      clearPhysicsBodyNativeFailure(pending.entity,this,pending.failureReceipt);
       this._pendingNativeRebuilds.delete(entity.id);
     }
     const rec = this.records.get(entity.id);
