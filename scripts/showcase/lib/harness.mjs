@@ -153,6 +153,15 @@ async function installShowcaseApi(page) {
         if (!inst) return { ok: false, reason: 'grant failed' };
         const free = slots.find((s) => !o.fittings[s.index]);
         if (!free) return { ok: false, reason: `no free ${def.slotType} slot` };
+        // Rep-exclusive hardware: the sandbox owns the faction ledger, so it can stand
+        // Allied with the owning faction to demonstrate the fitting — the rep economy
+        // is not the thing a showcase clip is proving.
+        const ex = def.exclusivity;
+        if (ex && typeof ex === 'object' && typeof ex.factionId === 'string' && Number.isFinite(ex.minRep)) {
+          const factions = sf.state.factions || (sf.state.factions = {});
+          const rec = factions[ex.factionId] || (factions[ex.factionId] = {});
+          if (!Number.isFinite(rec.rep) || rec.rep < ex.minRep) rec.rep = ex.minRep;
+        }
         const ok = ships.fitModule({ slotIndex: free.index, instanceId: inst.instanceId });
         return { ok: !!ok, slotIndex: free.index, reason: ok ? '' : 'fitModule refused' };
       },

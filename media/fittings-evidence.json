@@ -25665,5 +25665,356 @@
    ]
   },
   "proof": "behavioral"
+ },
+ "mod_sanction_spool": {
+  "id": "mod_sanction_spool",
+  "demo": "tether",
+  "ok": true,
+  "clip": "assets/ui/fitting-media/mod_sanction_spool.webm",
+  "events": {
+   "tether:attached": 1,
+   "tether:latched": 1,
+   "alert": 3,
+   "combat:damage": 4,
+   "toast": 6,
+   "tether:reel": 29
+  },
+  "statDiff": {
+   "topSpeed": {
+    "from": 155.994962662664,
+    "to": 131.3648488506014
+   },
+   "thrust": {
+    "from": 257.8799294105794,
+    "to": 238.40701660916935
+   },
+   "turnRate": {
+    "from": 3.9598173298553188,
+    "to": 3.123266641706698
+   },
+   "tetherSpoolMult": {
+    "from": 1,
+    "to": 4
+   },
+   "masslineHeadId": {
+    "from": null,
+    "to": "tractor"
+   },
+   "magnetRange": {
+    "from": 0,
+    "to": 1200
+   },
+   "operationalMass": {
+    "from": 48.0031,
+    "to": 66.0031
+   }
+  },
+  "fitOk": true,
+  "errors": [],
+  "mods": {
+   "tetherSpoolMult": 4
+  },
+  "poster": "assets/ui/fitting-media/mod_sanction_spool.png",
+  "evidenceSamples": {
+   "tether:attached": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390
+     }
+    }
+   ],
+   "tether:latched": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390
+     }
+    }
+   ],
+   "alert": [
+    {
+     "c": 1,
+     "p": {
+      "text": "MASSLINE ATTACHED"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "text": "SWING THREAT"
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "text": "SWING THREAT"
+     }
+    }
+   ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 3.133021724127756,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 391,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 3.133021724127756,
+      "damageType": null
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 362,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 0.5985346486821447,
+      "damageType": null
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 363,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 0.5985346486821447,
+      "damageType": null
+     }
+    }
+   ],
+   "toast": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "warn",
+      "text": "SWING THREAT"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "info",
+      "text": "Light ships are ammunition. Swing a rock. Keep the speed."
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "kind": "warn",
+      "text": "SWING THREAT"
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "kind": "warn",
+      "text": "Massline reel-in blocked: minimum line length reached"
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "kind": "info",
+      "text": "Light ships are ammunition. Swing a rock. Keep the speed."
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "kind": "info",
+      "text": "Miner back to work — thanks for the cover."
+     }
+    }
+   ],
+   "tether:reel": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 3,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 4,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 5,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 6,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 7,
+     "p": {
+      "targetId": 390
+     }
+    },
+    {
+     "c": 8,
+     "p": {
+      "targetId": 390
+     }
+    }
+   ]
+  },
+  "proof": "behavioral"
+ },
+ "mod_deep_scoop_array_m": {
+  "id": "mod_deep_scoop_array_m",
+  "demo": "diagram",
+  "ok": true,
+  "clip": null,
+  "events": {},
+  "statDiff": {
+   "topSpeed": {
+    "from": 155.994962662664,
+    "to": 141.2788871268859
+   },
+   "thrust": {
+    "from": 257.8799294105794,
+    "to": 246.2451940669358
+   },
+   "turnRate": {
+    "from": 3.9598173298553188,
+    "to": 3.44690822000671
+   },
+   "magnetRange": {
+    "from": 0,
+    "to": 2000
+   },
+   "operationalMass": {
+    "from": 48.0031,
+    "to": 58.0031
+   }
+  },
+  "fitOk": true,
+  "errors": [],
+  "mods": {
+   "magnetRange": 2000
+  },
+  "evidenceSamples": {},
+  "proof": "diagram"
+ },
+ "mod_splitburner_m": {
+  "id": "mod_splitburner_m",
+  "demo": "fly",
+  "ok": true,
+  "clip": "assets/ui/fitting-media/mod_splitburner_m.webm",
+  "events": {
+   "alert": 2,
+   "toast": 2,
+   "fields:deployed": 1
+  },
+  "statDiff": {
+   "topSpeed": {
+    "from": 155.994962662664,
+    "to": 145.3936823260659
+   },
+   "thrust": {
+    "from": 257.8799294105794,
+    "to": 249.49840875854025
+   },
+   "turnRate": {
+    "from": 3.9598173298553188,
+    "to": 3.5862652638501626
+   },
+   "boostTopSpeedPct": {
+    "from": 0,
+    "to": 0.55
+   },
+   "boostBurnDurS": {
+    "from": 0,
+    "to": 6
+   },
+   "boostBurnCdS": {
+    "from": 0,
+    "to": 10
+   },
+   "operationalMass": {
+    "from": 48.0031,
+    "to": 55.0031
+   }
+  },
+  "fitOk": true,
+  "errors": [],
+  "mods": {
+   "boostTopSpeedPct": 0.55,
+   "boostDurS": 6,
+   "boostCdS": 10
+  },
+  "poster": "assets/ui/fitting-media/mod_splitburner_m.png",
+  "evidenceSamples": {
+   "alert": [
+    {
+     "c": 1,
+     "p": {
+      "text": "PRIORITY COMMS"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "text": "OFFICIAL DENIAL"
+     }
+    }
+   ],
+   "toast": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "warn",
+      "text": "OFFICIAL DENIAL"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "kind": "info",
+      "text": "Salvor back to work — thanks for the cover."
+     }
+    }
+   ],
+   "fields:deployed": [
+    {
+     "c": 1,
+     "p": {
+      "kind": "cone"
+     }
+    }
+   ]
+  },
+  "proof": "behavioral"
  }
 }

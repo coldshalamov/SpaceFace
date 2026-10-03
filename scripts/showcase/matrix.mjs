@@ -113,6 +113,7 @@ export const DEMOS = {
   mod_winch_hd:             { hull: H_DRIFTER, demo: 'tether', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'tetherReelRateMult', clip: 10 },
   mod_massline_spool_m:     { hull: H_DRIFTER, demo: 'tether', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'tetherSpoolMult', clip: 10 },
   mod_massline_spool_l:     { hull: H_L, demo: 'tether', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'tetherSpoolMult', clip: 10 },
+  mod_sanction_spool:       { hull: H_DRIFTER, demo: 'tether', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'tetherSpoolMult', clip: 10 },
   mod_swing_drive_m:        { hull: H_DRIFTER, demo: 'swing', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'swingDrive', clip: 10 },
   mod_swing_drive_s:        { hull: H_KESTREL, demo: 'swing', ev: ['tether:latched'], stat: 'swingDrive', clip: 10 },
   mod_mass_flail_rig_m:     { hull: H_DRIFTER, demo: 'flail', ev: ['tether:latched', 'combat:damage'], support: ['mod_tractor_beam_m'], stat: 'towFlail', clip: 11 },
@@ -147,9 +148,13 @@ export const DEMOS = {
   // ---- drones / loot / ram / repair ------------------------------------------
   mod_drone_bay_l:        { hull: H_L, demo: 'dronebay', ev: ['combat:damage', 'combat:fire'], stat: 'droneBayCount', clip: 10 },
   mod_loot_magnet_s:      { hull: H_KESTREL, demo: 'loot', ev: ['loot:magnetCaptured', 'cargo:changed'], stat: 'lootMagnetRange', clip: 8 },
+  // The deep scoop's 2km ore radius is real but not stageable in the demo kit —
+  // nothing spawns loose ore far enough out for a clip to show the reach.
+  mod_deep_scoop_array_m: { demo: 'diagram', hull: H_DRIFTER, stat: 'magnetRange' },
   mod_ram_plate:          { hull: H_KESTREL, demo: 'ram', ev: ['combat:damage', 'combat:tumbled'], stat: 'ramDamageDealtMult', clip: 8 },
   mod_repair_nanobots_m:  { hull: H_DRIFTER, demo: 'diagram', stat: 'hullRepairOOC' },
   mod_afterburner_m:      { hull: H_DRIFTER, demo: 'fly', ev: [], stat: 'boostTopSpeedPct', clip: 7 },
+  mod_splitburner_m:      { hull: H_DRIFTER, demo: 'fly', ev: [], stat: 'boostTopSpeedPct', clip: 7 },
   mod_shield_hardener_m:  { hull: H_DRIFTER, demo: 'shield', ev: ['combat:damage'], stat: 'damageReductionMult', clip: 8 },
   mod_jump_drive_m:       { demo: 'diagram', stat: 'jumpDriveTier' },
   mod_thermal_sink_s:     { hull: H_M, demo: 'shoot', support: ['wpn_pulse_laser_s'], ev: ['combat:damage'], stat: 'weaponHeatDissipPct', clip: 9 },

@@ -288,7 +288,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   mod_grip_bumper_s: {
     detail: 'A burst catch on the prow — the first light hull the nose meets sticks to it until the key lets go.',
-    tip: 'Ram things with the catch, then key it again to let go.',
+    tip: 'Pays when the hull you catch is the payload — ram with it, shield the nose, or haul it home.',
   },
   mod_gravity_bumper_s_mk2: {
     detail: 'The boost wedge that hurls whatever the nose meets — rank two holds the cone open longer, reaches farther, and lands the throw harder.',
@@ -334,6 +334,10 @@ export const FITTING_DOSSIER = Object.freeze({
   mod_massline_spool_l: {
     detail: 'Six times the stock line on the drum — the swing arc starts so far out the fight is still a dot on the scope.',
     tip: 'On a big hull it turns the tether into a long-range tool, not a close one.',
+  },
+  mod_sanction_spool: {
+    detail: 'The Navy\'s own tow line — four times the stock tether on the drum, the longest spool the shelf carries.',
+    tip: 'For the massline build at full stretch: the longest line means the widest arc and the deepest run.',
   },
   mod_winch_hd: {
     detail: 'Nearly double the reel speed and half-again the line on the drum — the catch lands sooner and the swing starts farther out.',
@@ -475,6 +479,10 @@ export const FITTING_DOSSIER = Object.freeze({
     detail: 'A hard shove on demand — a short burst of top speed on a cooldown.',
     tip: 'The way out of a closing ring, or the way into a kill you are chasing.',
   },
+  mod_splitburner_m: {
+    detail: 'The Reach\'s runner burner — over half again on the top speed for six seconds at a stretch, ready again in ten.',
+    tip: 'For the door-out build: outrun the whole ring, not just the patrol behind it.',
+  },
   mod_repair_nanobots_m: {
     detail: 'Four hull a second knits itself while you are out of the fight — the damage you limped out with is gone before the next swarm forms.',
     tip: 'For the long run: the hull comes back to the fight instead of staying gone.',
@@ -514,6 +522,10 @@ export const FITTING_DOSSIER = Object.freeze({
   mod_loot_magnet_s: {
     detail: 'Everything salvageable inside four-twenty meters drifts home unaided — pods and shards board themselves while you keep flying.',
     tip: 'For the cleanup pass: the field feeds itself.',
+  },
+  mod_deep_scoop_array_m: {
+    detail: 'A two-kilometer pickup reach — ore a full field out drifts home without a pass over every rock.',
+    tip: 'For the hauler run: sweep the whole ring on one line instead of orbiting every shard.',
   },
   // ---- weapon trait rigs --------------------------------------------------------
   mod_bank_shot: {
@@ -574,7 +586,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   mod_conductive_path: {
     detail: 'Chains jump only to ionized hulls — prime the pack first and the arc goes where the film is.',
-    tip: 'For the conductive-primer build: the arc only goes where the film is.',
+    tip: 'For the conductive-primer build: ionize the pack — the chain only jumps to painted hulls.',
   },
   mod_storm_carom: {
     detail: 'Bounced hits chain through ionized hulls — one bounce, two hops, and a direct hit never starts it.',
@@ -837,7 +849,7 @@ function hullStats(def) {
  * Authored text for the armory's service counter — the same {detail, tip} contract the
  * fitting dossier keeps, so the reading column reads a service like it reads a fitting.
  */
-const SERVICE_DOSSIER = {
+export const SERVICE_DOSSIER = {
   svc_weld: {
     detail: 'A dockside crew re-welds the hull seams and flushes armor plating back to spec — both pools restored in full the moment the credit clears. The counter only puts it up while the hull is actually hurt.',
     tip: 'The cheapest armor in the shop when the next pack would catch you under-plated; a sound hull never needs it.',
@@ -863,7 +875,7 @@ export function serviceDossier(offer) {
     stats.push({ label: 'Gate', value: 'only while hurt' });
   } else if (offer.service === 'ordnance') {
     stats.push({ label: 'Hold', value: 'to 6 charges' });
-    stats.push({ label: 'Deployed', value: '4 flying · 8 racked' });
+    stats.push({ label: 'Deployed', value: '4 unfitted · 8 with rack' });
     stats.push({ label: 'Gate', value: 'only below cap' });
   }
   stats.push({ label: 'Applied', value: 'instant' });
