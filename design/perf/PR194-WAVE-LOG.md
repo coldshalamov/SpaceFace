@@ -843,3 +843,12 @@ The wave closed the deferred-clock/pin system's last structural seams: **a forei
 - **boot F5 bounded behind-shell flush**: `flushPipelinesBehindShell` called `drainPendingPipelineAdmissions()` bare — a wedged captured plan could park the `liveSectorPipelineFlush` dedupe for the session. Now `{timeoutMs: 8000}`.
 
 Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic). Focused suites green (fb-corridor 3/3, opening-mesh-defer, cooker-flight, aftermath-wreck-drift). Residual reds: `opening-cook-ledger` flush-lane stale pin + `render-target-pipeline-warmup` post-route-degrade/AO-bloom pins — all verified identical on clean HEAD (canon).
+
+W56 hitches lane (`saturated: false`, 4 findings) — landed `1b3bd559f`:
+
+- **hitches F1 chunked twins**: the FIFO stepped each SYNC provider whole inside one presented beat (hold beat + census splice) — the last un-sliced long-frame source inside the veil blend. All 11 sync providers converted: every public method now drains a `*_steps` generator twin inline (emit/save/tick paths byte-identical, returns threaded through `next()`), `_cookProvider` returns the iterator for the census slice clock. Yields sit per-entity / per-marker / per-record / per-outpost / per-zone-point; live-roster scans iterate a `.slice()` snapshot so a suspended slice never sees another system's mid-scan push.
+- **hitches F2 hold-path foreign-head**: the in-hold exempt beat swept the whole FIFO every 0.1s and minted the 2s extension for queues the epoch gate made unclaimable. Both sites now mirror the post-hold peek: a head stamped with the live `enterSerial` (≠ hold epoch) skips the sweep and the extension never mints (~20 wasted presented-frame collect beats + up to 2s deferred residency closed).
+- **hitches F3**: missions spawn-spec `startedTick` x4 → `deferredEnterTick` (AI arming could drift ~0–3.5s behind emit-era).
+- **hitches F4**: morrow `_say` voice-debounce → `deferredEnterNow`.
+
+Verify: golden `47a` bit-identical (`8d4492dc…`); focused suites 100/101 green — `f15-wrecks` double-wreck red verified identical on clean HEAD (canon).
