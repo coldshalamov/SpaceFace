@@ -119,7 +119,8 @@ export const salvage = {
     // relying on this listener's emit position. _planForSector's plannedSectorId guard
     // makes the emit listener's own call a no-op — ordering insurance, not a second plan.
     if (this.helpers) {
-      this._cookProvider = (sector) => this._planForSector(sector && sector.id);
+      this._cookProvider = (sector) => this._planForSector((sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId));
       (this.helpers.sectorCookProviders
         || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);

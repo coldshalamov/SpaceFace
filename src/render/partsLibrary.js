@@ -2558,10 +2558,35 @@ const PRE_JOB_REFUSAL_STATUSES = new Set([
 // immediately; the rest poll again at this interval while their class may have cleared
 // (re-mount, run end) without a repost per frame.
 const REFUSAL_TRIGGER_REARM_DELAY_MS = 1000;
+// Paced classes are the on-glass ones — an armed trigger reposts every rendered frame,
+// and these refusals can re-occur while their class is live, so the pace breaks a 60 Hz
+// ping-pong of guaranteed-refused enqueues. 'cancelled-before-queue' arms immediately:
+// its boundary is detached, so the trigger provably cannot fire until a fresh mount —
+// delaying the arm just postpones a legit re-mount repost up to the delay.
+const REFUSAL_TRIGGER_PACED_STATUSES = new Set([
+  'deferred-arena-dressing',
+  'invalid-upgrade-request',
+]);
 function scheduleRefusalTriggerRearm(status, arm) {
-  if (status === 'regrade-evict-cooloff') { arm(); return; }
-  const timer = setTimeout(arm, REFUSAL_TRIGGER_REARM_DELAY_MS);
+  if (!REFUSAL_TRIGGER_PACED_STATUSES.has(status)) { arm(); return; }
+  const dueAt = monotonicNow() + REFUSAL_TRIGGER_REARM_DELAY_MS;
+  const doc = typeof document !== 'undefined' ? document : null;
+  const onWake = () => {
+    if (!doc || doc.visibilityState !== 'visible' || monotonicNow() < dueAt) return;
+    doc.removeEventListener('visibilitychange', onWake);
+    clearTimeout(timer);
+    arm();
+  };
+  const timer = setTimeout(() => {
+    if (doc) doc.removeEventListener('visibilitychange', onWake);
+    arm();
+  }, REFUSAL_TRIGGER_REARM_DELAY_MS);
   if (timer && typeof timer.unref === 'function') timer.unref();
+  // A hidden tab throttles the 1s timeout into minutes — the defer outlives its class
+  // entirely. Re-arm on the visibility return once the delay has elapsed instead.
+  if (doc && typeof doc.addEventListener === 'function') {
+    doc.addEventListener('visibilitychange', onWake);
+  }
 }
 
 function restoreBoundaryAfterPreJobRefusal(boundary, status) {
