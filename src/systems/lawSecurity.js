@@ -9,7 +9,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
-import { proxyWorldPrimitives, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
@@ -5779,10 +5779,35 @@ function buildLawWitnessOccluderPlan(state) {
   return prepared;
 }
 
+// World-space view memoized per body on the function's exact input space — manifest identity,
+// scale inputs (dockRadius/radius), the raw corridorBearingDeg stamp (approach-framed
+// manifests read it unsnapped), and world pose. The plan's occluders are overwhelmingly
+// static bodies that would otherwise re-derive identical primitive arrays every step.
+const LAW_WITNESS_VIEW_MEMO = new WeakMap();
+
 function lawWitnessOccluderView(occ) {
   const manifest = (occ && (occ.data || occ.type || occ.physicsBody))
     ? resolveCollisionProxyManifest(occ)
     : null;
+  const px = occ && occ.pos && Number.isFinite(occ.pos.x) ? occ.pos.x : 0;
+  const pz = occ && occ.pos && Number.isFinite(occ.pos.z) ? occ.pos.z : 0;
+  const rot = occ && Number.isFinite(occ.rot) ? occ.rot : 0;
+  const radius = Math.max(0, Number(occ && occ.radius) || 0);
+  const bearing = occ && occ.data && Number.isFinite(occ.data.corridorBearingDeg)
+    ? occ.data.corridorBearingDeg
+    : null;
+  const scale = manifest ? proxyScaleFor(occ, manifest) : 0;
+  const hit = LAW_WITNESS_VIEW_MEMO.get(occ);
+  if (hit && hit.manifest === manifest && hit.px === px && hit.pz === pz && hit.rot === rot
+    && hit.radius === radius && hit.bearing === bearing && hit.scale === scale) {
+    return hit.view;
+  }
+  const view = buildLawWitnessOccluderView(occ, manifest);
+  LAW_WITNESS_VIEW_MEMO.set(occ, { manifest, px, pz, rot, radius, bearing, scale, view });
+  return view;
+}
+
+function buildLawWitnessOccluderView(occ, manifest) {
   if (!manifest) {
     return { occ, primitives: null, reach: Math.max(0, Number(occ && occ.radius) || 0) };
   }

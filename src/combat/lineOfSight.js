@@ -90,10 +90,26 @@ function occluderReach(entity, manifest) {
   return reach;
 }
 
+// The accept predicate requires entity.collides, so the candidate domain is a subset of the
+// collidables index lane — iterate it directly when the index provably covers every map
+// entity (the proven-coverage gate the other lanes use), else fall back to the full walk.
+// Stale T→F members (the syncEntityCollisionIndexMembership caveat) are excluded by the
+// per-call collides check below; observer/ignored are per-call inputs and stay per-call.
+function occluderScanDomain(state) {
+  const index = state && state.entityIndex;
+  const entities = state && state.entities;
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables) && index._indexedIds instanceof Set
+    && entities && entities.size === index._indexedIds.size) {
+    return index.collidables;
+  }
+  return (entities && typeof entities.values === 'function' ? entities.values() : []);
+}
+
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
 export function witnessLineOfSight(state, observer, destination, ignored = []) {
   if (!point(observer?.pos)||!point(destination))return false;
-  for (const entity of state.entities?.values?.() || []) {
+  for (const entity of occluderScanDomain(state)) {
     if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
     if(!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type) && entity.data?.sensorBlocking!==true)continue;
     const manifest = resolveCollisionProxyManifest(entity);
