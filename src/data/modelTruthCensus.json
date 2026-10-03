@@ -21593,7 +21593,7 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+              "sha256": "8ea9b51491b87bd79aedcd6cf8f25078d339eca8434734671aa52b67c2993eee"
             },
             {
               "path": "scripts/model-truth-census.mjs",
@@ -21613,7 +21613,7 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+              "sha256": "5fa26eb49833b0400ccd930e0db1a552d8e85a3218822cc4e3ffa4cca1b16419"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
@@ -21625,11 +21625,11 @@
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
+              "sha256": "cb341e76b71853cd4a9e449b81f24536298862d9e958949d57b11613fc4da9b6"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "a2b887a9b16d479b38ae23fc128f92cd813952988a8d0f26f832f7f498b20b5b"
+              "sha256": "9f7cf5dc2a6dfa1b4c5e0569bd53743c5b1b031494e12c410bae30a04d9465e0"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -22145,7 +22145,7 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+              "sha256": "8ea9b51491b87bd79aedcd6cf8f25078d339eca8434734671aa52b67c2993eee"
             },
             {
               "path": "scripts/model-truth-census.mjs",
@@ -22165,7 +22165,7 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+              "sha256": "5fa26eb49833b0400ccd930e0db1a552d8e85a3218822cc4e3ffa4cca1b16419"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
@@ -22177,11 +22177,11 @@
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
+              "sha256": "cb341e76b71853cd4a9e449b81f24536298862d9e958949d57b11613fc4da9b6"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "2f40ad84535f8c92a1cbdc3b121b31712cea675647cfe53a9217e636e248b125"
+              "sha256": "f0ea2dd69af236a82422fee5ef74d24d8df49fe0d3606be4e54f7d93c266c4cc"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -22613,7 +22613,7 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+              "sha256": "8ea9b51491b87bd79aedcd6cf8f25078d339eca8434734671aa52b67c2993eee"
             },
             {
               "path": "scripts/model-truth-census.mjs",
@@ -22633,7 +22633,7 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+              "sha256": "5fa26eb49833b0400ccd930e0db1a552d8e85a3218822cc4e3ffa4cca1b16419"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
@@ -22645,11 +22645,11 @@
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
+              "sha256": "cb341e76b71853cd4a9e449b81f24536298862d9e958949d57b11613fc4da9b6"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "91b41bbe08f578f90fd9f0faa4dd7ab9c971db2a62f48ff9092cae5dcfd32481"
+              "sha256": "df2268325c719ac0fabb0b14555b4040998138eb357cd57b0bec9e8e449dee19"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -23117,7 +23117,7 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "a4198090100768cc1b9c6c10b008a2ddf190e479a752b3b175d61f5755552103"
+              "sha256": "8ea9b51491b87bd79aedcd6cf8f25078d339eca8434734671aa52b67c2993eee"
             },
             {
               "path": "scripts/model-truth-census.mjs",
@@ -23137,7 +23137,7 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "1f6cde466f8c34222401007d7de673d5034b919db1399adf9c589d102a085ddc"
+              "sha256": "5fa26eb49833b0400ccd930e0db1a552d8e85a3218822cc4e3ffa4cca1b16419"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
@@ -23149,11 +23149,11 @@
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
+              "sha256": "cb341e76b71853cd4a9e449b81f24536298862d9e958949d57b11613fc4da9b6"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "6e91d6bb9407fa4a07ee561fe05e2a41e2a107670354d8132e169d4eccb23d83"
+              "sha256": "d5e38c51a11752bb952a6f76b913d5d4e7a920f72728b0e05c24a1620cdace07"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",

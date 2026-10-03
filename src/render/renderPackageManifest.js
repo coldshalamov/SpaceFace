@@ -2864,7 +2864,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-second-measure",
-    "expectedContentHash": "11b30e7c51c1f79d2b02f7e24bfe3883124396749cb3789f4e8e2f2acff13f1e",
+    "expectedContentHash": "f8b32d73fb39a48b9a35e811ae8780c167cae500e5d1417d72c99e3e177b98b9",
     "key": "ceres-second-measure",
     "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE",
@@ -2874,7 +2874,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-second-measure-long-plate",
-    "expectedContentHash": "a05c52e309e7f18527e2223c660ab3a2adc5a60c6233fa876556b73947f07aa7",
+    "expectedContentHash": "07ddf1c3b25ea718b3ad284654aedffbebe617a86e635da0e0a856249a7d50cd",
     "key": "ceres-second-measure-long-plate",
     "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE",
@@ -2884,7 +2884,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-second-measure-crossbeam",
-    "expectedContentHash": "124d562da92abfd836acbfbf19e42731402fa708062dfcec2794e78af6d351f3",
+    "expectedContentHash": "9c055be6bd5dc989db93b3af414f40d4d667ef7e60a70d512b7709d6d7c38f88",
     "key": "ceres-second-measure-crossbeam",
     "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM",
@@ -2894,7 +2894,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-second-measure-keel",
-    "expectedContentHash": "5c63ceb103485d9197506a71cf6c994bb6adb5c20d6e883cf926ef4dd906046d",
+    "expectedContentHash": "ddfa0b50206823b1a07cf57b100a5bbaa876c175b2a1d191e976b07a117b6f03",
     "key": "ceres-second-measure-keel",
     "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE_KEEL",
@@ -2904,7 +2904,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-breaker",
-    "expectedContentHash": "9da77c0cd6a239fd9162e102d270f0523dda6d0f71ee379fe07cdc8631c3cf0a",
+    "expectedContentHash": "4945ef2cd30ed5af97dd45a64c9c1dc5d3198eec864190f4b6a89d72f0854558",
     "key": "ceres-breaker",
     "metadataUrl": "assets/ships/release/render-packages/ceres-breaker/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_CERES_BREAKER",
@@ -2914,7 +2914,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-section-cradle",
-    "expectedContentHash": "3d25e92b51041336b39a58e9016ce2de45507af673852678c3ee83990d771526",
+    "expectedContentHash": "fbd21f1b699582bd9c97a28db3f80790cd7005813f0a64463a86cc6c34916c0a",
     "key": "ceres-section-cradle",
     "metadataUrl": "assets/ships/release/render-packages/ceres-section-cradle/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECTION_CRADLE",
@@ -2924,7 +2924,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-breaker-cutter-head",
-    "expectedContentHash": "89b29a8a89196eec035676b59e9dc0d990ccbc1f7caa53e555c0dbb7a5f29bd6",
+    "expectedContentHash": "10e5e12739e9ff135389529eebaf2680ff70a7231c7f0f53d17a0434c8b41be0",
     "key": "ceres-breaker-cutter-head",
     "metadataUrl": "assets/ships/release/render-packages/ceres-breaker-cutter-head/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD",
