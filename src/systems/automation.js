@@ -764,14 +764,20 @@ export const automation = {
       const detour = resolveDroneDetour(this.state, e, target, beacon.entity, arriveR);
       const steeringTarget = detour || target;
       let braking = !detour && distance < arriveR;
-      if (!detour && beacon.entity?.type === 'station' && distance > 0) {
-        const closing = Math.max(0, ((target.x - e.pos.x) * (e.vel?.x || 0)
-          + (target.z - e.pos.z) * (e.vel?.z || 0)) / distance);
+      if (!detour && distance > 0) {
+        const speed = Math.hypot(Number(e.vel?.x) || 0, Number(e.vel?.z) || 0);
         const profile = resolvePropulsionProfile(e, this.state);
         const brakeAccel = Math.max(1, Number(profile.reverseAccel) || Number(profile.maxBrakeAccel) || 1);
-        // Begin the real counter-thrust before handoff. Arrival distance alone cannot stop a
-        // fast loaded hull; include the NPC actuator's 0.4s slew as well as kinetic stopping.
-        braking ||= closing > 4 && distance - arriveR <= closing * closing / (2 * brakeAccel) + closing * 0.4 + 8;
+        const stoppingDistance = (speed * speed) / (2 * brakeAccel);
+        // Kinetic stopping: total speed (not just radial) determines required braking distance
+        // (same contract as flightV3 autopilot). Also brake if momentum is misaligned after detour.
+        const stDx = steeringTarget.x - e.pos.x, stDz = steeringTarget.z - e.pos.z;
+        const stDist = Math.hypot(stDx, stDz);
+        const align = speed > 4 && stDist > 1e-4
+          ? (stDx * (e.vel?.x || 0) + stDz * (e.vel?.z || 0)) / (stDist * speed)
+          : 1;
+        const misaligned = align < 0.35 && speed > 25;
+        braking ||= (speed > 4 && distance - arriveR <= stoppingDistance + speed * 0.4 + 8) || misaligned;
       }
       this._driveDrone(e, steeringTarget, dt, braking);
     }
@@ -1024,13 +1030,13 @@ export const automation = {
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const forward = ux * cf + uz * sf;
     const right = -ux * sf + uz * cf;
-    const throttle = brake ? 0 : 1;
+    const throttle = brake ? 0 : (forward > 0 ? forward : 0);
     const data = e.data || (e.data = {});
     const intent = data.intent || (data.intent = {
       moveX: 0, moveZ: 0, boost: false, brake: false,
       fire: false, fireGroup: null, aimAngle: e.rot,
     });
-    intent.moveX = clamp(right * throttle, -1, 1);
+    intent.moveX = clamp(right * (brake ? 0 : 1), -1, 1);
     intent.moveZ = clamp(forward * throttle, -1, 1);
     intent.boost = false;
     intent.brake = !!brake;
