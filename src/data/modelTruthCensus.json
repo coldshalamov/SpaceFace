@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 6,
-    "red": 193,
-    "rows": 199
+    "red": 195,
+    "rows": 201
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -24252,7 +24252,7 @@
           16.602038
         ]
       },
-      "bytes": 557360,
+      "bytes": 559352,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -24418,7 +24418,7 @@
       "measuredProportions": null,
       "meshHash": null,
       "meshes": 33,
-      "nodes": 35,
+      "nodes": 44,
       "note": null,
       "opening": null,
       "pivot": [
@@ -24592,6 +24592,78 @@
         "sliceY": 0
       },
       "sockets": [
+        {
+          "name": "SOCKET_Barge_Bridge",
+          "position": [
+            44,
+            5.5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Aft",
+          "position": [
+            32,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Fore",
+          "position": [
+            12,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Mid",
+          "position": [
+            22,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Drive_Plume",
+          "position": [
+            -2.5,
+            2.2,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Emissive",
+          "position": [
+            26,
+            6.2,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Status_Port",
+          "position": [
+            44,
+            0,
+            -7.5
+          ]
+        },
+        {
+          "name": "SOCKET_Status_Starboard",
+          "position": [
+            44,
+            0,
+            7.5
+          ]
+        },
+        {
+          "name": "SOCKET_Structure_Core",
+          "position": [
+            33.8525,
+            3.0125,
+            0
+          ]
+        },
         {
           "name": "SOCKET_Trail_Main",
           "position": [

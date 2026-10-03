@@ -1013,10 +1013,12 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
             console.warn('[startup] continue GPU cook failed', error);
           });
         } else {
-          try {
-            await cook;
-          } catch (error) {
-            console.warn('[startup] continue GPU cook failed', error);
+          const gpuReady = await cook;
+          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+          // The awaited readiness verdict owns handover, just as it does for New Game.
+          // Refusal (including pending admission) must never silently release control.
+          if (gpuReady !== true) {
+            throw new Error('Loaded game GPU resources were not accepted; refusing to enter flight before the opening route is ready.');
           }
         }
       } finally {

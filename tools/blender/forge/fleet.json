@@ -172,6 +172,14 @@
       "part_id": "wholeship_survey_pin",
       "npc_root": "SF_NPCWORK_SURVEY_PIN_ROOT"
     },
+    "stormshift_collector": {
+      "layout": "npc",
+      "file": "ship_stormshift_collector_v01",
+      "asset_id": "SF_STORMSHIFT_COLLECTOR_V01",
+      "part_id": "wholeship_stormshift_collector",
+      "npc_root": "STORMSHIFT_COLLECTOR_ROOT",
+      "note": "Stormshift salvage collector (tools/blender/forge/ships/stormshift_collector.py): low storm jaws, folding ceramic radiator fans, exposed canister saddles — harvest pose open, transit stow narrows the silhouette."
+    },
     "yard_tug": {
       "layout": "npc",
       "file": "yard_tug",
