@@ -950,7 +950,14 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
   const isPlace = (entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity);
-  const isPackagedContact = entity.type === 'wreck' || entity.type === 'drone';
+  // The readiness gate pins any on-runway payload that packagedPropSpec can mount
+  // (GLASS_ACTORS, below) — the composition must schedule the same set or the pin waits on an
+  // admission that never starts. The on-table 47-A spindle keeps its dedicated first-flight
+  // cook lane instead; a spindle-class payload parked in the runway margin still joins the
+  // composition so its pin cannot deadlock.
+  const isPackagedContact = entity.type === 'wreck' || entity.type === 'drone'
+    || (entity.type === 'payload' && !!packagedPropSpec(entity)
+      && !(entityOnOpeningTable(entity, state) && isExplicitFirstFlightCookEntity(entity)));
   if (entity.type !== 'ship' && !isPlace && !isPackagedContact) return false;
   if (isPackagedContact) return startupAuthoredContactOnRunway(entity, state);
   const radius = tableOpeningCompositionWu(state);
@@ -966,7 +973,11 @@ export function isFirstFlightCookEntity(entity, state) {
   if (isInitialAuthoredCompositionEntity(entity, state)) return true;
   if (!entity || entity.alive === false || !state) return false;
   if (!entityOnOpeningTable(entity, state)) return false;
-  const data = entity.data || {};
+  return isExplicitFirstFlightCookEntity(entity);
+}
+
+function isExplicitFirstFlightCookEntity(entity) {
+  const data = entity && entity.data || {};
   const ref = typeof data.assetRef === 'string' ? data.assetRef : '';
   return ref === 'asset.slice.47a_spindle'
     || data.scenarioActorId === 'evidence_spindle_47a';
