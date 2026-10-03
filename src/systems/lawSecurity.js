@@ -8,6 +8,7 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
 import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
@@ -1078,16 +1079,31 @@ export const lawSecurity = {
     if (existing) {
       existing.lastDamageAt = state.simTime || 0;
       existing.victimId = victim.id;
+      existing.victimGeneration = occupantGenerationOf(victim);
       return existing;
     }
+    const stationEntity = entityById(state, jurisdiction.entityId)
+      || stationByPublicId(state, jurisdiction.stationId);
+    const ringAnchor = stationEntity && stationEntity.pos
+      ? stationEntity.pos
+      : (victim && victim.pos) || null;
     const incident = {
       id: `law:${hash32(state.meta && state.meta.seed || 1, jurisdiction.stationId, attacker.id, state.tick | 0).toString(16)}`,
       stationId: jurisdiction.stationId,
       stationEntityId: jurisdiction.entityId,
+      stationGeneration: occupantGenerationOf(entityById(state, jurisdiction.entityId)),
       factionId: jurisdiction.factionId,
       radius: jurisdiction.radius,
       attackerId: attacker.id,
+      attackerGeneration: occupantGenerationOf(attacker),
       victimId: victim.id,
+      victimGeneration: occupantGenerationOf(victim),
+      // The station entity's id can be freed and recycled onto a projectile or traffic ship while
+      // the incident is still open; the disengage ring must not follow the new occupant. Frozen at
+      // open, then updated only from generation-verified occupants (see _updateIncident).
+      ringPos: ringAnchor && Number.isFinite(ringAnchor.x) && Number.isFinite(ringAnchor.z)
+        ? { x: ringAnchor.x, z: ringAnchor.z }
+        : null,
       cause,
       startedAt: state.simTime || 0,
       lastDamageAt: state.simTime || 0,
@@ -1356,10 +1372,11 @@ export const lawSecurity = {
 
   _respondersFor(incident, victim) {
     const state = this.state;
-    const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
+    const station = incidentOccupant(state, incident.stationEntityId, incident.stationGeneration)
+      || stationByPublicId(state, incident.stationId);
     const anchor = incident.rankFromVictim && victim && victim.pos
       ? victim.pos
-      : (station && station.pos || victim && victim.pos);
+      : (station && station.pos || victim && victim.pos || incident.ringPos);
     const actors = collectLivingWorldActors(state);
     const unfilteredCandidates = isLawful(victim) && victim.type === 'ship'
       ? [victim, ...actors]
@@ -1398,7 +1415,7 @@ export const lawSecurity = {
       const reserveOrdinal = Math.max(0, incident.nextReserveOrdinal | 0);
       const pos = reserveArrivalPoint({
         anchor,
-        aggressorPos: entityById(state, incident.attackerId)?.pos,
+        aggressorPos: incidentOccupant(state, incident.attackerId, incident.attackerGeneration)?.pos,
         jurisdictionRadius: incident.radius,
         seed: state.meta && state.meta.seed || 1,
         incidentId: `${incident.id}:${reserveOrdinal}`,
@@ -1555,11 +1572,12 @@ export const lawSecurity = {
     }
     ai.roe = RulesOfEngagement.WEAPONS_FREE;
     const stationPos = incident && (stationByPublicId(state, incident.stationId)?.pos);
-    const victimPos = incident && entityById(state, incident.victimId)?.pos;
+    const victimPos = incident
+      && incidentOccupant(state, incident.victimId, incident.victimGeneration)?.pos;
     const anchor = incident
       ? (incident.rankFromVictim
-        ? (victimPos || responder.pos)
-        : (stationPos || responder.pos))
+        ? (victimPos || incident.ringPos || responder.pos)
+        : (stationPos || incident.ringPos || responder.pos))
       : responder.pos;
     ai.activity = normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
@@ -1584,9 +1602,22 @@ export const lawSecurity = {
   _updateIncident(key, incident) {
     if (!incident || !['distress', 'responding', 'monitoring'].includes(incident.status)) return;
     const state = this.state;
-    const attacker = entityById(state, incident.attackerId);
-    const victim = entityById(state, incident.victimId);
-    const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
+    // Generation-verified resolution: a recycled entity id must not stand in for the attacker,
+    // victim, or station it was recorded for (D118 — a station id recycled onto a live projectile
+    // dragged the disengage ring 2000 WU away and stood the response down mid-assault).
+    const attacker = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
+    const victim = incidentOccupant(state, incident.victimId, incident.victimGeneration);
+    const station = incidentOccupant(state, incident.stationEntityId, incident.stationGeneration)
+      || stationByPublicId(state, incident.stationId);
+    // The disengage ring anchors at the jurisdiction's last generation-verified position, so a
+    // removed station leaves the ring where the station stood instead of losing it entirely.
+    const liveAnchor = (incident.rankFromVictim && victim && victim.pos)
+      ? victim.pos
+      : (station && station.pos || (victim && victim.pos) || null);
+    if (liveAnchor && Number.isFinite(liveAnchor.x) && Number.isFinite(liveAnchor.z)) {
+      incident.ringPos = { x: liveAnchor.x, z: liveAnchor.z };
+    }
+    const ringOrigin = incidentRingOrigin(incident, victim, station);
     const now = state.simTime || 0;
     let outcome = null;
     if (!attacker || attacker.alive === false) outcome = 'threat_cleared';
@@ -1595,7 +1626,7 @@ export const lawSecurity = {
       && now >= incident.dispatchAt) {
       this._dispatchIncident(incident, victim || station, attacker);
     }
-    else if (station && distance2(attacker.pos, incidentRingOrigin(incident, victim, station)) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
+    else if (ringOrigin && distance2(attacker.pos, ringOrigin) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
       && now - incident.lastDamageAt >= RESPONSE_GRACE_S
       && !(attacker.id === state.playerId && isPlayerWanted(state))) {
       outcome = 'disengaged';
@@ -1657,8 +1688,10 @@ export const lawSecurity = {
         if (incidentId) {
           const inc = ensureState(state).incidents[incidentId]
             || Object.values(ensureState(state).incidents || {}).find((i) => i && i.id === incidentId);
-          const station = inc && (entityById(state, inc.stationEntityId) || stationByPublicId(state, inc.stationId));
+          const station = inc && (incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
+            || stationByPublicId(state, inc.stationId));
           if (station && station.pos) stationPos = station.pos;
+          else if (inc && inc.ringPos) stationPos = inc.ringPos;
         }
         if (!stationPos && ai.zoneId && ai.zoneId.startsWith('jurisdiction:')) {
           const st = stationByPublicId(state, ai.zoneId.slice('jurisdiction:'.length));
@@ -1806,7 +1839,8 @@ export const lawSecurity = {
         if (!inc || inc.status === 'resolved') return false;
         if (inc.victimAnchor) return false;
         if (inc.attackerId !== killerId) return false;
-        const station = entityById(state, inc.stationEntityId) || stationByPublicId(state, inc.stationId);
+        const station = incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
+          || stationByPublicId(state, inc.stationId);
         const incSectorId = station?.data?.sectorId || station?.sectorId || (state.world && state.world.currentSectorId);
         if (sectorId && incSectorId && incSectorId !== sectorId) return false;
         const dt = Math.abs(((inc.lastDamageAt != null ? inc.lastDamageAt : inc.startedAt) || 0) - at);
@@ -1822,7 +1856,7 @@ export const lawSecurity = {
   _reconcileWitnessChoice(incident) {
     if (!incident || incident.status === 'resolved') return;
     const state = this.state;
-    const attacker = entityById(state, incident.attackerId);
+    const attacker = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
 
     const liveResponders = [];
     for (const id of incident.responderIds) {
@@ -5370,11 +5404,22 @@ function sameLawEntityId(a, b) {
 
 function incidentRingOrigin(incident, victim, station) {
   if (incident && incident.rankFromVictim && victim && victim.pos) return victim.pos;
-  return station && station.pos || victim && victim.pos || { x: 0, z: 0 };
+  return station && station.pos || victim && victim.pos || (incident && incident.ringPos) || null;
 }
 
 function entityById(state, id) {
   return id == null || !state || !state.entities || typeof state.entities.get !== 'function' ? null : state.entities.get(id) || null;
+}
+
+// Entity ids recycle through state.freeIds (core/entity.js): an incident-held id can resolve to a
+// projectile or traffic ship one tick after its body was removed. The occupant generation stamped
+// at spawn proves the id still names the same body (same contract as combat/actions.js
+// occupantMismatch: a recorded generation that no longer matches means the original is gone; a null
+// recording — fixture-authored entities — never mismatches).
+function incidentOccupant(state, id, generation) {
+  const entity = entityById(state, id);
+  if (!entity) return null;
+  return generation != null && occupantGenerationOf(entity) !== generation ? null : entity;
 }
 
 function stationByPublicId(state, stationId) {
