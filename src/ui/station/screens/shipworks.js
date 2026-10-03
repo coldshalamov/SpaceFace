@@ -91,7 +91,6 @@ import {
   presentModuleFitPreview,
   presentShopModuleDelta,
   previewMetricValue,
-  stockPreviewPlayer,
 } from '../../presenters/engineeringPreview.js';
 import { buildMassDelta } from '../../panels/massDelta.js';
 import { handlingProfileDomain } from '../../panels/handlingProfile.js';
@@ -186,6 +185,34 @@ function withCargoMass(player, usedMass) {
       ...(source.cargo && typeof source.cargo === 'object' ? source.cargo : {}),
       usedMass: Math.max(0, finite(usedMass, 0)),
     },
+  };
+}
+
+// NXI-120 — the comparison's declared load: the hold mass the player is actually carrying,
+// projected onto whichever hulls the screen derives. Hull selection changes the hulls, never
+// the basis; the basis resets only when the hold itself changes. The projection borrows the
+// live cargo record — it is not a second inventory, cargo still owns every unit.
+function declaredLoadPlayer(player) {
+  return withCargoMass(player, player && player.cargo && player.cargo.usedMass);
+}
+
+/**
+ * NXI-120 — both sides of the buy-rail comparison at the same declared load: the candidate hull
+ * as the yard sells it and the active hull with its actual accepted fit, each carrying the live
+ * hold's cargo mass. Switching candidates swaps only `candidate`; `current` and `loadMass`
+ * change only when the hold does. Pure read through getDerivedStats — nothing here writes cargo.
+ */
+export function buyRailComparisonFacts(player, candidateDefId) {
+  const ownedShips = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
+  const activeIndex = Math.max(0, Math.floor(Number(player && player.activeShipIndex) || 0));
+  const active = ownedShips[activeIndex] || ownedShips[0] || null;
+  const basisPlayer = declaredLoadPlayer(player);
+  const candDef = SHIP_BY_ID.get(candidateDefId);
+  const activeDef = active && SHIP_BY_ID.get(active.defId);
+  return {
+    loadMass: finite(basisPlayer && basisPlayer.cargo && basisPlayer.cargo.usedMass, 0),
+    candidate: candDef ? catalogHullFacts(candDef.id, [], basisPlayer) : null,
+    current: activeDef ? catalogHullFacts(activeDef.id, active.fittings || [], basisPlayer) : null,
   };
 }
 
@@ -1089,7 +1116,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       defId: def.id,
       fittings: [],
       isPlayer: def.id === 'ship_kestrel',
-      player: stockPreviewPlayer(ctx.state.player),
+      // NXI-120: the catalog hull is read at the same declared load the fleet hulls are —
+      // a bare hull carrying the hold the player actually flies, not an empty guess.
+      player: declaredLoadPlayer(ctx.state.player),
       stock: true,
     };
   }
@@ -3432,7 +3461,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
         .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}×\u00a0${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
-      const facts = catalogHullFacts(def.id);
+      // NXI-120: both hulls in the compare are read at the same declared load — the hold the
+      // player carries now — so switching candidates never mixes an empty guess with a loaded
+      // truth, and the candidate number matches the preview the same selection renders.
+      const railCompare = buyRailComparisonFacts(ctx.state.player, def.id);
+      const facts = railCompare.candidate || catalogHullFacts(def.id);
       // FB-062 — the chit reads this yard's price, and a hull another yard builds exclusively
       // is not buyable here at all.
       const yardStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
@@ -3451,7 +3484,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
       // gains, dim bone where it costs), and Buy as the one primary key. The sockets stand on the disc.
       const mine = activeOwnedDef();
-      const mineFacts = mine ? catalogHullFacts(mine.id) : null;
+      const mineFacts = railCompare.current || (mine ? catalogHullFacts(mine.id) : null);
       const compare = !!(mine && mine.id !== def.id);
       const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
         const v = Number(value) || 0; const o = Number(ownValue) || 0;
@@ -3471,7 +3504,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
           reading('Speed', facts.speed, mineFacts && mineFacts.speed, '') +
         `</ul>` +
-        (compare ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)}</p>` : '') +
+        (compare
+          ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)} — both at your ${fmt(railCompare.loadMass)} t load</p>`
+          : '') +
         `<p class="sx-sw-read__hp">Hardpoints: ${slotSummary || '\u2014'}</p>` +
         `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
