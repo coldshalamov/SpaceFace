@@ -997,6 +997,9 @@ export const story = {
       // The finite accept line yields to the first transmission. Do not stack another toast here.
       if (!plan.writtenFinale) this._sayStoryLine(plan.resolution || plan.title, 8);
       this.bus.emit('endgame:finaleReady', this.getWrittenEndingArchive());
+      // The Codex Archive refreshes off this signal so the filed ending lands in the ship's
+      // own record at the moment it is written, not the next time the Archive is opened.
+      this.bus.emit('endgame:archive', this.getWrittenEndingArchive());
       this._announceFinaleReady();
     }
     this._schedulePostEndingObjective();
