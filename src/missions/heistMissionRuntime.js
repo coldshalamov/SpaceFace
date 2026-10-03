@@ -61,6 +61,7 @@ import {
 } from './heistArbiter.js';
 import {
   BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
+  COUNTERWEIGHT_SCENE,
   HEIST_CAPSULE_RUN_VARIANT_ID,
   PQ019_CAPSULE,
   PQ019_HEIST_SECTOR_ID,
@@ -70,6 +71,8 @@ import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js
 import {
   BREAKAWAY_PRESSURE,
   BREAKAWAY_WRECK_RECOVERY,
+  COUNTERWEIGHT_CUE_TEXT,
+  COUNTERWEIGHT_WATCH_TUNING,
   PQ019C_HEIST_TUNING,
   PQ019C_RECOVERABLE_OUTCOMES,
   heistMissionPolicy,
@@ -171,6 +174,17 @@ export function createHeistRecord({
     capsuleSeen: false,
     possessionEver: false,
     possessed: false,
+    // SF-147: the second-act ledger. `unitsTotal` is the manifest the shell left with;
+    // `unitsFenced`/`unitsReturned` are custody the RECEIVERS physically logged for shed pods;
+    // `deliveredUnits` is what the shell itself still held at handoff. `pursuitEntityIds` are the
+    // responders law assigned — durable so a monitored re-scan can wake the same hulls again.
+    unitsTotal: Number.isFinite(variant.payload?.shipmentUnits) ? variant.payload.shipmentUnits : 0,
+    unitsFenced: 0,
+    unitsReturned: 0,
+    deliveredUnits: null,
+    monitorScans: [],
+    pursuitEntityIds: [],
+    suspendedUnits: null,
     lawReportId: null,
     lawIncidentReceiptId: null,
     lawDenialReason: null,
@@ -225,6 +239,11 @@ export const HEIST_CUE_TEXT = Object.freeze({
   theft_witnessed_no_patrol: 'Theft witnessed — WANTED, but Concord has no patrol in range',
   theft_unwitnessed: 'No witness in range — the theft is unlogged, for now',
   escaped: 'Contact broken — run the capsule to the Quiet fence',
+  // SF-147: the monitored lane. One line per first crossing and one for a resumed chase — the
+  // posts are why "escaped" never means "safe".
+  monitored: 'Monitored crossing — a Concord post just logged the stolen shipment',
+  pursuit_resumed: 'The scan raised the patrol — Concord units are back on the load',
+  units_shed: 'The shell is shedding sealed units — every pod you lose is pay you lose',
   fenced: 'Capsule fenced — the Quiet paid and forgot your face',
   confiscated: 'Capsule confiscated — Concord recovered its cargo',
   lawful_arrival: 'Capsule caught by Concord — the run is over, nothing was taken',
@@ -459,18 +478,26 @@ export const heistMissionRuntime = {
     const jobs = ownerOf(ctx, 'npcJobsRuntime');
     if (!jobs || typeof jobs.claimControl !== 'function') return 0;
     let taken = 0;
+    // SF-147: each claim WAVE gets its own epoch in the claimId — a hull released on a leash
+    // break and re-claimed by a monitor scan must not trip the runtime's claimId dedupe.
+    const epoch = (record.leaseEpoch | 0);
+    let epochSpent = false;
     for (const entityId of responderEntityIds) {
       if (taken >= PQ019C_HEIST_TUNING.responderLeaseCap) break;
       const entity = liveEntity(ctx, entityId);
       const jobId = entity?.data?.jobId;
       if (!jobId) continue;
       if (record.leases.some((row) => row.jobId === jobId)) continue;
-      const claimId = `pq019c:${record.missionId}:${jobId}`;
+      if (!epochSpent) { record.leaseEpoch = epoch + 1; epochSpent = true; }
+      const claimId = `pq019c:${record.missionId}:${jobId}:${epoch}`;
       const claim = jobs.claimControl(jobId, { claimId, holder: record.missionId });
       if (!claim || claim.granted !== true) continue;
       record.leases.push({ jobId, claimId, entityId });
       taken++;
       record.pursuitStarted = true;
+      // SF-147: remember WHO law assigned — durable, so a monitored crossing later in the run can
+      // wake the same hulls again rather than conjuring new ones.
+      if (!record.pursuitEntityIds.includes(entityId)) record.pursuitEntityIds.push(entityId);
     }
     return taken;
   },
@@ -656,7 +683,63 @@ export const heistMissionRuntime = {
       });
       return true;
     }
+    // SF-147: per-UNIT custody. A shed pod that physically reaches a receiver is logged against
+    // the same run — the fence keeps what it got, the catcher recovered what it got.
+    if (receipt.kind === 'unit_fenced') {
+      if (!record.possessionEver) return false; // no theft, no buyer — same rule as the shell
+      record.unitsFenced = (record.unitsFenced | 0) + 1;
+      // The shell is gone and the pods are all that remain of the load — the fenced units ARE
+      // the delivery, paid at the unit fraction rather than the full manifest.
+      if (record.capsuleEntityId == null) {
+        submitHeistCandidate(record, {
+          kind: 'fenced_success',
+          causalTick,
+          sourceStableId: `heistFacilities:${receipt.facilityId}:units`,
+          proof: { custodyReceiptId: receipt.receiptId, unitsOnly: true },
+        });
+      }
+      return true;
+    }
+    if (receipt.kind === 'unit_returned') {
+      record.unitsReturned = (record.unitsReturned | 0) + 1;
+      return true;
+    }
     return false;
+  },
+
+  /**
+   * `heist:monitorScan` — a Concord post pulsed a body carrying this run's provenance. Only a run
+   * that is actually HOT reads as the second act: the load must have been taken. The first
+   * crossing speaks; every crossing re-wakes the responders law already assigned — the same
+   * hulls, claimed again, never conjured replacements.
+   */
+  onMonitorScan(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (!record.possessionEver) return false; // lawful freight on the lane is not a second act
+    const monitorId = String(payload.monitorId || '');
+    const firstForPost = monitorId && !record.monitorScans.includes(monitorId);
+    if (firstForPost) {
+      record.monitorScans.push(monitorId);
+      while (record.monitorScans.length > 8) record.monitorScans.shift();
+    }
+    sayHeistCue(ctx, record, 'monitored');
+    // Re-raise the pursuit from what law already committed. `claimControl` dedupes by claimId —
+    // a hull still under the run's lease is a no-op, a released one picks the chase back up.
+    if (record.pursuitStarted && Array.isArray(record.pursuitEntityIds)) {
+      const taken = this.claimPursuitLeases(ctx, record, record.pursuitEntityIds);
+      if (taken > 0) sayHeistCue(ctx, record, 'pursuit_resumed');
+    }
+    return true;
+  },
+
+  /** `heist:shipmentUnit` — the shell physically shed a sealed unit. One spoken line per run. */
+  onShipmentUnit(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (payload.event !== 'unit_ejected') return false;
+    sayHeistCue(ctx, record, 'units_shed');
+    return true;
   },
 
   /**
@@ -716,7 +799,13 @@ export const heistMissionRuntime = {
    */
   _suspendRun(ctx, record) {
     if (!record || record.suspended) return false;
-    if (heistLaunchVariant(record.variantId).id !== BREAKAWAY_THIRD_SHIFT_VARIANT_ID) return false;
+    const variant = heistLaunchVariant(record.variantId);
+    // SF-147: the hot-return act suspends too. A run whose load was TAKEN parks at the boundary
+    // like the assembly does — voluntary return is the whole second act — while an untouched
+    // capsule keeps its historical absent-on-exit rule.
+    const suspends = variant.id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID
+      || (record.possessionEver === true && Number.isFinite(variant.payload?.shipmentUnits));
+    if (!suspends) return false;
     if (record.launchTick == null || record.capsuleEntityId == null) return false;
     // The facility's own `sector:exit` listener registers first and marks the body dead before
     // this sees the event — `liveEntity` would say it's already gone. The map entry still exists
@@ -734,6 +823,14 @@ export const heistMissionRuntime = {
       hull: Number.isFinite(entity?.hull) ? entity.hull : entity?.hullMax,
       hullMax: entity?.hullMax,
       mass: Number.isFinite(entity?.mass) ? entity.mass : record.capsuleLastMass,
+      // SF-147: the shell's remaining unit count is part of the body truth.
+      ...(Number.isFinite(entity?.data?.shipmentUnits)
+        ? {
+          shipmentUnits: entity.data.shipmentUnits,
+          shipmentUnitsTotal: Number.isFinite(entity.data.shipmentUnitsTotal)
+            ? entity.data.shipmentUnitsTotal : record.unitsTotal,
+        }
+        : {}),
       // A capture approach in progress is part of the same run: the facility mirrors it onto the
       // body for durable loads, so it rides the snapshot (deep-copied — the live object is about
       // to be deleted with the dematerialized entity).
@@ -741,6 +838,28 @@ export const heistMissionRuntime = {
         ? JSON.parse(JSON.stringify(entity.data.breakawayCapture))
         : null,
     };
+    // SF-147: pods shed before the boundary ride the run too — same raw-map read, same rule that
+    // snapshots are the bodies, not a refilled manifest.
+    const units = [];
+    for (const pod of ctx?.state?.entities?.values?.() || []) {
+      if (!pod || pod.data?.heistUnit !== true) continue;
+      if (pod.data?.launchScheduleId !== record.scheduleId) continue;
+      if (!pod.pos || !Number.isFinite(pod.pos.x)) continue;
+      units.push({
+        unitOf: pod.data.heistUnitOf,
+        unitIndex: pod.data.heistUnitIndex,
+        factionId: pod.factionId,
+        ownerId: pod.ownerId,
+        legalOwnerFactionId: pod.data.legalOwnerFactionId,
+        pos: { x: pod.pos.x, z: pod.pos.z },
+        vel: pod.vel && Number.isFinite(pod.vel.x) ? { x: pod.vel.x, z: pod.vel.z } : { x: 0, z: 0 },
+        rot: Number.isFinite(pod.rot) ? pod.rot : 0,
+        angVel: Number.isFinite(pod.angVel) ? pod.angVel : 0,
+        hull: Number.isFinite(pod.hull) ? pod.hull : pod.hullMax,
+      });
+      if (units.length >= 8) break;
+    }
+    record.suspendedUnits = units.length ? units : null;
     record.suspended = true;
     record.suspendedAtTick = intTick(ctx?.state?.tick);
     record.possessed = false;
@@ -763,6 +882,15 @@ export const heistMissionRuntime = {
       snapshot: record.suspendedLoad,
     });
     if (!capsule) return false;
+    // SF-147: the shed pods come back with the shell — the same physical manifest the run left.
+    if (Array.isArray(record.suspendedUnits) && record.suspendedUnits.length
+        && typeof facilities.respawnSuspendedUnits === 'function') {
+      facilities.respawnSuspendedUnits({
+        scheduleId: record.scheduleId,
+        snapshots: record.suspendedUnits,
+      });
+    }
+    record.suspendedUnits = null;
     const tick = intTick(ctx?.state?.tick);
     record.capsuleEntityId = capsule.id;
     record.capsuleSeen = true;
@@ -1044,6 +1172,11 @@ export const heistMissionRuntime = {
           if (Number.isFinite(reply?.handoff?.condition01)) {
             record.deliveredCondition = reply.handoff.condition01;
           }
+          // SF-147: the sealed units physically inside the delivered shell — the custody the
+          // mission owner's payout scale reads. Missing means "not a multi-unit shell".
+          if (Number.isFinite(reply?.handoff?.shipmentUnits)) {
+            record.deliveredUnits = reply.handoff.shipmentUnits;
+          }
           recordEffect(arbiter, keys.receiverCommit, {
             effectId: reply?.receipt?.effectId || `pq019b:receiverCommit:${receipt.receiptId}`, tick,
           });
@@ -1097,7 +1230,17 @@ export const heistMissionRuntime = {
     //     as the schedule release above. Surviving raiders become ordinary hostiles.
     this._releasePressure(ctx, record);
 
-    // 3d. PQ-195.06: a genuinely destroyed assembly leaves ONE bounded reduced-value recovery —
+    // 3d. SF-140: the launcher remembers what happened to its cargo. A fenced theft arms escorts
+    //     over the next routine transfers — a durable consequence the player watches next pass.
+    if (facilityOwner && typeof facilityOwner.noteScheduleOutcome === 'function') {
+      facilityOwner.noteScheduleOutcome({
+        scheduleId: record.scheduleId,
+        outcome,
+        unitsLost: Number.isFinite(record.unitsFenced) ? record.unitsFenced : 0,
+      });
+    }
+
+    // 3e. PQ-195.06: a genuinely destroyed assembly leaves ONE bounded reduced-value recovery —
     //     its wreck through the ordinary aftermath owner, where `drive` last saw the body alive.
     //     `record.recoveryWreckMarkerId` is the durable idempotency key (same precedent as
     //     `pressureSpawned`): a duplicate destroy callback or a reloaded record can never offer
@@ -1251,6 +1394,17 @@ export const heistMissionRuntime = {
     // `pressureSpawned` flag (kept above) is what stops a second element spawning.
     restored.pressureEntityIds = [];
     restored.cues = { ...(record.cues || {}) };
+    // SF-147: the second-act ledger defaults cleanly onto records that predate it.
+    restored.unitsTotal = Number.isFinite(record.unitsTotal) ? record.unitsTotal
+      : (Number.isFinite(heistLaunchVariant(record.variantId).payload?.shipmentUnits)
+        ? heistLaunchVariant(record.variantId).payload.shipmentUnits : 0);
+    restored.unitsFenced = Number.isFinite(record.unitsFenced) ? record.unitsFenced : 0;
+    restored.unitsReturned = Number.isFinite(record.unitsReturned) ? record.unitsReturned : 0;
+    restored.deliveredUnits = Number.isFinite(record.deliveredUnits) ? record.deliveredUnits : null;
+    restored.monitorScans = Array.isArray(record.monitorScans) ? [...record.monitorScans] : [];
+    restored.pursuitEntityIds = Array.isArray(record.pursuitEntityIds) ? [...record.pursuitEntityIds] : [];
+    restored.leaseEpoch = Number.isFinite(record.leaseEpoch) ? record.leaseEpoch : 0;
+    if (!Array.isArray(restored.suspendedUnits)) restored.suspendedUnits = null;
 
     if (!restored.arbiter) {
       // Fail-closed refusal from `restoreArbiter`. Rebuild an empty arbiter and let the same
@@ -1274,6 +1428,15 @@ export const heistMissionRuntime = {
     if (restored.arbiter.receipt) {
       restored.reconciled = 'resumed_receipt';
       restored.settled = false; // effects re-drive through the journal; keys already taken no-op.
+      return restored;
+    }
+
+    // SF-147: a run parked at the boundary IS its saved snapshot — `drive` re-embodies it on the
+    // next in-sector tick. Never re-adopted by id, never absent: the suspension record is the
+    // whole truth the restore needs.
+    if (restored.suspended === true && restored.suspendedLoad) {
+      restored.reconciled = 'resumed_suspension';
+      restored.settled = false;
       return restored;
     }
 
@@ -1315,6 +1478,287 @@ export const heistMissionRuntime = {
       playerCargoMutationCountForCapsule: 0,
       sectorOwnershipMutationCount: 0,
     };
+  },
+};
+
+// ── SF-143: the counterweight watch runtime ─────────────────────────────────────────────────────
+//
+// A deliberate sibling, NOT another arbiter run: the watch has no competing terminal candidates —
+// settlement is a count. The deterministic inputs are the facility's scene record (which crates
+// the pad physically logged, which the world physically lost, whether the tug still exists) and
+// the armed clock. What this runtime guarantees instead of ordering is HONEST ACCOUNTING: no code
+// path here counts a crate the receiver pad did not log, and a lost crate or a dead tug shrinks
+// the payable manifest rather than the record pretending it still exists.
+//
+// Sector suspension rides the same precedent as `_suspendRun`: the facility snapshots the scene's
+// loose bodies into its own record at the boundary, and this record parks the WINDOW clock —
+// `armedTick` is shifted forward across the suspended stretch so the boundary never counts
+// against the watch.
+
+export const COUNTERWEIGHT_RECORD_SCHEMA = 'spaceface.counterweightWatch.v1';
+export const COUNTERWEIGHT_VOICE_ID = 'pq019c:counterweight-watch';
+
+export function counterweightSceneIdFor(missionId) {
+  return `counterweight:${String(missionId || 'mission')}`;
+}
+
+export function createCounterweightRecord({ missionId, tick = 0 } = {}) {
+  const tuning = COUNTERWEIGHT_WATCH_TUNING;
+  return {
+    schema: COUNTERWEIGHT_RECORD_SCHEMA,
+    missionId: String(missionId),
+    sceneId: counterweightSceneIdFor(missionId),
+    acceptTick: intTick(tick),
+    armedTick: null,
+    windowTicks: tuning.windowTicks,
+    legsRequired: tuning.legsRequired,
+    rewardPerLegCr: tuning.rewardPerLegCr,
+    completionBonusCr: tuning.completionBonusCr,
+    cratesTotal: COUNTERWEIGHT_SCENE.crates.length,
+    sceneRequested: false,
+    sceneDenied: null,
+    legsDone: 0,
+    cratesLost: 0,
+    crewLost: false,
+    // The DURABLE manifest ledger. `legsDone` counts within a session; these stableIds are what a
+    // restore re-marks on the scene so a crate already paid can never be paid for twice.
+    deliveredStableIds: [],
+    lostStableIds: [],
+    // Parked at the sector boundary — the window waits, the scene's own snapshot is the manifest.
+    suspended: false,
+    suspendedAtTick: null,
+    cues: {},
+    settled: false,
+    settledOutcome: null,
+    payoutCr: 0,
+  };
+}
+
+/**
+ * One spoken moment for the watch — same one-voice rule as the heist lines: a stable id on the
+ * objective channel, at most once per moment per record, and a bus receipt a headless harness can
+ * read without a presenter.
+ */
+export function sayCounterweightCue(ctx, record, moment, textOverride = null) {
+  if (!record || record.cues[moment]) return null;
+  const text = textOverride || COUNTERWEIGHT_CUE_TEXT[moment] || null;
+  if (!text) return null;
+  record.cues[moment] = true;
+  const receipt = Object.freeze({
+    cueId: `pq019c:cue:${record.missionId}:cw:${moment}`,
+    missionId: record.missionId,
+    moment,
+    text,
+    voiceId: COUNTERWEIGHT_VOICE_ID,
+    channel: HEIST_VOICE_CHANNEL,
+    source: 'heistMissionRuntime',
+  });
+  if (ctx?.state?.mode === 'flight') {
+    const say = ctx.helpers?.voice?.say;
+    if (typeof say === 'function') {
+      say({ channel: HEIST_VOICE_CHANNEL, id: COUNTERWEIGHT_VOICE_ID, text, kind: 'info', ttl: 5 });
+    }
+  }
+  ctx?.bus?.emit?.('heist:missionCue', receipt);
+  return receipt;
+}
+
+export const counterweightRuntime = {
+
+  /** `heist:counterweight` — the scene's mechanical truth, spoken per physical event. */
+  onCounterweightEvent(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.sceneId !== record.sceneId) return false;
+    switch (payload.event) {
+      case 'gate_open':
+        sayCounterweightCue(ctx, record, 'gate_open');
+        return true;
+      case 'gate_closed':
+        sayCounterweightCue(ctx, record, 'gate_lost');
+        return true;
+      case 'crate_delivered':
+        // Each crate gets its own line — the manifest is two bodies, and each arrival is the pay.
+        if (payload.stableId && !record.deliveredStableIds.includes(payload.stableId)) {
+          record.deliveredStableIds.push(payload.stableId);
+        }
+        sayCounterweightCue(ctx, record, `crate_delivered_${payload.stableId || '?'}`, COUNTERWEIGHT_CUE_TEXT.crate_delivered);
+        return true;
+      case 'crate_lost':
+        if (payload.stableId && !record.lostStableIds.includes(payload.stableId)) {
+          record.lostStableIds.push(payload.stableId);
+        }
+        sayCounterweightCue(ctx, record, `crate_lost_${payload.stableId || '?'}`, COUNTERWEIGHT_CUE_TEXT.crate_lost);
+        return true;
+      case 'crew_lost':
+        sayCounterweightCue(ctx, record, 'crew_lost');
+        return true;
+      case 'pressure_inbound':
+        sayCounterweightCue(ctx, record, 'pressure');
+        return true;
+      default:
+        return false;
+    }
+  },
+
+  /** Sector exit parks the watch window — the yard's own snapshot carries the manifest. */
+  onSectorExit(ctx, record, sectorId) {
+    if (!record || record.settled) return false;
+    if (sectorId !== PQ019_HEIST_SECTOR_ID) return false;
+    if (record.suspended) return true;
+    record.suspended = true;
+    record.suspendedAtTick = intTick(ctx?.state?.tick);
+    return true;
+  },
+
+  /**
+   * One tick. Requests the scene once, re-arms after a boundary, syncs the honest count from the
+   * facility's scene record, and returns a settle decision — never settles behind its own back.
+   */
+  drive(ctx, record) {
+    if (!record || record.settled) return null;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    const tick = intTick(ctx?.state?.tick);
+
+    if (record.suspended) {
+      const sectorId = ctx?.state?.world?.currentSectorId;
+      if (sectorId !== PQ019_HEIST_SECTOR_ID) return null;
+      // Back inside — re-arm the SAME scene. The facility's suspended-body snapshot restores the
+      // manifest; `requestCounterweightScene` on the same sceneId is the idempotent adopt path.
+      if (!facilities || typeof facilities.requestCounterweightScene !== 'function') return null;
+      const reply = facilities.requestCounterweightScene({
+        sceneId: record.sceneId,
+        resume: {
+          legsDone: record.legsDone,
+          deliveredStableIds: record.deliveredStableIds,
+          lostStableIds: record.lostStableIds,
+        },
+      });
+      if (!reply || reply.accepted !== true) return null;
+      const awayTicks = Math.max(0, tick - intTick(record.suspendedAtTick));
+      if (awayTicks > 0 && record.armedTick != null) record.armedTick += awayTicks;
+      record.suspended = false;
+      record.suspendedAtTick = null;
+    }
+
+    if (!record.sceneRequested) {
+      record.sceneRequested = true;
+      const reply = facilities && typeof facilities.requestCounterweightScene === 'function'
+        ? facilities.requestCounterweightScene({
+          sceneId: record.sceneId,
+          resume: {
+            legsDone: record.legsDone,
+            deliveredStableIds: record.deliveredStableIds,
+            lostStableIds: record.lostStableIds,
+          },
+        })
+        : null;
+      if (reply && reply.accepted === true) {
+        // A restored watch keeps its serialized armedTick — the window position is durable truth,
+        // not a fresh grant on every load.
+        if (record.armedTick == null) record.armedTick = tick;
+        sayCounterweightCue(ctx, record, 'accepted');
+        sayCounterweightCue(ctx, record, 'armed');
+      } else {
+        record.sceneDenied = String(reply?.reason || 'no_scene_owner');
+      }
+    }
+    if (record.armedTick == null) {
+      // The yard was busy or absent — bounded patience, then the watch fails honestly rather
+      // than camping an unavailable scene forever.
+      if (tick - record.acceptTick > 600) {
+        return { settle: 'none', reason: 'scene_unavailable' };
+      }
+      return null;
+    }
+
+    const status = facilities && typeof facilities.counterweightSceneStatus === 'function'
+      ? facilities.counterweightSceneStatus()
+      : null;
+    if (status && status.sceneId === record.sceneId) {
+      // The durable ledger never REGRESSES — a status sync after a re-arm can only confirm what
+      // the events already journaled, never un-deliver a crate.
+      record.legsDone = Math.max(record.legsDone | 0, Math.max(0, status.legsDone | 0));
+      let lost = 0;
+      for (const [stableId, row] of Object.entries(status.crates || {})) {
+        if (row && row.state === 'lost') {
+          lost++;
+          if (!record.lostStableIds.includes(stableId)) record.lostStableIds.push(stableId);
+        }
+        if (row && row.state === 'delivered'
+          && !record.deliveredStableIds.includes(stableId)) {
+          record.deliveredStableIds.push(stableId);
+        }
+      }
+      record.cratesLost = Math.max(record.cratesLost | 0, lost);
+      if (status.crewPhase === 'lost') record.crewLost = true;
+    }
+
+    // The manifest is RESOLVED when every crate is delivered or gone — the watch ends early on
+    // truth, never on a timer it still owed the player.
+    if (record.legsDone + record.cratesLost >= record.cratesTotal) {
+      return { settle: record.legsDone >= record.legsRequired ? 'complete' : 'partial', reason: 'manifest_resolved' };
+    }
+    const deadline = record.armedTick + record.windowTicks;
+    if (tick >= deadline) {
+      return { settle: record.legsDone > 0 ? 'partial' : 'none', reason: 'window' };
+    }
+    return null;
+  },
+
+  /**
+   * Settle the watch through the ordinary mission paths. `settle` is supplied by `missions` and
+   * is the only thing that pays or removes the contract. The payout math is the offer's own
+   * terms over the count the pad logged: `complete` pays the full manifest plus the bonus,
+   * `partial` pays per delivered leg only, `none` pays nothing and fails.
+   */
+  settle(ctx, record, decision, settle) {
+    if (!record || record.settled) return null;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    if (facilities && typeof facilities.releaseCounterweightScene === 'function') {
+      facilities.releaseCounterweightScene({ sceneId: record.sceneId });
+    }
+    const legs = Math.max(0, record.legsDone | 0);
+    const full = decision.settle === 'complete';
+    record.payoutCr = Math.max(0, Math.round(
+      legs * record.rewardPerLegCr + (full ? record.completionBonusCr : 0),
+    ));
+    record.settled = true;
+    record.settledOutcome = decision.settle;
+    const moment = full ? 'complete'
+      : (decision.reason === 'window' ? 'expired' : 'partial');
+    sayCounterweightCue(ctx, record, moment);
+    const settlement = typeof settle === 'function'
+      ? settle(record.payoutCr > 0 ? 'complete' : 'fail', decision.reason || decision.settle, decision.settle)
+      : null;
+    return { settlement, payoutCr: record.payoutCr };
+  },
+
+  /** The player walked away — the yard still pays for what physically crossed. */
+  abandon(ctx, record, settle) {
+    return this.settle(ctx, record, { settle: 'partial', reason: 'abandoned' }, settle);
+  },
+
+  /** Plain snapshot inside the mission owner's serialized active entry — nothing live inside. */
+  serialize(record) {
+    if (!record) return null;
+    return { ...record };
+  },
+
+  restore(record, { tick = 0 } = {}) {
+    if (!record || typeof record !== 'object') return null;
+    const restored = { ...record };
+    restored.cues = { ...(record.cues || {}) };
+    void tick;
+    // An armed scene's arming was session state: the facility cleared it on restore. The record
+    // re-requests on the next drive — the scene's persistent bodies (saved by their own flags)
+    // are re-adopted through `adoptCounterweightScene` on that path.
+    if (restored.settled !== true) {
+      restored.sceneRequested = false;
+      restored.armedTick = restored.armedTick == null ? null : restored.armedTick;
+      // A parked watch keeps its snapshot and stays parked; the drive resumes it in-sector.
+      restored.suspended = !!restored.suspended;
+    }
+    return restored;
   },
 };
 
